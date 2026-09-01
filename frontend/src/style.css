@@ -1561,17 +1561,28 @@ html :where(
 
 .rank-podium-shape {
   display: block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid currentColor;
-  background: currentColor;
-  transform: rotate(45deg);
+  flex: none;
 }
 
-.rank-podium-card.rank-card-red .rank-podium-shape,
-.rank-podium-card.rank-card-blue .rank-podium-shape {
-  background: var(--bh-yellow);
-  border-color: var(--bh-ink);
+.rank-podium-shape-1 {
+  width: 0;
+  height: 0;
+  border-right: 8px solid transparent;
+  border-bottom: 14px solid #fff;
+  border-left: 8px solid transparent;
+}
+
+.rank-podium-shape-2 {
+  width: 14px;
+  height: 14px;
+  background: #fff;
+}
+
+.rank-podium-shape-3 {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
 }
 
 .rank-podium-badge,

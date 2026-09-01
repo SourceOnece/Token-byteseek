@@ -293,7 +293,7 @@ const TopRankCard = defineComponent({
           h('div', { class: `rank-podium-sweep pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full ${theme.glow}` }),
           h('div', { class: 'rank-podium-mark' }, [
             h('span', { class: 'rank-podium-index' }, rankLabel(props.item.rank)),
-            h('span', { class: 'rank-podium-shape' }),
+            h('span', { class: `rank-podium-shape rank-podium-shape-${props.item.rank}` }),
           ]),
           h('div', { class: 'relative flex items-start' }, [
             h('span', { class: `rank-podium-badge inline-flex items-center gap-1 ${theme.badge}` }, [

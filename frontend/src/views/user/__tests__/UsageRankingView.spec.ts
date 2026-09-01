@@ -144,4 +144,32 @@ describe('UsageRankingView', () => {
       ])
     }
   })
+
+  it('uses white triangle, square and circle marks for the top three ranks', async () => {
+    getRanking.mockResolvedValue({
+      ranking: [1, 2, 3].map((rank) => ({
+        rank,
+        user_id: rank,
+        display_name: `user-${rank}`,
+        avatar_url: '',
+        requests: rank * 10,
+        total_tokens: rank * 100,
+        actual_cost: rank,
+      })),
+      sort_by: 'total_tokens',
+      show_total_tokens: true,
+      show_requests: true,
+      show_actual_cost: true,
+      start_date: '2026-08-17',
+      end_date: '2026-08-17',
+      limit: 20,
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.find('.rank-podium-shape-1').exists()).toBe(true)
+    expect(wrapper.find('.rank-podium-shape-2').exists()).toBe(true)
+    expect(wrapper.find('.rank-podium-shape-3').exists()).toBe(true)
+  })
 })
