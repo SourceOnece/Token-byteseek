@@ -56,13 +56,13 @@
     <template v-if="!isAuthenticated">
       <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
 
-      <header class="glass relative z-20 border-b border-primary-900/10 px-4 dark:border-dark-600/80 sm:px-6">
+      <header class="relative z-20 border-b-[3px] border-gray-950 bg-bh-paper px-4 dark:border-dark-100 dark:bg-dark-900 sm:px-6">
         <nav class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4">
           <router-link to="/home" class="flex min-w-0 items-center gap-2.5">
-            <span class="h-8 w-8 shrink-0 overflow-hidden rounded-lg shadow-sm">
+            <span class="h-8 w-8 shrink-0 overflow-hidden border-2 border-gray-950 bg-white dark:border-dark-100">
               <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
             </span>
-            <span class="truncate text-base font-semibold text-gray-950 dark:text-white">{{ siteName }}</span>
+            <span class="truncate text-base font-extrabold tracking-tight text-gray-950 dark:text-white">{{ siteName }}<span class="text-bh-red">.</span></span>
           </router-link>
 
           <div class="flex items-center gap-2 sm:gap-3">
@@ -95,7 +95,7 @@
 
             <router-link
               to="/login"
-              class="inline-flex items-center rounded-full bg-gray-950 px-4 py-2 text-xs font-semibold text-white transition hover:bg-gray-800 dark:bg-white dark:text-dark-950 dark:hover:bg-dark-200"
+              class="inline-flex items-center border-2 border-gray-950 bg-bh-red px-4 py-2 text-xs font-extrabold text-white shadow-sm transition hover:translate-x-[-1px] hover:translate-y-[-1px] dark:border-dark-100"
             >
               {{ t('home.login') }}
             </router-link>
@@ -137,7 +137,7 @@
                 {{ activeFilterCount }}
               </span>
             </button>
-            <div v-show="showFilterDropdown" class="absolute right-0 top-full z-[60] mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
+            <div v-show="showFilterDropdown" class="absolute right-0 top-full z-[60] mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto" @click.stop>
               <div class="mb-3 flex items-center justify-between">
                 <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
                 <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetFilters">
@@ -219,7 +219,7 @@
                     <template #trigger>
                       <span
                         data-testid="group-max-discount-tag"
-                        class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
+                        class="rounded-none border-2 border-gray-950 bg-bh-yellow px-3 py-1 text-xs font-extrabold text-gray-950 dark:border-dark-100"
                       >
                         {{ formatMaxDiscountOff(group.official_price_ratio) }}
                       </span>
@@ -234,7 +234,7 @@
                     <template #trigger>
                       <span
                         data-testid="group-rate-multiplier-tag"
-                        class="rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200"
+                        class="rounded-none border-2 border-gray-950 bg-white px-3 py-1 text-xs font-extrabold text-gray-950 dark:border-dark-100 dark:bg-dark-900 dark:text-dark-100"
                       >
                         {{ formatRateMultiplierLabel(group.rate_multiplier) }}
                       </span>
@@ -242,21 +242,21 @@
                   </HelpTooltip>
                   <span
                     v-if="hasIndependentImageRate(group)"
-                    class="rounded-full border border-fuchsia-200 bg-fuchsia-50 px-3 py-1 text-xs font-semibold text-fuchsia-700 dark:border-fuchsia-500/30 dark:bg-fuchsia-500/10 dark:text-fuchsia-200"
+                    class="rounded-none border-2 border-gray-950 bg-bh-blue px-3 py-1 text-xs font-extrabold text-white dark:border-dark-100"
                   >
                     {{ formatImageRateMultiplierLabel(group.image_rate_multiplier) }}
                   </span>
                   <!-- 数据共享分组需要醒目标记，避免用户在模型广场忽略采集属性。 -->
                   <span
                     v-if="group.data_sharing_enabled"
-                    class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-200"
+                    class="rounded-none border-2 border-gray-950 bg-bh-red px-3 py-1 text-xs font-extrabold text-white dark:border-dark-100"
                   >
                     {{ t('marketplace.dataSharingTag') }}
                   </span>
                 </div>
 
                 <div class="flex items-start gap-3">
-                  <span class="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm dark:border-dark-700 dark:bg-dark-950">
+                  <span class="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-none border-2 border-gray-950 bg-white dark:border-dark-100 dark:bg-dark-900">
                     <ModelIcon :model="groupBrandIconModel(group)" size="28px" />
                   </span>
                   <div class="min-w-0">
@@ -285,7 +285,7 @@
               <article
                 v-for="model in group.models"
                 :key="`${group.id}-${model.id}`"
-                class="group rounded-xl border border-gray-100 bg-gray-50/80 p-4 transition hover:-translate-y-0.5 hover:border-black/20 hover:shadow-sm dark:border-dark-700 dark:bg-dark-950/80 dark:hover:border-primary-500/50"
+                class="group rounded-none border-2 border-gray-950 bg-white p-4 transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow dark:border-dark-200/60 dark:bg-dark-900"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
@@ -302,10 +302,10 @@
                       <div
                         v-for="row in compactPricingRows(model.pricing)"
                         :key="row.key"
-                        class="flex items-baseline justify-between gap-3 text-sm"
+                        class="flex items-baseline justify-between gap-3 border-2 border-emerald-700 bg-emerald-50 px-2 py-1 text-sm dark:border-emerald-300 dark:bg-emerald-900/25"
                       >
-                        <dt class="shrink-0 text-gray-500 dark:text-dark-400">{{ row.label }}</dt>
-                        <dd class="min-w-0 text-right font-medium tabular-nums text-gray-900 dark:text-white">{{ row.value }}</dd>
+                        <dt class="shrink-0 font-extrabold text-emerald-700 dark:text-emerald-300">{{ row.label }}</dt>
+                        <dd class="min-w-0 text-right font-extrabold tabular-nums text-emerald-700 dark:text-emerald-200">{{ row.value }}</dd>
                       </div>
                     </dl>
                   </template>
@@ -634,7 +634,7 @@ function brandKey(label: string): string {
 }
 
 function brandBadgeClass(group: MarketplaceGroup): string {
-  const base = 'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset'
+  const base = 'inline-flex items-center gap-1.5 rounded-none border-2 border-gray-950 px-3 py-1 text-xs font-bold dark:border-dark-100'
   return `${base} ${resolveProviderBrand(groupBrandSource(group)).badgeClass}`
 }
 

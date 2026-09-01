@@ -16,59 +16,59 @@
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          :class="[
-            'pointer-events-auto min-w-[320px] max-w-md overflow-hidden rounded-lg shadow-lg',
-            'bg-white dark:bg-dark-800',
-            'border-l-4',
-            getBorderColor(toast.type)
-          ]"
+          class="bh-toast pointer-events-auto flex min-w-[320px] max-w-md overflow-hidden"
         >
-          <div class="p-4">
-            <div class="flex items-start gap-3">
-              <!-- Icon -->
-              <div class="mt-0.5 flex-shrink-0">
-                <Icon
-                  :name="getToastIconName(toast.type)"
-                  size="md"
-                  :class="getIconColor(toast.type)"
-                  aria-hidden="true"
-                />
-              </div>
-
-              <!-- Content -->
-              <div class="min-w-0 flex-1">
-                <p v-if="toast.title" class="text-sm font-semibold text-gray-900 dark:text-white">
-                  {{ toast.title }}
-                </p>
-                <p
-                  :class="[
-                    'text-sm leading-relaxed',
-                    toast.title
-                      ? 'mt-1 text-gray-600 dark:text-gray-300'
-                      : 'text-gray-900 dark:text-white'
-                  ]"
-                >
-                  {{ toast.message }}
-                </p>
-              </div>
-
-              <!-- Close button -->
-              <button
-                @click="removeToast(toast.id)"
-                class="-m-1 flex-shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-dark-700 dark:hover:text-gray-300"
-                aria-label="Close notification"
-              >
-                <Icon name="x" size="sm" />
-              </button>
-            </div>
+          <!-- 信号色板：色块 + 白色图标，一眼分辨消息类型 -->
+          <div
+            :class="['flex w-12 flex-shrink-0 items-center justify-center border-r-2 border-gray-950 dark:border-dark-100', getPlateClass(toast.type)]"
+            aria-hidden="true"
+          >
+            <Icon
+              :name="getToastIconName(toast.type)"
+              size="md"
+              :stroke-width="2.5"
+              :class="toast.type === 'warning' ? 'text-gray-950' : 'text-white'"
+            />
           </div>
 
-          <!-- Progress bar -->
-          <div v-if="toast.duration" class="h-1 bg-gray-100 dark:bg-dark-700">
-            <div
-              :class="['h-full toast-progress', getProgressBarColor(toast.type)]"
-              :style="{ animationDuration: `${toast.duration}ms` }"
-            ></div>
+          <div class="min-w-0 flex-1 bg-white dark:bg-dark-800">
+            <div class="p-3.5">
+              <div class="flex items-start gap-3">
+                <!-- Content -->
+                <div class="min-w-0 flex-1">
+                  <p v-if="toast.title" class="text-sm font-extrabold text-gray-950 dark:text-white">
+                    {{ toast.title }}
+                  </p>
+                  <p
+                    :class="[
+                      'text-sm font-medium leading-relaxed',
+                      toast.title
+                        ? 'mt-1 text-gray-700 dark:text-dark-100'
+                        : 'font-semibold text-gray-950 dark:text-white'
+                    ]"
+                  >
+                    {{ toast.message }}
+                  </p>
+                </div>
+
+                <!-- Close button -->
+                <button
+                  @click="removeToast(toast.id)"
+                  class="-m-1 flex-shrink-0 border-2 border-transparent p-1 text-gray-500 transition-colors hover:border-gray-950 hover:bg-bh-yellow hover:text-gray-950 dark:text-dark-300 dark:hover:border-dark-100"
+                  aria-label="Close notification"
+                >
+                  <Icon name="x" size="sm" :stroke-width="2.5" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div v-if="toast.duration" class="h-1.5 border-t border-gray-950/30 bg-transparent dark:border-dark-200/30">
+              <div
+                :class="['h-full toast-progress', getProgressBarColor(toast.type)]"
+                :style="{ animationDuration: `${toast.duration}ms` }"
+              ></div>
+            </div>
           </div>
         </div>
       </TransitionGroup>
@@ -99,32 +99,22 @@ const getToastIconName = (type: string): 'checkCircle' | 'xCircle' | 'exclamatio
   }
 }
 
-const getIconColor = (type: string): string => {
-  const colors: Record<string, string> = {
-    success: 'text-green-500',
-    error: 'text-red-500',
-    warning: 'text-yellow-500',
-    info: 'text-blue-500'
+const getPlateClass = (type: string): string => {
+  const plates: Record<string, string> = {
+    success: 'bg-emerald-600',
+    error: 'bg-bh-red',
+    warning: 'bg-bh-yellow',
+    info: 'bg-bh-blue'
   }
-  return colors[type] || colors.info
-}
-
-const getBorderColor = (type: string): string => {
-  const colors: Record<string, string> = {
-    success: 'border-green-500',
-    error: 'border-red-500',
-    warning: 'border-yellow-500',
-    info: 'border-blue-500'
-  }
-  return colors[type] || colors.info
+  return plates[type] || plates.info
 }
 
 const getProgressBarColor = (type: string): string => {
   const colors: Record<string, string> = {
-    success: 'bg-green-500',
-    error: 'bg-red-500',
-    warning: 'bg-yellow-500',
-    info: 'bg-blue-500'
+    success: 'bg-emerald-600',
+    error: 'bg-bh-red',
+    warning: 'bg-bh-yellow',
+    info: 'bg-bh-blue'
   }
   return colors[type] || colors.info
 }
@@ -135,6 +125,11 @@ const removeToast = (id: string) => {
 </script>
 
 <style scoped>
+.bh-toast {
+  border: 2px solid var(--bh-ink);
+  box-shadow: var(--bh-shadow-sm);
+}
+
 .toast-progress {
   width: 100%;
   animation-name: toast-progress-shrink;

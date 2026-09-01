@@ -1,9 +1,9 @@
 <template>
   <div class="card overflow-hidden">
-    <div class="flex min-h-[61px] items-center justify-between gap-3 border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+    <div class="flex min-h-[61px] items-center justify-between gap-3 border-b-2 border-gray-950 px-6 py-4 dark:border-dark-200/60">
       <div class="flex min-w-0 items-center gap-2.5">
-        <Icon name="bell" size="md" class="shrink-0 text-primary-600 dark:text-primary-400" />
-        <h2 class="truncate text-lg font-semibold text-gray-900 dark:text-white">
+        <Icon name="bell" size="md" class="shrink-0 text-bh-red dark:text-accent-300" />
+        <h2 class="truncate text-lg font-extrabold text-gray-950 dark:text-white">
           {{ t('dashboard.recentAnnouncements') }}
         </h2>
       </div>
@@ -50,7 +50,7 @@
             v-if="index < timelineItems.length - 1"
             data-testid="announcement-timeline-connector"
             aria-hidden="true"
-            class="absolute bottom-[-1.625rem] left-[5px] top-[1.375rem] w-px bg-gray-200 dark:bg-dark-600"
+            class="absolute bottom-[-1.625rem] left-[5px] top-[1.375rem] w-px bg-gray-950/25 dark:bg-dark-200/25"
           ></span>
           <span
             v-if="!item.announcement.read_at"

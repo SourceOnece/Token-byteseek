@@ -31,12 +31,12 @@
         <LoadingSpinner />
       </div>
 
-      <div v-else-if="errorMessage" class="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-200">
+      <div v-else-if="errorMessage" class="ranking-error p-5 text-sm font-bold">
         {{ errorMessage }}
       </div>
 
       <template v-else>
-        <section v-if="ranking.length > 0" class="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-end">
+        <section v-if="ranking.length > 0" class="ranking-podium grid grid-cols-1 gap-5 md:grid-cols-3 md:items-end">
           <TopRankCard
             v-for="item in topCards"
             :key="item.rank"
@@ -48,17 +48,17 @@
           />
         </section>
 
-        <section v-if="ranking.length > 0" class="rounded-lg border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-800">
-          <div class="flex flex-col gap-2 border-b border-gray-100 px-5 py-4 dark:border-dark-700 sm:flex-row sm:items-center sm:justify-between">
+        <section v-if="ranking.length > 0" class="ranking-list">
+          <div class="ranking-list-header flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('usageRanking.listTitle') }}</h2>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <h2 class="ranking-list-title">{{ t('usageRanking.listTitle') }}</h2>
+              <p class="mt-1 text-xs font-semibold text-gray-600 dark:text-dark-300">
                 {{ t('usageRanking.limitHint', { limit: response?.limit || ranking.length }) }}
               </p>
             </div>
-            <span class="text-xs text-gray-500 dark:text-gray-400">{{ dateRangeLabel }}</span>
+            <span class="ranking-date-stamp">{{ dateRangeLabel }}</span>
           </div>
-          <div class="divide-y divide-gray-100 dark:divide-dark-700">
+          <div class="ranking-list-body">
             <RankingRow
               v-for="item in ranking"
               :key="item.rank"
@@ -69,13 +69,13 @@
           </div>
         </section>
 
-        <section v-else class="flex min-h-[360px] items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center dark:border-dark-600 dark:bg-dark-800">
+        <section v-else class="ranking-empty flex min-h-[360px] items-center justify-center p-8 text-center">
           <div>
-            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 text-gray-400 dark:bg-dark-700 dark:text-dark-300">
+            <div class="ranking-empty-icon mx-auto flex h-12 w-12 items-center justify-center text-gray-950 dark:text-dark-50">
               <Icon name="chart" size="lg" />
             </div>
-            <h2 class="mt-4 text-base font-semibold text-gray-900 dark:text-white">{{ t('usageRanking.emptyTitle') }}</h2>
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ t('usageRanking.emptyDescription') }}</p>
+            <h2 class="mt-4 text-base font-extrabold text-gray-950 dark:text-white">{{ t('usageRanking.emptyTitle') }}</h2>
+            <p class="mt-2 text-sm font-semibold text-gray-600 dark:text-dark-300">{{ t('usageRanking.emptyDescription') }}</p>
           </div>
         </section>
       </template>
@@ -204,38 +204,46 @@ function orderedMetrics(metrics: UsageRankingMetric[], primary: UsageRankingMetr
   return [primary, ...metrics.filter((metric) => metric !== primary)]
 }
 
-// 仅前三名使用独立主题，第四名之后保持普通列表样式。
+// 仅前三名使用独立主题，前三名严格对应包豪斯红、黄、蓝。
 function rankTheme(rank: number): { badge: string; card: string; glow: string; icon: 'badge' | 'fire' | 'trendingUp' } {
   if (rank === 1) {
     return {
-      badge: 'bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-500/30',
-      card: 'border-amber-200 bg-amber-50/70 dark:border-amber-500/30 dark:bg-amber-500/10',
-      glow: 'bg-amber-400/20',
+      badge: 'rank-badge rank-badge-red',
+      card: 'rank-card rank-card-red',
+      glow: 'rank-glow rank-glow-red',
       icon: 'fire',
     }
   }
   if (rank === 2) {
     return {
-      badge: 'bg-rose-100 text-rose-700 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-500/30',
-      card: 'border-rose-200 bg-rose-50/70 dark:border-rose-500/30 dark:bg-rose-500/10',
-      glow: 'bg-rose-400/20',
+      badge: 'rank-badge rank-badge-gold',
+      card: 'rank-card rank-card-gold',
+      glow: 'rank-glow rank-glow-gold',
       icon: 'trendingUp',
     }
   }
   if (rank === 3) {
     return {
-      badge: 'bg-sky-100 text-sky-700 ring-sky-200 dark:bg-sky-500/15 dark:text-sky-200 dark:ring-sky-500/30',
-      card: 'border-sky-200 bg-sky-50/70 dark:border-sky-500/30 dark:bg-sky-500/10',
-      glow: 'bg-sky-400/20',
+      badge: 'rank-badge rank-badge-blue',
+      card: 'rank-card rank-card-blue',
+      glow: 'rank-glow rank-glow-blue',
       icon: 'badge',
     }
   }
   return {
-    badge: 'bg-gray-100 text-gray-600 ring-gray-200 dark:bg-dark-700 dark:text-gray-300 dark:ring-dark-600',
-    card: 'border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-800',
-    glow: 'bg-transparent',
+    badge: 'rank-badge rank-badge-neutral',
+    card: 'rank-card rank-card-neutral',
+    glow: 'rank-glow rank-glow-neutral',
     icon: 'badge',
   }
+}
+
+// 数值颜色与名次保持同色，便于用户扫读用量高低。
+function rankValueClass(rank: number): string {
+  if (rank === 1) return 'rank-value-red'
+  if (rank === 2) return 'rank-value-yellow'
+  if (rank === 3) return 'rank-value-blue'
+  return ''
 }
 
 function onDateRangeChange(range: { startDate: string; endDate: string; preset: string | null }) {
@@ -276,15 +284,19 @@ const TopRankCard = defineComponent({
         'article',
         {
           class: [
-            'relative overflow-hidden rounded-lg border p-5 shadow-sm',
+            'rank-podium-card relative overflow-hidden border p-5',
             theme.card,
             props.featured ? 'md:min-h-[260px] md:p-6' : 'md:min-h-[220px]',
           ].join(' '),
         },
         [
-          h('div', { class: `pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full blur-2xl ${theme.glow}` }),
+          h('div', { class: `rank-podium-sweep pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full ${theme.glow}` }),
+          h('div', { class: 'rank-podium-mark' }, [
+            h('span', { class: 'rank-podium-index' }, rankLabel(props.item.rank)),
+            h('span', { class: 'rank-podium-shape' }),
+          ]),
           h('div', { class: 'relative flex items-start' }, [
-            h('span', { class: `inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${theme.badge}` }, [
+            h('span', { class: `rank-podium-badge inline-flex items-center gap-1 ${theme.badge}` }, [
               h(Icon, { name: theme.icon, size: 'xs' }),
               rankLabel(props.item.rank),
             ]),
@@ -292,19 +304,19 @@ const TopRankCard = defineComponent({
           h('div', { class: 'relative mt-7 flex flex-col items-center text-center' }, [
             h(UserAvatar, rankingAvatarProps(props.item, 'h-16 w-16')),
             h('h3', { class: 'mt-4 max-w-full truncate text-lg font-semibold text-gray-900 dark:text-white' }, props.item.display_name),
-            h('p', { class: 'mt-2 text-3xl font-semibold text-gray-900 dark:text-white' }, metricValue(props.item, props.primaryMetric)),
-            h('p', { class: 'mt-1 text-xs text-gray-500 dark:text-gray-400' }, metricLabel(props.primaryMetric)),
+            h('p', { class: ['rank-primary-value mt-2', rankValueClass(props.item.rank)].join(' ') }, metricValue(props.item, props.primaryMetric)),
+            h('p', { class: 'rank-primary-label mt-1' }, metricLabel(props.primaryMetric)),
           ]),
           secondaryMetrics.length > 0
             ? h(
                 'div',
                 {
-                  class: 'relative mt-6 grid gap-2 text-center text-xs text-gray-500 dark:text-gray-400',
+                  class: 'rank-secondary-metrics relative mt-6 grid gap-2 text-center text-xs',
                   style: metricGridStyle(secondaryMetrics.length),
                 },
                 secondaryMetrics.map((metric) =>
                   h('div', { key: metric }, [
-                    h('p', { class: 'font-medium text-gray-900 dark:text-white' }, metricValue(props.item, metric)),
+                    h('p', { class: ['font-mono font-extrabold text-gray-950 dark:text-white', rankValueClass(props.item.rank)].join(' ') }, metricValue(props.item, metric)),
                     h('p', metricLabel(metric)),
                   ]),
                 ),
@@ -331,10 +343,10 @@ const RankingRow = defineComponent({
       return h(
         'div',
         {
-          class: ['grid grid-cols-[auto_minmax(0,1fr)] gap-3 px-5 py-4 transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center', topClass].join(' '),
+          class: ['ranking-row grid grid-cols-[auto_minmax(0,1fr)] gap-3 px-5 py-4 transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center', topClass].join(' '),
         },
         [
-          h('span', { class: `mt-1 inline-flex h-8 w-12 items-center justify-center rounded-lg text-sm font-semibold ring-1 sm:mt-0 ${theme.badge}` }, rankLabel(props.item.rank)),
+          h('span', { class: `rank-row-badge mt-1 inline-flex h-8 w-12 items-center justify-center text-sm font-extrabold sm:mt-0 ${theme.badge}` }, rankLabel(props.item.rank)),
           h('div', { class: 'flex min-w-0 items-center gap-3' }, [
             h(UserAvatar, rankingAvatarProps(props.item, 'h-10 w-10')),
             h('div', { class: 'min-w-0' }, [
@@ -350,7 +362,7 @@ const RankingRow = defineComponent({
             },
             metrics.map((metric) =>
               h('div', { key: metric, class: rankingMetricWidthClass(metric) }, [
-                h('p', { class: 'font-semibold text-gray-900 dark:text-white' }, metricValue(props.item, metric)),
+                h('p', { class: ['font-semibold text-gray-900 dark:text-white', rankValueClass(props.item.rank)].join(' ') }, metricValue(props.item, metric)),
                 h('p', { class: 'text-xs text-gray-500 dark:text-gray-400' }, metricLabel(metric)),
               ]),
             ),

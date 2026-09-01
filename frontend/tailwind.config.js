@@ -1,101 +1,122 @@
 /** @type {import('tailwindcss').Config} */
+
+// ============================================================
+// ByteSeek Bauhaus Theme
+// 三原色（红/蓝/黄）+ 黑 + 纸白 / 直角 / 硬阴影 / 几何
+// 与 docs.byteseek.ai 文档站同源的设计语言
+// ============================================================
+
+const BH = {
+  red: '#E1251B',
+  blue: '#1450A3',
+  yellow: '#FFCC00',
+  ink: '#141414',
+  paper: '#F4F0E6'
+}
+
 export default {
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
   darkMode: 'class',
   theme: {
-    // 对齐 OpenRouter 的圆角层级：紧凑元素、控件、内容表面和桌面弹窗。
+    // 包豪斯：一切皆直角。仅保留 full 用于圆形（圆也是包豪斯的基本形）。
     borderRadius: {
       none: '0px',
-      sm: '4px',
-      DEFAULT: '4px',
-      md: '6px',
-      lg: '6px',
-      xl: '8px',
-      '2xl': '8px',
-      '3xl': '8px',
-      '4xl': '8px',
+      sm: '0px',
+      DEFAULT: '0px',
+      md: '0px',
+      lg: '0px',
+      xl: '0px',
+      '2xl': '0px',
+      '3xl': '0px',
+      '4xl': '0px',
       full: '9999px',
-      compact: '4px',
-      control: '6px',
-      surface: '8px',
-      dialog: '12px'
+      compact: '0px',
+      control: '0px',
+      surface: '0px',
+      dialog: '0px'
     },
     extend: {
       colors: {
-        // 主色调 - Blue Archive 蓝白主题
+        // 包豪斯命名色，供视图直接使用
+        bh: {
+          red: BH.red,
+          blue: BH.blue,
+          yellow: BH.yellow,
+          ink: BH.ink,
+          paper: BH.paper
+        },
+        // 主色调 - 包豪斯蓝（主要操作、链接、激活态）
         primary: {
-          50: '#F6FCFF',
-          100: '#DDF4FC',
-          200: '#BFEAFF',
-          300: '#8BDDF8',
-          400: '#4DD4F6',
-          500: '#00D2FF',
-          600: '#12A7E8',
-          700: '#0B8FD8',
-          800: '#176F9E',
-          900: '#2D4F68',
-          950: '#071A2A'
+          50: '#F0F4FA',
+          100: '#DFE8F5',
+          200: '#B9CCE8',
+          300: '#8BAAD8',
+          400: '#5581C2',
+          500: '#1450A3',
+          600: '#1450A3',
+          700: '#0F3D7D',
+          800: '#0B2D5C',
+          900: '#081F40',
+          950: '#051225'
         },
-        // 辅助色 - 冰白到品牌深蓝
+        // 辅助色 - 包豪斯红（强调、品牌）
         accent: {
-          50: '#FFFFFF',
-          100: '#EAF8FE',
-          200: '#CDEFFD',
-          300: '#9BDEFA',
-          400: '#5BCDF2',
-          500: '#1598D8',
-          600: '#0B8FD8',
-          700: '#176F9E',
-          800: '#2D4F68',
-          900: '#21465E',
-          950: '#071A2A'
+          50: '#FCF0EF',
+          100: '#F9DEDC',
+          200: '#F2B7B3',
+          300: '#EB8F89',
+          400: '#E55A51',
+          500: '#E1251B',
+          600: '#C21F16',
+          700: '#9E1912',
+          800: '#7A130E',
+          900: '#560D0A',
+          950: '#3B0906'
         },
-        // 覆盖默认 gray/slate:Tailwind 默认值偏蓝(#1f2937/#0f172a 等),深色模式下会残留蓝调
-        // 统一映射到中性 zinc 色相,与 dark 色阶同一体系
+        // 中性色 - 暖调纸灰，向纸色靠拢
         gray: {
-          50: '#FAFAFA',
-          100: '#F4F4F5',
-          200: '#E4E4E7',
-          300: '#D4D4D8',
-          400: '#A1A1AA',
-          500: '#71717A',
-          600: '#52525B',
-          700: '#3F3F46',
-          800: '#27272A',
-          900: '#18181B',
-          950: '#09090B'
+          50: '#FAF8F2',
+          100: '#F4F0E6',
+          200: '#E6E1D3',
+          300: '#D2CCBB',
+          400: '#A39E8F',
+          500: '#736F63',
+          600: '#57534A',
+          700: '#403D36',
+          800: '#2B2925',
+          900: '#1C1A16',
+          950: '#141414'
         },
         slate: {
-          50: '#FAFAFA',
-          100: '#F4F4F5',
-          200: '#E4E4E7',
-          300: '#D4D4D8',
-          400: '#A1A1AA',
-          500: '#71717A',
-          600: '#52525B',
-          700: '#3F3F46',
-          800: '#27272A',
-          900: '#18181B',
-          950: '#09090B'
+          50: '#FAF8F2',
+          100: '#F4F0E6',
+          200: '#E6E1D3',
+          300: '#D2CCBB',
+          400: '#A39E8F',
+          500: '#736F63',
+          600: '#57534A',
+          700: '#403D36',
+          800: '#2B2925',
+          900: '#1C1A16',
+          950: '#141414'
         },
-        // 深色模式背景 - 成熟黑色系(zinc 中性色相),品牌蓝仅作强调色
-        // 注意:950 比 900 略亮,历史上作为"提升面"(elevated surface)使用,保持该关系
+        // 深色模式背景 - 暖黑（墨色纸背面），950 略亮于 900 作提升面
         dark: {
-          50: '#FAFAFA',
-          100: '#F0F0F1',
-          200: '#D9D9DE',
-          300: '#A6A6AF',
-          400: '#77777F',
-          500: '#55555C',
-          600: '#333338',
-          700: '#29292E',
-          800: '#1F1F23',
-          900: '#121215',
-          950: '#18181B'
+          50: '#F4F0E6',
+          100: '#EAE5D8',
+          200: '#CFC9B8',
+          300: '#9E998B',
+          400: '#736F63',
+          500: '#55524A',
+          600: '#3A3831',
+          700: '#2F2D27',
+          800: '#26231D',
+          900: '#1C1A16',
+          950: '#211F1A'
         }
       },
       fontFamily: {
-        // 英文使用 OpenRouter 的开源字体，中文继续按现有系统字体顺序回退。
+        // 正文继续用 Plus Jakarta Sans（几何人文无衬线），中文回退系统字体
         sans: [
           '"Plus Jakarta Sans Variable"',
           'system-ui',
@@ -110,6 +131,15 @@ export default {
           'Microsoft YaHei',
           'sans-serif'
         ],
+        // 展示字体：Archivo Black —— 厚重几何，海报级标题专用
+        display: [
+          '"Archivo Black"',
+          '"Plus Jakarta Sans Variable"',
+          'system-ui',
+          'PingFang SC',
+          'Microsoft YaHei',
+          'sans-serif'
+        ],
         mono: [
           '"Geist Mono Variable"',
           'ui-monospace',
@@ -121,25 +151,35 @@ export default {
         ]
       },
       boxShadow: {
-        // 普通控件和结构表面只用边框分层；浮层、弹窗和品牌发光仍保留较强投影。
-        DEFAULT: 'none',
-        sm: 'none',
-        glass: 'none',
-        'glass-sm': 'none',
-        glow: '0 0 20px rgba(0, 210, 255, 0.28)',
-        'glow-lg': '0 0 40px rgba(18, 167, 232, 0.35)',
-        card: 'none',
-        'card-hover': 'none',
-        'inner-glow': 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+        // 包豪斯硬阴影：无模糊、纯位移。深色模式由 style.css 统一换成纸色阴影。
+        // 所有标准阴影统一使用仪表盘卡片的 4px 硬阴影，避免页面层级各自为政。
+        DEFAULT: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        sm: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        md: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        lg: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        xl: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        '2xl': `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        glass: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        'glass-sm': `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        glow: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        'glow-lg': `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        card: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        'card-hover': `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        'inner-glow': `inset 0 0 0 2px var(--bh-shadow-ink, #141414)`,
+        'bh-sm': `3px 3px 0 0 var(--bh-shadow-ink, #141414)`,
+        bh: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        'bh-lg': `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
+        'bh-xl': `4px 4px 0 0 var(--bh-shadow-ink, #141414)`
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-primary': 'linear-gradient(135deg, #00D2FF 0%, #0B8FD8 100%)',
-        'gradient-dark': 'linear-gradient(135deg, #1F1F23 0%, #0F0F11 100%)',
-        'gradient-glass':
-          'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-        'mesh-gradient':
-          'radial-gradient(at 40% 20%, rgba(0, 210, 255, 0.14) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(139, 221, 248, 0.12) 0px, transparent 50%), radial-gradient(at 0% 50%, rgba(18, 167, 232, 0.1) 0px, transparent 50%)'
+        // 包豪斯不用渐变——映射为纯色块
+        'gradient-primary': `linear-gradient(0deg, ${BH.blue} 0%, ${BH.blue} 100%)`,
+        'gradient-dark': 'linear-gradient(0deg, #1C1A16 0%, #1C1A16 100%)',
+        'gradient-glass': 'linear-gradient(0deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 100%)',
+        'mesh-gradient': 'none',
+        // 三原色条纹（红/黄/蓝），用于顶栏或分隔装饰
+        'bh-stripe': `linear-gradient(90deg, ${BH.red} 0%, ${BH.red} 33.34%, ${BH.yellow} 33.34%, ${BH.yellow} 66.67%, ${BH.blue} 66.67%, ${BH.blue} 100%)`
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
@@ -149,7 +189,12 @@ export default {
         'scale-in': 'scaleIn 0.2s ease-out',
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         shimmer: 'shimmer 2s linear infinite',
-        glow: 'glow 2s ease-in-out infinite alternate'
+        glow: 'glow 2s ease-in-out infinite alternate',
+        'bh-rise': 'bhRise 0.6s ease-out both',
+        'bh-float': 'bhFloat 5s ease-in-out infinite',
+        'bh-bob': 'bhBob 3.2s ease-in-out infinite',
+        'bh-spin-slow': 'bhSpin 14s linear infinite',
+        'bh-marquee': 'bhMarquee 22s linear infinite'
       },
       keyframes: {
         fadeIn: {
@@ -177,12 +222,32 @@ export default {
           '100%': { backgroundPosition: '200% 0' }
         },
         glow: {
-          '0%': { boxShadow: '0 0 20px rgba(0, 210, 255, 0.28)' },
-          '100%': { boxShadow: '0 0 30px rgba(18, 167, 232, 0.4)' }
+          '0%': { boxShadow: `4px 4px 0 0 var(--bh-yellow, #FFCC00)` },
+          '100%': { boxShadow: `6px 6px 0 0 var(--bh-yellow, #FFCC00)` }
+        },
+        bhRise: {
+          from: { opacity: '0', transform: 'translateY(26px)' },
+          to: { opacity: '1', transform: 'translateY(0)' }
+        },
+        bhFloat: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-22px)' }
+        },
+        bhBob: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' }
+        },
+        bhSpin: {
+          from: { transform: 'rotate(0deg)' },
+          to: { transform: 'rotate(360deg)' }
+        },
+        bhMarquee: {
+          from: { transform: 'translateX(0)' },
+          to: { transform: 'translateX(-50%)' }
         }
       },
       backdropBlur: {
-        xs: '2px'
+        xs: '0px'
       }
     }
   },

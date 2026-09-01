@@ -30,7 +30,9 @@ describe('TablePageLayout responsive table scrolling', () => {
   })
 
   it('keeps shared sticky table headers opaque and free of blur filters', () => {
-    expect(componentSource).toContain('@apply bg-gray-50 dark:bg-dark-950;')
+    // 包豪斯表头使用不透明黄色实底，同样避免 sticky 合成层产生文字模糊。
+    expect(componentSource).toContain('background: var(--bh-yellow);')
+    expect(componentSource).toContain('border-bottom: 2px solid #141414;')
     expect(componentSource).not.toContain('backdrop-blur-sm')
   })
 

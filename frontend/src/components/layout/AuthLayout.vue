@@ -11,33 +11,36 @@
         <!-- Custom Logo or Default Logo -->
         <template v-if="settingsLoaded">
           <div
-            class="mb-4 inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-surface shadow-lg shadow-primary-500/30"
+            class="mb-5 inline-flex h-16 w-16 items-center justify-center overflow-hidden border-[3px] border-gray-950 bg-white shadow dark:border-dark-100 dark:bg-dark-800"
           >
             <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
           </div>
-          <!-- 品牌标题在浅色和深色主题下保持清晰对比。 -->
-          <h1 class="mb-2 text-3xl font-bold text-black dark:text-white">
-            {{ siteName }}
+          <!-- 品牌标题：厚重几何 + 红色句点 -->
+          <h1 class="mb-2 text-4xl font-extrabold tracking-tight text-gray-950 dark:text-white">
+            {{ siteName }}<span class="text-bh-red">.</span>
           </h1>
-          <p class="text-sm text-gray-500 dark:text-dark-400">
+          <p class="inline-block text-sm font-bold text-gray-700 dark:text-dark-200">
             {{ siteSubtitle }}
           </p>
         </template>
       </div>
 
-      <!-- Card Container -->
-      <div class="card-glass rounded-surface p-8 shadow-glass">
-        <slot />
+      <!-- Card Container：硬边框 + 大位移阴影 + 三原色顶条 -->
+      <div class="relative border-[3px] border-gray-950 bg-white shadow-xl dark:border-dark-100 dark:bg-dark-800">
+        <div class="bh-stripe" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="p-8">
+          <slot />
+        </div>
       </div>
 
       <!-- Footer Links -->
-      <div class="mt-6 text-center text-sm">
+      <div class="mt-6 text-center text-sm font-semibold">
         <slot name="footer" />
       </div>
 
       <!-- Copyright -->
-      <div class="mt-8 text-center text-xs text-gray-400 dark:text-dark-500">
-        &copy; {{ currentYear }} {{ siteName }}. All rights reserved.
+      <div class="mt-8 text-center font-mono text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-dark-300">
+        &copy; {{ currentYear }} {{ siteName }} · FORM &amp; FUNKTION
       </div>
     </div>
   </div>

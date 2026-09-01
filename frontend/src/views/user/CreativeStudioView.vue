@@ -12,7 +12,7 @@
       <div class="absolute left-3 top-3 z-20">
         <button
           type="button"
-          class="flex h-9 w-9 items-center justify-center rounded-xl border border-primary-900/10 bg-white/90 text-gray-600 shadow-md backdrop-blur transition-colors hover:text-gray-900 dark:border-dark-600 dark:bg-dark-900/90 dark:text-gray-300 dark:hover:text-gray-100"
+          class="bh-creative-icon-button flex h-9 w-9 items-center justify-center"
           :class="settingsOpen && 'text-primary-700 dark:text-primary-300'"
           :title="t('creative.canvas.settings')"
           :aria-expanded="settingsOpen"
@@ -24,11 +24,11 @@
         <Transition name="settings-panel">
           <div
             v-if="settingsOpen"
-            class="absolute left-0 top-12 w-64 rounded-xl border border-primary-900/10 bg-white/95 p-3 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-900/95"
+            class="bh-creative-popover absolute left-0 top-12 w-64 p-3"
           >
             <button
               type="button"
-              class="flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-primary-900/10 text-xs text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-dark-600 dark:text-gray-300 dark:hover:bg-dark-700 dark:hover:text-gray-100"
+              class="bh-creative-panel-button flex h-9 w-full items-center justify-center gap-1.5 text-xs"
               @click="onResetCanvas"
             >
               <Icon name="trash" size="sm" />
@@ -36,7 +36,7 @@
             </button>
             <button
               type="button"
-              class="mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-red-200 text-xs text-red-600 transition-colors hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+              class="bh-creative-panel-button mt-2 flex h-9 w-full items-center justify-center gap-1.5 text-xs text-red-600 dark:text-red-400"
               @click="onClearRequested"
             >
               <Icon name="trash" size="sm" />
@@ -68,7 +68,7 @@
       <!-- 生成状态胶囊：仅桌面端左下角显示，移动端隐藏以避免占用画布空间 -->
       <div
         v-if="pillState && !pillHidden"
-        class="absolute left-1/2 top-28 z-10 hidden max-w-[calc(100%-6rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-primary-900/10 bg-white/90 px-3 py-1.5 text-xs shadow-md backdrop-blur dark:border-dark-600 dark:bg-dark-900/90 lg:bottom-3 lg:left-3 lg:top-auto lg:flex lg:max-w-[calc(100%-24rem)] lg:translate-x-0"
+        class="bh-creative-status-pill absolute left-1/2 top-28 z-10 hidden max-w-[calc(100%-6rem)] -translate-x-1/2 items-center gap-2 px-3 py-1.5 text-xs lg:bottom-3 lg:left-3 lg:top-auto lg:flex lg:max-w-[calc(100%-24rem)] lg:translate-x-0"
         :class="pillState.toneClass"
       >
         <Icon v-if="pillState.spinning" name="refresh" size="sm" class="animate-spin" />
@@ -352,6 +352,42 @@ async function onClearLocalData(): Promise<void> {
 .settings-panel-leave-to {
   opacity: 0;
   transform: translateY(-6px) scale(0.97);
+}
+
+/* 创作台控件统一使用包豪斯硬边和仪表盘硬阴影。 */
+.bh-creative-icon-button,
+.bh-creative-popover,
+.bh-creative-panel-button,
+.bh-creative-status-pill {
+  border: 2px solid var(--bh-ink);
+  background: var(--bh-surface);
+  box-shadow: var(--bh-shadow-sm);
+}
+
+.bh-creative-icon-button {
+  color: var(--bh-ink);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.bh-creative-icon-button:hover,
+.bh-creative-panel-button:hover {
+  background: var(--bh-yellow);
+  color: var(--bh-ink);
+}
+
+.bh-creative-icon-button:active,
+.bh-creative-panel-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--bh-shadow-ink);
+}
+
+.bh-creative-popover {
+  background: var(--bh-surface);
+}
+
+.bh-creative-status-pill {
+  border-left: 8px solid var(--bh-blue);
+  font-weight: 800;
 }
 
 /* 信封沿运行时计算的向量匀速飞行，透明度收尾避免落到历史按钮上时产生遮挡。 */

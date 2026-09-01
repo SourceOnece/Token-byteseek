@@ -219,14 +219,14 @@ onBeforeUnmount(() => {
 }
 
 .announcement-popup-scrollbar::-webkit-scrollbar-thumb {
-  background: rgb(156 163 175 / 0.45);
+  background: var(--bh-scrollbar);
   border: 2px solid transparent;
   border-radius: 9999px;
   background-clip: padding-box;
 }
 
 :global(.dark) .announcement-popup-scrollbar::-webkit-scrollbar-thumb {
-  background: rgb(82 82 91 / 0.7);
+  background: var(--bh-scrollbar);
   border: 2px solid transparent;
   background-clip: padding-box;
 }

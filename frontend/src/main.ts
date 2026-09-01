@@ -11,6 +11,9 @@ import { isIOSDevice } from '@/utils/device'
 import '@fontsource-variable/plus-jakarta-sans'
 import '@fontsource-variable/plus-jakarta-sans/wght-italic.css'
 import '@fontsource-variable/geist-mono'
+import '@fontsource/archivo-black'
+// 在应用入口安全地初始化一次 Chart.js 主题，避免各路由按加载顺序得到不同默认值。
+import '@/utils/chartTheme'
 import './style.css'
 
 function initIOSViewportZoomFix() {

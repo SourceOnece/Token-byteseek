@@ -103,10 +103,10 @@ describe('UserDashboardHeatmap', () => {
     expect(cells.length).toBe(FALLBACK_WEEKS * 7)
 
     // 有用量的今天为最高档且只有一天；未来占位格不可见
-    const greenCells = cells.filter((c) => c.classes().includes('bg-green-700'))
-    expect(greenCells.length).toBe(1)
+    const activeCells = cells.filter((c) => c.classes().includes('bg-emerald-700'))
+    expect(activeCells.length).toBe(1)
     const futureCount = cells.filter((c) => c.classes().includes('invisible')).length
-    expect(cells.filter((c) => c.classes().includes('bg-gray-100')).length).toBe(cells.length - futureCount - 1)
+    expect(cells.filter((c) => c.classes().includes('bg-gray-950/[0.07]')).length).toBe(cells.length - futureCount - 1)
   })
 
   it('悬停格子时显示当天用量，无用量日期显示无用量', async () => {
@@ -119,7 +119,7 @@ describe('UserDashboardHeatmap', () => {
 
     const wrapper = await mountHeatmap()
     const cells = wrapper.findAll('[data-testid="heatmap-cell"]')
-    const todayIndex = cells.findIndex((c) => c.classes().includes('bg-green-700'))
+    const todayIndex = cells.findIndex((c) => c.classes().includes('bg-emerald-700'))
     expect(todayIndex).toBeGreaterThan(0)
 
     await cells[todayIndex].trigger('mouseenter')
@@ -150,7 +150,7 @@ describe('UserDashboardHeatmap', () => {
 
     const wrapper = await mountHeatmap()
     const cells = wrapper.findAll('[data-testid="heatmap-cell"]')
-    const todayIndex = cells.findIndex((c) => c.classes().includes('bg-green-700'))
+    const todayIndex = cells.findIndex((c) => c.classes().includes('bg-emerald-700'))
     await cells[todayIndex].trigger('mouseenter')
     const tooltipElement = wrapper.get('[data-testid="heatmap-tooltip"]').element
 

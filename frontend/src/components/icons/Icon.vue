@@ -19,7 +19,8 @@ const props = withDefaults(defineProps<{
   strokeWidth?: number
 }>(), {
   size: 'md',
-  strokeWidth: 1.5
+  // 包豪斯线条：默认加粗描边
+  strokeWidth: 2
 })
 
 const icons = {

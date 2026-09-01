@@ -489,27 +489,36 @@ onUnmounted(() => {
 <style scoped>
 .select-trigger {
   @apply flex w-full items-center justify-between gap-2;
-  @apply h-9 min-h-9 rounded-control px-4 py-1.5 text-sm;
-  @apply bg-white dark:bg-dark-950;
-  @apply border border-primary-900/10 dark:border-dark-600;
-  @apply text-gray-900 dark:text-gray-100;
-  @apply transition-all duration-200;
-  @apply focus:border-primary-900/10 focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:border-primary-500 dark:focus:ring-primary-500/30;
-  @apply hover:border-black/20 dark:hover:border-primary-500;
+  @apply rounded-none px-4 py-2.5 text-sm font-semibold;
+  @apply min-h-11;
+  @apply bg-white dark:bg-dark-800;
+  @apply text-gray-950 dark:text-dark-50;
+  @apply transition-all duration-150;
+  @apply focus:outline-none;
   @apply cursor-pointer;
+  border: 2px solid var(--bh-ink);
+}
+
+.select-trigger:hover:not(.select-trigger-disabled) {
+  background: rgba(255, 204, 0, 0.16);
 }
 
 .select-trigger-open {
-  /* 浅色展开态使用中性灰描边和外圈，避免筛选控件出现蓝色光晕。 */
-  @apply border-primary-900/10 ring-2 ring-black/10 dark:border-primary-500 dark:ring-primary-500/30;
+  border-color: var(--bh-blue) !important;
+  box-shadow: 3px 3px 0 0 var(--bh-blue);
+}
+
+.dark .select-trigger-open {
+  border-color: #5581c2 !important;
+  box-shadow: 3px 3px 0 0 #5581c2;
 }
 
 .select-trigger-error {
-  @apply border-red-500 focus:border-red-500 focus:ring-red-500/30;
+  border-color: var(--bh-red) !important;
 }
 
 .select-trigger-disabled {
-  @apply cursor-not-allowed bg-gray-100 opacity-60 dark:bg-dark-950;
+  @apply cursor-not-allowed bg-gray-100 opacity-60 dark:bg-dark-900;
 }
 
 .select-value {
@@ -517,36 +526,37 @@ onUnmounted(() => {
 }
 
 .select-icon {
-  @apply flex-shrink-0 text-gray-400 dark:text-dark-400;
+  @apply flex-shrink-0 text-gray-800 dark:text-dark-200;
 }
 
 .select-clear {
   @apply flex flex-shrink-0 cursor-pointer items-center justify-center;
-  @apply rounded text-gray-400 transition-colors;
-  @apply hover:text-gray-600 dark:hover:text-gray-200;
+  @apply text-gray-500 transition-colors;
+  @apply hover:text-gray-950 dark:hover:text-gray-200;
 }
 </style>
 
 <style>
 .select-dropdown-portal {
   @apply w-max min-w-[200px];
-  @apply bg-white dark:bg-dark-900;
-  @apply rounded-control;
-  @apply border border-primary-900/10 dark:border-dark-600;
-  @apply shadow-lg shadow-black/10 dark:shadow-black/30;
+  @apply bg-white dark:bg-dark-800;
+  @apply rounded-none;
   @apply overflow-hidden;
+  border: 2px solid var(--bh-ink);
+  box-shadow: var(--bh-shadow-sm);
   pointer-events: auto !important;
 }
 
 .select-dropdown-portal .select-search {
   @apply flex items-center gap-2 px-3 py-2;
-  @apply border-b border-primary-900/10 dark:border-dark-600;
+  border-bottom: 2px solid var(--bh-ink);
+  background: rgba(255, 204, 0, 0.14);
 }
 
 .select-dropdown-portal .select-search-input {
-  @apply flex-1 bg-transparent text-sm;
-  @apply text-gray-900 dark:text-gray-100;
-  @apply placeholder:text-gray-400 dark:placeholder:text-dark-400;
+  @apply flex-1 bg-transparent text-sm font-semibold;
+  @apply text-gray-950 dark:text-gray-100;
+  @apply placeholder:font-normal placeholder:text-gray-500 dark:placeholder:text-dark-300;
   @apply focus:outline-none;
 }
 
@@ -556,21 +566,32 @@ onUnmounted(() => {
 
 .select-dropdown-portal .select-option {
   @apply flex items-center justify-between gap-2;
-  @apply px-4 py-2.5 text-sm;
-  @apply text-gray-700 dark:text-gray-300;
-  @apply cursor-pointer transition-colors duration-150;
-  @apply hover:bg-gray-50 dark:hover:bg-dark-800;
+  @apply px-4 py-2.5 text-sm font-semibold;
+  @apply text-gray-800 dark:text-gray-200;
+  @apply cursor-pointer transition-colors duration-100;
+  border-left: 4px solid transparent;
   pointer-events: auto !important;
 }
 
+.select-dropdown-portal .select-option:hover {
+  background: rgba(255, 204, 0, 0.22);
+  border-left-color: var(--bh-red);
+}
+
 .select-dropdown-portal .select-option-selected {
-  /* 选中项保留品牌文字和勾选，仅将浅色背景中性化。 */
-  @apply bg-gray-100 dark:bg-dark-700;
-  @apply text-primary-700 dark:text-primary-300;
+  background: var(--bh-yellow) !important;
+  color: #141414 !important;
+  border-left-color: var(--bh-red);
+  font-weight: 800;
+}
+
+.select-dropdown-portal .select-option-selected .text-primary-500 {
+  color: #141414 !important;
 }
 
 .select-dropdown-portal .select-option-focused {
-  @apply bg-gray-100 dark:bg-dark-800;
+  background: rgba(255, 204, 0, 0.22);
+  border-left-color: var(--bh-red);
 }
 
 .select-dropdown-portal .select-option-disabled {
@@ -579,13 +600,15 @@ onUnmounted(() => {
 
 .select-dropdown-portal .select-option-group {
   @apply cursor-default select-none;
-  @apply bg-gray-50 dark:bg-dark-900;
-  @apply text-[11px] font-bold uppercase tracking-wider;
-  @apply text-primary-900/90 dark:text-gray-400;
+  @apply text-[11px] font-extrabold uppercase tracking-widest;
+  background: var(--bh-ink) !important;
+  color: var(--bh-paper) !important;
+  border-left: none;
 }
 
 .select-dropdown-portal .select-option-group:hover {
-  @apply bg-gray-50 dark:bg-dark-900;
+  background: var(--bh-ink) !important;
+  border-left: none;
 }
 
 .select-dropdown-portal .select-option-label {
@@ -593,8 +616,8 @@ onUnmounted(() => {
 }
 
 .select-dropdown-portal .select-empty {
-  @apply px-4 py-8 text-center text-sm;
-  @apply text-primary-900/90 dark:text-dark-400;
+  @apply px-4 py-8 text-center text-sm font-bold;
+  @apply text-gray-600 dark:text-dark-300;
 }
 
 .select-dropdown-enter-active,

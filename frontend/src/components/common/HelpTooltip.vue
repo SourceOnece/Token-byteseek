@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
         v-show="show"
         role="tooltip"
         :class="[
-          'fixed z-[99999] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-lg bg-gray-900 text-white shadow-xl ring-1 ring-white/10 dark:bg-gray-800',
+          'bh-tooltip fixed z-[99999] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-none text-bh-paper',
           resolvedPlacement === 'top' ? '-translate-y-full' : 'translate-y-0',
           props.widthClass,
         ]"
@@ -205,8 +205,8 @@ onBeforeUnmount(() => {
           <slot>{{ content }}</slot>
         </div>
         <div
-          class="absolute left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-800"
-          :class="resolvedPlacement === 'top' ? '-bottom-1' : '-top-1'"
+          class="absolute left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 bg-bh-yellow"
+          :class="resolvedPlacement === 'top' ? '-bottom-[5px]' : '-top-[5px]'"
         ></div>
       </div>
     </Teleport>

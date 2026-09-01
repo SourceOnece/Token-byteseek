@@ -46,6 +46,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import { Bar, Line } from 'vue-chartjs'
+import { BH_CHART_PALETTE } from '@/utils/chartTheme'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { useTheme } from '@/composables/useTheme'
@@ -72,9 +73,9 @@ const { formatBalanceAmount } = useBalanceDisplay()
 const { isDark } = useTheme()
 
 // 颜色按成员稳定分配，避免日期刷新后折线颜色跳变。
-const palette = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#4d7c0f', '#475569', '#ea580c']
-const textColor = computed(() => isDark.value ? '#e5e7eb' : '#374151')
-const gridColor = computed(() => isDark.value ? '#3f3f46' : '#e5e7eb')
+const palette = [...BH_CHART_PALETTE]
+const textColor = computed(() => isDark.value ? '#EAE5D8' : '#403D36')
+const gridColor = computed(() => isDark.value ? '#3A3831' : '#DDD6C4')
 const labels = computed(() => Array.from(new Set(props.series.flatMap((item) => item.summary.daily.map((point) => point.date)))).sort())
 const seriesWithUsage = computed(() => props.series.filter((item) => item.summary.request_count > 0 || item.summary.actual_cost > 0))
 

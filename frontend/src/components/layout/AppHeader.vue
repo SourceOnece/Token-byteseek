@@ -1,6 +1,7 @@
 <template>
-  <header class="glass fixed inset-x-0 top-0 z-50 border-b border-primary-900/10 dark:border-dark-600/80">
-    <div class="flex h-14 items-center justify-between gap-3 px-3 sm:px-5 md:px-7">
+  <header class="bh-header fixed inset-x-0 top-0 z-50">
+    <div class="bh-stripe absolute inset-x-0 top-0 !h-1" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="flex h-14 items-center justify-between gap-3 px-3 pt-1 sm:px-5 md:px-7">
       <!-- 品牌固定在全局顶栏，避免与侧栏和页面标题争夺层级。 -->
       <div class="flex min-w-0 shrink-0 items-center gap-2 sm:gap-4">
         <button
@@ -13,10 +14,10 @@
         </button>
 
         <!-- 版本标签与首页链接分离，避免按钮嵌套在链接内触发错误跳转。 -->
-        <div class="header-brand flex min-w-0 items-center gap-2.5 rounded-control px-1.5 py-1 transition-colors hover:bg-primary-100/70 dark:hover:bg-dark-800/80">
+        <div class="header-brand flex min-w-0 items-center gap-2.5 px-1.5 py-1">
           <router-link
             :to="homePath"
-            class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary-100 dark:bg-dark-800"
+            class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden border-2 border-gray-950 bg-white dark:border-dark-100 dark:bg-dark-800"
             :aria-label="siteName"
           >
             <img v-if="settingsLoaded" :src="siteLogo || '/logo.svg'" :alt="siteName" class="h-full w-full object-contain" />
@@ -24,8 +25,8 @@
           <span class="hidden min-w-0 sm:block">
             <router-link
               :to="homePath"
-              class="block max-w-44 truncate text-base font-bold leading-tight text-gray-900 dark:text-white"
-            >{{ siteName }}</router-link>
+              class="block max-w-44 truncate text-base font-extrabold leading-tight tracking-tight text-gray-950 dark:text-white"
+            >{{ siteName }}<span class="text-bh-red">.</span></router-link>
             <VersionBadge :version="siteVersion" />
           </span>
         </div>
@@ -163,9 +164,9 @@
               <!-- Contact Support (only show if configured) -->
               <div
                 v-if="contactInfo"
-                class="border-t border-primary-900/10 px-4 py-3 dark:border-dark-600"
+                class="header-contact-panel border-t-2 border-emerald-700 bg-emerald-50/90 px-4 py-3 dark:border-emerald-300 dark:bg-emerald-900/25"
               >
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+                <div class="flex items-center gap-2 text-xs font-extrabold text-emerald-800 dark:text-emerald-200">
                   <svg
                     class="h-3.5 w-3.5 flex-shrink-0"
                     fill="none"
@@ -188,17 +189,17 @@
                     class="text-xs leading-relaxed"
                   >
                     <template v-if="entry.label">
-                      <span class="text-gray-500 dark:text-gray-400">{{ entry.label }}</span>
-                      <span class="text-gray-400 dark:text-gray-500">：</span>
+                      <span class="text-emerald-700 dark:text-emerald-300">{{ entry.label }}</span>
+                      <span class="text-emerald-600/70 dark:text-emerald-300/70">：</span>
                     </template>
                     <a
                       v-if="entry.url"
                       :href="entry.url"
                       target="_blank"
                       rel="noopener noreferrer"
-                      class="break-all font-medium text-primary-600 hover:underline dark:text-primary-400"
+                      class="break-all font-mono font-extrabold text-emerald-800 underline decoration-2 underline-offset-2 hover:text-emerald-600 dark:text-emerald-100 dark:hover:text-emerald-200"
                     >{{ entry.value }}</a>
-                    <span v-else class="break-all font-medium text-gray-700 dark:text-gray-200">{{ entry.value }}</span>
+                    <span v-else class="break-all font-mono font-extrabold text-emerald-800 dark:text-emerald-100">{{ entry.value }}</span>
                   </li>
                 </ul>
               </div>
@@ -385,6 +386,15 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.bh-header {
+  background: var(--bh-paper);
+  border-bottom: 3px solid var(--bh-ink);
+}
+
+.dark .bh-header {
+  background: #1c1a16;
+}
+
 .header-status-actions {
   @apply ml-auto flex min-w-0 shrink-0 items-center gap-1 sm:gap-3.5;
 }
@@ -398,19 +408,37 @@ onBeforeUnmount(() => {
 }
 
 .header-status-divider {
-  @apply h-9 w-px shrink-0 bg-primary-900/10 dark:bg-dark-600/90;
+  @apply h-9 w-0.5 shrink-0;
+  background: var(--bh-ink);
+  opacity: 0.75;
 }
 
 .header-status-icon-button {
-  @apply flex h-9 w-9 items-center justify-center rounded-control text-primary-900/90 transition-colors hover:bg-primary-100 hover:text-primary-900 dark:text-dark-100/80 dark:hover:bg-dark-800 dark:hover:text-white;
+  @apply flex h-9 w-9 items-center justify-center rounded-none text-gray-900 transition-colors dark:text-dark-100;
+}
+
+.header-status-icon-button:hover {
+  background: var(--bh-yellow);
+  color: #141414;
 }
 
 .header-status-balance {
-  @apply h-8 min-w-[104px] items-center justify-center rounded-control border border-primary-200/70 bg-primary-100/80 px-3 shadow-sm dark:border-transparent dark:bg-dark-800/80 dark:shadow-none;
+  @apply h-8 min-w-[104px] items-center justify-center rounded-none px-3;
+  background: var(--bh-yellow);
+  border: 2px solid var(--bh-ink);
+}
+
+.header-status-balance :deep(span) {
+  color: #141414 !important;
 }
 
 .header-status-user-button {
-  @apply flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-primary-100 dark:hover:bg-dark-800;
+  @apply flex h-10 w-10 items-center justify-center rounded-none border-2 border-transparent transition-colors;
+}
+
+.header-status-user-button:hover {
+  border-color: var(--bh-ink);
+  background: var(--bh-yellow);
 }
 
 .dropdown-enter-active,

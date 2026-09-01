@@ -6,7 +6,7 @@
     </div>
 
     <div class="mb-4 flex items-center justify-between gap-2">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('dashboard.activityHeatmap') }}</h3>
+      <h3 class="bh-marker-title text-sm dark:text-white">{{ t('dashboard.activityHeatmap') }}</h3>
       <!-- 色阶图例 -->
       <div class="flex shrink-0 items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
         <span>{{ t('dashboard.heatmapLess') }}</span>
@@ -105,11 +105,11 @@ const FETCH_DAYS = 3 * 364
 const FALLBACK_WEEKS = 53
 // 格子分档色：0 为无用量，1-4 按用量分位递增
 const LEVEL_CLASSES = [
-  'bg-gray-100 dark:bg-dark-700',
-  'bg-green-200 dark:bg-green-800',
-  'bg-green-300 dark:bg-green-600',
-  'bg-green-500 dark:bg-green-400',
-  'bg-green-700 dark:bg-green-300',
+  'bg-gray-950/[0.07] dark:bg-dark-100/10',
+  'bg-emerald-100 dark:bg-emerald-900/40',
+  'bg-emerald-300 dark:bg-emerald-700',
+  'bg-emerald-500 dark:bg-emerald-500',
+  'bg-emerald-700 dark:bg-emerald-300',
 ]
 
 interface HeatmapDay {

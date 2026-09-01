@@ -124,6 +124,19 @@
       </template>
     </nav>
 
+    <!-- 侧栏底部签名：几何构成条 -->
+    <div
+      class="flex items-center gap-2 border-t-2 border-gray-950/80 px-4 py-2.5 dark:border-dark-200/40"
+      :class="sidebarCollapsed ? 'justify-center' : ''"
+      aria-hidden="true"
+    >
+      <i class="block h-2.5 w-2.5 rounded-full bg-bh-red"></i>
+      <template v-if="!sidebarCollapsed">
+        <i class="block h-2.5 w-2.5 bg-bh-blue"></i>
+        <i class="bh-side-tri block"></i>
+        <i class="ml-auto block h-[3px] w-10 bg-gray-950/85 dark:bg-dark-100/70"></i>
+      </template>
+    </div>
   </aside>
 
   <!-- Mobile Overlay -->
@@ -915,21 +928,31 @@ onBeforeUnmount(() => {
     transform 0.16s ease;
 }
 
+.sidebar-section-title-text::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  background: var(--bh-red);
+  transform: rotate(45deg) translateY(-1px);
+}
+
 .sidebar-section-title::after {
   content: '';
   position: absolute;
   left: 0.75rem;
   right: 0.75rem;
   top: 50%;
-  height: 1px;
-  background: rgb(229 231 235);
+  height: 2px;
+  background: var(--bh-ink);
   opacity: 0;
   transform: translateY(-50%);
   transition: opacity 0.18s ease;
 }
 
 .dark .sidebar-section-title::after {
-  background: rgb(42 46 54);
+  background: rgba(244, 240, 230, 0.5);
 }
 
 .sidebar-section-title-text-collapsed {
@@ -967,6 +990,15 @@ onBeforeUnmount(() => {
   opacity: 0;
   transform: translateX(-4px);
   pointer-events: none;
+}
+
+/* 侧栏底部黄色小三角 */
+.bh-side-tri {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 10px solid var(--bh-yellow);
 }
 
 /* Custom SVG icon in sidebar: constrain size without overriding uploaded SVG colors */

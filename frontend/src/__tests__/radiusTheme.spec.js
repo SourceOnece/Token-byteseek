@@ -2,29 +2,29 @@ import { describe, expect, it } from 'vitest'
 
 import tailwindConfig from '../../tailwind.config.js'
 
-// 固定全站圆角契约，避免新增组件重新引入过大的默认圆角。
-describe('OpenRouter 圆角主题', () => {
+// 固定包豪斯全站直角契约，避免新增组件重新引入圆角。
+describe('ByteSeek 包豪斯几何主题', () => {
   const radius = tailwindConfig.theme.borderRadius
 
-  it('提供紧凑、控件、表面和弹窗四级语义令牌', () => {
+  it('将紧凑、控件、表面和弹窗令牌统一为直角', () => {
     expect(radius).toMatchObject({
-      compact: '4px',
-      control: '6px',
-      surface: '8px',
-      dialog: '12px'
+      compact: '0px',
+      control: '0px',
+      surface: '0px',
+      dialog: '0px'
     })
   })
 
-  it('将兼容工具类收敛到 4px、6px 和 8px', () => {
+  it('将兼容工具类统一为直角并保留 full 圆形', () => {
     expect(radius).toMatchObject({
-      DEFAULT: '4px',
-      sm: '4px',
-      md: '6px',
-      lg: '6px',
-      xl: '8px',
-      '2xl': '8px',
-      '3xl': '8px',
-      '4xl': '8px'
+      DEFAULT: '0px',
+      sm: '0px',
+      md: '0px',
+      lg: '0px',
+      xl: '0px',
+      '2xl': '0px',
+      '3xl': '0px',
+      '4xl': '0px'
     })
   })
 

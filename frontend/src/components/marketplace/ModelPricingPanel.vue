@@ -40,7 +40,7 @@
               :key="item.key"
               type="button"
               class="rounded-md px-2 py-0.5 text-xs font-semibold transition"
-              :class="index === activeIntervalIndex ? segmentActiveClass : segmentInactiveClass"
+              :class="index === activeIntervalIndex ? (isFastModeActive ? fastActiveClass : standardActiveClass) : segmentInactiveClass"
               @click="selectedIntervalIndex = index"
             >
               {{ formatCompactTokenRange(item.interval.min_tokens, item.interval.max_tokens) }}
@@ -54,7 +54,7 @@
             <button
               type="button"
               class="rounded-md px-2 py-0.5 text-xs font-semibold transition"
-              :class="!fastMode ? segmentActiveClass : segmentInactiveClass"
+              :class="!isFastModeActive ? standardActiveClass : segmentInactiveClass"
               @click="fastMode = false"
             >
               {{ t('marketplace.pricingStandard') }}
@@ -62,7 +62,7 @@
             <button
               type="button"
               class="rounded-md px-2 py-0.5 text-xs font-semibold transition"
-              :class="fastMode ? segmentActiveClass : segmentInactiveClass"
+              :class="isFastModeActive ? fastActiveClass : segmentInactiveClass"
               @click="fastMode = true"
             >
               {{ t('marketplace.pricingFast') }}
@@ -75,10 +75,11 @@
           <div
             v-for="row in activeRows"
             :key="row.key"
-            class="flex items-baseline justify-between gap-3 border-b border-gray-100 pb-2 text-sm dark:border-dark-700"
+            class="flex items-baseline justify-between gap-3 border-2 px-2 py-1 text-sm"
+            :class="pricingRowClass"
           >
-            <span class="shrink-0 whitespace-nowrap text-gray-500 dark:text-dark-400">{{ row.label }}</span>
-            <span class="whitespace-nowrap text-right font-medium tabular-nums text-gray-900 dark:text-white">{{ row.value }}</span>
+            <span class="shrink-0 whitespace-nowrap font-extrabold" :class="pricingTextClass">{{ row.label }}</span>
+            <span class="whitespace-nowrap text-right font-extrabold tabular-nums" :class="pricingTextClass">{{ row.value }}</span>
           </div>
         </div>
         <p v-else class="text-sm text-gray-400 dark:text-dark-500">
@@ -108,7 +109,8 @@ const expanded = ref(false)
 const fastMode = ref(false)
 const selectedIntervalIndex = ref(0)
 
-const segmentActiveClass = 'bg-white text-gray-900 shadow-sm dark:bg-dark-950 dark:text-white'
+const standardActiveClass = 'bg-emerald-600 text-white shadow-sm dark:bg-emerald-500 dark:text-gray-950'
+const fastActiveClass = 'bg-bh-yellow text-gray-950 shadow-sm dark:bg-bh-yellow dark:text-gray-950'
 const segmentInactiveClass = 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200'
 
 interface PricingRow {
@@ -312,6 +314,15 @@ const fastRows = computed(() => fastTokenPricingRows(activeSource.value))
 
 // 当前定价来源存在 fast mode 加价时才展示切换。
 const hasFastPricing = computed(() => pricingKind(props.model.pricing) === 'token' && fastRows.value.length > 0)
+
+// fast 模式只在确实存在 fast 行时生效，避免切换区间后错误保留黄色状态。
+const isFastModeActive = computed(() => fastMode.value && fastRows.value.length > 0)
+const pricingRowClass = computed(() => isFastModeActive.value
+  ? 'border-bh-yellow bg-bh-yellow/20 dark:border-bh-yellow dark:bg-bh-yellow/15'
+  : 'border-emerald-700 bg-emerald-50 dark:border-emerald-300 dark:bg-emerald-900/25')
+const pricingTextClass = computed(() => isFastModeActive.value
+  ? 'text-amber-800 dark:text-amber-200'
+  : 'text-emerald-700 dark:text-emerald-300')
 
 const activeRows = computed(() => {
   if (fastMode.value && fastRows.value.length > 0) {

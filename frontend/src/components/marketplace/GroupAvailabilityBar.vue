@@ -17,7 +17,7 @@
       />
     </div>
     <div class="w-[96px] shrink-0 text-left">
-      <div class="text-base font-semibold leading-5 text-gray-900 dark:text-white">
+      <div class="text-base font-extrabold leading-5" :class="rateToneClass">
         {{ rateLabel }}
       </div>
     </div>
@@ -90,6 +90,15 @@ const rateLabel = computed(() => {
   return `${(rate * 100).toFixed(2)}%`
 })
 
+// 可用率只保留绿色（正常）与红色（异常）两种语义，中间区间使用警示黄块提示波动。
+const rateToneClass = computed(() => {
+  const rate = props.availability?.availability_rate
+  if (typeof rate !== 'number') {
+    return 'text-gray-500 dark:text-dark-300'
+  }
+  return rate >= 0.9 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600 dark:text-red-400'
+})
+
 const tooltip = computed(() => {
   const availability = props.availability
   if (!availability || typeof availability.availability_rate !== 'number') {
@@ -114,14 +123,14 @@ function bucketClass(rate?: number | null, totalCount?: number): string {
     return 'bg-gray-200 dark:bg-dark-700'
   }
   if (rate >= 0.995) {
-    return 'bg-emerald-500'
+    return 'bg-emerald-600'
   }
   if (rate >= 0.98) {
-    return 'bg-lime-500'
+    return 'bg-emerald-400'
   }
   if (rate >= 0.9) {
     return 'bg-amber-400'
   }
-  return 'bg-rose-400'
+  return 'bg-red-500'
 }
 </script>

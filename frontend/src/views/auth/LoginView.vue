@@ -9,10 +9,10 @@
     <div class="space-y-6">
       <!-- Title -->
       <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 class="text-2xl font-extrabold tracking-tight text-gray-950 dark:text-white">
           {{ t('auth.welcomeBack') }}
         </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+        <p class="mt-2 text-sm font-semibold text-gray-600 dark:text-dark-200">
           {{ t('auth.signInToAccount') }}
         </p>
       </div>
@@ -149,11 +149,11 @@
 
       <div v-if="showPasskeyLogin || showOAuthLogin" class="space-y-4">
         <div class="flex items-center gap-3">
-          <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
-          <span class="text-xs text-gray-500 dark:text-dark-400">
+          <div class="h-0.5 flex-1 bg-gray-950/70 dark:bg-dark-200/50"></div>
+          <span class="text-xs font-bold uppercase tracking-widest text-gray-600 dark:text-dark-300">
             {{ t('auth.oauthOrContinue') }}
           </span>
-          <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+          <div class="h-0.5 flex-1 bg-gray-950/70 dark:bg-dark-200/50"></div>
         </div>
         <button
           v-if="showPasskeyLogin"

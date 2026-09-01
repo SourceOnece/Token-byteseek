@@ -23,7 +23,7 @@
         <div v-if="loading" class="absolute inset-0 z-10 flex items-center justify-center bg-white/50 backdrop-blur-sm dark:bg-dark-800/50">
           <LoadingSpinner size="md" />
         </div>
-        <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('dashboard.modelDistribution') }}</h3>
+        <h3 class="bh-marker-title mb-4 text-sm dark:text-white">{{ t('dashboard.modelDistribution') }}</h3>
         <!-- 桌面端顶部对齐，避免数据较少时表格被圆环图垂直居中。 -->
         <div v-if="modelData" class="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6" data-testid="model-distribution-content">
           <div class="h-48 w-48 shrink-0">
@@ -66,6 +66,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { BH_CHART_PALETTE } from '@/utils/chartTheme'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Select from '@/components/common/Select.vue'
@@ -89,7 +90,7 @@ const modelData = computed(() => !props.models?.length ? null : {
   labels: props.models.map((m: ModelStat) => m.model),
   datasets: [{
     data: props.models.map((m: ModelStat) => m.total_tokens),
-    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16']
+    backgroundColor: [...BH_CHART_PALETTE]
   }]
 })
 

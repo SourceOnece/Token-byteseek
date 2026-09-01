@@ -1,25 +1,18 @@
 <template>
   <div class="empty-state">
-    <!-- Icon -->
-    <div
-      class="mb-5 flex h-20 w-20 items-center justify-center rounded-surface bg-gray-100 dark:bg-dark-800"
-    >
+    <!-- 几何构成画框：无数据时的包豪斯小海报 -->
+    <div class="bh-empty-canvas mb-6" aria-hidden="true">
       <slot name="icon">
-        <component v-if="icon" :is="icon" class="empty-state-icon h-10 w-10" aria-hidden="true" />
-        <svg
-          v-else
-          class="empty-state-icon h-10 w-10"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          stroke-width="1.5"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-          />
-        </svg>
+        <template v-if="icon">
+          <component :is="icon" class="empty-state-icon h-10 w-10" />
+        </template>
+        <template v-else>
+          <span class="bh-empty-hatch"></span>
+          <span class="bh-empty-circle"></span>
+          <span class="bh-empty-square"></span>
+          <span class="bh-empty-triangle"></span>
+          <span class="bh-empty-bar"></span>
+        </template>
       </slot>
     </div>
 
@@ -78,3 +71,77 @@ const displayTitle = computed(() => props.title || t('common.noData'))
 
 defineEmits(['action'])
 </script>
+
+<style scoped>
+.bh-empty-canvas {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 96px;
+  border: 3px solid var(--bh-ink);
+  background: var(--bh-surface);
+  box-shadow: var(--bh-shadow-sm);
+  overflow: hidden;
+}
+
+.bh-empty-hatch {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(20, 20, 20, 0.05) 0 5px,
+    transparent 5px 14px
+  );
+}
+
+.dark .bh-empty-hatch {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(244, 240, 230, 0.06) 0 5px,
+    transparent 5px 14px
+  );
+}
+
+.bh-empty-circle {
+  position: absolute;
+  left: 20px;
+  top: 18px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--bh-red);
+  opacity: 0.9;
+}
+
+.bh-empty-square {
+  position: absolute;
+  right: 24px;
+  top: 26px;
+  width: 26px;
+  height: 26px;
+  background: var(--bh-blue);
+  transform: rotate(12deg);
+}
+
+.bh-empty-triangle {
+  position: absolute;
+  left: 52px;
+  bottom: 12px;
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-bottom: 26px solid var(--bh-yellow);
+}
+
+.bh-empty-bar {
+  position: absolute;
+  left: 14px;
+  bottom: 20px;
+  width: 24px;
+  height: 5px;
+  background: var(--bh-ink);
+}
+</style>

@@ -18,7 +18,7 @@ describe('AppSidebar layout controls', () => {
     expect(componentSource).not.toContain('@click="toggleSidebar"')
     expect(componentSource).toContain("sidebarCollapsed ? 'w-[72px]' : 'w-56'")
     expect(layoutSource).toContain("sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-56'")
-    expect(styleSource).toMatch(/\.sidebar\s*\{[\s\S]*?@apply w-56 /)
+    expect(styleSource).toMatch(/\.sidebar\s*\{[\s\S]*?@apply w-56;/)
   })
 
   it('renders the site logo without an outer glow', () => {
@@ -31,12 +31,13 @@ describe('light theme text contrast', () => {
     const sidebarLinkBlock = styleSource.match(/\.sidebar-link\s*\{[\s\S]*?\n {2}\}/)
 
     expect(sidebarLinkBlock).not.toBeNull()
-    expect(sidebarLinkBlock?.[0]).toContain('@apply text-primary-900 dark:text-dark-100;')
-    expect(sidebarLinkBlock?.[0]).not.toContain('text-primary-900/75')
+    expect(sidebarLinkBlock?.[0]).toContain('@apply text-sm font-bold;')
+    expect(sidebarLinkBlock?.[0]).toContain('@apply text-gray-800 dark:text-dark-100;')
+    expect(sidebarLinkBlock?.[0]).not.toContain('counter-increment')
     expect(styleSource).toContain('html:not(.dark) :is(')
     expect(styleSource).toContain('.text-gray-500')
     expect(styleSource).toContain('.text-primary-900\\/65')
-    expect(styleSource).toContain('color: #426177;')
+    expect(styleSource).toContain('color: #57534a;')
   })
 })
 

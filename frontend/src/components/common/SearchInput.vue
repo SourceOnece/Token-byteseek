@@ -1,12 +1,16 @@
 <template>
-  <div class="relative w-full">
-    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-      <Icon name="search" size="md" class="text-gray-400" />
-    </div>
+  <!-- 构成式搜索框：黄色图标格 + 输入格，共享 2px 墨线 -->
+  <div class="flex w-full">
+    <span
+      class="flex h-11 w-11 flex-shrink-0 items-center justify-center border-2 border-gray-950 bg-bh-yellow text-gray-950 dark:border-dark-100"
+      aria-hidden="true"
+    >
+      <Icon name="search" size="md" :stroke-width="2.5" />
+    </span>
     <input
       :value="modelValue"
       type="text"
-      class="input pl-10"
+      class="input -ml-[2px] flex-1"
       :placeholder="placeholder"
       @input="handleInput"
     />

@@ -1,6 +1,6 @@
 <template>
   <div class="card p-4">
-    <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
+    <h3 class="bh-marker-title mb-4 text-sm dark:text-white">
       {{ t('admin.dashboard.tokenUsageTrend') }}
     </h3>
     <div v-if="loading" class="flex h-48 items-center justify-center">
@@ -33,6 +33,7 @@ import {
   Filler
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
+import '@/utils/chartTheme'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { useTheme } from '@/composables/useTheme'
@@ -68,13 +69,13 @@ const props = withDefaults(defineProps<{
 
 const chartColors = computed(() => ({
   // 使用响应式主题状态，确保切换主题后 Chart.js 会同步刷新文字和网格颜色。
-  text: isDark.value ? '#E4E4E7' : '#3F3F46',
-  grid: isDark.value ? '#3F3F46' : '#E4E4E7',
-  input: '#3b82f6',
-  output: '#10b981',
-  cacheCreation: '#f59e0b',
-  cacheRead: '#06b6d4',
-  cacheHitRate: '#8b5cf6'
+  text: isDark.value ? '#EAE5D8' : '#403D36',
+  grid: isDark.value ? '#3A3831' : '#DDD6C4',
+  input: '#1450A3',
+  output: '#E1251B',
+  cacheCreation: '#E0A800',
+  cacheRead: '#0F7B4D',
+  cacheHitRate: isDark.value ? '#F4F0E6' : '#141414'
 }))
 
 // 小时粒度只在坐标轴展示时分，完整时间仍由 tooltip 标题保留。

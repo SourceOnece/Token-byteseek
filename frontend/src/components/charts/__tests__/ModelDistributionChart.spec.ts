@@ -191,8 +191,8 @@ describe('ModelDistributionChart', () => {
     expect(chartData.datasets[0].data[1]).toBe(1)
     expect(chartData.datasets[0].data[2]).toBe(0)
     expect(chartData.datasets[0].data[3]).toBeCloseTo(1 + Math.log10(10 / 8))
-    expect(chartData.datasets[0].backgroundColor[0]).toBe('#3b82f6')
-    expect(chartData.datasets[0].backgroundColor[3]).toBe('#94a3b8')
+    expect(chartData.datasets[0].backgroundColor[0]).toBe('#E1251B')
+    expect(chartData.datasets[0].backgroundColor[3]).toBe('#A39E8F')
     expect(chartData.datasets[0].backgroundColor[3]).not.toBe(chartData.datasets[0].backgroundColor[0])
 
     const chartTableLayout = wrapper.find('table').element.parentElement?.parentElement

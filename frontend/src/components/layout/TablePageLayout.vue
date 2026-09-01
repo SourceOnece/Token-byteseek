@@ -60,9 +60,11 @@ onUnmounted(() => {
   @apply flex-1 min-h-0 flex flex-col;
 }
 
-/* 表格滚动容器 - 增强版表体滚动方案 */
+/* 表格滚动容器 - 增强版表体滚动方案（包豪斯硬边） */
 .table-scroll-container {
-  @apply flex flex-col overflow-hidden h-full bg-white dark:bg-dark-900 rounded-surface border border-gray-200 dark:border-dark-600 shadow-none;
+  @apply flex flex-col overflow-hidden h-full bg-white dark:bg-dark-800 rounded-none;
+  border: 2px solid var(--bh-ink);
+  box-shadow: var(--bh-shadow-sm);
 }
 
 .table-scroll-container :deep(.table-wrapper) {
@@ -78,8 +80,7 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(thead) {
-  /* sticky 表头使用不透明底色，避免合成层模糊表头文字边缘。 */
-  @apply bg-gray-50 dark:bg-dark-950;
+  background: var(--bh-yellow);
 }
 
 .table-scroll-container :deep(tbody) {
@@ -87,12 +88,25 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(th) {
-  /* 共享表格表头保持紧凑，给数据行留下更多可视空间。 */
-  @apply px-5 py-2 text-left text-sm font-medium text-gray-600 dark:text-dark-300 border-b border-gray-200 dark:border-dark-700;
+  @apply px-5 py-3.5 text-left text-sm;
+  font-weight: 800;
+  color: #141414;
+  background: var(--bh-yellow);
+  border-bottom: 2px solid #141414;
+  letter-spacing: 0.02em;
 }
 
 .table-scroll-container :deep(td) {
-  @apply px-5 py-4 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-dark-800;
+  @apply px-5 py-4 text-sm font-medium text-gray-800 dark:text-gray-200;
+  border-bottom: 1px solid rgba(20, 20, 20, 0.22);
+}
+
+.dark .table-scroll-container :deep(td) {
+  border-bottom-color: rgba(244, 240, 230, 0.18);
+}
+
+.table-scroll-container :deep(tbody tr:hover) {
+  background: rgba(255, 204, 0, 0.12);
 }
 
 /* 桌面分页器与表头共用同一外框，表体滚动时保持固定。 */

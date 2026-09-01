@@ -1,23 +1,23 @@
 <template>
   <div
-    class="pagination-root flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 dark:border-dark-700 dark:bg-dark-900 lg:px-6"
+    class="pagination-root flex items-center justify-between border-t-2 border-gray-950 bg-white px-4 py-3 dark:border-dark-200/60 dark:bg-dark-800 lg:px-6 sm:px-6"
   >
     <div class="pagination-mobile flex flex-1 items-center justify-between lg:hidden">
       <!-- Mobile pagination -->
       <button
         @click="goToPage(page - 1)"
         :disabled="page === 1"
-        class="pagination-control relative inline-flex h-9 items-center rounded-md border border-gray-300 bg-white px-4 py-0 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-200 dark:hover:bg-dark-800"
+        class="pagination-control bh-page-btn px-4"
       >
         {{ t('pagination.previous') }}
       </button>
-      <span class="text-sm text-gray-700 dark:text-gray-300">
+      <span class="font-mono text-sm font-bold text-gray-800 dark:text-dark-100">
         {{ t('pagination.pageOf', { page, total: totalPages }) }}
       </span>
       <button
         @click="goToPage(page + 1)"
         :disabled="page === totalPages"
-        class="pagination-control relative ml-3 inline-flex h-9 items-center rounded-md border border-gray-300 bg-white px-4 py-0 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-200 dark:hover:bg-dark-800"
+        class="pagination-control bh-page-btn ml-3 px-4"
       >
         {{ t('pagination.next') }}
       </button>
@@ -26,19 +26,19 @@
     <div class="pagination-desktop hidden lg:flex lg:flex-1 lg:items-center lg:justify-between">
       <!-- Desktop pagination info -->
       <div class="flex items-center space-x-4">
-        <p class="pagination-summary text-sm text-gray-700 dark:text-gray-300">
+        <p class="pagination-summary text-sm font-semibold text-gray-700 dark:text-dark-200">
           {{ t('pagination.showing') }}
-          <span class="font-medium">{{ fromItem }}</span>
+          <span class="font-mono font-bold text-gray-950 dark:text-white">{{ fromItem }}</span>
           {{ t('pagination.to') }}
-          <span class="font-medium">{{ toItem }}</span>
+          <span class="font-mono font-bold text-gray-950 dark:text-white">{{ toItem }}</span>
           {{ t('pagination.of') }}
-          <span class="font-medium">{{ total }}</span>
+          <span class="bh-total-chip">{{ total }}</span>
           {{ t('pagination.results') }}
         </p>
 
         <!-- Page size selector -->
         <div v-if="showPageSizeSelector" class="flex items-center space-x-2">
-          <span class="text-sm text-gray-700 dark:text-gray-300"
+          <span class="text-sm font-semibold text-gray-700 dark:text-dark-200"
             >{{ t('pagination.perPage') }}:</span
           >
           <div class="page-size-select w-20">
@@ -51,7 +51,7 @@
         </div>
 
         <div v-if="showJump" class="flex items-center space-x-2">
-          <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('pagination.jumpTo') }}</span>
+          <span class="text-sm font-semibold text-gray-700 dark:text-dark-200">{{ t('pagination.jumpTo') }}</span>
           <input
             v-model="jumpPage"
             type="number"
@@ -67,19 +67,19 @@
         </div>
       </div>
 
-      <!-- Desktop pagination buttons -->
+      <!-- Desktop pagination buttons：方块页码组 -->
       <nav
-        class="pagination-nav relative z-0 inline-flex -space-x-px rounded-md shadow-sm"
+        class="pagination-nav relative z-0 inline-flex"
         aria-label="Pagination"
       >
         <!-- Previous button -->
         <button
           @click="goToPage(page - 1)"
           :disabled="page === 1"
-          class="pagination-control relative inline-flex h-9 items-center rounded-l-md border border-gray-300 bg-white px-2 py-0 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800"
+          class="pagination-control bh-page-btn px-2"
           :aria-label="t('pagination.previous')"
         >
-          <Icon name="chevronLeft" size="md" />
+          <Icon name="chevronLeft" size="md" :stroke-width="2.5" />
         </button>
 
         <!-- Page numbers -->
@@ -89,10 +89,8 @@
           @click="typeof pageNum === 'number' && goToPage(pageNum)"
           :disabled="typeof pageNum !== 'number'"
           :class="[
-            'pagination-control pagination-page-button relative inline-flex h-9 items-center border px-4 py-0 text-sm font-medium',
-            pageNum === page
-              ? 'z-10 border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400'
-              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-300 dark:hover:bg-dark-800',
+            'pagination-control pagination-page-button bh-page-btn px-4 font-mono',
+            pageNum === page && 'bh-page-btn-active',
             typeof pageNum !== 'number' && 'cursor-default'
           ]"
           :aria-label="
@@ -107,10 +105,10 @@
         <button
           @click="goToPage(page + 1)"
           :disabled="page === totalPages"
-          class="pagination-control relative inline-flex h-9 items-center rounded-r-md border border-gray-300 bg-white px-2 py-0 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800"
+          class="pagination-control bh-page-btn px-2"
           :aria-label="t('pagination.next')"
         >
-          <Icon name="chevronRight" size="md" />
+          <Icon name="chevronRight" size="md" :stroke-width="2.5" />
         </button>
       </nav>
     </div>
@@ -253,5 +251,58 @@ const submitJump = () => {
   height: var(--pagination-control-height, 2.25rem);
   min-height: 0;
   @apply px-3 py-1.5 text-sm;
+}
+
+/* 方块页码：相邻共享 2px 边框，当前页黄底红杠 */
+.bh-page-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  margin-left: -2px;
+  border: 2px solid var(--bh-ink);
+  background: var(--bh-surface);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--bh-ink);
+  transition: background 0.12s ease;
+}
+
+.bh-page-btn:first-child {
+  margin-left: 0;
+}
+
+.bh-page-btn:hover:not(:disabled):not(.bh-page-btn-active) {
+  background: rgba(255, 204, 0, 0.35);
+  z-index: 1;
+}
+
+.bh-page-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.bh-page-btn-active {
+  z-index: 2;
+  background: var(--bh-yellow) !important;
+  color: #141414 !important;
+  box-shadow: inset 0 -4px 0 0 var(--bh-red);
+  font-weight: 800;
+}
+
+.dark .bh-page-btn-active {
+  border-color: rgba(244, 240, 230, 0.85);
+}
+
+/* 总数芯片 */
+.bh-total-chip {
+  display: inline-block;
+  padding: 0 6px;
+  border: 2px solid var(--bh-ink);
+  background: var(--bh-yellow);
+  color: #141414;
+  font-family: 'Geist Mono Variable', ui-monospace, monospace;
+  font-weight: 800;
 }
 </style>

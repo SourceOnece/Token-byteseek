@@ -30,27 +30,28 @@ const IconStub = defineComponent({
   }
 })
 
-describe('36px control sizing', () => {
-  it('uses the 36px baseline in shared controls', () => {
+describe('Bauhaus control sizing', () => {
+  it('uses the Bauhaus baseline in shared controls while preserving compact page controls', () => {
     const globalStyle = readSource('../../../style.css')
     const selectSource = readSource('../Select.vue')
     const proxySelectorSource = readSource('../ProxySelector.vue')
     const dateRangePickerSource = readSource('../DateRangePicker.vue')
     const paginationSource = readSource('../Pagination.vue')
 
-    expect(globalStyle).toContain('@apply rounded-control px-4 py-1.5 text-sm font-medium;')
-    expect(globalStyle).toContain('@apply min-h-9;')
-    expect(globalStyle).toContain('@apply inline-flex h-9 w-9 items-center justify-center rounded-control p-0;')
-    expect(globalStyle).toContain('@apply w-full rounded-control px-4 py-1.5 text-sm;')
-    expect(globalStyle).toContain('@apply flex h-9 items-center gap-3 rounded-control py-1.5;')
-    expect(selectSource).toContain('@apply h-9 min-h-9 rounded-control px-4 py-1.5 text-sm;')
+    // 全局控件使用 44px 硬边基线，显式 h-8/h-9/h-10 的紧凑工具栏仍由页面保留。
+    expect(globalStyle).toContain('@apply rounded-none px-4 py-2.5 text-sm font-bold;')
+    expect(globalStyle).toContain('@apply min-h-11;')
+    expect(globalStyle).toContain('@apply rounded-none p-2.5;')
+    expect(globalStyle).toContain('@apply w-full rounded-none px-4 py-2.5 text-sm font-medium;')
+    expect(globalStyle).toContain('@apply flex items-center gap-3 rounded-none py-2.5;')
+    expect(selectSource).toContain('@apply rounded-none px-4 py-2.5 text-sm font-semibold;')
     expect(proxySelectorSource).toContain('@apply h-9 min-h-9 rounded-control px-4 py-1.5 text-sm;')
     expect(dateRangePickerSource).toContain('@apply h-9 min-h-9 rounded-control px-4 py-1.5 text-sm;')
     expect(dateRangePickerSource).toContain('@apply inline-flex h-9 min-h-9 items-center justify-center rounded-control px-4 py-1.5 text-sm font-medium;')
     expect(paginationSource).toContain('height: 2.25rem;')
   })
 
-  it('renders every pagination button on the 36px baseline', () => {
+  it('renders every pagination button with the shared hard-edge control classes', () => {
     const wrapper = mount(Pagination, {
       props: {
         total: 30,
@@ -67,7 +68,9 @@ describe('36px control sizing', () => {
 
     const buttons = wrapper.findAll('button')
     expect(buttons.length).toBe(8)
-    expect(buttons.every((button) => button.classes().includes('h-9'))).toBe(true)
+    const paginationButtons = buttons.filter((button) => !button.classes().includes('select-trigger'))
+    expect(paginationButtons.every((button) => button.classes().includes('pagination-control'))).toBe(true)
+    expect(paginationButtons.every((button) => button.classes().includes('bh-page-btn'))).toBe(true)
   })
 
   it('keeps the latest page-specific sizing fixes explicit', () => {

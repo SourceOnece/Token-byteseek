@@ -2,7 +2,7 @@
   <!-- 聊天式输入框：底部居中或跟随选中图片；左下调参入口，右下费用 + 发送 -->
   <div
     ref="rootRef"
-    class="relative w-[min(600px,calc(100vw-2rem))] rounded-[24px] border border-primary-900/10 bg-white/95 shadow-xl backdrop-blur dark:border-dark-600 dark:bg-dark-900/95"
+    class="bh-creative-composer relative w-[min(600px,calc(100vw-2rem))]"
   >
     <!-- 提示词输入区（高度随内容自适应，上限约 6 行） -->
     <div class="relative">
@@ -220,7 +220,7 @@
         <button
           ref="sendButtonRef"
           type="button"
-          class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary-600 text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-40"
+          class="bh-creative-send flex h-9 w-9 flex-shrink-0 items-center justify-center"
           :disabled="!studio.canGenerate.value"
           :title="t('creative.composer.send')"
           @click="emit('generate')"
@@ -412,22 +412,55 @@ function autosize(): void {
   overflow-y: auto;
 }
 
+/* 创作输入框采用墨色硬边，发送按钮保持品牌红色几何焦点。 */
+.bh-creative-composer {
+  border: 3px solid var(--bh-ink);
+  background: var(--bh-surface);
+  box-shadow: var(--bh-shadow-sm);
+}
+
+.bh-creative-send {
+  border: 2px solid var(--bh-ink);
+  border-radius: 50%;
+  background: var(--bh-red);
+  color: #fff;
+  box-shadow: 3px 3px 0 var(--bh-ink);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.bh-creative-send:hover:not(:disabled) {
+  background: var(--bh-blue);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--bh-ink);
+}
+
+.bh-creative-send:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--bh-ink);
+}
+
 .composer-chip {
-  @apply inline-flex h-8 min-w-0 max-w-full items-center gap-1 rounded-full border border-primary-900/10 bg-white px-2.5 text-xs text-gray-600 transition-colors;
-  @apply hover:border-black/20 hover:text-gray-900;
-  @apply dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-dark-400 dark:hover:text-gray-100;
+  @apply inline-flex h-8 min-w-0 max-w-full items-center gap-1 rounded-none px-2.5 text-xs transition-colors;
+  border: 2px solid var(--bh-ink);
+  background: var(--bh-paper);
+  color: var(--bh-ink);
+  box-shadow: 2px 2px 0 var(--bh-ink);
 }
 
 .composer-chip-active {
-  @apply border-primary-500/50 text-primary-700 dark:border-primary-500/50 dark:text-primary-300;
+  border-color: var(--bh-blue);
+  background: var(--bh-yellow);
+  color: var(--bh-ink);
 }
 
 /* 调参弹层：锚定在所点击 chip 的正上方，内容超过视口时由内层滚动。
    此处宽度仅为初始值，展开时由 layoutPopover 写入内联样式（宽度三路取小、位置钳制在输入框内，防止窄屏溢出屏幕） */
 .chip-popover {
-  @apply absolute bottom-full left-0 z-30 mb-2 w-[min(320px,calc(100vw-3.5rem))] overflow-hidden rounded-[16px] border border-primary-900/10 bg-white/95 shadow-xl backdrop-blur;
+  @apply absolute bottom-full left-0 z-30 mb-2 w-[min(320px,calc(100vw-3.5rem))] overflow-hidden rounded-none;
   @apply p-1.5;
-  @apply dark:border-dark-600 dark:bg-dark-900/95;
+  border: 2px solid var(--bh-ink);
+  background: var(--bh-surface);
+  box-shadow: var(--bh-shadow-sm);
 }
 
 /* 三类调参弹层共用同一套向上展开动效，离场也只用一条节奏，避免视觉顿点。 */
@@ -447,7 +480,7 @@ function autosize(): void {
 }
 
 .composer-option {
-  @apply rounded-[12px];
+  @apply rounded-none;
 }
 
 .param-label {
@@ -455,18 +488,21 @@ function autosize(): void {
 }
 
 .param-chip {
-  @apply rounded-[12px] border border-primary-900/10 px-2.5 py-1 text-[11px] text-gray-600 transition-colors;
-  @apply hover:border-black/20 hover:text-gray-900;
-  @apply dark:border-dark-600 dark:text-gray-300 dark:hover:border-dark-400 dark:hover:text-gray-100;
+  @apply rounded-none border-2 px-2.5 py-1 text-[11px] transition-colors;
+  border-color: var(--bh-ink);
+  color: var(--bh-ink);
+  background: var(--bh-surface);
 }
 
 .param-chip-active {
-  @apply border-primary-500 bg-primary-600/10 text-primary-700 dark:border-primary-500 dark:text-primary-300;
+  border-color: var(--bh-red);
+  background: var(--bh-yellow);
+  color: var(--bh-ink);
 }
 
 /* 比例预览小方框：内联尺寸由 ratioPreviewStyle 计算 */
 .ratio-preview {
-  @apply inline-block flex-shrink-0 rounded-[3px] border-[1.5px] border-current opacity-70;
+  @apply inline-block flex-shrink-0 rounded-none border-2 border-current opacity-70;
 }
 
 @media (prefers-reduced-motion: reduce) {

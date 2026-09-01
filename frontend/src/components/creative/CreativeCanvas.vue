@@ -16,7 +16,7 @@
 
     <!-- 浮动工具栏（顶部居中，含移动端；窄屏限宽并换行，圆角保持与桌面端一致，避免与左上角设置、右上角历史按钮重叠）：上传 | 局部重绘画笔组 | 删除选中 / 清空 -->
     <div
-      class="absolute left-1/2 top-3 z-10 flex max-sm:w-fit max-sm:max-w-[calc(100%-7.5rem)] max-sm:flex-wrap max-sm:justify-center -translate-x-1/2 items-center gap-1.5 rounded-full border border-primary-900/10 bg-white/90 px-2 py-1.5 shadow-md backdrop-blur dark:border-dark-600 dark:bg-dark-900/90"
+        class="creative-toolbar absolute left-1/2 top-3 z-10 flex max-sm:w-fit max-sm:max-w-[calc(100%-7.5rem)] max-sm:flex-wrap max-sm:justify-center -translate-x-1/2 items-center gap-1.5 px-2 py-1.5"
     >
       <!-- 上传图片：裁剪确认后直接放上画布当前视角中心 -->
       <button type="button" class="canvas-tool-btn" :title="t('creative.panel.uploadSource')" @click="fileInputRef?.click()">
@@ -1781,17 +1781,23 @@ defineExpose({
 <style scoped>
 /* 深色圆点网格：浅色主题用暗点，dark 类下用亮点，画布背景透明透出 */
 .dot-grid {
-  background-image: radial-gradient(circle, rgb(15 23 42 / 0.12) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-color: var(--bh-paper);
+  background-image:
+    linear-gradient(rgba(20, 20, 20, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 20, 20, 0.035) 1px, transparent 1px);
+  background-size: 28px 28px;
 }
 
 /* 拖放期间给画布边缘提供稳定反馈，不改变图片与 Fabric 对象尺寸。 */
 .drop-target-active {
-  box-shadow: inset 0 0 0 2px rgb(124 58 237 / 0.45);
+  box-shadow: inset 0 0 0 3px var(--bh-blue);
 }
 
 .dark .dot-grid {
-  background-image: radial-gradient(circle, rgb(255 255 255 / 0.14) 1px, transparent 1px);
+  background-color: #1c1a16;
+  background-image:
+    linear-gradient(rgba(244, 240, 230, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 240, 230, 0.055) 1px, transparent 1px);
 }
 
 /* mask 独立画布只展示，不拦截主画布的指针事件；整层透明度避免笔迹重叠变深 */
@@ -1800,14 +1806,23 @@ defineExpose({
 }
 
 .canvas-tool-btn {
-  @apply inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-600 transition-colors;
-  @apply hover:bg-gray-100 hover:text-gray-900;
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-none text-gray-600 transition-colors;
+  border: 2px solid transparent;
+  @apply hover:bg-bh-yellow hover:text-gray-900;
   @apply disabled:cursor-not-allowed disabled:opacity-40;
   @apply dark:text-gray-300 dark:hover:bg-dark-700 dark:hover:text-gray-100;
 }
 
+.creative-toolbar {
+  border: 3px solid var(--bh-ink);
+  background: var(--bh-surface);
+  box-shadow: var(--bh-shadow-sm);
+}
+
 .canvas-tool-btn-active {
-  @apply bg-primary-600/10 text-primary-700 dark:text-primary-300;
+  border-color: var(--bh-ink);
+  background: var(--bh-yellow);
+  color: var(--bh-ink);
 }
 
 /* 桌面端让新增画笔组带动工具条平滑扩展；窄屏保留原有逐项换行，并淡入新增控件。 */

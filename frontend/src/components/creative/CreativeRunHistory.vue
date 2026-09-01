@@ -3,7 +3,7 @@
   <button
     ref="historyButtonRef"
     type="button"
-    class="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-xl border border-primary-900/10 bg-white/90 text-gray-600 shadow-md backdrop-blur transition-colors hover:text-gray-900 dark:border-dark-600 dark:bg-dark-900/90 dark:text-gray-300 dark:hover:text-gray-100"
+    class="creative-history-button absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center text-gray-600 transition-colors hover:text-gray-900"
     :class="open && 'text-primary-700 dark:text-primary-300'"
     :title="t('creative.history.toggle')"
     :aria-expanded="open"
@@ -23,7 +23,7 @@
   <Transition name="history-panel">
     <div
       v-if="open"
-      class="absolute right-3 top-14 z-20 flex max-h-[70%] w-80 flex-col overflow-hidden rounded-xl border border-primary-900/10 bg-white/95 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-900/95"
+      class="creative-history-panel absolute right-3 top-14 z-20 flex max-h-[70%] w-80 flex-col overflow-hidden"
     >
     <div class="flex items-center gap-2 border-b border-primary-900/10 px-3 py-2 dark:border-dark-600">
       <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-dark-400">
@@ -58,7 +58,7 @@
         <div
           v-for="run in studio.runHistory.value"
           :key="run.id"
-          class="rounded-lg border border-primary-900/10 transition-colors dark:border-dark-600"
+          class="creative-history-item rounded-none border transition-colors"
           :class="studio.currentRun.value?.id === run.id && 'border-primary-500 dark:border-primary-500'"
         >
           <!-- 行头：点击原地展开 / 收起 -->
@@ -96,7 +96,7 @@
               <div class="min-h-0 overflow-hidden">
                 <div class="space-y-2 border-t border-primary-900/10 px-3 pb-3 pt-2 dark:border-dark-600">
                   <div v-if="isActive(run)" class="flex items-center gap-3 py-2 text-xs text-gray-500 dark:text-dark-300">
-                    <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-md border border-primary-900/10 bg-gray-50 dark:border-dark-600 dark:bg-dark-950">
+                    <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-none border-2 border-gray-950 bg-gray-50 dark:border-dark-100 dark:bg-dark-950">
                       <Icon name="refresh" size="md" class="animate-spin text-primary-500" />
                     </div>
                     <div class="min-w-0">
@@ -117,7 +117,7 @@
                     <!-- 输出纵向排列：图片优先撑满弹窗宽度，操作按钮统一放在图片下方 -->
                     <div v-for="output in run.outputs" :key="output.output_index" class="flex flex-col gap-1.5">
                       <div
-                        class="flex w-full items-center justify-center overflow-hidden rounded-md border border-primary-900/10 bg-gray-50 dark:border-dark-600 dark:bg-dark-950"
+                        class="flex w-full items-center justify-center overflow-hidden rounded-none border-2 border-gray-950 bg-gray-50 dark:border-dark-100 dark:bg-dark-950"
                       >
                         <img
                           v-if="assetFor(run.id, output.output_index)"
@@ -367,6 +367,37 @@ async function refresh(): Promise<void> {
 </script>
 
 <style scoped>
+/* 历史入口与面板采用同一组硬边阴影，避免创作台出现玻璃卡片。 */
+.creative-history-button,
+.creative-history-panel,
+.creative-history-item {
+  border: 2px solid var(--bh-ink);
+  background: var(--bh-surface);
+  box-shadow: var(--bh-shadow-sm);
+}
+
+.creative-history-button {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.creative-history-button:hover {
+  background: var(--bh-yellow);
+  transform: translate(-2px, -2px);
+}
+
+.creative-history-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--bh-shadow-ink);
+}
+
+.creative-history-panel {
+  background: var(--bh-surface);
+}
+
+.creative-history-item {
+  box-shadow: none;
+}
+
 /* 历史面板从右上入口展开；条目详情使用网格轨道实现真实高度折叠。 */
 .history-panel-enter-active,
 .history-panel-leave-active {
