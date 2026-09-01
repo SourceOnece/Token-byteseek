@@ -1552,6 +1552,7 @@ html :where(
 }
 
 .rank-podium-index {
+  color: #fff;
   font-family: 'Archivo Black', 'Plus Jakarta Sans Variable', system-ui, sans-serif;
   font-size: 1.65rem;
   line-height: 1;
@@ -1805,12 +1806,24 @@ html :where(
   color: var(--bh-red);
 }
 
+.rank-podium-card.rank-card-gold h3,
+.rank-podium-card.rank-card-gold .rank-primary-label,
+.rank-podium-card.rank-card-gold .rank-secondary-metrics,
 .rank-podium-card.rank-card-red h3,
 .rank-podium-card.rank-card-red .rank-primary-label,
 .rank-podium-card.rank-card-red .rank-secondary-metrics,
 .rank-podium-card.rank-card-blue h3,
 .rank-podium-card.rank-card-blue .rank-primary-label,
 .rank-podium-card.rank-card-blue .rank-secondary-metrics {
+  color: #fff !important;
+}
+
+/* 大卡未装框的指标数字统一白色；白底主指标框继续保留对应名次色。 */
+.rank-podium-card .rank-secondary-metrics :is(
+  .rank-value-red,
+  .rank-value-yellow,
+  .rank-value-blue
+) {
   color: #fff !important;
 }
 
