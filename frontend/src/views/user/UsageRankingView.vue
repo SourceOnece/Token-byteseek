@@ -41,8 +41,6 @@
             v-for="item in topCards"
             :key="item.rank"
             :item="item"
-            :primary-metric="primaryMetric"
-            :visible-metrics="visibleMetrics"
             :class="[topCardOrderClass(item.rank), topCards.length === 1 && item.rank === 1 ? 'md:col-start-2' : '']"
             :featured="item.rank === 1"
           />
@@ -173,6 +171,11 @@ function metricLabel(metric: UsageRankingMetric): string {
   }
 }
 
+// 领奖台固定展示请求与实际消耗，下面列表仍遵守后台配置的字段显隐。
+function topMetricLabel(metric: 'requests' | 'actual_cost'): string {
+  return metric === 'requests' ? t('usageRanking.requests') : t('usageRanking.consumption')
+}
+
 function metricValue(item: UsageRankingItem, metric: UsageRankingMetric): string {
   switch (metric) {
     case 'requests':
@@ -272,14 +275,12 @@ const TopRankCard = defineComponent({
   name: 'TopRankCard',
   props: {
     item: { type: Object as PropType<UsageRankingItem>, required: true },
-    primaryMetric: { type: String as PropType<UsageRankingMetric>, required: true },
-    visibleMetrics: { type: Array as PropType<UsageRankingMetric[]>, required: true },
     featured: { type: Boolean, default: false },
   },
   setup(props) {
     return () => {
       const theme = rankTheme(props.item.rank)
-      const secondaryMetrics = props.visibleMetrics.filter((metric) => metric !== props.primaryMetric)
+      const topMetrics: Array<'requests' | 'actual_cost'> = ['requests', 'actual_cost']
       return h(
         'article',
         {
@@ -293,7 +294,7 @@ const TopRankCard = defineComponent({
           h('div', { class: `rank-podium-sweep pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full ${theme.glow}` }),
           h('div', { class: 'rank-podium-mark' }, [
             h('span', { class: 'rank-podium-index' }, rankLabel(props.item.rank)),
-            h('span', { class: 'rank-podium-shape' }),
+            h('span', { class: `rank-podium-shape rank-podium-shape-${props.item.rank}` }),
           ]),
           h('div', { class: 'relative flex items-start' }, [
             h('span', { class: `rank-podium-badge inline-flex items-center gap-1 ${theme.badge}` }, [
@@ -304,24 +305,20 @@ const TopRankCard = defineComponent({
           h('div', { class: 'relative mt-7 flex flex-col items-center text-center' }, [
             h(UserAvatar, rankingAvatarProps(props.item, 'h-16 w-16')),
             h('h3', { class: 'mt-4 max-w-full truncate text-lg font-semibold text-gray-900 dark:text-white' }, props.item.display_name),
-            h('p', { class: ['rank-primary-value mt-2', rankValueClass(props.item.rank)].join(' ') }, metricValue(props.item, props.primaryMetric)),
-            h('p', { class: 'rank-primary-label mt-1' }, metricLabel(props.primaryMetric)),
           ]),
-          secondaryMetrics.length > 0
-            ? h(
-                'div',
-                {
-                  class: 'rank-secondary-metrics relative mt-6 grid gap-2 text-center text-xs',
-                  style: metricGridStyle(secondaryMetrics.length),
-                },
-                secondaryMetrics.map((metric) =>
-                  h('div', { key: metric }, [
-                    h('p', { class: ['font-mono font-extrabold text-gray-950 dark:text-white', rankValueClass(props.item.rank)].join(' ') }, metricValue(props.item, metric)),
-                    h('p', metricLabel(metric)),
-                  ]),
-                ),
-              )
-            : null,
+          h(
+            'div',
+            {
+              class: 'rank-top-metrics relative mt-6 grid grid-cols-2 gap-2 text-center',
+              'data-testid': 'usage-ranking-top-metrics',
+            },
+            topMetrics.map((metric) =>
+              h('div', { key: metric, class: 'rank-top-metric' }, [
+                h('p', { class: 'rank-top-metric-label' }, topMetricLabel(metric)),
+                h('p', { class: ['rank-top-metric-value', rankValueClass(props.item.rank)].join(' ') }, metricValue(props.item, metric)),
+              ]),
+            ),
+          ),
         ],
       )
     }

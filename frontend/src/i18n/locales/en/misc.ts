@@ -79,6 +79,7 @@ marketplace: {
     totalTokens: 'Total Tokens',
     ioTokens: 'Input/Output',
     requests: 'Requests',
+    consumption: 'Usage',
     tokens: 'Tokens',
     actualCost: 'Actual Cost',
     reasoningCost: '{unit} Used',

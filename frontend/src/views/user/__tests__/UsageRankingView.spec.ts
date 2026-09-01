@@ -33,6 +33,7 @@ vi.mock('vue-i18n', async () => {
           'usageRanking.limitHint': `Showing top ${params?.limit ?? ''}`,
           'usageRanking.totalTokens': 'Total Tokens',
           'usageRanking.requests': 'Requests',
+          'usageRanking.consumption': 'Usage',
           'usageRanking.emptyTitle': 'No ranking data',
           'usageRanking.emptyDescription': 'No data',
           'usageRanking.loadError': 'Failed to load ranking',
@@ -63,7 +64,7 @@ describe('UsageRankingView', () => {
     getRanking.mockReset()
   })
 
-  it('renders only the fields explicitly exposed by the ranking response', async () => {
+  it('keeps list field visibility while always summarizing requests and usage in podium cards', async () => {
     getRanking.mockResolvedValue({
       ranking: [
         {
@@ -90,11 +91,18 @@ describe('UsageRankingView', () => {
     await flushPromises()
 
     expect(getRanking).toHaveBeenCalledOnce()
-    expect(wrapper.text()).toContain('$12.5000')
-    expect(wrapper.text()).toContain('USD Used')
-    expect(wrapper.text()).not.toContain('Total Tokens')
-    expect(wrapper.text()).not.toContain('Requests')
-    expect(wrapper.html()).not.toContain('370')
+    const topMetrics = wrapper.get('[data-testid="usage-ranking-top-metrics"]')
+    expect(topMetrics.text()).toContain('Requests')
+    expect(topMetrics.text()).toContain('8')
+    expect(topMetrics.text()).toContain('Usage')
+    expect(topMetrics.text()).toContain('$12.5000')
+
+    const listMetrics = wrapper.get('[data-testid="usage-ranking-row-metrics"]')
+    expect(listMetrics.text()).toContain('$12.5000')
+    expect(listMetrics.text()).toContain('USD Used')
+    expect(listMetrics.text()).not.toContain('Total Tokens')
+    expect(listMetrics.text()).not.toContain('Requests')
+    expect(listMetrics.text()).not.toContain('370')
   })
 
   it('keeps desktop metric columns aligned when values have different lengths', async () => {
@@ -143,5 +151,33 @@ describe('UsageRankingView', () => {
         'sm:w-[140px]',
       ])
     }
+  })
+
+  it('uses triangle, square and circle marks for the top three ranks', async () => {
+    getRanking.mockResolvedValue({
+      ranking: [1, 2, 3].map((rank) => ({
+        rank,
+        user_id: rank,
+        display_name: `user-${rank}`,
+        avatar_url: '',
+        requests: rank * 10,
+        total_tokens: rank * 100,
+        actual_cost: rank,
+      })),
+      sort_by: 'total_tokens',
+      show_total_tokens: true,
+      show_requests: true,
+      show_actual_cost: true,
+      start_date: '2026-08-17',
+      end_date: '2026-08-17',
+      limit: 20,
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.find('.rank-podium-shape-1').exists()).toBe(true)
+    expect(wrapper.find('.rank-podium-shape-2').exists()).toBe(true)
+    expect(wrapper.find('.rank-podium-shape-3').exists()).toBe(true)
   })
 })

@@ -79,6 +79,7 @@ marketplace: {
     totalTokens: '总 Token',
     ioTokens: '输入/输出',
     requests: '请求',
+    consumption: '消耗',
     tokens: 'Token',
     actualCost: '实际消耗',
     reasoningCost: '{unit}消耗',

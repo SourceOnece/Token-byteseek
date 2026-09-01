@@ -1552,6 +1552,7 @@ html :where(
 }
 
 .rank-podium-index {
+  color: #fff;
   font-family: 'Archivo Black', 'Plus Jakarta Sans Variable', system-ui, sans-serif;
   font-size: 1.65rem;
   line-height: 1;
@@ -1560,17 +1561,28 @@ html :where(
 
 .rank-podium-shape {
   display: block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid currentColor;
-  background: currentColor;
-  transform: rotate(45deg);
+  flex: none;
 }
 
-.rank-podium-card.rank-card-red .rank-podium-shape,
-.rank-podium-card.rank-card-blue .rank-podium-shape {
-  background: var(--bh-yellow);
-  border-color: var(--bh-ink);
+.rank-podium-shape-1 {
+  width: 0;
+  height: 0;
+  border-right: 8px solid transparent;
+  border-bottom: 14px solid #fff;
+  border-left: 8px solid transparent;
+}
+
+.rank-podium-shape-2 {
+  width: 14px;
+  height: 14px;
+  background: #fff;
+}
+
+.rank-podium-shape-3 {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
 }
 
 .rank-podium-badge,
@@ -1611,6 +1623,32 @@ html :where(
   font-size: clamp(1.5rem, 4vw, 2.15rem);
   font-weight: 900;
   line-height: 1.1;
+}
+
+/* 领奖台的请求与消耗使用白底信息块，保证在红黄蓝卡片上都清晰。 */
+.rank-top-metric {
+  min-width: 0;
+  padding: 0.55rem 0.4rem;
+  border: 3px solid var(--bh-ink);
+  background: #fff;
+  color: #141414;
+}
+
+.rank-top-metric-label {
+  color: #141414;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.rank-top-metric-value {
+  margin-top: 0.25rem;
+  overflow: hidden;
+  font-family: 'Geist Mono Variable', ui-monospace, monospace;
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 排名指标继承名次色：第一红、第二黄、第三蓝。 */
