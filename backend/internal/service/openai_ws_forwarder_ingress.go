@@ -259,8 +259,12 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 				nil,
 			)
 		}
+		policyRequestModel := strings.TrimSpace(values[1].String())
+		if policyRequestModel == "" {
+			policyRequestModel = ingressSessionOriginalModel
+		}
 		requestedReasoningEffort := CanonicalRequestedReasoningEffort(normalized, strings.TrimSpace(values[1].String()))
-		if next, policyErr := applyOpenAIWSReasoningEffortPolicy(normalized, hooks); policyErr != nil {
+		if next, policyErr := applyOpenAIWSReasoningEffortPolicy(normalized, hooks, policyRequestModel); policyErr != nil {
 			return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, policyErr.Error(), policyErr)
 		} else {
 			normalized = next
