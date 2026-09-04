@@ -1306,6 +1306,85 @@
     background-color: #1450a3;
   }
 
+  /* 上游新增的组级策略控件沿用全站硬边、硬阴影和直角交互。 */
+  .bh-policy-section,
+  .bh-policy-card {
+    border: 2px solid var(--bh-ink);
+    background: var(--bh-surface);
+    box-shadow: var(--bh-shadow-sm);
+  }
+
+  .bh-policy-section {
+    border-left: 8px solid var(--bh-yellow);
+  }
+
+  .bh-reasoning-policy > div:last-child {
+    border-top-width: 3px;
+    border-top-color: var(--bh-ink);
+  }
+
+  .bh-policy-card:nth-child(3n + 1) {
+    border-left: 8px solid var(--bh-red);
+  }
+
+  .bh-policy-card:nth-child(3n + 2) {
+    border-left: 8px solid var(--bh-yellow);
+  }
+
+  .bh-policy-card:nth-child(3n) {
+    border-left: 8px solid var(--bh-blue);
+  }
+
+  .bh-icon-action {
+    display: flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bh-ink);
+    background: var(--bh-surface);
+    color: var(--bh-ink);
+    box-shadow: 3px 3px 0 0 var(--bh-shadow-ink);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  }
+
+  .bh-icon-action:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 0 var(--bh-shadow-ink);
+  }
+
+  .bh-icon-action:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 0 var(--bh-shadow-ink);
+  }
+
+  .bh-icon-action-danger:hover {
+    background: var(--bh-red);
+    color: #fff;
+  }
+
+  .bh-switch {
+    align-items: center;
+    border: 2px solid var(--bh-ink);
+    box-shadow: 3px 3px 0 0 var(--bh-shadow-ink);
+  }
+
+  .bh-switch:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 0 var(--bh-shadow-ink);
+  }
+
+  .bh-switch:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 0 var(--bh-shadow-ink);
+  }
+
+  .bh-switch-thumb {
+    border: 2px solid var(--bh-ink);
+    box-shadow: none !important;
+  }
+
   /* 浅色主题统一加深常规次级文字 */
   html:not(.dark) :is(
     .text-gray-500,
