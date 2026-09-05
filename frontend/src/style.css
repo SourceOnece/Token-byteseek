@@ -986,8 +986,8 @@
 }
 
 @layer utilities {
-  /* 分组页面所有开关的启用态统一使用品牌蓝。 */
-  .group-switch-active {
+  /* 通用开关的启用态统一使用品牌蓝。 */
+  .toggle-active {
     background-color: rgb(18, 167, 232);
   }
 
