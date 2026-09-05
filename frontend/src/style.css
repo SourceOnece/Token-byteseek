@@ -1301,8 +1301,9 @@
 }
 
 @layer utilities {
-  /* 分组页面开关启用态 → 包豪斯蓝 */
-  .group-switch-active {
+  /* 新旧开关共用包豪斯蓝，保持所有页面的激活态一致。 */
+  .group-switch-active,
+  .toggle-active {
     background-color: #1450a3;
   }
 
@@ -1393,7 +1394,7 @@
   .bh-tf-import-icon {
     border: 2px solid var(--bh-ink);
     background: var(--bh-yellow);
-    color: var(--bh-ink);
+    color: #141414;
     box-shadow: 3px 3px 0 0 var(--bh-shadow-ink);
   }
 
@@ -1411,7 +1412,7 @@
   .bh-tf-status-warning {
     border-left: 8px solid var(--bh-yellow);
     background: #fff7cc;
-    color: var(--bh-ink);
+    color: #141414;
   }
 
   .bh-tf-status-neutral {
@@ -1641,6 +1642,44 @@ html :where(
 [class*='backdrop-blur'] {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+/* 账号、分组和 Key 操作浮层共用硬边；独立位移保留浮层的定位变换。 */
+.bh-action-menu {
+  border: 2px solid var(--bh-ink);
+  border-radius: 0;
+  background: var(--bh-surface);
+  box-shadow: var(--bh-shadow-sm);
+  color: var(--bh-ink);
+}
+
+.bh-action-menu button {
+  border-left: 4px solid transparent;
+  font-weight: 700;
+  transition: translate 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.bh-action-menu button:hover:not(:disabled),
+.bh-action-menu button:focus-visible {
+  border-left-color: var(--bh-red);
+  /* 覆盖各菜单 scoped 深色悬停规则，避免墨字落到旧深色背景上。 */
+  background: var(--bh-yellow) !important;
+  color: #141414 !important;
+}
+
+.bh-action-menu button:focus-visible {
+  outline: 2px solid var(--bh-blue);
+  outline-offset: -2px;
+}
+
+/* 黄底高亮时图标跟随墨色文字，避免深色主题的黄色图标失去对比度。 */
+.bh-action-menu button:hover:not(:disabled) svg,
+.bh-action-menu button:focus-visible svg { color: inherit; }
+
+.bh-action-menu button:active:not(:disabled) { translate: 2px 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bh-action-menu button { transition: none; }
 }
 
 /* ============ 用量排行：海报式领奖台与秩序列表 ============ */

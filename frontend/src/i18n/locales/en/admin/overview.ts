@@ -806,6 +806,22 @@ affiliates: {
     },
 // Groups
     groups: {
+      accountFilters: {
+        title: 'Account filters',
+        oauthOnly: 'Only allow OAuth accounts',
+        privacyRequired: 'Only allow accounts with privacy protection configured'
+      },
+      tabs: {
+        label: 'Group settings',
+        general: 'General',
+        platform: 'Platform settings',
+        pricing: 'Billing & pricing',
+        protocol: 'Protocol controls',
+        identity: 'Basic information',
+        scheduling: 'Scheduling & access',
+        imageCapabilities: 'Image capabilities',
+        batchPricing: 'Batch image billing'
+      },
       title: 'Group Management',
       description: 'Manage API key groups and rate multipliers',
       searchGroups: 'Search groups...',
@@ -1093,7 +1109,6 @@ affiliates: {
         batchHoldMultiplier: 'Batch hold price ratio',
         batchSectionHint: 'Batch image settings only apply to batch jobs: settlement applies the batch discount, and the upfront hold is normal image price × batch hold price ratio. Reference images also create upstream input-token usage, so a batch image discount above 0.5 is recommended.',
         batchDisabledHint: 'Enable image generation for this group before enabling batch image generation.',
-        batchGeminiOnlyHint: 'Batch image generation is currently available only for Gemini groups.',
         modeHint: 'By default, image billing uses image price × current effective group multiplier. Independent mode uses image price × image multiplier.',
         finalPricePreview: 'Final per-image price preview',
         notConfigured: 'Not configured'
@@ -1219,7 +1234,7 @@ affiliates: {
       openaiFast: {
         title: 'OpenAI Fast',
         force: 'Force Fast priority',
-        hint: 'When enabled, requests in this OpenAI or Composite group use service_tier=priority. Global Fast/Flex policy and API-key overrides still apply.',
+        hint: 'When enabled, requests in this OpenAI group use service_tier=priority. Global Fast/Flex policy and API-key overrides still apply.',
         free: 'Free Fast',
         freeHint: 'Fast requests still use the priority tier, but customers are charged the equivalent Standard price.'
       },

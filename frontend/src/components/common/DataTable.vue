@@ -965,7 +965,7 @@ defineExpose({
 /* 表格横向滚动 */
 .table-wrapper {
   --select-col-width: 52px; /* 勾选列宽度：px-6 (24px*2) + checkbox (16px) */
-  --sticky-boundary-line-color: rgb(228 228 231);
+  --sticky-boundary-line-color: var(--bh-ink);
   position: relative;
   overflow-x: auto;
   overflow-y: auto;
@@ -974,20 +974,12 @@ defineExpose({
   isolation: isolate;
 }
 
-.dark .table-wrapper {
-  --sticky-boundary-line-color: rgb(51 51 56);
-}
-
-/* 表头容器，确保在滚动时覆盖表体内容 */
+/* 深浅主题均使用黄底墨字，固定表头不能继承旧深灰背景导致黑字不可读。 */
 .table-wrapper .table-header {
   position: sticky;
   top: 0;
   z-index: 200;
-  background-color: rgb(249 250 251);
-}
-
-.dark .table-wrapper .table-header {
-  background-color: rgb(31 31 35);
+  background-color: var(--bh-yellow);
 }
 
 /* 表体保持在表头下方 */
@@ -1001,11 +993,9 @@ defineExpose({
   position: sticky;
   top: 0;
   z-index: 210; /* 必须高于所有表体内容 */
-  background-color: rgb(249 250 251);
-}
-
-.dark .sticky-header-cell {
-  background-color: rgb(31 31 35);
+  background-color: var(--bh-yellow);
+  color: #141414;
+  font-weight: 800;
 }
 
 /* Sticky 列基础样式 */
@@ -1041,20 +1031,12 @@ defineExpose({
 
 /* 表体 sticky 列背景 */
 tbody .sticky-col {
-  background-color: white;
-}
-
-.dark tbody .sticky-col {
-  background-color: rgb(18 18 21);
+  background-color: var(--bh-surface);
 }
 
 /* hover 状态保持 */
 tbody tr:hover .sticky-col {
-  background-color: rgb(249 250 251);
-}
-
-.dark tbody tr:hover .sticky-col {
-  background-color: rgb(31 31 35);
+  background-color: var(--bh-paper);
 }
 
 /* 所有固定列统一使用细线边界，避免滚动时出现渐变阴影带。 */

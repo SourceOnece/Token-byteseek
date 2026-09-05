@@ -803,6 +803,22 @@ affiliates: {
     },
 // Groups Management
     groups: {
+      accountFilters: {
+        title: '账号过滤控制',
+        oauthOnly: '仅允许 OAuth 账号',
+        privacyRequired: '仅允许隐私保护已设置的账号'
+      },
+      tabs: {
+        label: '分组设置',
+        general: '通用',
+        platform: '平台设置',
+        pricing: '计费与定价',
+        protocol: '协议控制',
+        identity: '基本信息',
+        scheduling: '调度与访问',
+        imageCapabilities: '图片能力',
+        batchPricing: '批量图片计费'
+      },
       title: '分组管理',
       description: '管理 API 密钥分组和费率配置',
       searchGroups: '搜索分组...',
@@ -1090,7 +1106,6 @@ affiliates: {
         batchHoldMultiplier: '批量冻结价格比例',
         batchSectionHint: '批量生图仅影响批量任务：结算价格会叠加批量折扣倍率，提交时冻结金额按普通生图原价 × 批量冻结价格比例计算。参考图也会产生上游输入 token 消耗，建议批量生图折扣倍率设置大于 0.5。',
         batchDisabledHint: '请先开启当前分组生图，才能开启批量生图。',
-        batchGeminiOnlyHint: '批量生图当前仅支持 Gemini 分组。',
         modeHint: '默认关闭独立倍率时，图片费用 = 图片价格 × 当前分组有效倍率；开启独立倍率后，图片费用 = 图片价格 × 生图独立倍率。',
         finalPricePreview: '最终单张价格预览',
         notConfigured: '未配置'
@@ -1217,7 +1232,7 @@ affiliates: {
       openaiFast: {
         title: 'OpenAI Fast',
         force: '强制使用 Fast 优先级',
-        hint: '启用后，此 OpenAI 或 Composite 分组的请求会使用 service_tier=priority；全局 Fast/Flex 策略和 API Key 覆盖仍然有效。',
+        hint: '启用后，此 OpenAI 分组的请求会使用 service_tier=priority；全局 Fast/Flex 策略和 API Key 覆盖仍然有效。',
         free: '免费 Fast',
         freeHint: '请求仍使用 priority 档位，但客户实际费用按同一请求的 Standard 价格计算。'
       },

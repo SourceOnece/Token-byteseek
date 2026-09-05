@@ -73,6 +73,8 @@ describe('KeyActionMenu', () => {
     expect(tfButton?.querySelector('path')?.getAttribute('d'))
       .toBe(ccsButton?.querySelector('path')?.getAttribute('d'))
     expect(tfButton?.querySelector('svg')?.classList.contains('text-blue-500')).toBe(true)
+    // CCS 入口使用包豪斯黄系，与蓝色 TF 入口区分。
+    expect(ccsButton?.querySelector('svg')?.classList.contains('text-amber-700')).toBe(true)
     tfButton?.click()
     await wrapper.vm.$nextTick()
 

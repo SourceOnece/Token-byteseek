@@ -63,6 +63,10 @@ docker compose -f deploy/docker-compose.dev.yml up --build
 - API 类型和调用放在 `src/api/`，跨页面状态进入 store/composable，避免在 view 复制协议。
 - 修改依赖必须同步 `frontend/pnpm-lock.yaml`，CI 使用 frozen lockfile。
 
+ByteSeek fork 的视觉由 `frontend/tailwind.config.js` 和 `frontend/src/style.css` 中的 `--bh-*` 变量共同控制。同步上游新增界面时，页签、菜单、弹窗与卡片沿用直角、红黄蓝、纸色背景和仪表盘的 4px 无模糊阴影；正常/异常状态仍保留绿/红语义，模型广场 Standard 与 Fast 价格分别沿用绿/黄重点色。新表单开关复用 `Toggle.vue`，操作菜单复用 `.bh-action-menu`，同时核对 disabled、键盘焦点和减少动画偏好。
+
+分组设置的 `GroupFormTabs.vue` 保持上游的持续挂载、跨页校验和引导定位契约，视觉适配不能用条件卸载导致草稿丢失；手机端以两列排列入口。`DataTable.vue` 的固定表头在深浅主题均使用黄底墨字，固定数据列用主题实体背景覆盖滚动内容。视觉回归应包含桌面、手机、深色模式，以及定价重点色和全局浅灰滚动条。
+
 ## 生成代码与迁移
 
 `backend/ent/` 大部分文件由 Ent 生成，`backend/cmd/server/wire_gen.go` 由 Wire 生成。统一使用：

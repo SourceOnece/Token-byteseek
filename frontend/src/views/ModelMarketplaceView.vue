@@ -281,12 +281,11 @@
                 class="group rounded-none border-2 border-gray-950 bg-white p-4 transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow dark:border-dark-200/60 dark:bg-dark-900"
               >
                 <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0">
-                    <h3 class="truncate text-base font-semibold text-gray-950 dark:text-white">{{ model.display_name }}</h3>
-                    <ModelIdLabel :model-id="model.id" class="mt-1" />
-                  </div>
+                  <h3 class="min-w-0 truncate text-base font-semibold text-gray-950 dark:text-white">{{ model.display_name }}</h3>
                   <ModelCapabilityTags :model="model" />
                 </div>
+                <!-- ID 独占整行，避免跟随标题列被右侧能力图标挤窄。 -->
+                <ModelIdLabel :model-id="model.id" class="mt-1" />
 
                 <!-- 价格预览改为无边框列表，避免卡片里再嵌套一层卡片。 -->
                 <div class="mt-4">
