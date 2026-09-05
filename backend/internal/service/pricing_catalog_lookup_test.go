@@ -226,11 +226,34 @@ func TestCatalogLookupGrokUsesKnownRuntimeAliases(t *testing.T) {
 		input, _ := svc.GetModelModalities(alias)
 		require.Equal(t, []string{"text", "image"}, input)
 	}
+	// 默认模型配置只去空白，返回的名称也要兼容前缀、大小写和已知固定别名。
+	for _, target := range []string{"GROK-4.6", "xai/grok-4.6", "X-AI/GROK-4.6", "grok-4.6-latest"} {
+		xai.SetRuntimeModelMappingOptions(xai.ModelMappingOptions{DefaultText: target})
+		for _, alias := range []string{"grok", "grok-latest"} {
+			require.Same(t, vision, svc.GetModelPricing(alias), target)
+			input, _ := svc.GetModelModalities(alias)
+			require.Equal(t, []string{"text", "image"}, input, target)
+		}
+	}
 	// 完整别名条目仍可独立配价，未知模型和跨客户端名称不会继承 Grok 能力。
 	svc.pricingData["grok-latest"] = text
 	require.Same(t, text, svc.GetModelPricing("grok-latest"))
 	for _, model := range []string{"grok-unknown", "gpt-5.4", "claude-sonnet-4"} {
 		input, output := svc.GetModelModalities(model)
+		require.Nil(t, input)
+		require.Nil(t, output)
+	}
+}
+
+// 非法默认配置形成循环时保持未知，不无限展开候选。
+func TestCatalogLookupGrokDefaultAliasCycle(t *testing.T) {
+	previous := xai.RuntimeModelMappingOptions()
+	t.Cleanup(func() { xai.SetRuntimeModelMappingOptions(previous) })
+	svc := &PricingService{pricingData: map[string]*LiteLLMModelPricing{}}
+	for _, target := range []string{"grok", "grok-latest", "xai/grok-latest"} {
+		xai.SetRuntimeModelMappingOptions(xai.ModelMappingOptions{DefaultText: target})
+		require.Nil(t, svc.GetModelPricing("grok"))
+		input, output := svc.GetModelModalities("grok-latest")
 		require.Nil(t, input)
 		require.Nil(t, output)
 	}

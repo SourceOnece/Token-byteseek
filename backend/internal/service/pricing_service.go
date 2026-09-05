@@ -1021,7 +1021,7 @@ func (s *PricingService) GetModelPricing(modelName string) *LiteLLMModelPricing 
 	}
 
 	// 1. 查询目录：完整 ID、等价名称写法和明确别名，兼容模型资源路径。
-	lookupCandidates := s.buildModelLookupCandidates(modelLower)
+	lookupCandidates := buildModelLookupCandidates(modelLower)
 	if pricing := s.lookupModelCatalogEntryLocked(lookupCandidates); pricing != nil {
 		return pricing
 	}
@@ -1073,31 +1073,15 @@ func (s *PricingService) GetModelModalities(modelName string) ([]string, []strin
 		return nil, nil
 	}
 
-	lookupCandidates := s.buildModelLookupCandidates(modelLower)
+	lookupCandidates := buildModelLookupCandidates(modelLower)
 	return deriveModalities(s.lookupModelCatalogEntryLocked(lookupCandidates))
 }
 
-// lookupModelCatalogEntryLocked 只查询完整条目及明确的同型号别名，调用方必须持有读锁。
-// @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup
+// lookupModelCatalogEntryLocked 按候选优先级查询条目，调用方必须持有读锁。
 func (s *PricingService) lookupModelCatalogEntryLocked(candidates []string) *LiteLLMModelPricing {
 	for _, candidate := range candidates {
 		if pricing := s.pricingData[candidate]; pricing != nil {
 			return pricing
-		}
-	}
-	for _, candidate := range candidates {
-		model := normalizeModelNameForPricing(lastSegment(candidate))
-		alias := normalizeGeminiThinkingTierAlias(model)
-		if alias == model {
-			alias = normalizeOpenAIThinkingTierAlias(model)
-		}
-		if xai.IsGrokTextResponsesModelID(model) {
-			alias = xai.ResolveGrokTextResponsesModelID(model, xai.RuntimeModelMappingOptions().DefaultText)
-		}
-		if alias != model {
-			if pricing := s.pricingData[alias]; pricing != nil {
-				return pricing
-			}
 		}
 	}
 	return nil
@@ -1189,7 +1173,45 @@ func isClaudeOpus48Model(model string) bool {
 	return strings.Contains(model, "4.8") || strings.Contains(model, "4-8")
 }
 
-func (s *PricingService) buildModelLookupCandidates(modelLower string) []string {
+// buildModelLookupCandidates 为目录与渠道查价提供同一组明确身份候选，不依赖目录是否有价格。
+// @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup
+func buildModelLookupCandidates(model string) []string {
+	candidates := buildModelIdentityCandidates(model)
+	seen := make(map[string]struct{}, len(candidates))
+	for _, candidate := range candidates {
+		seen[candidate] = struct{}{}
+	}
+	grokOptions := xai.RuntimeModelMappingOptions()
+	// 别名目标再次走名称规范化；已访问集合同时阻止默认模型形成自引用或循环。
+	for i := 0; i < len(candidates); i++ {
+		model := normalizeModelNameForPricing(lastSegment(candidates[i]))
+		alias := normalizeGeminiThinkingTierAlias(model)
+		if alias == model {
+			alias = normalizeOpenAIThinkingTierAlias(model)
+		}
+		if xai.IsGrokTextResponsesModelID(model) {
+			alias = xai.ResolveGrokTextResponsesModelID(model, grokOptions.DefaultText)
+		}
+		if alias == model {
+			continue
+		}
+		for _, target := range buildModelIdentityCandidates(alias) {
+			if _, ok := seen[target]; ok {
+				continue
+			}
+			seen[target] = struct{}{}
+			candidates = append(candidates, target)
+		}
+	}
+	return candidates
+}
+
+// buildModelIdentityCandidates 只生成完整 ID 的资源路径及等价写法，不展开模型别名。
+func buildModelIdentityCandidates(model string) []string {
+	modelLower := strings.ToLower(strings.TrimSpace(model))
+	if modelLower == "" {
+		return nil
+	}
 	candidates := []string{
 		modelLower,
 		strings.TrimPrefix(modelLower, "models/"),
@@ -1222,9 +1244,6 @@ func (s *PricingService) buildModelLookupCandidates(modelLower string) []string 
 		}
 		seen[c] = struct{}{}
 		out = append(out, c)
-	}
-	if len(out) == 0 {
-		return []string{modelLower}
 	}
 	return out
 }
@@ -1414,7 +1433,7 @@ func (s *PricingService) matchOpenAIModel(model string) *LiteLLMModelPricing {
 	// 日期快照只在价格路径回退到同产品，不给能力查询提供推断依据。
 	withoutDate := openAIModelDatePattern.ReplaceAllString(model, "")
 	if withoutDate != model {
-		if pricing := s.lookupModelCatalogEntryLocked(s.buildModelLookupCandidates(withoutDate)); pricing != nil {
+		if pricing := s.lookupModelCatalogEntryLocked(buildModelLookupCandidates(withoutDate)); pricing != nil {
 			return pricing
 		}
 	}
