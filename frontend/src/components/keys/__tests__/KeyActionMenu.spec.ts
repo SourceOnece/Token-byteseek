@@ -73,6 +73,7 @@ describe('KeyActionMenu', () => {
     expect(tfButton?.querySelector('path')?.getAttribute('d'))
       .toBe(ccsButton?.querySelector('path')?.getAttribute('d'))
     expect(tfButton?.querySelector('svg')?.classList.contains('text-blue-500')).toBe(true)
+    expect(ccsButton?.querySelector('svg')?.classList.contains('text-violet-500')).toBe(true)
     tfButton?.click()
     await wrapper.vm.$nextTick()
 

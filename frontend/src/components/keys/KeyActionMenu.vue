@@ -12,7 +12,7 @@
       >
         <div class="py-1">
           <button type="button" class="menu-item" role="menuitem" @click="emitAction('use')">
-            <Icon name="terminal" size="sm" class="text-gray-400" :stroke-width="2" />
+            <Icon name="terminal" size="sm" class="text-emerald-500" :stroke-width="2" />
             {{ t('keys.useKey') }}
           </button>
           <button type="button" class="menu-item" role="menuitem" @click="emitAction('import-tf')">
@@ -20,12 +20,12 @@
             {{ t('keys.importToTf') }}
           </button>
           <button v-if="allowImport" type="button" class="menu-item" role="menuitem" @click="emitAction('import')">
-            <Icon name="upload" size="sm" class="text-blue-500" :stroke-width="2" />
+            <Icon name="upload" size="sm" class="text-violet-500" :stroke-width="2" />
             {{ t('keys.importToCcSwitch') }}
           </button>
           <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
-          <button type="button" class="menu-item text-red-600 dark:text-red-400" role="menuitem" @click="emitAction('delete')">
-            <Icon name="trash" size="sm" :stroke-width="2" />
+          <button type="button" class="menu-item menu-item-danger" role="menuitem" @click="emitAction('delete')">
+            <Icon name="trash" size="sm" class="text-red-500 dark:text-red-400" :stroke-width="2" />
             {{ t('common.delete') }}
           </button>
         </div>
@@ -86,5 +86,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
 <style scoped>
 .menu-item {
   @apply flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700;
+}
+
+/* 危险操作独立覆盖基础菜单文字色，保持与删除图标一致。 */
+.menu-item-danger {
+  @apply text-red-600 dark:text-red-400;
 }
 </style>

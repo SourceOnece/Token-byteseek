@@ -313,49 +313,18 @@
                 <span class="text-xs">{{ t("common.edit") }}</span>
               </button>
               <button
-                data-testid="group-duplicate"
-                :title="
-                  duplicatingGroupIds.has(row.id)
-                    ? t('admin.groups.duplicating')
-                    : t('admin.groups.duplicate')
-                "
-                :disabled="duplicatingGroupIds.has(row.id)"
-                @click="handleDuplicate(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-dark-700 dark:hover:text-primary-400"
+                type="button"
+                data-testid="group-more"
+                :title="t('common.more')"
+                :aria-label="t('common.more')"
+                aria-haspopup="menu"
+                :aria-expanded="actionMenuGroup?.id === row.id"
+                :aria-controls="actionMenuGroup?.id === row.id ? `group-action-menu-${row.id}` : undefined"
+                @click="openGroupActionMenu(row, $event)"
+                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-dark-700 dark:hover:text-white"
               >
-                <Icon name="copy" size="sm" />
-                <span class="text-xs">
-                  {{
-                    duplicatingGroupIds.has(row.id)
-                      ? t("admin.groups.duplicating")
-                      : t("admin.groups.duplicate")
-                  }}
-                </span>
-              </button>
-              <button
-                @click="handleRateMultipliers(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-purple-600 dark:hover:bg-dark-700 dark:hover:text-purple-400"
-              >
-                <Icon name="dollar" size="sm" />
-                <span class="text-xs">{{
-                  t("admin.groups.rateMultipliers")
-                }}</span>
-              </button>
-              <button
-                @click="handleRPMOverrides(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-orange-600 dark:hover:bg-dark-700 dark:hover:text-orange-400"
-              >
-                <Icon name="bolt" size="sm" />
-                <span class="text-xs">{{
-                  t("admin.groups.rpmOverrides")
-                }}</span>
-              </button>
-              <button
-                @click="handleDelete(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-              >
-                <Icon name="trash" size="sm" />
-                <span class="text-xs">{{ t("common.delete") }}</span>
+                <Icon name="more" size="sm" />
+                <span class="text-xs">{{ t("common.more") }}</span>
               </button>
             </div>
           </template>
@@ -382,6 +351,18 @@
         />
       </template>
     </TablePageLayout>
+
+    <GroupActionMenu
+      :show="actionMenuGroup !== null"
+      :group="actionMenuGroup"
+      :position="actionMenuPosition"
+      :duplicating="actionMenuGroup !== null && duplicatingGroupIds.has(actionMenuGroup.id)"
+      @close="closeGroupActionMenu"
+      @duplicate="handleDuplicate"
+      @rate-multipliers="handleRateMultipliers"
+      @rpm-overrides="handleRPMOverrides"
+      @delete="handleDelete"
+    />
 
     <!-- Create Group Modal -->
     <BaseDialog
@@ -3888,6 +3869,7 @@ import PlatformIcon from "@/components/common/PlatformIcon.vue";
 import ProviderIcon from "@/components/common/ProviderIcon.vue";
 import Icon from "@/components/icons/Icon.vue";
 import GroupRateMultipliersModal from "@/components/admin/group/GroupRateMultipliersModal.vue";
+import GroupActionMenu from "@/components/admin/group/GroupActionMenu.vue";
 import GroupRPMOverridesModal from "@/components/admin/group/GroupRPMOverridesModal.vue";
 import GroupCapacityBadge from "@/components/common/GroupCapacityBadge.vue";
 import ReasoningEffortPolicyFields from "@/components/admin/group/ReasoningEffortPolicyFields.vue";
@@ -4494,6 +4476,32 @@ const sortSubmitting = ref(false);
 const editingGroup = ref<AdminGroup | null>(null);
 const deletingGroup = ref<AdminGroup | null>(null);
 const duplicatingGroupIds = reactive(new Set<number>());
+const actionMenuGroup = ref<AdminGroup | null>(null);
+const actionMenuPosition = ref<{ top: number; left: number } | null>(null);
+
+// 与密钥菜单一致，使用视口坐标和 body 浮层，避免卡片或固定操作列裁切菜单。
+const openGroupActionMenu = (group: AdminGroup, event: MouseEvent) => {
+  if (actionMenuGroup.value?.id === group.id) {
+    closeGroupActionMenu();
+    return;
+  }
+  const target = event.currentTarget as HTMLElement | null;
+  if (!target) return;
+  const rect = target.getBoundingClientRect();
+  const width = 192;
+  const height = 162;
+  const padding = 8;
+  const left = Math.max(padding, Math.min(rect.right - width, window.innerWidth - width - padding));
+  let top = rect.bottom + 4;
+  if (top + height > window.innerHeight - padding) top = Math.max(padding, rect.top - height - 4);
+  actionMenuGroup.value = group;
+  actionMenuPosition.value = { top, left };
+};
+
+const closeGroupActionMenu = () => {
+  actionMenuGroup.value = null;
+  actionMenuPosition.value = null;
+};
 const showRateMultipliersModal = ref(false);
 const rateMultipliersGroup = ref<AdminGroup | null>(null);
 const showRPMOverridesModal = ref(false);

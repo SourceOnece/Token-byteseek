@@ -101,6 +101,8 @@ const messages: Record<string, string> = {
   'keys.status.inactive': 'Inactive',
   'keys.status.quota_exhausted': 'Quota exhausted',
   'keys.usage': 'Usage',
+  'keys.today': 'Today',
+  'keys.total': 'Last 30d',
   'keys.teamOwnerLocked': 'Admin locked',
   'keys.teamOwnerDisabledHint': 'Only the team administrator can enable this key again.',
   'team.personalKeys': 'Personal keys',
@@ -251,6 +253,7 @@ const DataTableStub = {
         <div data-test="current-concurrency">
           <slot name="cell-current_concurrency" :value="row.current_concurrency" :row="row" />
         </div>
+        <div data-test="usage"><slot name="cell-usage" :row="row" /></div>
         <div data-test="status">
           <slot name="cell-status" :value="row.status" :row="row" />
         </div>
@@ -406,6 +409,18 @@ describe('user KeysView column settings', () => {
     isCurrentStep.mockReturnValue(false)
     createKey.mockResolvedValue(createApiKey())
     updateKey.mockResolvedValue(createApiKey())
+  })
+
+  it('显示今日和近 30 天的实际用量，保留四位小数', async () => {
+    getDashboardApiKeysUsage.mockResolvedValueOnce({
+      stats: { 1: { api_key_id: 1, today_actual_cost: 1.2345, total_actual_cost: 67.8912 } },
+    })
+    const wrapper = await mountView()
+
+    const usage = wrapper.get('[data-test="usage"]').text()
+    expect(usage).toContain('Today:$1.2345')
+    expect(usage).toContain('Last 30d:$67.8912')
+    wrapper.unmount()
   })
 
   it('keeps the table loading until the first API key request completes', async () => {
