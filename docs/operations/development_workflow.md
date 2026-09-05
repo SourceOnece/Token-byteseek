@@ -65,6 +65,8 @@ docker compose -f deploy/docker-compose.dev.yml up --build
 
 ByteSeek fork 的视觉由 `frontend/tailwind.config.js` 和 `frontend/src/style.css` 中的 `--bh-*` 变量共同控制。同步上游新增界面时，页签、菜单、弹窗与卡片沿用直角、红黄蓝、纸色背景和仪表盘的 4px 无模糊阴影；正常/异常状态仍保留绿/红语义，模型广场 Standard 与 Fast 价格分别沿用绿/黄重点色。新表单开关复用 `Toggle.vue`，操作菜单复用 `.bh-action-menu`，同时核对 disabled、键盘焦点和减少动画偏好。
 
+所有开发必须遵循[包豪斯设计契约](bauhaus_design_contract.md)，不能把上游新增页或次要弹窗排除在外。每次实施前按[版本留档规则](version_history.md)查阅最近及相关历史，明确本次要保留的 fork 行为，并建立版本记录。
+
 分组设置的 `GroupFormTabs.vue` 保持上游的持续挂载、跨页校验和引导定位契约，视觉适配不能用条件卸载导致草稿丢失；手机端以两列排列入口。`DataTable.vue` 的固定表头在深浅主题均使用黄底墨字，固定数据列用主题实体背景覆盖滚动内容。视觉回归应包含桌面、手机、深色模式，以及定价重点色和全局浅灰滚动条。
 
 ## 生成代码与迁移
@@ -118,6 +120,8 @@ npx --yes pnpm@9 --dir frontend run build
 
 每次代码变更都从 [工程文档目录](../index.md) 路由到相关专题：如果持久架构、领域不变量、外部契约或运维流程变化，同步正文、分类目录和代码锚点；局部实现细节不应无条件扩写成新文档。README 保持项目入口简洁，工程细节放入 `docs/`。
 
+每次有持久变动的交付另外更新[版本历史目录](versions/index.md)及对应记录，包括纯文档变动。版本记录保存当时的需求、实现理由、功能差异和证据，当前专题只描述现行契约；两者不能互相替代。历史记录遵循[版本留档规则](version_history.md)，不能用本地 `SYNC.md` 或临时测试日志代替。
+
 ## 同步上游
 
 同步以 upstream PR/commit 为最小可审查单元，逐项理解变更并保留 fork 的产品、计费、安全和部署语义。冲突解决后运行该项涉及的测试，再形成符合 Conventional Commits 的本地提交；`SYNC.md` 只记录本地进度，不进入提交。
@@ -132,6 +136,8 @@ npx --yes pnpm@9 --dir frontend run build
 ## 发布
 
 ByteSeek fork 的上游同步以镜像发布作为收尾：完成包豪斯适配、相关测试、前端构建及界面回归，确认没有未解决的阻断问题，并提交推送源码后，才构建发布镜像。GHCR 固定使用 `ghcr.io/sourceonece/byteseek`，同一构建产物同时发布 `bauhaus` 和 `latest` 两个标签；先对候选镜像核对版本、提交及启动情况，推送后核对两标签的远端 digest 一致。任一步失败不得宣称发布完成。镜像推送不等于部署，未单独获得上线授权时不替换运行容器。
+
+打包前完成版本文档的变更、兼容性和验证部分；推送后追加准确的源码提交、构建架构、双标签远端 digest 及是否部署。纯文档/约束变更不改变应用产物，记录不打包原因即可；追加发布证据本身不触发新版本和循环构建。具体字段及版本冻结规则见[版本留档规则](version_history.md)。
 
 `.github/workflows/release.yml` 由 `v*` tag 或手动 dispatch 触发。标准发布只构建一次前端，再把 Linux、Windows 和 macOS 的五个 Go 目标分配到独立 runner 并行编译；最终 job 通过 `tools/goreleaser_prebuilt.sh` 把这些二进制导入 GoReleaser，统一生成 Release 归档、校验和、双架构镜像与 manifest。每个镜像架构只执行一次构建，并同时附加 GHCR 与可选 DockerHub 标签；未配置 DockerHub 时不会创建占位镜像。simple release 跳过二进制 matrix，只构建精简镜像集合。workflow 从 annotated tag body 读取 release notes，并在成功后把 `backend/cmd/server/VERSION` 同步回默认分支。
 
