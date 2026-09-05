@@ -1385,6 +1385,68 @@
     box-shadow: none !important;
   }
 
+  /* TF CLI 导入弹窗：把上游新增的状态块收敛为包豪斯硬边信息板。 */
+  .bh-tf-import-heading {
+    border-bottom: 3px solid var(--bh-ink);
+  }
+
+  .bh-tf-import-icon {
+    border: 2px solid var(--bh-ink);
+    background: var(--bh-yellow);
+    color: var(--bh-ink);
+    box-shadow: 3px 3px 0 0 var(--bh-shadow-ink);
+  }
+
+  .bh-tf-status {
+    border: 2px solid var(--bh-ink);
+    box-shadow: var(--bh-shadow-sm);
+  }
+
+  .bh-tf-status-success {
+    border-left: 8px solid #059669;
+    background: #e7f5ed;
+    color: #075b3d;
+  }
+
+  .bh-tf-status-warning {
+    border-left: 8px solid var(--bh-yellow);
+    background: #fff7cc;
+    color: var(--bh-ink);
+  }
+
+  .bh-tf-status-neutral {
+    border-left: 8px solid var(--bh-blue);
+    background: var(--bh-surface);
+    color: var(--bh-ink);
+  }
+
+  .bh-tf-status-danger {
+    border-left: 8px solid var(--bh-red);
+    background: #fbe8e6;
+    color: #7a130e;
+  }
+
+  .bh-tf-import-facts {
+    border-top: 2px solid var(--bh-ink);
+    border-bottom: 2px solid var(--bh-ink);
+    border-color: var(--bh-ink);
+  }
+
+  .bh-tf-import-facts > div {
+    border-color: rgba(20, 20, 20, 0.24);
+  }
+
+  .bh-menu-item {
+    border-left: 4px solid transparent;
+    font-weight: 700;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+  }
+
+  .bh-menu-item:hover {
+    border-left-color: var(--bh-red);
+    background: rgba(255, 204, 0, 0.22);
+  }
+
   /* 浅色主题统一加深常规次级文字 */
   html:not(.dark) :is(
     .text-gray-500,

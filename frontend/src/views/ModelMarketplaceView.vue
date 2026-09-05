@@ -246,13 +246,6 @@
                   >
                     {{ formatImageRateMultiplierLabel(group.image_rate_multiplier) }}
                   </span>
-                  <!-- 数据共享分组需要醒目标记，避免用户在模型广场忽略采集属性。 -->
-                  <span
-                    v-if="group.data_sharing_enabled"
-                    class="rounded-none border-2 border-gray-950 bg-bh-red px-3 py-1 text-xs font-extrabold text-white dark:border-dark-100"
-                  >
-                    {{ t('marketplace.dataSharingTag') }}
-                  </span>
                 </div>
 
                 <div class="flex items-start gap-3">

@@ -57,6 +57,17 @@ var (
 		Mode:                            "chat",
 		SupportsPromptCaching:           true,
 	}
+	// GPT-6 Astra 静态回退只固化官方标准价，避免目录缺失时误落到旧型号。
+	openAIGPT6AstraPricing = &LiteLLMModelPricing{
+		InputCostPerToken:           10e-6,   // 每百万 token $10
+		OutputCostPerToken:          50e-6,   // 每百万 token $50
+		CacheCreationInputTokenCost: 12.5e-6, // 每百万 token $12.50
+		CacheReadInputTokenCost:     1e-6,    // 每百万 token $1
+		SupportsServiceTier:         true,
+		LiteLLMProvider:             "openai",
+		Mode:                        "chat",
+		SupportsPromptCaching:       true,
+	}
 	openAIGPT56SolPricing = &LiteLLMModelPricing{
 		InputCostPerToken:                   5e-06,   // $5 per MTok
 		InputCostPerTokenPriority:           1e-05,   // $10 per MTok
@@ -1383,7 +1394,7 @@ func (s *PricingService) matchByModelFamily(model string) *LiteLLMModelPricing {
 // 2. gpt-5.5-pro* -> 独立静态兜底价（避免被错误降级到 gpt-5.5）
 // 3. 通用变体回退（去掉日期、去掉通用后缀）
 // 4. gpt-5.3-codex -> gpt-5.2-codex
-// 5. gpt-5.5 / gpt-5.4* -> 业务静态兜底价
+// 5. gpt-6-astra / gpt-5.6 / gpt-5.5 / gpt-5.4* -> 业务静态兜底价
 // 6. 最终回退到 DefaultTestModel (gpt-5.1-codex)
 func (s *PricingService) matchOpenAIModel(model string) *LiteLLMModelPricing {
 	if strings.HasPrefix(model, "gpt-5.3-codex-spark") {
@@ -1422,6 +1433,12 @@ func (s *PricingService) matchOpenAIModel(model string) *LiteLLMModelPricing {
 				Info(fmt.Sprintf("[Pricing] OpenAI fallback matched %s -> %s", model, "gpt-5.2-codex"))
 			return pricing
 		}
+	}
+
+	if isOpenAIGPT6AstraModel(model) {
+		logger.With(zap.String("component", "service.pricing")).
+			Info(fmt.Sprintf("[Pricing] OpenAI fallback matched %s -> %s", model, "gpt-6-astra(static)"))
+		return openAIGPT6AstraPricing
 	}
 
 	// GPT-5.6 使用官方公开价格静态兜底，避免动态价格缺失时错误降级。

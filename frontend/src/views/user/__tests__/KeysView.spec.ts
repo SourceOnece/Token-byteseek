@@ -17,8 +17,6 @@ const {
   copyToClipboard,
   isCurrentStep,
   nextStep,
-  getDataSharingNotice,
-  confirmDataSharingNotice,
   createKey,
   updateKey,
   toggleStatus,
@@ -35,8 +33,6 @@ const {
   copyToClipboard: vi.fn(),
   isCurrentStep: vi.fn(),
   nextStep: vi.fn(),
-  getDataSharingNotice: vi.fn(),
-  confirmDataSharingNotice: vi.fn(),
   createKey: vi.fn(),
   updateKey: vi.fn(),
   toggleStatus: vi.fn(),
@@ -57,6 +53,7 @@ const messages: Record<string, string> = {
   'keys.createKey': 'Create API Key',
   'keys.disable': 'Disable',
   'keys.enable': 'Enable',
+  'keys.importToTf': 'Import to TF CLI',
   'keys.apiKeyLimitReached': 'API key limit reached',
   'keys.created': 'Created',
   'keys.expiresAt': 'Expires',
@@ -130,10 +127,6 @@ vi.mock('@/api', () => ({
   userGroupsAPI: {
     getAvailable: getAvailableGroups,
     getUserGroupRates,
-  },
-  dataSharingAPI: {
-    getNotice: getDataSharingNotice,
-    confirmNotice: confirmDataSharingNotice,
   },
 }))
 
@@ -320,6 +313,19 @@ const GroupOptionItemStub = {
   template: '<span data-test="group-option-item" :data-has-capacity="capacity ? \'true\' : \'false\'">{{ name }}</span>',
 }
 
+const TfCliImportDialogStub = {
+  name: 'TfCliImportDialog',
+  props: ['show', 'apiKey'],
+  emits: ['close'],
+  template: `
+    <div
+      v-if="show"
+      data-test="tf-cli-dialog-stub"
+      :data-key-name="apiKey?.name"
+    />
+  `,
+}
+
 const mountView = async (settle = true) => {
   const wrapper = mount(KeysView, {
     global: {
@@ -336,6 +342,7 @@ const mountView = async (settle = true) => {
         SearchInput: SearchInputStub,
         Icon: IconStub,
         UseKeyModal: true,
+        TfCliImportDialog: TfCliImportDialogStub,
         EndpointPopover: true,
         GroupBadge: true,
         GroupOptionItem: GroupOptionItemStub,
@@ -379,8 +386,6 @@ describe('user KeysView column settings', () => {
     copyToClipboard.mockReset()
     isCurrentStep.mockReset()
     nextStep.mockReset()
-    getDataSharingNotice.mockReset()
-    confirmDataSharingNotice.mockReset()
     createKey.mockReset()
     updateKey.mockReset()
     toggleStatus.mockReset()
@@ -471,6 +476,21 @@ describe('user KeysView column settings', () => {
     expect(actionButtons.some((button) => button.text().includes('Edit'))).toBe(true)
     expect(actionButtons.some((button) => button.text().includes('Disable'))).toBe(true)
     expect(actionButtons.some((button) => button.text().includes('More'))).toBe(true)
+  })
+
+  it('opens tf import from the More menu without a fragment session', async () => {
+    const wrapper = await mountView()
+
+    const moreButton = getButtonByText(wrapper, 'More')
+    expect(moreButton.attributes('aria-expanded')).toBe('false')
+    await moreButton.trigger('click')
+    await nextTick()
+    expect(moreButton.attributes('aria-expanded')).toBe('true')
+    expect(moreButton.attributes('aria-controls')).toBe('key-action-menu-1')
+    await getButtonByText(wrapper, 'Import to TF CLI').trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('[data-test="tf-cli-dialog-stub"]').attributes('data-key-name')).toBe('test-key')
   })
 
   it('shows a hidden column when toggled and persists the preference', async () => {
@@ -682,7 +702,6 @@ describe('user KeysView column settings', () => {
       peak_end: '',
       peak_rate_multiplier: 1,
       platform: 'openai',
-      data_sharing_enabled: false,
       capacity: {
         concurrency_used: 25,
         concurrency_max: 144,
@@ -716,10 +735,10 @@ describe('user KeysView column settings', () => {
     })
     getAvailableGroups.mockImplementation((_scope, subscriptionID?: number) => Promise.resolve(
       subscriptionID === 71
-        ? [{ id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1, data_sharing_enabled: false }]
+        ? [{ id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 }]
         : [
-            { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1, data_sharing_enabled: false },
-            { id: 43, name: 'Claude', platform: 'anthropic', rate_multiplier: 1, data_sharing_enabled: false },
+            { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 },
+            { id: 43, name: 'Claude', platform: 'anthropic', rate_multiplier: 1 },
           ]
     ))
     getBillingOptions.mockResolvedValue([{
@@ -809,7 +828,6 @@ describe('user KeysView column settings', () => {
       peak_end: '',
       peak_rate_multiplier: 1,
       platform: 'openai',
-      data_sharing_enabled: false,
     }])
     const wrapper = await mountView()
 
@@ -846,7 +864,6 @@ describe('user KeysView column settings', () => {
       peak_end: '',
       peak_rate_multiplier: 1,
       platform: 'openai',
-      data_sharing_enabled: false,
     }])
     createKey.mockRejectedValueOnce({
       reason: 'API_KEY_LIMIT_REACHED',
@@ -869,8 +886,8 @@ describe('user KeysView column settings', () => {
 
   it('creates a composite key with ordered group prefix mappings', async () => {
     getAvailableGroups.mockResolvedValueOnce([
-      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1, data_sharing_enabled: false },
-      { id: 43, name: 'Claude', platform: 'anthropic', rate_multiplier: 1, data_sharing_enabled: false },
+      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 },
+      { id: 43, name: 'Claude', platform: 'anthropic', rate_multiplier: 1 },
     ])
     const wrapper = await mountView()
 
@@ -930,8 +947,8 @@ describe('user KeysView column settings', () => {
 
   it('blocks case-insensitive duplicate composite prefixes', async () => {
     getAvailableGroups.mockResolvedValueOnce([
-      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1, data_sharing_enabled: false },
-      { id: 43, name: 'Claude', platform: 'anthropic', rate_multiplier: 1, data_sharing_enabled: false },
+      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 },
+      { id: 43, name: 'Claude', platform: 'anthropic', rate_multiplier: 1 },
     ])
     const wrapper = await mountView()
 
@@ -955,7 +972,7 @@ describe('user KeysView column settings', () => {
 
   it('blocks duplicate groups in composite mappings', async () => {
     getAvailableGroups.mockResolvedValueOnce([
-      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1, data_sharing_enabled: false },
+      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 },
     ])
     const wrapper = await mountView()
 
@@ -977,60 +994,9 @@ describe('user KeysView column settings', () => {
     expect(createKey).not.toHaveBeenCalled()
   })
 
-  it('uses one data sharing confirmation for every new composite mapping', async () => {
-    vi.useFakeTimers()
-    getAvailableGroups.mockResolvedValueOnce([
-      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1, data_sharing_enabled: true },
-      { id: 43, name: 'Claude', platform: 'anthropic', rate_multiplier: 1, data_sharing_enabled: true },
-    ])
-    getDataSharingNotice.mockResolvedValue({ version: 7, content: 'notice' })
-    confirmDataSharingNotice.mockResolvedValue(undefined)
-    const wrapper = await mountView()
-
-    try {
-      await getButtonByText(wrapper, 'Create API Key').trigger('click')
-      await wrapper.get('[data-tour="key-form-name"]').setValue('sharing-composite')
-      await wrapper.get('[data-test="composite-key-toggle"]').trigger('click')
-      let editor = wrapper.get('[data-test="composite-group-editor"]')
-      await editor.findAllComponents({ name: 'Select' })[0]!.vm.$emit('update:modelValue', 42)
-      await editor.findAll('input')[0]!.setValue('GPT')
-      await getButtonByText(wrapper, 'Add group mapping').trigger('click')
-      await nextTick()
-
-      editor = wrapper.get('[data-test="composite-group-editor"]')
-      await editor.findAllComponents({ name: 'Select' })[1]!.vm.$emit('update:modelValue', 43)
-      await editor.findAll('input')[1]!.setValue('Claude')
-      await wrapper.get('form#key-form').trigger('submit')
-      await flushPromises()
-
-      expect(getDataSharingNotice).toHaveBeenCalledTimes(1)
-      expect(getDataSharingNotice).toHaveBeenCalledWith(42)
-      expect(createKey).not.toHaveBeenCalled()
-
-      vi.advanceTimersByTime(10_000)
-      await nextTick()
-      await getButtonByText(wrapper, '我已阅读并确认').trigger('click')
-      await flushPromises()
-
-      expect(confirmDataSharingNotice).toHaveBeenCalledWith(42, 7)
-      expect(createKey).toHaveBeenCalledWith(expect.objectContaining({
-        is_composite: true,
-        composite_groups: [
-          { group_id: 42, prefix: 'GPT' },
-          { group_id: 43, prefix: 'Claude' },
-        ],
-        data_sharing_confirmed: true,
-        data_sharing_notice_version: 7,
-      }))
-    } finally {
-      wrapper.unmount()
-      vi.useRealTimers()
-    }
-  })
-
   it('requires an explicit target group when converting composite to ordinary', async () => {
     getAvailableGroups.mockResolvedValueOnce([
-      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1, data_sharing_enabled: false },
+      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 },
     ])
     listKeys.mockResolvedValueOnce({
       items: [{
@@ -1072,7 +1038,7 @@ describe('user KeysView column settings', () => {
 
   it('creates a key with a trimmed model redirect rule', async () => {
     getAvailableGroups.mockResolvedValueOnce([
-      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1, data_sharing_enabled: false },
+      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 },
     ])
     const wrapper = await mountView()
 
