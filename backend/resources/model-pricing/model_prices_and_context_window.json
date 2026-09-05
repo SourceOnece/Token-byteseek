@@ -5000,8 +5000,11 @@
     "litellm_provider": "openai",
     "mode": "chat",
     "output_cost_per_token": 5e-05,
+    "supported_modalities": ["text", "image"],
+    "supported_output_modalities": ["text"],
     "supports_prompt_caching": true,
-    "supports_service_tier": true
+    "supports_service_tier": true,
+    "supports_vision": true
   },
   "gpt-5.6-sol": {
     "cache_creation_input_token_cost": 6.25e-06,

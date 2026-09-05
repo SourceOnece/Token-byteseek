@@ -131,6 +131,12 @@ func normalizeReasoningEffortMappingValue(raw string) string {
 	return NormalizeMaxReasoningEffort(value)
 }
 
+// normalizeRequestedOpenAIReasoningEffort 仅用于记录客户端显式请求值。none 没有
+// 可比较的强度排名，不能作为分组上限，但必须保留在请求审计中。
+func normalizeRequestedOpenAIReasoningEffort(raw string) string {
+	return normalizeReasoningEffortMappingValue(raw)
+}
+
 func reasoningEffortValuesForPlatform(platform string) []string {
 	if platform != PlatformOpenAI {
 		return nil

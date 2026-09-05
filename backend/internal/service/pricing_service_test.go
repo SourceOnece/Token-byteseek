@@ -315,6 +315,9 @@ func TestDefaultPricingIncludesOfficialGPT6AstraRates(t *testing.T) {
 	require.Equal(t, 272000, pricing.LongContextInputThreshold)
 	require.InDelta(t, 2.0, pricing.LongContextInputMultiplier, 1e-12)
 	require.InDelta(t, 1.5, pricing.LongContextOutputMultiplier, 1e-12)
+	inputModalities, outputModalities := pricingSvc.GetModelModalities("gpt-6-astra")
+	require.Equal(t, []string{"text", "image"}, inputModalities)
+	require.Equal(t, []string{"text"}, outputModalities)
 }
 
 func TestGPT56DedicatedFallbacksUseOfficialRates(t *testing.T) {

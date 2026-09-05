@@ -36,4 +36,12 @@ func TestApplyOpenAIReasoningEffortPolicyForRequest_MapsConfiguredNoneForAstra(t
 	require.NoError(t, err)
 	require.True(t, changed)
 	require.Equal(t, "low", gjson.GetBytes(updated, "reasoning.effort").String())
+	requested := service.RequestedReasoningEffortFromContext(c.Request.Context())
+	require.NotNil(t, requested)
+	require.Equal(t, "none", *requested)
+	forwarded := "low"
+	result := &service.OpenAIForwardResult{ReasoningEffort: &forwarded}
+	stampOpenAIRequestedReasoningEffort(result, c)
+	require.NotNil(t, result.RequestedReasoningEffort)
+	require.Equal(t, "none", *result.RequestedReasoningEffort)
 }

@@ -28,10 +28,21 @@ describe('useModelWhitelist', () => {
 			'gpt-5.6-sol',
 			'gpt-5.6-terra',
 			'gpt-5.6-luna',
+			'gpt-6-astra',
 			'gpt-5.4',
 			'gpt-5.4-mini',
 			'gpt-5.5'
 		])
+  })
+
+  it('openai 预设映射包含 GPT-6 Astra', () => {
+    expect(getPresetMappingsByPlatform('openai')).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: 'GPT-6 Astra',
+        from: 'gpt-6-astra',
+        to: 'gpt-6-astra'
+      })
+    ]))
   })
 
   it('openai 模型列表不再暴露旧快照、Codex、音频和图片模型', () => {
