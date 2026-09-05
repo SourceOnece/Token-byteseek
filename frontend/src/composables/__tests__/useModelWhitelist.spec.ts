@@ -24,7 +24,6 @@ describe('useModelWhitelist', () => {
 			'gpt-5.3',
 			'gpt-5.3-spark',
 			'codex-auto-review',
-			'gpt-5.6',
 			'gpt-5.6-sol',
 			'gpt-5.6-terra',
 			'gpt-5.6-luna',
@@ -36,6 +35,8 @@ describe('useModelWhitelist', () => {
   })
 
   it('openai 预设映射包含 GPT-6 Astra', () => {
+    // 裸 GPT-5.6 不再作为快捷映射项，只提供具体产品。
+    expect(getPresetMappingsByPlatform('openai').some((mapping) => mapping.from === 'gpt-5.6' || mapping.to === 'gpt-5.6')).toBe(false)
     expect(getPresetMappingsByPlatform('openai')).toEqual(expect.arrayContaining([
       expect.objectContaining({
         label: 'GPT-6 Astra',

@@ -233,8 +233,10 @@ func TestBillingService_GPT56LongContextBoundaryIsExclusive(t *testing.T) {
 	require.InDelta(t, 10*30e-6, cost.OutputCost, 1e-12)
 }
 
-func TestPricingService_BareGPT56AliasDeterministicallyUsesSol(t *testing.T) {
+// 外部目录中的显式自定义条目不会再被代码重定向，也不会自动附加内置产品规则。
+func TestPricingService_ExplicitCatalogEntryDoesNotRedirectToSol(t *testing.T) {
 	pricingSvc := &PricingService{pricingData: map[string]*LiteLLMModelPricing{
+		"gpt-5.6":       {InputCostPerToken: 4e-6},
 		"gpt-5.6-sol":   {InputCostPerToken: 5e-6},
 		"gpt-5.6-terra": {InputCostPerToken: 2e-6},
 		"gpt-5.6-luna":  {InputCostPerToken: 0.2e-6},
@@ -245,7 +247,7 @@ func TestPricingService_BareGPT56AliasDeterministicallyUsesSol(t *testing.T) {
 		for _, alias := range []string{"gpt-5.6", "openai/gpt-5.6"} {
 			pricing := pricingSvc.GetModelPricing(alias)
 			require.NotNil(t, pricing)
-			require.InDelta(t, 5e-6, pricing.InputCostPerToken, 1e-12, "iteration=%d alias=%s", i, alias)
+			require.InDelta(t, 4e-6, pricing.InputCostPerToken, 1e-12, "iteration=%d alias=%s", i, alias)
 		}
 	}
 
@@ -253,8 +255,8 @@ func TestPricingService_BareGPT56AliasDeterministicallyUsesSol(t *testing.T) {
 	for _, alias := range []string{"gpt-5.6", "openai/gpt-5.6"} {
 		pricing, err := billingSvc.GetModelPricing(alias)
 		require.NoError(t, err)
-		require.InDelta(t, 5e-6, pricing.InputPricePerToken, 1e-12)
-		require.InDelta(t, 6.25e-6, pricing.CacheCreationPricePerToken, 1e-12)
+		require.InDelta(t, 4e-6, pricing.InputPricePerToken, 1e-12)
+		require.Zero(t, pricing.CacheCreationPricePerToken)
 	}
 }
 
