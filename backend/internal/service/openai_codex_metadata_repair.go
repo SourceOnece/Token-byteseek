@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+	"golang.org/x/net/http/httpguts"
 )
 
 const codexMetadataRepairExtraKey = "codex_metadata_repair_enabled"
@@ -104,7 +105,7 @@ func prepareCodexMetadataRepair(c *gin.Context, account *Account, body []byte, s
 		return
 	}
 	// handler 的同账号重试会重新调用 Forward，不能因此重生成缺省 turn ID。
-	sourceKey := sha256.Sum256([]byte(gjson.GetBytes(body, "client_metadata").Raw + "\x00" + sessionHint))
+	sourceKey := codexMetadataRepairSourceKey(c, account, body, sessionHint)
 	if previous != nil && previous.request == c.Request && previous.sourceKey == sourceKey {
 		c.Set(codexMetadataRepairContextKey, previous)
 		return
@@ -117,10 +118,53 @@ func prepareCodexMetadataRepair(c *gin.Context, account *Account, body []byte, s
 	c.Set(codexMetadataRepairContextKey, snapshot)
 }
 
+// 快照只按确实参与 metadata 构造的来源复用，不保存输入或凭据明文。
+// 模型/工具等业务兼容重试不影响回合；身份、租户或请求类型变化则必须重建。
+func codexMetadataRepairSourceKey(c *gin.Context, account *Account, body []byte, sessionHint string) [sha256.Size]byte {
+	source := codexAccountIdentitySource(c, account)
+	parts := []string{
+		gjson.GetBytes(body, "client_metadata").Raw,
+		sessionHint,
+		gjson.GetBytes(body, "prompt_cache_key").String(),
+		codexMetadataRepairRequestKind(body),
+		fmt.Sprint(getAPIKeyIDFromContext(c)),
+		codexAccountIdentityNamespace(source),
+		source.GetOpenAIDeviceID(),
+		string(source.GetCodexFingerprintMode()),
+	}
+	seed, _ := codexFingerprintSeed(source.Extra)
+	parts = append(parts, seed)
+	if c.Request != nil {
+		parts = append(parts, c.Request.Header.Get(openAIWSTurnMetadataHeader))
+		for _, identity := range codexMetadataRepairIdentity {
+			for _, alias := range identity.aliases {
+				parts = append(parts, c.Request.Header.Get(alias))
+			}
+		}
+	}
+	raw, _ := json.Marshal(parts)
+	return sha256.Sum256(raw)
+}
+
+// 仅从请求本身推导类型；客户端已经明确提供的类型由调用方保留。
+func codexMetadataRepairRequestKind(body []byte) string {
+	if gjson.GetBytes(body, "generate").Type == gjson.False {
+		return "prewarm"
+	}
+	if HasCompactionTriggerInInput(body) {
+		return "compaction"
+	}
+	return "turn"
+}
+
 // buildCodexMetadataRepair 的当前 body 优先于头；后续 WS 回合不复用握手的 turn
 // 或环境扩展值，仅把稳定会话头作为缺失身份来源。不伪造安装设备、sandbox 或客户端能力。
 func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, sessionHint string, firstTurn bool) *codexMetadataRepairSnapshot {
 	if c == nil || !account.IsCodexMetadataRepairEnabled() || isOpenAIResponsesCompactPath(c) {
+		return nil
+	}
+	// 缺少可靠账号 namespace 时保留旧路径，不能用未隔离的客户端身份覆盖旧会话头。
+	if codexAccountIdentityNamespace(codexAccountIdentitySource(c, account)) == "" {
 		return nil
 	}
 	cm := map[string]any{}
@@ -189,7 +233,7 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 			value = uuid.NewString() // 仅生成本请求的相关标识；不制造客户端设备/权限事实。
 		}
 		if value != "" {
-			if strings.ContainsAny(value, "\r\n\x00") {
+			if !httpguts.ValidHeaderFieldValue(value) {
 				return nil
 			}
 			turn[identity.field] = value
@@ -200,14 +244,7 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 		turn["turn_started_at_unix_ms"] = time.Now().UnixMilli()
 	}
 	if codexMetadataString(turn["request_kind"]) == "" {
-		switch {
-		case gjson.GetBytes(body, "generate").Type == gjson.False:
-			turn["request_kind"] = "prewarm"
-		case HasCompactionTriggerInInput(body):
-			turn["request_kind"] = "compaction"
-		default:
-			turn["request_kind"] = "turn"
-		}
+		turn["request_kind"] = codexMetadataRepairRequestKind(body)
 	}
 	// 只让原隔离器处理 identity 字段，不经其 float64 JSON 解码重写完整库存，
 	// 避免大整数精度丢失；当前请求的其余元数据保留 json.Number。

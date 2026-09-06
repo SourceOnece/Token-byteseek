@@ -2126,7 +2126,11 @@ func normalizeOpenAIWSHandshakeCompatibility(account *Account, headers http.Head
 	key.sessionIDHyphen = normalizeOpenAIWSStableIdentityHeader(headers, "session-id")
 	key.sessionIDUnderscore = normalizeOpenAIWSStableIdentityHeader(headers, "session_id")
 	key.threadID = normalizeOpenAIWSStableIdentityHeader(headers, "thread-id")
-	key.clientRequestID = normalizeOpenAIWSStableIdentityHeader(headers, "x-client-request-id")
+	// 仅未合并会话/线程时，修复后的 thread-id 才能替代请求追踪头的隔离职责。
+	// session/full 可能合并身份，继续保留旧追踪头约束，不能放宽跨用户连接复用。
+	if !key.metadataRepair || key.threadID == "" || mode == codexFingerprintSession || mode == codexFingerprintFull {
+		key.clientRequestID = normalizeOpenAIWSStableIdentityHeader(headers, "x-client-request-id")
+	}
 	key.codexWindowID = normalizeOpenAIWSStableIdentityHeader(headers, "x-codex-window-id")
 	return key
 }

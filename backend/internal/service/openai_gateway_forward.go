@@ -977,6 +977,9 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 		// 内部重试每次都会重建 request，必须重复应用与 body 相同的指纹 IDs。
 		applyCodexFingerprintHeaders(upstreamReq.Header, fingerprintIDs)
+		// 修复开启时 body 已使用不可变快照；旧指纹投影不能再次覆盖其回合身份。
+		// 关闭或无效快照时为 no-op，保留原指纹与 HTTP 重试行为。
+		stagedCodexMetadataRepair(c, account).applyHeaders(upstreamReq.Header)
 
 		proxyURL := ""
 		if account.ProxyID != nil && account.Proxy != nil {

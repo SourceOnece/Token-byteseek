@@ -32,6 +32,10 @@ OpenAI 兼容请求的显式粘性会话头按 `session-id`、`session_id`、`co
 
 批量编辑与其它字段一样先勾选“编辑该项”，再操作开启/关闭。默认未勾选，开关真正禁用且省略 `codex_metadata_repair_enabled`；勾选后开启写 true，关闭写 false，取消勾选即使留有草稿也不提交。仅目标类型全部为 OpenAI OAuth/Setup Token 时展示并提交；沿用原批量 extra 键级合并，不以整个账号 extra 对象覆盖其它配置。
 
+Metadata 的职责是补充有来源的元数据、纠正覆盖和共有身份不一致；它不替管理员选择指纹模式，也不修改模型、推理预算、工具、提示词、自动透传、请求整流器或错误重试策略。普通 HTTP 在旧指纹头投影之后恢复修复快照，避免两次独立派生的 turn ID 导致头体分裂。WS 连接池只在修复已有明确 `thread-id` 且未使用 session/full 收敛时，以该字段维护线程隔离，不重复把 `x-client-request-id` 作为硬条件；合并身份、没有明确线程或关闭修复时保留原检查，其它设备/会话/窗口、beta 和 TLS 隔离不变。开启前后的业务请求字段对照由 `openai_codex_metadata_compatibility_test.go` 验证；本地验证不能证明线上 overloaded/断流已经消失。
+
+快照复用键包含当前 metadata、会话提示、缓存键、请求类型、身份来源请求头、API Key ID、账号 namespace 与已配置指纹来源，仅保留 SHA-256，不记录凭据或提示词。业务兼容重试不重新生成回合，身份来源变化则重建快照。完整性修复缺少可信账号 namespace 时退回旧路径，避免未隔离身份覆盖原头；所有身份值按 HTTP header 合法性校验，包含其它控制字符时也不得写入。未接入此修复的账号探测、旧 Compact、API Key 与其它平台不扩大功能范围。
+
 <a id="openai_protocol_dispatch"></a>
 ## 协议与传输
 
