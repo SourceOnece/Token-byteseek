@@ -113,6 +113,10 @@ func TestCodexMetadataRepairDeviceFingerprintAndIsolation(t *testing.T) {
 			c.Request.Header.Set("session-id", "session-a")
 			snapshot := buildCodexMetadataRepair(c, a, []byte(`{"input":[]}`), "", true)
 			require.NotNil(t, snapshot)
+			if mode == "session" {
+				expected := resolveCodexFingerprintIDsFromRequest(a, c.Request.Header)
+				require.Equal(t, expected.threadID, snapshot.metadata["thread_id"], "线程必须从原始会话派生，不能先做账号隔离再二次派生")
+			}
 			turn := gjson.Parse(snapshot.headers.Get(openAIWSTurnMetadataHeader))
 			for _, identity := range codexMetadataRepairIdentity {
 				if v := turn.Get(identity.field).String(); v != "" {
@@ -135,12 +139,76 @@ func TestCodexMetadataRepairDeviceFingerprintAndIsolation(t *testing.T) {
 
 func TestCodexMetadataRepairCompactAndInvalidUntouched(t *testing.T) {
 	c, a := metadataRepairTestContext()
-	for _, body := range []string{`{"client_metadata":[]}`, `{"client_metadata":"bad"}`, `{"client_metadata":{"x-codex-turn-metadata":"bad"}}`, `{"client_metadata":{"large":"` + strings.Repeat("x", codexMetadataRepairMaxBytes) + `"}}`} {
+	for _, body := range []string{`{"client_metadata":[]}`, `{"client_metadata":"bad"}`, `{"client_metadata":{"x-codex-turn-metadata":"bad"}}`, `{"client_metadata":{"large":"` + strings.Repeat("x", codexMetadataRepairBodyMaxBytes) + `"}}`} {
 		require.Nil(t, buildCodexMetadataRepair(c, a, []byte(body), "", true))
 	}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/compact", nil)
 	prepareCodexMetadataRepair(c, a, []byte(`{}`), "")
 	require.Nil(t, stagedCodexMetadataRepair(c, a))
+}
+
+// 官方完整库存只放 body；非 ASCII、大整数和用户扩展不得因 header 投影而丢失。
+func TestCodexMetadataRepairOfficialProjection(t *testing.T) {
+	c, a := metadataRepairTestContext()
+	turn := map[string]any{"turn_id": "current", "agent_name": "鹈鹕🚲", "large_ordinal": json.Number("9007199254740993"), "tool_namespaces_info": map[string]any{"tools": strings.Repeat("tool", 6000)}}
+	raw, err := json.Marshal(turn)
+	require.NoError(t, err)
+	body, err := json.Marshal(map[string]any{"model": "gpt-6-astra", "client_metadata": map[string]any{openAIWSTurnMetadataHeader: string(raw)}})
+	require.NoError(t, err)
+	snapshot := buildCodexMetadataRepair(c, a, body, "", true)
+	require.NotNil(t, snapshot)
+	full := gjson.Parse(snapshot.metadata[openAIWSTurnMetadataHeader].(string))
+	header := snapshot.headers.Get(openAIWSTurnMetadataHeader)
+	require.True(t, full.Get("tool_namespaces_info").Exists())
+	require.False(t, gjson.Get(header, "tool_namespaces_info").Exists())
+	require.Equal(t, "鹈鹕🚲", full.Get("agent_name").String())
+	require.Equal(t, "9007199254740993", full.Get("large_ordinal").Raw)
+	require.Equal(t, "turn", full.Get("request_kind").String())
+	require.Equal(t, full.Get("turn_id").String(), gjson.Get(header, "turn_id").String())
+	for _, r := range header {
+		require.Less(t, r, rune(128))
+	}
+	for _, payload := range []map[string]any{{"input": []any{map[string]any{"type": "compaction_trigger"}}}, {"generate": false}} {
+		encoded, _ := json.Marshal(payload)
+		next := buildCodexMetadataRepair(c, a, encoded, "", true)
+		require.NotNil(t, next)
+		want := "compaction"
+		if payload["generate"] == false {
+			want = "prewarm"
+		}
+		require.Equal(t, want, gjson.Get(next.metadata[openAIWSTurnMetadataHeader].(string), "request_kind").String())
+	}
+}
+
+func TestCodexMetadataRepairOversizedCompatibilityHeader(t *testing.T) {
+	c, a := metadataRepairTestContext()
+	raw, _ := json.Marshal(map[string]any{"turn_id": "turn-a", "extension": strings.Repeat("x", codexMetadataRepairMaxBytes+50), "request_kind": "memory"})
+	body, _ := json.Marshal(map[string]any{"client_metadata": map[string]any{openAIWSTurnMetadataHeader: string(raw)}})
+	snapshot := buildCodexMetadataRepair(c, a, body, "", true)
+	require.NotNil(t, snapshot)
+	headers := http.Header{http.CanonicalHeaderKey(openAIWSTurnMetadataHeader): []string{"old"}}
+	snapshot.applyHeaders(headers)
+	require.Empty(t, headers.Get(openAIWSTurnMetadataHeader))
+	full := snapshot.metadata[openAIWSTurnMetadataHeader].(string)
+	require.Equal(t, "memory", gjson.Get(full, "request_kind").String())
+	require.Equal(t, codexMetadataRepairMaxBytes+50, len(gjson.Get(full, "extension").String()))
+	a.Extra[codexMetadataRepairExtraKey] = false
+	require.Nil(t, buildCodexMetadataRepair(c, a, body, "", true))
+}
+
+func TestCodexMetadataRepairPrewarmDoesNotMutateTurn(t *testing.T) {
+	c, a := metadataRepairTestContext()
+	snapshot := buildCodexMetadataRepair(c, a, []byte(`{"model":"gpt-6-astra"}`), "", true)
+	require.NotNil(t, snapshot)
+	original := map[string]any{}
+	snapshot.applyMap(original)
+	prewarm := map[string]any{"client_metadata": original["client_metadata"], "generate": false}
+	applyCodexMetadataPrewarmKind(a, prewarm)
+	require.Equal(t, "prewarm", gjson.Get(prewarm["client_metadata"].(map[string]any)[openAIWSTurnMetadataHeader].(string), "request_kind").String())
+	require.Equal(t, "turn", gjson.Get(original["client_metadata"].(map[string]any)[openAIWSTurnMetadataHeader].(string), "request_kind").String())
+	a.Extra[codexMetadataRepairExtraKey] = false
+	applyCodexMetadataPrewarmKind(a, original)
+	require.Equal(t, "turn", gjson.Get(original["client_metadata"].(map[string]any)[openAIWSTurnMetadataHeader].(string), "request_kind").String())
 }
 
 func TestCodexMetadataRepairHeaderSafetyAndPoolCompatibility(t *testing.T) {

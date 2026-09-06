@@ -12,6 +12,7 @@
 
 ## v0.1.278
 
+- [v0.1.278-bh.006：对齐官方 Codex metadata 投影](v0_1_278_bh_006.md)：请求体完整元数据与有界兼容头分离、请求类型和长流复现。读取时机：排查 overloaded/流终态及修改 metadata 时读取。
 - [v0.1.278-bh.005：测试站登录与 Astra 实测记录](v0_1_278_bh_005.md)：用户端页面、权限边界、临时测试 Key 和 gpt-6-astra 网关请求验证。读取时机：判断线上验证范围与 metadata 实际效果时读取。
 - [v0.1.278-bh.004：批量配置 Codex metadata 修复](v0_1_278_bh_004.md)：选中 OAuth/AT 账号的三态批量编辑及测试站部署检查。读取时机：批量更新 metadata 策略或复核 gpt-6-astra 测试边界时读取。
 - [v0.1.278-bh.003：账号级 Codex metadata 修复开关](v0_1_278_bh_003.md)：默认关闭的 OAuth metadata 完整性修复，覆盖 HTTP、WS 与兼容转换。读取时机：修改 OAuth 出站、metadata、账号设置或发布本功能时读取。

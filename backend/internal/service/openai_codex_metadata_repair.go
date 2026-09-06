@@ -3,9 +3,11 @@ package service
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf16"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -16,6 +18,9 @@ import (
 const codexMetadataRepairExtraKey = "codex_metadata_repair_enabled"
 const codexMetadataRepairContextKey = "codex_metadata_repair_snapshot"
 const codexMetadataRepairMaxBytes = 16 * 1024
+
+// 官方完整工具库存只在 body 承载，与兼容请求头分开限额。
+const codexMetadataRepairBodyMaxBytes = 256 * 1024
 
 // IsCodexMetadataRepairEnabled 只接受显式布尔 true，不改变存量账号或其它平台。
 // @project-doc docs/interfaces/openai_upstream.md#codex_metadata_repair
@@ -48,7 +53,7 @@ var codexMetadataRepairIdentity = []struct {
 }
 
 func codexMetadataObject(raw string) map[string]any {
-	if len(raw) == 0 || len(raw) > codexMetadataRepairMaxBytes {
+	if len(raw) == 0 || len(raw) > codexMetadataRepairBodyMaxBytes {
 		return nil
 	}
 	var value map[string]any
@@ -58,6 +63,28 @@ func codexMetadataObject(raw string) map[string]any {
 		return nil
 	}
 	return value
+}
+
+// 与官方 to_ascii_json_string 对齐，JSON 内的中文/非 BMP 字符用 Unicode 转义，
+// 避免不同 HTTP/WS header 实现对非 ASCII 的接受范围不同。
+func codexMetadataASCIIJSON(value any) ([]byte, error) {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	var result strings.Builder
+	result.Grow(len(raw))
+	for _, r := range string(raw) {
+		if r < 128 {
+			result.WriteByte(byte(r))
+		} else if r <= 0xffff {
+			fmt.Fprintf(&result, "\\u%04x", r)
+		} else {
+			hi, lo := utf16.EncodeRune(r)
+			fmt.Fprintf(&result, "\\u%04x\\u%04x", hi, lo)
+		}
+	}
+	return []byte(result.String()), nil
 }
 
 func codexMetadataString(value any) string {
@@ -117,7 +144,11 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 	if c.Request != nil {
 		headers = c.Request.Header
 	}
-	headerTurn := codexMetadataObject(headers.Get(openAIWSTurnMetadataHeader))
+	headerTurnRaw := headers.Get(openAIWSTurnMetadataHeader)
+	if len(headerTurnRaw) > codexMetadataRepairMaxBytes {
+		return nil
+	}
+	headerTurn := codexMetadataObject(headerTurnRaw)
 	if firstTurn && strings.TrimSpace(headers.Get(openAIWSTurnMetadataHeader)) != "" && headerTurn == nil {
 		return nil
 	}
@@ -168,24 +199,34 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 	if _, exists := turn["turn_started_at_unix_ms"]; !exists {
 		turn["turn_started_at_unix_ms"] = time.Now().UnixMilli()
 	}
-	turnJSON, err := json.Marshal(turn)
-	if err != nil || len(turnJSON) > codexMetadataRepairMaxBytes {
-		return nil
+	if codexMetadataString(turn["request_kind"]) == "" {
+		switch {
+		case gjson.GetBytes(body, "generate").Type == gjson.False:
+			turn["request_kind"] = "prewarm"
+		case HasCompactionTriggerInInput(body):
+			turn["request_kind"] = "compaction"
+		default:
+			turn["request_kind"] = "turn"
+		}
 	}
-	cm[openAIWSTurnMetadataHeader] = string(turnJSON)
+	// 只让原隔离器处理 identity 字段，不经其 float64 JSON 解码重写完整库存，
+	// 避免大整数精度丢失；当前请求的其余元数据保留 json.Number。
+	delete(cm, openAIWSTurnMetadataHeader)
 	container := map[string]any{"client_metadata": cm}
 	source := codexAccountIdentitySource(c, account)
+	rawSessionID := codexMetadataString(turn["session_id"])
 	applyCodexAccountIdentityClientMetadataMap(container, source, getAPIKeyIDFromContext(c))
+	applyCodexAccountIdentityFields(turn, source, getAPIKeyIDFromContext(c))
 	// 与已有收敛模式共存，但快照每回合只派生一次，最终头与体直接复用它。
 	clientHeaders := headers.Clone()
-	if session := codexMetadataString(turn["session_id"]); session != "" {
-		clientHeaders.Set("session-id", session)
+	if rawSessionID != "" {
+		clientHeaders.Set("session-id", rawSessionID)
 	}
-	applyCodexFingerprintClientMetadata(container, resolveCodexFingerprintIDsFromRequest(source, clientHeaders))
+	fingerprint := resolveCodexFingerprintIDsFromRequest(source, clientHeaders)
+	applyCodexFingerprintClientMetadata(container, fingerprint)
 	cm = container["client_metadata"].(map[string]any)
-	turn = codexMetadataObject(codexMetadataString(cm[openAIWSTurnMetadataHeader]))
-	if turn == nil {
-		return nil
+	if fingerprint != nil && fingerprint.mode != codexFingerprintDevice {
+		turn["turn_started_at_unix_ms"] = fingerprint.turnStartedAtUnixMs
 	}
 	outHeaders := make(http.Header)
 	for _, identity := range codexMetadataRepairIdentity {
@@ -202,16 +243,27 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 			}
 		}
 	}
-	turnJSON, err = json.Marshal(turn)
-	if err != nil || len(turnJSON) > codexMetadataRepairMaxBytes {
+	turnJSON, err := codexMetadataASCIIJSON(turn)
+	if err != nil || len(turnJSON) > codexMetadataRepairBodyMaxBytes {
 		return nil
 	}
 	cm[openAIWSTurnMetadataHeader] = string(turnJSON)
 	encoded, err := json.Marshal(cm)
-	if err != nil || len(encoded) > codexMetadataRepairMaxBytes {
+	if err != nil || len(encoded) > codexMetadataRepairBodyMaxBytes {
 		return nil
 	}
-	outHeaders.Set(openAIWSTurnMetadataHeader, string(turnJSON))
+	// 完整工具库存保持在 body，兼容 header 按官方投影省略该字段。
+	delete(turn, "tool_namespaces_info")
+	headerJSON, err := codexMetadataASCIIJSON(turn)
+	if err != nil {
+		return nil
+	}
+	if len(headerJSON) <= codexMetadataRepairMaxBytes {
+		outHeaders.Set(openAIWSTurnMetadataHeader, string(headerJSON))
+	} else {
+		// 不截断合法完整 body；空值表示最终移除超限的可选兼容头。
+		outHeaders.Set(openAIWSTurnMetadataHeader, "")
+	}
 	return &codexMetadataRepairSnapshot{accountID: account.ID, metadata: cm, headers: outHeaders}
 }
 
@@ -255,6 +307,34 @@ func (snapshot *codexMetadataRepairSnapshot) applyHeaders(headers http.Header) {
 				delete(headers, existing)
 			}
 		}
-		headers.Set(key, values[0])
+		if values[0] != "" {
+			headers.Set(key, values[0])
+		}
 	}
+}
+
+// 网关主动发送的预热不是用户 turn；只改派生副本，不污染后续真实请求快照。
+func applyCodexMetadataPrewarmKind(account *Account, payload map[string]any) {
+	if !account.IsCodexMetadataRepairEnabled() || payload == nil {
+		return
+	}
+	cm, ok := payload["client_metadata"].(map[string]any)
+	if !ok {
+		return
+	}
+	turn := codexMetadataObject(codexMetadataString(cm[openAIWSTurnMetadataHeader]))
+	if turn == nil {
+		return
+	}
+	turn["request_kind"] = "prewarm"
+	raw, err := codexMetadataASCIIJSON(turn)
+	if err != nil {
+		return
+	}
+	copyMetadata := make(map[string]any, len(cm))
+	for key, value := range cm {
+		copyMetadata[key] = value
+	}
+	copyMetadata[openAIWSTurnMetadataHeader] = string(raw)
+	payload["client_metadata"] = copyMetadata
 }
