@@ -27,6 +27,15 @@ func TestCodexMetadataRepairWSPrewarmCompatibility(t *testing.T) {
 					account.Extra[codexFingerprintModeExtraKey] = fingerprint
 					account.Extra[codexFingerprintSeedExtraKey] = "11111111-1111-4111-8111-111111111111"
 					account.Extra["openai_oauth_responses_websockets_v2_mode"] = mode
+					// 先投影同租户父请求，验证随机收敛下也不以原始父编号冒充出站编号。
+					parentC, _ := metadataRepairTestContext()
+					parentThread, parentTurn := "parent-"+t.Name(), "parent-turn-"+t.Name()
+					parentBody, _ := json.Marshal(map[string]any{"client_metadata": map[string]any{"session_id": parentThread, "thread_id": parentThread, "turn_id": parentTurn}})
+					parent := buildCodexMetadataRepair(parentC, account, parentBody, "", true)
+					if parent != nil {
+						_, parentErr := parent.applyRaw(parentBody)
+						require.NoError(t, parentErr)
+					}
 					cfg := newOpenAIWSV2TestConfig()
 					cfg.Gateway.OpenAIWS.ModeRouterV2Enabled = true
 					cfg.Gateway.OpenAIWS.MaxConnsPerAccount = 1
@@ -71,12 +80,14 @@ func TestCodexMetadataRepairWSPrewarmCompatibility(t *testing.T) {
 					headers.Set("x-client-request-id", "stable-thread")
 					headers.Set("x-codex-window-id", "stable-window")
 					headers.Set("User-Agent", "codex-tui/0.144.1")
+					headers.Set(codexParentThreadIDHeader, parentThread)
+					headers.Set(openAISubagentHeader, "collab_spawn")
 					headers.Set(openAIWSTurnMetadataHeader, `{"request_kind":"prewarm","installation_id":"stable-installation","session_id":"stable-session","thread_id":"stable-thread"}`)
 					client, _, err := coderws.Dial(ctx, "ws"+strings.TrimPrefix(server.URL, "http"), &coderws.DialOptions{HTTPHeader: headers})
 					require.NoError(t, err)
 					defer client.CloseNow()
 					for index, kind := range []string{"prewarm", "turn"} {
-						metadata, _ := json.Marshal(map[string]any{"request_kind": kind, "installation_id": "stable-installation", "session_id": "stable-session", "thread_id": "stable-thread", "turn_id": fmt.Sprintf("turn-%d", index), "tool_namespaces_info": map[string]any{"tools": []any{}}})
+						metadata, _ := json.Marshal(map[string]any{"request_kind": kind, "installation_id": "stable-installation", "session_id": "stable-session", "thread_id": "stable-thread", "turn_id": fmt.Sprintf("turn-%d", index), "parent_thread_id": parentThread, "parent_turn_id": parentTurn, "subagent_kind": "collab_spawn", "tool_namespaces_info": map[string]any{"tools": []any{}}})
 						body := map[string]any{"type": "response.create", "model": "gpt-6-astra", "instructions": "Synthetic test", "store": false, "input": []any{map[string]any{"role": "user", "content": "test"}}, "client_metadata": map[string]any{"installation_id": "stable-installation", "session_id": "stable-session", "thread_id": "stable-thread", openAIWSTurnMetadataHeader: string(metadata)}}
 						if index == 0 {
 							body["generate"] = false
@@ -101,6 +112,19 @@ func TestCodexMetadataRepairWSPrewarmCompatibility(t *testing.T) {
 					}
 					if mode == OpenAIWSIngressModeCtxPool {
 						require.Equal(t, 1, dialer.DialCount(), "预热和正常回合复用同一上游连接")
+					}
+					if enabled {
+						var finalBody []byte
+						if mode == OpenAIWSIngressModeHTTPBridge {
+							finalBody = upstream.lastBody
+							require.Equal(t, parent.metadata["thread_id"], upstream.lastReq.Header.Get(codexParentThreadIDHeader))
+						} else {
+							finalBody = []byte(requestToJSONString(conn.lastWrite))
+						}
+						value := gjson.Parse(gjson.GetBytes(finalBody, "client_metadata.x-codex-turn-metadata").String())
+						require.Equal(t, parent.metadata["thread_id"], value.Get("parent_thread_id").String())
+						require.Equal(t, parent.metadata["turn_id"], value.Get("parent_turn_id").String())
+						require.Equal(t, "collab_spawn", value.Get("subagent_kind").String())
 					}
 				})
 			}

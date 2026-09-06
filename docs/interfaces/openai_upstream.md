@@ -36,6 +36,10 @@ Metadata 的职责是补充有来源的元数据、纠正覆盖和共有身份�
 
 快照复用键包含当前 metadata、会话提示、缓存键、请求类型、身份来源请求头、API Key ID、账号 namespace 与已配置指纹来源，仅保留 SHA-256，不记录凭据或提示词。业务兼容重试不重新生成回合，身份来源变化则重建快照。完整性修复缺少可信账号 namespace 时退回旧路径，避免未隔离身份覆盖原头；所有身份值按 HTTP header 合法性校验，包含其它控制字符时也不得写入。未接入此修复的账号探测、旧 Compact、API Key 与其它平台不扩大功能范围。
 
+修复开启时，`x-codex-parent-thread-id` 与 `x-openai-subagent` 从当前内嵌元数据、flat 兼容字段及首轮请求头依序收集，生成对应兼容头和 body 字段；后续 WS 帧不从旧握手补造父子回合关系。`parent_thread_id`/`forked_from_thread_id` 与 thread 使用同一隔离规则，`parent_turn_id`/`root_turn_id` 与 turn 使用同一隔离规则。off/device 的确定性隔离直接推导；session/full 只采用同凭据 namespace、同 API Key、同指纹来源分区内已知的映射。映射上限 32768、有效期一小时、受互斥锁保护，键为 SHA-256、值仅为出站 ID；歧义、过期、其它实例或未知映射时省略可选关联，不把原始 ID 或其它账号的值当作正确引用。这个进程内映射只辅助元数据，不参与权限、粘性调度或 `previous_response_id` 续接。WS pool 对父线程/子代理兼容头按开关添加硬兼容约束，避免复用携带不同关系的旧握手。
+
+`request_kind=memory` 的内嵌完整对象及 metadata header 不补 installation/session/thread/agent/window/window_number/context_window_id；已有显式 turn 按账号隔离保留，缺失则不生成、不从旧握手补造，当前 body 未提供的时间也不从握手沿用。flat 兼容身份仍保留原账号隔离；不改变 `input`、工具、模型、实际 Memory 业务或指纹模式。关闭原 Metadata 开关时，上述子代理/Memory 处理均不执行。
+
 <a id="openai_protocol_dispatch"></a>
 ## 协议与传输
 

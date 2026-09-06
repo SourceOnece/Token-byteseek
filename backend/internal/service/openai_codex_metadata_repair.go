@@ -40,6 +40,7 @@ type codexMetadataRepairSnapshot struct {
 	sourceKey [32]byte
 	metadata  map[string]any
 	headers   http.Header
+	lineage   []codexMetadataLineageBinding
 }
 
 var codexMetadataRepairIdentity = []struct {
@@ -141,6 +142,11 @@ func codexMetadataRepairSourceKey(c *gin.Context, account *Account, body []byte,
 				parts = append(parts, c.Request.Header.Get(alias))
 			}
 		}
+		for _, field := range codexMetadataLineageFields {
+			for _, alias := range field.aliases {
+				parts = append(parts, c.Request.Header.Get(alias))
+			}
+		}
 	}
 	raw, _ := json.Marshal(parts)
 	return sha256.Sum256(raw)
@@ -205,6 +211,17 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 	for key, value := range bodyTurn {
 		turn[key] = value
 	}
+	lineage, valid := collectCodexMetadataLineage(cm, bodyTurn, headerTurn, headers, firstTurn)
+	if !valid {
+		return nil
+	}
+	memory := codexMetadataString(turn["request_kind"]) == "memory"
+	// Memory 不从握手或 flat 生成嵌套回合身份，显式提供的 turn 仍保留。
+	explicitMemoryTurn := codexMetadataString(bodyTurn["turn_id"])
+	if bodyTurnRaw == "" && firstTurn {
+		explicitMemoryTurn = codexMetadataString(headerTurn["turn_id"])
+	}
+	rawIdentity := make(map[string]string)
 	for _, identity := range codexMetadataRepairIdentity {
 		value := codexMetadataString(bodyTurn[identity.field])
 		for _, alias := range identity.aliases {
@@ -212,7 +229,7 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 				value = codexMetadataString(cm[alias])
 			}
 		}
-		if value == "" && (firstTurn || identity.field != "turn_id") {
+		if value == "" && (firstTurn || identity.field != "turn_id") && !(memory && identity.field == "turn_id") {
 			value = codexMetadataString(headerTurn[identity.field])
 			for _, alias := range identity.aliases {
 				if value == "" {
@@ -229,7 +246,7 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 				value = strings.TrimSpace(gjson.GetBytes(body, "prompt_cache_key").String())
 			}
 		}
-		if value == "" && identity.field == "turn_id" {
+		if value == "" && identity.field == "turn_id" && !memory {
 			value = uuid.NewString() // 仅生成本请求的相关标识；不制造客户端设备/权限事实。
 		}
 		if value != "" {
@@ -238,9 +255,10 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 			}
 			turn[identity.field] = value
 			cm[identity.aliases[0]] = value
+			rawIdentity[identity.field] = value
 		}
 	}
-	if _, exists := turn["turn_started_at_unix_ms"]; !exists {
+	if _, exists := turn["turn_started_at_unix_ms"]; !exists && !memory {
 		turn["turn_started_at_unix_ms"] = time.Now().UnixMilli()
 	}
 	if codexMetadataString(turn["request_kind"]) == "" {
@@ -262,7 +280,7 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 	fingerprint := resolveCodexFingerprintIDsFromRequest(source, clientHeaders)
 	applyCodexFingerprintClientMetadata(container, fingerprint)
 	cm = container["client_metadata"].(map[string]any)
-	if fingerprint != nil && fingerprint.mode != codexFingerprintDevice {
+	if fingerprint != nil && fingerprint.mode != codexFingerprintDevice && !memory {
 		turn["turn_started_at_unix_ms"] = fingerprint.turnStartedAtUnixMs
 	}
 	outHeaders := make(http.Header)
@@ -277,6 +295,49 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 			// 保留原字段名，同时修正已存在的别名；不扩散多余 body 属性。
 			if _, exists := cm[alias]; exists {
 				cm[alias] = value
+			}
+		}
+	}
+	projectCodexMetadataLineage(cm, turn, outHeaders, lineage, source, getAPIKeyIDFromContext(c), fingerprint)
+	var bindings []codexMetadataLineageBinding
+	if fingerprint != nil && fingerprint.mode != codexFingerprintDevice && !memory {
+		for _, field := range []struct{ name, kind string }{{"thread_id", "thread"}, {"turn_id", "turn"}} {
+			if raw, final := rawIdentity[field.name], codexMetadataString(turn[field.name]); raw != "" && final != "" {
+				bindings = append(bindings, codexMetadataLineageBinding{key: codexMetadataLineageKey(source, getAPIKeyIDFromContext(c), field.kind, raw), value: final})
+			}
+		}
+	}
+	if memory {
+		// 官方 Memory 完整对象无这些线程身份，flat 兼容值和既有隔离仍保留。
+		for _, field := range []string{"installation_id", "session_id", "thread_id", "agent_name", "window_id", "window_number", "context_window_id"} {
+			delete(turn, field)
+		}
+		if explicitMemoryTurn == "" {
+			delete(turn, "turn_id")
+			// flat 的显式 turn 可保留隔离值，但不得向完整对象补造或输出随机值。
+			if raw := rawIdentity["turn_id"]; raw != "" {
+				cm["turn_id"] = scopeCodexAccountIdentityValue(source, getAPIKeyIDFromContext(c), "turn", raw)
+				outHeaders.Set("turn_id", cm["turn_id"].(string))
+				outHeaders.Set("turn-id", cm["turn_id"].(string))
+			} else {
+				delete(cm, "turn_id")
+				delete(cm, "turn-id")
+				outHeaders.Set("turn_id", "")
+				outHeaders.Set("turn-id", "")
+			}
+		} else {
+			turn["turn_id"] = scopeCodexAccountIdentityValue(source, getAPIKeyIDFromContext(c), "turn", explicitMemoryTurn)
+			cm["turn_id"] = turn["turn_id"]
+			outHeaders.Set("turn_id", turn["turn_id"].(string))
+			outHeaders.Set("turn-id", turn["turn_id"].(string))
+		}
+		if _, exists := cm["turn-id"]; exists {
+			cm["turn-id"] = cm["turn_id"]
+		}
+		// 当前 Memory blob 未提供时间时，不从旧握手继承另一个回合的时间。
+		if bodyTurnRaw != "" {
+			if _, exists := bodyTurn["turn_started_at_unix_ms"]; !exists {
+				delete(turn, "turn_started_at_unix_ms")
 			}
 		}
 	}
@@ -301,7 +362,7 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 		// 不截断合法完整 body；空值表示最终移除超限的可选兼容头。
 		outHeaders.Set(openAIWSTurnMetadataHeader, "")
 	}
-	return &codexMetadataRepairSnapshot{accountID: account.ID, metadata: cm, headers: outHeaders}
+	return &codexMetadataRepairSnapshot{accountID: account.ID, metadata: cm, headers: outHeaders, lineage: bindings}
 }
 
 func stagedCodexMetadataRepair(c *gin.Context, account *Account) *codexMetadataRepairSnapshot {
@@ -321,7 +382,11 @@ func (snapshot *codexMetadataRepairSnapshot) applyRaw(body []byte) ([]byte, erro
 	if snapshot == nil {
 		return body, nil
 	}
-	return sjson.SetBytes(body, "client_metadata", snapshot.metadata)
+	out, err := sjson.SetBytes(body, "client_metadata", snapshot.metadata)
+	if err == nil {
+		snapshot.rememberLineage()
+	}
+	return out, err
 }
 
 func (snapshot *codexMetadataRepairSnapshot) applyMap(body map[string]any) {
@@ -331,6 +396,7 @@ func (snapshot *codexMetadataRepairSnapshot) applyMap(body map[string]any) {
 	// 深复制防止后续兼容转换原地写入而污染重试快照。
 	raw, _ := json.Marshal(snapshot.metadata)
 	body["client_metadata"] = codexMetadataObject(string(raw))
+	snapshot.rememberLineage()
 }
 
 func (snapshot *codexMetadataRepairSnapshot) applyHeaders(headers http.Header) {

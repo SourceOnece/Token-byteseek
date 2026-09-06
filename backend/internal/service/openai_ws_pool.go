@@ -82,6 +82,8 @@ type openAIWSAcquireRequest struct {
 
 type openAIWSHandshakeCompatibilityKey struct {
 	metadataRepair      bool
+	parentThreadID      string
+	subagentKind        string
 	betaFeatures        string
 	codexInstallationID string
 	sessionIDHyphen     string
@@ -2116,6 +2118,11 @@ func normalizeOpenAIWSHandshakeCompatibility(account *Account, headers http.Head
 		metadataRepair: account.IsCodexMetadataRepairEnabled(),
 	}
 	mode := activeCodexFingerprintMode(account)
+	if key.metadataRepair {
+		// 已建立的握手不能把另一种子代理或父线程的兼容头带给当前请求。
+		key.parentThreadID = normalizeOpenAIWSStableIdentityHeader(headers, codexParentThreadIDHeader)
+		key.subagentKind = normalizeOpenAIWSStableIdentityHeader(headers, openAISubagentHeader)
+	}
 	if mode == codexFingerprintOff && !key.metadataRepair {
 		return key
 	}
