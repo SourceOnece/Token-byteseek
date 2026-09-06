@@ -30,6 +30,8 @@ OpenAI 兼容请求的显式粘性会话头按 `session-id`、`session_id`、`co
 
 没有可信设备/线程/环境信息时不伪造；缺失 turn ID 只生成请求相关 ID 和起始时间。非法或超过 16 KiB 的 metadata 小对象保留原处理，不截断成假完整值；写入身份头前拒绝 CR/LF/NUL 并移除重复大小写变体。旧 `/responses/compact` 不参与。开关与 OAuth 自动透传独立，不修改权限、计费和模型映射；已建立 WS 使用其账号快照，改开关后应新建会话验证。连接池兼容键隔离开关状态和修复后的稳定身份，但不包含每轮 turn ID；WS 握手只发生在建连时，后续回合使用当前 payload metadata。此功能修复元数据缺失/覆盖/不一致，不保证消除真实上游容量过载。
 
+批量编辑提供“不修改 / 开启 / 关闭”，仅目标类型全部为 OpenAI OAuth/Setup Token 时展示并提交。不修改省略 `codex_metadata_repair_enabled`，开启写 true，关闭写 false；沿用原批量 extra 键级合并，不以整个账号 extra 对象覆盖其它配置。
+
 <a id="openai_protocol_dispatch"></a>
 ## 协议与传输
 

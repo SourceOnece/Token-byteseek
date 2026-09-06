@@ -150,6 +150,67 @@ describe('BulkEditAccountModal', () => {
     vi.mocked(adminAPI.tlsFingerprintRouters.list).mockResolvedValue([])
   })
 
+  // 不修改不是关闭；只提交本次选中的键，避免整份 extra 覆盖账号已有策略。
+  it('metadata 默认不修改，编辑其它项不会写入 metadata', async () => {
+    const wrapper = mountModal({ selectedPlatforms: ['openai'], selectedTypes: ['oauth'] })
+    expect(wrapper.get<HTMLSelectElement>('[data-testid="bulk-codex-metadata-repair"]').element.value).toBe('keep')
+    await wrapper.get('#bulk-edit-status-enabled').setValue(true)
+    await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith([1, 2], { status: 'active' })
+  })
+
+  it.each([['enable', true], ['disable', false]])('仅配置 metadata %s 也能提交，关闭显式写 false', async (action, value) => {
+    const wrapper = mountModal({ selectedPlatforms: ['openai'], selectedTypes: ['oauth', 'setup-token'] })
+    await wrapper.get('[data-testid="bulk-codex-metadata-repair"]').setValue(action)
+    await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith([1, 2], { extra: { codex_metadata_repair_enabled: value } })
+  })
+
+  it('metadata 不修改单独提交不产生写请求', async () => {
+    const wrapper = mountModal({ selectedPlatforms: ['openai'], selectedTypes: ['oauth'] })
+    await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(adminAPI.accounts.bulkUpdate).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { selectedPlatforms: ['openai'], selectedTypes: ['oauth', 'apikey'] },
+    { selectedPlatforms: ['openai', 'anthropic'], selectedTypes: ['oauth'] },
+    { selectedPlatforms: [], selectedTypes: [] }
+  ])('不合格或不完整目标不显示 metadata 编辑', (selection) => {
+    expect(mountModal(selection).find('[data-testid="bulk-codex-metadata-repair"]').exists()).toBe(false)
+  })
+
+  it('重开批量弹窗恢复 metadata 不修改', async () => {
+    const wrapper = mountModal({ selectedPlatforms: ['openai'], selectedTypes: ['oauth'] })
+    await wrapper.get('[data-testid="bulk-codex-metadata-repair"]').setValue('enable')
+    await wrapper.setProps({ show: false })
+    await wrapper.setProps({ show: true })
+    expect(wrapper.get<HTMLSelectElement>('[data-testid="bulk-codex-metadata-repair"]').element.value).toBe('keep')
+  })
+
+  it('筛选目标三态仍通过原 filters 接口提交且不新增账号', async () => {
+    const wrapper = mountModal({ accountIds: [], target: { mode: 'filtered', filters: { platform: 'openai', type: 'oauth' }, previewCount: 3, selectedPlatforms: ['openai'], selectedTypes: ['oauth'] } })
+    await wrapper.get('[data-testid="bulk-codex-metadata-repair"]').setValue('disable')
+    await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith({ filters: { platform: 'openai', type: 'oauth' }, extra: { codex_metadata_repair_enabled: false } })
+  })
+
+  it('筛选范围变成混选后不把残留 metadata 草稿提交给其它类型', async () => {
+    const target = { mode: 'filtered', filters: { platform: 'openai', type: 'oauth' }, previewCount: 3, selectedPlatforms: ['openai'], selectedTypes: ['oauth'] }
+    const wrapper = mountModal({ accountIds: [], target })
+    await wrapper.get('[data-testid="bulk-codex-metadata-repair"]').setValue('enable')
+    await wrapper.setProps({ target: { ...target, selectedTypes: ['oauth', 'apikey'] } } as any)
+    await wrapper.get('#bulk-edit-status-enabled').setValue(true)
+    await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+    const payload = vi.mocked(adminAPI.accounts.bulkUpdate).mock.calls[0][0] as any
+    expect(payload.extra).toBeUndefined()
+  })
+
   it('批量编辑打开时，相同模型白名单会回填到选择器', async () => {
     vi.mocked(adminAPI.accounts.getById)
       .mockResolvedValueOnce(createAccount({
