@@ -30,7 +30,7 @@ OpenAI 兼容请求的显式粘性会话头按 `session-id`、`session_id`、`co
 
 没有可信设备/线程/环境信息时不伪造；缺失 turn ID 只生成请求相关 ID 和起始时间。缺失 `request_kind` 根据真实请求选择 `turn`、`prewarm`（generate=false）或 `compaction`（input 中有 compaction_trigger），已有请求类型保持；网关主动预热只在副本中改为 prewarm。完整来源是 body 的 `client_metadata["x-codex-turn-metadata"]`，兼容 header 排除 `tool_namespaces_info`，共有身份字段一致但整个 JSON 不要求相同，未知字段/大整数保持。JSON 采用 ASCII Unicode 转义。完整 metadata 安全上限 256 KiB，header 上限 16 KiB；前者超限/非法保留原处理，header 投影超限则只省略该可选头、保留合法完整 body。写入身份头前拒绝 CR/LF/NUL 并移除重复大小写变体。旧 `/responses/compact` 不参与。开关与 OAuth 自动透传独立，不修改权限、计费和模型映射；已建立 WS 使用其账号快照，改开关后应新建会话验证。连接池兼容键隔离开关状态和修复后的稳定身份，但不包含每轮 turn ID；WS 握手只发生在建连时，后续回合使用当前 payload metadata。此功能修复元数据缺失/覆盖/不一致，不保证消除真实上游容量过载。
 
-批量编辑提供“不修改 / 开启 / 关闭”，仅目标类型全部为 OpenAI OAuth/Setup Token 时展示并提交。不修改省略 `codex_metadata_repair_enabled`，开启写 true，关闭写 false；沿用原批量 extra 键级合并，不以整个账号 extra 对象覆盖其它配置。
+批量编辑与其它字段一样先勾选“编辑该项”，再操作开启/关闭。默认未勾选，开关真正禁用且省略 `codex_metadata_repair_enabled`；勾选后开启写 true，关闭写 false，取消勾选即使留有草稿也不提交。仅目标类型全部为 OpenAI OAuth/Setup Token 时展示并提交；沿用原批量 extra 键级合并，不以整个账号 extra 对象覆盖其它配置。
 
 <a id="openai_protocol_dispatch"></a>
 ## 协议与传输

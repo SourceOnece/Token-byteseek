@@ -1069,19 +1069,26 @@
         </p>
       </div>
 
-      <!-- 三态批量策略默认不修改，关闭必须明确提交 false，不能省略键。 -->
+      <!-- 与其它批量项一致：先勾选编辑，未勾选禁用控件且不提交该字段。 -->
       <div v-if="allCodexMetadataRepairCapable" class="bh-policy-section p-4" data-testid="bulk-codex-metadata-repair-card">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div class="min-w-0 flex-1">
-            <label for="bulk-codex-metadata-repair-trigger" class="input-label mb-0">{{ t('admin.accounts.openai.codexMetadataRepair') }}</label>
-            <p id="bulk-codex-metadata-repair-hint" class="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-300">{{ t('admin.accounts.openai.codexMetadataRepairBulkDesc') }}</p>
-          </div>
-          <div class="w-full shrink-0 sm:w-44">
-            <Select
-              v-model="codexMetadataRepairAction"
-              :options="codexMetadataRepairOptions"
-              :disabled="submitting"
-              id="bulk-codex-metadata-repair-trigger"
+        <div class="mb-3 flex items-center justify-between gap-4">
+          <label for="bulk-edit-codex-metadata-repair-enabled" class="input-label mb-0">{{ t('admin.accounts.openai.codexMetadataRepair') }}</label>
+          <input
+            id="bulk-edit-codex-metadata-repair-enabled"
+            v-model="enableCodexMetadataRepair"
+            type="checkbox"
+            :disabled="submitting"
+            aria-controls="bulk-edit-codex-metadata-repair-body"
+            class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div id="bulk-edit-codex-metadata-repair-body" :class="!enableCodexMetadataRepair && 'pointer-events-none opacity-50'">
+          <p id="bulk-codex-metadata-repair-hint" class="mb-3 text-xs leading-relaxed text-gray-600 dark:text-gray-300">{{ t('admin.accounts.openai.codexMetadataRepairBulkDesc') }}</p>
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ t(codexMetadataRepairEnabled ? 'common.enabled' : 'common.disabled') }}</span>
+            <Toggle
+              v-model="codexMetadataRepairEnabled"
+              :disabled="!enableCodexMetadataRepair || submitting"
               data-testid="bulk-codex-metadata-repair"
               :aria-label="t('admin.accounts.openai.codexMetadataRepair')"
               aria-describedby="bulk-codex-metadata-repair-hint"
@@ -2005,16 +2012,15 @@ const autoPause5hDisabled = ref(false)
 const autoPause7dDisabled = ref(false)
 type CodexFingerprintMode = 'off' | 'device' | 'session' | 'full'
 const enableCodexFingerprintMode = ref(false)
-const codexMetadataRepairAction = ref<'keep' | 'enable' | 'disable'>('keep')
-const codexMetadataRepairOptions = computed(() => [
-  { value: 'keep', label: t('admin.accounts.openai.codexMetadataRepairKeep') },
-  { value: 'enable', label: t('admin.accounts.openai.codexMetadataRepairEnable') },
-  { value: 'disable', label: t('admin.accounts.openai.codexMetadataRepairDisable') }
-])
+const enableCodexMetadataRepair = ref(false)
+const codexMetadataRepairEnabled = ref(false)
 // 筛选对象变化不总会触发旧 resetForm watcher，仅清理本字段避免跨范围沿用选择。
 watch(
   () => [targetMode.value, JSON.stringify(props.target?.filters ?? {}), targetSelectedPlatforms.value.join(','), targetSelectedTypes.value.join(',')],
-  () => { codexMetadataRepairAction.value = 'keep' }
+  () => {
+    enableCodexMetadataRepair.value = false
+    codexMetadataRepairEnabled.value = false
+  }
 )
 const codexFingerprintMode = ref<CodexFingerprintMode>('off')
 const codexFingerprintModeOptions = computed(() => [
@@ -2619,9 +2625,9 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     extra.codex_fingerprint_mode = codexFingerprintMode.value
   }
 
-  if (allCodexMetadataRepairCapable.value && codexMetadataRepairAction.value !== 'keep') {
+  if (allCodexMetadataRepairCapable.value && enableCodexMetadataRepair.value) {
     // JSONB merge 下 false 才能关闭已有 true；不修改态不得覆盖其它账号配置。
-    ensureExtra().codex_metadata_repair_enabled = codexMetadataRepairAction.value === 'enable'
+    ensureExtra().codex_metadata_repair_enabled = codexMetadataRepairEnabled.value
   }
 
   if (enableOpenAICompactMode.value) {
@@ -2748,7 +2754,7 @@ const handleSubmit = async () => {
     enableAutoPause7dDisabled.value ||
     enableTLSFingerprint.value ||
     enableCodexFingerprintMode.value ||
-    (allCodexMetadataRepairCapable.value && codexMetadataRepairAction.value !== 'keep') ||
+    (allCodexMetadataRepairCapable.value && enableCodexMetadataRepair.value) ||
     enableOpenAICompactMode.value ||
     enableOpenAINativeCompactionV2Mode.value ||
     enableOpenAICompactModelMapping.value ||
@@ -2924,7 +2930,8 @@ const resetBulkEditFormState = () => {
   autoPause5hDisabled.value = false
   autoPause7dDisabled.value = false
   codexFingerprintMode.value = 'off'
-  codexMetadataRepairAction.value = 'keep'
+  enableCodexMetadataRepair.value = false
+  codexMetadataRepairEnabled.value = false
   openAICompactMode.value = 'auto'
   openAINativeCompactionV2Mode.value = 'auto'
   openAICompactModelMappings.value = []
