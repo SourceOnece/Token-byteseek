@@ -1811,6 +1811,45 @@ describe("admin SettingsView payment visible method controls", () => {
     }
   });
 
+  // 新增时区只影响预设列表；默认、规则内容与既有保存回显契约均保持。
+  it("offers Asia/Taipei for both dynamic replacement rules without changing defaults", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    await openGatewayTab(wrapper);
+    const card = wrapper.get('[data-testid="gateway-card-user-prompt-replacement"]');
+    const timezones = card.findAllComponents(SelectStub).filter((select) =>
+      (select.props("options") as Array<{ value: string }>).some((option) => option.value === "Asia/Taipei"),
+    );
+    expect(timezones).toHaveLength(2);
+    const patterns = card.findAll("textarea").map((input) => input.element.value);
+    for (const timezone of timezones) {
+      expect(timezone.props("modelValue")).toBe("Asia/Tokyo");
+      timezone.vm.$emit("update:modelValue", "Asia/Taipei");
+    }
+    await wrapper.get("form").trigger("submit.prevent");
+    await flushPromises();
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    const config = updateSettings.mock.calls[0][0].user_prompt_replacement_config;
+    expect(config.rules).toHaveLength(2);
+    expect(config.rules.map((rule: { timezone: string }) => rule.timezone)).toEqual(["Asia/Taipei", "Asia/Taipei"]);
+    expect(config.rules.map((rule: { pattern: string }) => rule.pattern)).toEqual(patterns);
+    expect(config.rules.map((rule: { replacement_type: string }) => rule.replacement_type)).toEqual(["timezone_name", "current_time"]);
+    expect(config.rules.every((rule: { scope: string; target_group: number }) => rule.scope === "environment_context" && rule.target_group === 2)).toBe(true);
+    expect(config.rules[1].time_format).toBe("2006-01-02");
+    wrapper.unmount();
+
+    getSettings.mockResolvedValue({ ...baseSettingsResponse, user_prompt_replacement_config: config });
+    const reopened = mountView();
+    await flushPromises();
+    await openGatewayTab(reopened);
+    const restored = reopened.get('[data-testid="gateway-card-user-prompt-replacement"]').findAllComponents(SelectStub).filter((select) =>
+      (select.props("options") as Array<{ value: string }>).some((option) => option.value === "Asia/Taipei"),
+    );
+    expect(restored).toHaveLength(2);
+    expect(restored.every((select) => select.props("modelValue") === "Asia/Taipei")).toBe(true);
+    reopened.unmount();
+  });
+
   it("shows the representative cards for each gateway platform section", async () => {
     const wrapper = mountView();
 

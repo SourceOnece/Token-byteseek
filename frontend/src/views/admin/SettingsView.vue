@@ -10277,6 +10277,8 @@ const userPromptReplacementTypeOptions = computed(() => [
 
 const userPromptReplacementTimezoneOptions = [
   { value: "Asia/Tokyo", label: "Asia/Tokyo" },
+  // 台北时区作为可选预设；不改变默认规则或已经保存的目标时区。
+  { value: "Asia/Taipei", label: "Asia/Taipei" },
   { value: "Asia/Shanghai", label: "Asia/Shanghai" },
   { value: "UTC", label: "UTC" },
   { value: "America/Los_Angeles", label: "America/Los_Angeles" },
