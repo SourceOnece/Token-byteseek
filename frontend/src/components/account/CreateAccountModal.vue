@@ -3479,6 +3479,21 @@
         </div>
       </div>
 
+      <!-- 独立 opt-in，默认关闭，不与透传或指纹收敛开关绑定。 -->
+      <div
+        v-if="form.platform === 'openai' && accountCategory === 'oauth-based'"
+        class="bh-policy-section p-4"
+        data-testid="create-codex-metadata-repair-card"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <label for="create-codex-metadata-repair" class="input-label mb-0">{{ t('admin.accounts.openai.codexMetadataRepair') }}</label>
+            <p id="create-codex-metadata-repair-hint" class="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-300">{{ t('admin.accounts.openai.codexMetadataRepairDesc') }}</p>
+          </div>
+          <Toggle id="create-codex-metadata-repair" v-model="codexMetadataRepairEnabled" data-testid="create-codex-metadata-repair" :aria-label="t('admin.accounts.openai.codexMetadataRepair')" aria-describedby="create-codex-metadata-repair-hint" />
+        </div>
+      </div>
+
       <!-- Codex 指纹收敛模式（仅 OpenAI OAuth） -->
       <div
         v-if="form.platform === 'openai' && accountCategory === 'oauth-based'"
@@ -4696,6 +4711,7 @@ const codexCLIOnlyAllowClaudeCodeEnabled = ref(false)
 const openAIOAuthClientPolicy = ref<OpenAIOAuthClientPolicy>('any')
 type CodexFingerprintMode = 'off' | 'device' | 'session' | 'full'
 const codexFingerprintMode = ref<CodexFingerprintMode>('off')
+const codexMetadataRepairEnabled = ref(false)
 const codexFingerprintModeOptions = computed(() => [
   { value: 'off' as CodexFingerprintMode, label: t('admin.accounts.openai.codexFingerprintOff') },
   { value: 'device' as CodexFingerprintMode, label: t('admin.accounts.openai.codexFingerprintDevice') },
@@ -5943,6 +5959,7 @@ const resetForm = () => {
   codexCLIOnlyAllowClaudeCodeEnabled.value = false
   openAIOAuthClientPolicy.value = 'any'
   codexFingerprintMode.value = 'off'
+  codexMetadataRepairEnabled.value = false
   anthropicPassthroughEnabled.value = false
   anthropicAPIKeyAuthScheme.value = 'x_api_key'
   webSearchEmulationMode.value = 'default'
@@ -6116,6 +6133,11 @@ const buildOpenAIExtra = (base?: Record<string, unknown>): Record<string, unknow
   }
 
   // 收敛是显式 opt-in；off 为默认值，不写入 extra。
+  if (form.platform === 'openai' && accountCategory.value === 'oauth-based') {
+    extra.codex_metadata_repair_enabled = codexMetadataRepairEnabled.value
+  } else {
+    delete extra.codex_metadata_repair_enabled
+  }
   if (accountCategory.value === 'oauth-based' && codexFingerprintMode.value !== 'off') {
     extra.codex_fingerprint_mode = codexFingerprintMode.value
   } else {

@@ -81,6 +81,7 @@ type openAIWSAcquireRequest struct {
 }
 
 type openAIWSHandshakeCompatibilityKey struct {
+	metadataRepair      bool
 	betaFeatures        string
 	codexInstallationID string
 	sessionIDHyphen     string
@@ -2111,14 +2112,15 @@ func normalizeOpenAIWSBetaFeatures(headers http.Header) string {
 
 func normalizeOpenAIWSHandshakeCompatibility(account *Account, headers http.Header) openAIWSHandshakeCompatibilityKey {
 	key := openAIWSHandshakeCompatibilityKey{
-		betaFeatures: normalizeOpenAIWSBetaFeatures(headers),
+		betaFeatures:   normalizeOpenAIWSBetaFeatures(headers),
+		metadataRepair: account.IsCodexMetadataRepairEnabled(),
 	}
 	mode := activeCodexFingerprintMode(account)
-	if mode == codexFingerprintOff {
+	if mode == codexFingerprintOff && !key.metadataRepair {
 		return key
 	}
 	key.codexInstallationID = normalizeOpenAIWSStableIdentityHeader(headers, "x-codex-installation-id")
-	if mode == codexFingerprintDevice {
+	if mode == codexFingerprintDevice && !key.metadataRepair {
 		return key
 	}
 	key.sessionIDHyphen = normalizeOpenAIWSStableIdentityHeader(headers, "session-id")

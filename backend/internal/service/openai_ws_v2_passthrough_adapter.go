@@ -764,6 +764,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 	if err := validateOpenAIWSBearerToken(account, token); err != nil {
 		return err
 	}
+	prepareCodexMetadataRepair(c, account, firstClientMessage, "")
 	firstTurnStartedAt := time.Now()
 	if hooks != nil && !hooks.InitialTurnStartedAt.IsZero() {
 		firstTurnStartedAt = hooks.InitialTurnStartedAt
@@ -872,6 +873,12 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 	}
 	if accountScoped {
 		firstClientMessage = accountScopedFirst
+	}
+	if repair := stagedCodexMetadataRepair(c, account); repair != nil {
+		firstClientMessage, scopeErr = repair.applyRaw(firstClientMessage)
+		if scopeErr != nil {
+			return scopeErr
+		}
 	}
 	firstPolicyCtx := openAIWSFastModePolicyContext(ctx, hooks, 1)
 	updatedFirst, blocked, policyErr := s.applyOpenAIFastPolicyToWSResponseCreate(firstPolicyCtx, account, firstUpstreamModel, firstClientMessage)
@@ -1159,12 +1166,23 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 				}
 			}
 			if isResponseCreate || eventType == "session.update" {
+				// relay 并行转发不写共享 Gin 状态；后续帧只在本地复用本轮快照。
+				var metadataRepair *codexMetadataRepairSnapshot
+				if isResponseCreate {
+					metadataRepair = buildCodexMetadataRepair(c, account, payload, "", false)
+				}
 				accountScopedPayload, accountScoped, scopeErr := applyCodexAccountIdentityClientMetadataRaw(payload, codexAccountIdentitySource(c, account), getAPIKeyIDFromContext(c))
 				if scopeErr != nil {
 					return payload, nil, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket identity metadata", scopeErr)
 				}
 				if accountScoped {
 					payload = accountScopedPayload
+				}
+				if metadataRepair != nil {
+					payload, scopeErr = metadataRepair.applyRaw(payload)
+					if scopeErr != nil {
+						return payload, nil, scopeErr
+					}
 				}
 			}
 			originalResponseCreate := payload

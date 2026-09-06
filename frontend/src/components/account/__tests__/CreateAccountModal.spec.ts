@@ -521,6 +521,21 @@ describe('CreateAccountModal OpenAI account options', () => {
     expect(importCodexSessionMock.mock.calls[0]?.[0]?.extra?.codex_fingerprint_mode).toBe('session')
   })
 
+  // 验证导入账号时开关与普通 OAuth 创建共用 extra 构造器。
+  it.each([false, true])('Codex 导入保存独立 metadata 修复开关 %s', async (enabled) => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenAI')
+    const toggle = wrapper.get('[data-testid="create-codex-metadata-repair"]')
+    expect(toggle.attributes('aria-checked')).toBe('false')
+    if (enabled) await toggle.trigger('click')
+    await wrapper.get('form#create-account-form input[type="text"]').setValue('Metadata import')
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await wrapper.get('[data-testid="import-codex-session"]').trigger('click')
+    await flushPromises()
+    expect(importCodexSessionMock.mock.calls[0]?.[0]?.extra?.codex_metadata_repair_enabled).toBe(enabled)
+    expect(importCodexSessionMock.mock.calls[0]?.[0]?.extra).not.toHaveProperty('codex_fingerprint_mode')
+  })
+
 })
 
 describe('CreateAccountModal Gemini API Key provider source', () => {

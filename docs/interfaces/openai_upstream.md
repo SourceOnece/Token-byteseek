@@ -23,6 +23,13 @@ OpenAI OAuth 账号的 `extra.codex_fingerprint_mode` 控制 Codex Responses 的
 
 OpenAI 兼容请求的显式粘性会话头按 `session-id`、`session_id`、`conversation_id`、OpenCode 会话头和 CodeBuddy 会话头依次读取；其中 `session-id` 是 Codex 客户端使用的连字符形式，优先于旧下划线形式。WebSocket 会话日志采用相同优先级，缺少显式会话头时才回退到 `prompt_cache_key`，避免重连时因头名差异漂移到其它账号。
 
+<a id="codex_metadata_repair"></a>
+### Codex Metadata 完整性修复
+
+`extra.codex_metadata_repair_enabled` 是 OpenAI OAuth/Setup Token 的逐账号显式开关，只有布尔 `true` 生效，缺失、false 和非法类型均保留原处理；其它平台和 API Key 不启用。开启后从原始当前轮请求体、请求头及真实账号 device ID 收集 metadata，保留扩展字段，再使用现有账号身份隔离和可选指纹规则生成同一份头/体快照。每次内部重试复用该快照；后续 WS 回合优先当前帧，不用旧握手回合覆盖；关闭或换账号不能复用旧快照。Chat/Messages 转换前收集元数据，避免类型化转换丢掉扩展字段；HTTP、透传、WS 与 HTTP bridge 最终出站复用结果。
+
+没有可信设备/线程/环境信息时不伪造；缺失 turn ID 只生成请求相关 ID 和起始时间。非法或超过 16 KiB 的 metadata 小对象保留原处理，不截断成假完整值；写入身份头前拒绝 CR/LF/NUL 并移除重复大小写变体。旧 `/responses/compact` 不参与。开关与 OAuth 自动透传独立，不修改权限、计费和模型映射；已建立 WS 使用其账号快照，改开关后应新建会话验证。连接池兼容键隔离开关状态和修复后的稳定身份，但不包含每轮 turn ID；WS 握手只发生在建连时，后续回合使用当前 payload metadata。此功能修复元数据缺失/覆盖/不一致，不保证消除真实上游容量过载。
+
 <a id="openai_protocol_dispatch"></a>
 ## 协议与传输
 

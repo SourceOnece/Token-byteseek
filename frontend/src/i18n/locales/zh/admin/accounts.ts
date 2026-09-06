@@ -866,6 +866,8 @@ export default {
         codexCLIOnlyAllowClaudeCode: '额外放行 Claude Code 的 Codex 插件',
         codexCLIOnlyAllowClaudeCodeDesc: '仅在上方开关开启时生效。额外放行通过 Claude Code 的 Codex 插件发起的请求（精确匹配 originator=Claude Code），不影响对其他非官方客户端的拦截。',
         codexFingerprintMode: 'Codex 指纹收敛',
+        codexMetadataRepair: 'Codex Metadata 完整性修复',
+        codexMetadataRepairDesc: '默认关闭，沿用原处理流程。开启后补齐有可靠来源的元数据，统一请求头与请求体标识，保留当前回合信息；独立于自动透传和指纹收敛。修改后请新建会话验证，不保证消除上游真实容量过载。',
         codexFingerprintModeDesc: '共享 OAuth 账号时可选的指纹收敛。关闭为默认值，保留客户端标识；仅在明确需要合并设备和会话标识时选择其它模式。',
         codexFingerprintOff: '关闭',
         codexFingerprintDevice: '仅设备',
