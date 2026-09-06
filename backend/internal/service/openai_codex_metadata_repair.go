@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -29,6 +30,8 @@ func (a *Account) IsCodexMetadataRepairEnabled() bool {
 // 快照只保存本次请求的小型元数据，不保存提示词、认证或整包请求。
 type codexMetadataRepairSnapshot struct {
 	accountID int64
+	request   *http.Request
+	sourceKey [32]byte
 	metadata  map[string]any
 	headers   http.Header
 }
@@ -68,11 +71,23 @@ func prepareCodexMetadataRepair(c *gin.Context, account *Account, body []byte, s
 	if c == nil {
 		return
 	}
+	previous := stagedCodexMetadataRepair(c, account)
 	c.Set(codexMetadataRepairContextKey, (*codexMetadataRepairSnapshot)(nil))
 	if !account.IsCodexMetadataRepairEnabled() || isOpenAIResponsesCompactPath(c) {
 		return
 	}
-	c.Set(codexMetadataRepairContextKey, buildCodexMetadataRepair(c, account, body, sessionHint, true))
+	// handler 的同账号重试会重新调用 Forward，不能因此重生成缺省 turn ID。
+	sourceKey := sha256.Sum256([]byte(gjson.GetBytes(body, "client_metadata").Raw + "\x00" + sessionHint))
+	if previous != nil && previous.request == c.Request && previous.sourceKey == sourceKey {
+		c.Set(codexMetadataRepairContextKey, previous)
+		return
+	}
+	snapshot := buildCodexMetadataRepair(c, account, body, sessionHint, true)
+	if snapshot != nil {
+		snapshot.request = c.Request
+		snapshot.sourceKey = sourceKey
+	}
+	c.Set(codexMetadataRepairContextKey, snapshot)
 }
 
 // buildCodexMetadataRepair 的当前 body 优先于头；后续 WS 回合不复用握手的 turn

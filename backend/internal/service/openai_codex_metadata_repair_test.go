@@ -84,6 +84,8 @@ func TestCodexMetadataRepairNoFabricatedEnvironmentAndRetry(t *testing.T) {
 	second, err := snapshot.applyRaw(body)
 	require.NoError(t, err)
 	require.Equal(t, string(first), string(second))
+	prepareCodexMetadataRepair(c, a, body, "session-hint")
+	require.Same(t, snapshot, stagedCodexMetadataRepair(c, a), "handler 重新进入 Forward 仍复用同请求快照")
 	turn := gjson.Parse(snapshot.headers.Get(openAIWSTurnMetadataHeader))
 	require.NotEmpty(t, turn.Get("turn_id").String())
 	require.True(t, turn.Get("turn_started_at_unix_ms").Int() > 0)
@@ -96,6 +98,9 @@ func TestCodexMetadataRepairNoFabricatedEnvironmentAndRetry(t *testing.T) {
 	third, err := snapshot.applyRaw(body)
 	require.NoError(t, err)
 	require.Equal(t, string(first), string(third))
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	prepareCodexMetadataRepair(c, a, body, "session-hint")
+	require.NotEqual(t, snapshot.headers.Get(openAIWSTurnMetadataHeader), stagedCodexMetadataRepair(c, a).headers.Get(openAIWSTurnMetadataHeader), "新请求生成新回合")
 }
 
 func TestCodexMetadataRepairDeviceFingerprintAndIsolation(t *testing.T) {
