@@ -79,7 +79,6 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 	if _, err := s.prepareCodexAccountIdentitySource(ctx, c, account); err != nil {
 		return err
 	}
-	prepareCodexMetadataRepair(c, account, firstClientMessage, "")
 	if err := validateOpenAIWSBearerToken(account, token); err != nil {
 		return err
 	}
@@ -222,14 +221,7 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 		return rebuilt, nil
 	}
 
-	metadataSession := newCodexMetadataSession(c, account, firstClientMessage)
 	parseClientPayload := func(raw []byte, applyUserPromptReplacement bool, turn int) (openAIWSClientPayload, error) {
-		// 每个 WS 回合独立解析，重试复用该回合快照；旧握手 turn 不覆盖当前 body。
-		var metadataRepair *codexMetadataRepairSnapshot
-		if account.IsCodexMetadataRepairEnabled() {
-			metadataRepair = metadataSession.build(c, account, raw, turn == 1)
-			c.Set(codexMetadataRepairContextKey, metadataRepair)
-		}
 		trimmed := bytes.TrimSpace(raw)
 		if len(trimmed) == 0 {
 			return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "empty websocket request payload", nil)
@@ -326,7 +318,6 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 				nil,
 			)
 		}
-		metadataSourceRaw := normalized
 		if turnMetadata := strings.TrimSpace(c.GetHeader(openAIWSTurnMetadataHeader)); turnMetadata != "" {
 			next, setErr := applyPayloadMutation(normalized, "client_metadata."+openAIWSTurnMetadataHeader, turnMetadata)
 			if setErr != nil {
@@ -335,23 +326,12 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 			normalized = next
 		}
 		accountIdentitySourceRaw := append([]byte(nil), normalized...)
-		if metadataRepair != nil {
-			// 换账号重试必须保留真正的当前轮原始 metadata，而不是握手覆盖后的旧值。
-			accountIdentitySourceRaw = append([]byte(nil), metadataSourceRaw...)
-		}
 		accountScopedPayload, accountScoped, scopeErr := applyCodexAccountIdentityClientMetadataRaw(normalized, codexAccountIdentitySource(c, account), getAPIKeyIDFromContext(c))
 		if scopeErr != nil {
 			return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket identity metadata", scopeErr)
 		}
 		if accountScoped {
 			normalized = accountScopedPayload
-		}
-		if metadataRepair != nil {
-			var repairErr error
-			normalized, repairErr = metadataRepair.applyRaw(normalized)
-			if repairErr != nil {
-				return openAIWSClientPayload{}, repairErr
-			}
 		}
 		if isOpenAIResponsesLiteWebSocketPayload(normalized) {
 			litePayload, _, liteErr := normalizeOpenAIResponsesLitePayloadForAccount(account, normalized)
@@ -707,9 +687,6 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 					}
 					if !retrySafe {
 						retryPayload = nil
-					}
-					if retrySafe && account.IsCodexMetadataRepairEnabled() {
-						stageCodexMetadataReplay(c, retryPayload, metadataSession.stable)
 					}
 					return newOpenAIWSCurrentTurnFailoverError(bridgeErr, retryPayload)
 				}
@@ -1905,7 +1882,7 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 			return parseErr
 		}
 		nextRoutingFields := gjson.GetManyBytes(nextPayload.payloadRaw, "model", "service_tier")
-		if nextPayload.promptCacheKey != "" || stagedCodexMetadataRepair(c, account) != nil {
+		if nextPayload.promptCacheKey != "" {
 			// ingress 会话在整个客户端 WS 生命周期内复用同一上游连接；
 			// prompt_cache_key 对握手头的更新仅在未来需要重新建连时生效。
 			updatedHeaders, _, updHdrErr := s.buildOpenAIWSHeaders(

@@ -196,7 +196,6 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	logger.L().Debug("openai messages: model mapping applied", logFields...)
 
 	// 4. Marshal Responses request body, then apply the ChatGPT/Codex transform.
-	prepareCodexMetadataRepair(c, account, body, promptCacheKey)
 	responsesBody, err := json.Marshal(responsesReq)
 	if err != nil {
 		return nil, fmt.Errorf("marshal responses request: %w", err)
@@ -392,8 +391,6 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	}
 
 	// 7. Send request
-	// 兼容桥会在构造器之后重设 session，发送前恢复快照的头体一致性。
-	stagedCodexMetadataRepair(c, account).applyHeaders(upstreamReq.Header)
 	proxyURL := ""
 	if account.Proxy != nil {
 		proxyURL = account.Proxy.URL()

@@ -2055,21 +2055,6 @@
         </div>
       </div>
 
-      <!-- 每个 OAuth/AT 行独立配置；身份来源仍由后端解析真实凭据账号。 -->
-      <div
-        v-if="account?.platform === 'openai' && (account?.type === 'oauth' || account?.type === 'setup-token')"
-        class="bh-policy-section p-4"
-        data-testid="edit-codex-metadata-repair-card"
-      >
-        <div class="flex items-start justify-between gap-4">
-          <div class="min-w-0">
-            <label for="edit-codex-metadata-repair" class="input-label mb-0">{{ t('admin.accounts.openai.codexMetadataRepair') }}</label>
-            <p id="edit-codex-metadata-repair-hint" class="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-300">{{ t('admin.accounts.openai.codexMetadataRepairDesc') }}</p>
-          </div>
-          <Toggle id="edit-codex-metadata-repair" v-model="codexMetadataRepairEnabled" data-testid="edit-codex-metadata-repair" :aria-label="t('admin.accounts.openai.codexMetadataRepair')" aria-describedby="edit-codex-metadata-repair-hint" />
-        </div>
-      </div>
-
       <!-- Codex 指纹收敛模式（仅 OpenAI OAuth） -->
       <div
         v-if="account?.platform === 'openai' && account?.type === 'oauth' && !isSparkShadow"
@@ -3316,7 +3301,6 @@ const codexCLIOnlyAllowClaudeCodeEnabled = ref(false)
 const openAIOAuthClientPolicy = ref<OpenAIOAuthClientPolicy>('any')
 type CodexFingerprintMode = 'off' | 'device' | 'session' | 'full'
 const codexFingerprintMode = ref<CodexFingerprintMode>('off')
-const codexMetadataRepairEnabled = ref(false)
 const codexImageToolMode = ref<CodexImageToolMode>('inherit')
 type AnthropicAPIKeyAuthScheme = 'x_api_key' | 'authorization_bearer'
 const anthropicPassthroughEnabled = ref(false)
@@ -3860,7 +3844,6 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   codexCLIOnlyAllowClaudeCodeEnabled.value = false
   openAIOAuthClientPolicy.value = 'any'
   codexFingerprintMode.value = 'off'
-  codexMetadataRepairEnabled.value = false
   codexImageToolMode.value = 'inherit'
   anthropicPassthroughEnabled.value = false
   anthropicAPIKeyAuthScheme.value = 'x_api_key'
@@ -3886,9 +3869,6 @@ const syncFormFromAccount = (newAccount: Account | null) => {
       openAIResponsesContinuationSupported.value = extra?.openai_responses_continuation_supported === true
     }
     codexImageToolMode.value = readCodexImageToolMode(extra)
-    if (newAccount.type === 'oauth' || newAccount.type === 'setup-token') {
-      codexMetadataRepairEnabled.value = extra?.codex_metadata_repair_enabled === true
-    }
     openaiOAuthResponsesWebSocketV2Mode.value = resolveOpenAIWSModeFromExtra(extra, {
       modeKey: 'openai_oauth_responses_websockets_v2_mode',
       enabledKey: 'openai_oauth_responses_websockets_v2_enabled',
@@ -5481,11 +5461,6 @@ const handleSubmit = async () => {
           delete newExtra.tls_fingerprint_profile_id
           delete newExtra.tls_fingerprint_router_id
         }
-      }
-
-      // 明确保存关闭值，避免服务端键级合并时残留旧 true。
-      if (props.account.type === 'oauth' || props.account.type === 'setup-token') {
-        newExtra.codex_metadata_repair_enabled = codexMetadataRepairEnabled.value
       }
 
       // 指纹收敛模式：默认 off，不写入；其它模式必须显式写入。

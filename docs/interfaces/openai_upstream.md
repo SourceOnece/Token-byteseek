@@ -24,33 +24,11 @@ OpenAI OAuth 账号的 `extra.codex_fingerprint_mode` 控制 Codex Responses 的
 OpenAI 兼容请求的显式粘性会话头按 `session-id`、`session_id`、`conversation_id`、OpenCode 会话头和 CodeBuddy 会话头依次读取；其中 `session-id` 是 Codex 客户端使用的连字符形式，优先于旧下划线形式。WebSocket 会话日志采用相同优先级，缺少显式会话头时才回退到 `prompt_cache_key`，避免重连时因头名差异漂移到其它账号。
 
 <a id="codex_metadata_repair"></a>
-### Codex Metadata 完整性修复
+### Codex Metadata 完整性修复（已撤回）
 
-`extra.codex_metadata_repair_enabled` 是 OpenAI OAuth/Setup Token 的逐账号显式开关，只有布尔 `true` 生效，缺失、false 和非法类型均保留原处理；其它平台和 API Key 不启用。开启后从原始当前轮请求体、请求头及真实账号 device ID 收集 metadata，保留扩展字段，再使用现有账号身份隔离和可选指纹规则生成同一份头/体快照。每次内部重试复用该快照；后续 WS 回合优先当前帧，不用旧握手回合覆盖；关闭或换账号不能复用旧快照。Chat/Messages 转换前收集元数据，避免类型化转换丢掉扩展字段；HTTP、透传、WS 与 HTTP bridge 最终出站复用结果。
+bh.013 按用户要求将应用恢复到 bh.002，取消 bh.003–bh.012 新增的 Codex Metadata 完整性修复：不再展示创建/编辑/批量开关，不再读取 `extra.codex_metadata_repair_enabled`，HTTP、Chat/Messages 和 WS 均沿用 bh.002 原处理。这里的撤回不删除上游协议原有的 `client_metadata`，也不取消基线已有的账号隔离、指纹收敛、透传或请求整流器。
 
-没有可信设备/线程/环境信息时不伪造；缺失 turn ID 只生成请求相关 ID 和起始时间。缺失 `request_kind` 根据真实请求选择 `turn`、`prewarm`（generate=false）或 `compaction`（input 中有 compaction_trigger），已有请求类型保持；网关主动预热只在副本中改为 prewarm。完整来源是 body 的 `client_metadata["x-codex-turn-metadata"]`，兼容 header 排除 `tool_namespaces_info`，共有身份字段一致但整个 JSON 不要求相同，未知字段/大整数保持。JSON 采用 ASCII Unicode 转义。完整 metadata 安全上限 256 KiB，header 上限 16 KiB；前者超限/非法保留原处理，header 投影超限则只省略该可选头、保留合法完整 body。写入身份头前拒绝 CR/LF/NUL 并移除重复大小写变体。旧 `/responses/compact` 不参与。开关与 OAuth 自动透传独立，不修改权限、计费和模型映射；已建立 WS 使用其账号快照，改开关后应新建会话验证。连接池兼容键隔离开关状态和修复后的稳定身份，但不包含每轮 turn ID；WS 握手只发生在建连时，后续回合使用当前 payload metadata。此功能修复元数据缺失/覆盖/不一致，不保证消除真实上游容量过载。
-
-批量编辑与其它字段一样先勾选“编辑该项”，再操作开启/关闭。默认未勾选，开关真正禁用且省略 `codex_metadata_repair_enabled`；勾选后开启写 true，关闭写 false，取消勾选即使留有草稿也不提交。仅目标类型全部为 OpenAI OAuth/Setup Token 时展示并提交；沿用原批量 extra 键级合并，不以整个账号 extra 对象覆盖其它配置。
-
-Metadata 的职责是补充有来源的元数据、纠正覆盖和共有身份不一致；它不修改已保存的指纹配置，也不修改模型、推理预算、工具、提示词、自动透传、请求整流器或错误重试策略。开启时与 session/full 的编号优先级取舍见下文。普通 HTTP 在旧指纹头投影之后恢复修复快照，避免两次独立派生的 turn ID 导致头体分裂。WS 连接池只在修复已有明确 `thread-id` 且指纹未设为 session/full 时不重复把 `x-client-request-id` 作为硬条件；其它情况保留原追踪检查。有效修复快照使追踪号与隔离线程同源，其它设备/会话/窗口、beta 和 TLS 隔离不变。开启前后的业务请求字段对照由 `openai_codex_metadata_compatibility_test.go` 验证；本地验证不能证明线上 overloaded/断流已经消失。
-
-快照复用键包含当前 metadata、会话提示、缓存键、请求类型、身份来源请求头、API Key ID、账号 namespace 与已配置指纹来源，仅保留 SHA-256，不记录凭据或提示词。业务兼容重试不重新生成回合，身份来源变化则重建快照。完整性修复缺少可信账号 namespace 时退回旧路径，避免未隔离身份覆盖原头；所有身份值按 HTTP header 合法性校验，包含其它控制字符时也不得写入。未接入此修复的账号探测、旧 Compact、API Key 与其它平台不扩大功能范围。
-
-修复开启时，父线程和回合引用从当前内嵌元数据、flat 兼容字段及首轮请求头收集，非法可选字段仅省略自身，不关闭其它合法修复。`x-openai-subagent` 与内嵌 `subagent_kind` 分别保留：官方子任务的兼容值为 `collab_spawn`，内层为 `thread_spawn`，不能强制同值。缺少兼容头时只从明确已知的 kind 推导；反向不从 Internal/扩展兼容头补造内层 kind。后续 WS 帧不从旧握手补造当前父子回合关系。可选 metadata 兼容头非法/超限时忽略该来源，合法 body 仍可修复；完整 body 非法、主身份非法或缺少可靠 namespace 仍安全回退旧路径。
-
-bh.011 起删除 bh.010 的进程内关联缓存：开启修复时，主 `thread_id`/`turn_id` 与 `parent_thread_id`/`forked_from_thread_id`/`parent_turn_id`/`root_turn_id` 共用凭据 namespace、平台 API Key ID、类型和原始编号的确定性隔离。不写“已发送”记录、不依赖先后顺序、TTL、容量、单实例或成功事件。自引用和 Memory 根回合立即匹配。不同账号/平台 Key 不共享关联；同凭据影子共享来源。编号不是权限或服务端 response ID，无法让另一个 OAuth 账号访问前账号的上下文。
-
-这对 Metadata 同时开启的 session/full 有明确取舍：保留安装设备与 session 收敛，但已提供的 thread/turn/window 使用可关联的租户隔离编号，full 不再把有来源的不同线程合并为一个。缺少 thread 时仅在收敛模式从现有 session 来源派生线程；完全无来源时不造线程，以请求级隔离追踪号兜底连接复用。原始客户端 turn 存在时重复请求保持同一隔离 ID；缺失时生成本请求 ID，内部重试复用。原指纹实现、配置存储与业务 `prompt_cache_key` 不修改，开关关闭保持原指纹逻辑。启用/关闭及升级后应新建会话，不保证旧开启侧线程编号与新版续接兼容。
-
-bh.012 恢复官方 WS 首轮兼容头：HTTP 和 WS 建连均按当前快照输出有界 metadata、父线程和子任务头，工具库存仍只在完整 body。后续 WS 帧带各自完整 `response.create.client_metadata`，回合级 Metadata 不纳入固定连接兼容键；账号、开关、实际稳定身份、原有追踪兜底、beta 与 TLS 隔离保持。只有真实提供的 `x-openai-memgen-request=true/false` 才通过修复快照转发，不从普通 Memory 类型推测该标记。关闭或无有效快照时不改变旧握手行为。
-
-修复开启的每条 WS 入站连接独占一个原始来源状态：installation/session/thread/window 和父线程/分叉来源/subagent_kind/独立子任务兼容值可在后续缺省帧补齐。状态不保存 prompt、token、工具库存、环境、turn、parent_turn、root_turn、request_kind 或时间；显式换 session/thread 清理相关旧线程来源，显式 null/空串留下清除标记而不是回落旧握手。当前非法主身份返回原流程，不把非法类型当缺失。Memory 不借用普通线程的父子来源，也不覆盖普通会话状态。透传帧通过原有策略后才提交候选状态，禁止被拒帧污染后续默认值。
-
-首次完整 body 的回合对象优先于兼容头；只有没有 body blob，或双方明确有相同 turn ID 时才合并头中扩展，当前值始终优先。这样既补齐同轮遗漏又避免旧 Memory/时间/环境被沿用。既有兼容 `session.update` 仅对其声明的 client_metadata 键统一身份，不新增 turn/request_kind/time 或扩大 session 更新字段；不介入 Realtime 的其它独立路由。原 WS HTTP bridge 允许的当前轮跨账号重放可在同一 Gin 入站上下文一次性携带原始稳定默认值，按入站作用域、API Key 和 payload 摘要验证，下一账号只有开启修复才读取并重新隔离；原 replay payload 与调度输入不变，关闭目标账号不接收开启侧补出的字段。普通 HTTP 的合法 Request.WithContext 浅副本不重新生成回合快照；真正新入站请求和来源改变仍重建。
-
-`request_kind=memory` 的内嵌完整对象及 HTTP metadata header 不补 installation/session/thread/agent/window/window_number/context_window_id；已有显式 turn 和根引用按同规则隔离，缺失则不生成、不从旧握手补造，当前 body 未提供的时间不从握手沿用。flat 兼容身份仍保留原账号隔离；不改变 `input`、工具、模型或实际 Memory 业务。关闭原 Metadata 开关时，上述子代理/Memory 处理均不执行。
-
-分组 `allowed_client_protocols` 的 Messages、Responses、Chat Completions 准入先于账号选择与修复；协议关闭仍返回原生 403。三个已允许协议到 OAuth Responses 的兼容转换、失败切号、计费与原业务缓存键不由 Metadata 决定。缺少真实上游数据时不承诺缓存命中率或 overloaded 改善；本地回归与未发布状态见 [bh.012](../operations/versions/v0_1_278_bh_012.md)。
+数据库里已有的该 extra 键不做破坏性清理；新版无消费者，因此残留 true 不会启用修复。未来如果重新引入该功能，必须先审查残留配置。Asia/Taipei 提示词替换目标时区预设独立保留，不更改默认或存量时区规则。恢复基线后已有 Codex WS 建议重连。回退范围、验证和新镜像证据见 [bh.013](../operations/versions/v0_1_278_bh_013.md)，原实现事实保留在 [bh.012](../operations/versions/v0_1_278_bh_012.md) 等历史记录中。
 
 <a id="openai_protocol_dispatch"></a>
 ## 协议与传输

@@ -936,43 +936,6 @@ describe('EditAccountModal', () => {
     expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.codex_fingerprint_mode).toBe('full')
   })
 
-  // 新策略独立于旧收敛/透传，显式 false 必须保存以便随时回退。
-  it.each([false, true])('保存 metadata 修复开关并保留其它配置，初值 %s', async (enabled) => {
-    const account = buildOpenAIOAuthAccount()
-    account.extra = { codex_metadata_repair_enabled: enabled, codex_fingerprint_mode: 'device', custom_option: 'keep' }
-    updateAccountMock.mockResolvedValue(account)
-    const wrapper = mountModal(account)
-    const toggle = wrapper.get('[data-testid="edit-codex-metadata-repair"]')
-    expect(toggle.attributes('role')).toBe('switch')
-    expect(toggle.attributes('aria-checked')).toBe(String(enabled))
-    await toggle.trigger('click')
-    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
-    expect(updateAccountMock.mock.calls[0]?.[1]?.extra).toMatchObject({
-      codex_metadata_repair_enabled: !enabled,
-      codex_fingerprint_mode: 'device',
-      custom_option: 'keep'
-    })
-  })
-
-  it('metadata 修复默认关闭且不向 API Key 展示', () => {
-    const oauth = mountModal(buildOpenAIOAuthAccount())
-    expect(oauth.get('[data-testid="edit-codex-metadata-repair"]').attributes('aria-checked')).toBe('false')
-    const apiKey = mountModal(buildAccount())
-    expect(apiKey.find('[data-testid="edit-codex-metadata-repair"]').exists()).toBe(false)
-  })
-
-  it.each(['setup-token', 'shadow'])('AT 或影子账号 %s 可以独立关闭 metadata 修复', async (kind) => {
-    const account = kind === 'shadow' ? buildOpenAISparkShadowAccount() : { ...buildOpenAIOAuthAccount(), type: 'setup-token' }
-    account.extra = { ...account.extra, codex_metadata_repair_enabled: true }
-    updateAccountMock.mockResolvedValue(account)
-    const wrapper = mountModal(account)
-    const toggle = wrapper.get('[data-testid="edit-codex-metadata-repair"]')
-    expect(toggle.attributes('aria-checked')).toBe('true')
-    await toggle.trigger('click')
-    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
-    expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.codex_metadata_repair_enabled).toBe(false)
-  })
-
   it('does not show the plan type override for OpenAI API-key accounts', () => {
     const wrapper = mountModal(buildAccount())
 

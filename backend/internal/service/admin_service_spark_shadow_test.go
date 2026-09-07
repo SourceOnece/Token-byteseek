@@ -910,25 +910,6 @@ func TestUpdateAccount_ShadowAllowsModelMappingAndGroupUpdate(t *testing.T) {
 	require.Empty(t, updated.GetOpenAIAccessToken(), "影子账号不可持有母账号 access_token")
 }
 
-// 沿用已有 Extra 保存接口，母账号、影子和 AT 的开关均独立，不回填全局默认。
-func TestUpdateAccount_CodexMetadataRepairToggle(t *testing.T) {
-	for _, accountType := range []string{AccountTypeOAuth, AccountTypeSetupToken} {
-		ctx := context.Background()
-		repo := newSparkShadowRepoStub()
-		svc := &adminServiceImpl{accountRepo: repo}
-		account := &Account{Name: "metadata-toggle", Platform: PlatformOpenAI, Type: accountType, Status: StatusActive, Credentials: map[string]any{"access_token": "synthetic"}}
-		require.NoError(t, repo.Create(ctx, account))
-		for _, enabled := range []bool{true, false} {
-			updated, err := svc.UpdateAccount(ctx, account.ID, &UpdateAccountInput{Extra: map[string]any{codexMetadataRepairExtraKey: enabled}})
-			require.NoError(t, err)
-			require.Equal(t, enabled, updated.IsCodexMetadataRepairEnabled())
-			stored, err := repo.GetByID(ctx, account.ID)
-			require.NoError(t, err)
-			require.Equal(t, enabled, stored.Extra[codexMetadataRepairExtraKey])
-		}
-	}
-}
-
 func TestUpdateAccount_ShadowEmptyCredentialsClearsModelMapping(t *testing.T) {
 	ctx := context.Background()
 	repo := newSparkShadowRepoStub()

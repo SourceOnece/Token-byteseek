@@ -803,9 +803,6 @@ export default {
         codexCLIOnlyAllowClaudeCodeDesc:
           'Only takes effect when the switch above is on. Additionally allows requests from the Claude Code Codex plugin (exact match on originator=Claude Code) without weakening blocking of other non-official clients.',
         codexFingerprintMode: 'Codex fingerprint convergence',
-        codexMetadataRepair: 'Codex metadata integrity repair',
-        codexMetadataRepairBulkDesc: 'Check this field to edit the selected OpenAI OAuth / AT accounts. Unchecked keeps existing values; checked applies the enabled or disabled state below without changing passthrough or fingerprint convergence. Start a new session afterward; actual upstream overload may still occur.',
-        codexMetadataRepairDesc: 'Off by default: keeps the original processing path. When enabled, fills metadata from reliable sources, aligns header/body identifiers, and preserves the current turn. Independent of passthrough and fingerprint convergence. Start a new session after changes; this does not guarantee relief from actual upstream overload.',
         codexFingerprintModeDesc: 'Optional convergence for shared OAuth accounts. Off is the default and preserves client identifiers; choose a stronger mode only when intentionally consolidating device and session identifiers.',
         codexFingerprintOff: 'Off',
         codexFingerprintDevice: 'Device only',

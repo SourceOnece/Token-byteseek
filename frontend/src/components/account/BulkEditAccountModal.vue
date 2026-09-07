@@ -1069,34 +1069,6 @@
         </p>
       </div>
 
-      <!-- 与其它批量项一致：先勾选编辑，未勾选禁用控件且不提交该字段。 -->
-      <div v-if="allCodexMetadataRepairCapable" class="bh-policy-section p-4" data-testid="bulk-codex-metadata-repair-card">
-        <div class="mb-3 flex items-center justify-between gap-4">
-          <label for="bulk-edit-codex-metadata-repair-enabled" class="input-label mb-0">{{ t('admin.accounts.openai.codexMetadataRepair') }}</label>
-          <input
-            id="bulk-edit-codex-metadata-repair-enabled"
-            v-model="enableCodexMetadataRepair"
-            type="checkbox"
-            :disabled="submitting"
-            aria-controls="bulk-edit-codex-metadata-repair-body"
-            class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div id="bulk-edit-codex-metadata-repair-body" :class="!enableCodexMetadataRepair && 'pointer-events-none opacity-50'">
-          <p id="bulk-codex-metadata-repair-hint" class="mb-3 text-xs leading-relaxed text-gray-600 dark:text-gray-300">{{ t('admin.accounts.openai.codexMetadataRepairBulkDesc') }}</p>
-          <div class="flex items-center justify-between gap-4">
-            <span class="text-sm text-gray-700 dark:text-gray-300">{{ t(codexMetadataRepairEnabled ? 'common.enabled' : 'common.disabled') }}</span>
-            <Toggle
-              v-model="codexMetadataRepairEnabled"
-              :disabled="!enableCodexMetadataRepair || submitting"
-              data-testid="bulk-codex-metadata-repair"
-              :aria-label="t('admin.accounts.openai.codexMetadataRepair')"
-              aria-describedby="bulk-codex-metadata-repair-hint"
-            />
-          </div>
-        </div>
-      </div>
-
       <!-- Codex 指纹收敛模式（仅 OpenAI OAuth） -->
       <div v-if="allOpenAIOAuth" class="border-t border-gray-200 pt-4 dark:border-dark-600">
         <div class="mb-3 flex items-center justify-between">
@@ -1844,14 +1816,6 @@ const allOpenAIOAuth = computed(() => {
   )
 })
 
-// 类型信息不完整或混入其它平台/API Key 时保守禁用，AT 与 OAuth 同属 Codex。
-const allCodexMetadataRepairCapable = computed(() =>
-  targetSelectedPlatforms.value.length === 1 &&
-  targetSelectedPlatforms.value[0] === 'openai' &&
-  targetSelectedTypes.value.length > 0 &&
-  targetSelectedTypes.value.every(type => type === 'oauth' || type === 'setup-token')
-)
-
 const allOpenAIAPIKey = computed(() => {
   return (
     targetSelectedPlatforms.value.length === 1 &&
@@ -2012,16 +1976,6 @@ const autoPause5hDisabled = ref(false)
 const autoPause7dDisabled = ref(false)
 type CodexFingerprintMode = 'off' | 'device' | 'session' | 'full'
 const enableCodexFingerprintMode = ref(false)
-const enableCodexMetadataRepair = ref(false)
-const codexMetadataRepairEnabled = ref(false)
-// 筛选对象变化不总会触发旧 resetForm watcher，仅清理本字段避免跨范围沿用选择。
-watch(
-  () => [targetMode.value, JSON.stringify(props.target?.filters ?? {}), targetSelectedPlatforms.value.join(','), targetSelectedTypes.value.join(',')],
-  () => {
-    enableCodexMetadataRepair.value = false
-    codexMetadataRepairEnabled.value = false
-  }
-)
 const codexFingerprintMode = ref<CodexFingerprintMode>('off')
 const codexFingerprintModeOptions = computed(() => [
   { value: 'off' as CodexFingerprintMode, label: t('admin.accounts.openai.codexFingerprintOff') },
@@ -2625,11 +2579,6 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     extra.codex_fingerprint_mode = codexFingerprintMode.value
   }
 
-  if (allCodexMetadataRepairCapable.value && enableCodexMetadataRepair.value) {
-    // JSONB merge 下 false 才能关闭已有 true；不修改态不得覆盖其它账号配置。
-    ensureExtra().codex_metadata_repair_enabled = codexMetadataRepairEnabled.value
-  }
-
   if (enableOpenAICompactMode.value) {
     const extra = ensureExtra()
     extra.openai_compact_mode = openAICompactMode.value
@@ -2754,7 +2703,6 @@ const handleSubmit = async () => {
     enableAutoPause7dDisabled.value ||
     enableTLSFingerprint.value ||
     enableCodexFingerprintMode.value ||
-    (allCodexMetadataRepairCapable.value && enableCodexMetadataRepair.value) ||
     enableOpenAICompactMode.value ||
     enableOpenAINativeCompactionV2Mode.value ||
     enableOpenAICompactModelMapping.value ||
@@ -2930,8 +2878,6 @@ const resetBulkEditFormState = () => {
   autoPause5hDisabled.value = false
   autoPause7dDisabled.value = false
   codexFingerprintMode.value = 'off'
-  enableCodexMetadataRepair.value = false
-  codexMetadataRepairEnabled.value = false
   openAICompactMode.value = 'auto'
   openAINativeCompactionV2Mode.value = 'auto'
   openAICompactModelMappings.value = []

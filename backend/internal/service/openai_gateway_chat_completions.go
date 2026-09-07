@@ -193,7 +193,6 @@ func (s *OpenAIGatewayService) forwardAsChatCompletions(
 	}
 
 	// 3. Build the upstream (Responses API) body.
-	prepareCodexMetadataRepair(c, account, body, promptCacheKey)
 	//
 	// Cursor compatibility: some clients (notably Cursor cloud) send Responses
 	// API shaped bodies — `input: [...]` with no `messages` field — to the
@@ -362,7 +361,6 @@ func (s *OpenAIGatewayService) forwardAsChatCompletions(
 	}
 
 	// 7. Send request
-	stagedCodexMetadataRepair(c, account).applyHeaders(upstreamReq.Header)
 	proxyURL := ""
 	if account.Proxy != nil {
 		proxyURL = account.Proxy.URL()

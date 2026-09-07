@@ -37,7 +37,6 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	if _, err := s.prepareCodexAccountIdentitySource(ctx, c, account); err != nil {
 		return nil, err
 	}
-	prepareCodexMetadataRepair(c, account, body, "")
 	startTime := time.Now()
 	// 固定渠道映射后的请求级 canonical body；账号 normalize/strip 不得改写跨 failover hint。
 	canonicalImageIntentBody := body
@@ -977,9 +976,6 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 		// 内部重试每次都会重建 request，必须重复应用与 body 相同的指纹 IDs。
 		applyCodexFingerprintHeaders(upstreamReq.Header, fingerprintIDs)
-		// 修复开启时 body 已使用不可变快照；旧指纹投影不能再次覆盖其回合身份。
-		// 关闭或无效快照时为 no-op，保留原指纹与 HTTP 重试行为。
-		stagedCodexMetadataRepair(c, account).applyHeaders(upstreamReq.Header)
 
 		proxyURL := ""
 		if account.ProxyID != nil && account.Proxy != nil {
@@ -1269,12 +1265,6 @@ func shouldForwardOpenAIResponsesViaRawChatCompletions(account *Account) bool {
 }
 
 func (s *OpenAIGatewayService) buildUpstreamRequest(ctx context.Context, c *gin.Context, account *Account, body []byte, token string, isStream bool, promptCacheKey string, isCodexCLI bool, routerMatch ...TLSFingerprintRouterMatchResult) (*http.Request, error) {
-	repair := stagedCodexMetadataRepair(c, account)
-	var repairErr error
-	body, repairErr = repair.applyRaw(body)
-	if repairErr != nil {
-		return nil, repairErr
-	}
 	// Determine target URL based on account type
 	var targetURL string
 	switch account.Type {
@@ -1412,7 +1402,6 @@ func (s *OpenAIGatewayService) buildUpstreamRequest(ctx context.Context, c *gin.
 
 	// 账号级请求头覆写（仅 openai api_key 账号启用时生效；OAuth 路径 no-op）
 	account.ApplyHeaderOverrides(req.Header)
-	repair.applyHeaders(req.Header)
 	// 原生 V2 必须携带协商能力；OAuth 的普通 Responses 请求也对齐 Codex 的
 	// 会话级 beta 头行为。
 	applyOpenAICodexBetaFeatures(c, account, req.Header)

@@ -54,26 +54,6 @@ func (s *accountRepoStubForBulkUpdate) BulkUpdate(_ context.Context, ids []int64
 	return int64(len(ids)), nil
 }
 
-// 沿用原批量接口，仅更新选中 ID 和指定 extra 键，关闭值不得被当作空更新。
-func TestAdminServiceBulkUpdateCodexMetadataRepair(t *testing.T) {
-	for _, enabled := range []bool{true, false} {
-		repo := &accountRepoStubForBulkUpdate{}
-		svc := &adminServiceImpl{accountRepo: repo}
-		result, err := svc.BulkUpdateAccounts(context.Background(), &BulkUpdateAccountsInput{
-			AccountIDs: []int64{11, 22},
-			Extra:      map[string]any{codexMetadataRepairExtraKey: enabled},
-		})
-		require.NoError(t, err)
-		require.Equal(t, 2, result.Success)
-		require.Equal(t, []int64{11, 22}, repo.bulkUpdateIDs)
-		require.Equal(t, map[string]any{codexMetadataRepairExtraKey: enabled}, repo.lastBulkUpdate.Extra)
-		require.Empty(t, repo.lastBulkUpdate.Credentials)
-		// 仓储合并现有配置时，仅更新这一键；不得提交收敛、透传等其它键。
-		require.NotContains(t, repo.lastBulkUpdate.Extra, "codex_fingerprint_mode")
-		require.NotContains(t, repo.lastBulkUpdate.Extra, "openai_passthrough")
-	}
-}
-
 func TestAdminServiceBulkUpdateAccountsNormalizesLegacyOpenAIConfiguration(t *testing.T) {
 	repo := &accountRepoStubForBulkUpdate{
 		getByIDsAccounts: []*Account{{

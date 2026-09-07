@@ -764,12 +764,6 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 	if err := validateOpenAIWSBearerToken(account, token); err != nil {
 		return err
 	}
-	prepareCodexMetadataRepair(c, account, firstClientMessage, "")
-	// relay 的上行帧串行消费连接私有状态；不通过共享 Gin 保存后续轮身份。
-	metadataSession := newCodexMetadataSession(c, account, firstClientMessage)
-	if account.IsCodexMetadataRepairEnabled() {
-		c.Set(codexMetadataRepairContextKey, metadataSession.build(c, account, firstClientMessage, true))
-	}
 	firstTurnStartedAt := time.Now()
 	if hooks != nil && !hooks.InitialTurnStartedAt.IsZero() {
 		firstTurnStartedAt = hooks.InitialTurnStartedAt
@@ -878,12 +872,6 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 	}
 	if accountScoped {
 		firstClientMessage = accountScopedFirst
-	}
-	if repair := stagedCodexMetadataRepair(c, account); repair != nil {
-		firstClientMessage, scopeErr = repair.applyRaw(firstClientMessage)
-		if scopeErr != nil {
-			return scopeErr
-		}
 	}
 	firstPolicyCtx := openAIWSFastModePolicyContext(ctx, hooks, 1)
 	updatedFirst, blocked, policyErr := s.applyOpenAIFastPolicyToWSResponseCreate(firstPolicyCtx, account, firstUpstreamModel, firstClientMessage)
@@ -1122,17 +1110,6 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 		// filter 仅在 runClientToUpstream 这一条 goroutine 中执行；
 		// 会话模型还会被上游回调读取，因此通过上方原子快照同步。
 		filter: func(msgType coderws.MessageType, payload []byte) (out []byte, blocked *OpenAIFastBlockedError, filterErr error) {
-			// 候选帧未通过现有策略前，不提交其连接身份，避免被拒帧污染后续兼容状态。
-			candidateMetadata := *metadataSession
-			candidateMetadata.stable = cloneCodexMetadataMap(metadataSession.stable)
-			if metadataSession.stable == nil {
-				candidateMetadata.stable = nil
-			}
-			defer func() {
-				if account.IsCodexMetadataRepairEnabled() && filterErr == nil && blocked == nil {
-					*metadataSession = candidateMetadata
-				}
-			}()
 			if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
 				return payload, nil, nil
 			}
@@ -1182,23 +1159,12 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 				}
 			}
 			if isResponseCreate || eventType == "session.update" {
-				// relay 并行转发不写共享 Gin 状态；后续帧只在本地复用本轮快照。
-				var metadataRepair *codexMetadataRepairSnapshot
-				if account.IsCodexMetadataRepairEnabled() {
-					metadataRepair = candidateMetadata.build(c, account, payload, false)
-				}
 				accountScopedPayload, accountScoped, scopeErr := applyCodexAccountIdentityClientMetadataRaw(payload, codexAccountIdentitySource(c, account), getAPIKeyIDFromContext(c))
 				if scopeErr != nil {
 					return payload, nil, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket identity metadata", scopeErr)
 				}
 				if accountScoped {
 					payload = accountScopedPayload
-				}
-				if metadataRepair != nil {
-					payload, scopeErr = metadataRepair.applyRaw(payload)
-					if scopeErr != nil {
-						return payload, nil, scopeErr
-					}
 				}
 			}
 			originalResponseCreate := payload

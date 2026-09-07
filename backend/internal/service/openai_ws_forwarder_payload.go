@@ -176,8 +176,6 @@ func (s *OpenAIGatewayService) buildOpenAIWSHeaders(
 	// 账号级请求头覆写（仅 openai api_key 账号启用时生效；OAuth 路径 no-op）。
 	// 覆盖所有 WS 模式（ctx_pool/dedicated/passthrough）的握手头。
 	account.ApplyHeaderOverrides(headers)
-	stagedCodexMetadataRepair(c, account).applyHeaders(headers)
-	// 对齐官方首轮兼容头；后续回合由当前 body 快照承载，回合头不参与池兼容键。
 	// HTTP 与 WebSocket 共用同一份 Codex 会话级能力协商，连接池也会据此
 	// 隔离不兼容握手。
 	applyOpenAICodexBetaFeatures(c, account, headers)
