@@ -114,8 +114,7 @@ func TestCodexMetadataRepairDeviceFingerprintAndIsolation(t *testing.T) {
 			snapshot := buildCodexMetadataRepair(c, a, []byte(`{"input":[]}`), "", true)
 			require.NotNil(t, snapshot)
 			if mode == "session" {
-				expected := resolveCodexFingerprintIDsFromRequest(a, c.Request.Header)
-				require.Equal(t, expected.threadID, snapshot.metadata["thread_id"], "线程必须从原始会话派生，不能先做账号隔离再二次派生")
+				require.Equal(t, scopeCodexAccountIdentityValue(a, 0, "thread", "session-a"), snapshot.metadata["thread_id"], "无 thread 时使用原始会话来源并保持租户隔离")
 			}
 			turn := gjson.Parse(snapshot.headers.Get(openAIWSTurnMetadataHeader))
 			for _, identity := range codexMetadataRepairIdentity {
@@ -219,7 +218,7 @@ func TestCodexMetadataRepairHeaderSafetyAndPoolCompatibility(t *testing.T) {
 		require.Nil(t, buildCodexMetadataRepair(c, a, body, "", true))
 	}
 	c.Request.Header.Set(openAIWSTurnMetadataHeader, "not-json")
-	require.Nil(t, buildCodexMetadataRepair(c, a, []byte(`{}`), "", true))
+	require.NotNil(t, buildCodexMetadataRepair(c, a, []byte(`{}`), "", true), "坏兼容头不阻断合法请求的修复")
 	c.Request.Header.Del(openAIWSTurnMetadataHeader)
 	snapshot := buildCodexMetadataRepair(c, a, []byte(`{}`), "session-one", true)
 	headers := http.Header{"x-codex-turn-metadata": []string{"stale"}, "X-Codex-Turn-Metadata": []string{"other"}}
@@ -294,7 +293,8 @@ func TestCodexMetadataRepairHTTPToWSOnOff(t *testing.T) {
 		header := dialer.lastHeaders.Get(openAIWSTurnMetadataHeader)
 		payload := gjson.Get(requestToJSONString(conn.lastWrite), "client_metadata.x-codex-turn-metadata").String()
 		if enabled {
-			require.JSONEq(t, header, payload)
+			require.Empty(t, header, "每轮元数据只在 WS body 承载")
+			require.Equal(t, scopeCodexAccountIdentityValue(a, 0, "turn", "client-turn"), gjson.Get(payload, "turn_id").String())
 		} else {
 			require.NotEqual(t, gjson.Get(header, "turn_id").String(), gjson.Get(payload, "turn_id").String(), "关闭保持原逻辑，不暗中全局修复")
 		}

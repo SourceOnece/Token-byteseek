@@ -40,7 +40,6 @@ type codexMetadataRepairSnapshot struct {
 	sourceKey [32]byte
 	metadata  map[string]any
 	headers   http.Header
-	lineage   []codexMetadataLineageBinding
 }
 
 var codexMetadataRepairIdentity = []struct {
@@ -195,12 +194,10 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 		headers = c.Request.Header
 	}
 	headerTurnRaw := headers.Get(openAIWSTurnMetadataHeader)
-	if len(headerTurnRaw) > codexMetadataRepairMaxBytes {
-		return nil
-	}
 	headerTurn := codexMetadataObject(headerTurnRaw)
-	if firstTurn && strings.TrimSpace(headers.Get(openAIWSTurnMetadataHeader)) != "" && headerTurn == nil {
-		return nil
+	if len(headerTurnRaw) > codexMetadataRepairMaxBytes {
+		// 可选兼容头超限不应让合法完整 body 的修复失效。
+		headerTurn = nil
 	}
 	turn := map[string]any{}
 	if firstTurn {
@@ -211,10 +208,7 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 	for key, value := range bodyTurn {
 		turn[key] = value
 	}
-	lineage, valid := collectCodexMetadataLineage(cm, bodyTurn, headerTurn, headers, firstTurn)
-	if !valid {
-		return nil
-	}
+	lineage := collectCodexMetadataLineage(cm, bodyTurn, headerTurn, headers, firstTurn)
 	memory := codexMetadataString(turn["request_kind"]) == "memory"
 	// Memory 不从握手或 flat 生成嵌套回合身份，显式提供的 turn 仍保留。
 	explicitMemoryTurn := codexMetadataString(bodyTurn["turn_id"])
@@ -280,13 +274,38 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 	fingerprint := resolveCodexFingerprintIDsFromRequest(source, clientHeaders)
 	applyCodexFingerprintClientMetadata(container, fingerprint)
 	cm = container["client_metadata"].(map[string]any)
-	if fingerprint != nil && fingerprint.mode != codexFingerprintDevice && !memory {
-		turn["turn_started_at_unix_ms"] = fingerprint.turnStartedAtUnixMs
+	// 修复开启时，主 thread/turn 与其引用采用同一无状态映射。
+	// 设备和 session 收敛仍保留；不修改原指纹实现，也不改业务 prompt_cache_key。
+	for _, field := range []struct{ name, kind string }{{"thread_id", "thread"}, {"turn_id", "turn"}} {
+		raw := rawIdentity[field.name]
+		if raw == "" && field.name == "thread_id" && fingerprint != nil && fingerprint.mode != codexFingerprintDevice {
+			raw = rawSessionID // 无显式 thread 时只从已有会话来源建立线程，不跨用户合并。
+		}
+		if raw != "" {
+			cm[field.name] = scopeCodexAccountIdentityValue(source, getAPIKeyIDFromContext(c), field.kind, raw)
+		} else {
+			delete(cm, field.name)
+		}
+	}
+	if fingerprint != nil && fingerprint.mode != codexFingerprintDevice {
+		if raw := rawIdentity["window_id"]; raw != "" {
+			cm["x-codex-window-id"] = scopeCodexAccountIdentityValue(source, getAPIKeyIDFromContext(c), "window", raw)
+		} else if thread := codexMetadataString(cm["thread_id"]); thread != "" {
+			cm["x-codex-window-id"] = thread + ":0"
+		} else {
+			delete(cm, "x-codex-window-id")
+		}
 	}
 	outHeaders := make(http.Header)
 	for _, identity := range codexMetadataRepairIdentity {
 		value := codexMetadataString(cm[identity.aliases[0]])
 		if value == "" {
+			// 不能让原 session/full 头投影重新补出本快照已省略的身份。
+			if fingerprint != nil {
+				for _, alias := range identity.aliases {
+					outHeaders.Set(alias, "")
+				}
+			}
 			continue
 		}
 		turn[identity.field] = value
@@ -298,14 +317,21 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 			}
 		}
 	}
-	projectCodexMetadataLineage(cm, turn, outHeaders, lineage, source, getAPIKeyIDFromContext(c), fingerprint)
-	var bindings []codexMetadataLineageBinding
-	if fingerprint != nil && fingerprint.mode != codexFingerprintDevice && !memory {
-		for _, field := range []struct{ name, kind string }{{"thread_id", "thread"}, {"turn_id", "turn"}} {
-			if raw, final := rawIdentity[field.name], codexMetadataString(turn[field.name]); raw != "" && final != "" {
-				bindings = append(bindings, codexMetadataLineageBinding{key: codexMetadataLineageKey(source, getAPIKeyIDFromContext(c), field.kind, raw), value: final})
-			}
+	projectCodexMetadataLineage(cm, turn, outHeaders, lineage, source, getAPIKeyIDFromContext(c))
+	if thread := codexMetadataString(cm["thread_id"]); thread != "" {
+		// 最终追踪头不再混用另一套 session/full 派生的 thread。
+		outHeaders.Set("x-client-request-id", thread)
+		if _, exists := cm["x-client-request-id"]; exists {
+			cm["x-client-request-id"] = thread
 		}
+	} else if fingerprint != nil && fingerprint.mode != codexFingerprintDevice {
+		// 没有线程/会话来源时，使用本请求的隔离 turn 作为池复用兜底，
+		// 不能只剩账号共用的设备/session 导致多用户未知线程混用连接。
+		trace := codexMetadataString(cm["turn_id"])
+		if trace == "" {
+			trace = scopeCodexAccountIdentityValue(source, getAPIKeyIDFromContext(c), "request", uuid.NewString())
+		}
+		outHeaders.Set("x-client-request-id", trace)
 	}
 	if memory {
 		// 官方 Memory 完整对象无这些线程身份，flat 兼容值和既有隔离仍保留。
@@ -362,7 +388,7 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 		// 不截断合法完整 body；空值表示最终移除超限的可选兼容头。
 		outHeaders.Set(openAIWSTurnMetadataHeader, "")
 	}
-	return &codexMetadataRepairSnapshot{accountID: account.ID, metadata: cm, headers: outHeaders, lineage: bindings}
+	return &codexMetadataRepairSnapshot{accountID: account.ID, metadata: cm, headers: outHeaders}
 }
 
 func stagedCodexMetadataRepair(c *gin.Context, account *Account) *codexMetadataRepairSnapshot {
@@ -382,11 +408,7 @@ func (snapshot *codexMetadataRepairSnapshot) applyRaw(body []byte) ([]byte, erro
 	if snapshot == nil {
 		return body, nil
 	}
-	out, err := sjson.SetBytes(body, "client_metadata", snapshot.metadata)
-	if err == nil {
-		snapshot.rememberLineage()
-	}
-	return out, err
+	return sjson.SetBytes(body, "client_metadata", snapshot.metadata)
 }
 
 func (snapshot *codexMetadataRepairSnapshot) applyMap(body map[string]any) {
@@ -396,7 +418,6 @@ func (snapshot *codexMetadataRepairSnapshot) applyMap(body map[string]any) {
 	// 深复制防止后续兼容转换原地写入而污染重试快照。
 	raw, _ := json.Marshal(snapshot.metadata)
 	body["client_metadata"] = codexMetadataObject(string(raw))
-	snapshot.rememberLineage()
 }
 
 func (snapshot *codexMetadataRepairSnapshot) applyHeaders(headers http.Header) {

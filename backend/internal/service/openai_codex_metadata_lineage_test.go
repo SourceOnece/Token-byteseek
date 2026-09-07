@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/stretchr/testify/require"
@@ -61,6 +60,12 @@ func TestCodexMetadataRepairLineageHeaders(t *testing.T) {
 					return
 				}
 				want := scopeCodexAccountIdentityValue(account, 73, "thread", "parent-thread")
+				if route == "ws" {
+					require.Empty(t, headers.Get(codexParentThreadIDHeader))
+					require.Empty(t, headers.Get(openAISubagentHeader))
+					require.Empty(t, headers.Get(openAIWSTurnMetadataHeader))
+					return
+				}
 				require.Equal(t, want, headers.Get(codexParentThreadIDHeader))
 				require.Equal(t, "collab_spawn", headers.Get(openAISubagentHeader))
 				require.Equal(t, want, gjson.Get(headers.Get(openAIWSTurnMetadataHeader), "parent_thread_id").String())
@@ -104,9 +109,7 @@ func TestCodexMetadataRepairLineageIsolation(t *testing.T) {
 				require.NotNil(t, next)
 				value := gjson.Get(next.metadata[openAIWSTurnMetadataHeader].(string), "parent_thread_id").String()
 				require.NotEqual(t, parent.metadata["thread_id"], value, boundary)
-				if mode == "session" || mode == "full" {
-					require.Empty(t, value, "未知收敛映射不能猜测或跨租户复用")
-				}
+				require.Equal(t, scopeCodexAccountIdentityValue(&other, getAPIKeyIDFromContext(c), "thread", "parent-"+prefix), value)
 			}
 		})
 	}
@@ -147,28 +150,6 @@ func TestCodexMetadataRepairMemoryShape(t *testing.T) {
 	}
 }
 
-// 缓存容量、过期和歧义守卫保证不以任意最后写入的映射冒充父回合。
-func TestCodexMetadataRepairLineageCacheBoundaries(t *testing.T) {
-	cache := newCodexMetadataLineageCache(2, time.Minute)
-	now := time.Now()
-	a := codexMetadataLineageBinding{key: [32]byte{1}, value: "one"}
-	cache.remember(a, now)
-	v, ok := cache.lookup(a.key, now)
-	require.True(t, ok)
-	require.Equal(t, "one", v)
-	cache.remember(codexMetadataLineageBinding{key: a.key, value: "conflict"}, now)
-	_, ok = cache.lookup(a.key, now)
-	require.False(t, ok)
-	cache.remember(a, now.Add(2*time.Minute))
-	_, ok = cache.lookup(a.key, now.Add(2*time.Minute))
-	require.True(t, ok)
-	cache.remember(codexMetadataLineageBinding{key: [32]byte{2}, value: "two"}, now.Add(2*time.Minute))
-	cache.remember(codexMetadataLineageBinding{key: [32]byte{3}, value: "three"}, now.Add(2*time.Minute))
-	require.Len(t, cache.entries, 2)
-	_, ok = cache.lookup(a.key, now.Add(2*time.Minute))
-	require.False(t, ok)
-}
-
 // 当前 body 的父子关系优先，后续帧缺失时不能用旧握手关系覆盖新轮。
 func TestCodexMetadataRepairLineageSourcesAndRetry(t *testing.T) {
 	c, a := metadataRepairTestContext()
@@ -182,7 +163,7 @@ func TestCodexMetadataRepairLineageSourcesAndRetry(t *testing.T) {
 	want := scopeCodexAccountIdentityValue(a, 0, "thread", "body-parent")
 	require.Equal(t, want, snapshot.headers.Get(codexParentThreadIDHeader))
 	require.Equal(t, want, snapshot.metadata["parent_thread_id"])
-	require.Equal(t, "collab_spawn", snapshot.headers.Get(openAISubagentHeader))
+	require.Equal(t, "flat-kind", snapshot.headers.Get(openAISubagentHeader), "兼容头和内层 kind 独立保留")
 	prepareCodexMetadataRepair(c, a, body, "")
 	require.Same(t, snapshot, stagedCodexMetadataRepair(c, a))
 	c.Request.Header.Set(codexParentThreadIDHeader, "changed-header")
@@ -198,7 +179,9 @@ func TestCodexMetadataRepairLineageSourcesAndRetry(t *testing.T) {
 	c.Request.Header.Del(openAIWSTurnMetadataHeader)
 	for _, invalid := range []string{"bad\r\nvalue", "bad\x01value", strings.Repeat("x", codexMetadataRepairMaxBytes+1)} {
 		c.Request.Header.Set(codexParentThreadIDHeader, invalid)
-		require.Nil(t, buildCodexMetadataRepair(c, a, []byte(`{}`), "", true))
+		snapshot := buildCodexMetadataRepair(c, a, []byte(`{}`), "", true)
+		require.NotNil(t, snapshot, "非法可选父引用不能关闭其它修复")
+		require.Empty(t, snapshot.headers.Get(codexParentThreadIDHeader))
 	}
 }
 
@@ -220,7 +203,7 @@ func TestCodexMetadataRepairMemoryDisabledAndNoSyntheticTurn(t *testing.T) {
 	require.Equal(t, string(body), string(out))
 }
 
-// 两个新增握手字段是修复开启后的兼容条件，关闭仍使用原连接池判定。
+// 每轮关系不再作为固定握手身份；关闭仍使用原连接池判定。
 func TestCodexMetadataRepairLineagePoolCompatibility(t *testing.T) {
 	_, a := metadataRepairTestContext()
 	headers := make(http.Header)
@@ -228,7 +211,7 @@ func TestCodexMetadataRepairLineagePoolCompatibility(t *testing.T) {
 	for _, field := range []string{codexParentThreadIDHeader, openAISubagentHeader} {
 		changed := headers.Clone()
 		changed.Set(field, "different")
-		require.NotEqual(t, base, normalizeOpenAIWSHandshakeCompatibility(a, changed))
+		require.Equal(t, base, normalizeOpenAIWSHandshakeCompatibility(a, changed))
 		a.Extra[codexMetadataRepairExtraKey] = false
 		require.Equal(t, normalizeOpenAIWSHandshakeCompatibility(a, headers), normalizeOpenAIWSHandshakeCompatibility(a, changed))
 		a.Extra[codexMetadataRepairExtraKey] = true
@@ -256,7 +239,6 @@ func TestCodexMetadataRepairLineageShadowATAndConcurrent(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				parent.rememberLineage()
 				next := buildCodexMetadataRepair(c, a, childBody, "", true)
 				if next == nil || next.headers.Get(codexParentThreadIDHeader) != parent.metadata["thread_id"] {
 					t.Error("并发父线程映射不一致")

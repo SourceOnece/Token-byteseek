@@ -87,7 +87,7 @@ func TestCodexMetadataRepairWSPrewarmCompatibility(t *testing.T) {
 					require.NoError(t, err)
 					defer client.CloseNow()
 					for index, kind := range []string{"prewarm", "turn"} {
-						metadata, _ := json.Marshal(map[string]any{"request_kind": kind, "installation_id": "stable-installation", "session_id": "stable-session", "thread_id": "stable-thread", "turn_id": fmt.Sprintf("turn-%d", index), "parent_thread_id": parentThread, "parent_turn_id": parentTurn, "subagent_kind": "collab_spawn", "tool_namespaces_info": map[string]any{"tools": []any{}}})
+						metadata, _ := json.Marshal(map[string]any{"request_kind": kind, "installation_id": "stable-installation", "session_id": "stable-session", "thread_id": "stable-thread", "turn_id": fmt.Sprintf("turn-%d", index), "parent_thread_id": parentThread, "parent_turn_id": parentTurn, "subagent_kind": "thread_spawn", "tool_namespaces_info": map[string]any{"tools": []any{}}})
 						body := map[string]any{"type": "response.create", "model": "gpt-6-astra", "instructions": "Synthetic test", "store": false, "input": []any{map[string]any{"role": "user", "content": "test"}}, "client_metadata": map[string]any{"installation_id": "stable-installation", "session_id": "stable-session", "thread_id": "stable-thread", openAIWSTurnMetadataHeader: string(metadata)}}
 						if index == 0 {
 							body["generate"] = false
@@ -124,7 +124,7 @@ func TestCodexMetadataRepairWSPrewarmCompatibility(t *testing.T) {
 						value := gjson.Parse(gjson.GetBytes(finalBody, "client_metadata.x-codex-turn-metadata").String())
 						require.Equal(t, parent.metadata["thread_id"], value.Get("parent_thread_id").String())
 						require.Equal(t, parent.metadata["turn_id"], value.Get("parent_turn_id").String())
-						require.Equal(t, "collab_spawn", value.Get("subagent_kind").String())
+						require.Equal(t, "thread_spawn", value.Get("subagent_kind").String())
 					}
 				})
 			}
