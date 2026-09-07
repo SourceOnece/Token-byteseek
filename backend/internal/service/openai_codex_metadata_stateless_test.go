@@ -141,9 +141,8 @@ func TestCodexMetadataRepairWSLineageReconnect(t *testing.T) {
 				prepareCodexMetadataRepair(c, a, body, "")
 				h, _, err := svc.buildOpenAIWSHeaders(context.Background(), c, a, "synthetic", OpenAIWSProtocolDecision{}, true, "", "", "", "gpt-6-astra", "")
 				require.NoError(t, err)
-				for _, key := range []string{openAIWSTurnMetadataHeader, codexParentThreadIDHeader, openAISubagentHeader} {
-					require.Empty(t, h.Get(key))
-				}
+				require.NotEmpty(t, h.Get(openAIWSTurnMetadataHeader))
+				require.Equal(t, "collab_spawn", h.Get(openAISubagentHeader))
 				lease, err := pool.Acquire(context.Background(), openAIWSAcquireRequest{Account: a, WSURL: "wss://synthetic.invalid/responses", Headers: h, PreferredConnID: connID, ForcePreferredConn: i > 0})
 				require.NoError(t, err)
 				if i == 0 {

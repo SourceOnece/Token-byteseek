@@ -40,6 +40,7 @@ type codexMetadataRepairSnapshot struct {
 	sourceKey [32]byte
 	metadata  map[string]any
 	headers   http.Header
+	stable    map[string]any // 原始连接级来源，不能用出站隔离值再次派生。
 }
 
 var codexMetadataRepairIdentity = []struct {
@@ -106,7 +107,7 @@ func prepareCodexMetadataRepair(c *gin.Context, account *Account, body []byte, s
 	}
 	// handler 的同账号重试会重新调用 Forward，不能因此重生成缺省 turn ID。
 	sourceKey := codexMetadataRepairSourceKey(c, account, body, sessionHint)
-	if previous != nil && previous.request == c.Request && previous.sourceKey == sourceKey {
+	if previous != nil && sameCodexMetadataInboundRequest(previous.request, c.Request) && previous.sourceKey == sourceKey {
 		c.Set(codexMetadataRepairContextKey, previous)
 		return
 	}
@@ -116,6 +117,15 @@ func prepareCodexMetadataRepair(c *gin.Context, account *Account, body []byte, s
 		snapshot.sourceKey = sourceKey
 	}
 	c.Set(codexMetadataRepairContextKey, snapshot)
+}
+
+// WithContext 为观测附加上下文时浅复制 Request，但 URL 与 Body 仍属同一入站请求。
+// 新请求有独立 URL 对象；不能仅按文本相同跨请求复用缺省随机 turn。
+func sameCodexMetadataInboundRequest(a, b *http.Request) bool {
+	if a == b {
+		return true
+	}
+	return a != nil && b != nil && a.URL == b.URL && a.Body == b.Body && a.Method == b.Method && a.RequestURI == b.RequestURI
 }
 
 // 快照只按确实参与 metadata 构造的来源复用，不保存输入或凭据明文。
@@ -136,6 +146,7 @@ func codexMetadataRepairSourceKey(c *gin.Context, account *Account, body []byte,
 	parts = append(parts, seed)
 	if c.Request != nil {
 		parts = append(parts, c.Request.Header.Get(openAIWSTurnMetadataHeader))
+		parts = append(parts, c.Request.Header.Get("x-openai-memgen-request"))
 		for _, identity := range codexMetadataRepairIdentity {
 			for _, alias := range identity.aliases {
 				parts = append(parts, c.Request.Header.Get(alias))
@@ -165,6 +176,11 @@ func codexMetadataRepairRequestKind(body []byte) string {
 // buildCodexMetadataRepair 的当前 body 优先于头；后续 WS 回合不复用握手的 turn
 // 或环境扩展值，仅把稳定会话头作为缺失身份来源。不伪造安装设备、sandbox 或客户端能力。
 func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, sessionHint string, firstTurn bool) *codexMetadataRepairSnapshot {
+	return buildCodexMetadataRepairWithDefaults(c, account, body, sessionHint, firstTurn, nil)
+}
+
+// defaults 仅来自当前 WS 连接，不读全局缓存、不修改入站 body 或调度上下文。
+func buildCodexMetadataRepairWithDefaults(c *gin.Context, account *Account, body []byte, sessionHint string, firstTurn bool, defaults map[string]any) *codexMetadataRepairSnapshot {
 	if c == nil || !account.IsCodexMetadataRepairEnabled() || isOpenAIResponsesCompactPath(c) {
 		return nil
 	}
@@ -200,7 +216,9 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 		headerTurn = nil
 	}
 	turn := map[string]any{}
-	if firstTurn {
+	// 官方内嵌对象是当前轮权威来源；有完整 body 时不继承旧头的类型/时间/环境。
+	sameTurn := codexMetadataString(bodyTurn["turn_id"]) != "" && codexMetadataString(bodyTurn["turn_id"]) == codexMetadataString(headerTurn["turn_id"])
+	if firstTurn && (bodyTurnRaw == "" || sameTurn) {
 		for key, value := range headerTurn {
 			turn[key] = value
 		}
@@ -208,39 +226,74 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 	for key, value := range bodyTurn {
 		turn[key] = value
 	}
-	lineage := collectCodexMetadataLineage(cm, bodyTurn, headerTurn, headers, firstTurn)
 	memory := codexMetadataString(turn["request_kind"]) == "memory"
+	// 只对当前连接明确保存的稳定关系补缺，不继承上一轮 parent/root turn。
+	lineageBody := cloneCodexMetadataMap(bodyTurn)
+	for _, field := range codexMetadataStableLineageFields {
+		if !memory && !codexMetadataFieldSupplied(cm, bodyTurn, field) {
+			if value, ok := defaults[field]; ok {
+				if field == openAISubagentHeader {
+					cm[field] = value
+				} else {
+					lineageBody[field] = value
+				}
+			}
+		}
+	}
+	lineageHeaders := headerTurn
+	if bodyTurnRaw != "" && !sameTurn {
+		lineageHeaders = nil
+	}
+	lineage := collectCodexMetadataLineage(cm, lineageBody, lineageHeaders, headers, firstTurn)
+	clearedLineage := make(map[string]bool)
+	for _, field := range codexMetadataStableLineageFields {
+		clearedLineage[field] = lineage[field] == "" && (codexMetadataFieldSupplied(cm, lineageBody, field) || codexMetadataFieldInMap(defaults, field))
+	}
+	sessionUpdate := gjson.GetBytes(body, "type").String() == "session.update"
 	// Memory 不从握手或 flat 生成嵌套回合身份，显式提供的 turn 仍保留。
 	explicitMemoryTurn := codexMetadataString(bodyTurn["turn_id"])
 	if bodyTurnRaw == "" && firstTurn {
 		explicitMemoryTurn = codexMetadataString(headerTurn["turn_id"])
 	}
 	rawIdentity := make(map[string]string)
+	clearedIdentity := make(map[string]bool)
 	for _, identity := range codexMetadataRepairIdentity {
-		value := codexMetadataString(bodyTurn[identity.field])
-		for _, alias := range identity.aliases {
-			if value == "" {
-				value = codexMetadataString(cm[alias])
+		value, supplied, valid := codexMetadataIdentityValue(cm, bodyTurn, identity.field, identity.aliases)
+		if !valid {
+			return nil
+		}
+		if !supplied && identity.field != "turn_id" {
+			if previous, exists := defaults[identity.field]; exists {
+				value = codexMetadataString(previous)
+				if previous == nil {
+					supplied = true
+				} // 保留连接内的显式清除标记。
 			}
 		}
-		if value == "" && (firstTurn || identity.field != "turn_id") && !(memory && identity.field == "turn_id") {
-			value = codexMetadataString(headerTurn[identity.field])
-			for _, alias := range identity.aliases {
-				if value == "" {
-					value = strings.TrimSpace(headers.Get(alias))
+		if !supplied && value == "" && defaults == nil && (firstTurn || identity.field != "turn_id") && !(memory && identity.field == "turn_id") {
+			// turn 只能来自当前请求；有 body blob 时不使用另一个回合的兼容头 turn。
+			if identity.field != "turn_id" || bodyTurnRaw == "" {
+				value, _, valid = codexMetadataIdentityValue(nil, headerTurn, identity.field, nil)
+				if !valid {
+					return nil
+				}
+				for _, alias := range identity.aliases {
+					if value == "" {
+						value = strings.TrimSpace(headers.Get(alias))
+					}
 				}
 			}
 		}
-		if value == "" && identity.field == "installation_id" {
+		if value == "" && !supplied && identity.field == "installation_id" {
 			value = codexAccountIdentitySource(c, account).GetOpenAIDeviceID()
 		}
-		if value == "" && identity.field == "session_id" {
+		if value == "" && !supplied && identity.field == "session_id" {
 			value = strings.TrimSpace(sessionHint)
 			if value == "" {
 				value = strings.TrimSpace(gjson.GetBytes(body, "prompt_cache_key").String())
 			}
 		}
-		if value == "" && identity.field == "turn_id" && !memory {
+		if value == "" && !supplied && identity.field == "turn_id" && !memory && !sessionUpdate {
 			value = uuid.NewString() // 仅生成本请求的相关标识；不制造客户端设备/权限事实。
 		}
 		if value != "" {
@@ -250,12 +303,18 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 			turn[identity.field] = value
 			cm[identity.aliases[0]] = value
 			rawIdentity[identity.field] = value
+		} else if supplied {
+			clearedIdentity[identity.field] = true
+			delete(turn, identity.field)
+			for _, alias := range identity.aliases {
+				delete(cm, alias)
+			}
 		}
 	}
-	if _, exists := turn["turn_started_at_unix_ms"]; !exists && !memory {
+	if _, exists := turn["turn_started_at_unix_ms"]; !exists && !memory && !sessionUpdate {
 		turn["turn_started_at_unix_ms"] = time.Now().UnixMilli()
 	}
-	if codexMetadataString(turn["request_kind"]) == "" {
+	if codexMetadataString(turn["request_kind"]) == "" && !sessionUpdate {
 		turn["request_kind"] = codexMetadataRepairRequestKind(body)
 	}
 	// 只让原隔离器处理 identity 字段，不经其 float64 JSON 解码重写完整库存，
@@ -278,7 +337,7 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 	// 设备和 session 收敛仍保留；不修改原指纹实现，也不改业务 prompt_cache_key。
 	for _, field := range []struct{ name, kind string }{{"thread_id", "thread"}, {"turn_id", "turn"}} {
 		raw := rawIdentity[field.name]
-		if raw == "" && field.name == "thread_id" && fingerprint != nil && fingerprint.mode != codexFingerprintDevice {
+		if raw == "" && !clearedIdentity[field.name] && field.name == "thread_id" && fingerprint != nil && fingerprint.mode != codexFingerprintDevice {
 			raw = rawSessionID // 无显式 thread 时只从已有会话来源建立线程，不跨用户合并。
 		}
 		if raw != "" {
@@ -290,7 +349,7 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 	if fingerprint != nil && fingerprint.mode != codexFingerprintDevice {
 		if raw := rawIdentity["window_id"]; raw != "" {
 			cm["x-codex-window-id"] = scopeCodexAccountIdentityValue(source, getAPIKeyIDFromContext(c), "window", raw)
-		} else if thread := codexMetadataString(cm["thread_id"]); thread != "" {
+		} else if thread := codexMetadataString(cm["thread_id"]); thread != "" && !clearedIdentity["window_id"] {
 			cm["x-codex-window-id"] = thread + ":0"
 		} else {
 			delete(cm, "x-codex-window-id")
@@ -298,13 +357,20 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 	}
 	outHeaders := make(http.Header)
 	for _, identity := range codexMetadataRepairIdentity {
+		if clearedIdentity[identity.field] {
+			delete(cm, identity.aliases[0])
+		}
 		value := codexMetadataString(cm[identity.aliases[0]])
 		if value == "" {
 			// 不能让原 session/full 头投影重新补出本快照已省略的身份。
-			if fingerprint != nil {
+			if fingerprint != nil || clearedIdentity[identity.field] {
 				for _, alias := range identity.aliases {
 					outHeaders.Set(alias, "")
 				}
+			}
+			delete(turn, identity.field)
+			for _, alias := range identity.aliases {
+				delete(cm, alias)
 			}
 			continue
 		}
@@ -318,6 +384,10 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 		}
 	}
 	projectCodexMetadataLineage(cm, turn, outHeaders, lineage, source, getAPIKeyIDFromContext(c))
+	// 官方 MemoryConsolidation 的兼容标记只转发真实值，不从 memory 类型猜测。
+	if value := strings.TrimSpace(headers.Get("x-openai-memgen-request")); value == "true" || value == "false" {
+		outHeaders.Set("x-openai-memgen-request", value)
+	}
 	if thread := codexMetadataString(cm["thread_id"]); thread != "" {
 		// 最终追踪头不再混用另一套 session/full 派生的 thread。
 		outHeaders.Set("x-client-request-id", thread)
@@ -388,7 +458,22 @@ func buildCodexMetadataRepair(c *gin.Context, account *Account, body []byte, ses
 		// 不截断合法完整 body；空值表示最终移除超限的可选兼容头。
 		outHeaders.Set(openAIWSTurnMetadataHeader, "")
 	}
-	return &codexMetadataRepairSnapshot{accountID: account.ID, metadata: cm, headers: outHeaders}
+	stable := make(map[string]any)
+	for _, field := range []string{"installation_id", "session_id", "thread_id", "window_id"} {
+		if value := rawIdentity[field]; value != "" {
+			stable[field] = value
+		} else if clearedIdentity[field] {
+			stable[field] = nil
+		}
+	}
+	for _, field := range codexMetadataStableLineageFields {
+		if value := lineage[field]; value != "" {
+			stable[field] = value
+		} else if clearedLineage[field] {
+			stable[field] = nil
+		}
+	}
+	return &codexMetadataRepairSnapshot{accountID: account.ID, metadata: cm, headers: outHeaders, stable: stable}
 }
 
 func stagedCodexMetadataRepair(c *gin.Context, account *Account) *codexMetadataRepairSnapshot {

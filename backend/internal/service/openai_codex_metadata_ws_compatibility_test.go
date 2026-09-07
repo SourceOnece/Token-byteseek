@@ -18,6 +18,15 @@ import (
 
 // 三种 WS 模式、四种指纹、开关两态的预热与续接；只使用本地服务和假上游。
 func TestCodexMetadataRepairWSPrewarmCompatibility(t *testing.T) {
+	testCodexMetadataRepairWSPrewarmCompatibility(t, false)
+}
+
+// 扩展真实双轮矩阵：首轮有完整身份，后续只携带当前 turn 和请求种类。
+func TestCodexMetadataRepairWSOmittedStableIdentity(t *testing.T) {
+	testCodexMetadataRepairWSPrewarmCompatibility(t, true)
+}
+
+func testCodexMetadataRepairWSPrewarmCompatibility(t *testing.T, omitStable bool) {
 	for _, mode := range []string{OpenAIWSIngressModeCtxPool, OpenAIWSIngressModePassthrough, OpenAIWSIngressModeHTTPBridge} {
 		for _, fingerprint := range []string{"off", "device", "session", "full"} {
 			for _, enabled := range []bool{false, true} {
@@ -93,6 +102,10 @@ func TestCodexMetadataRepairWSPrewarmCompatibility(t *testing.T) {
 							body["generate"] = false
 						} else {
 							body["previous_response_id"] = "resp_audit_prewarm"
+						}
+						if omitStable && index > 0 {
+							sparse, _ := json.Marshal(map[string]any{"request_kind": kind, "turn_id": fmt.Sprintf("turn-%d", index), "parent_turn_id": parentTurn})
+							body["client_metadata"] = map[string]any{openAIWSTurnMetadataHeader: string(sparse)}
 						}
 						raw, _ := json.Marshal(body)
 						require.NoError(t, client.Write(ctx, coderws.MessageText, raw))

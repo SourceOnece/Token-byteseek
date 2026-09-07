@@ -222,11 +222,12 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 		return rebuilt, nil
 	}
 
+	metadataSession := newCodexMetadataSession(c, account, firstClientMessage)
 	parseClientPayload := func(raw []byte, applyUserPromptReplacement bool, turn int) (openAIWSClientPayload, error) {
 		// 每个 WS 回合独立解析，重试复用该回合快照；旧握手 turn 不覆盖当前 body。
 		var metadataRepair *codexMetadataRepairSnapshot
 		if account.IsCodexMetadataRepairEnabled() {
-			metadataRepair = buildCodexMetadataRepair(c, account, raw, "", turn == 1)
+			metadataRepair = metadataSession.build(c, account, raw, turn == 1)
 			c.Set(codexMetadataRepairContextKey, metadataRepair)
 		}
 		trimmed := bytes.TrimSpace(raw)
@@ -706,6 +707,9 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 					}
 					if !retrySafe {
 						retryPayload = nil
+					}
+					if retrySafe && account.IsCodexMetadataRepairEnabled() {
+						stageCodexMetadataReplay(c, retryPayload, metadataSession.stable)
 					}
 					return newOpenAIWSCurrentTurnFailoverError(bridgeErr, retryPayload)
 				}

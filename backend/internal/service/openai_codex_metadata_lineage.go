@@ -24,7 +24,26 @@ var codexMetadataLineageFields = []struct {
 // 逐字段选当前可信来源；非法高优先级值只省略该字段，不借旧来源覆盖当前意图。
 func collectCodexMetadataLineage(cm, bodyTurn, headerTurn map[string]any, headers http.Header, firstTurn bool) map[string]string {
 	values := make(map[string]string)
+	suppressed := make(map[string]bool)
 	for _, field := range codexMetadataLineageFields {
+		// 当前明确 null/空串/非法值不等于缺失，不能借低优先级头恢复旧关系。
+		if value, exists := bodyTurn[field.field]; exists && field.field != openAISubagentHeader {
+			if value == nil || codexMetadataString(value) == "" {
+				suppressed[field.field] = true
+				continue
+			}
+		}
+		for _, alias := range field.aliases {
+			if value, exists := cm[alias]; exists && !codexMetadataFieldInMap(bodyTurn, field.field) {
+				if value == nil || codexMetadataString(value) == "" {
+					suppressed[field.field] = true
+				}
+				break
+			}
+		}
+		if suppressed[field.field] {
+			continue
+		}
 		var candidates []any
 		if field.field != openAISubagentHeader {
 			candidates = append(candidates, bodyTurn[field.field])
@@ -53,6 +72,7 @@ func collectCodexMetadataLineage(cm, bodyTurn, headerTurn map[string]any, header
 				continue
 			}
 			if !httpguts.ValidHeaderFieldValue(value) || len(value) > codexMetadataRepairMaxBytes {
+				suppressed[field.field] = true
 				break
 			}
 			values[field.field] = value
@@ -60,7 +80,7 @@ func collectCodexMetadataLineage(cm, bodyTurn, headerTurn map[string]any, header
 		}
 	}
 	// 只推导官方明确的对应关系；未知扩展分别保留，不猜测客户端角色。
-	if values[openAISubagentHeader] == "" {
+	if values[openAISubagentHeader] == "" && !suppressed[openAISubagentHeader] {
 		switch kind := values["subagent_kind"]; kind {
 		case "thread_spawn":
 			values[openAISubagentHeader] = "collab_spawn"
@@ -70,6 +90,11 @@ func collectCodexMetadataLineage(cm, bodyTurn, headerTurn map[string]any, header
 	}
 	// 独立头还可表示 Internal 来源（如 guardian/memory），不能据此补造内层 kind。
 	return values
+}
+
+func codexMetadataFieldInMap(values map[string]any, field string) bool {
+	_, exists := values[field]
+	return exists
 }
 
 // 主编号和引用使用相同的无状态账号/API Key 隔离。

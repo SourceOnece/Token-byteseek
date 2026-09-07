@@ -59,7 +59,7 @@ func TestCodexMetadataRepairSourcesAndCurrentTurn(t *testing.T) {
 	require.Equal(t, "preserve", gjson.GetBytes(got, "client_metadata.extension").String())
 	turn := gjson.Parse(snapshot.headers.Get(openAIWSTurnMetadataHeader))
 	require.Equal(t, "actual", turn.Get("sandbox").String())
-	require.Equal(t, int64(1), turn.Get("header_field").Int())
+	require.False(t, turn.Get("header_field").Exists(), "当前完整对象存在时不合入另一回合的扩展快照")
 	require.Equal(t, int64(2), turn.Get("body_field").Int())
 	require.Equal(t, scopeCodexAccountIdentityValue(a, 0, "turn", "new-turn"), turn.Get("turn_id").String())
 	require.Equal(t, turn.Raw, gjson.GetBytes(got, "client_metadata.x-codex-turn-metadata").String())
@@ -293,7 +293,7 @@ func TestCodexMetadataRepairHTTPToWSOnOff(t *testing.T) {
 		header := dialer.lastHeaders.Get(openAIWSTurnMetadataHeader)
 		payload := gjson.Get(requestToJSONString(conn.lastWrite), "client_metadata.x-codex-turn-metadata").String()
 		if enabled {
-			require.Empty(t, header, "每轮元数据只在 WS body 承载")
+			require.JSONEq(t, header, payload, "首轮 WS 兼容头与当前完整对象同源")
 			require.Equal(t, scopeCodexAccountIdentityValue(a, 0, "turn", "client-turn"), gjson.Get(payload, "turn_id").String())
 		} else {
 			require.NotEqual(t, gjson.Get(header, "turn_id").String(), gjson.Get(payload, "turn_id").String(), "关闭保持原逻辑，不暗中全局修复")

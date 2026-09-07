@@ -42,11 +42,15 @@ bh.011 起删除 bh.010 的进程内关联缓存：开启修复时，主 `thread
 
 这对 Metadata 同时开启的 session/full 有明确取舍：保留安装设备与 session 收敛，但已提供的 thread/turn/window 使用可关联的租户隔离编号，full 不再把有来源的不同线程合并为一个。缺少 thread 时仅在收敛模式从现有 session 来源派生线程；完全无来源时不造线程，以请求级隔离追踪号兜底连接复用。原始客户端 turn 存在时重复请求保持同一隔离 ID；缺失时生成本请求 ID，内部重试复用。原指纹实现、配置存储与业务 `prompt_cache_key` 不修改，开关关闭保持原指纹逻辑。启用/关闭及升级后应新建会话，不保证旧开启侧线程编号与新版续接兼容。
 
-HTTP 继续输出有界兼容 metadata/父线程/子任务头；开启且有有效快照的 WS 只把每轮 metadata 放入 `response.create.client_metadata`，省略固定握手的三个请求级兼容头，避免首轮关系残留或可选字段变化阻断续接。WS pool 不再比较父线程/子任务标记，仍保留账号、开关、实际稳定身份、原有追踪兜底、beta 与 TLS 隔离。关闭或无有效快照的握手行为不变；不改实际 `previous_response_id`、连接容量和上游/客户端流处理。
+bh.012 恢复官方 WS 首轮兼容头：HTTP 和 WS 建连均按当前快照输出有界 metadata、父线程和子任务头，工具库存仍只在完整 body。后续 WS 帧带各自完整 `response.create.client_metadata`，回合级 Metadata 不纳入固定连接兼容键；账号、开关、实际稳定身份、原有追踪兜底、beta 与 TLS 隔离保持。只有真实提供的 `x-openai-memgen-request=true/false` 才通过修复快照转发，不从普通 Memory 类型推测该标记。关闭或无有效快照时不改变旧握手行为。
+
+修复开启的每条 WS 入站连接独占一个原始来源状态：installation/session/thread/window 和父线程/分叉来源/subagent_kind/独立子任务兼容值可在后续缺省帧补齐。状态不保存 prompt、token、工具库存、环境、turn、parent_turn、root_turn、request_kind 或时间；显式换 session/thread 清理相关旧线程来源，显式 null/空串留下清除标记而不是回落旧握手。当前非法主身份返回原流程，不把非法类型当缺失。Memory 不借用普通线程的父子来源，也不覆盖普通会话状态。透传帧通过原有策略后才提交候选状态，禁止被拒帧污染后续默认值。
+
+首次完整 body 的回合对象优先于兼容头；只有没有 body blob，或双方明确有相同 turn ID 时才合并头中扩展，当前值始终优先。这样既补齐同轮遗漏又避免旧 Memory/时间/环境被沿用。既有兼容 `session.update` 仅对其声明的 client_metadata 键统一身份，不新增 turn/request_kind/time 或扩大 session 更新字段；不介入 Realtime 的其它独立路由。原 WS HTTP bridge 允许的当前轮跨账号重放可在同一 Gin 入站上下文一次性携带原始稳定默认值，按入站作用域、API Key 和 payload 摘要验证，下一账号只有开启修复才读取并重新隔离；原 replay payload 与调度输入不变，关闭目标账号不接收开启侧补出的字段。普通 HTTP 的合法 Request.WithContext 浅副本不重新生成回合快照；真正新入站请求和来源改变仍重建。
 
 `request_kind=memory` 的内嵌完整对象及 HTTP metadata header 不补 installation/session/thread/agent/window/window_number/context_window_id；已有显式 turn 和根引用按同规则隔离，缺失则不生成、不从旧握手补造，当前 body 未提供的时间不从握手沿用。flat 兼容身份仍保留原账号隔离；不改变 `input`、工具、模型或实际 Memory 业务。关闭原 Metadata 开关时，上述子代理/Memory 处理均不执行。
 
-分组 `allowed_client_protocols` 的 Messages、Responses、Chat Completions 准入先于账号选择与修复；协议关闭仍返回原生 403。三个已允许协议到 OAuth Responses 的兼容转换、失败切号、计费与原业务缓存键不由 Metadata 决定。缺少真实上游数据时不承诺缓存命中率、WS 兼容头省略的上游接受率或 overloaded 改善；本地回归和发布状态见 [bh.011](../operations/versions/v0_1_278_bh_011.md)。
+分组 `allowed_client_protocols` 的 Messages、Responses、Chat Completions 准入先于账号选择与修复；协议关闭仍返回原生 403。三个已允许协议到 OAuth Responses 的兼容转换、失败切号、计费与原业务缓存键不由 Metadata 决定。缺少真实上游数据时不承诺缓存命中率或 overloaded 改善；本地回归与未发布状态见 [bh.012](../operations/versions/v0_1_278_bh_012.md)。
 
 <a id="openai_protocol_dispatch"></a>
 ## 协议与传输

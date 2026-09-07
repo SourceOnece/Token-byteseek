@@ -60,12 +60,6 @@ func TestCodexMetadataRepairLineageHeaders(t *testing.T) {
 					return
 				}
 				want := scopeCodexAccountIdentityValue(account, 73, "thread", "parent-thread")
-				if route == "ws" {
-					require.Empty(t, headers.Get(codexParentThreadIDHeader))
-					require.Empty(t, headers.Get(openAISubagentHeader))
-					require.Empty(t, headers.Get(openAIWSTurnMetadataHeader))
-					return
-				}
 				require.Equal(t, want, headers.Get(codexParentThreadIDHeader))
 				require.Equal(t, "collab_spawn", headers.Get(openAISubagentHeader))
 				require.Equal(t, want, gjson.Get(headers.Get(openAIWSTurnMetadataHeader), "parent_thread_id").String())
