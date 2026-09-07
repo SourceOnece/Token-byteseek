@@ -23,13 +23,6 @@ OpenAI OAuth 账号的 `extra.codex_fingerprint_mode` 控制 Codex Responses 的
 
 OpenAI 兼容请求的显式粘性会话头按 `session-id`、`session_id`、`conversation_id`、OpenCode 会话头和 CodeBuddy 会话头依次读取；其中 `session-id` 是 Codex 客户端使用的连字符形式，优先于旧下划线形式。WebSocket 会话日志采用相同优先级，缺少显式会话头时才回退到 `prompt_cache_key`，避免重连时因头名差异漂移到其它账号。
 
-<a id="codex_metadata_repair"></a>
-### Codex Metadata 完整性修复（已撤回）
-
-bh.013 按用户要求将应用恢复到 bh.002，取消 bh.003–bh.012 新增的 Codex Metadata 完整性修复：不再展示创建/编辑/批量开关，不再读取 `extra.codex_metadata_repair_enabled`，HTTP、Chat/Messages 和 WS 均沿用 bh.002 原处理。这里的撤回不删除上游协议原有的 `client_metadata`，也不取消基线已有的账号隔离、指纹收敛、透传或请求整流器。
-
-数据库里已有的该 extra 键不做破坏性清理；新版无消费者，因此残留 true 不会启用修复。未来如果重新引入该功能，必须先审查残留配置。Asia/Taipei 提示词替换目标时区预设独立保留，不更改默认或存量时区规则。恢复基线后已有 Codex WS 建议重连。回退范围、验证和新镜像证据见 [bh.013](../operations/versions/v0_1_278_bh_013.md)，原实现事实保留在 [bh.012](../operations/versions/v0_1_278_bh_012.md) 等历史记录中。
-
 <a id="openai_protocol_dispatch"></a>
 ## 协议与传输
 
