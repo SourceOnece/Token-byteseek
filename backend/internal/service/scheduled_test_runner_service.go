@@ -20,9 +20,11 @@ type ScheduledTestRunnerService struct {
 	rateLimitSvc   *RateLimitService
 	cfg            *config.Config
 
-	cron      *cron.Cron
-	startOnce sync.Once
-	stopOnce  sync.Once
+	cron          *cron.Cron
+	startOnce     sync.Once
+	stopOnce      sync.Once
+	qualityCancel context.CancelFunc
+	qualityDone   chan struct{}
 }
 
 // NewScheduledTestRunnerService creates a new runner.
@@ -63,6 +65,25 @@ func (s *ScheduledTestRunnerService) Start() {
 		}
 		s.cron = c
 		s.cron.Start()
+		// 独立循环只处理 Codex 题目计划，不改变原单账号 cron 测试行为。
+		qualityCtx, cancel := context.WithCancel(context.Background())
+		s.qualityCancel = cancel
+		s.qualityDone = make(chan struct{})
+		go func() {
+			defer close(s.qualityDone)
+			ticker := time.NewTicker(15 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-qualityCtx.Done():
+					return
+				case <-ticker.C:
+					if s.accountTestSvc != nil {
+						s.accountTestSvc.RunDueQualitySchedule(qualityCtx)
+					}
+				}
+			}
+		}()
 		logger.LegacyPrintf("service.scheduled_test_runner", "[ScheduledTestRunner] started (tick=every minute)")
 	})
 }
@@ -73,6 +94,14 @@ func (s *ScheduledTestRunnerService) Stop() {
 		return
 	}
 	s.stopOnce.Do(func() {
+		if s.qualityCancel != nil {
+			s.qualityCancel()
+			select {
+			case <-s.qualityDone:
+			case <-time.After(35 * time.Second):
+				logger.LegacyPrintf("service.quality_schedule", "shutdown timed out")
+			}
+		}
 		if s.cron != nil {
 			ctx := s.cron.Stop()
 			select {

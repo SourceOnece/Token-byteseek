@@ -9,17 +9,23 @@
         {{ t(`admin.accounts.quality.status.${result.status}`) }}
       </span>
     </div>
-    <p class="break-all text-xs text-gray-600 dark:text-gray-300">
-      {{ result.model }} · {{ result.reasoning_effort || t('admin.accounts.quality.effortDefault') }} · {{ result.finished_at }}
-    </p>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <div class="border-l-4 border-bh-blue pl-3"><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.model') }}</p><strong class="break-all text-lg text-bh-blue dark:text-blue-300">{{ result.model }}</strong></div>
+      <div class="border-l-4 border-bh-yellow pl-3"><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.effort') }}</p><strong class="text-lg text-yellow-700 dark:text-bh-yellow">{{ result.reasoning_effort || t('admin.accounts.quality.effortDefault') }}</strong></div>
+    </div>
+    <p class="text-xs text-gray-500 dark:text-gray-400">{{ result.finished_at }}</p>
+    <p class="text-sm font-bold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.quality.timeout') }}：{{ result.timeout_seconds || 120 }}s</p>
     <p class="text-sm">{{ t('admin.accounts.quality.keyword') }}：<strong class="break-all">{{ result.keyword }}</strong></p>
     <details>
       <summary class="cursor-pointer text-sm font-medium">{{ t('admin.accounts.quality.prompt') }}</summary>
       <p class="mt-2 whitespace-pre-wrap break-words text-sm">{{ result.prompt }}</p>
     </details>
     <!-- 回答始终作为纯文本渲染，不能执行模型返回的 HTML。 -->
-    <pre class="max-h-72 overflow-auto whitespace-pre-wrap break-words border-2 border-gray-300 bg-gray-50 p-3 font-sans text-sm dark:border-dark-500 dark:bg-dark-900">{{ result.response_text || t('admin.accounts.quality.noAnswer') }}</pre>
-    <p v-if="result.error" class="break-words text-sm text-red-600 dark:text-red-400">{{ result.error }}</p>
+    <details class="border-2 border-gray-300 dark:border-dark-500" data-testid="quality-answer">
+      <summary class="cursor-pointer p-3 font-bold focus-visible:outline focus-visible:outline-2">{{ t('admin.accounts.quality.viewAnswer') }}</summary>
+      <pre class="max-h-72 overflow-auto whitespace-pre-wrap break-words bg-gray-50 p-3 font-sans text-sm dark:bg-dark-900">{{ result.response_text || t('admin.accounts.quality.noAnswer') }}</pre>
+    </details>
+    <p v-if="result.error" class="break-words text-sm font-semibold" :class="qualityStatusClass(result.status)">{{ result.error }}</p>
     <p class="text-xs font-semibold">
       {{ result.scheduling_applied
         ? t(result.schedulable ? 'admin.accounts.quality.schedulingOn' : 'admin.accounts.quality.schedulingOff')

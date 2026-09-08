@@ -140,6 +140,12 @@ func intValue(value *int) int {
 }
 
 func (h *AccountHandler) ExportData(c *gin.Context) {
+	qualityStatus := strings.TrimSpace(c.Query("quality_status"))
+	if !service.ValidCodexQualityFilter(qualityStatus) {
+		response.BadRequest(c, "无效的检测结果筛选")
+		return
+	}
+	c.Request = c.Request.WithContext(service.WithCodexQualityFilter(c.Request.Context(), qualityStatus))
 	ctx := c.Request.Context()
 
 	selectedIDs, err := parseAccountIDs(c)

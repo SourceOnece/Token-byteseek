@@ -19,6 +19,7 @@
       </div>
 
       <template v-else-if="stats">
+        <CodexQualityDashboard ref="qualityDashboard" />
         <!-- Row 1: Core Stats -->
         <!-- 卡片在移动端纵向排布（图标在上、文字占满卡宽），桌面端保持横向图标+文字，避免窄屏下数值与中文被折断 -->
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -317,6 +318,7 @@ import type {
   UserSpendingRankingItem
 } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import CodexQualityDashboard from '@/components/admin/account/CodexQualityDashboard.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
@@ -356,6 +358,7 @@ const router = useRouter()
 const { formatBalanceAmount, formatUsdAmount } = useBalanceDisplay()
 const { refreshBatchImageAccess } = useBatchImageAccess()
 const stats = ref<DashboardStats | null>(null)
+const qualityDashboard = ref<InstanceType<typeof CodexQualityDashboard> | null>(null)
 const loading = ref(false)
 const chartsLoading = ref(false)
 const userTrendLoading = ref(false)
@@ -696,6 +699,7 @@ const loadUserSpendingRanking = async () => {
 }
 
 const loadDashboardStats = async () => {
+  void qualityDashboard.value?.refresh()
   await Promise.all([
     loadDashboardSnapshot(true),
     loadUsersTrend(),

@@ -20,6 +20,13 @@ vi.mock('@/composables/useClipboard', () => ({
 }))
 
 describe('OAuthAuthorizationFlow', () => {
+  it('AT 输入显示邮箱，但不显示完整令牌', async () => {
+    const wrapper = mount(OAuthAuthorizationFlow, { props: { addMethod: 'oauth', platform: 'openai', showCodexSessionImportOption: true, initialInputMethod: 'codex_session' }, global: { stubs: { Icon: true } } })
+    const token = `head.${btoa(JSON.stringify({ 'https://api.openai.com/profile': { email: 'preview@example.invalid' } }))}.signature`
+    await wrapper.find('textarea').setValue(token)
+    expect(wrapper.text()).toContain('preview@example.invalid')
+    expect(wrapper.text()).not.toContain(token)
+  })
   it('emits Codex PAT token for OpenAI PAT auth mode', async () => {
     const wrapper = mount(OAuthAuthorizationFlow, {
       props: {

@@ -124,7 +124,9 @@ func NewAuditLogMiddleware(auditService *service.AuditLogService) AuditLogMiddle
 		var bodyRedacted string
 		if _, omit := auditBodyOmittedRoutes[routeKey]; omit {
 			bodyRedacted = "<credential-bearing body omitted>"
-		} else if routeKey == "POST /api/v1/admin/accounts/codex-quality-test" {
+		} else if routeKey == "POST /api/v1/admin/accounts/codex-quality-test" ||
+			routeKey == "POST /api/v1/admin/accounts/codex-quality-schedules" ||
+			routeKey == "PUT /api/v1/admin/accounts/codex-quality-schedules/:id" {
 			// 测试题目可能包含管理员私有文本，仅审计动作，不复制题目到通用审计库。
 			bodyRedacted = "<quality-test prompt omitted>"
 		} else if c.Request.Body != nil && c.Request.Method != "GET" {

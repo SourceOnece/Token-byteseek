@@ -649,6 +649,11 @@ func normalizeCodexImportEntry(entry codexImportEntry) (*codexImportAccount, err
 	fingerprint := codexTokenFingerprint(item.AccessToken)
 	item.Extra["access_token_sha256"] = fingerprint
 	item.IdentityKeys = buildCodexImportIdentityKeys(item.AccountID, item.UserID, item.Email, item.AccessToken, item.RefreshToken)
+	// 先保留既有导入去重键，再仅补管理展示邮箱，不改变本次 RT/AT 匹配规则。
+	if item.Email == "" {
+		item.Email = openai.TokenDisplayEmail(item.AccessToken)
+		setCodexCredentialIfNotEmpty(item.Credentials, "email", item.Email)
+	}
 	item.Name = buildCodexImportAccountName(item, entry.Index)
 
 	return item, nil

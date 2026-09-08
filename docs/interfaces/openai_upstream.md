@@ -13,6 +13,8 @@
 
 ## 账号与凭据
 
+管理员加号时可从 AT/ID Token 的顶层 email 或 `https://api.openai.com/profile.email` 补全邮箱展示；授权码/RT 换出的 TokenInfo 缺失邮箱时先作本地解码，原官方账号信息补全仍保留。手动 AT/auth.json 创建和导入也补缺失邮箱，已有邮箱不覆盖；导入当次先生成既有去重键再补展示，避免改动本次 RT/AT 匹配规则。JWT 本地解码不验证签名，邮箱仅为管理信息，不构成真实所有权或凭据有效性的证明。无法解码的 opaque token 不猜测邮箱，也不新增未经确认的外部请求。前端 AT 输入可本地预览邮箱，账号管理在满血测试右侧独立列显示，缺失为“未获取”。
+
 OpenAI 正式支持 `oauth` 与 `apikey`。OAuth 账号保存 access/refresh token、账号/组织上下文和 Codex 能力元数据，后台与请求路径都可触发刷新；API Key 账号保存 key、base URL、工作负载能力、文本协议路由和 Responses 探测事实。其它通用导入类型不构成 OpenAI 转发支持，详见[上游账号能力矩阵](upstream_account_matrix.md)。
 
 OAuth 补全账号元数据时，ID token 中的个人 `chatgpt_plan_type` 是个人套餐的权威来源。`accounts/check` 可能按 access token 的 `poid` 命中另一个 workspace；仅当该记录的账号 ID 与个人 `chatgpt_account_id` 一致时，才能把它的 `entitlement.expires_at` 与个人套餐组合。账号不一致时，到期时间必须改从个人 `/backend-api/subscriptions` 的 `active_until` 获取；若套餐本身来自 `accounts/check`，套餐和到期时间仍保持来自同一条记录。

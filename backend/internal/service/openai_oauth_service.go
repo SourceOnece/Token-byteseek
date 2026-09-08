@@ -326,6 +326,13 @@ func valueFromInt64Ptr(value *int64) int64 {
 // 从 accounts/check 获取最新 plan_type、subscription_expires_at、email，
 // 然后尝试关闭训练数据共享。适用于所有获取/刷新 token 的路径。
 func (s *OpenAIOAuthService) enrichTokenInfo(ctx context.Context, tokenInfo *OpenAITokenInfo, proxyURL string) {
+	// 授权码和 RT 换出的 AT 可能将邮箱放在 profile 声明中；仅补缺失展示信息。
+	if tokenInfo.Email == "" {
+		tokenInfo.Email = openai.TokenDisplayEmail(tokenInfo.IDToken)
+	}
+	if tokenInfo.Email == "" {
+		tokenInfo.Email = openai.TokenDisplayEmail(tokenInfo.AccessToken)
+	}
 	if tokenInfo.AccessToken == "" || s.privacyClientFactory == nil {
 		return
 	}

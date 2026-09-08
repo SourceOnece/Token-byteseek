@@ -29,6 +29,7 @@ type CodexQualityRequest struct {
 	Prompt            string  `json:"prompt"`
 	Keyword           string  `json:"keyword"`
 	Concurrency       int     `json:"concurrency"`
+	TimeoutSeconds    int     `json:"timeout_seconds"`
 	ConfirmScheduling bool    `json:"confirm_scheduling"`
 }
 
@@ -73,6 +74,12 @@ func (r *CodexQualityRequest) Normalize() error {
 	if r.Concurrency < 1 || r.Concurrency > 5 {
 		return errors.New("测试并发须为 1 到 5")
 	}
+	if r.TimeoutSeconds == 0 {
+		r.TimeoutSeconds = 120
+	}
+	if r.TimeoutSeconds < 10 || r.TimeoutSeconds > 3600 {
+		return errors.New("单账号超时须为 10–3600 秒")
+	}
 	return nil
 }
 
@@ -83,6 +90,7 @@ type CodexQualityResult struct {
 	AccountName       string    `json:"account_name"`
 	Model             string    `json:"model"`
 	ReasoningEffort   string    `json:"reasoning_effort"`
+	TimeoutSeconds    int       `json:"timeout_seconds"`
 	Prompt            string    `json:"prompt"`
 	Keyword           string    `json:"keyword"`
 	Status            string    `json:"status"`
@@ -96,7 +104,7 @@ type CodexQualityResult struct {
 
 // CodexQualityRepository 用窄接口保持现有账号仓储测试替身兼容。
 type CodexQualityRepository interface {
-	AcquireCodexQualityTest(context.Context, int64, string) (bool, error)
+	AcquireCodexQualityTest(context.Context, int64, string, int) (bool, error)
 	FinishCodexQualityTest(context.Context, *Account, string, *CodexQualityResult) (bool, error)
 	ListCodexQualityResults(context.Context, []int64, bool) ([]*CodexQualityResult, error)
 }
@@ -124,8 +132,12 @@ func qualityTestOptions(ctx context.Context) *CodexQualityRequest {
 // RunCodexQualityTest 复用 OAuth 测试链路，并在完成后原子写入判定与调度状态。
 // @project-doc docs/operations/account_maintenance.md#codex_quality_testing
 func (s *AccountTestService) RunCodexQualityTest(ctx context.Context, id int64, options *CodexQualityRequest) *CodexQualityResult {
+	timeout := options.TimeoutSeconds
+	if timeout == 0 {
+		timeout = 120
+	}
 	result := &CodexQualityResult{AccountID: id, Model: options.Model, ReasoningEffort: options.ReasoningEffort,
-		Prompt: options.Prompt, Keyword: options.Keyword, Status: "skipped", StartedAt: time.Now()}
+		Prompt: options.Prompt, Keyword: options.Keyword, Status: "skipped", StartedAt: time.Now(), TimeoutSeconds: timeout}
 	finish := func(message string) *CodexQualityResult {
 		result.Error = message
 		result.FinishedAt = time.Now()
@@ -148,7 +160,7 @@ func (s *AccountTestService) RunCodexQualityTest(ctx context.Context, id int64, 
 		return finish("测试结果存储不可用")
 	}
 	runID := uuid.NewString()
-	acquired, err := repo.AcquireCodexQualityTest(ctx, id, runID)
+	acquired, err := repo.AcquireCodexQualityTest(ctx, id, runID, timeout)
 	if err != nil {
 		return finish("无法取得测试租约，请稍后重试")
 	}
@@ -156,7 +168,7 @@ func (s *AccountTestService) RunCodexQualityTest(ctx context.Context, id int64, 
 		return finish("该账号正在其他批次测试，请勿重复提交")
 	}
 
-	testCtx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	testCtx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
 	testCtx = context.WithValue(withAccountTestUserAgent(testCtx, ""), codexQualityContextKey, options)
 	recorder := httptest.NewRecorder()

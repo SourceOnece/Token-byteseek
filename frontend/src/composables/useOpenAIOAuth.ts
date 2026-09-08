@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
 import { extractApiErrorMessage, extractI18nErrorMessage } from '@/utils/apiError'
+import { openaiTokenEmail } from '@/utils/openaiTokenEmail'
 
 export interface OpenAITokenInfo {
   access_token?: string
@@ -45,6 +46,7 @@ export function useOpenAIOAuth() {
   const authSessions = ref<OpenAIOAuthSession[]>([])
   const loading = ref(false)
   const error = ref('')
+  const detectedEmail = ref('')
 
   const extractStateFromAuthUrl = (urlValue: string): string => {
     try {
@@ -86,6 +88,7 @@ export function useOpenAIOAuth() {
 
   // Reset state
   const resetState = () => {
+    detectedEmail.value = ''
     authUrl.value = ''
     sessionId.value = ''
     oauthState.value = ''
@@ -187,6 +190,7 @@ export function useOpenAIOAuth() {
       }
 
       const tokenInfo = await adminAPI.accounts.exchangeCode(`${endpointPrefix}/exchange-code`, payload)
+      detectedEmail.value = (tokenInfo as OpenAITokenInfo).email || openaiTokenEmail((tokenInfo as OpenAITokenInfo).access_token)
       return tokenInfo as OpenAITokenInfo
     } catch (err: any) {
       error.value = extractI18nErrorMessage(
@@ -227,6 +231,7 @@ export function useOpenAIOAuth() {
         clientId,
         tlsFingerprintRouterId
       )
+      detectedEmail.value = (tokenInfo as OpenAITokenInfo).email || openaiTokenEmail((tokenInfo as OpenAITokenInfo).access_token)
       return tokenInfo as OpenAITokenInfo
     } catch (err: any) {
       error.value = extractI18nErrorMessage(
@@ -244,6 +249,7 @@ export function useOpenAIOAuth() {
 
   // Build credentials for OpenAI OAuth account (aligned with backend BuildAccountCredentials)
   const buildCredentials = (tokenInfo: OpenAITokenInfo): Record<string, unknown> => {
+    if (!tokenInfo.email) tokenInfo.email = openaiTokenEmail(tokenInfo.id_token) || openaiTokenEmail(tokenInfo.access_token)
     const creds: Record<string, unknown> = {
       access_token: tokenInfo.access_token,
       expires_at: tokenInfo.expires_at
@@ -304,6 +310,7 @@ export function useOpenAIOAuth() {
     authSessions,
     loading,
     error,
+    detectedEmail,
     // Methods
     resetState,
     generateAuthUrl,

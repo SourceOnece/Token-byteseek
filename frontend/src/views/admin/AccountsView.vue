@@ -20,6 +20,7 @@
             @create="openCreateAccount()"
           >
             <template #after>
+              <button class="btn btn-primary" data-testid="quality-schedules-action" @click="showQualitySchedules = true">{{ t('admin.accounts.quality.schedule.title') }}</button>
               <!-- Auto Refresh Dropdown -->
               <div class="relative" ref="autoRefreshDropdownRef">
                 <button
@@ -226,6 +227,9 @@
           </template>
           <template #cell-id="{ value }">
             <span class="font-mono text-xs text-gray-500 dark:text-gray-400">#{{ value }}</span>
+          </template>
+          <template #cell-email="{ row }">
+            <span class="block max-w-[260px] break-all text-sm font-bold text-bh-blue dark:text-blue-300" :title="accountDisplayEmail(row)">{{ accountDisplayEmail(row) || t('admin.accounts.quality.emailUnavailable') }}</span>
           </template>
           <template #cell-quality="{ row }">
             <button v-if="qualityResults[row.id]" class="border-2 border-current px-2 py-1 text-xs font-bold shadow-[var(--bh-shadow-sm)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline focus-visible:outline-2" :class="qualityStatusClass(qualityResults[row.id].status)" @click="openQualityDetail(row.id)">
@@ -458,6 +462,7 @@
     <ReAuthAccountModal :show="showReAuth" :account="reAuthAcc" @close="closeReAuthModal" @reauthorized="handleAccountUpdated" />
     <AccountTestModal :show="showTest" :account="testingAcc" @close="closeTestModal" />
     <CodexQualityTestModal :show="showQualityTest" :account-ids="selIds" @close="showQualityTest = false" @result="handleQualityResult" @finished="refreshQualityAccounts" />
+    <CodexQualitySchedulesModal :show="showQualitySchedules" :account-ids="selIds" @close="showQualitySchedules = false; refreshQualityAccounts()" />
     <BaseDialog :show="!!qualityDetail" :title="t('admin.accounts.quality.details')" width="wide" @close="qualityDetail = null">
       <CodexQualityResultCard v-if="qualityDetail" :result="qualityDetail" />
     </BaseDialog>
@@ -522,6 +527,7 @@ import ImportDataModal from '@/components/admin/account/ImportDataModal.vue'
 import ReAuthAccountModal from '@/components/admin/account/ReAuthAccountModal.vue'
 import AccountTestModal from '@/components/admin/account/AccountTestModal.vue'
 import CodexQualityTestModal from '@/components/admin/account/CodexQualityTestModal.vue'
+import CodexQualitySchedulesModal from '@/components/admin/account/CodexQualitySchedulesModal.vue'
 import CodexQualityResultCard from '@/components/admin/account/CodexQualityResult.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { listCodexQualityResults, type CodexQualityResult } from '@/api/admin/codexQuality'
@@ -587,6 +593,7 @@ type AccountBulkEditTarget =
         group?: string
         search?: string
         privacy_mode?: string
+        quality_status?: string
         sort_by?: string
         sort_order?: AccountSortOrder
       }
@@ -627,6 +634,7 @@ const showCreateShadowDialog = ref(false)
 const showReAuth = ref(false)
 const showTest = ref(false)
 const showQualityTest = ref(false)
+const showQualitySchedules = ref(false)
 const qualityDetail = ref<CodexQualityResult | null>(null)
 const qualityResults = ref<Record<number, CodexQualityResult>>({})
 const qualityLoadFailed = ref(false)
@@ -1617,6 +1625,9 @@ const syncAccountListDerivedParams = () => {
   requestParams.include_scheduler_score = shouldIncludeSchedulerScore() ? '1' : '0'
 }
 
+// 仪表盘链接只接受检测筛选白名单，不把任意 URL 字段当作后台查询参数。
+const initialQualityQuery = new URLSearchParams(window.location.search)
+const initialQualityStatus = initialQualityQuery.get('quality_status') || ''
 const {
   items: accounts,
   loading,
@@ -1630,10 +1641,11 @@ const {
 } = useTableLoader<Account, any>({
   fetchFn: adminAPI.accounts.list,
   initialParams: {
-    platform: '',
-    type: '',
+    platform: initialQualityQuery.get('platform') === 'openai' ? 'openai' : '',
+    type: initialQualityQuery.get('type') === 'oauth' ? 'oauth' : '',
     status: '',
     privacy_mode: '',
+    quality_status: ['full', 'degraded', 'failed', 'untested', 'cancelled', 'stale', 'skipped'].includes(initialQualityStatus) ? initialQualityStatus : '',
     group: '',
     search: '',
     include_scheduler_score: shouldIncludeSchedulerScore() ? '1' : '0',
@@ -1796,6 +1808,7 @@ const isAnyModalOpen = computed(() => {
     showReAuth.value ||
     showTest.value ||
     showQualityTest.value || !!qualityDetail.value ||
+    showQualitySchedules.value ||
     showStats.value ||
     showInviteReset.value ||
     showSchedulePanel.value ||
@@ -2141,7 +2154,7 @@ function getAntigravityTierLabel(row: any): string | null {
 // 账号显示邮箱:优先账号自身(extra/credentials),影子账号回退母账号 parent_email。
 // 供名称单元格 v-if/标题/文本三处共用,避免同一回退链在模板里重复三次。
 function accountDisplayEmail(row: any): string {
-  return row.extra?.email_address || row.extra?.email || row.credentials?.email || row.parent_email || ''
+  return row.credentials?.email || row.extra?.email_address || row.extra?.email || row.parent_email || ''
 }
 
 // API Key 账号只暴露上游站点的协议、主机和端口，避免把凭据或接口路径带入外链。
@@ -2260,6 +2273,7 @@ const allColumns = computed(() => {
   const c = [
     { key: 'select', label: '', sortable: false },
     { key: 'quality', label: t('admin.accounts.quality.column'), sortable: false },
+    { key: 'email', label: t('admin.accounts.quality.email'), sortable: false },
     { key: 'name', label: t('admin.accounts.columns.name'), sortable: true },
     { key: 'id', label: t('admin.accounts.columns.id'), sortable: true },
     { key: 'platform_type', label: t('admin.accounts.columns.platformType'), sortable: false },
@@ -2585,6 +2599,7 @@ const buildBulkEditFilterSnapshot = (): AccountBulkEditFilterSnapshot => {
     group: typeof rawParams.group === 'string' ? rawParams.group : '',
     search: typeof rawParams.search === 'string' ? rawParams.search : '',
     privacy_mode: typeof rawParams.privacy_mode === 'string' ? rawParams.privacy_mode : '',
+    quality_status: typeof rawParams.quality_status === 'string' ? rawParams.quality_status : '',
     sort_by: typeof rawParams.sort_by === 'string' ? rawParams.sort_by : '',
     sort_order: sortOrder
   }
@@ -2690,12 +2705,18 @@ const buildAccountQueryFilters = () => ({
   status: params.status || '',
   group: params.group || '',
   privacy_mode: params.privacy_mode || '',
+  quality_status: params.quality_status || '',
   search: params.search || '',
   sort_by: sortState.sort_by,
   sort_order: sortState.sort_order
 })
 const accountMatchesCurrentFilters = (account: Account) => {
   const filters = buildAccountQueryFilters()
+  if (filters.quality_status) {
+    if (account.platform !== 'openai' || account.type !== 'oauth') return false
+    const status = qualityResults.value[account.id]?.status || 'untested'
+    if (status !== filters.quality_status) return false
+  }
   if (filters.platform && account.platform !== filters.platform) return false
   if (filters.type && account.type !== filters.type) return false
   if (filters.status) {

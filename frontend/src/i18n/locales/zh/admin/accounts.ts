@@ -2,8 +2,21 @@ export default {
 // Accounts Management
     accounts: {
       quality: {
+        poolRate: '号池满血率',
+        timeout: '单账号超时（秒，默认 120）', dashboard: 'Codex 号池检测概览', dashboardHint: '按每账号最近一次结果统计。满血率 = 满血 ÷（满血 + 降智 + 失败），未检测不计入分母；点击查看对应账号。',
+        detectedEmail: '检测到的账号邮箱', emailClaimHint: '仅从令牌声明提取用于展示，不代表已验证令牌有效。RT / 授权码会在交换为 AT 后获取邮箱。',
+        email: '账号邮箱', emailUnavailable: '未获取邮箱', viewAnswer: '展开查看测试回答',
+        clickCategory: '点击上方分类查看对应账号；点击满血率查看全部结果。', emptyCategory: '该分类暂无结果', allResults: '全部检测结果',
+        schedule: {
+          title: 'Codex 定时检测', description: '在服务器后台按间隔检测，关闭页面不影响执行。计划固定账号清单，每轮保存独立结果并按关键词修改调度。',
+          create: '创建定时计划', name: '计划名称', interval: '检测间隔（分钟）', keep: '保留最近轮数', selected: '已选 {count} 个账号',
+          selectAll: '全选符合条件账号', fixedSelection: '最多 500 个；全选保存当前符合条件的账号，不包含以后新加账号。影子与 Agent Identity 不可选。',
+          enabled: '已启用', paused: '已暂停', pause: '暂停检测', confirm: '确认周期性消耗所选账号额度，并在每轮将满血开启调度、降智或失败关闭调度。首次在所设间隔后执行；上一轮完成后再计时，不重叠。',
+          empty: '暂无定时计划', intervalValue: '每 {minutes} 分钟 · 固定 {count} 个账号', next: '下次执行', running: '本轮检测中', history: '查看每轮结果', noRuns: '尚未到执行时间，暂无历史',
+          runStatus: { running: '检测中', completed: '已完成', interrupted: '已中断', failed: '执行异常' }
+        },
         title: 'Codex 批量题目测试', column: '满血测试', details: '最近一次题目测试',
-        warning: '本次选中 {count} 个账号。仅测试独立 Codex OAuth 账号，每号最多等待 120 秒；测试消耗上游额度，且会自动修改这些账号的调度开关。',
+        warning: '本次选中 {count} 个账号。仅测试独立 Codex OAuth 账号，每号最多等待 {seconds} 秒；测试消耗上游额度，且会自动修改这些账号的调度开关。',
         disclaimer: '“满血 / 降智”仅为你的关键词判定，不代表客观模型能力。未选账号不受影响，其他平台、影子及 Agent Identity 账号跳过。',
         model: '测试模型', effort: '思考等级', effortDefault: '上游默认（不传）', concurrency: '并发数量',
         prompt: '测试题目', keyword: '判定关键词', keywordHint: '完整可见回答中包含此关键词即为满血；区分大小写，按字面包含，不是正则。题目与推理摘要不参与匹配。',

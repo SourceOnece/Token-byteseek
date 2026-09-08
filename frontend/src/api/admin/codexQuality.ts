@@ -8,6 +8,7 @@ export interface CodexQualityResult {
   email: string
   model: string
   reasoning_effort: string
+  timeout_seconds?: number
   prompt: string
   keyword: string
   response_text: string
@@ -25,7 +26,43 @@ export interface CodexQualityRequest {
   prompt: string
   keyword: string
   concurrency: number
+  timeout_seconds?: number
   confirm_scheduling: boolean
+}
+
+export interface QualitySchedule {
+  id: number
+  name: string
+  interval_minutes: number
+  keep_runs: number
+  enabled: boolean
+  config: CodexQualityRequest
+  next_run_at?: string
+  active_run_id?: number | null
+}
+export interface QualityRun {
+  id: number
+  schedule_id: number
+  schedule_name: string
+  config: CodexQualityRequest
+  status: string
+  started_at: string
+  finished_at?: string | null
+  counts: Record<string, number>
+}
+export const qualitySchedulesAPI = {
+  async stats() { return (await apiClient.get<Record<string, number>>('/admin/accounts/codex-quality-stats')).data },
+  async list() { return (await apiClient.get<QualitySchedule[]>('/admin/accounts/codex-quality-schedules')).data },
+  async save(plan: QualitySchedule) {
+    const path = '/admin/accounts/codex-quality-schedules'
+    return plan.id ? (await apiClient.put<QualitySchedule>(`${path}/${plan.id}`, plan)).data
+      : (await apiClient.post<QualitySchedule>(path, plan)).data
+  },
+  async pause(id: number) { await apiClient.put(`/admin/accounts/codex-quality-schedules/${id}/enabled`, { enabled: false }) },
+  async runs(id: number) { return (await apiClient.get<QualityRun[]>(`/admin/accounts/codex-quality-schedules/${id}/runs`)).data },
+  async detail(id: number, status = '', page = 1) {
+    return (await apiClient.get<{ run: QualityRun; items: CodexQualityResult[]; total: number; page: number }>(`/admin/accounts/codex-quality-runs/${id}`, { params: { status, page } })).data
+  }
 }
 
 export async function listCodexQualityResults(ids: number[], signal?: AbortSignal, detail = false) {

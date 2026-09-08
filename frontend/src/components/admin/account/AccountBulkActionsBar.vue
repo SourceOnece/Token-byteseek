@@ -45,7 +45,7 @@
     <div class="flex flex-wrap justify-end gap-2">
       <template v-if="selectedIds.length > 0">
         <button @click="$emit('delete')" class="btn btn-danger btn-sm">{{ t('admin.accounts.bulkActions.delete') }}</button>
-        <button @click="$emit('quality-test')" class="btn btn-secondary btn-sm" data-testid="quality-batch-action">{{ t('admin.accounts.quality.title') }}</button>
+        <button @click="$emit('quality-test')" class="btn btn-primary btn-sm" data-testid="quality-batch-action">{{ t('admin.accounts.quality.title') }}</button>
         <button @click="$emit('reset-status')" class="btn btn-secondary btn-sm">{{ t('admin.accounts.bulkActions.resetStatus') }}</button>
         <button @click="$emit('refresh-token')" class="btn btn-secondary btn-sm">{{ t('admin.accounts.bulkActions.refreshToken') }}</button>
         <button

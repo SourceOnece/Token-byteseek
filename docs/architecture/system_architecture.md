@@ -97,6 +97,8 @@ Gin engine 的顺序为 Recovery、可信代理设置、全局日志/客户端�
 
 ## 多实例与故障边界
 
+Codex 题目定时检测在既有 ScheduledTestRunnerService 中运行独立循环，不增加 Wire 参数或改变旧 cron。PostgreSQL 持有计划领取、续租和每轮结果，AccountTestService 的实例锁限制手动/定时批次并发，同账号由持久租约互斥。关闭服务时取消新循环并等待结果收尾，再释放数据库；具体规则见[定时检测](../operations/account_maintenance.md#codex_quality_schedules)。
+
 - 数据库迁移使用 PostgreSQL advisory lock 串行化；多实例可同时启动，但只有持锁连接执行迁移。
 - 调度快照、认证缓存失效、限流、并发槽和许多 leader job 依赖 Redis 协调。修改 key 命名、TTL 或 Lua 原子操作等同于修改跨实例契约。
 - repository 缓存命中不能跳过必要的运行时资格检查；调度缓存未就绪或不可信时只能按对应服务定义的受控回源策略处理。

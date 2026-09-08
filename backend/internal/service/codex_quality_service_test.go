@@ -35,6 +35,14 @@ func TestCodexQualityRequestValidation(t *testing.T) {
 	r := validQualityRequest()
 	require.NoError(t, r.Normalize())
 	require.Equal(t, 3, r.Concurrency)
+	require.Equal(t, 120, r.TimeoutSeconds)
+	r.TimeoutSeconds = 300
+	require.NoError(t, r.Normalize())
+	require.Equal(t, 300, r.TimeoutSeconds)
+	r.TimeoutSeconds = 9
+	require.Error(t, r.Normalize())
+	r.TimeoutSeconds = 3601
+	require.Error(t, r.Normalize())
 }
 
 func TestCodexQualityCompleteAnswerOnly(t *testing.T) {
@@ -79,7 +87,7 @@ func (r *qualityRepoStub) GetByID(context.Context, int64) (*Account, error) {
 	}
 	return r.account, nil
 }
-func (r *qualityRepoStub) AcquireCodexQualityTest(context.Context, int64, string) (bool, error) {
+func (r *qualityRepoStub) AcquireCodexQualityTest(context.Context, int64, string, int) (bool, error) {
 	return true, nil
 }
 func (r *qualityRepoStub) FinishCodexQualityTest(_ context.Context, _ *Account, _ string, result *CodexQualityResult) (bool, error) {

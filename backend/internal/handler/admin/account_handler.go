@@ -194,12 +194,13 @@ type BulkUpdateAccountsRequest struct {
 }
 
 type BulkUpdateAccountFilters struct {
-	Platform    string `json:"platform"`
-	Type        string `json:"type"`
-	Status      string `json:"status"`
-	Group       string `json:"group"`
-	Search      string `json:"search"`
-	PrivacyMode string `json:"privacy_mode"`
+	QualityStatus string `json:"quality_status"`
+	Platform      string `json:"platform"`
+	Type          string `json:"type"`
+	Status        string `json:"status"`
+	Group         string `json:"group"`
+	Search        string `json:"search"`
+	PrivacyMode   string `json:"privacy_mode"`
 }
 
 // CheckMixedChannelRequest represents check mixed channel risk request
@@ -532,6 +533,12 @@ func (h *AccountHandler) List(c *gin.Context) {
 	status := c.Query("status")
 	search := c.Query("search")
 	privacyMode := strings.TrimSpace(c.Query("privacy_mode"))
+	qualityStatus := strings.TrimSpace(c.Query("quality_status"))
+	if !service.ValidCodexQualityFilter(qualityStatus) {
+		response.BadRequest(c, "无效的检测结果筛选")
+		return
+	}
+	c.Request = c.Request.WithContext(service.WithCodexQualityFilter(c.Request.Context(), qualityStatus))
 	sortBy := c.DefaultQuery("sort_by", "name")
 	sortOrder := c.DefaultQuery("sort_order", "asc")
 	// 标准化和验证 search 参数
@@ -2199,12 +2206,13 @@ func toServiceBulkUpdateAccountFilters(filters *BulkUpdateAccountFilters) *servi
 		return nil
 	}
 	return &service.BulkUpdateAccountFilters{
-		Platform:    filters.Platform,
-		Type:        filters.Type,
-		Status:      filters.Status,
-		Group:       filters.Group,
-		Search:      filters.Search,
-		PrivacyMode: filters.PrivacyMode,
+		QualityStatus: filters.QualityStatus,
+		Platform:      filters.Platform,
+		Type:          filters.Type,
+		Status:        filters.Status,
+		Group:         filters.Group,
+		Search:        filters.Search,
+		PrivacyMode:   filters.PrivacyMode,
 	}
 }
 

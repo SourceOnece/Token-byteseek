@@ -1,4 +1,9 @@
 <template>
+  <div v-if="platform === 'openai' && detectedEmails.length" class="mb-4 border-2 border-bh-blue bg-white p-3 shadow-[var(--bh-shadow-sm)] dark:bg-dark-800">
+    <p class="text-xs font-bold">{{ t('admin.accounts.quality.detectedEmail') }}</p>
+    <p v-for="email in detectedEmails" :key="email" class="break-all text-lg font-extrabold text-bh-blue dark:text-blue-300">{{ email }}</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.emailClaimHint') }}</p>
+  </div>
   <div
     class="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-900/30"
   >
@@ -927,12 +932,14 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useClipboard } from '@/composables/useClipboard'
+import { openaiImportEmails } from '@/utils/openaiTokenEmail'
 import Icon from '@/components/icons/Icon.vue'
 import type { AddMethod, AuthInputMethod } from '@/composables/useAccountOAuth'
 import type { OpenAIOAuthSession } from '@/composables/useOpenAIOAuth'
 import type { AccountPlatform } from '@/types'
 
 interface Props {
+  resolvedEmail?: string
   addMethod: AddMethod
   authUrl?: string
   sessionId?: string
@@ -1055,6 +1062,7 @@ const sessionKeyInput = ref('')
 const refreshTokenInput = ref('')
 const sessionTokenInput = ref('')
 const codexSessionInput = ref('')
+const detectedEmails = computed(() => [...new Set([props.resolvedEmail || '', ...openaiImportEmails(codexSessionInput.value)].filter(Boolean))])
 const codexPATInput = ref('')
 const ssoCookieInput = ref('')
 const showHelpDialog = ref(false)

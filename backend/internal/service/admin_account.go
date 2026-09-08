@@ -16,6 +16,7 @@ import (
 
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/errors"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logger"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/openai"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/openai_compat"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
@@ -512,6 +513,15 @@ func normalizeGrokMediaEligibilityUpdateExtra(account *Account, input *UpdateAcc
 }
 
 func buildAccountForCreate(input *CreateAccountInput, accountExtra map[string]any) (*Account, error) {
+	// 手动 AT/auth.json 加号也补全邮箱展示，已有邮箱不覆盖，不将声明用于身份认证。
+	if input.Platform == PlatformOpenAI && input.Type == AccountTypeOAuth && firstStringValue(input.Credentials, "email") == "" {
+		for _, key := range []string{"id_token", "access_token"} {
+			if email := openai.TokenDisplayEmail(firstStringValue(input.Credentials, key)); email != "" {
+				input.Credentials["email"] = email
+				break
+			}
+		}
+	}
 	// 受管会话状态由系统维护，废弃字段不得通过通用账号接口写入。
 	DiscardDeprecatedAccountExtra(accountExtra)
 	if err := NormalizeUpstreamUsageExtra(accountExtra); err != nil {
@@ -1230,6 +1240,10 @@ func (s *adminServiceImpl) resolveBulkUpdateTargetIDs(ctx context.Context, filte
 	if filters == nil {
 		return nil, nil
 	}
+	if !ValidCodexQualityFilter(filters.QualityStatus) {
+		return nil, fmt.Errorf("invalid quality status filter")
+	}
+	ctx = WithCodexQualityFilter(ctx, filters.QualityStatus)
 
 	groupID := int64(0)
 	switch strings.TrimSpace(filters.Group) {

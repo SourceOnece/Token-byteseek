@@ -19,7 +19,8 @@ describe('fetchAllAccountIds', () => {
     const filters = {
       platform: 'grok',
       status: 'active',
-      search: 'example'
+      search: 'example',
+      quality_status: 'full'
     }
 
     const ids = await fetchAllAccountIds(fetchPage, filters)

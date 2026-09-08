@@ -5,6 +5,8 @@ import { createPinia, setActivePinia } from 'pinia'
 import type { DashboardStats } from '@/types'
 import DashboardView from '../DashboardView.vue'
 
+vi.mock('@/api/admin/codexQuality', () => ({ qualitySchedulesAPI: { stats: vi.fn().mockResolvedValue({ full: 0, degraded: 0, failed: 0, untested: 0 }) } }))
+
 const { getSnapshotV2, getUserUsageTrend, getUserSpendingRanking } = vi.hoisted(() => ({
   getSnapshotV2: vi.fn(),
   getUserUsageTrend: vi.fn(),

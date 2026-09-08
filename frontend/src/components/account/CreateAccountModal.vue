@@ -3808,6 +3808,7 @@
     <div v-else class="space-y-5">
       <OAuthAuthorizationFlow
         ref="oauthFlowRef"
+        :resolved-email="form.platform === 'openai' ? openaiOAuth.detectedEmail?.value || '' : ''"
         :add-method="form.platform === 'anthropic' ? addMethod : 'oauth'"
         :auth-url="currentAuthUrl"
         :session-id="currentSessionId"

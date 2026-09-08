@@ -66,6 +66,10 @@
             <Select :model-value="filters.privacy_mode" class="w-full" :options="privacyOpts" @update:model-value="updatePrivacyMode" @change="$emit('change')" />
           </div>
           <div class="sm:col-span-2">
+            <label class="input-label">{{ t('admin.accounts.quality.column') }}</label>
+            <Select :model-value="filters.quality_status || ''" :options="qualityOptions" data-testid="quality-status-filter" @update:model-value="value => emit('update:filters', { ...filters, quality_status: value })" @change="$emit('change')" />
+          </div>
+          <div class="sm:col-span-2">
             <label class="input-label">{{ t('admin.accounts.columns.groups') }}</label>
             <Select :model-value="filters.group" class="w-full" :options="gOpts" searchable @update:model-value="updateGroup" @change="$emit('change')" />
           </div>
@@ -90,7 +94,11 @@ const { t } = useI18n()
 
 const showFilters = ref(false)
 const filterPanelRef = ref<HTMLElement | null>(null)
-const filterKeys = ['platform', 'type', 'status', 'privacy_mode', 'group'] as const
+const filterKeys = ['platform', 'type', 'status', 'privacy_mode', 'group', 'quality_status'] as const
+const qualityOptions = computed(() => [
+  { value: '', label: t('admin.accounts.quality.allResults') },
+  ...['full', 'degraded', 'failed', 'untested', 'cancelled', 'stale'].map(value => ({ value, label: value === 'untested' ? t('admin.accounts.quality.untested') : t(`admin.accounts.quality.status.${value}`) }))
+])
 
 const activeFilterCount = computed(() => filterKeys.filter((key) => String(props.filters?.[key] ?? '').trim() !== '').length)
 

@@ -60,6 +60,14 @@ function group(overrides: Partial<AdminGroup>): AdminGroup {
 }
 
 describe('AccountTableFilters', () => {
+  it('检测筛选保留为独立字段，重置可清空', async () => {
+    const wrapper = mount(AccountTableFilters, { props: { searchQuery: '', filters: { quality_status: 'full' } }, global: { stubs: { Select: SelectStub, SearchInput: true } } })
+    await wrapper.get('[data-testid="account-filters-toggle"]').trigger('click')
+    expect(wrapper.text()).toContain('admin.accounts.quality.status.failed')
+    const reset = wrapper.findAll('button').find(button => button.text() === 'common.reset')!
+    await reset.trigger('click')
+    expect(wrapper.emitted('update:filters')?.[0]).toEqual([{ platform: '', type: '', status: '', privacy_mode: '', group: '', quality_status: '' }])
+  })
   it('keeps inactive groups visible in the group filter', async () => {
     const wrapper = mount(AccountTableFilters, {
       props: {
@@ -87,7 +95,7 @@ describe('AccountTableFilters', () => {
     await wrapper.get('[data-testid="account-filters-toggle"]').trigger('click')
 
     const selectComponents = wrapper.findAllComponents(SelectStub)
-    const groupOptions = selectComponents.at(4)?.props('options') as Array<{ value: string; label: string }>
+    const groupOptions = selectComponents.at(-1)?.props('options') as Array<{ value: string; label: string }>
 
     expect(groupOptions).toEqual(expect.arrayContaining([
       { value: '10', label: 'Active Pool' },

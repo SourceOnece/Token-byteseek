@@ -162,6 +162,10 @@ gemini_generate_content
 
 `GET /api/v1/admin/accounts/codex-quality-results?account_ids=1,2` 返回指定未删除 OAuth 账号的最近摘要，最多 500 个；单账号请求增加 `detail=true` 才返回题目和完整回答。结果只给管理员，不加入用户接口或调度快照；无结果返回空数组。其存储与取消语义见[账号维护](../operations/account_maintenance.md#codex_quality_testing)。
 
+bh.017 增加可选 timeout_seconds：省略/0 为 120 秒，显式值 10–3600，结果带回实际超时。账号列表、按筛选批量编辑及按筛选导出支持 quality_status（空/full/degraded/failed/untested/cancelled/stale/skipped）；仅筛选 OpenAI OAuth，未测指无最近结果，筛选与分页/计数共用谓词。`GET /admin/accounts/codex-quality-stats` 聚合全体未删除 OpenAI OAuth 的最近状态计数，缺项补零，供管理员仪表盘使用，非单批次统计。
+
+定时计划均位于管理员 `/api/v1/admin/accounts` 下：`GET/POST /codex-quality-schedules` 列出/创建，`PUT /codex-quality-schedules/:id` 编辑，`PUT /codex-quality-schedules/:id/enabled` 暂停/启用（启用必须 confirm_scheduling=true），`GET /codex-quality-schedules/:id/runs` 返回最近至多 100 轮及分类计数，`GET /codex-quality-runs/:id?status=failed&page=1` 返回轮次和该分类逐账号结果，每页 20 条。计划字段为 name、interval_minutes、keep_runs、enabled、config（完整批量检测配置含固定 account_ids 和调度确认）。创建/编辑不立即执行，首轮等待所设间隔。生命周期、原子历史和取消见[定时检测](../operations/account_maintenance.md#codex_quality_schedules)。这些是新增管理接口，不改变原网关和旧定时测试契约。
+
 ## API Key 上游用量查询
 
 管理员账号列表提供两个手动、展示型接口：

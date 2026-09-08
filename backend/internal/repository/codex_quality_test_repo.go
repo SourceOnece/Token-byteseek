@@ -10,15 +10,18 @@ import (
 )
 
 // AcquireCodexQualityTest 用数据库时间租约跨实例排除同账号重复测试，不覆盖最近结果。
-func (r *accountRepository) AcquireCodexQualityTest(ctx context.Context, id int64, runID string) (bool, error) {
+func (r *accountRepository) AcquireCodexQualityTest(ctx context.Context, id int64, runID string, timeout int) (bool, error) {
+	if timeout < 10 || timeout > 3600 {
+		return false, errors.New("invalid quality timeout")
+	}
 	result, err := r.sql.ExecContext(ctx, `
 		INSERT INTO codex_quality_tests (account_id,run_id,lease_until)
-		SELECT id,$2,NOW()+INTERVAL '150 seconds' FROM accounts
+		SELECT id,$2,NOW()+make_interval(secs=>$3) FROM accounts
 		WHERE id=$1 AND deleted_at IS NULL AND platform='openai' AND type='oauth'
 		ON CONFLICT (account_id) DO UPDATE
 		SET run_id=EXCLUDED.run_id,lease_until=EXCLUDED.lease_until
 		WHERE codex_quality_tests.lease_until <= NOW()
-	`, id, runID)
+	`, id, runID, timeout+30)
 	if err != nil {
 		return false, err
 	}
@@ -35,7 +38,11 @@ func (r *accountRepository) FinishCodexQualityTest(ctx context.Context, account 
 		return false, err
 	}
 	rows, err := r.sql.QueryContext(ctx, `
-		WITH owned AS MATERIALIZED (
+		WITH schedule_guard AS MATERIALIZED (
+			SELECT p.id FROM codex_quality_schedules p JOIN codex_quality_runs r ON r.schedule_id=p.id
+			WHERE r.id=$8 AND r.status='running' AND p.enabled AND p.active_run_id=r.id AND p.lease_until>NOW()
+			FOR SHARE OF p
+		), owned AS MATERIALIZED (
 			SELECT account_id FROM codex_quality_tests
 			WHERE account_id=$1 AND run_id=$2 AND lease_until>NOW() FOR UPDATE
 		), changed AS (
@@ -43,6 +50,7 @@ func (r *accountRepository) FinishCodexQualityTest(ctx context.Context, account 
 			WHERE id IN (SELECT account_id FROM owned)
 			AND deleted_at IS NULL AND platform='openai' AND type='oauth'
 			AND updated_at=$4 AND $5 NOT IN ('cancelled','stale')
+			AND ($8=0 OR EXISTS(SELECT 1 FROM schedule_guard))
 			RETURNING id,schedulable
 		), recorded AS (
 			UPDATE codex_quality_tests SET
@@ -57,9 +65,13 @@ func (r *accountRepository) FinishCodexQualityTest(ctx context.Context, account 
 		), notification AS (
 			INSERT INTO scheduler_outbox (event_type,account_id,group_id,payload)
 			SELECT $7,id,NULL,NULL FROM changed
+		), history AS (
+			INSERT INTO codex_quality_run_results(run_id,account_id,result)
+			SELECT $8,$1,result FROM recorded WHERE $8>0
+			ON CONFLICT(run_id,account_id) DO NOTHING
 		)
 		SELECT result FROM recorded
-	`, account.ID, runID, want, account.UpdatedAt, result.Status, string(payload), service.SchedulerOutboxEventAccountChanged)
+	`, account.ID, runID, want, account.UpdatedAt, result.Status, string(payload), service.SchedulerOutboxEventAccountChanged, service.QualityScheduledRunID(ctx))
 	if err != nil {
 		return false, err
 	}
@@ -110,4 +122,26 @@ func (r *accountRepository) ListCodexQualityResults(ctx context.Context, ids []i
 		results = append(results, &result)
 	}
 	return results, rows.Err()
+}
+
+// CodexQualityCounts 只统计最近结果，不读取回答，不把历史轮次重复计入。
+func (r *accountRepository) CodexQualityCounts(ctx context.Context) (map[string]int, error) {
+	rows, err := r.sql.QueryContext(ctx, `SELECT COALESCE(q.result->>'status','untested'),COUNT(*)
+	FROM accounts a LEFT JOIN codex_quality_tests q ON q.account_id=a.id
+	WHERE a.deleted_at IS NULL AND a.platform='openai' AND a.type='oauth'
+	GROUP BY COALESCE(q.result->>'status','untested')`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	counts := map[string]int{"full": 0, "degraded": 0, "failed": 0, "untested": 0, "cancelled": 0, "stale": 0, "skipped": 0}
+	for rows.Next() {
+		var status string
+		var count int
+		if err = rows.Scan(&status, &count); err != nil {
+			return nil, err
+		}
+		counts[status] = count
+	}
+	return counts, rows.Err()
 }

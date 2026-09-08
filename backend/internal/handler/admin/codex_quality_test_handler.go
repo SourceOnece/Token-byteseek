@@ -143,3 +143,25 @@ func (h *AccountHandler) ListCodexQualityResults(c *gin.Context) {
 	}
 	response.Success(c, results)
 }
+
+// CodexQualityStats 独立只读汇总，不改变已有仪表盘接口。
+func (h *AccountHandler) CodexQualityStats(c *gin.Context) {
+	repo, ok := h.accountTestService.CodexQualityRepository()
+	if !ok {
+		response.Error(c, 503, "检测统计不可用")
+		return
+	}
+	counter, ok := repo.(interface {
+		CodexQualityCounts(context.Context) (map[string]int, error)
+	})
+	if !ok {
+		response.Error(c, 503, "检测统计不可用")
+		return
+	}
+	counts, err := counter.CodexQualityCounts(c.Request.Context())
+	if err != nil {
+		response.Error(c, 500, "读取检测统计失败")
+		return
+	}
+	response.Success(c, counts)
+}

@@ -2,8 +2,21 @@ export default {
 // Accounts
     accounts: {
       quality: {
+        poolRate: 'Pool full rate',
+        timeout: 'Timeout per account (seconds, default 120)', dashboard: 'Codex pool test overview', dashboardHint: 'Latest result per account. Full rate = Full / (Full + Degraded + Failed); untested accounts are excluded. Click to inspect accounts.',
+        detectedEmail: 'Detected account email', emailClaimHint: 'Decoded token claim for display only, not token validation. RT / authorization codes resolve email after exchange.',
+        email: 'Account email', emailUnavailable: 'Email unavailable', viewAnswer: 'Expand test answer',
+        clickCategory: 'Click a category to inspect accounts; click the full rate for all results.', emptyCategory: 'No results in this category', allResults: 'All test results',
+        schedule: {
+          title: 'Codex Scheduled Tests', description: 'Run interval tests on the server even after this page closes. Each plan uses a fixed account list and stores each run with keyword-driven scheduling.',
+          create: 'Create schedule', name: 'Plan name', interval: 'Interval (minutes)', keep: 'Recent runs to retain', selected: '{count} accounts selected',
+          selectAll: 'Select all matching accounts', fixedSelection: 'Up to 500 accounts. Selection is a fixed snapshot, excluding future accounts, shadows and Agent Identity.',
+          enabled: 'Enabled', paused: 'Paused', pause: 'Pause tests', confirm: 'Confirm recurring quota use and automatic scheduling: enable Full, disable Degraded or Failed. First run starts after the interval; subsequent intervals begin after completion, with no overlap.',
+          empty: 'No scheduled tests', intervalValue: 'Every {minutes} minutes · {count} fixed accounts', next: 'Next run', running: 'Run in progress', history: 'Run history', noRuns: 'No runs yet; waiting for the scheduled time',
+          runStatus: { running: 'Running', completed: 'Completed', interrupted: 'Interrupted', failed: 'Execution failed' }
+        },
         title: 'Codex Batch Prompt Test', column: 'Quality Test', details: 'Latest Prompt Test',
-        warning: '{count} accounts selected. Only standalone Codex OAuth accounts are tested, with a 120-second timeout each. Tests consume upstream quota and automatically update scheduling switches.',
+        warning: '{count} accounts selected. Only standalone Codex OAuth accounts are tested, with a {seconds}-second timeout each. Tests consume upstream quota and automatically update scheduling switches.',
         disclaimer: '“Full / Degraded” is your keyword classification, not an objective capability assessment. Unselected accounts are unchanged; other platforms, shadows and Agent Identity accounts are skipped.',
         model: 'Test model', effort: 'Reasoning effort', effortDefault: 'Upstream default (omit)', concurrency: 'Concurrency',
         prompt: 'Test prompt', keyword: 'Match keyword', keywordHint: 'A case-sensitive literal substring in the complete visible answer marks it as Full. No regex; prompts and reasoning summaries are excluded.',
