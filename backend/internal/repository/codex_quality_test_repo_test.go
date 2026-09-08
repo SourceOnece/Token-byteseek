@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -33,6 +34,24 @@ func TestCodexQualityLeaseAndAtomicWrite(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.True(t, result.Schedulable)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestQualityScheduleDeleteTargetsOnlyPlan(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	r := newAccountRepositoryWithSQL(nil, db, nil)
+	for _, count := range []int64{1, 0} {
+		mock.ExpectExec(`^DELETE FROM codex_quality_schedules WHERE id=\$1$`).WithArgs(int64(7)).WillReturnResult(sqlmock.NewResult(0, count))
+		deleted, err := r.DeleteQualitySchedule(context.Background(), 7)
+		require.NoError(t, err)
+		require.Equal(t, count > 0, deleted)
+	}
+	mock.ExpectExec(`^DELETE FROM codex_quality_schedules WHERE id=\$1$`).WithArgs(int64(7)).WillReturnError(errors.New("db unavailable"))
+	deleted, err := r.DeleteQualitySchedule(context.Background(), 7)
+	require.Error(t, err)
+	require.False(t, deleted)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

@@ -1,9 +1,11 @@
 package admin
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/response"
 	"github.com/TokenFlux/TokenRouter/internal/service"
@@ -124,6 +126,41 @@ func (h *AccountHandler) ListQualityRuns(c *gin.Context) {
 		return
 	}
 	response.Success(c, runs)
+}
+
+// DeleteQualitySchedule 必须显式确认；只删除目标计划及级联历史，不修改账号开关。
+func (h *AccountHandler) DeleteQualitySchedule(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "计划 ID 无效")
+		return
+	}
+	var req struct {
+		ConfirmDelete bool `json:"confirm_delete"`
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1024)
+	if c.ShouldBindJSON(&req) != nil || !req.ConfirmDelete {
+		response.BadRequest(c, "必须确认删除计划及其历史记录")
+		return
+	}
+	repo, ok := h.accountTestService.QualityScheduleRepository()
+	if !ok {
+		response.Error(c, 503, "定时检测不可用")
+		return
+	}
+	// 删除可能等待正在提交结果的共享锁，限制等待时间，失败时不显示已删除。
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+	deleted, err := repo.DeleteQualitySchedule(ctx, id)
+	if err != nil {
+		response.Error(c, 500, "删除计划失败，请刷新后重试")
+		return
+	}
+	if !deleted {
+		response.NotFound(c, "计划不存在或已删除")
+		return
+	}
+	response.Success(c, gin.H{"deleted": true})
 }
 func (h *AccountHandler) QualityRunDetail(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)

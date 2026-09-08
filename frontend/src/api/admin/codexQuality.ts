@@ -67,6 +67,8 @@ export const qualitySchedulesAPI = {
     await apiClient.put(`/admin/accounts/codex-quality-schedules/${id}/enabled`, { enabled, confirm_scheduling: enabled })
   },
   async trigger(id: number) { await apiClient.post(`/admin/accounts/codex-quality-schedules/${id}/run`) },
+  // 仅由二次确认提交调用，不把打开确认弹窗当成删除。
+  async remove(id: number) { await apiClient.delete(`/admin/accounts/codex-quality-schedules/${id}`, { data: { confirm_delete: true } }) },
   async runs(id: number) { return (await apiClient.get<QualityRun[]>(`/admin/accounts/codex-quality-schedules/${id}/runs`)).data },
   async detail(id: number, status = '', page = 1) {
     return (await apiClient.get<{ run: QualityRun; items: CodexQualityResult[]; total: number; page: number }>(`/admin/accounts/codex-quality-runs/${id}`, { params: { status, page } })).data

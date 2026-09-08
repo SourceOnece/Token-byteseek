@@ -121,6 +121,17 @@ func (r *accountRepository) ClaimQualitySchedule(ctx context.Context) (*service.
 
 type qualityRowScanner interface{ Scan(...any) error }
 
+// 删除只锁定目标计划，外键级联清理其轮次；与结果提交的计划共享锁串行化。
+// @project-doc docs/operations/account_maintenance.md#codex_quality_schedules
+func (r *accountRepository) DeleteQualitySchedule(ctx context.Context, id int64) (bool, error) {
+	result, err := r.sql.ExecContext(ctx, `DELETE FROM codex_quality_schedules WHERE id=$1`, id)
+	if err != nil {
+		return false, err
+	}
+	n, err := result.RowsAffected()
+	return n > 0, err
+}
+
 func scanQualityRun(row qualityRowScanner) (*service.CodexQualityRun, error) {
 	run := &service.CodexQualityRun{Counts: map[string]int{}}
 	var raw []byte
@@ -148,8 +159,12 @@ func (r *accountRepository) SaveQualityRunResult(ctx context.Context, runID int6
 		return err
 	}
 	// 已在调度原子提交中保存的结果不覆盖；这里只补跳过/取消/存储异常。
-	_, err = r.sql.ExecContext(ctx, `INSERT INTO codex_quality_run_results(run_id,account_id,result)
+	_, err = r.sql.ExecContext(ctx, `WITH plan_guard AS MATERIALIZED (
+		SELECT p.id FROM codex_quality_schedules p JOIN codex_quality_runs r ON r.schedule_id=p.id
+		WHERE r.id=$1 AND r.status='running' FOR SHARE OF p
+	) INSERT INTO codex_quality_run_results(run_id,account_id,result)
 	SELECT id,$2,$3::jsonb FROM codex_quality_runs WHERE id=$1 AND status='running'
+	AND EXISTS(SELECT 1 FROM plan_guard)
 	ON CONFLICT(run_id,account_id) DO NOTHING`, runID, result.AccountID, string(body))
 	return err
 }

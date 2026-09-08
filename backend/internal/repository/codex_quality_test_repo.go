@@ -38,6 +38,7 @@ func (r *accountRepository) FinishCodexQualityTest(ctx context.Context, account 
 	if err != nil {
 		return false, err
 	}
+	// 计划被删除或撤销时仅释放租约；保留最近结果，且不再插入已消失轮次的历史。
 	rows, err := r.sql.QueryContext(ctx, `
 		WITH schedule_guard AS MATERIALIZED (
 			SELECT p.id FROM codex_quality_schedules p JOIN codex_quality_runs r ON r.schedule_id=p.id
@@ -63,7 +64,12 @@ func (r *accountRepository) FinishCodexQualityTest(ctx context.Context, account 
 						WHEN EXISTS(SELECT 1 FROM changed) THEN $5 ELSE 'stale' END),
 				lease_until=NOW(),updated_at=NOW()
 			WHERE account_id IN (SELECT account_id FROM owned)
+			AND ($8=0 OR EXISTS(SELECT 1 FROM schedule_guard))
 			RETURNING result
+		), released AS (
+			UPDATE codex_quality_tests SET lease_until=NOW()
+			WHERE account_id IN (SELECT account_id FROM owned)
+			AND $8>0 AND NOT EXISTS(SELECT 1 FROM schedule_guard)
 		), notification AS (
 			INSERT INTO scheduler_outbox (event_type,account_id,group_id,payload)
 			SELECT $7,id,NULL,NULL FROM changed

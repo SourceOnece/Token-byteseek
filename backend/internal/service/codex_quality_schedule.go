@@ -55,6 +55,7 @@ type CodexQualityScheduleRepository interface {
 	ListQualitySchedules(context.Context) ([]*CodexQualitySchedule, error)
 	SetQualityScheduleEnabled(context.Context, int64, bool) error
 	TriggerQualitySchedule(context.Context, int64) error
+	DeleteQualitySchedule(context.Context, int64) (bool, error)
 	ClaimQualitySchedule(context.Context) (*CodexQualityRun, error)
 	RenewQualitySchedule(context.Context, *CodexQualityRun) (bool, error)
 	SaveQualityRunResult(context.Context, int64, *CodexQualityResult) error

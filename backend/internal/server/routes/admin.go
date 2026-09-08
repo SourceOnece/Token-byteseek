@@ -375,6 +375,7 @@ func registerAccountRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAu
 		accounts.GET("/codex-quality-schedules", h.Admin.Account.ListQualitySchedules)
 		accounts.POST("/codex-quality-schedules", h.Admin.Account.SaveQualitySchedule)
 		accounts.PUT("/codex-quality-schedules/:id", h.Admin.Account.SaveQualitySchedule)
+		accounts.DELETE("/codex-quality-schedules/:id", h.Admin.Account.DeleteQualitySchedule)
 		accounts.PUT("/codex-quality-schedules/:id/enabled", h.Admin.Account.SetQualityScheduleEnabled)
 		accounts.POST("/codex-quality-schedules/:id/run", h.Admin.Account.TriggerQualitySchedule)
 		accounts.GET("/codex-quality-schedules/:id/runs", h.Admin.Account.ListQualityRuns)

@@ -9,6 +9,9 @@ export default {
         email: '账号邮箱', emailUnavailable: '未获取邮箱', viewAnswer: '展开查看测试回答',
         clickCategory: '点击上方分类查看对应账号；点击满血率查看全部结果。', emptyCategory: '该分类暂无结果', allResults: '全部检测结果',
         schedule: {
+          deleteTitle: '删除定时检测计划', deleteConfirm: '确认删除',
+          deleteMessage: '将永久删除此计划及其每轮历史记录，并取消待执行检测。正在检测的任务会在服务端检查到删除后停止，已发出的请求可能仍消耗额度。此操作无法撤销。',
+          deletePreserved: '不会删除账号；账号最近检测结果和已生效的调度开关保持不变。',
           periodic: '周期检测', queued: '等待执行', stop: '停止本轮并暂停计划', manualRun: '手动发起', scheduledRun: '周期执行',
           title: 'Codex 定时检测', description: '在服务器后台按间隔检测，关闭页面不影响执行。计划固定账号清单，每轮保存独立结果并按关键词修改调度。',
           create: '创建定时计划', name: '计划名称', interval: '检测间隔（分钟）', keep: '保留最近轮数', selected: '已选 {count} 个账号',

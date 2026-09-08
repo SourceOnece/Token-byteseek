@@ -158,21 +158,21 @@ gemini_generate_content
 
 `POST /api/v1/admin/accounts/codex-quality-test` 新增管理员 SSE 入口，接受 `account_ids`（不重复正整数，1–500）、`model`、`reasoning_effort`（空值省略，或 none/minimal/low/medium/high/xhigh/max）、`prompt`、`keyword`、`concurrency`（1–5，默认 3）和必须为 true 的 `confirm_scheduling`。不会修改原 `/:id/test` 请求/响应。未确认或非法输入在发送上游前返回 400，本实例已有批次返回 409，缺少服务返回 503。流事件为 start、result、complete，每 10 秒心跳；只有 complete 表示整批结束。
 
-`result.data` 包含账号 ID/邮箱/名称、模型/档位、题目/关键词、可见回答、status（full/degraded/failed/skipped/cancelled/stale）、起止时间、错误和 scheduling_applied/schedulable。本次所选独立 OpenAI OAuth 账号的 full 开启调度，degraded/failed 关闭；其它类型跳过，取消与 CAS 失配不修改调度。满血率以 full/(full+degraded+failed) 计算，标签仅是自定义关键词判定。
+`result.data` 包含账号 ID/邮箱/名称、模型/档位、题目/关键词、可见回答、status（full/degraded/failed/skipped/cancelled/stale）、起止时间、错误和 scheduling_applied/schedulable。本次所选独立 OpenAI OAuth/API Key 账号的 full 开启调度，degraded/failed 关闭；其它类型跳过，取消与 CAS 失配不修改调度。满血率以 full/(full+degraded+failed) 计算，标签仅是自定义关键词判定。
 
-`GET /api/v1/admin/accounts/codex-quality-results?account_ids=1,2` 返回指定未删除 OAuth 账号的最近摘要，最多 500 个；单账号请求增加 `detail=true` 才返回题目和完整回答。结果只给管理员，不加入用户接口或调度快照；无结果返回空数组。其存储与取消语义见[账号维护](../operations/account_maintenance.md#codex_quality_testing)。
+`GET /api/v1/admin/accounts/codex-quality-results?account_ids=1,2` 返回指定未删除且符合检测资格的 OpenAI OAuth/API Key 账号最近摘要，最多 500 个；单账号请求增加 `detail=true` 才返回题目和完整回答。结果只给管理员，不加入用户接口或调度快照；无结果返回空数组。其存储与取消语义见[账号维护](../operations/account_maintenance.md#codex_quality_testing)。
 
-bh.017 增加可选 timeout_seconds：省略/0 为 120 秒，显式值 10–3600，结果带回实际超时。账号列表、按筛选批量编辑及按筛选导出支持 quality_status（空/full/degraded/failed/untested/cancelled/stale/skipped）；仅筛选 OpenAI OAuth，未测指无最近结果，筛选与分页/计数共用谓词。`GET /admin/accounts/codex-quality-stats` 聚合全体未删除 OpenAI OAuth 的最近状态计数，缺项补零，供管理员仪表盘使用，非单批次统计。
+bh.017 增加可选 timeout_seconds：省略/0 为 120 秒，显式值 10–3600，结果带回实际超时。账号列表、按筛选批量编辑及按筛选导出支持 quality_status（空/full/degraded/failed/untested/cancelled/stale/skipped）；仅筛选符合检测资格的 OpenAI OAuth/API Key，未测指无最近结果，筛选与分页/计数共用谓词。`GET /admin/accounts/codex-quality-stats` 聚合全体未删除且符合检测资格的 OpenAI OAuth/API Key 最近状态计数，缺项补零，供管理员仪表盘使用，非单批次统计。
 
 定时计划均位于管理员 `/api/v1/admin/accounts` 下：`GET/POST /codex-quality-schedules` 列出/创建，`PUT /codex-quality-schedules/:id` 编辑，`PUT /codex-quality-schedules/:id/enabled` 暂停/启用（启用必须 confirm_scheduling=true），`GET /codex-quality-schedules/:id/runs` 返回最近至多 100 轮及分类计数，`GET /codex-quality-runs/:id?status=failed&page=1` 返回轮次和该分类逐账号结果，每页 20 条。计划字段为 name、interval_minutes、keep_runs、enabled、config（完整批量检测配置含固定 account_ids 和调度确认）。创建/编辑不立即执行，首轮等待所设间隔。生命周期、原子历史和取消见[定时检测](../operations/account_maintenance.md#codex_quality_schedules)。这些是新增管理接口，不改变原网关和旧定时测试契约。
 
+质量检测支持独立 OpenAI OAuth/API Key，排除影子与 Agent Identity。api_protocol 可单选 responses/chat_completions；API Key 只使用所选协议，未指定时沿用账号配置；OAuth 固定 Responses。具体结果保存实际 api_protocol，推理字段不计入关键词。
+
+`POST /api/v1/admin/accounts/codex-quality-schedules/:id/run` 为单次手动请求，可在周期关闭时执行且不改变 enabled；登记 manual_requested_at，runner 按租约领取，轮次 trigger_source 区分 manual/schedule。
+
+`DELETE /api/v1/admin/accounts/codex-quality-schedules/:id` 删除单计划，JSON 必须为 `{"confirm_delete":true}`（请求体上限 1 KiB），无效 ID/未确认返回 400、不可用 503、计划已不存在 404、数据库失败 500；成功返回 `data.deleted=true`。沿用管理员鉴权与 DELETE 审计。级联清理此计划的轮次和回答，保留账号、账号最近结果和既有调度状态；删除后旧 worker 不得再提交调度及最近结果。语义及取消边界见[定时检测](../operations/account_maintenance.md#codex_quality_schedules)。
+
 ## API Key 上游用量查询
-
-### bh.018 质量检测兼容上游补充
-
-质量检测端点现覆盖未删除的 OpenAI OAuth 与 API Key 账号；`openai_text_route_mode` 决定 API Key 使用 Responses 或 Chat Completions 测试协议。质量结果仍只匹配完整可见回答，`reasoning_content` 等推理字段不会计入关键词。
-
-定时计划新增 `POST /api/v1/admin/accounts/codex-quality-schedules/:id/run`。它只推进启用且空闲计划的到期时间，由后台 runner 领取执行；暂停计划或正在执行的计划返回冲突，不改变原启停确认契约。
 
 管理员账号列表提供两个手动、展示型接口：
 

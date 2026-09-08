@@ -1,5 +1,5 @@
 <template>
-  <BaseDialog :show="show" :title="t('admin.accounts.quality.schedule.title')" width="extra-wide" :close-on-escape="!historyPlan && !detailRun" @close="close">
+  <BaseDialog :show="show" :title="t('admin.accounts.quality.schedule.title')" width="extra-wide" :close-on-escape="!historyPlan && !detailRun && !deletePlan" @close="close">
     <div class="space-y-5">
       <div v-if="!draft" class="flex flex-wrap items-center justify-between gap-3">
         <button class="btn btn-primary gap-2" data-testid="quality-plan-new" @click="newPlan"><Icon name="plus" size="sm" />{{ t('admin.accounts.quality.schedule.create') }}</button>
@@ -64,6 +64,7 @@
           <button class="btn btn-secondary btn-sm gap-2" @click="viewHistory(plan)"><Icon name="clock" size="sm" />{{ t('admin.accounts.quality.schedule.history') }}</button>
           <button class="btn btn-secondary quality-icon sm:ml-auto" :title="t('common.edit')" :aria-label="t('common.edit')" :disabled="busyPlan !== null" @click="edit(plan)"><Icon name="edit" size="sm" /></button>
           <button v-if="plan.active_run_id || plan.manual_requested_at" class="btn btn-danger quality-icon" :title="t('admin.accounts.quality.schedule.stop')" :aria-label="t('admin.accounts.quality.schedule.stop')" :disabled="busyPlan !== null" @click="stopPlan(plan)"><Icon name="x" size="sm" /></button>
+          <button type="button" class="btn btn-danger btn-sm gap-2" data-testid="quality-plan-delete" :disabled="busyPlan !== null" @click="requestDelete(plan)"><Icon name="trash" size="sm" />{{ t('common.delete') }}</button>
         </div>
       </article>
       </div>
@@ -86,6 +87,18 @@
     <p v-if="!detailResults.length" class="text-gray-500">{{ t('admin.accounts.quality.emptyCategory') }}</p>
     <div class="space-y-4"><CodexQualityResultCard v-for="result in detailResults" :key="result.account_id" :result="result" /></div>
     <Pagination v-if="detailTotal > 20" :page="detailPage" :page-size="20" :total="detailTotal" :show-page-size-selector="false" @update:page="loadDetail" />
+  </BaseDialog>
+  <BaseDialog :show="!!deletePlan && show" :title="t('admin.accounts.quality.schedule.deleteTitle')" width="normal" :z-index="90" :close-on-escape="!deleting" @close="cancelDelete">
+    <div class="space-y-4" data-testid="quality-plan-delete-dialog" :aria-busy="deleting">
+      <p class="break-all border-l-4 border-bh-red pl-3 text-lg font-extrabold">{{ deletePlan?.name }}</p>
+      <p class="text-sm text-gray-700 dark:text-gray-300">{{ t('admin.accounts.quality.schedule.deleteMessage') }}</p>
+      <p class="text-sm font-bold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.quality.schedule.deletePreserved') }}</p>
+      <p v-if="deleteError" role="alert" class="break-words text-sm font-bold text-bh-red dark:text-red-400">{{ deleteError }}</p>
+    </div>
+    <template #footer>
+      <button type="button" class="btn btn-secondary" data-testid="quality-plan-delete-cancel" :disabled="deleting" @click="cancelDelete">{{ t('common.cancel') }}</button>
+      <button type="button" class="btn btn-danger gap-2" data-testid="quality-plan-delete-confirm" :disabled="deleting" @click="confirmDelete"><Icon name="trash" size="sm" />{{ t(deleting ? 'common.processing' : 'admin.accounts.quality.schedule.deleteConfirm') }}</button>
+    </template>
   </BaseDialog>
 </template>
 
@@ -112,6 +125,7 @@ const { t } = useI18n()
 const plans = ref<QualitySchedule[]>([]), draft = ref<QualitySchedule | null>(null)
 const error = ref(''), saving = ref(false), selecting = ref(false)
 const busyPlan = ref<number | null>(null)
+const deletePlan = ref<{ id: number; name: string } | null>(null), deleting = ref(false), deleteError = ref('')
 const search = ref(''), accountRows = ref<Account[]>([]), accountPage = ref(1), accountTotal = ref(0)
 const historyPlan = ref<QualitySchedule | null>(null), runs = ref<QualityRun[]>([]), historyError = ref('')
 const detailRun = ref<QualityRun | null>(null), detailStatus = ref(''), detailPage = ref(1), detailTotal = ref(0), detailResults = ref<CodexQualityResult[]>([]), detailError = ref('')
@@ -120,11 +134,11 @@ const models = getModelsByPlatform('openai').filter(id => !id.includes('image'))
 const efforts = computed(() => [{ value: '', label: t('admin.accounts.quality.effortDefault') }, ...['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].map(value => ({ value, label: value }))])
 const concurrencyOptions = [1, 2, 3, 4, 5].map(value => ({ value, label: String(value) }))
 const protocols = computed(() => qualityProtocolOptions(t('admin.accounts.quality.protocolDefault')))
-let generation = 0, accountRequest = 0, detailRequest = 0, timer: ReturnType<typeof setInterval> | null = null
+let generation = 0, accountRequest = 0, detailRequest = 0, listRequest = 0, timer: ReturnType<typeof setInterval> | null = null
 const message = (e: unknown) => e instanceof Error ? e.message : (e as { message?: string })?.message || t('common.error')
 const formatTime = (value?: string) => value ? new Date(value).toLocaleString() : '—'
 
-async function load() { const v = generation; try { const value = await qualitySchedulesAPI.list(); if (v === generation) plans.value = value } catch (e) { if (v === generation) error.value = message(e) } }
+async function load() { const v = generation, r = ++listRequest; try { const value = await qualitySchedulesAPI.list(); if (v === generation && r === listRequest) plans.value = value } catch (e) { if (v === generation && r === listRequest) error.value = message(e) } }
 function newPlan() {
   draft.value = { id: 0, name: '', interval_minutes: 60, keep_runs: 30, enabled: true, config: { account_ids: [...props.accountIds], model: 'gpt-6-astra', reasoning_effort: '', api_protocol: 'responses', prompt: '', keyword: '', concurrency: 3, timeout_seconds: 120, confirm_scheduling: false } }
   error.value = ''; search.value = ''; void loadAccounts(1)
@@ -167,13 +181,40 @@ async function actOnPlan(plan: QualitySchedule, action: () => Promise<unknown>) 
 function toggleEnabled(plan: QualitySchedule) { return actOnPlan(plan, () => qualitySchedulesAPI.setEnabled(plan.id, !plan.enabled)) }
 function stopPlan(plan: QualitySchedule) { return actOnPlan(plan, () => qualitySchedulesAPI.setEnabled(plan.id, false)) }
 function trigger(plan: QualitySchedule) { return actOnPlan(plan, () => qualitySchedulesAPI.trigger(plan.id)) }
+// 确认对象冻结 ID 与名称；定时刷新列表不能将确认动作换成另一个计划。
+function requestDelete(plan: QualitySchedule) {
+  if (busyPlan.value !== null || deleting.value) return
+  deletePlan.value = { id: plan.id, name: plan.name }; deleteError.value = ''
+}
+function cancelDelete() { if (!deleting.value) { deletePlan.value = null; deleteError.value = '' } }
+async function confirmDelete() {
+  const target = deletePlan.value
+  if (!target || deleting.value || busyPlan.value !== null) return
+  const v = generation
+  deleting.value = true; busyPlan.value = target.id; deleteError.value = ''
+  try {
+    await qualitySchedulesAPI.remove(target.id)
+    if (v !== generation) return
+    // 使删除前的列表请求失效，网络慢时也不会把已删卡片重新画回来。
+    listRequest++; plans.value = plans.value.filter(plan => plan.id !== target.id)
+    if (historyPlan.value?.id === target.id) { historyPlan.value = null; runs.value = [] }
+    if (detailRun.value?.schedule_id === target.id) { detailRequest++; detailRun.value = null; detailResults.value = [] }
+    if (draft.value?.id === target.id) draft.value = null
+    deletePlan.value = null
+    await load()
+  } catch (e) { if (v === generation) deleteError.value = message(e) }
+  finally { deleting.value = false; busyPlan.value = null }
+}
 async function viewHistory(plan: QualitySchedule) { historyPlan.value = plan; runs.value = []; historyError.value = ''; await refreshHistory() }
 async function refreshHistory() { const id = historyPlan.value?.id; if (!id) return; try { const value = await qualitySchedulesAPI.runs(id); if (historyPlan.value?.id === id) runs.value = value } catch (e) { historyError.value = message(e) } }
 function openRun(run: QualityRun, status: string) { detailRun.value = run; detailStatus.value = status; detailResults.value = []; void loadDetail(1) }
 async function loadDetail(page = 1) { const id = detailRun.value?.id, v = ++detailRequest; if (!id) return; detailError.value = ''; try { const value = await qualitySchedulesAPI.detail(id, detailStatus.value, page); if (v !== detailRequest) return; detailResults.value = value.items; detailTotal.value = value.total; detailPage.value = page } catch (e) { if (v === detailRequest) detailError.value = message(e) } }
-function close() { emit('close') }
+function close() {
+  if (deletePlan.value) { cancelDelete(); return }
+  emit('close')
+}
 watch(() => props.show, show => {
-  generation++; accountRequest++; detailRequest++
+  generation++; accountRequest++; detailRequest++; listRequest++; deletePlan.value = null; deleteError.value = ''
   if (timer) clearInterval(timer); timer = null
   if (show) { draft.value = null; error.value = ''; historyPlan.value = null; detailRun.value = null; void load(); timer = setInterval(() => { void load(); void refreshHistory() }, 15000) }
 })

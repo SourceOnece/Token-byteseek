@@ -9,6 +9,9 @@ export default {
         email: 'Account email', emailUnavailable: 'Email unavailable', viewAnswer: 'Expand test answer',
         clickCategory: 'Click a category to inspect accounts; click the full rate for all results.', emptyCategory: 'No results in this category', allResults: 'All test results',
         schedule: {
+          deleteTitle: 'Delete scheduled test plan', deleteConfirm: 'Confirm deletion',
+          deleteMessage: 'Permanently delete this plan and its run history, and cancel queued tests. Active tests stop when the server detects deletion; requests already sent may still consume quota. This cannot be undone.',
+          deletePreserved: 'Accounts, their latest test results and scheduling switches already applied will be kept.',
           periodic: 'Periodic checks', queued: 'Queued', stop: 'Stop run and pause plan', manualRun: 'Manual run', scheduledRun: 'Scheduled run',
           title: 'Codex Scheduled Tests', description: 'Run interval tests on the server even after this page closes. Each plan uses a fixed account list and stores each run with keyword-driven scheduling.',
           create: 'Create schedule', name: 'Plan name', interval: 'Interval (minutes)', keep: 'Recent runs to retain', selected: '{count} accounts selected',
