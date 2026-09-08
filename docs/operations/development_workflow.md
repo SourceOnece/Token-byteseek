@@ -135,9 +135,9 @@ npx --yes pnpm@9 --dir frontend run build
 
 ## 发布
 
-ByteSeek fork 的上游同步以镜像发布作为收尾：完成包豪斯适配、相关测试、前端构建及界面回归，确认没有未解决的阻断问题，并提交推送源码后，才构建发布镜像。GHCR 固定使用 `ghcr.io/sourceonece/byteseek`，同一构建产物同时发布 `bauhaus` 和 `latest` 两个标签；先对候选镜像核对版本、提交及启动情况，推送后核对两标签的远端 digest 一致。任一步失败不得宣称发布完成。镜像推送不等于部署，未单独获得上线授权时不替换运行容器。
+ByteSeek fork 的上游同步以镜像发布作为收尾：完成包豪斯适配、相关测试、前端构建及界面回归，确认没有未解决的阻断问题，并提交推送源码后，才构建发布镜像。GHCR 固定使用 `ghcr.io/sourceonece/byteseek`。核对候选版本、提交和启动情况后，先推送固定版本标签（文档 ID 去掉前导 v，例如 `0.1.278-bh.018`），再将同一产物推送到 `latest` 和兼容别名 `bauhaus`；三个远端清单 digest 必须一致。已存在版本标签不得覆盖为不同产物，固定版本与配置 digest 的区分见版本留档规则。任一步失败不得宣称发布完成。镜像推送不等于部署，未单独获得上线授权时不替换运行容器。
 
-打包前完成版本文档的变更、兼容性和验证部分；推送后追加准确的源码提交、构建架构、双标签远端 digest 及是否部署。纯文档/约束变更不改变应用产物，记录不打包原因即可；追加发布证据本身不触发新版本和循环构建。具体字段及版本冻结规则见[版本留档规则](version_history.md)。
+打包前完成版本文档的变更、兼容性和验证部分；推送后追加准确的源码提交、构建架构、版本/latest/bauhaus 三标签远端清单 digest 及是否部署。纯文档/约束变更不改变应用产物、不创建对应应用镜像标签，记录不打包原因即可；追加发布证据本身不触发新版本和循环构建。具体字段及版本冻结规则见[版本留档规则](version_history.md)。
 
 `.github/workflows/release.yml` 由 `v*` tag 或手动 dispatch 触发。标准发布只构建一次前端，再把 Linux、Windows 和 macOS 的五个 Go 目标分配到独立 runner 并行编译；最终 job 通过 `tools/goreleaser_prebuilt.sh` 把这些二进制导入 GoReleaser，统一生成 Release 归档、校验和、双架构镜像与 manifest。每个镜像架构只执行一次构建，并同时附加 GHCR 与可选 DockerHub 标签；未配置 DockerHub 时不会创建占位镜像。simple release 跳过二进制 matrix，只构建精简镜像集合。workflow 从 annotated tag body 读取 release notes，并在成功后把 `backend/cmd/server/VERSION` 同步回默认分支。
 
