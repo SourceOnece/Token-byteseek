@@ -11,24 +11,26 @@ import (
 )
 
 type CodexQualitySchedule struct {
-	ID              int64               `json:"id"`
-	Name            string              `json:"name"`
-	IntervalMinutes int                 `json:"interval_minutes"`
-	KeepRuns        int                 `json:"keep_runs"`
-	Enabled         bool                `json:"enabled"`
-	Config          CodexQualityRequest `json:"config"`
-	NextRunAt       time.Time           `json:"next_run_at"`
-	ActiveRunID     *int64              `json:"active_run_id"`
+	ID                int64               `json:"id"`
+	Name              string              `json:"name"`
+	IntervalMinutes   int                 `json:"interval_minutes"`
+	KeepRuns          int                 `json:"keep_runs"`
+	Enabled           bool                `json:"enabled"`
+	Config            CodexQualityRequest `json:"config"`
+	NextRunAt         time.Time           `json:"next_run_at"`
+	ActiveRunID       *int64              `json:"active_run_id"`
+	ManualRequestedAt *time.Time          `json:"manual_requested_at"`
 }
 type CodexQualityRun struct {
-	ID           int64               `json:"id"`
-	ScheduleID   int64               `json:"schedule_id"`
-	ScheduleName string              `json:"schedule_name"`
-	Config       CodexQualityRequest `json:"config"`
-	Status       string              `json:"status"`
-	StartedAt    time.Time           `json:"started_at"`
-	FinishedAt   *time.Time          `json:"finished_at"`
-	Counts       map[string]int      `json:"counts"`
+	ID            int64               `json:"id"`
+	ScheduleID    int64               `json:"schedule_id"`
+	ScheduleName  string              `json:"schedule_name"`
+	Config        CodexQualityRequest `json:"config"`
+	Status        string              `json:"status"`
+	TriggerSource string              `json:"trigger_source"`
+	StartedAt     time.Time           `json:"started_at"`
+	FinishedAt    *time.Time          `json:"finished_at"`
+	Counts        map[string]int      `json:"counts"`
 }
 
 func (p *CodexQualitySchedule) Validate() error {
@@ -52,6 +54,7 @@ type CodexQualityScheduleRepository interface {
 	SaveQualitySchedule(context.Context, *CodexQualitySchedule) error
 	ListQualitySchedules(context.Context) ([]*CodexQualitySchedule, error)
 	SetQualityScheduleEnabled(context.Context, int64, bool) error
+	TriggerQualitySchedule(context.Context, int64) error
 	ClaimQualitySchedule(context.Context) (*CodexQualityRun, error)
 	RenewQualitySchedule(context.Context, *CodexQualityRun) (bool, error)
 	SaveQualityRunResult(context.Context, int64, *CodexQualityResult) error
@@ -62,6 +65,8 @@ type CodexQualityScheduleRepository interface {
 }
 
 type qualityScheduledRunKey struct{}
+
+var ErrQualityScheduleBusy = errors.New("计划不存在或正在执行")
 
 func QualityScheduledRunID(ctx context.Context) int64 {
 	id, _ := ctx.Value(qualityScheduledRunKey{}).(int64)
@@ -88,8 +93,8 @@ func (s *AccountTestService) ValidateQualityScheduleAccounts(ctx context.Context
 		return errors.New("所选账号不存在或已删除")
 	}
 	for _, account := range accounts {
-		if account == nil || !account.IsOpenAIOAuth() || account.IsCredentialShadow() || account.IsOpenAIAgentIdentity() {
-			return errors.New("计划只能包含独立 Codex OAuth 账号")
+		if !IsOpenAIQualityTestable(account) {
+			return errors.New("计划只能包含独立 OpenAI OAuth 或 API Key 上游")
 		}
 	}
 	return nil

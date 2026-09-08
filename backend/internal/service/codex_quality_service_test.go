@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/config"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/openai_compat"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
@@ -28,6 +31,7 @@ func TestCodexQualityRequestValidation(t *testing.T) {
 		"duplicate":     func(r *CodexQualityRequest) { r.AccountIDs = []int64{1, 1} },
 		"concurrency":   func(r *CodexQualityRequest) { r.Concurrency = 6 },
 		"effort":        func(r *CodexQualityRequest) { r.ReasoningEffort = "invented" },
+		"protocol":      func(r *CodexQualityRequest) { r.APIProtocol = "all" },
 		"null":          func(r *CodexQualityRequest) { r.Prompt = "\x00" },
 	} {
 		t.Run(name, func(t *testing.T) { r := validQualityRequest(); change(&r); require.Error(t, r.Normalize()) })
@@ -135,7 +139,7 @@ func TestCodexQualityRunClassifiesAndSendsEffort(t *testing.T) {
 }
 
 func TestCodexQualitySkipsOtherAccounts(t *testing.T) {
-	for _, account := range []*Account{{Platform: PlatformAnthropic, Type: AccountTypeOAuth}, {Platform: PlatformOpenAI, Type: AccountTypeAPIKey}} {
+	for _, account := range []*Account{{Platform: PlatformAnthropic, Type: AccountTypeOAuth}, {Platform: PlatformOpenAI, Type: AccountTypeOAuth, Credentials: map[string]any{"auth_mode": "agentIdentity"}}} {
 		repo := &qualityRepoStub{account: account}
 		svc := &AccountTestService{accountRepo: repo}
 		opts := validQualityRequest()
@@ -168,6 +172,94 @@ func TestCodexQualityBatchLock(t *testing.T) {
 	svc.EndCodexQualityBatch()
 	require.True(t, svc.BeginCodexQualityBatch())
 	svc.EndCodexQualityBatch()
+}
+
+func TestCodexQualityEligibilityIncludesAPIKey(t *testing.T) {
+	require.True(t, IsOpenAIQualityTestable(&Account{Platform: PlatformOpenAI, Type: AccountTypeAPIKey}))
+	require.True(t, IsOpenAIQualityTestable(&Account{Platform: PlatformOpenAI, Type: AccountTypeOAuth}))
+	require.False(t, IsOpenAIQualityTestable(&Account{Platform: PlatformAnthropic, Type: AccountTypeAPIKey}))
+	require.False(t, IsOpenAIQualityTestable(nil))
+}
+
+// API 选择只覆盖这次检测，账号配置与正常连接测试不变；失败不另试其它协议。
+func TestCodexQualityAPIKeySelectedProtocolOnly(t *testing.T) {
+	for _, protocol := range []string{"responses", "chat_completions"} {
+		for _, code := range []int{200, 401, 429, 404} {
+			t.Run(fmt.Sprintf("%s/%d", protocol, code), func(t *testing.T) {
+				route := "force_chat_completions"
+				body := "data: {\"type\":\"response.output_text.delta\",\"delta\":\"PASS\"}\n\ndata: {\"type\":\"response.completed\"}\n\n"
+				path := "/v1/responses"
+				if protocol == "chat_completions" {
+					route, path = "force_responses", "/v1/chat/completions"
+					body = "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"PASS\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"
+				}
+				if code != 200 {
+					body = `{"error":{"message":"private-token"}}`
+				}
+				account := &Account{ID: 1, Name: "API upstream", Platform: PlatformOpenAI, Type: AccountTypeAPIKey,
+					Credentials: map[string]any{"api_key": "private-token", "base_url": "https://compat-upstream.example/v1"},
+					Extra:       map[string]any{openai_compat.ExtraKeyTextRouteMode: route}}
+				repo := &qualityRepoStub{account: account}
+				up := &queuedHTTPUpstream{responses: []*http.Response{newJSONResponse(code, body)}}
+				svc := &AccountTestService{accountRepo: repo, httpUpstream: up, cfg: &config.Config{}, openAIGatewayService: &OpenAIGatewayService{}}
+				opts := validQualityRequest()
+				opts.APIProtocol = protocol
+				result := svc.RunCodexQualityTest(context.Background(), 1, &opts)
+				require.Equal(t, protocol, result.APIProtocol)
+				require.Len(t, up.requests, 1)
+				require.Equal(t, path, up.requests[0].URL.Path)
+				require.Equal(t, "Bearer private-token", up.requests[0].Header.Get("Authorization"))
+				require.Empty(t, up.requests[0].Header.Get("Originator"))
+				require.Empty(t, up.requests[0].Header.Get("Chatgpt-Account-Id"))
+				var payload map[string]any
+				require.NoError(t, json.NewDecoder(up.requests[0].Body).Decode(&payload))
+				if protocol == "chat_completions" {
+					require.Equal(t, "high", payload["reasoning_effort"])
+				} else {
+					require.Equal(t, map[string]any{"effort": "high"}, payload["reasoning"])
+				}
+				if code == 200 {
+					require.Equal(t, "full", result.Status)
+					require.Equal(t, "PASS", result.ResponseText)
+				} else {
+					require.Equal(t, "failed", result.Status)
+					require.False(t, result.Schedulable)
+				}
+				require.NotContains(t, result.Error, "private-token")
+				require.Equal(t, route, account.Extra[openai_compat.ExtraKeyTextRouteMode])
+			})
+		}
+	}
+	opts := validQualityRequest()
+	opts.APIProtocol = "chat_completions"
+	require.Equal(t, openai_compat.TextProtocolResponses, resolveQualityTextProtocol(&Account{Platform: PlatformOpenAI, Type: AccountTypeOAuth}, &opts))
+}
+
+func TestCodexQualityChatRequiresCompleteVisibleAnswer(t *testing.T) {
+	for _, tt := range []struct {
+		name, body string
+		ok         bool
+	}{
+		{"complete", "data: {\"choices\":[{\"delta\":{\"content\":\"PASS\"},\"finish_reason\":null}]}\n\ndata: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n", true},
+		{"truncated", "data: {\"choices\":[{\"delta\":{\"content\":\"PASS\"}}]}\n\n", false},
+		{"reasoning only", "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"PASS\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n", false},
+		{"error", "data: {\"error\":{\"message\":\"private-secret\"}}\n\n", false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest("POST", "/", nil)
+			err := (&AccountTestService{}).processCodexQualityChatStream(c, strings.NewReader(tt.body))
+			if tt.ok {
+				require.NoError(t, err)
+				text, _ := parseTestSSEOutput(w.Body.String())
+				require.Equal(t, "PASS", text)
+			} else {
+				require.Error(t, err)
+				require.NotContains(t, w.Body.String(), "private-secret")
+			}
+		})
+	}
 }
 
 func TestCodexQualityConfigurationChangedNeverAppliesOldResult(t *testing.T) {

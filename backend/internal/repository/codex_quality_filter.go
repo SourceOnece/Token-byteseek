@@ -3,6 +3,7 @@ package repository
 import (
 	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqljson"
+	"fmt"
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	dbaccount "github.com/TokenFlux/TokenRouter/ent/account"
 )
@@ -12,12 +13,13 @@ func applyCodexQualityFilter(query *dbent.AccountQuery, status string) {
 	if status == "" {
 		return
 	}
-	query.Where(dbaccount.PlatformEQ("openai"), dbaccount.TypeEQ("oauth"))
+	query.Where(dbaccount.PlatformEQ("openai"), dbaccount.TypeIn("oauth", "apikey"), dbaccount.ParentAccountIDIsNil())
 	query.Where(qualityFilterPredicate(status))
 }
 
 func qualityFilterPredicate(status string) func(*entsql.Selector) {
 	return func(selector *entsql.Selector) {
+		selector.Where(entsql.ExprP(fmt.Sprintf("(%s<>'oauth' OR LOWER(BTRIM(COALESCE(%s->>'auth_mode',''))) <> 'agentidentity')", selector.C("type"), selector.C("credentials"))))
 		table := entsql.Table("codex_quality_tests")
 		matching := entsql.Select(table.C("account_id")).From(table).Where(entsql.NotNull(table.C("result")))
 		if status == "untested" {

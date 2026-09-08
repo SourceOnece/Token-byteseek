@@ -15,6 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/openai_compat"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -26,6 +27,7 @@ type CodexQualityRequest struct {
 	AccountIDs        []int64 `json:"account_ids"`
 	Model             string  `json:"model"`
 	ReasoningEffort   string  `json:"reasoning_effort"`
+	APIProtocol       string  `json:"api_protocol"`
 	Prompt            string  `json:"prompt"`
 	Keyword           string  `json:"keyword"`
 	Concurrency       int     `json:"concurrency"`
@@ -68,6 +70,11 @@ func (r *CodexQualityRequest) Normalize() error {
 	default:
 		return errors.New("不支持的思考等级")
 	}
+	switch r.APIProtocol {
+	case "", string(openai_compat.TextProtocolResponses), string(openai_compat.TextProtocolChatCompletions):
+	default:
+		return errors.New("请选择一个受支持的 API 协议")
+	}
 	if r.Concurrency == 0 {
 		r.Concurrency = 3
 	}
@@ -90,6 +97,7 @@ type CodexQualityResult struct {
 	AccountName       string    `json:"account_name"`
 	Model             string    `json:"model"`
 	ReasoningEffort   string    `json:"reasoning_effort"`
+	APIProtocol       string    `json:"api_protocol"`
 	TimeoutSeconds    int       `json:"timeout_seconds"`
 	Prompt            string    `json:"prompt"`
 	Keyword           string    `json:"keyword"`
@@ -129,6 +137,29 @@ func qualityTestOptions(ctx context.Context) *CodexQualityRequest {
 	return r
 }
 
+// IsOpenAIQualityTestable 统一限定质量检测的账号边界，兼容 OAuth 与 API Key 上游。
+// 影子账号和 Agent Identity 没有独立可验证的凭据，仍由主账号/专用流程处理。
+func IsOpenAIQualityTestable(account *Account) bool {
+	if account == nil || account.Platform != PlatformOpenAI {
+		return false
+	}
+	if account.Type != AccountTypeOAuth && account.Type != AccountTypeAPIKey {
+		return false
+	}
+	return !account.IsCredentialShadow() && !account.IsOpenAIAgentIdentity()
+}
+
+// 一次检测只使用一个协议；未指定的旧计划保留账号原协议选择，不自动轮测。
+func resolveQualityTextProtocol(account *Account, options *CodexQualityRequest) openai_compat.TextProtocol {
+	if account.IsOpenAIOAuth() {
+		return openai_compat.TextProtocolResponses
+	}
+	if options != nil && options.APIProtocol != "" {
+		return openai_compat.TextProtocol(options.APIProtocol)
+	}
+	return openai_compat.ResolveUpstreamTextProtocol(account.Extra, openai_compat.TextProtocolResponses)
+}
+
 // RunCodexQualityTest 复用 OAuth 测试链路，并在完成后原子写入判定与调度状态。
 // @project-doc docs/operations/account_maintenance.md#codex_quality_testing
 func (s *AccountTestService) RunCodexQualityTest(ctx context.Context, id int64, options *CodexQualityRequest) *CodexQualityResult {
@@ -152,9 +183,10 @@ func (s *AccountTestService) RunCodexQualityTest(ctx context.Context, id int64, 
 	if result.Email == "" {
 		result.Email = firstStringValue(account.Extra, "email", "email_address")
 	}
-	if !account.IsOpenAIOAuth() || account.IsCredentialShadow() || account.IsOpenAIAgentIdentity() {
-		return finish("仅支持独立 Codex OAuth 账号；不测试其他平台、API Key、影子或 Agent Identity 账号")
+	if !IsOpenAIQualityTestable(account) {
+		return finish("仅支持独立 OpenAI OAuth 或 API Key 上游；不测试其他平台、影子或 Agent Identity 账号")
 	}
+	result.APIProtocol = string(resolveQualityTextProtocol(account, options))
 	repo, ok := s.CodexQualityRepository()
 	if !ok {
 		return finish("测试结果存储不可用")
@@ -284,6 +316,20 @@ func qualityStreamText(event map[string]any) (string, bool, error) {
 
 // processCodexQualityStream 不接受半截回答，也不把推理摘要、错误或状态提示当作答案。
 func (s *AccountTestService) processCodexQualityStream(c *gin.Context, body io.Reader) error {
+	return s.processQualitySSE(c, body, func(data string) (string, bool, error) {
+		if data == "[DONE]" {
+			return "", false, errors.New("回答未收到完成事件")
+		}
+		var event map[string]any
+		if json.Unmarshal([]byte(data), &event) != nil {
+			return "", false, errors.New("上游 SSE 格式无效")
+		}
+		return qualityStreamText(event)
+	})
+}
+
+// 两种协议共用有界 SSE 事件读取，保留跨行 JSON 和断流保护。
+func (s *AccountTestService) processQualitySSE(c *gin.Context, body io.Reader, decode func(string) (string, bool, error)) error {
 	// 包含推理等非答案事件在内的读取总量也受限，防止异常流耗尽内存。
 	scanner := bufio.NewScanner(io.LimitReader(body, 8*1024*1024))
 	scanner.Buffer(make([]byte, 4096), 1024*1024)
@@ -297,14 +343,7 @@ func (s *AccountTestService) processCodexQualityStream(c *gin.Context, body io.R
 		data := strings.Join(eventData, "\n")
 		eventData = nil
 		eventBytes = 0
-		if data == "[DONE]" {
-			return false, errors.New("回答未收到完成事件")
-		}
-		var event map[string]any
-		if json.Unmarshal([]byte(data), &event) != nil {
-			return false, errors.New("上游 SSE 格式无效")
-		}
-		text, done, err := qualityStreamText(event)
+		text, done, err := decode(data)
 		if err != nil {
 			return false, err
 		}

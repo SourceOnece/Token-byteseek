@@ -14,6 +14,7 @@
       <div class="border-l-4 border-bh-yellow pl-3"><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.effort') }}</p><strong class="text-lg text-yellow-700 dark:text-bh-yellow">{{ result.reasoning_effort || t('admin.accounts.quality.effortDefault') }}</strong></div>
     </div>
     <p class="text-xs text-gray-500 dark:text-gray-400">{{ result.finished_at }}</p>
+    <p v-if="result.api_protocol" class="text-sm font-bold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.quality.actualProtocol') }}：{{ qualityProtocolLabel(result.api_protocol) }}</p>
     <p class="text-sm font-bold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.quality.timeout') }}：{{ result.timeout_seconds || 120 }}s</p>
     <p class="text-sm">{{ t('admin.accounts.quality.keyword') }}：<strong class="break-all">{{ result.keyword }}</strong></p>
     <details>
@@ -37,7 +38,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import type { CodexQualityResult } from '@/api/admin/codexQuality'
-import { qualityStatusClass } from './codexQualityPresentation'
+import { qualityStatusClass, qualityProtocolLabel } from './codexQualityPresentation'
 defineProps<{ result: CodexQualityResult }>()
 const { t } = useI18n()
 </script>

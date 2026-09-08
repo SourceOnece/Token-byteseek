@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -82,6 +83,29 @@ func (h *AccountHandler) SetQualityScheduleEnabled(c *gin.Context) {
 		return
 	}
 	response.Success(c, gin.H{"updated": true})
+}
+
+// TriggerQualitySchedule 请求 runner 尽快领取一次，不在 HTTP 请求中执行上游调用。
+func (h *AccountHandler) TriggerQualitySchedule(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "计划 ID 无效")
+		return
+	}
+	repo, ok := h.accountTestService.QualityScheduleRepository()
+	if !ok {
+		response.Error(c, 503, "定时检测不可用")
+		return
+	}
+	if err := repo.TriggerQualitySchedule(c.Request.Context(), id); err != nil {
+		if errors.Is(err, service.ErrQualityScheduleBusy) {
+			response.Error(c, 409, err.Error())
+		} else {
+			response.Error(c, 500, "发起检测失败")
+		}
+		return
+	}
+	response.Success(c, gin.H{"triggered": true})
 }
 func (h *AccountHandler) ListQualityRuns(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)

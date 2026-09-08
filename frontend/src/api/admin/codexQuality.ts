@@ -8,6 +8,7 @@ export interface CodexQualityResult {
   email: string
   model: string
   reasoning_effort: string
+  api_protocol?: string
   timeout_seconds?: number
   prompt: string
   keyword: string
@@ -23,6 +24,7 @@ export interface CodexQualityRequest {
   account_ids: number[]
   model: string
   reasoning_effort: string
+  api_protocol?: string
   prompt: string
   keyword: string
   concurrency: number
@@ -39,6 +41,7 @@ export interface QualitySchedule {
   config: CodexQualityRequest
   next_run_at?: string
   active_run_id?: number | null
+  manual_requested_at?: string | null
 }
 export interface QualityRun {
   id: number
@@ -46,6 +49,7 @@ export interface QualityRun {
   schedule_name: string
   config: CodexQualityRequest
   status: string
+  trigger_source?: 'manual' | 'schedule'
   started_at: string
   finished_at?: string | null
   counts: Record<string, number>
@@ -59,6 +63,10 @@ export const qualitySchedulesAPI = {
       : (await apiClient.post<QualitySchedule>(path, plan)).data
   },
   async pause(id: number) { await apiClient.put(`/admin/accounts/codex-quality-schedules/${id}/enabled`, { enabled: false }) },
+  async setEnabled(id: number, enabled: boolean) {
+    await apiClient.put(`/admin/accounts/codex-quality-schedules/${id}/enabled`, { enabled, confirm_scheduling: enabled })
+  },
+  async trigger(id: number) { await apiClient.post(`/admin/accounts/codex-quality-schedules/${id}/run`) },
   async runs(id: number) { return (await apiClient.get<QualityRun[]>(`/admin/accounts/codex-quality-schedules/${id}/runs`)).data },
   async detail(id: number, status = '', page = 1) {
     return (await apiClient.get<{ run: QualityRun; items: CodexQualityResult[]; total: number; page: number }>(`/admin/accounts/codex-quality-runs/${id}`, { params: { status, page } })).data

@@ -66,6 +66,12 @@ codex_quality_schedules 保存计划，codex_quality_runs 保存每轮冻结配�
 
 ## 额度与能力探测
 
+### bh.018 质量检测范围与立即执行补充
+
+在 bh.017 既有规则上，质量检测资格扩展为独立 OpenAI OAuth 与 API Key 上游账号；影子、Agent Identity 和其他平台仍跳过。Responses 与 Chat Completions API Key 流分别校验完整可见回答，推理字段不参与关键词判定。质量结果、最近统计、筛选和定时固定账号集合均使用同一资格范围。
+
+启用且空闲的定时计划可由管理员点击“立即检测”。该操作只将 `next_run_at` 置为当前时间，随后由既有 15 秒 runner 通过数据库租约领取，不在 HTTP 请求内直接调用上游，也不改变暂停、并发、账号租约和轮次计时规则。
+
 平台可维护独立的上游额度快照：OpenAI/Codex 窗口、Gemini tier/model quota、Antigravity credits、Grok 计费/媒体资格、Qoder Credits，以及 Kimi/Zhipu/DeepSeek 的统一用量监控快照等。快照用于调度、容量展示和诊断，不是 TokenRouter 用户余额或订阅账本。
 
 OpenAI 重置次数查询把带到期时间的完整结果保存为账号展示快照；上游只返回正数次数却缺少到期明细时，实时结果仍返回给调用方，但旧快照必须保留。直接调用重置 API 成功消费次数后，服务先在脱离客户端取消信号的有界上下文中恢复账号 error、限流和临时不可调度状态，再回读额度快照与最新账号投影；恢复不修改人工 `schedulable` 开关。后续步骤部分失败时响应使用 `cache_refreshed`、`account_state_recovered` 和 `warning_code` 明确区分，调用方不得把已消费的次数当作可重试失败。

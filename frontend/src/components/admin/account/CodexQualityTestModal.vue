@@ -5,7 +5,8 @@
         {{ t('admin.accounts.quality.warning', { count: targetIds.length, seconds: timeoutSeconds }) }}
       </p>
       <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.disclaimer') }}</p>
-      <div class="grid gap-4 sm:grid-cols-3">
+      <div class="sm:max-w-sm"><label class="input-label text-bh-blue dark:text-blue-300" for="quality-protocol">{{ t('admin.accounts.quality.protocol') }}</label><Select id="quality-protocol" v-model="protocol" :options="protocols" :disabled="running" /></div>
+      <div class="quality-fields grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label class="input-label text-bh-blue dark:text-blue-300" for="quality-model">{{ t('admin.accounts.quality.model') }}</label>
           <Select id="quality-model" v-model="model" :options="models" :creatable="true" :searchable="true" :disabled="running" />
@@ -18,10 +19,10 @@
           <label class="input-label" for="quality-concurrency">{{ t('admin.accounts.quality.concurrency') }}</label>
           <Select id="quality-concurrency" v-model="concurrency" :options="concurrencyOptions" :disabled="running" />
         </div>
-      </div>
-      <div>
-        <label class="input-label" for="quality-timeout">{{ t('admin.accounts.quality.timeout') }}</label>
-        <input id="quality-timeout" v-model.number="timeoutSeconds" type="number" min="10" max="3600" class="input w-full sm:w-48 font-bold text-bh-blue dark:text-blue-300" :disabled="running" />
+        <div>
+          <label class="input-label" for="quality-timeout">{{ t('admin.accounts.quality.timeout') }}</label>
+          <input id="quality-timeout" v-model.number="timeoutSeconds" type="number" min="10" max="3600" class="input w-full font-bold text-bh-blue dark:text-blue-300" :disabled="running" />
+        </div>
       </div>
       <div>
         <label class="input-label" for="quality-prompt">{{ t('admin.accounts.quality.prompt') }}</label>
@@ -65,6 +66,7 @@ import { qualityStats, runCodexQualityBatch, type CodexQualityResult } from '@/a
 import CodexQualitySummary from './CodexQualitySummary.vue'
 import CodexQualityProgress from './CodexQualityProgress.vue'
 import CodexQualityResultsDialog from './CodexQualityResultsDialog.vue'
+import { qualityProtocolOptions } from './codexQualityPresentation'
 
 const props = defineProps<{ show: boolean; accountIds: number[] }>()
 const emit = defineEmits<{ close: []; result: [result: CodexQualityResult]; finished: [] }>()
@@ -72,6 +74,8 @@ const { t } = useI18n()
 const targetIds = ref<number[]>([])
 const model = ref('gpt-6-astra')
 const effort = ref('')
+const protocol = ref('responses')
+const protocols = computed(() => qualityProtocolOptions(t('admin.accounts.quality.protocolDefault')))
 const prompt = ref('')
 const keyword = ref('')
 const concurrency = ref(3)
@@ -119,7 +123,7 @@ async function start() {
   const current = new AbortController(); controller = current
   try {
     await runCodexQualityBatch({ account_ids: targetIds.value, model: model.value.trim(), reasoning_effort: effort.value,
-      prompt: prompt.value.trim(), keyword: keyword.value.trim(), concurrency: concurrency.value, timeout_seconds: timeoutSeconds.value, confirm_scheduling: confirmed.value }, current.signal, result => {
+      prompt: prompt.value.trim(), keyword: keyword.value.trim(), api_protocol: protocol.value, concurrency: concurrency.value, timeout_seconds: timeoutSeconds.value, confirm_scheduling: confirmed.value }, current.signal, result => {
       if (version !== generation) return
       results.value = [...results.value.filter(item => item.account_id !== result.account_id), result]
       emit('result', result)
@@ -138,5 +142,6 @@ onBeforeUnmount(() => { generation++; stop() })
 </script>
 
 <style scoped>
-.quality-stat { padding: .75rem; border: 2px solid var(--bh-ink); background: var(--bh-surface, #fff); box-shadow: var(--bh-shadow-sm); }
+.quality-fields :deep(.input-label) { min-height: 2.5rem; display: flex; align-items: flex-end; }
+.quality-fields :deep(.input), .quality-fields :deep(.select-trigger) { min-height: 42px; }
 </style>

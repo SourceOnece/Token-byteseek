@@ -26,7 +26,7 @@ func (r *accountRepository) SaveQualitySchedule(ctx context.Context, p *service.
 		 old AS (UPDATE codex_quality_runs SET status='interrupted',finished_at=NOW()
 		 WHERE id=(SELECT active_run_id FROM locked) AND status='running')
 		 UPDATE codex_quality_schedules SET name=$1,interval_minutes=$2,keep_runs=$3,enabled=$4,config=$5,
-		 next_run_at=NOW()+make_interval(mins=>$2),active_run_id=NULL,lease_until=NULL,updated_at=NOW()
+		 next_run_at=NOW()+make_interval(mins=>$2),active_run_id=NULL,lease_until=NULL,manual_requested_at=NULL,updated_at=NOW()
 		 WHERE id IN(SELECT id FROM locked) RETURNING id`
 		args = []any{p.Name, p.IntervalMinutes, p.KeepRuns, p.Enabled, string(config), p.ID}
 	}
@@ -41,7 +41,7 @@ func (r *accountRepository) SaveQualitySchedule(ctx context.Context, p *service.
 	return rows.Scan(&p.ID)
 }
 func (r *accountRepository) ListQualitySchedules(ctx context.Context) ([]*service.CodexQualitySchedule, error) {
-	rows, err := r.sql.QueryContext(ctx, `SELECT id,name,interval_minutes,keep_runs,enabled,config,next_run_at,active_run_id FROM codex_quality_schedules ORDER BY id DESC`)
+	rows, err := r.sql.QueryContext(ctx, `SELECT id,name,interval_minutes,keep_runs,enabled,config,next_run_at,active_run_id,manual_requested_at FROM codex_quality_schedules ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (r *accountRepository) ListQualitySchedules(ctx context.Context) ([]*servic
 	for rows.Next() {
 		p := &service.CodexQualitySchedule{}
 		var raw []byte
-		if err = rows.Scan(&p.ID, &p.Name, &p.IntervalMinutes, &p.KeepRuns, &p.Enabled, &raw, &p.NextRunAt, &p.ActiveRunID); err != nil {
+		if err = rows.Scan(&p.ID, &p.Name, &p.IntervalMinutes, &p.KeepRuns, &p.Enabled, &raw, &p.NextRunAt, &p.ActiveRunID, &p.ManualRequestedAt); err != nil {
 			return nil, err
 		}
 		if err = json.Unmarshal(raw, &p.Config); err != nil {
@@ -67,6 +67,7 @@ func (r *accountRepository) SetQualityScheduleEnabled(ctx context.Context, id in
 		UPDATE codex_quality_schedules SET enabled=$2,updated_at=NOW(),
 		active_run_id=CASE WHEN $2 THEN active_run_id ELSE NULL END,
 		lease_until=CASE WHEN $2 THEN lease_until ELSE NULL END,
+		manual_requested_at=CASE WHEN $2 THEN manual_requested_at ELSE NULL END,
 		next_run_at=CASE WHEN $2 AND NOT enabled THEN NOW()+make_interval(mins=>interval_minutes) ELSE next_run_at END
 		WHERE id IN(SELECT id FROM locked)`, id, enabled)
 	if err != nil {
@@ -78,20 +79,36 @@ func (r *accountRepository) SetQualityScheduleEnabled(ctx context.Context, id in
 	}
 	return err
 }
+
+// TriggerQualitySchedule 独立登记一次执行，不修改周期启停；重复点击在领取前合并。
+func (r *accountRepository) TriggerQualitySchedule(ctx context.Context, id int64) error {
+	result, err := r.sql.ExecContext(ctx, `UPDATE codex_quality_schedules
+		SET manual_requested_at=COALESCE(manual_requested_at,NOW()), updated_at=NOW()
+		WHERE id=$1 AND (active_run_id IS NULL OR lease_until<NOW())`, id)
+	if err != nil {
+		return err
+	}
+	if n, err := result.RowsAffected(); err != nil {
+		return err
+	} else if n == 0 {
+		return service.ErrQualityScheduleBusy
+	}
+	return nil
+}
 func (r *accountRepository) ClaimQualitySchedule(ctx context.Context) (*service.CodexQualityRun, error) {
 	rows, err := r.sql.QueryContext(ctx, `WITH due AS MATERIALIZED (
-		SELECT * FROM codex_quality_schedules WHERE enabled AND next_run_at<=NOW()
-		AND (lease_until IS NULL OR lease_until<NOW()) ORDER BY next_run_at,id LIMIT 1 FOR UPDATE SKIP LOCKED
+		SELECT * FROM codex_quality_schedules WHERE (manual_requested_at IS NOT NULL OR (enabled AND next_run_at<=NOW()))
+		AND (lease_until IS NULL OR lease_until<NOW()) ORDER BY manual_requested_at NULLS LAST,next_run_at,id LIMIT 1 FOR UPDATE SKIP LOCKED
 	), old AS (
 		UPDATE codex_quality_runs SET status='interrupted',finished_at=NOW()
 		WHERE id IN(SELECT active_run_id FROM due) AND status='running'
 	), created AS (
-		INSERT INTO codex_quality_runs(schedule_id,schedule_name,config)
-		SELECT id,name,config FROM due RETURNING *
+		INSERT INTO codex_quality_runs(schedule_id,schedule_name,config,trigger_source)
+		SELECT id,name,config,CASE WHEN manual_requested_at IS NOT NULL THEN 'manual' ELSE 'schedule' END FROM due RETURNING *
 	), leased AS (
-		UPDATE codex_quality_schedules p SET active_run_id=c.id,lease_until=NOW()+INTERVAL '60 seconds'
+		UPDATE codex_quality_schedules p SET active_run_id=c.id,lease_until=NOW()+INTERVAL '60 seconds',manual_requested_at=NULL
 		FROM created c WHERE p.id=c.schedule_id RETURNING c.*
-	) SELECT id,schedule_id,schedule_name,config,status,started_at,finished_at FROM leased`)
+	) SELECT id,schedule_id,schedule_name,config,status,started_at,finished_at,trigger_source FROM leased`)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +124,7 @@ type qualityRowScanner interface{ Scan(...any) error }
 func scanQualityRun(row qualityRowScanner) (*service.CodexQualityRun, error) {
 	run := &service.CodexQualityRun{Counts: map[string]int{}}
 	var raw []byte
-	if err := row.Scan(&run.ID, &run.ScheduleID, &run.ScheduleName, &raw, &run.Status, &run.StartedAt, &run.FinishedAt); err != nil {
+	if err := row.Scan(&run.ID, &run.ScheduleID, &run.ScheduleName, &raw, &run.Status, &run.StartedAt, &run.FinishedAt, &run.TriggerSource); err != nil {
 		return nil, err
 	}
 	if err := json.Unmarshal(raw, &run.Config); err != nil {
@@ -117,7 +134,8 @@ func scanQualityRun(row qualityRowScanner) (*service.CodexQualityRun, error) {
 }
 func (r *accountRepository) RenewQualitySchedule(ctx context.Context, run *service.CodexQualityRun) (bool, error) {
 	result, err := r.sql.ExecContext(ctx, `UPDATE codex_quality_schedules SET lease_until=NOW()+INTERVAL '60 seconds'
-	WHERE id=$1 AND enabled AND active_run_id=$2 AND lease_until>NOW()`, run.ScheduleID, run.ID)
+	WHERE id=$1 AND active_run_id=$2 AND lease_until>NOW()
+	AND (enabled OR EXISTS(SELECT 1 FROM codex_quality_runs WHERE id=$2 AND status='running' AND trigger_source='manual'))`, run.ScheduleID, run.ID)
 	if err != nil {
 		return false, err
 	}
@@ -152,7 +170,7 @@ func (r *accountRepository) FinishQualityRun(ctx context.Context, run *service.C
 	return err
 }
 func (r *accountRepository) ListQualityRuns(ctx context.Context, planID int64) ([]*service.CodexQualityRun, error) {
-	rows, err := r.sql.QueryContext(ctx, `SELECT id,schedule_id,schedule_name,config,status,started_at,finished_at
+	rows, err := r.sql.QueryContext(ctx, `SELECT id,schedule_id,schedule_name,config,status,started_at,finished_at,trigger_source
 	FROM codex_quality_runs WHERE schedule_id=$1 ORDER BY id DESC LIMIT 100`, planID)
 	if err != nil {
 		return nil, err
@@ -196,7 +214,7 @@ func (r *accountRepository) ListQualityRuns(ctx context.Context, planID int64) (
 	return out, counts.Err()
 }
 func (r *accountRepository) GetQualityRun(ctx context.Context, id int64) (*service.CodexQualityRun, error) {
-	rows, err := r.sql.QueryContext(ctx, `SELECT id,schedule_id,schedule_name,config,status,started_at,finished_at FROM codex_quality_runs WHERE id=$1`, id)
+	rows, err := r.sql.QueryContext(ctx, `SELECT id,schedule_id,schedule_name,config,status,started_at,finished_at,trigger_source FROM codex_quality_runs WHERE id=$1`, id)
 	if err != nil {
 		return nil, err
 	}

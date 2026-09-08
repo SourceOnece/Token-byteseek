@@ -988,10 +988,7 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 		if err != nil {
 			return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", err.Error()))
 		}
-		if openai_compat.ResolveUpstreamTextProtocol(
-			account.Extra,
-			openai_compat.TextProtocolResponses,
-		) == openai_compat.TextProtocolChatCompletions {
+		if resolveQualityTextProtocol(account, qualityTestOptions(ctx)) == openai_compat.TextProtocolChatCompletions {
 			return s.testOpenAIChatCompletionsConnection(c, account, testModelID, prompt, normalizedBaseURL, authToken)
 		}
 		apiURL = buildOpenAIResponsesURL(normalizedBaseURL)
@@ -1393,6 +1390,9 @@ func (s *AccountTestService) testOpenAIChatCompletionsConnection(
 	c.Writer.Flush()
 
 	payload := createOpenAIChatCompletionsTestPayload(testModelID, prompt)
+	if quality := qualityTestOptions(ctx); quality != nil && quality.ReasoningEffort != "" {
+		payload["reasoning_effort"] = quality.ReasoningEffort
+	}
 	payloadBytes, _ := json.Marshal(payload)
 
 	s.sendEvent(c, TestEvent{Type: "test_start", Model: testModelID})
@@ -1418,11 +1418,17 @@ func (s *AccountTestService) testOpenAIChatCompletionsConnection(
 
 	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.resolveOpenAIAccountTestTLSProfile(c, account))
 	if err != nil {
+		if qualityTestOptions(ctx) != nil {
+			return s.sendErrorAndEnd(c, "连接上游失败，请检查网络、代理或 TLS 配置")
+		}
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Chat Completions API (/v1/chat/completions) request failed: %s", err.Error()))
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
+		if qualityTestOptions(ctx) != nil {
+			return s.sendErrorAndEnd(c, fmt.Sprintf("Chat Completions 上游返回 HTTP %d，未取得完整回答", resp.StatusCode))
+		}
 		body, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode == http.StatusTooManyRequests {
 			s.reconcileOpenAI429State(ctx, account, resp.Header, body)
@@ -1434,6 +1440,9 @@ func (s *AccountTestService) testOpenAIChatCompletionsConnection(
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Chat Completions API (/v1/chat/completions) returned %d: %s", resp.StatusCode, string(body)))
 	}
 
+	if qualityTestOptions(ctx) != nil {
+		return s.processCodexQualityChatStream(c, resp.Body)
+	}
 	return s.processOpenAIChatCompletionsStream(c, resp.Body)
 }
 
@@ -2389,6 +2398,53 @@ func createOpenAIChatCompletionsTestPayload(modelID string, prompt string) map[s
 		},
 		"stream": true,
 	}
+}
+
+// processCodexQualityChatStream 只接受单个完整答案，推理与工具参数不参与关键词判定。
+func (s *AccountTestService) processCodexQualityChatStream(c *gin.Context, body io.Reader) error {
+	finished, visible := false, false
+	return s.processQualitySSE(c, body, func(data string) (string, bool, error) {
+		if data == "[DONE]" {
+			if !finished || !visible {
+				return "", false, errors.New("Chat Completions 回答未完整结束")
+			}
+			return "", true, nil
+		}
+		var event struct {
+			Error   json.RawMessage `json:"error"`
+			Choices []struct {
+				Index int `json:"index"`
+				Delta struct {
+					Content string `json:"content"`
+				} `json:"delta"`
+				FinishReason *string `json:"finish_reason"`
+			} `json:"choices"`
+		}
+		if json.Unmarshal([]byte(data), &event) != nil {
+			return "", false, errors.New("Chat Completions SSE 格式无效")
+		}
+		if len(event.Error) > 0 && string(event.Error) != "null" {
+			return "", false, errors.New("Chat Completions 上游返回错误")
+		}
+		if len(event.Choices) == 0 {
+			return "", false, nil
+		}
+		if len(event.Choices) != 1 || event.Choices[0].Index != 0 {
+			return "", false, errors.New("Chat Completions 未返回单个答案")
+		}
+		choice := event.Choices[0]
+		if finished {
+			return "", false, errors.New("Chat Completions 结束后仍返回内容")
+		}
+		if choice.FinishReason != nil && *choice.FinishReason != "" {
+			if *choice.FinishReason != "stop" {
+				return "", false, errors.New("Chat Completions 回答被截断、过滤或未完成")
+			}
+			finished = true
+		}
+		visible = visible || strings.TrimSpace(strings.ReplaceAll(choice.Delta.Content, "\x00", "")) != ""
+		return choice.Delta.Content, false, nil
+	})
 }
 
 // processClaudeStream processes the SSE stream from Claude API

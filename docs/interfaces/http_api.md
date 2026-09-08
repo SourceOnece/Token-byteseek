@@ -168,6 +168,12 @@ bh.017 增加可选 timeout_seconds：省略/0 为 120 秒，显式值 10–3600
 
 ## API Key 上游用量查询
 
+### bh.018 质量检测兼容上游补充
+
+质量检测端点现覆盖未删除的 OpenAI OAuth 与 API Key 账号；`openai_text_route_mode` 决定 API Key 使用 Responses 或 Chat Completions 测试协议。质量结果仍只匹配完整可见回答，`reasoning_content` 等推理字段不会计入关键词。
+
+定时计划新增 `POST /api/v1/admin/accounts/codex-quality-schedules/:id/run`。它只推进启用且空闲计划的到期时间，由后台 runner 领取执行；暂停计划或正在执行的计划返回冲突，不改变原启停确认契约。
+
 管理员账号列表提供两个手动、展示型接口：
 
 - `POST /api/v1/admin/accounts/:id/upstream-usage/query`

@@ -235,7 +235,7 @@
             <button v-if="qualityResults[row.id]" class="border-2 border-current px-2 py-1 text-xs font-bold shadow-[var(--bh-shadow-sm)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline focus-visible:outline-2" :class="qualityStatusClass(qualityResults[row.id].status)" @click="openQualityDetail(row.id)">
               {{ t(`admin.accounts.quality.status.${qualityResults[row.id].status}`) }}
             </button>
-            <span v-else class="text-xs text-gray-500 dark:text-gray-400">{{ row.platform === 'openai' && row.type === 'oauth' ? t(qualityLoadFailed ? 'admin.accounts.quality.loadFailed' : 'admin.accounts.quality.untested') : '—' }}</span>
+            <span v-else class="text-xs text-gray-500 dark:text-gray-400">{{ isQualityTestable(row) ? t(qualityLoadFailed ? 'admin.accounts.quality.loadFailed' : 'admin.accounts.quality.untested') : '—' }}</span>
           </template>
           <template #cell-name="{ row, value }">
             <div class="flex flex-col">
@@ -531,7 +531,7 @@ import CodexQualitySchedulesModal from '@/components/admin/account/CodexQualityS
 import CodexQualityResultCard from '@/components/admin/account/CodexQualityResult.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { listCodexQualityResults, type CodexQualityResult } from '@/api/admin/codexQuality'
-import { qualityStatusClass } from '@/components/admin/account/codexQualityPresentation'
+import { qualityStatusClass, isQualityTestable } from '@/components/admin/account/codexQualityPresentation'
 import AccountStatsModal from '@/components/admin/account/AccountStatsModal.vue'
 import AdvancedSchedulerScoreModal from '@/components/admin/account/AdvancedSchedulerScoreModal.vue'
 import CodexInviteResetModal from '@/components/admin/account/CodexInviteResetModal.vue'
@@ -647,7 +647,7 @@ onMounted(() => watch(() => `${qualityRefreshVersion.value}|${accounts.value.map
   const version = ++qualityLoadVersion
   qualityLoadController?.abort()
   const current = new AbortController(); qualityLoadController = current
-  const ids = accounts.value.filter(account => account.platform === 'openai' && account.type === 'oauth').map(account => account.id)
+  const ids = accounts.value.filter(isQualityTestable).map(account => account.id)
   if (!ids.length) { qualityLoadFailed.value = false; return }
   try {
     const results = await listCodexQualityResults(ids, current.signal)
@@ -1642,7 +1642,7 @@ const {
   fetchFn: adminAPI.accounts.list,
   initialParams: {
     platform: initialQualityQuery.get('platform') === 'openai' ? 'openai' : '',
-    type: initialQualityQuery.get('type') === 'oauth' ? 'oauth' : '',
+    type: ['oauth', 'apikey'].includes(initialQualityQuery.get('type') || '') ? (initialQualityQuery.get('type') as string) : '',
     status: '',
     privacy_mode: '',
     quality_status: ['full', 'degraded', 'failed', 'untested', 'cancelled', 'stale', 'skipped'].includes(initialQualityStatus) ? initialQualityStatus : '',
@@ -2713,7 +2713,7 @@ const buildAccountQueryFilters = () => ({
 const accountMatchesCurrentFilters = (account: Account) => {
   const filters = buildAccountQueryFilters()
   if (filters.quality_status) {
-    if (account.platform !== 'openai' || account.type !== 'oauth') return false
+    if (!isQualityTestable(account)) return false
     const status = qualityResults.value[account.id]?.status || 'untested'
     if (status !== filters.quality_status) return false
   }

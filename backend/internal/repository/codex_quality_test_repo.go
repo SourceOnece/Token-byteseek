@@ -17,7 +17,8 @@ func (r *accountRepository) AcquireCodexQualityTest(ctx context.Context, id int6
 	result, err := r.sql.ExecContext(ctx, `
 		INSERT INTO codex_quality_tests (account_id,run_id,lease_until)
 		SELECT id,$2,NOW()+make_interval(secs=>$3) FROM accounts
-		WHERE id=$1 AND deleted_at IS NULL AND platform='openai' AND type='oauth'
+		WHERE id=$1 AND deleted_at IS NULL AND platform='openai' AND type IN ('oauth','apikey')
+		AND parent_account_id IS NULL AND (type<>'oauth' OR LOWER(BTRIM(COALESCE(credentials->>'auth_mode',''))) <> 'agentidentity')
 		ON CONFLICT (account_id) DO UPDATE
 		SET run_id=EXCLUDED.run_id,lease_until=EXCLUDED.lease_until
 		WHERE codex_quality_tests.lease_until <= NOW()
@@ -40,7 +41,7 @@ func (r *accountRepository) FinishCodexQualityTest(ctx context.Context, account 
 	rows, err := r.sql.QueryContext(ctx, `
 		WITH schedule_guard AS MATERIALIZED (
 			SELECT p.id FROM codex_quality_schedules p JOIN codex_quality_runs r ON r.schedule_id=p.id
-			WHERE r.id=$8 AND r.status='running' AND p.enabled AND p.active_run_id=r.id AND p.lease_until>NOW()
+			WHERE r.id=$8 AND r.status='running' AND (p.enabled OR r.trigger_source='manual') AND p.active_run_id=r.id AND p.lease_until>NOW()
 			FOR SHARE OF p
 		), owned AS MATERIALIZED (
 			SELECT account_id FROM codex_quality_tests
@@ -48,7 +49,8 @@ func (r *accountRepository) FinishCodexQualityTest(ctx context.Context, account 
 		), changed AS (
 			UPDATE accounts SET schedulable=$3,updated_at=NOW()
 			WHERE id IN (SELECT account_id FROM owned)
-			AND deleted_at IS NULL AND platform='openai' AND type='oauth'
+			AND deleted_at IS NULL AND platform='openai' AND type IN ('oauth','apikey')
+			AND parent_account_id IS NULL AND (type<>'oauth' OR LOWER(BTRIM(COALESCE(credentials->>'auth_mode',''))) <> 'agentidentity')
 			AND updated_at=$4 AND $5 NOT IN ('cancelled','stale')
 			AND ($8=0 OR EXISTS(SELECT 1 FROM schedule_guard))
 			RETURNING id,schedulable
@@ -103,7 +105,8 @@ func (r *accountRepository) ListCodexQualityResults(ctx context.Context, ids []i
 	}
 	rows, err := r.sql.QueryContext(ctx, `SELECT CASE WHEN $2 THEN q.result ELSE q.result - 'prompt' - 'response_text' END FROM codex_quality_tests q
 		JOIN accounts a ON a.id=q.account_id
-		WHERE a.deleted_at IS NULL AND a.platform='openai' AND a.type='oauth'
+		WHERE a.deleted_at IS NULL AND a.platform='openai' AND a.type IN ('oauth','apikey')
+		AND a.parent_account_id IS NULL AND (a.type<>'oauth' OR LOWER(BTRIM(COALESCE(a.credentials->>'auth_mode',''))) <> 'agentidentity')
 		AND q.account_id=ANY($1) AND q.result IS NOT NULL`, pq.Array(ids), detail && len(ids) == 1)
 	if err != nil {
 		return nil, err
@@ -128,7 +131,8 @@ func (r *accountRepository) ListCodexQualityResults(ctx context.Context, ids []i
 func (r *accountRepository) CodexQualityCounts(ctx context.Context) (map[string]int, error) {
 	rows, err := r.sql.QueryContext(ctx, `SELECT COALESCE(q.result->>'status','untested'),COUNT(*)
 	FROM accounts a LEFT JOIN codex_quality_tests q ON q.account_id=a.id
-	WHERE a.deleted_at IS NULL AND a.platform='openai' AND a.type='oauth'
+	WHERE a.deleted_at IS NULL AND a.platform='openai' AND a.type IN ('oauth','apikey')
+	AND a.parent_account_id IS NULL AND (a.type<>'oauth' OR LOWER(BTRIM(COALESCE(a.credentials->>'auth_mode',''))) <> 'agentidentity')
 	GROUP BY COALESCE(q.result->>'status','untested')`)
 	if err != nil {
 		return nil, err
