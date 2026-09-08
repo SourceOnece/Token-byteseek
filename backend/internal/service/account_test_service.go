@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -189,6 +190,8 @@ type AccountTestService struct {
 	qoderOAuthClient          qoderAccountTestOAuthClient
 	agentIdentityTaskMu       sync.Mutex
 	agentIdentityWS           agentIdentityWSConnectionInvalidator
+	// 每实例只允许一个管理员批次，跨实例同账号互斥由数据库租约保证。
+	qualityBatchActive atomic.Bool
 }
 
 // SetSettingService 注入 Grok 系统级默认上游策略。
@@ -1009,6 +1012,12 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 		upstreamTestModelID = normalizeOpenAIModelForUpstream(credentialAccount, testModelID)
 	}
 	payload := createOpenAITestPayload(upstreamTestModelID, prompt, isOAuth)
+	if quality := qualityTestOptions(ctx); quality != nil {
+		// 仅专用批量题目测试发送思考等级；原连接测试保持原请求体。
+		if quality.ReasoningEffort != "" {
+			payload["reasoning"] = map[string]any{"effort": quality.ReasoningEffort}
+		}
+	}
 	payloadBytes, _ := json.Marshal(payload)
 
 	// task 失效时会注册新 task 并重试探针，因此开始事件只发送一次。
@@ -1068,11 +1077,14 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 
 	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.resolveOpenAIAccountTestTLSProfile(c, account))
 	if err != nil {
+		if qualityTestOptions(ctx) != nil {
+			return s.sendErrorAndEnd(c, "连接上游失败，请检查网络、代理或 TLS 配置")
+		}
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Request failed: %s", err.Error()))
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if isOAuth && s.accountRepo != nil {
+	if isOAuth && s.accountRepo != nil && qualityTestOptions(ctx) == nil {
 		if updates, err := extractOpenAICodexProbeUpdates(resp); err == nil && len(updates) > 0 {
 			_ = s.accountRepo.UpdateExtra(ctx, account.ID, updates)
 			mergeAccountExtra(account, updates)
@@ -1080,6 +1092,10 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		if qualityTestOptions(ctx) != nil {
+			// 专用测试不记录或回显上游错误原文，避免第三方响应回送账号凭据。
+			return s.sendErrorAndEnd(c, fmt.Sprintf("上游返回 HTTP %d，未取得完整回答", resp.StatusCode))
+		}
 		body, _ := io.ReadAll(resp.Body)
 		body = redactAgentIdentitySensitiveBodyForAccount(ctx, s.accountRepo, credentialAccount, body)
 		if !agentIdentityTaskRecoveryWasTried(ctx) && credentialAccount.IsOpenAIAgentIdentity() && isAgentIdentityTaskInvalidHTTPResponse(resp.StatusCode, body) {
@@ -1090,11 +1106,11 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 			c.Request = c.Request.WithContext(markAgentIdentityTaskRecoveryTried(ctx))
 			return s.testOpenAIAccountConnection(c, account, modelID, prompt, mode, testType)
 		}
-		if resp.StatusCode == http.StatusTooManyRequests {
+		if resp.StatusCode == http.StatusTooManyRequests && qualityTestOptions(ctx) == nil {
 			s.reconcileOpenAI429State(ctx, account, resp.Header, body)
 		}
 		// 401 Unauthorized: 标记账号为永久错误
-		if resp.StatusCode == http.StatusUnauthorized && s.accountRepo != nil {
+		if resp.StatusCode == http.StatusUnauthorized && s.accountRepo != nil && qualityTestOptions(ctx) == nil {
 			errMsg := fmt.Sprintf("Authentication failed (401): %s", string(body))
 			_ = s.accountRepo.SetError(ctx, account.ID, errMsg)
 		}
@@ -2541,6 +2557,9 @@ func (s *AccountTestService) processOpenAIChatCompletionsStream(c *gin.Context, 
 
 // processOpenAIStream processes the SSE stream from OpenAI Responses API
 func (s *AccountTestService) processOpenAIStream(c *gin.Context, body io.Reader) error {
+	if qualityTestOptions(c.Request.Context()) != nil {
+		return s.processCodexQualityStream(c, body)
+	}
 	reader := bufio.NewReader(body)
 	for {
 		line, err := reader.ReadString('\n')

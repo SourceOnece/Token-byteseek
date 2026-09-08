@@ -47,6 +47,8 @@ vi.mock('@/api/admin', () => ({
   }
 }))
 
+vi.mock('@/api/admin/codexQuality', () => ({ listCodexQualityResults: vi.fn().mockResolvedValue([]) }))
+
 vi.mock('@/stores/app', () => ({
   useAppStore: () => ({
     showError,

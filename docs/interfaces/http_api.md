@@ -154,6 +154,14 @@ gemini_generate_content
 
 购买页和用户自定义页面由前端追加 `user_id`、`token`、`theme`、`lang`、`ui_mode`、`src_host` 和 `src_url`。其中 `token` 是用户 Bearer 凭据，只能发送到部署者信任且使用 HTTPS 的页面来源；接收方不得写入访问日志、分析参数或转发给第三方。完整请求示例和重试约定见 [外部支付管理 API 指南](../guides/payments/admin_integration_api.md)。
 
+## Codex 批量题目测试
+
+`POST /api/v1/admin/accounts/codex-quality-test` 新增管理员 SSE 入口，接受 `account_ids`（不重复正整数，1–500）、`model`、`reasoning_effort`（空值省略，或 none/minimal/low/medium/high/xhigh/max）、`prompt`、`keyword`、`concurrency`（1–5，默认 3）和必须为 true 的 `confirm_scheduling`。不会修改原 `/:id/test` 请求/响应。未确认或非法输入在发送上游前返回 400，本实例已有批次返回 409，缺少服务返回 503。流事件为 start、result、complete，每 10 秒心跳；只有 complete 表示整批结束。
+
+`result.data` 包含账号 ID/邮箱/名称、模型/档位、题目/关键词、可见回答、status（full/degraded/failed/skipped/cancelled/stale）、起止时间、错误和 scheduling_applied/schedulable。本次所选独立 OpenAI OAuth 账号的 full 开启调度，degraded/failed 关闭；其它类型跳过，取消与 CAS 失配不修改调度。满血率以 full/(full+degraded+failed) 计算，标签仅是自定义关键词判定。
+
+`GET /api/v1/admin/accounts/codex-quality-results?account_ids=1,2` 返回指定未删除 OAuth 账号的最近摘要，最多 500 个；单账号请求增加 `detail=true` 才返回题目和完整回答。结果只给管理员，不加入用户接口或调度快照；无结果返回空数组。其存储与取消语义见[账号维护](../operations/account_maintenance.md#codex_quality_testing)。
+
 ## API Key 上游用量查询
 
 管理员账号列表提供两个手动、展示型接口：

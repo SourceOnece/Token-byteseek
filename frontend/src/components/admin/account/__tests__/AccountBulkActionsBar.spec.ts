@@ -13,6 +13,13 @@ vi.mock('vue-i18n', async () => {
 })
 
 describe('AccountBulkActionsBar', () => {
+  it('仅有选中账号时提供题目测试入口', async () => {
+    const wrapper = mount(AccountBulkActionsBar, { props: { selectedIds: [], totalResults: 2, selectingAll: false, allResultsSelected: false } })
+    expect(wrapper.find('[data-testid="quality-batch-action"]').exists()).toBe(false)
+    await wrapper.setProps({ selectedIds: [1] })
+    await wrapper.get('[data-testid="quality-batch-action"]').trigger('click')
+    expect(wrapper.emitted('quality-test')).toHaveLength(1)
+  })
   it('allows selecting all results before any row is selected', async () => {
     const wrapper = mount(AccountBulkActionsBar, {
       props: {

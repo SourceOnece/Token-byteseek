@@ -188,6 +188,7 @@
           @refresh-token="handleBulkRefreshToken"
           @query-usage="handleBulkQueryUsage"
           @query-upstream-usage="handleBulkQueryUpstreamUsage"
+          @quality-test="showQualityTest = true"
           @edit-selected="openBulkEditSelected"
           @edit-filtered="openBulkEditFiltered"
           @clear="clearSelection"
@@ -225,6 +226,12 @@
           </template>
           <template #cell-id="{ value }">
             <span class="font-mono text-xs text-gray-500 dark:text-gray-400">#{{ value }}</span>
+          </template>
+          <template #cell-quality="{ row }">
+            <button v-if="qualityResults[row.id]" class="border-2 border-current px-2 py-1 text-xs font-bold shadow-[var(--bh-shadow-sm)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline focus-visible:outline-2" :class="qualityStatusClass(qualityResults[row.id].status)" @click="openQualityDetail(row.id)">
+              {{ t(`admin.accounts.quality.status.${qualityResults[row.id].status}`) }}
+            </button>
+            <span v-else class="text-xs text-gray-500 dark:text-gray-400">{{ row.platform === 'openai' && row.type === 'oauth' ? t(qualityLoadFailed ? 'admin.accounts.quality.loadFailed' : 'admin.accounts.quality.untested') : '—' }}</span>
           </template>
           <template #cell-name="{ row, value }">
             <div class="flex flex-col">
@@ -450,6 +457,10 @@
     <EditAccountModal :show="showEdit" :account="edAcc" :proxies="proxies" :groups="groups" @close="showEdit = false" @updated="handleAccountUpdated" />
     <ReAuthAccountModal :show="showReAuth" :account="reAuthAcc" @close="closeReAuthModal" @reauthorized="handleAccountUpdated" />
     <AccountTestModal :show="showTest" :account="testingAcc" @close="closeTestModal" />
+    <CodexQualityTestModal :show="showQualityTest" :account-ids="selIds" @close="showQualityTest = false" @result="handleQualityResult" @finished="refreshQualityAccounts" />
+    <BaseDialog :show="!!qualityDetail" :title="t('admin.accounts.quality.details')" width="wide" @close="qualityDetail = null">
+      <CodexQualityResultCard v-if="qualityDetail" :result="qualityDetail" />
+    </BaseDialog>
     <AccountStatsModal :show="showStats" :account="statsAcc" @close="closeStatsModal" />
     <AdvancedSchedulerScoreModal :show="showAdvancedSchedulerScore" :account="advancedSchedulerScoreAcc" @close="closeAdvancedSchedulerScoreModal" />
     <CodexInviteResetModal :show="showInviteReset" :account="inviteResetAcc" @close="closeInviteResetModal" @updated="enterAutoRefreshSilentWindow" />
@@ -485,7 +496,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick, onMounted, onUnmounted, toRaw, watch } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted, onBeforeUnmount, toRaw, watch } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -510,6 +521,11 @@ import AccountActionMenu from '@/components/admin/account/AccountActionMenu.vue'
 import ImportDataModal from '@/components/admin/account/ImportDataModal.vue'
 import ReAuthAccountModal from '@/components/admin/account/ReAuthAccountModal.vue'
 import AccountTestModal from '@/components/admin/account/AccountTestModal.vue'
+import CodexQualityTestModal from '@/components/admin/account/CodexQualityTestModal.vue'
+import CodexQualityResultCard from '@/components/admin/account/CodexQualityResult.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
+import { listCodexQualityResults, type CodexQualityResult } from '@/api/admin/codexQuality'
+import { qualityStatusClass } from '@/components/admin/account/codexQualityPresentation'
 import AccountStatsModal from '@/components/admin/account/AccountStatsModal.vue'
 import AdvancedSchedulerScoreModal from '@/components/admin/account/AdvancedSchedulerScoreModal.vue'
 import CodexInviteResetModal from '@/components/admin/account/CodexInviteResetModal.vue'
@@ -610,6 +626,50 @@ const showDeleteDialog = ref(false)
 const showCreateShadowDialog = ref(false)
 const showReAuth = ref(false)
 const showTest = ref(false)
+const showQualityTest = ref(false)
+const qualityDetail = ref<CodexQualityResult | null>(null)
+const qualityResults = ref<Record<number, CodexQualityResult>>({})
+const qualityLoadFailed = ref(false)
+const qualityRefreshVersion = ref(0)
+let qualityLoadVersion = 0
+let qualityLoadController: AbortController | null = null
+
+// 最近测试结果与当前页账号同步读取；旧页异步返回不能覆盖新页。
+onMounted(() => watch(() => `${qualityRefreshVersion.value}|${accounts.value.map(account => `${account.id}:${account.updated_at}`).join(',')}`, async () => {
+  const version = ++qualityLoadVersion
+  qualityLoadController?.abort()
+  const current = new AbortController(); qualityLoadController = current
+  const ids = accounts.value.filter(account => account.platform === 'openai' && account.type === 'oauth').map(account => account.id)
+  if (!ids.length) { qualityLoadFailed.value = false; return }
+  try {
+    const results = await listCodexQualityResults(ids, current.signal)
+    if (version !== qualityLoadVersion) return
+    const next = { ...qualityResults.value }
+    for (const id of ids) delete next[id]
+    for (const result of results) next[result.account_id] = result
+    qualityResults.value = next; qualityLoadFailed.value = false
+  } catch { if (!current.signal.aborted && version === qualityLoadVersion) qualityLoadFailed.value = true }
+}, { immediate: true }))
+onBeforeUnmount(() => { qualityLoadVersion++; qualityLoadController?.abort() })
+
+function handleQualityResult(result: CodexQualityResult) {
+  qualityLoadVersion++; qualityLoadController?.abort()
+  qualityResults.value = { ...qualityResults.value, [result.account_id]: result }
+  if (result.scheduling_applied) {
+    const account = accounts.value.find(item => item.id === result.account_id)
+    if (account) account.schedulable = result.schedulable
+  }
+}
+async function refreshQualityAccounts() {
+  try { await load() } finally { qualityRefreshVersion.value++ }
+}
+async function openQualityDetail(id: number) {
+  try {
+    const results = await listCodexQualityResults([id], undefined, true)
+    if (results[0]) qualityDetail.value = results[0]
+    else appStore.showError(t('admin.accounts.quality.loadFailed'))
+  } catch { appStore.showError(t('admin.accounts.quality.loadFailed')) }
+}
 const showStats = ref(false)
 const showAdvancedSchedulerScore = ref(false)
 const showInviteReset = ref(false)
@@ -1735,6 +1795,7 @@ const isAnyModalOpen = computed(() => {
     showDeleteDialog.value ||
     showReAuth.value ||
     showTest.value ||
+    showQualityTest.value || !!qualityDetail.value ||
     showStats.value ||
     showInviteReset.value ||
     showSchedulePanel.value ||
@@ -2198,6 +2259,7 @@ function getAntigravityTierClass(row: any): string {
 const allColumns = computed(() => {
   const c = [
     { key: 'select', label: '', sortable: false },
+    { key: 'quality', label: t('admin.accounts.quality.column'), sortable: false },
     { key: 'name', label: t('admin.accounts.columns.name'), sortable: true },
     { key: 'id', label: t('admin.accounts.columns.id'), sortable: true },
     { key: 'platform_type', label: t('admin.accounts.columns.platformType'), sortable: false },

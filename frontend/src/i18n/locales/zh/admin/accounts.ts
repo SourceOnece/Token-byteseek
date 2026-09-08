@@ -1,6 +1,19 @@
 export default {
 // Accounts Management
     accounts: {
+      quality: {
+        title: 'Codex 批量题目测试', column: '满血测试', details: '最近一次题目测试',
+        warning: '本次选中 {count} 个账号。仅测试独立 Codex OAuth 账号，每号最多等待 120 秒；测试消耗上游额度，且会自动修改这些账号的调度开关。',
+        disclaimer: '“满血 / 降智”仅为你的关键词判定，不代表客观模型能力。未选账号不受影响，其他平台、影子及 Agent Identity 账号跳过。',
+        model: '测试模型', effort: '思考等级', effortDefault: '上游默认（不传）', concurrency: '并发数量',
+        prompt: '测试题目', keyword: '判定关键词', keywordHint: '完整可见回答中包含此关键词即为满血；区分大小写，按字面包含，不是正则。题目与推理摘要不参与匹配。',
+        confirm: '我确认：满血开启调度；未命中或测试失败关闭调度。这不会清除账号禁用、过期或额度限制。',
+        rate: '本批满血率', rateHint: '满血率 = 满血 ÷（满血 + 降智 + 测试失败）。跳过、取消和过时结果不计入。',
+        status: { full: '满血', degraded: '降智', failed: '测试失败', skipped: '已跳过', cancelled: '已取消', stale: '结果过时' },
+        noAnswer: '没有可展示的回答', schedulingOn: '已开启调度开关，其他账号限制仍有效', schedulingOff: '已关闭调度开关', schedulingUnchanged: '本结果未应用调度变更',
+        start: '开始测试并应用调度', stop: '停止剩余测试', progress: '正在测试 {done} / {total}', completed: '测试结束 {done} / {total}', stopped: '测试已停止 {done} / {total}，已完成的调度变更保留',
+        tooMany: '单批最多 500 个账号，请缩小选择范围。', requestFailed: '批量测试请求失败', untested: '未测试', loadFailed: '结果加载失败'
+      },
       title: '账号管理',
       description: '管理 AI 平台账号和 Cookie',
       createAccount: '添加账号',

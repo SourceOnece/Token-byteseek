@@ -66,6 +66,8 @@ OpenAI/Grok 是通用核心的能力适配者：在高级分组中，OpenAI 额�
 
 ## 候选筛选与评分
 
+管理员 Codex 题目测试可按完整回答的关键词结果直接更新所选账号 schedulable：full 开启，degraded/failed 关闭；该写入和最近结果、scheduler outbox 原子提交，并同步账号快照。它不改变以下筛选顺序或评分算法，不清除 inactive/error、过期、限额，也不为未测账号增加新门禁。关键词标签不是持续健康承诺，管理员仍可手动修改调度；详情见[账号维护](../operations/account_maintenance.md#codex_quality_testing)。
+
 候选账号依次受以下约束收窄：
 
 1. 分组关联、平台/混合模式、active、schedulable 和账号有效期。

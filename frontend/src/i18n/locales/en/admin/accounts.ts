@@ -1,6 +1,19 @@
 export default {
 // Accounts
     accounts: {
+      quality: {
+        title: 'Codex Batch Prompt Test', column: 'Quality Test', details: 'Latest Prompt Test',
+        warning: '{count} accounts selected. Only standalone Codex OAuth accounts are tested, with a 120-second timeout each. Tests consume upstream quota and automatically update scheduling switches.',
+        disclaimer: '“Full / Degraded” is your keyword classification, not an objective capability assessment. Unselected accounts are unchanged; other platforms, shadows and Agent Identity accounts are skipped.',
+        model: 'Test model', effort: 'Reasoning effort', effortDefault: 'Upstream default (omit)', concurrency: 'Concurrency',
+        prompt: 'Test prompt', keyword: 'Match keyword', keywordHint: 'A case-sensitive literal substring in the complete visible answer marks it as Full. No regex; prompts and reasoning summaries are excluded.',
+        confirm: 'I confirm: enable scheduling for Full; disable it for mismatches or failed tests. Inactive status, expiry and quota limits remain enforced.',
+        rate: 'Batch full rate', rateHint: 'Full rate = Full / (Full + Degraded + Failed). Skipped, cancelled and stale results are excluded.',
+        status: { full: 'Full', degraded: 'Degraded', failed: 'Test failed', skipped: 'Skipped', cancelled: 'Cancelled', stale: 'Stale result' },
+        noAnswer: 'No answer available', schedulingOn: 'Scheduling switch enabled; other restrictions still apply', schedulingOff: 'Scheduling switch disabled', schedulingUnchanged: 'No scheduling change applied by this result',
+        start: 'Test and apply scheduling', stop: 'Stop remaining tests', progress: 'Testing {done} / {total}', completed: 'Finished {done} / {total}', stopped: 'Stopped {done} / {total}; completed scheduling changes are retained',
+        tooMany: 'Select at most 500 accounts per batch.', requestFailed: 'Batch request failed', untested: 'Not tested', loadFailed: 'Result unavailable'
+      },
       title: 'Account Management',
       description: 'Manage AI platform accounts and credentials',
       createAccount: 'Create Account',
