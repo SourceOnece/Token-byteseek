@@ -2755,7 +2755,8 @@ const accountMatchesCurrentFilters = (account: Account) => {
     }
   }
   const search = String(filters.search || '').trim().toLowerCase()
-  if (search && !account.name.toLowerCase().includes(search)) return false
+  // 与后端相同：搜索可命中名称或显示邮箱，局部刷新不能误移除邮箱命中的账号。
+  if (search && !account.name.toLowerCase().includes(search) && !accountDisplayEmail(account).toLowerCase().includes(search)) return false
   return true
 }
 const mergeRuntimeFields = (oldAccount: Account, updatedAccount: Account): Account => ({

@@ -169,6 +169,23 @@ const mountView = () => mount(AccountsView, {
 })
 
 describe('admin AccountsView upstream usage', () => {
+  it('邮箱命中的账号在局部刷新后保留，仍可按原名称匹配', async () => {
+    const rows = [
+      { ...account(1), credentials: { email: 'Alice@Example.test' } },
+      { ...account(2), extra: { email_address: 'Alice@Example.test' } },
+      { ...account(3), extra: { email: 'Alice@Example.test' } },
+      { ...account(4), parent_email: 'Alice@Example.test' },
+      { ...account(5), name: 'alice@example.test-name' }
+    ]
+    listAccounts.mockResolvedValue({ items: rows, total: 5, page: 1, page_size: 20, pages: 1 })
+    const wrapper = mountView(); await flushPromises()
+    wrapper.findComponent({ name: 'AccountTableFilters' }).vm.$emit('update:searchQuery', 'ALICE@EXAMPLE.TEST')
+    await flushPromises()
+    for (const row of rows) await wrapper.get(`[data-usage-account="${row.id}"] [data-test="account-updated"]`).trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('[data-row-id]')).toHaveLength(5)
+    wrapper.unmount()
+  })
   beforeEach(() => {
     localStorage.clear()
     sessionStorage.clear()
