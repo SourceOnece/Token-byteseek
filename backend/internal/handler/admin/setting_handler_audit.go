@@ -63,6 +63,12 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	if before.TeamEnabled != after.TeamEnabled {
 		changed = append(changed, "team_enabled")
 	}
+	if before.TeamInvitationCooldownSeconds != after.TeamInvitationCooldownSeconds {
+		changed = append(changed, "team_invitation_cooldown_seconds")
+	}
+	if before.TeamInvitationHourlyLimit != after.TeamInvitationHourlyLimit {
+		changed = append(changed, "team_invitation_hourly_limit")
+	}
 	if before.CreativeEnabled != after.CreativeEnabled {
 		changed = append(changed, "creative_enabled")
 	}

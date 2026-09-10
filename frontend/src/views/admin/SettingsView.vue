@@ -7467,6 +7467,20 @@
                 </div>
                 <Toggle v-model="form.team_enabled" />
               </div>
+              <!-- 邀请参数仍由同一团队功能卡片保存，不影响其他邮件场景。 -->
+              <div class="mt-5 grid items-start gap-5 border-t-2 border-bh-ink pt-5 sm:grid-cols-2" data-testid="team-invitation-limits">
+                <div>
+                  <label for="team-invitation-cooldown" class="input-label text-bh-blue dark:text-blue-300">{{ t('admin.settings.features.team.invitationCooldown') }}</label>
+                  <input id="team-invitation-cooldown" v-model.number="form.team_invitation_cooldown_seconds" type="number" min="1" max="86400" step="1" required class="input w-full font-bold" :disabled="!form.team_enabled" />
+                  <p class="input-hint">{{ t('admin.settings.features.team.invitationCooldownHint') }}</p>
+                </div>
+                <div>
+                  <label for="team-invitation-hourly" class="input-label text-yellow-700 dark:text-bh-yellow">{{ t('admin.settings.features.team.invitationHourlyLimit') }}</label>
+                  <input id="team-invitation-hourly" v-model.number="form.team_invitation_hourly_limit" type="number" min="1" max="10000" step="1" required class="input w-full font-bold" :disabled="!form.team_enabled" />
+                  <p class="input-hint">{{ t('admin.settings.features.team.invitationHourlyLimitHint') }}</p>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 sm:col-span-2">{{ t('admin.settings.features.team.invitationLimitsHint') }}</p>
+              </div>
             </div>
           </div>
 
@@ -9923,6 +9937,8 @@ const form = reactive<SettingsForm>({
   enable_client_dateline_normalization: true,
   // 页面功能开关默认开启，兼容升级前行为。
   team_enabled: true,
+  team_invitation_cooldown_seconds: 60,
+  team_invitation_hourly_limit: 20,
   creative_enabled: true,
   creative_model_settings: [] as CreativeModelSetting[],
   creative_worker_count: 128,
@@ -11581,6 +11597,13 @@ async function saveSettings() {
   saving.value = true;
   try {
     const normalizedCreativeWorkerCount = Math.floor(Number(form.creative_worker_count));
+    // 邀请限制拒绝小数、空值和越界，不静默取整或把 0 解释为关闭限制。
+    if (!Number.isInteger(form.team_invitation_cooldown_seconds) || form.team_invitation_cooldown_seconds < 1 || form.team_invitation_cooldown_seconds > 86400 ||
+        !Number.isInteger(form.team_invitation_hourly_limit) || form.team_invitation_hourly_limit < 1 || form.team_invitation_hourly_limit > 10000) {
+      activeTab.value = 'features';
+      appStore.showError(t('admin.settings.features.team.invitationValidation'));
+      return;
+    }
     if (!Number.isSafeInteger(normalizedCreativeWorkerCount) || normalizedCreativeWorkerCount <= 0) {
       appStore.showError(t("admin.settings.features.creative.workerCountInvalid"));
       return;
@@ -12054,6 +12077,8 @@ async function saveSettings() {
       payment_enabled: form.payment_enabled,
       // 页面功能开关
       team_enabled: form.team_enabled,
+      team_invitation_cooldown_seconds: form.team_invitation_cooldown_seconds,
+      team_invitation_hourly_limit: form.team_invitation_hourly_limit,
       creative_enabled: form.creative_enabled,
       creative_model_settings: normalizedCreativeModelSettings,
       creative_worker_count: normalizedCreativeWorkerCount,

@@ -572,6 +572,23 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 
 	// 页面功能开关：控制团队和创作台相关页面的入口与访问。
 	updates[SettingKeyTeamEnabled] = strconv.FormatBool(settings.TeamEnabled)
+	// 旧内部调用未提供新字段时保留存储；管理入口显式 0 会先被拒绝。
+	if settings.TeamInvitationCooldownSeconds != 0 {
+		limits := DefaultTeamInvitationRateLimits()
+		limits.CooldownSeconds = settings.TeamInvitationCooldownSeconds
+		if err := limits.Validate(); err != nil {
+			return nil, err
+		}
+		updates[SettingKeyTeamInvitationCooldownSeconds] = strconv.Itoa(limits.CooldownSeconds)
+	}
+	if settings.TeamInvitationHourlyLimit != 0 {
+		limits := DefaultTeamInvitationRateLimits()
+		limits.HourlyLimit = settings.TeamInvitationHourlyLimit
+		if err := limits.Validate(); err != nil {
+			return nil, err
+		}
+		updates[SettingKeyTeamInvitationHourlyLimit] = strconv.Itoa(limits.HourlyLimit)
+	}
 	updates[SettingKeyCreativeEnabled] = strconv.FormatBool(settings.CreativeEnabled)
 
 	// 风控中心总开关：控制菜单入口和网关内容审计是否执行。

@@ -323,6 +323,8 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		DefaultConcurrency:                               settings.DefaultConcurrency,
 		DefaultBalance:                                   settings.DefaultBalance,
 		TeamEnabled:                                      settings.TeamEnabled,
+		TeamInvitationCooldownSeconds:                    settings.TeamInvitationCooldownSeconds,
+		TeamInvitationHourlyLimit:                        settings.TeamInvitationHourlyLimit,
 		CreativeEnabled:                                  settings.CreativeEnabled,
 		CreativeModelSettings:                            settings.CreativeModelSettings,
 		CreativeWorkerCount:                              settings.CreativeWorkerCount,

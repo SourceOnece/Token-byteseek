@@ -359,8 +359,10 @@ type UpdateSettingsRequest struct {
 	// 风控中心功能开关
 	RiskControlEnabled *bool `json:"risk_control_enabled"`
 	// 团队和创作台页面功能开关
-	TeamEnabled     *bool `json:"team_enabled"`
-	CreativeEnabled *bool `json:"creative_enabled"`
+	TeamEnabled                   *bool `json:"team_enabled"`
+	TeamInvitationCooldownSeconds *int  `json:"team_invitation_cooldown_seconds"`
+	TeamInvitationHourlyLimit     *int  `json:"team_invitation_hourly_limit"`
+	CreativeEnabled               *bool `json:"creative_enabled"`
 
 	// cyber 会话屏蔽开关与 TTL
 	CyberSessionBlockEnabled    *bool `json:"cyber_session_block_enabled"`
@@ -1692,6 +1694,17 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		response.BadRequest(c, "creative_worker_count must be > 0")
 		return
 	}
+	teamInvitationLimits := service.TeamInvitationRateLimits{CooldownSeconds: previousSettings.TeamInvitationCooldownSeconds, HourlyLimit: previousSettings.TeamInvitationHourlyLimit}
+	if req.TeamInvitationCooldownSeconds != nil {
+		teamInvitationLimits.CooldownSeconds = *req.TeamInvitationCooldownSeconds
+	}
+	if req.TeamInvitationHourlyLimit != nil {
+		teamInvitationLimits.HourlyLimit = *req.TeamInvitationHourlyLimit
+	}
+	if err := teamInvitationLimits.Validate(); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
 
 	settings := &service.SystemSettings{
 		// 系统全局 platform quota 默认值（整体替换语义）
@@ -1857,6 +1870,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.TeamEnabled
 		}(),
+		TeamInvitationCooldownSeconds: teamInvitationLimits.CooldownSeconds,
+		TeamInvitationHourlyLimit:     teamInvitationLimits.HourlyLimit,
 		CreativeEnabled: func() bool {
 			if req.CreativeEnabled != nil {
 				return *req.CreativeEnabled
@@ -2438,6 +2453,8 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		DefaultConcurrency:                               updatedSettings.DefaultConcurrency,
 		DefaultBalance:                                   updatedSettings.DefaultBalance,
 		TeamEnabled:                                      updatedSettings.TeamEnabled,
+		TeamInvitationCooldownSeconds:                    updatedSettings.TeamInvitationCooldownSeconds,
+		TeamInvitationHourlyLimit:                        updatedSettings.TeamInvitationHourlyLimit,
 		CreativeEnabled:                                  updatedSettings.CreativeEnabled,
 		CreativeModelSettings:                            updatedSettings.CreativeModelSettings,
 		CreativeWorkerCount:                              updatedSettings.CreativeWorkerCount,

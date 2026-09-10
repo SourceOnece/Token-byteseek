@@ -92,6 +92,12 @@ export default {
       },
       features: {
         team: {
+          invitationCooldown: 'Same-email invite interval (seconds)',
+          invitationCooldownHint: 'Minimum interval per team and recipient. Default: 60 seconds; range: 1–86400.',
+          invitationHourlyLimit: 'Hourly invitations per team',
+          invitationHourlyLimitHint: 'Total invites and resends across recipients. Default: 20; range: 1–10000.',
+          invitationLimitsHint: 'No restart needed. Existing hourly counts and active recipient cooldowns are kept. Delivery failures may count; zero does not mean unlimited.',
+          invitationValidation: 'Use an integer from 1–86400 for the interval and 1–10000 for the hourly limit.',
           title: 'Team Features',
           description: 'Control whether team pages are available to users and administrators.',
           enabled: 'Enable Team Features',

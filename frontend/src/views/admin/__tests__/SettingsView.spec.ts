@@ -965,6 +965,35 @@ describe("admin SettingsView payment visible method controls", () => {
     );
   });
 
+  it("团队邀请限制默认60秒20次，支持保存自定义值并拒绝非法值", async () => {
+    const wrapper = mountView(); await flushPromises();
+    expect(wrapper.get('#team-invitation-cooldown').element).toHaveProperty('value', '60');
+    expect(wrapper.get('#team-invitation-hourly').element).toHaveProperty('value', '20');
+    await wrapper.get('#team-invitation-cooldown').setValue('10');
+    await wrapper.get('#team-invitation-hourly').setValue('100');
+    await wrapper.find('form').trigger('submit'); await flushPromises();
+    expect(updateSettings).toHaveBeenCalledWith(expect.objectContaining({team_invitation_cooldown_seconds:10,team_invitation_hourly_limit:100}));
+    updateSettings.mockClear();
+    for (const invalid of ['0','-1','1.5','100001','']) {
+      await wrapper.get('#team-invitation-hourly').setValue(invalid);
+      await wrapper.find('form').trigger('submit'); await flushPromises();
+      expect(updateSettings).not.toHaveBeenCalled();
+      expect(showError).toHaveBeenCalledWith('admin.settings.features.team.invitationValidation');
+    }
+    wrapper.unmount();
+  });
+
+  it("团队邀请限制读取自定义值，团队关闭时禁用编辑但保留值", async () => {
+    getSettings.mockResolvedValue({...baseSettingsResponse,team_enabled:false,team_invitation_cooldown_seconds:15,team_invitation_hourly_limit:80});
+    const wrapper = mountView(); await flushPromises();
+    expect(wrapper.get('#team-invitation-cooldown').element).toHaveProperty('value','15');
+    expect(wrapper.get('#team-invitation-hourly').element).toHaveProperty('value','80');
+    expect(wrapper.get('#team-invitation-cooldown').attributes('disabled')).toBeDefined();
+    await wrapper.find('form').trigger('submit'); await flushPromises();
+    expect(updateSettings).toHaveBeenCalledWith(expect.objectContaining({team_enabled:false,team_invitation_cooldown_seconds:15,team_invitation_hourly_limit:80}));
+    wrapper.unmount();
+  });
+
   it("loads and saves Google One Tap settings with the current browser origin", async () => {
     getSettings.mockResolvedValue({
       ...baseSettingsResponse,

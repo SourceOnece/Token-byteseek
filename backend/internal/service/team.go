@@ -114,7 +114,7 @@ type TeamInvitationPreview struct {
 
 // TeamInvitationLimiter 对邀请和重发执行跨实例邮件频率限制。
 type TeamInvitationLimiter interface {
-	CheckAndRecord(ctx context.Context, teamID int64, email string) (allowed bool, retryAfter time.Duration, err error)
+	CheckAndRecord(ctx context.Context, teamID int64, email string, limits TeamInvitationRateLimits) (allowed bool, retryAfter time.Duration, err error)
 }
 
 // TeamOwnershipTransfer 表示待目标成员确认的所有权转让。
@@ -599,7 +599,12 @@ func (s *TeamService) checkInvitationRate(ctx context.Context, teamID int64, ema
 	if s.inviteLimiter == nil {
 		return ErrTeamInvitationUnavailable
 	}
-	allowed, retryAfter, err := s.inviteLimiter.CheckAndRecord(ctx, teamID, email)
+	limits, err := s.settingService.GetTeamInvitationRateLimits(ctx)
+	if err != nil {
+		slog.Warn("团队邀请限制配置读取失败", "team_id", teamID)
+		return ErrTeamInvitationUnavailable
+	}
+	allowed, retryAfter, err := s.inviteLimiter.CheckAndRecord(ctx, teamID, email, limits)
 	if err != nil {
 		slog.Warn("团队邀请限流器不可用", "team_id", teamID, "error", err)
 		return ErrTeamInvitationUnavailable

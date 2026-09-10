@@ -18,9 +18,11 @@ type fakeTeamInvitationLimiter struct {
 	allowed    bool
 	retryAfter time.Duration
 	err        error
+	limits     TeamInvitationRateLimits
 }
 
-func (l *fakeTeamInvitationLimiter) CheckAndRecord(context.Context, int64, string) (bool, time.Duration, error) {
+func (l *fakeTeamInvitationLimiter) CheckAndRecord(_ context.Context, _ int64, _ string, limits TeamInvitationRateLimits) (bool, time.Duration, error) {
+	l.limits = limits
 	return l.allowed, l.retryAfter, l.err
 }
 

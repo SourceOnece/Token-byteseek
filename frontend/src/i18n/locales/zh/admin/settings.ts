@@ -90,6 +90,12 @@ export default {
       },
       features: {
         team: {
+          invitationCooldown: '同邮箱邀请间隔（秒）',
+          invitationCooldownHint: '同一团队对同一邮箱的最短发送间隔，默认 60 秒，可设 1–86400 秒。',
+          invitationHourlyLimit: '每团队每小时邀请上限（次）',
+          invitationHourlyLimitHint: '同团队所有邮箱的邀请与重发合计，默认 20 次，可设 1–10000 次。',
+          invitationLimitsHint: '保存后无需重启；已有小时计数不会清空，当前邮箱冷却按原时长结束。发信失败也可能占用次数；0 不表示无限制。',
+          invitationValidation: '邀请间隔需为 1–86400 的整数，每小时上限需为 1–10000 的整数。',
           title: '团队功能',
           description: '控制用户团队页和管理员团队管理页是否开放。',
           enabled: '启用团队功能',

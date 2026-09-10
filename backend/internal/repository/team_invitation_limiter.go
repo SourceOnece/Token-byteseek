@@ -13,9 +13,7 @@ import (
 )
 
 const (
-	teamInvitationRecipientCooldown = time.Minute
-	teamInvitationHourlyWindow      = time.Hour
-	teamInvitationHourlyLimit       = 20
+	teamInvitationHourlyWindow = time.Hour
 )
 
 var teamInvitationRateScript = redis.NewScript(`
@@ -43,9 +41,12 @@ func NewTeamInvitationLimiter(redisClient *redis.Client) service.TeamInvitationL
 	return &teamInvitationLimiter{redis: redisClient}
 }
 
-func (l *teamInvitationLimiter) CheckAndRecord(ctx context.Context, teamID int64, email string) (bool, time.Duration, error) {
+func (l *teamInvitationLimiter) CheckAndRecord(ctx context.Context, teamID int64, email string, limits service.TeamInvitationRateLimits) (bool, time.Duration, error) {
 	if l == nil || l.redis == nil {
 		return false, 0, fmt.Errorf("团队邀请 Redis 未配置")
+	}
+	if err := limits.Validate(); err != nil {
+		return false, 0, err
 	}
 	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
 	sum := sha256.Sum256([]byte(normalizedEmail))
@@ -53,7 +54,7 @@ func (l *teamInvitationLimiter) CheckAndRecord(ctx context.Context, teamID int64
 	hourlyKey := fmt.Sprintf("team:invite:%d:hourly", teamID)
 
 	value, err := teamInvitationRateScript.Run(ctx, l.redis, []string{recipientKey, hourlyKey},
-		teamInvitationRecipientCooldown.Milliseconds(), teamInvitationHourlyWindow.Milliseconds(), teamInvitationHourlyLimit).Result()
+		(time.Duration(limits.CooldownSeconds) * time.Second).Milliseconds(), teamInvitationHourlyWindow.Milliseconds(), limits.HourlyLimit).Result()
 	if err != nil {
 		return false, 0, err
 	}
