@@ -98,6 +98,7 @@ type RelayTraceEvent struct {
 type relayState struct {
 	usage                   Usage
 	turnUsage               Usage
+	turnWroteDownstream     atomic.Bool
 	requestModel            string
 	pendingTurnStart        atomic.Pointer[time.Time]
 	lastResponseID          string
@@ -243,7 +244,8 @@ func Relay(
 	dropDownstreamWrites := atomic.Bool{}
 	clientReaderStarted := atomic.Bool{}
 	writeClientFrameUpstream := func(msgType coderws.MessageType, payload []byte) error {
-		if isClientResponseCreateFrame(msgType, payload) {
+		isResponseCreate := isClientResponseCreateFrame(msgType, payload)
+		if isResponseCreate {
 			turnStartedAt := time.Time{}
 			if options.TakeNextTurnStartedAt != nil {
 				turnStartedAt = options.TakeNextTurnStartedAt()
@@ -252,8 +254,15 @@ func Relay(
 				turnStartedAt = nowFn()
 			}
 			state.setPendingTurnStartedAt(turnStartedAt)
+			// 本轮已通过策略检查；发送前清零，避免上游立即响应与写返回竞态。
+			state.turnWroteDownstream.Store(false)
 		}
-		return writeUpstream(msgType, payload)
+		err := writeUpstream(msgType, payload)
+		if err != nil && isResponseCreate {
+			// 写失败后保留已输出标记，供转发协程退出期间的诊断使用。
+			state.turnWroteDownstream.Store(true)
+		}
+		return err
 	}
 	startClientReader := func() {
 		if !clientReaderStarted.CompareAndSwap(false, true) {
@@ -515,7 +524,7 @@ func runUpstreamToClient(
 			// WebSocket 正常关闭只表示传输握手完成；上游一旦开始 Responses 回合，
 			// 仍必须收到终态协议事件才算成功。1000/EOF 若发生在终态前，应视为
 			// relay 失败，避免适配器在回合仍活跃时错误报告 relay_completed。
-			if graceful && openAIWSRelayActiveTurnID(state) != "" {
+			if graceful && state.hasUnfinishedTurn() {
 				graceful = false
 				err = errors.New("upstream websocket closed before terminal event: " + err.Error())
 			}
@@ -536,7 +545,11 @@ func runUpstreamToClient(
 		}
 		markActivity()
 		if beforeWriteClient != nil {
-			if err := beforeWriteClient(msgType, payload, wroteDownstream); err != nil {
+			wroteDownstreamInTurn := wroteDownstream
+			if state != nil {
+				wroteDownstreamInTurn = state.turnWroteDownstream.Load()
+			}
+			if err := beforeWriteClient(msgType, payload, wroteDownstreamInTurn); err != nil {
 				emitRelayTrace(onTrace, RelayTraceEvent{
 					Stage:           "upstream_message_rejected",
 					Direction:       "upstream_to_client",
@@ -562,7 +575,12 @@ func runUpstreamToClient(
 			}
 			observedEvent = observeUpstreamMessage(state, payload, startAt, nowFn, onUsageParseFailure, onUpstreamEvent)
 		case coderws.MessageBinary:
-			// binary frame 直接透传，不进入 JSON 观测路径（避免无效解析开销）。
+			// 二进制帧不参与用量解析，但 JSON 终止事件仍结算轮次生命周期，
+			// 避免已交付终止事件后正常断连却被误报为缺失终止事件。
+			if isTerminalEvent(strings.TrimSpace(gjson.GetBytes(payload, "type").String())) {
+				state.consumePendingTurnStartedAt()
+				openAIWSRelayDiscardActiveTurnTiming(state)
+			}
 		}
 		emitTurnComplete(onTurnComplete, state, observedEvent)
 		if dropDownstreamWrites != nil && dropDownstreamWrites.Load() {
@@ -607,6 +625,9 @@ func runUpstreamToClient(
 			return
 		}
 		wroteDownstream = true
+		if state != nil {
+			state.turnWroteDownstream.Store(true)
+		}
 		if afterWriteClient != nil {
 			afterWriteClient(msgType, payload)
 		}
@@ -934,6 +955,13 @@ func (s *relayState) consumePendingTurnStartedAt() time.Time {
 		return time.Time{}
 	}
 	return *startedAt
+}
+
+func (s *relayState) hasUnfinishedTurn() bool {
+	if s == nil {
+		return false
+	}
+	return s.pendingTurnStart.Load() != nil || s.activeTurn != nil
 }
 
 func openAIWSRelayDeleteTurnTiming(state *relayState, responseID string) (relayTurnTiming, bool) {

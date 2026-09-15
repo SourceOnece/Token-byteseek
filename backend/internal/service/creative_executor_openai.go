@@ -3,13 +3,16 @@ package service
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strings"
 
+	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 )
 
@@ -18,6 +21,9 @@ import (
 func (e *CreativeExecutor) executeOpenAI(ctx context.Context, run CreativeRun, payload CreativeRunPayload, account *Account, upstreamModel string) ([]CreativeOutput, error) {
 	if e.gateway == nil {
 		return nil, errors.New("creative openai gateway is not configured")
+	}
+	if account.IsOpenAIOAuthLike() {
+		return e.executeOpenAICodexImages(ctx, run, payload, account, upstreamModel)
 	}
 	endpoint := openAIImagesGenerationsEndpoint
 	if run.Operation != CreativeOperationGenerate {
@@ -68,6 +74,100 @@ func (e *CreativeExecutor) executeOpenAI(ctx context.Context, run CreativeRun, p
 		return nil, creativeHTTPStatusError(resp.StatusCode, extractUpstreamErrorMessage(respBody))
 	}
 	return parseCreativeOpenAIImageOutputs(respBody)
+}
+
+// executeOpenAICodexImages 复用同步网关的协议与认证构造，不调用网关 handler 或结算。
+// 工作台仍由原 worker 管理超时、单张输出与幂等资金动作，素材和提示词不落日志。
+func (e *CreativeExecutor) executeOpenAICodexImages(ctx context.Context, run CreativeRun, payload CreativeRunPayload, account *Account, model string) ([]CreativeOutput, error) {
+	parsed := &OpenAIImagesRequest{
+		Endpoint: openAIImagesGenerationsEndpoint, Model: model, Prompt: payload.Prompt,
+		N: 1, Size: creativeOpenAIImageSize(run.ImageSize, run.AspectRatio),
+		Quality: payload.Quality, Background: payload.Background, OutputFormat: "png", ResponseFormat: "b64_json",
+	}
+	if run.Operation != CreativeOperationGenerate {
+		parsed.Endpoint = openAIImagesEditsEndpoint
+		for _, source := range payload.Sources {
+			parsed.InputImageURLs = append(parsed.InputImageURLs, "data:"+source.Mime+";base64,"+base64.StdEncoding.EncodeToString(source.Bytes))
+		}
+		if payload.Mask != nil {
+			parsed.HasMask = true
+			parsed.MaskImageURL = "data:" + payload.Mask.Mime + ";base64," + base64.StdEncoding.EncodeToString(payload.Mask.Bytes)
+		}
+	}
+	token, _, err := e.gateway.GetAccessToken(ctx, account)
+	if err != nil {
+		return nil, creativeHTTPStatusError(0, err.Error())
+	}
+	// 只提供内部任务身份，不伪造浏览器入站信息；账号 TLS 模板沿用原工作台解析路径。
+	c := &gin.Context{Request: (&http.Request{Method: http.MethodPost, URL: &url.URL{Path: parsed.Endpoint}, Header: make(http.Header)}).WithContext(ctx)}
+	c.Set("api_key", &APIKey{ID: run.APIKeyID, UserID: run.UserID})
+	direct := usesCodexDirectImages(model)
+	for attempt := 0; attempt < 2; attempt++ {
+		var body []byte
+		var target string
+		if direct {
+			body, target, err = buildOpenAIImagesOAuthPayload(parsed, model)
+		} else {
+			body, err = buildOpenAIImagesResponsesRequest(parsed, model)
+			target = chatgptCodexURL
+		}
+		if err != nil {
+			return nil, creativeNonRetryableError("creative image request is invalid")
+		}
+		req, buildErr := e.gateway.buildUpstreamRequest(withOpenAIImagesSelfBuiltRequest(ctx), c, account, body, token, !direct, "creative:"+run.RunID, false)
+		if buildErr != nil {
+			return nil, creativeHTTPStatusError(0, buildErr.Error())
+		}
+		req.URL, err = url.Parse(target)
+		if err != nil {
+			return nil, creativeNonRetryableError("creative image target is invalid")
+		}
+		req.Header.Set("Accept", "text/event-stream")
+		if direct {
+			req.Header.Set("Accept", "application/json")
+			req.Header.Del("OpenAI-Beta")
+		}
+		resp, requestErr := e.gateway.httpUpstream.DoWithTLS(req, accountProxyURL(account), account.ID, account.Concurrency, e.gateway.resolveOpenAITLSProfile(account))
+		if requestErr != nil {
+			return nil, creativeHTTPStatusError(0, requestErr.Error())
+		}
+		responseBody, readErr := readCreativeUpstreamBody(resp.Body, 64<<20)
+		_ = resp.Body.Close()
+		if readErr != nil {
+			return nil, creativeHTTPStatusError(0, readErr.Error())
+		}
+		// 仅端点不支持时切换协议一次；鉴权/限流/服务端错误交回原 worker 策略。
+		if direct && (resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed) {
+			direct = false
+			continue
+		}
+		if resp.StatusCode >= 400 {
+			return nil, creativeHTTPStatusError(resp.StatusCode, "")
+		}
+		var results []openAIResponsesImageResult
+		if direct {
+			results, err = parseCodexDirectImagesResponse(responseBody)
+		} else if upstreamErr := extractOpenAIImagesUpstreamError(responseBody); upstreamErr != nil {
+			err = upstreamErr
+		} else {
+			results, _, _, _, _, err = collectOpenAIImagesFromResponsesBody(responseBody)
+		}
+		if err != nil {
+			var imageErr *OpenAIImagesUpstreamError
+			if errors.As(err, &imageErr) {
+				return nil, creativeHTTPStatusError(imageErr.clientStatusCode(), "")
+			}
+			return nil, creativeHTTPStatusError(http.StatusBadGateway, "")
+		}
+		for _, result := range results {
+			decoded, decodeErr := decodeBase64Image(result.Result)
+			if decodeErr == nil && len(decoded.Bytes) > 0 && len(decoded.Bytes) <= creativeMaxOutputBytes {
+				return []CreativeOutput{{Index: 0, Bytes: decoded.Bytes, Mime: decoded.Mime}}, nil
+			}
+		}
+		return nil, creativeHTTPStatusError(http.StatusBadGateway, "")
+	}
+	return nil, creativeHTTPStatusError(http.StatusBadGateway, "")
 }
 
 // creativeOpenAIURL 推导 OpenAI images 上游 URL：账号自定义 base_url 优先，否则官方端点。

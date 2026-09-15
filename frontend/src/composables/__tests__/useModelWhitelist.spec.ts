@@ -30,7 +30,10 @@ describe('useModelWhitelist', () => {
 			'gpt-6-astra',
 			'gpt-5.4',
 			'gpt-5.4-mini',
-			'gpt-5.5'
+			'gpt-5.5',
+			'gpt-image-1', 'gpt-image-1.5', 'gpt-image-2',
+			'gpt-image-2.5-flare', 'gpt-image-2.5-sunburst',
+			'gpt-image-2.5-flare-2026-09-08', 'gpt-image-2.5-sunburst-2026-09-08'
 		])
   })
 
@@ -46,7 +49,7 @@ describe('useModelWhitelist', () => {
     ]))
   })
 
-  it('openai 模型列表不再暴露旧快照、Codex、音频和图片模型', () => {
+  it('openai 模型列表保留文本精简候选并加入已接入图片模型', () => {
     const models = getModelsByPlatform('openai')
 
     expect(models).not.toContain('gpt-5')
@@ -59,7 +62,7 @@ describe('useModelWhitelist', () => {
     expect(models).not.toContain('gpt-5.3-codex-spark')
     expect(models).not.toContain('gpt-5.4-2026-03-05')
     expect(models).not.toContain('gpt-4o-audio-preview')
-    expect(models).not.toContain('gpt-image-1')
+			expect(models).toContain('gpt-image-1')
   })
 
   it('antigravity 模型列表包含图片模型兼容项', () => {

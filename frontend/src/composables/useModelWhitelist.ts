@@ -14,7 +14,11 @@ const openaiModels = [
 	'gpt-6-astra',
 	'gpt-5.4',
 	'gpt-5.4-mini',
-	'gpt-5.5'
+	'gpt-5.5',
+	// 图片候选复用现有选择器，不改变账号的模型白名单门禁。
+	'gpt-image-1', 'gpt-image-1.5', 'gpt-image-2',
+	'gpt-image-2.5-flare', 'gpt-image-2.5-sunburst',
+	'gpt-image-2.5-flare-2026-09-08', 'gpt-image-2.5-sunburst-2026-09-08'
 ]
 
 // Anthropic Claude

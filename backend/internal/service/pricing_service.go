@@ -134,6 +134,13 @@ var (
 		Mode:                            "responses",
 		SupportsPromptCaching:           true,
 	}
+	// 复用 sub2api v0.2.5 的新图片模型兜底价，显式远端/自定义价格仍优先。
+	openAIImage25FallbackPricing = &LiteLLMModelPricing{
+		InputCostPerToken: 5e-6, CacheReadInputTokenCost: 1.25e-6,
+		InputCostPerImageToken: 8e-6, CacheReadInputImageTokenCost: 2e-6,
+		OutputCostPerImageToken: 30e-6,
+		LiteLLMProvider:         "openai", Mode: "image_generation", SupportsPromptCaching: true,
+	}
 	openAIGPT54FallbackPricing = &LiteLLMModelPricing{
 		InputCostPerToken:       2.5e-06, // $2.5 per MTok
 		OutputCostPerToken:      1.5e-05, // $15 per MTok
@@ -179,9 +186,10 @@ type LiteLLMModelPricing struct {
 	LiteLLMProvider                     string  `json:"litellm_provider"`
 	Mode                                string  `json:"mode"`
 	SupportsPromptCaching               bool    `json:"supports_prompt_caching"`
-	OutputCostPerImage                  float64 `json:"output_cost_per_image"`       // 图片生成模型每张图片价格
-	OutputCostPerImageToken             float64 `json:"output_cost_per_image_token"` // 图片输出 token 价格
-	InputCostPerImageToken              float64 `json:"input_cost_per_image_token"`  // 图片输入 token 价格（如 gpt-image-2 图片编辑）
+	OutputCostPerImage                  float64 `json:"output_cost_per_image"`             // 图片生成模型每张图片价格
+	OutputCostPerImageToken             float64 `json:"output_cost_per_image_token"`       // 图片输出 token 价格
+	InputCostPerImageToken              float64 `json:"input_cost_per_image_token"`        // 图片输入 token 价格（如 gpt-image-2 图片编辑）
+	CacheReadInputImageTokenCost        float64 `json:"cache_read_input_image_token_cost"` // 图片缓存输入价格
 
 	// 模型能力元数据：由模型广场下发给前端展示输入/输出模态，不参与计费。
 	SupportedModalities       []string `json:"supported_modalities"`
@@ -224,6 +232,7 @@ type LiteLLMRawEntry struct {
 	OutputCostPerImage                  *float64 `json:"output_cost_per_image"`
 	OutputCostPerImageToken             *float64 `json:"output_cost_per_image_token"`
 	InputCostPerImageToken              *float64 `json:"input_cost_per_image_token"`
+	CacheReadInputImageTokenCost        *float64 `json:"cache_read_input_image_token_cost"`
 	SupportedModalities                 []string `json:"supported_modalities"`
 	SupportedInputModalities            []string `json:"supported_input_modalities"`
 	SupportedOutputModalities           []string `json:"supported_output_modalities"`
@@ -708,6 +717,9 @@ func (s *PricingService) parsePricingData(body []byte) (map[string]*LiteLLMModel
 		}
 		if entry.InputCostPerImageToken != nil {
 			pricing.InputCostPerImageToken = *entry.InputCostPerImageToken
+		}
+		if entry.CacheReadInputImageTokenCost != nil {
+			pricing.CacheReadInputImageTokenCost = *entry.CacheReadInputImageTokenCost
 		}
 
 		// 显式 long_context 字段（包括显式 0）优先于目录中的 above 绝对价字段。
@@ -1654,6 +1666,10 @@ func (s *PricingService) matchOpenAIModel(model string) *LiteLLMModelPricing {
 	}
 
 	if isOpenAIImageGenerationModel(model) {
+		switch model {
+		case "gpt-image-2.5-flare", "gpt-image-2.5-sunburst", "gpt-image-2.5-flare-2026-09-08", "gpt-image-2.5-sunburst-2026-09-08":
+			return openAIImage25FallbackPricing
+		}
 		for _, candidate := range []string{"gpt-image-2", "gpt-image-1.5", "gpt-image-1"} {
 			if pricing, ok := s.pricingData[candidate]; ok {
 				logger.LegacyPrintf("service.pricing", "[Pricing] OpenAI image fallback matched %s -> %s", model, candidate)

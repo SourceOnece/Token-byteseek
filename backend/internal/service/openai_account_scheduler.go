@@ -2478,25 +2478,106 @@ func BuildAdvancedAccountSchedulerScoreSnapshotForGroup(
 }
 
 // openAIQuotaHeadroomFactor 把 Codex quota 快照转换成 0..1 的调度因子。
-// 7d/primary 剩余额度越高分越高；5h/secondary 接近耗尽时会折扣该分值。
+// 规范 7d 剩余额度越高分越高；5h 接近耗尽时折扣该分值，原始窗口按长度归类。
 func openAIQuotaHeadroomFactor(account *Account, now time.Time) float64 {
 	if account == nil || len(account.Extra) == 0 || openAIQuotaHeadroomSnapshotStale(account.Extra, now) {
 		return openAIQuotaHeadroomNeutralFactor
 	}
-	primaryUsedPercent, ok := resolveAccountExtraNumber(account.Extra, "codex_primary_used_percent", "codex_7d_used_percent")
-	if !ok || openAIQuotaWindowResetAny(account.Extra, now, "primary", "7d") {
+	window5h, window7d := openAICanonicalQuotaWindows(account.Extra, now)
+	if !window7d.hasUsed || window7d.reset {
 		return openAIQuotaHeadroomNeutralFactor
 	}
 
-	factor := 1 - clamp01(primaryUsedPercent/100)
-	if secondaryUsedPercent, ok := resolveAccountExtraNumber(account.Extra, "codex_secondary_used_percent", "codex_5h_used_percent"); ok &&
-		!openAIQuotaWindowResetAny(account.Extra, now, "secondary", "5h") {
-		secondaryRemaining := 1 - clamp01(secondaryUsedPercent/100)
-		if secondaryRemaining < openAIQuotaHeadroomSecondaryLowRemain {
+	factor := 1 - clamp01(window7d.usedPercent/100)
+	if window5h.hasUsed && !window5h.reset {
+		remaining := 1 - clamp01(window5h.usedPercent/100)
+		if remaining < openAIQuotaHeadroomSecondaryLowRemain {
 			factor *= openAIQuotaHeadroomNeutralFactor
 		}
 	}
 	return factor
+}
+
+type openAICanonicalQuotaWindow struct {
+	usedPercent float64
+	hasUsed     bool
+	reset       bool
+}
+
+// 规范字段优先；历史原始字段复用写入端 Normalize 的窗口分类，不能固定把 primary 当作 7d。
+func openAICanonicalQuotaWindows(extra map[string]any, now time.Time) (window5h, window7d openAICanonicalQuotaWindow) {
+	if used, ok := resolveAccountExtraNumber(extra, "codex_5h_used_percent"); ok {
+		window5h = openAICanonicalQuotaWindow{usedPercent: used, hasUsed: true, reset: openAIQuotaWindowReset(extra, "5h", now)}
+	}
+	if used, ok := resolveAccountExtraNumber(extra, "codex_7d_used_percent"); ok {
+		window7d = openAICanonicalQuotaWindow{usedPercent: used, hasUsed: true, reset: openAIQuotaWindowReset(extra, "7d", now)}
+	}
+	if window5h.hasUsed && window7d.hasUsed {
+		return window5h, window7d
+	}
+
+	snapshot := &OpenAICodexUsageSnapshot{}
+	if used, ok := resolveAccountExtraNumber(extra, "codex_primary_used_percent"); ok {
+		snapshot.PrimaryUsedPercent = &used
+	}
+	if used, ok := resolveAccountExtraNumber(extra, "codex_secondary_used_percent"); ok {
+		snapshot.SecondaryUsedPercent = &used
+	}
+	if minutes := parseExtraInt(extra["codex_primary_window_minutes"]); minutes > 0 {
+		snapshot.PrimaryWindowMinutes = &minutes
+	}
+	if minutes := parseExtraInt(extra["codex_secondary_window_minutes"]); minutes > 0 {
+		snapshot.SecondaryWindowMinutes = &minutes
+	}
+	normalized := snapshot.Normalize()
+	if normalized == nil {
+		return window5h, window7d
+	}
+	fromRaw := func(used *float64) openAICanonicalQuotaWindow {
+		if used == nil {
+			return openAICanonicalQuotaWindow{}
+		}
+		// Normalize 保留原始字段指针，据此配对同一个窗口的用量和重置时间。
+		window := "secondary"
+		if used == snapshot.PrimaryUsedPercent {
+			window = "primary"
+		}
+		return openAICanonicalQuotaWindow{usedPercent: *used, hasUsed: true, reset: openAIQuotaWindowReset(extra, window, now)}
+	}
+	if !window5h.hasUsed {
+		window5h = fromRaw(normalized.Used5hPercent)
+	}
+	if !window7d.hasUsed {
+		window7d = fromRaw(normalized.Used7dPercent)
+	}
+	return window5h, window7d
+}
+
+func openAISchedulingResetWindowEnd(account *Account, now time.Time) (time.Time, bool) {
+	if account == nil {
+		return time.Time{}, false
+	}
+	if end, ok := openAICodexWindowResetAt(account.Extra, "5h"); ok && now.Before(end) {
+		return end, true
+	}
+	if end := account.SessionWindowEnd; end != nil && now.Before(*end) {
+		return *end, true
+	}
+	return time.Time{}, false
+}
+
+// 公共评分核心只为 OpenAI OAuth 解析 Codex 窗口，其余平台继续使用原会话窗口。
+func advancedSchedulingResetWindowEnd(account *Account, now time.Time) (time.Time, bool) {
+	if account == nil {
+		return time.Time{}, false
+	}
+	if account.Platform == PlatformOpenAI && account.IsOAuth() {
+		return openAISchedulingResetWindowEnd(account, now)
+	}
+	if end := account.SessionWindowEnd; end != nil && now.Before(*end) {
+		return *end, true
+	}
+	return time.Time{}, false
 }
 
 // openAIQuotaHeadroomSnapshotStale 判断 quota 快照是否过旧到只能按中性分参与调度。
@@ -2510,16 +2591,6 @@ func openAIQuotaHeadroomSnapshotStale(extra map[string]any, now time.Time) bool 
 		return true
 	}
 	return now.Sub(updatedAt) >= openAIQuotaHeadroomSnapshotStaleAfter
-}
-
-// openAIQuotaWindowResetAny 支持同时检查 primary/7d 或 secondary/5h 兼容字段。
-func openAIQuotaWindowResetAny(extra map[string]any, now time.Time, windows ...string) bool {
-	for _, window := range windows {
-		if openAIQuotaWindowReset(extra, window, now) {
-			return true
-		}
-	}
-	return false
 }
 
 func clamp01(value float64) float64 {

@@ -1493,6 +1493,10 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 						false,
 						s.shouldFailoverOpenAIWSError(account, terminalPolicy.StatusCode, payload),
 					) {
+						// 后续轮次不能进入 handler 的首包重试链，否则可能重复执行第一轮。
+						if completedTurns.Load() > 0 {
+							return NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, "upstream request failed; please reconnect", errors.New("later passthrough turn failed before output"))
+						}
 						return newOpenAIUpstreamFailoverError(
 							terminalPolicy.StatusCode,
 							handshakeHeaders,
@@ -1529,6 +1533,14 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 						truncateOpenAIWSLogValue(errTypeRaw, openAIWSLogValueMaxLen),
 						truncateOpenAIWSLogValue(errMsgRaw, openAIWSLogValueMaxLen),
 					)
+					// 已完成轮次后的故障要求客户端重连，不回退到第一轮请求。
+					if completedTurns.Load() > 0 {
+						reason := "upstream request failed; please reconnect"
+						if errorStatus == http.StatusTooManyRequests {
+							reason = "upstream rate limit exceeded; please reconnect"
+						}
+						return NewOpenAIWSClientCloseError(coderws.StatusTryAgainLater, reason, errors.New("later passthrough turn failed before output"))
+					}
 					return newOpenAIUpstreamFailoverError(
 						errorStatus,
 						handshakeHeaders,

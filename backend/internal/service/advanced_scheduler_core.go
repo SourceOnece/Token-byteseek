@@ -495,8 +495,8 @@ func scoreAdvancedSchedulerCandidatesWithRanges(
 	hasResetSample := false
 	if weights.Reset > 0 {
 		for _, candidate := range candidates {
-			end := candidate.account.SessionWindowEnd
-			if end == nil || !now.Before(*end) {
+			end, ok := advancedSchedulingResetWindowEnd(candidate.account, now)
+			if !ok {
 				continue
 			}
 			remaining := end.Sub(now).Seconds()
@@ -552,7 +552,7 @@ func scoreAdvancedSchedulerCandidatesWithRanges(
 		}
 		resetFactor := 0.5
 		if weights.Reset > 0 && hasResetSample {
-			if end := item.account.SessionWindowEnd; end != nil && now.Before(*end) {
+			if end, ok := advancedSchedulingResetWindowEnd(item.account, now); ok {
 				if maxResetRemaining > minResetRemaining {
 					resetFactor = 1 - clamp01((end.Sub(now).Seconds()-minResetRemaining)/(maxResetRemaining-minResetRemaining))
 				} else {

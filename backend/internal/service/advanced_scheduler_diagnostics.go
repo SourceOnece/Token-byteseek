@@ -1151,13 +1151,19 @@ func diagnosticResetMetric(candidate *advancedSchedulerCandidateScore, ranges ad
 		metric.Neutral = true
 		return metric
 	}
-	if candidate.account.SessionWindowEnd == nil || !now.Before(*candidate.account.SessionWindowEnd) {
+	end, ok := advancedSchedulingResetWindowEnd(candidate.account, now)
+	if !ok {
 		metric.RawValue = "未观测"
 		metric.Normalization = "未观测，使用中性值 0.5000"
 		metric.Neutral = true
 		return metric
 	}
-	remaining := candidate.account.SessionWindowEnd.Sub(now).Seconds()
+	if candidate.account.Platform == PlatformOpenAI && candidate.account.IsOAuth() {
+		if quotaEnd, valid := openAICodexWindowResetAt(candidate.account.Extra, "5h"); valid && now.Before(quotaEnd) {
+			metric.Source = "account.extra.codex_5h_reset_at"
+		}
+	}
+	remaining := end.Sub(now).Seconds()
 	metric.Available = true
 	metric.RawValue = diagnosticFloat(remaining) + " 秒"
 	if !ranges.HasResetSample || ranges.MaxResetRemaining <= ranges.MinResetRemaining {

@@ -44,6 +44,8 @@ OpenAI/Grok 是通用核心的能力适配者：在高级分组中，OpenAI 额�
 
 ## 评分诊断
 
+Codex 额度余量优先读取规范 `codex_5h_*` / `codex_7d_*`，历史 primary/secondary 按写入端 Normalize 的窗口长度分类，不能固定认为 primary 就是周额度。周余量作为评分基数，5h 余量偏低时仍用既有折扣；过期快照或已重置周窗口保持中性。OpenAI OAuth 的 reset 因子优先使用未来 5h 重置时间，再回退 SessionWindowEnd；其余平台/API Key 保留原会话窗口。相对重置时间必须锚定采样时间，不能在每次评分时向后滑动。实际排序与诊断共用同一解析函数，权重、硬过滤和调度开关不变。
+
 管理员可通过账号高级调度评分诊断查看当前候选池的实时解释。基准诊断不指定模型、会话粘性或上一响应粘性；模拟诊断只接受模型和两个账号 ID，不能接收 session hash、previous response 内容、凭据或代理认证信息。诊断使用无分页分组全集统计排除原因，并复用生产服务可安全执行的模型运行时封禁、额度、窗口费用、RPM、代理流隔离、OpenAI/Grok 配额自动暂停、影子母账号健康和渠道限制；它不会获取并发槽、注册会话、写入粘性或修改运行时统计。endpoint、transport、Compact、媒体等缺少请求输入的门禁以 `not_evaluated` 策略信号返回，真实请求仍会在完整上下文中追加检查。
 
 评分核心在单次候选池中固定输出 `base_score = Σ(weight_i × normalized_i)`、`final_score = base_score + sticky_bonus`、`selection_weight = final_score - top_k_min_score + 1`、`selection_probability = selection_weight / top_k_weight_sum`。开启粘性加权时，诊断概率就是包含粘性加成后的 Top-K 抽样概率，不再附加置首规则。开启订阅优先且存在可用 ChatGPT 订阅账号时，排名、Top-K 和概率只基于订阅池，普通账号标记为 deferred；订阅池不可用时才使用普通池。关闭粘性加权且硬粘性账号可用时，诊断保留其原始排名和 `in_top_k` 状态，但把实际选择模式标记为 `sticky_forced_first`，被强制账号概率为 1，其它候选概率为 0。发生粘性逃逸时，原绑定账号按普通候选执行 window-cost/RPM 门禁；逃逸和缺少上下文的能力门禁继续作为独立策略信号展示。

@@ -48,6 +48,22 @@ type openAIWSIdlePingCapable interface {
 	SupportsIdlePingWithoutReader() bool
 }
 
+// openAIWSReaderLoopCapable 声明该实现的控制帧只在阻塞读期间被消费，
+// 连接池需为其常驻一个读循环，否则空闲连接无法应答上游 ping。
+type openAIWSReaderLoopCapable interface {
+	RequiresReaderLoop() bool
+}
+
+// openAIWSUpstreamPingCounter 报告连接收到过多少个上游 ping 帧，用于核对读循环是否在应答保活。
+type openAIWSUpstreamPingCounter interface {
+	UpstreamPingCount() int64
+}
+
+// openAIWSForceCloser 不做关闭握手直接切断连接，用于对端已不响应的场景。
+type openAIWSForceCloser interface {
+	CloseNow() error
+}
+
 // openAIWSClientDialer 抽象 WS 建连器。
 type openAIWSClientDialer interface {
 	Dial(ctx context.Context, wsURL string, headers http.Header, proxyURL string, profile *tlsfingerprint.Profile) (openAIWSClientConn, int, http.Header, error)
@@ -107,9 +123,14 @@ func (d *coderOpenAIWSClientDialer) Dial(
 		return nil, 0, nil, errors.New("ws url is empty")
 	}
 
+	wrapped := &coderOpenAIWSClientConn{}
 	opts := &coderws.DialOptions{
 		HTTPHeader:      cloneHeader(headers),
 		CompressionMode: coderws.CompressionContextTakeover,
+		OnPingReceived: func(context.Context, []byte) bool {
+			wrapped.upstreamPings.Add(1)
+			return true
+		},
 	}
 	if profile != nil || strings.TrimSpace(proxyURL) != "" {
 		proxyClient, err := d.proxyHTTPClient(proxyURL, profile)
@@ -141,7 +162,8 @@ func (d *coderOpenAIWSClientDialer) Dial(
 	if resp != nil {
 		respHeaders = cloneHeader(resp.Header)
 	}
-	return &coderOpenAIWSClientConn{conn: conn}, 0, respHeaders, nil
+	wrapped.conn = conn
+	return wrapped, 0, respHeaders, nil
 }
 
 func (d *coderOpenAIWSClientDialer) proxyHTTPClient(proxy string, profile *tlsfingerprint.Profile) (*http.Client, error) {
@@ -301,7 +323,15 @@ func (d *coderOpenAIWSClientDialer) SnapshotTransportMetrics() OpenAIWSTransport
 }
 
 type coderOpenAIWSClientConn struct {
-	conn *coderws.Conn
+	conn          *coderws.Conn
+	upstreamPings atomic.Int64
+}
+
+func (c *coderOpenAIWSClientConn) UpstreamPingCount() int64 {
+	if c == nil {
+		return 0
+	}
+	return c.upstreamPings.Load()
 }
 
 var _ openaiwsv2.FrameConn = (*coderOpenAIWSClientConn)(nil)
@@ -370,11 +400,13 @@ func (c *coderOpenAIWSClientConn) Ping(ctx context.Context) error {
 	return c.conn.Ping(ctx)
 }
 
-// SupportsIdlePingWithoutReader 反映 coder/websocket 的实际契约：Conn.Ping 会等待 pong，
-// 而控制帧只能由 Read 消费。连接池不会读取空闲连接，因此 Ping 会让健康连接必然超时。
+// SupportsIdlePingWithoutReader 反映底层库需要读取才能消费控制帧；由池常驻读循环补齐。
 func (*coderOpenAIWSClientConn) SupportsIdlePingWithoutReader() bool {
 	return false
 }
+
+// RequiresReaderLoop 让池为空闲连接常驻读循环以应答上游 ping。
+func (*coderOpenAIWSClientConn) RequiresReaderLoop() bool { return true }
 
 func (c *coderOpenAIWSClientConn) Close() error {
 	if c == nil || c.conn == nil {
@@ -382,6 +414,14 @@ func (c *coderOpenAIWSClientConn) Close() error {
 	}
 	// Close 为幂等，忽略重复关闭错误。
 	_ = c.conn.Close(coderws.StatusNormalClosure, "")
+	_ = c.conn.CloseNow()
+	return nil
+}
+
+func (c *coderOpenAIWSClientConn) CloseNow() error {
+	if c == nil || c.conn == nil {
+		return nil
+	}
 	_ = c.conn.CloseNow()
 	return nil
 }

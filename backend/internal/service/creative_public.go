@@ -774,7 +774,8 @@ func creativeExpandAccountModels(account *Account, candidates []string, matches 
 }
 
 func defaultCreativeOpenAIModelCandidates() []string {
-	return []string{"gpt-image-1", "gpt-image-2"}
+	// 仅增加明确接入的图片模型；账号白名单、分组与管理员展示配置仍继续过滤。
+	return []string{"gpt-image-1", "gpt-image-1.5", "gpt-image-2", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst", "gpt-image-2.5-flare-2026-09-08", "gpt-image-2.5-sunburst-2026-09-08"}
 }
 
 // defaultCreativeGeminiModelCandidates 返回创作台内置的 Gemini 图片模型候选。
