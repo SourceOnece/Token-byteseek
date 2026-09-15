@@ -124,6 +124,8 @@ npx --yes pnpm@9 --dir frontend run build
 
 ## 同步上游
 
+本节执行前必须读取[双上游差异优先与去重同步契约](dual_upstream_sync_contract.md)，与包豪斯同为长期门禁。先固定三方 Release/SHA，向用户呈现 ByteSeek 对 TokenRouter 的差异并确定采纳项，再以该选择后的本地基线评估同批 sub2api 目标版本的剩余差异。已直接或等价适配进入本地的功能不重复同步；处理标记中的跳过项、本次未选项和部分覆盖不能冒充已有。只要求分析时不合并；实际落地后重新去重，并在版本记录保存两阶段选择与来源映射。
+
 同步以 upstream PR/commit 为最小可审查单元，逐项理解变更并保留 fork 的产品、计费、安全和部署语义。冲突解决后运行该项涉及的测试，再形成符合 Conventional Commits 的本地提交；`SYNC.md` 只记录本地进度，不进入提交。
 
 两个 fork 专属规则不可省略：

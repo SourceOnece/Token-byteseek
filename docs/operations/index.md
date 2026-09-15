@@ -8,6 +8,8 @@
 
 ## 文档
 
+- [双上游差异优先与去重同步契约](dual_upstream_sync_contract.md)：先选 TokenRouter，再以选择后的 ByteSeek 核对 sub2api 剩余差异及覆盖证据。读取时机：每次上游咨询、差异评审、功能移植和同步前必须读取，与包豪斯契约共同遵循。
+
 - [部署与数据库迁移](deployment_and_migrations.md)：构建产物、运行方式、首次初始化、迁移约束和升级恢复边界。读取时机：修改 Docker/二进制发布、启动装配、数据库迁移、备份或升级时读取。
 - [可观测性与数据生命周期](observability_and_data_lifecycle.md)：日志、Ops、Usage、审计、聚合、清理和备份的数据面总览与专题路由。读取时机：判断数据所有权、留存、备份范围或进入详细观测专题前读取。
 - [账号维护](account_maintenance.md)：凭据刷新、临时不可调度、账号测试、自动恢复、额度和能力探测。读取时机：修改 token refresh、账号状态、计划测试、quota/endpoint capability 探测或恢复策略时读取。

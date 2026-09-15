@@ -62,6 +62,8 @@
 
 ## 同步时如何使用
 
+双上游批次必须按[去重同步契约](dual_upstream_sync_contract.md)先确定 TokenRouter 采纳项，再对选择后的 ByteSeek 核对 sub2api 剩余差异。记录当前/目标三方 SHA、TokenRouter 对 sub2api 的处理边界、用户选择、直接/等价/部分覆盖、跳过与撤回原因及原 PR 到本地提交映射；未实施的预期覆盖不能写成已同步。后续 TokenRouter 带回已从 sub2api 移植的补丁时，读取这些映射避免重复代码或迁移。
+
 从最近版本的“后续同步保留点”定位相关旧记录，再核对当前代码及设计契约。上游修复、fork 自定义、已淘汰规则分别判断；有历史记录不能代替 diff 和测试。若旧记录与现行契约冲突，核对后续替代版本和用户授权，不能静默恢复旧版行为。
 
 相关文档：[开发流程](development_workflow.md)、[包豪斯设计契约](bauhaus_design_contract.md)、[版本目录](versions/index.md)、[运维目录](index.md)。

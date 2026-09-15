@@ -38,5 +38,10 @@
 
 ## 上游同步
 
+- 双上游差异优先与去重同步是与包豪斯并列的长期约束。凡上游咨询、差异评审、同步或移植，先读取 `docs/operations/dual_upstream_sync_contract.md`，固定 ByteSeek、TokenRouter、sub2api 三方 Release/SHA 和同步处理边界，不得仅凭版本号或合并标记推断功能覆盖。
+- 固定顺序：先展示 ByteSeek 对 TokenRouter 的差异并确定采纳项；再以选定更新后的 ByteSeek（未实施时标为预期基线）对照本批 sub2api 目标版本和 TokenRouter，去重后展示剩余补充项。用户只要求“先看区别”时只读，不自动合并或发布。
+- TokenRouter 直接同步或等价适配、且本次已选入 ByteSeek 的功能不重复从 sub2api 引入；本地已有的也不重复。区分实际覆盖、部分覆盖、主动跳过、未选入、撤回和未核实；先从 sub2api 移植、后被 TokenRouter 带回的更新同样去重，不能换来源绕过用户拒绝/撤回决定。
+- 授权、反代、模型/协议缺口优先参考 sub2api；运营管理以 TokenRouter 与 ByteSeek 现有语义为主。来源偏好不授权整文件覆盖，保留本地包豪斯、邮箱、质量检测/调度联动、会话隔离、TLS、订阅和计费契约。
+- 同步报告和实施版本记录须列出三方基线、TokenRouter 选择清单、sub2api 剩余差异、原提交到适配提交的映射、跳过理由及验证。TokenRouter 实际落地后重新计算 sub2api 待同步项；Git 无冲突不代表业务兼容。
 - 如果上游在 `backend/migrations/` 下新增迁移，不得原样照搬文件名；必须根据当前 fork 的最新迁移 ID 递增后，替换文件名前缀 ID。
 - 如果上游在 `README.md` 中新增文档，必须将内容并入 `docs/` 下合适的文档；没有合适文档时新建一篇，不要直接写入 `README.md`，保持其简洁。
