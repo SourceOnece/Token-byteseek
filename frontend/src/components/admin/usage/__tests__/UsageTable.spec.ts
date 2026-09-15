@@ -68,6 +68,7 @@ const messages: Record<string, string> = {
   'admin.usage.billingModePerRequest': 'Per request',
   'admin.usage.billingModeImage': 'Image',
   'admin.usage.requestIdCopied': 'Request ID copied',
+  'admin.usage.upstreamRequestIdCopied': 'Upstream ID copied',
   'keys.copied': 'Copied',
   'keys.copyToClipboard': 'Copy to clipboard',
   'usage.detailedTiming': 'Detailed Timing',
@@ -84,6 +85,7 @@ const messages: Record<string, string> = {
   'usage.timingReused': 'Reused conn',
   'usage.timingWriteError': 'Write error',
   'usage.timingUnavailable': 'Not collected',
+  'common.copyFailed': 'Copy failed',
 }
 
 vi.mock('vue-i18n', async () => {
@@ -107,6 +109,7 @@ const DataTableStub = {
         <slot name="cell-cost" :row="row" />
         <slot name="cell-latency" :row="row" />
         <slot name="cell-request_id" :row="row" />
+        <slot name="cell-upstream_request_id" :row="row" />
       </div>
     </div>
   `,
@@ -570,6 +573,59 @@ describe('admin UsageTable tooltip', () => {
   })
 })
 
+describe('admin UsageTable request ID column', () => {
+  beforeEach(() => {
+    clipboardMocks.copyToClipboard.mockReset().mockResolvedValue(true)
+  })
+
+  it('renders and copies the request ID', async () => {
+    const wrapper = mount(UsageTable, {
+      props: {
+        data: [{ ...baseImageRow, request_id: 'req-admin-visible-id' }],
+        loading: false,
+        columns: [{ key: 'request_id', label: 'Request ID' }],
+      },
+      global: {
+        stubs: {
+          DataTable: DataTableStub,
+          EmptyState: true,
+          Icon: true,
+          Teleport: true,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('req-admin-visible-id')
+    await wrapper.get('button[title="Copy to clipboard"]').trigger('click')
+
+    expect(clipboardMocks.copyToClipboard).toHaveBeenCalledWith('req-admin-visible-id', 'Request ID copied')
+  })
+
+  it('renders and copies the upstream ID', async () => {
+    const wrapper = mount(UsageTable, {
+      props: {
+        data: [{ ...baseImageRow, request_id: '', upstream_request_id: '20260903082826779695' }],
+        loading: false,
+        columns: [{ key: 'upstream_request_id', label: 'Upstream ID' }],
+      },
+      global: {
+        stubs: {
+          DataTable: DataTableStub,
+          EmptyState: true,
+          Icon: true,
+          Teleport: true,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('20260903082826779695')
+    const copyButtons = wrapper.findAll('button[title="Copy to clipboard"]')
+    expect(copyButtons).toHaveLength(1)
+    await copyButtons[0].trigger('click')
+
+    expect(clipboardMocks.copyToClipboard).toHaveBeenCalledWith('20260903082826779695', 'Upstream ID copied')
+  })
+})
 describe('admin UsageTable IP geolocation batch toolbar', () => {
   const DataTableStubWithIp = {
     props: ['data'],

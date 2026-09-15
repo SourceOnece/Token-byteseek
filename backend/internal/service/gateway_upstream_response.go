@@ -723,6 +723,7 @@ func partialStreamUsageResult(
 	}
 	return &ForwardResult{
 		RequestID:        requestID,
+		UpstreamHeaders:  resp.Header,
 		Usage:            usage,
 		Model:            model,
 		UpstreamModel:    upstreamModel,

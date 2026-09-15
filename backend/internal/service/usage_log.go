@@ -186,6 +186,10 @@ type UsageLog struct {
 	// SessionID 是客户端显式提供的请求关联标识，例如 session_id 或 X-Session-Id
 	// 请求头；客户端未提供有效值时为 nil，且绝不从 prompt_cache_key 或内容派生。
 	SessionID *string
+	// UpstreamRequestID 是直接上游在响应头中声明的请求标识，只读账户
+	// extra.upstream_request_id_header 指定的头；账户未指定头名、WS 轮次
+	// 与上游没有该头的路径为 nil。
+	UpstreamRequestID *string
 
 	// Cache TTL Override 标记（管理员强制替换了缓存 TTL 计费）
 	CacheTTLOverridden bool

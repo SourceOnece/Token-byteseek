@@ -31,7 +31,7 @@ func newSessionIDUsageLog(sessionID *string) *service.UsageLog {
 // TestPrepareUsageLogInsert_SessionIDArgWiring 固定 session_id 在参数切片和类型表
 // 中的位置，确保所有 INSERT 列表保持同步；新增字段均追加在末尾。
 func TestPrepareUsageLogInsert_SessionIDArgWiring(t *testing.T) {
-	require.Len(t, usageLogInsertArgTypes, 64, "arg-type table must include team attribution and compaction flag")
+	require.Len(t, usageLogInsertArgTypes, 65, "arg-type table must include upstream request ID and compaction flag")
 
 	sessionID := "sess-persisted-123"
 	prepared := prepareUsageLogInsert(newSessionIDUsageLog(&sessionID))

@@ -106,6 +106,8 @@ POST /api/v1/creative/runs/{id}/outputs/{index}/ack
 
 ## API Key 结算策略接口
 
+管理员账号 extra 可设置 `upstream_request_id_header`，合法响应头名最长 64 字节，未设置则不采集。HTTP 用量按该头记录直接上游请求标识（UTF-8 安全截断至 128 字节），仅 AdminUsageLog 的 `upstream_request_id` 字段及管理端列可见；WS 轮次无对应响应头时为空。该字段不替代本地 request_id，也不参与扣费去重。迁移 269/270 增加可空列及非事务索引，不回写旧行。
+
 `POST /api/v1/keys` 和 `PUT /api/v1/keys/{id}` 接受 `billing_mode`（`auto`、`subscription`、`balance`）及可空 `preferred_subscription_id`。省略模式或使用 `auto` 保持旧的订阅优先、余额兜底行为；`balance` 会清除指定订阅；`subscription` 必须指定当前付款主体的一份有效订阅。个人 Key 的付款主体是本人，团队 Key 的付款主体是 Team Owner。
 
 创建和更新 API Key 时，`quota`、`rate_limit_5h`、`rate_limit_1d`、`rate_limit_7d` 必须是有限、非负且小于 `1e12` 的 USD 数值，以匹配数据库 `DECIMAL(20,8)`；`0` 仍表示不限额。创建请求省略 `expires_in_days` 表示永不过期，显式提供时必须大于 0；更新请求用空 `expires_at` 清除到期时间，用合法 RFC3339 时间设置明确到期点。handler 的早期校验与 service 的最终校验必须使用同一规则，内部调用不能绕过。

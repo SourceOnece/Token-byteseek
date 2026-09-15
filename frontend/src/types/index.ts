@@ -1999,6 +1999,7 @@ export interface AdminUsageLog extends UsageLog {
   detailed_timing?: UsageLogTiming | null
   upstream_model?: string | null
   model_mapping_chain?: string | null
+  upstream_request_id?: string | null
 
   // 账号计费倍率（仅管理员可见）
   account_rate_multiplier?: number | null

@@ -45,8 +45,19 @@ function onEnter() {
   openTooltip()
 }
 
-function onLeave() {
+function isInside(container: HTMLElement | null, target: EventTarget | null): boolean {
+  return target instanceof Node && !!container?.contains(target)
+}
+
+function onLeave(event?: MouseEvent) {
   if (!hoverEnabled() || clickPinned.value) return
+  if (event && isInside(tooltipRef.value, event.relatedTarget)) return
+  closeTooltip()
+}
+
+function onTooltipLeave(event: MouseEvent) {
+  if (props.trigger !== 'hover') return
+  if (isInside(triggerRef.value, event.relatedTarget)) return
   closeTooltip()
 }
 
@@ -173,6 +184,7 @@ onBeforeUnmount(() => {
 
     <!-- 挂载到 body，避免被弹窗的 overflow 裁剪 -->
     <Teleport to="body">
+      <!-- before: 伪元素向下延伸一段透明区域，盖住提示框与触发图标之间的空隙，让指针能连续移入提示框。 -->
       <div
         ref="tooltip"
         v-show="show"
@@ -188,6 +200,7 @@ onBeforeUnmount(() => {
             : tooltipStyle.top,
           left: tooltipStyle.left,
         }"
+        @mouseleave="onTooltipLeave"
       >
         <!-- 滚动只发生在内容层，避免小箭头伸出边框被 overflow 裁剪或挤出滚动条。 -->
         <div class="relative max-h-[calc(100vh-1.5rem)] overflow-y-auto p-3 text-xs leading-relaxed">

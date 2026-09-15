@@ -109,11 +109,12 @@ func (s *OpenAIGatewayService) ForwardGrokVoice(ctx context.Context, c *gin.Cont
 	upstreamID := firstNonEmpty(resp.Header.Get("x-request-id"), resp.Header.Get("xai-request-id"))
 	return &OpenAIForwardResult{
 		// 强制生成持久结算 ID，避免 usage_billing_dedup 因复用客户端 ID 合并调用。
-		RequestID:     StableGrokAudioBillingRequestID(upstreamID),
-		Model:         baseEndpoint,
-		UpstreamModel: baseEndpoint,
-		Duration:      time.Since(started),
-		AudioUsage:    audioUsage,
+		RequestID:       StableGrokAudioBillingRequestID(upstreamID),
+		UpstreamHeaders: resp.Header,
+		Model:           baseEndpoint,
+		UpstreamModel:   baseEndpoint,
+		Duration:        time.Since(started),
+		AudioUsage:      audioUsage,
 	}, nil
 }
 

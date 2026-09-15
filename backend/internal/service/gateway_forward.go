@@ -813,6 +813,7 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 
 	return &ForwardResult{
 		RequestID:                   resp.Header.Get("x-request-id"),
+		UpstreamHeaders:             resp.Header,
 		Usage:                       *usage,
 		Model:                       originalModel,
 		UpstreamModel:               mappedModel,

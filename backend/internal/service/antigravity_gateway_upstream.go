@@ -142,6 +142,7 @@ func (s *AntigravityGatewayService) ForwardUpstream(ctx context.Context, c *gin.
 
 	return &ForwardResult{
 		Model:            originalModel,
+		UpstreamHeaders:  resp.Header,
 		Stream:           claudeReq.Stream,
 		Duration:         duration,
 		FirstTokenMs:     firstTokenMs,
