@@ -72,4 +72,6 @@
 
 [bh.030](versions/v0_1_278_bh_030.md) 完成固定 TokenRouter/sub2api 目标的兼容适配、模型发现、批量订阅、供应商筛选、固定兑换窗口和最终验证；完整 pinned manifest 代理、ByteSeek 不存在的独立 channel-monitor 模块及撤回功能明确不采纳。固定版本、latest、bauhaus 已发布同一 GHCR digest，未部署线上容器。
 
+本次新增 [bh.026 到 bh.030 完整差异说明](bh026_to_bh030_comparison.md) 仅为只读升级说明，不改变代码、应用 VERSION、API 或镜像，不创建新的应用标签。
+
 相关文档：[开发流程](development_workflow.md)、[包豪斯设计契约](bauhaus_design_contract.md)、[版本目录](versions/index.md)、[运维目录](index.md)。
