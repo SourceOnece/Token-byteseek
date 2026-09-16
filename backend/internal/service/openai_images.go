@@ -657,6 +657,9 @@ func (s *OpenAIGatewayService) forwardOpenAIImagesAPIKey(
 	if err != nil {
 		return nil, err
 	}
+	if parsed.Stream {
+		upstreamReq = upstreamReq.WithContext(WithHTTPUpstreamProfile(upstreamReq.Context(), HTTPUpstreamProfileLongStream))
+	}
 
 	proxyURL := ""
 	if account.ProxyID != nil && account.Proxy != nil {

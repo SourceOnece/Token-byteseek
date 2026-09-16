@@ -170,7 +170,7 @@ creative_settle:{run_id}    写 usage_logs 的结算记录 ID
 
 ## 提供商说明
 
-OpenAI OAuth 任务已接通 Codex：新增 Image 2.5 模型走原生图片生成/编辑 JSON，旧图片模型沿用 Responses 工具；原生端点 404/405 仅回退一次。API Key 任务保持下文的 `/v1/images/*` 协议。两类路径都保留账号 TLS 模板、代理和原 worker 的执行超时，成功输出仍单张且不新增网关计费；hold/capture/release、无素材留存与浏览器结果边界不变。
+OpenAI OAuth 任务已接通 Codex：Image 1.5、Image 2、Image 2.5 走原生图片生成/编辑 JSON，Image 1 沿用 Responses 工具；原生端点 404/405 仅回退一次。API Key 任务保持下文的 `/v1/images/*` 协议。两类路径都保留账号 TLS 模板、代理和原 worker 的执行超时，成功输出仍单张且不新增网关计费；hold/capture/release、无素材留存与浏览器结果边界不变。
 
 参数能力依据各提供商官方文档维护：[OpenAI Image Generation](https://developers.openai.com/api/docs/guides/image-generation)、[Gemini Generate Content API](https://ai.google.dev/api/generate-content?hl=en)、[Gemini 图片生成](https://ai.google.dev/gemini-api/docs/generate-content/image-generation?hl=en) 和 [xAI Image Generation](https://docs.x.ai/developers/model-capabilities/images/generation)。
 

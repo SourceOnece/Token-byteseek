@@ -169,6 +169,12 @@ func sanitizeAnthropicToolUseInput(name string, raw string) json.RawMessage {
 // Streaming: ResponsesStreamEvent → []AnthropicStreamEvent (stateful converter)
 // ---------------------------------------------------------------------------
 
+// responsesTextPart 标识 Responses 中的输出文本分片。
+type responsesTextPart struct {
+	OutputIndex  int
+	ContentIndex int
+}
+
 // ResponsesEventToAnthropicState tracks state for converting a sequence of
 // Responses SSE events directly into Anthropic SSE events.
 type ResponsesEventToAnthropicState struct {
@@ -194,9 +200,11 @@ type ResponsesEventToAnthropicState struct {
 	CacheReadInputTokens     int
 	CacheCreationInputTokens int
 
-	ResponseID string
-	Model      string
-	Created    int64
+	ResponseID    string
+	Model         string
+	Created       int64
+	TextByPart    map[responsesTextPart]string
+	TextDelivered bool
 }
 
 // NewResponsesEventToAnthropicState returns an initialised stream state.
@@ -204,6 +212,7 @@ func NewResponsesEventToAnthropicState() *ResponsesEventToAnthropicState {
 	return &ResponsesEventToAnthropicState{
 		OutputIndexToBlockIdx: make(map[int]int),
 		Created:               time.Now().Unix(),
+		TextByPart:            make(map[responsesTextPart]string),
 	}
 }
 
@@ -221,12 +230,12 @@ func ResponsesEventToAnthropicEvents(
 	case "response.output_text.delta":
 		return resToAnthHandleTextDelta(evt, state)
 	case "response.output_text.done":
-		return resToAnthHandleBlockDone(state)
+		return resToAnthHandleTextDone(evt, state)
 	case "response.function_call_arguments.delta",
 		// custom/freeform 工具的输入增量与 function_call 参数增量同形。
 		"response.custom_tool_call_input.delta":
 		return resToAnthHandleFuncArgsDelta(evt, state)
-	case "response.function_call_arguments.done":
+	case "response.function_call_arguments.done", "response.custom_tool_call_input.done":
 		return resToAnthHandleFuncArgsDone(evt, state)
 	case "response.output_item.done":
 		return resToAnthHandleOutputItemDone(evt, state)
@@ -391,6 +400,9 @@ func resToAnthHandleTextDelta(evt *ResponsesStreamEvent, state *ResponsesEventTo
 	if evt.Delta == "" {
 		return nil
 	}
+	part := responsesTextPart{OutputIndex: evt.OutputIndex, ContentIndex: evt.ContentIndex}
+	state.TextByPart[part] += evt.Delta
+	state.TextDelivered = true
 
 	var events []AnthropicStreamEvent
 
@@ -421,6 +433,19 @@ func resToAnthHandleTextDelta(evt *ResponsesStreamEvent, state *ResponsesEventTo
 		},
 	})
 	return events
+}
+
+// done 事件携带完整文本而没有 delta 时，只补未发送的后缀，避免重复回答。
+func resToAnthHandleTextDone(evt *ResponsesStreamEvent, state *ResponsesEventToAnthropicState) []AnthropicStreamEvent {
+	part := responsesTextPart{OutputIndex: evt.OutputIndex, ContentIndex: evt.ContentIndex}
+	delivered := state.TextByPart[part]
+	full := evt.Text
+	if full != "" && strings.HasPrefix(full, delivered) && len(full) > len(delivered) {
+		evtCopy := *evt
+		evtCopy.Delta = full[len(delivered):]
+		return append(resToAnthHandleTextDelta(&evtCopy, state), resToAnthHandleBlockDone(state)...)
+	}
+	return resToAnthHandleBlockDone(state)
 }
 
 func resToAnthHandleFuncArgsDelta(evt *ResponsesStreamEvent, state *ResponsesEventToAnthropicState) []AnthropicStreamEvent {

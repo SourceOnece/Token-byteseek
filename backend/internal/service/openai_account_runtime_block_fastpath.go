@@ -325,6 +325,8 @@ func (s *OpenAIGatewayService) markOpenAIOAuth429RateLimited(ctx context.Context
 	} else if s.rateLimitService != nil {
 		if cooldown, ok := s.rateLimitService.get429FallbackCooldown(ctx, account); ok && cooldown > 0 {
 			cooldownUntil = time.Now().Add(cooldown)
+		} else {
+			return
 		}
 	}
 	s.BlockAccountScheduling(account, cooldownUntil, "429")

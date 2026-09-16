@@ -42,7 +42,7 @@ OpenAI 平台拥有以下正式协议族：
 
 ### 创作台 Images 契约
 
-OAuth 的 Image 2.5 Flare/Sunburst（含 2026-09-08 快照）使用 Codex `/images/generations` 或 `/images/edits` JSON 原生协议；只有 404/405 时回退到 Responses 图片工具。旧 `gpt-image-1`、`gpt-image-1.5`、`gpt-image-2` 保留 Responses 协议，避免改变已有图片客户端的事件格式。Responses 驱动默认 `gpt-5.6-luna`，可由 `SUB2API_IMAGES_MAIN_MODEL` 覆盖。API Key 保留原有 `/v1/images/*` 上游协议。
+OAuth 的 Image 1.5、Image 2、Image 2.5 Flare/Sunburst（含 2026-09-08 快照）统一使用 Codex `/images/generations` 或 `/images/edits` JSON 原生协议；只有 404/405 时回退到 Responses 图片工具。`gpt-image-1` 仍保留 Responses 工具路径以兼容旧客户端。Responses 驱动默认 `gpt-5.6-luna`，可由 `SUB2API_IMAGES_MAIN_MODEL` 覆盖。API Key 保留原有 `/v1/images/*` 上游协议。
 
 WS 执行域使用 API Key、原始线程或显式会话以及请求类型共同隔离；主 turn、prewarm、compaction 同道，memory/子代理独立，避免互相抢占。驻留读循环处理上游 ping/关闭，池容量变化唤醒排队者重新选连接；TLS profile 与 beta 握手兼容键继续硬隔离。已成功过的 passthrough 会话后续轮次遇到前输出故障时通知重连，不重放第一轮。
 

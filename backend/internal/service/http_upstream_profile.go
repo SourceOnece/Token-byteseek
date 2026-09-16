@@ -6,9 +6,10 @@ import "context"
 type HTTPUpstreamProfile string
 
 const (
-	HTTPUpstreamProfileDefault HTTPUpstreamProfile = ""
-	HTTPUpstreamProfileOpenAI  HTTPUpstreamProfile = "openai"
-	HTTPUpstreamProfileGrok    HTTPUpstreamProfile = "grok"
+	HTTPUpstreamProfileDefault    HTTPUpstreamProfile = ""
+	HTTPUpstreamProfileOpenAI     HTTPUpstreamProfile = "openai"
+	HTTPUpstreamProfileGrok       HTTPUpstreamProfile = "grok"
+	HTTPUpstreamProfileLongStream HTTPUpstreamProfile = "long_stream"
 )
 
 type httpUpstreamProfileContextKey struct{}

@@ -1850,6 +1850,9 @@ func (s *OpenAIGatewayService) forwardOpenAIImagesOAuth(
 	if err != nil {
 		return nil, err
 	}
+	if parsed.Stream {
+		upstreamReq = upstreamReq.WithContext(WithHTTPUpstreamProfile(upstreamReq.Context(), HTTPUpstreamProfileLongStream))
+	}
 	// 复用 Codex 认证、影子账号及指纹头；仅切换已构造请求的端点和响应协议。
 	upstreamReq.URL, err = url.Parse(targetURL)
 	if err != nil {
