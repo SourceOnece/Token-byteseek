@@ -217,17 +217,32 @@
             <PlatformIcon platform="deepseek" size="sm" />
             DeepSeek
           </button>
+          <!-- 新平台沿用同组分段选项样式，不叠加操作按钮的常驻硬阴影。 -->
           <button
             type="button"
             @click="selectCNPlatform('minimax')"
-            class="btn h-9 min-w-0 gap-2 px-3 py-1.5 text-sm"
-            :class="form.platform === 'minimax' ? 'bg-bh-red text-white' : 'btn-secondary'"
+            :class="[
+              'flex h-9 flex-1 items-center justify-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-all',
+              form.platform === 'minimax'
+                ? 'bg-white text-red-600 shadow-sm dark:bg-dark-600 dark:text-red-400'
+                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+            ]"
             :aria-pressed="form.platform === 'minimax'"
           >
             <PlatformIcon platform="minimax" size="sm" />
             MiniMax
           </button>
-          <button type="button" class="btn h-9 min-w-0 gap-2 px-3 py-1.5 text-sm" :class="form.platform === 'opencode_go' ? 'btn-primary' : 'btn-secondary'" :aria-pressed="form.platform === 'opencode_go'" @click="selectCNPlatform('opencode_go')">
+          <button
+            type="button"
+            @click="selectCNPlatform('opencode_go')"
+            :class="[
+              'flex h-9 flex-1 items-center justify-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-all',
+              form.platform === 'opencode_go'
+                ? 'bg-white text-blue-600 shadow-sm dark:bg-dark-600 dark:text-blue-400'
+                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+            ]"
+            :aria-pressed="form.platform === 'opencode_go'"
+          >
             <Icon name="terminal" size="sm" />OpenCode
           </button>
         </div>

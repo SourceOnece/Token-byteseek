@@ -378,6 +378,36 @@ describe('CreateAccountModal OpenAI account options', () => {
     })
   })
 
+  it.each([
+    ['MiniMax', 'text-red-600', 'dark:text-red-400'],
+    ['OpenCode', 'text-blue-600', 'dark:text-blue-400'],
+  ])('%s 平台选项与 Kimi 保持相同结构及选中阴影', async (name, lightColor, darkColor) => {
+    const wrapper = mountModal()
+    const button = (label: string) => wrapper.findAll('button').find(item => item.text() === label)!
+    const target = button(name)
+    const kimi = button('Kimi')
+    const inactiveClasses = [...kimi.classes()].sort()
+
+    // 未选中不能套用操作按钮的常驻边框/阴影，字体和间距与相邻平台相同。
+    expect([...target.classes()].sort()).toEqual(inactiveClasses)
+    expect(target.classes()).not.toContain('btn')
+    expect(target.attributes('aria-pressed')).toBe('false')
+    await kimi.trigger('click')
+    const selectedStructure = kimi.classes().filter(value => value !== 'text-pink-600' && value !== 'dark:text-pink-400').sort()
+
+    await target.trigger('click')
+    expect(target.classes()).toEqual(expect.arrayContaining([lightColor, darkColor, 'shadow-sm']))
+    expect(target.classes().filter(value => value !== lightColor && value !== darkColor).sort()).toEqual(selectedStructure)
+    expect(target.attributes('aria-pressed')).toBe('true')
+    expect([...kimi.classes()].sort()).toEqual(inactiveClasses)
+
+    await kimi.trigger('click')
+    expect([...target.classes()].sort()).toEqual(inactiveClasses)
+    expect(target.attributes('aria-pressed')).toBe('false')
+    expect(createAccountMock).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it.each(['payg', 'coding'])('保存 MiniMax %s 账号及独立端点，不改成 OpenAI 平台', async mode => {
     const wrapper = mountModal()
     await selectButtonByText(wrapper, 'MiniMax')

@@ -74,4 +74,6 @@
 
 本次新增 [bh.026 到 bh.030 完整差异说明](bh026_to_bh030_comparison.md) 仅为只读升级说明，不改变代码、应用 VERSION、API 或镜像，不创建新的应用标签。
 
+[bh.031](versions/v0_1_278_bh_031.md) 仅修正添加账号中 MiniMax/OpenCode 与其它平台选项的样式差异，未改变接口和业务；前端定向测试、构建及四组浏览器检查通过，发布状态以该记录为准。
+
 相关文档：[开发流程](development_workflow.md)、[包豪斯设计契约](bauhaus_design_contract.md)、[版本目录](versions/index.md)、[运维目录](index.md)。
