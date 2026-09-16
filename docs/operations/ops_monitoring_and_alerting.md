@@ -21,6 +21,8 @@ Ops 面同时接收请求错误、独立上游 attempt 错误、入口准入拒�
 
 ## 实时与历史查询
 
+系统采样中明确测得的整数 0（延迟、内存、Redis 连接、goroutine、排队量）按 0 入库，只有 nil 表示未知；不改计费/账号额度。Gemini 带内内容拒绝登记为请求级业务限制，空响应/错误信封登记为上游失败，保留实际流式标记；此前重试已恢复的上游故障仍可独立形成恢复记录，避免丢掉 provider 遥测。
+
 管理员 Ops API 提供 concurrency、user concurrency、account availability、realtime traffic、错误/上游错误/请求详情、入口拒绝、系统日志和 dashboard snapshot/trend/histogram/token stats。错误列表与详情弹窗必须共享当前时间范围；自定义范围使用同一组 `start_time` / `end_time` 半开区间，任一边界缺失时统一回退到 `1h`，不能把字面量 `custom` 传给后端。QPS WebSocket 用于短窗口实时展示，仍需管理员鉴权，不能视为长期审计源。
 
 历史 dashboard 查询可按配置使用原始表或预聚合，并在覆盖不足时回退。聚合、水位和回填由[使用记录与运维预聚合](pre_aggregation.md)拥有。页面空数据需区分 monitoring 关闭、过滤条件、采集丢弃、聚合覆盖、查询超时和确实无流量。

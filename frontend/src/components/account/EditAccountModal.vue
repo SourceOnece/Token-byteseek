@@ -1813,6 +1813,22 @@
             :aria-label="t('admin.accounts.openai.responsesContinuationSupported')"
           />
         </div>
+        <div class="flex flex-col gap-3 border-t border-gray-200 pt-4 dark:border-dark-600 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <label class="input-label mb-0" for="edit-openai-images-url-to-b64-json">
+              {{ t('admin.accounts.openai.imagesURLToB64JSON') }}
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.openai.imagesURLToB64JSONDesc') }}
+            </p>
+          </div>
+          <Toggle
+            id="edit-openai-images-url-to-b64-json"
+            v-model="openAIImagesURLToB64JSON"
+            data-testid="edit-openai-images-url-to-b64-json"
+            :aria-label="t('admin.accounts.openai.imagesURLToB64JSON')"
+          />
+        </div>
         <div
           class="flex flex-col gap-3 border-t border-gray-200 pt-4 dark:border-dark-600 sm:flex-row sm:items-center sm:justify-between"
           data-testid="openai-responses-probe-status"
@@ -3308,6 +3324,8 @@ const openAITextRouteMode = ref<OpenAITextRouteMode>('preserve_client_protocol')
 const openAIWorkloadCapabilities = ref<OpenAIWorkloadCapability[]>(['text_generation', 'embeddings'])
 // HTTP continuation 缺省关闭，只有管理员确认上游支持时才发送 previous_response_id。
 const openAIResponsesContinuationSupported = ref(false)
+// 图片回填默认关闭，只对 OpenAI API Key 账号生效。
+const openAIImagesURLToB64JSON = ref(false)
 const openaiOAuthResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
 const openaiAPIKeyResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
 const codexCLIOnlyAllowClaudeCodeEnabled = ref(false)
@@ -3852,6 +3870,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   openAITextRouteMode.value = 'preserve_client_protocol'
   openAIWorkloadCapabilities.value = ['text_generation', 'embeddings']
   openAIResponsesContinuationSupported.value = false
+  openAIImagesURLToB64JSON.value = false
   openAICompactModelMappings.value = []
   openaiOAuthResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
   openaiAPIKeyResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
@@ -3881,6 +3900,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
         newAccount.credentials as Record<string, unknown> | undefined
       )
       openAIResponsesContinuationSupported.value = extra?.openai_responses_continuation_supported === true
+      openAIImagesURLToB64JSON.value = extra?.images_url_to_b64_json === true
     }
     codexImageToolMode.value = readCodexImageToolMode(extra)
     openaiOAuthResponsesWebSocketV2Mode.value = resolveOpenAIWSModeFromExtra(extra, {
@@ -5409,6 +5429,11 @@ const handleSubmit = async () => {
         delete newExtra.openai_native_compaction_v2_mode
       } else {
         newExtra.openai_native_compaction_v2_mode = openAINativeCompactionV2Mode.value
+      }
+      if (props.account.type === 'apikey' && openAIImagesURLToB64JSON.value) {
+        newExtra.images_url_to_b64_json = true
+      } else {
+        delete newExtra.images_url_to_b64_json
       }
       if (props.account.type === 'apikey') {
 		delete newExtra.openai_responses_mode

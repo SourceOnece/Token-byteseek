@@ -992,12 +992,30 @@ describe('EditAccountModal', () => {
     expect(wrapper.get('[data-testid="account-scheduling-threshold-override-enabled"]').attributes('role')).toBe('switch')
   })
 
+  // 关闭开关时删除显式 opt-in，并保留其他账号配置。
+  it('hydrates and disables image URL backfill independently', async () => {
+    const account = buildAccount()
+    account.extra = { images_url_to_b64_json: true, retained: 'value' }
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    checkMixedChannelRiskMock.mockReset().mockResolvedValue({ has_risk: false })
+    const wrapper = mountModal(account)
+    const toggle = wrapper.get('[data-testid="edit-openai-images-url-to-b64-json"]')
+    expect(toggle.attributes('aria-checked')).toBe('true')
+    await toggle.trigger('click')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+    const extra = updateAccountMock.mock.calls[0]?.[1]?.extra
+    expect(extra).not.toHaveProperty('images_url_to_b64_json')
+    expect(extra.retained).toBe('value')
+  })
+
   it('submits OpenAI APIKey text route mode and keeps probe status read-only', async () => {
     const account = buildAccount()
     account.extra = {
       openai_text_route_mode: 'force_chat_completions',
       openai_responses_probe_status: 'unsupported',
-      openai_responses_continuation_supported: true
+      openai_responses_continuation_supported: true,
+      images_url_to_b64_json: true
     }
     updateAccountMock.mockReset()
     checkMixedChannelRiskMock.mockReset()
@@ -1014,6 +1032,7 @@ describe('EditAccountModal', () => {
     expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.openai_text_route_mode).toBe('force_responses')
     expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.openai_responses_probe_status).toBe('unsupported')
     expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.openai_responses_continuation_supported).toBe(true)
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.images_url_to_b64_json).toBe(true)
     expect(updateAccountMock.mock.calls[0]?.[1]?.extra).not.toHaveProperty('openai_responses_mode')
     expect(updateAccountMock.mock.calls[0]?.[1]?.extra).not.toHaveProperty('openai_responses_supported')
   })

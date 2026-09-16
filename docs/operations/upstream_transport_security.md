@@ -26,6 +26,8 @@ fallback 链循环、全部过期或目标缺失时保留可诊断失败，不�
 
 ## 连接池隔离
 
+图片长流 profile 必须原样通过上下文解析，普通 HTTP/2 和支持 h2 的 TLS 模板均使用 10 秒读空闲 PING、5 秒无响应超时。OAuth 图片仍保留 OpenAI profile 的显式 H1/H2 开关及代理回退，不因为保活功能覆盖账号 TLS 或强制 H2；模板未声明 h2 时不强启。
+
 HTTP client 池可按 `proxy`、`account` 或 `account_proxy` 隔离，并有最大条目、空闲过期和逐出策略。隔离键还包含 TLS profile 等传输身份，防止不同账号或指纹错误复用连接。池配置变化要关闭/逐出旧 transport，不能只修改后续 key。
 
 普通与 TLS 指纹上游传输都显式限制 DNS/TCP 建连和 TLS 握手阶段，当前默认各为 10 秒；TCP keepalive 探测间隔为 30 秒。HTTP 代理保留调用方的建连拨号器，SOCKS5/SOCKS5H 因会覆盖 `Transport.DialContext`，其 forward dialer 必须自行携带同等上限并响应请求 context。`ResponseHeaderTimeout` 只约束建连后的响应头等待，不能替代这些阶段超时。
@@ -46,6 +48,8 @@ CLI 必须直连采集 HTTPS 入口，或经过不终止 TLS 的 SSH/TCP 转发�
 采集会话及记录仅在内存，停止采集器或重启应用后失效；需要复用的模板必须显式保存。保存模板不自动绑定账号，也不会替换内置默认模板。采集结果只代表对应客户端版本及运行平台的 ClientHello，不等于完整 HTTP/2 客户端行为、OAuth 请求元数据或上游可用性保证。
 
 ## 目标与重定向校验
+
+API Key 图片 URL 回填是单独例外：不论全局是否允许私网，带公网下载标记的初始请求和每一跳重定向都检查 host 与解析后 IP，拒绝 URL 凭据和 HTTPS→HTTP 跳转，沿账号代理且不附带账号凭据。没有该标记的其它业务请求保留原配置行为。详见 [图片回填](../interfaces/openai_upstream.md#images_url_backfill)。解析校验和实际拨号仍分离，不宣称消除所有 DNS 重绑定风险。
 
 自定义 base URL 在转发和账号测试等使用入口至少经过格式与 scheme 校验。启用 `security.url_allowlist` 后，入口还要求目标命中对应 host allowlist，并按 `allow_private_hosts` 决定是否允许本地或私网字面量地址；关闭 allowlist 时只保留最小格式校验，HTTP 还必须由 `allow_insecure_http` 显式放行，启动日志会提示 SSRF 检查已关闭。
 

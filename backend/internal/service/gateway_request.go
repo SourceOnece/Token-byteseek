@@ -939,6 +939,13 @@ func sanitizeAnthropicBodyForBetaTokens(body []byte, anthropicBetaHeader string)
 	if b, deleted := stripAnthropicBodyFieldUnlessBeta(updated, "fallback_credit_token", anthropicBetaHeader, claude.BetaServerSideFallback, claude.BetaFallbackCredit, claude.BetaFallbackCreditLegacy); deleted {
 		updated, changed = b, true
 	}
+	if b, deleted := stripAnthropicMessageOutputConfigUnlessBeta(updated, anthropicBetaHeader); deleted {
+		updated, changed = b, true
+	}
+	// 自适应 thinking 的前缀绑定同样受 beta 保护，只剥除受保护字段。
+	if b, deleted := stripAnthropicBodyFieldUnlessBeta(updated, "thinking.block_binding", anthropicBetaHeader, claude.BetaThinkingBindingControls); deleted {
+		updated, changed = b, true
+	}
 	return updated, changed
 }
 
@@ -972,6 +979,70 @@ func anthropicBetaTokensContains(header, token string) bool {
 		}
 	}
 	return false
+}
+
+// stripAnthropicMessageOutputConfigUnlessBeta 仅在缺少 beta 时清理消息级字段。
+func stripAnthropicMessageOutputConfigUnlessBeta(body []byte, header string) ([]byte, bool) {
+	if anthropicBetaTokensContains(header, claude.BetaMidConversationOutputConfig) || !bytes.Contains(body, []byte("output_config")) {
+		return body, false
+	}
+	messages := gjson.GetBytes(body, "messages")
+	if !messages.Exists() || !messages.IsArray() {
+		return body, false
+	}
+	var raws []json.RawMessage
+	if err := json.Unmarshal([]byte(messages.Raw), &raws); err != nil {
+		return body, false
+	}
+	changed := false
+	kept := make([]json.RawMessage, 0, len(raws))
+	for _, raw := range raws {
+		if !gjson.GetBytes(raw, "output_config").Exists() {
+			kept = append(kept, raw)
+			continue
+		}
+		changed = true
+		if gjson.GetBytes(raw, "role").String() == "system" && !anthropicMessageContentHasBody(gjson.GetBytes(raw, "content")) {
+			continue
+		}
+		stripped, err := sjson.DeleteBytes(raw, "output_config")
+		if err != nil {
+			kept = append(kept, raw)
+			continue
+		}
+		kept = append(kept, stripped)
+	}
+	if !changed {
+		return body, false
+	}
+	rebuilt, err := json.Marshal(kept)
+	if err != nil {
+		return body, false
+	}
+	out, err := sjson.SetRawBytes(body, "messages", rebuilt)
+	if err != nil {
+		return body, false
+	}
+	return out, true
+}
+
+// anthropicMessageContentHasBody 区分空的 system 控制消息与真实正文。
+func anthropicMessageContentHasBody(content gjson.Result) bool {
+	if !content.Exists() || content.Type == gjson.Null {
+		return false
+	}
+	if content.Type == gjson.String {
+		return content.String() != ""
+	}
+	if !content.IsArray() {
+		return true
+	}
+	var blocks []any
+	if err := json.Unmarshal([]byte(content.Raw), &blocks); err != nil {
+		return true
+	}
+	cleaned, _ := stripEmptyTextBlocksFromSlice(blocks)
+	return len(cleaned) > 0
 }
 
 // FilterSignatureSensitiveBlocksForRetry 是更强的 retry 过滤器，用于上游错误明确指向
@@ -1335,6 +1406,9 @@ func NormalizeGLMOpenAIReasoningEffort(body []byte, mappedModel string) ([]byte,
 	}
 
 	mapped := normalizeGLMOpenAIReasoningEffort(raw)
+	if isGLM53Model(mappedModel) && mapped == "high" && normalizeEffortToken(raw) == "low" {
+		mapped = "low"
+	}
 	if mapped == "" || mapped == raw {
 		return body, false
 	}
@@ -1346,12 +1420,20 @@ func NormalizeGLMOpenAIReasoningEffort(body []byte, mappedModel string) ([]byte,
 	return modified, true
 }
 
-func normalizeGLMOpenAIReasoningEffort(raw string) string {
+func normalizeEffortToken(raw string) string {
 	value := strings.ToLower(strings.TrimSpace(raw))
+	return strings.NewReplacer("-", "", "_", "", " ", "").Replace(value)
+}
+
+func isGLM53Model(model string) bool {
+	return strings.EqualFold(strings.TrimSpace(model), "glm-5.3")
+}
+
+func normalizeGLMOpenAIReasoningEffort(raw string) string {
+	value := normalizeEffortToken(raw)
 	if value == "" {
 		return ""
 	}
-	value = strings.NewReplacer("-", "", "_", "", " ", "").Replace(value)
 
 	switch value {
 	case "low", "medium", "high":
@@ -1361,6 +1443,41 @@ func normalizeGLMOpenAIReasoningEffort(raw string) string {
 	default:
 		return ""
 	}
+}
+
+// NormalizeGLM53AnthropicThinking 将客户端显式 thinking 强度映射到 GLM-5.3
+// Anthropic 兼容档位；未提供强度或 thinking 偏好时保持请求不变，交由上游默认处理。
+func NormalizeGLM53AnthropicThinking(body []byte, mappedModel string) ([]byte, bool) {
+	if !isGLM53Model(mappedModel) {
+		return body, false
+	}
+
+	raw := gjson.GetBytes(body, "output_config.effort").String()
+	if strings.TrimSpace(raw) == "" {
+		raw = gjson.GetBytes(body, "thinking.type").String()
+	}
+
+	var effort string
+	switch normalizeEffortToken(raw) {
+	case "disabled", "off", "none", "minimal", "low":
+		effort = "low"
+	case "enabled", "adaptive", "medium", "high":
+		effort = "high"
+	case "xhigh", "max", "ultra":
+		effort = "max"
+	default:
+		return body, false
+	}
+
+	modified, err := sjson.SetBytes(body, "thinking.type", "enabled")
+	if err != nil {
+		return body, false
+	}
+	modified, err = sjson.SetBytes(modified, "output_config.effort", effort)
+	if err != nil {
+		return body, false
+	}
+	return modified, true
 }
 
 // =========================

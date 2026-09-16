@@ -44,6 +44,8 @@ services:
       - SERVER_PORT=8080
       - SERVER_MODE=debug
       - SUB2API_IMAGES_MAIN_MODEL=${SUB2API_IMAGES_MAIN_MODEL:-}
+      # 可选 Claude CLI 版本覆盖，空值沿用内置基线；修改后需重建容器。
+      - SUB2API_CLAUDE_CLI_VERSION=${SUB2API_CLAUDE_CLI_VERSION:-}
       - ENABLE_SERVER_TIMING=${ENABLE_SERVER_TIMING:-false}
       - RUN_MODE=${RUN_MODE:-standard}
       - GOMEMLIMIT=${GOMEMLIMIT:-8GiB}

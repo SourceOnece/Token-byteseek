@@ -56,6 +56,13 @@ OpenAI 分组支持 Messages、Responses 和 Chat，新建时默认启用 Respon
 
 OpenAI 分组的 `max_reasoning_effort` 是显式推理强度上限，`max_reasoning_effort_over_limit` 取 `downgrade`（默认）或 `deny`。网关只对客户端真正发送的 `reasoning.effort`、`reasoning_effort` 和 Messages `output_config.effort` 执行策略，不会因为兼容桥为缺省 Messages 请求生成的默认 `medium` 而改变行为；模型范围映射先于上限比较。`downgrade` 把超限值改写为上限，`deny` 在 HTTP 上返回 403 `permission_error`，Messages 返回 Anthropic `forbidden_error`，Responses WebSocket 以 policy-violation 关闭。复合 Key 已在鉴权中间件解析到具体 OpenAI 分组，因而使用该分组的策略；本 fork 的管理端不开放 Composite 分组推理配置，也不恢复已移除的旧复合平台处理器。该动作和上限随认证快照传递，快照版本为 v35，旧 v34 快照必须失效并从数据库重建。
 
+<a id="images_url_backfill"></a>
+### API Key 图片 URL 回填
+
+OpenAI API Key 新增/编辑表单提供“自动补全图片 Base64”，保存为账号 `extra.images_url_to_b64_json`，默认关闭。开启后仅在非流式 Images 响应中，对没有 `b64_json` 且有 `url` 的图片补下载内容；已有 Base64、显式 `response_format=url`、流式以及 OAuth 账号不处理。保留原 URL 和其它字段，单项失败返回原图片，不改变原始 usage、图片数量或结算尺寸。
+
+下载沿账号代理，不携带账号 Authorization/Cookie；单项最长 60 秒、最多 20 MiB（共用图片下载上限），只接受 PNG/JPEG/WebP/GIF 的字节嗅探结果。data URL 同样受大小和类型检查；远程 URL 遵守出站安全配置，并独立强制初始目标与每次跳转的公网主机/DNS 检查、拒绝 URL 内凭据和 HTTPS 降级。共享客户端只派生单请求校验，不改变其它业务请求的私网配置。该检查不等同于 DNS 解析与拨号绑定的完整重绑定防护。
+
 ### API Key 文本配置
 
 OpenAI API Key 的普通文本配置把四个概念分开持久化：
@@ -124,6 +131,10 @@ OpenAI API Key 账号以 `force_chat_completions` 承接 `/v1/messages` 时，Ch
 
 ## 模型与能力
 
+协议桥新增以下兼容边界：Responses→Anthropic 对仅在 `output_text.done` 出现的文本补缺失后缀；完全无文本增量时才恢复终态 message 文本，按输出/内容索引去重，不在 message_stop 后补发。Responses→Chat 同样补齐工具 arguments/input done，非流聚合按 Call ID 优先恢复空参数；Responses Lite `input[].additional_tools` 的 namespace 声明不再被误删。Responses→Chat 的开头 system/developer 合并为一条系统消息，中途指令保留位置但转换为 user，以适配仅允许开头 system 的兼容上游；原生 Responses 与直接 Chat 请求不执行此角色调整。
+
+GLM-5.3 兼容保留 `low`；Anthropic 直通中的显式 thinking/effort 映射至 low/high/max，未设置时原样转发，GLM-5.2 规则不变。`X-OpenCode-Session` 只在 API Key 指向 `https://opencode.ai` 时按本次入站会话转发，覆盖账号固定同名值；普通转换、Chat 管线和 passthrough 共用该范围，不发送到其它自定义中继。
+
 客户端模型先经过 Key、渠道和账号层映射。OpenAI 内置别名、reasoning effort 归一化、旧版 Compact 端点支持、图像/embedding 能力和传输能力会影响候选账号；模型列表只公开当前分组可请求的结果。
 
 GPT-5.6 的内置产品仅为 `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`。裸 `gpt-5.6` 不作为预设型号或 Sol 别名，OAuth 归一化与用量计费候选也不再自动将它改为 Sol 或旧 GPT；未知名称沿用兼容上游的既有透传边界，不因此保证上游支持。管理员显式 Key、渠道和账号映射仍然有效，历史配置和用量记录不回写。模型目录查询与能力来源见[模型目录与市场](model_catalog_and_marketplace.md#model_catalog_metadata_lookup)。
@@ -138,6 +149,8 @@ Images API 的流式与非流式上游请求都脱离客户端请求取消信号
 
 ## 额度与调度
 
+HTTP 429 只有明确 5h/7d 用量达到 100% 或响应体明确给出 reset 时才按配额重置长冷却；未耗尽的正常窗口倒计时不能让账号停调数天。普通瞬时 429 仍执行原有有界重试与配置的短冷却，不改账号质量检测和手动调度状态。
+
 OpenAI 是通用高级调度器的能力适配者之一，而不是该调度器的全局所有者。只有最终目标 Group 的 `scheduler_type=advanced` 时，OpenAI 路径才在共同 active/schedulable、分组、模型、限流和并发硬过滤后使用通用 Top-K 评分；`basic` 保留原有默认选择路径。高级分组可用稀疏 `advanced_scheduler_overrides` 覆盖全局 Top-K、评分权重和粘性开关，未设置字段继续继承网关设置。高级分组还会考虑所需 transport/capability、账号优先级、负载、排队、错误率、近期延迟、配额余量和粘性上下文。previous response、WebSocket 会话和显式 session 可约束账号复用；只有策略允许时才能迁移。
 
 OpenAI 专属能力只在账号和请求具备对应条件时加入候选或分数：Responses transport、WebSocket、旧版 Compact、previous response、订阅优先和 Codex 额度余量都不会排除缺失这类可选信号的普通账号。OAuth 5 小时、7 天等上游窗口和自动暂停仍由 OpenAI 设置及账号运行状态控制，不随高级调度器通用化而迁移到其它平台。
@@ -147,6 +160,8 @@ OAuth 账号的 5 小时、7 天等上游窗口和重置时间保存在账号运
 管理 API 的 `GET /admin/openai/accounts/:id/quota` 保持只读；账号列表使用 `POST /admin/openai/accounts/:id/quota/refresh` 查询上游并把重置次数写入 `account.extra.codex_reset_credit_snapshot`。正数次数只有同时取得到期明细时才覆盖快照，前端水合时过滤已过期明细并把次数收敛到仍有效的卡片数量。该 extra 键只用于展示缓存，不触发调度 outbox；Spark 影子账号的查询可解析母账号额度，但快照仍写在被查询的行上，且列表继续只提供查询入口，不提供真实重置按钮。
 
 ## 失败与诊断
+
+HTTP/SSE 入站使用 WS 上游时，客户端取消后继续读取上游已发生的用量；排水总预算为现有 WS read timeout，不因不断收到数据无限延长。已断开的下游不追加错误帧、不因取消换号重放；不完整终态也保留已知用量/图片/推理字段交给原有幂等结算。原生入站 WebSocket 的租约与硬兼容隔离保持不变。
 
 WS 重放历史正文按不可变所有权共享，修改时重建元素，避免长会话每轮复制全部历史；已被上游明确拒绝的 encrypted_content 仅记摘要，按会话 TTL/容量限制去重，后续只清理命中摘要的 reasoning/compaction 项，不清理未命中的新密文。HTTP bridge 和后续轮次使用同一状态边界。Astra 完整型号沿用兼容消息提示缓存身份，未知型号不借用该身份。
 

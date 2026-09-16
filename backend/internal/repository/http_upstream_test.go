@@ -636,6 +636,24 @@ func (s *HTTPUpstreamSuite) TestOpenAIProfileDefaultsToHTTP2AndNoHeaderTimeout()
 	require.Equal(s.T(), upstreamProtocolModeOpenAIH2, entry.protocolMode)
 }
 
+func (s *HTTPUpstreamSuite) TestLongStreamProfileUsesSharedHTTP2KeepAlive() {
+	s.cfg.Gateway = config.GatewayConfig{
+		ResponseHeaderTimeout: 600,
+		OpenAIHTTP2: config.GatewayOpenAIHTTP2Config{
+			Enabled: false,
+		},
+	}
+	svc := s.newService()
+	entry, err := svc.getClientEntry("", 1, 1, service.HTTPUpstreamProfileLongStream, false, false)
+	require.NoError(s.T(), err)
+	transport, ok := entry.client.Transport.(*http.Transport)
+	require.True(s.T(), ok, "expected *http.Transport")
+	require.Equal(s.T(), 600*time.Second, transport.ResponseHeaderTimeout, "long-stream profile should retain the generic header timeout")
+	require.True(s.T(), transport.ForceAttemptHTTP2, "long-stream profile must enable HTTP/2 independently of OpenAI settings")
+	require.True(s.T(), transport.Protocols.HTTP2(), "long-stream profile must install HTTP/2 PING health checks")
+	require.Equal(s.T(), upstreamProtocolModeLongStreamH2, entry.protocolMode)
+}
+
 func (s *HTTPUpstreamSuite) TestOpenAIProfileCustomHeaderTimeout() {
 	s.cfg.Gateway = config.GatewayConfig{
 		ResponseHeaderTimeout:       600,
@@ -686,6 +704,22 @@ func (s *HTTPUpstreamSuite) TestOpenAIProfileTLSFingerprintUsesHTTP2WhenALPNAllo
 	require.Equal(s.T(), openAIHTTP2ReadIdleTimeout, transport.ReadIdleTimeout, "TLS 指纹 H2 也必须启用空闲 PING")
 	require.Equal(s.T(), openAIHTTP2PingTimeout, transport.PingTimeout, "TLS 指纹 H2 的 PING 必须有超时")
 	require.Equal(s.T(), upstreamProtocolModeOpenAIH2, entry.protocolMode)
+}
+
+// 长流复用 TLS 模板的 ALPN，不得把声明 h2 的握手交给 HTTP/1 transport。
+func (s *HTTPUpstreamSuite) TestLongStreamProfileTLSFingerprintHonorsALPN() {
+	s.cfg.Gateway.ResponseHeaderTimeout = 0
+	svc := s.newService()
+	for _, h2 := range []bool{false, true} {
+		profile := &tlsfingerprint.Profile{Name: fmt.Sprintf("long-stream-%t", h2)}
+		if h2 {
+			profile.ALPNProtocols = []string{"h2", "http/1.1"}
+		}
+		entry, err := svc.getClientEntryWithTLS("", int64(300), 1, profile, service.HTTPUpstreamProfileLongStream, false, false)
+		require.NoError(s.T(), err)
+		_, isH2 := entry.client.Transport.(*http2.Transport)
+		require.Equal(s.T(), h2, isH2)
+	}
 }
 
 func (s *HTTPUpstreamSuite) TestOpenAIProfileTLSFingerprintHTTP2HeaderTimeout() {
@@ -1096,4 +1130,87 @@ func hasEntry(svc *httpUpstreamService, target *upstreamClientEntry) bool {
 		}
 	}
 	return false
+}
+
+func TestHTTPUpstreamDoPublicHostsOnlyRejectsPrivateDestinationBeforeConnecting(t *testing.T) {
+	var calls atomic.Int64
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(target.Close)
+
+	upstream := NewHTTPUpstream(nil)
+
+	plain, err := http.NewRequestWithContext(t.Context(), http.MethodGet, target.URL, nil)
+	require.NoError(t, err)
+	resp, err := upstream.Do(plain, "", 1, 1)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, int64(1), calls.Load(), "loopback stays reachable for requests without the marker")
+
+	guarded, err := http.NewRequestWithContext(service.WithHTTPUpstreamPublicHostsOnly(t.Context()), http.MethodGet, target.URL, nil)
+	require.NoError(t, err)
+	resp, err = upstream.Do(guarded, "", 1, 1)
+	require.Error(t, err)
+	require.Nil(t, resp)
+	require.Contains(t, err.Error(), "not allowed")
+	require.Equal(t, int64(1), calls.Load(), "marked request must be rejected before any connection is made")
+}
+
+func TestHTTPUpstreamPublicHostsOnlyValidatesEveryRedirectHop(t *testing.T) {
+	upstream, ok := NewHTTPUpstream(nil).(*httpUpstreamService)
+	require.True(t, ok)
+	base := &http.Client{}
+
+	plain, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://cdn.example.com/a.png", nil)
+	require.NoError(t, err)
+	require.Same(t, base, httpClientForUpstreamRequest(upstream, base, plain))
+
+	guarded, err := http.NewRequestWithContext(service.WithHTTPUpstreamPublicHostsOnly(t.Context()), http.MethodGet, "https://cdn.example.com/a.png", nil)
+	require.NoError(t, err)
+	client := httpClientForUpstreamRequest(upstream, base, guarded)
+	require.NotSame(t, base, client)
+	require.NotNil(t, client.CheckRedirect)
+	require.Nil(t, base.CheckRedirect, "the cached client must stay untouched")
+
+	via := []*http.Request{guarded}
+	for _, hop := range []string{
+		"http://127.0.0.1:8080/a.png",
+		"http://[::1]:8080/a.png",
+		"http://10.0.0.8/a.png",
+		"http://169.254.169.254/latest/meta-data/",
+		"http://0.0.0.0/a.png",
+	} {
+		hopReq, err := http.NewRequestWithContext(guarded.Context(), http.MethodGet, hop, nil)
+		require.NoError(t, err)
+		require.Error(t, client.CheckRedirect(hopReq, via), "hop=%s", hop)
+	}
+	publicHop, err := http.NewRequestWithContext(guarded.Context(), http.MethodGet, "https://93.184.216.34/a.png", nil)
+	require.NoError(t, err)
+	require.NoError(t, client.CheckRedirect(publicHop, via))
+	downgrade := publicHop.Clone(guarded.Context())
+	downgrade.URL.Scheme = "http"
+	require.Error(t, client.CheckRedirect(downgrade, via))
+	require.Error(t, client.CheckRedirect(publicHop, make([]*http.Request, 10)), "redirect chain stays capped")
+}
+
+// 公网下载约束与已有的重定向策略必须同时生效，且不能污染缓存客户端。
+func TestHTTPUpstreamPublicHostsOnlyPreservesExistingRedirectPolicy(t *testing.T) {
+	upstream := NewHTTPUpstream(nil).(*httpUpstreamService)
+	called := false
+	base := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error {
+		called = true
+		return http.ErrUseLastResponse
+	}}
+	guarded, err := http.NewRequestWithContext(service.WithHTTPUpstreamPublicHostsOnly(t.Context()), http.MethodGet, "https://93.184.216.34/a.png", nil)
+	require.NoError(t, err)
+	client := httpClientForUpstreamRequest(upstream, base, guarded)
+	private, err := http.NewRequest(http.MethodGet, "http://127.0.0.1/a.png", nil)
+	require.NoError(t, err)
+	require.Error(t, client.CheckRedirect(private, []*http.Request{guarded}))
+	require.False(t, called)
+	require.ErrorIs(t, client.CheckRedirect(guarded, []*http.Request{guarded}), http.ErrUseLastResponse)
+	require.True(t, called)
+	require.NotSame(t, base, client)
 }

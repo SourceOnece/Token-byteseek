@@ -235,6 +235,9 @@ func (l *openAIWSConnLease) ReadMessageContext(ctx context.Context) ([]byte, err
 	return conn.readMessage(ctx)
 }
 
+// openAIWSDrainableReadContextKey 只允许 HTTP→WS 桥在取消后继续排水，不改变其它租约读策略。
+type openAIWSDrainableReadContextKey struct{}
+
 func (l *openAIWSConnLease) ReadMessageWithContextTimeout(ctx context.Context, timeout time.Duration) ([]byte, error) {
 	conn, err := l.activeConn()
 	if err != nil {
@@ -658,6 +661,11 @@ func (c *openAIWSConn) readMessage(readCtx context.Context) ([]byte, error) {
 		c.touch()
 		return payload, nil
 	case <-readCtx.Done():
+		// 常驻读循环与当前等待者独立，客户端取消不破坏帧边界；桥接排水路径保留连接。
+		// 真实读超时或没有显式标记的消费者仍按原逻辑立即关闭。
+		if errors.Is(readCtx.Err(), context.Canceled) && readCtx.Value(openAIWSDrainableReadContextKey{}) == true {
+			return nil, readCtx.Err()
+		}
 		// 与库在 ctx 取消时切断连接的语义一致：读超时后消息边界已不可信，且对端多半
 		// 已不响应，直接切断而不做关闭握手。
 		c.abort()

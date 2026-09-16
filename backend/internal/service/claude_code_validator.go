@@ -103,6 +103,10 @@ func (v *ClaudeCodeValidator) Validate(r *http.Request, body map[string]any) boo
 	if isMaxTokensOneHaiku, ok := IsMaxTokensOneHaikuRequestFromContext(r.Context()); ok && isMaxTokensOneHaiku {
 		return true // 绕过 system prompt 检查，UA 已在 Step 1 验证
 	}
+	// CLI 在切换模型或刷新上下文时也会对当前模型发 max_tokens=1 探测，不能只限定 Haiku。
+	if isMaxTokensOneBody(body) {
+		return true
+	}
 
 	// Step 4: messages 路径，进行严格验证
 
@@ -151,6 +155,23 @@ func (v *ClaudeCodeValidator) Validate(r *http.Request, body map[string]any) boo
 
 func isMessagesCountTokensPath(path string) bool {
 	return strings.HasSuffix(path, "/messages/count_tokens")
+}
+
+// isMaxTokensOneBody 兼容完整 JSON 解析和 ParsedRequest 热路径的数值类型。
+func isMaxTokensOneBody(body map[string]any) bool {
+	if body == nil {
+		return false
+	}
+	switch value := body["max_tokens"].(type) {
+	case float64:
+		return value == 1
+	case int:
+		return value == 1
+	case int64:
+		return value == 1
+	default:
+		return false
+	}
 }
 
 // hasClaudeCodeSystemPrompt 检查请求是否包含 Claude Code 系统提示词

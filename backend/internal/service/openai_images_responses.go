@@ -1850,9 +1850,8 @@ func (s *OpenAIGatewayService) forwardOpenAIImagesOAuth(
 	if err != nil {
 		return nil, err
 	}
-	if parsed.Stream {
-		upstreamReq = upstreamReq.WithContext(WithHTTPUpstreamProfile(upstreamReq.Context(), HTTPUpstreamProfileLongStream))
-	}
+	// OAuth 保留 OpenAI profile 的 H1/H2 配置、代理回退及 TLS 模板；
+	// 其 HTTP/2 transport 已共用长流 PING，无需覆盖为另一个 profile。
 	// 复用 Codex 认证、影子账号及指纹头；仅切换已构造请求的端点和响应协议。
 	upstreamReq.URL, err = url.Parse(targetURL)
 	if err != nil {

@@ -454,7 +454,7 @@ func TestAccountTestService_AutomaticOpenAIProbeRoutesChatCompletionsAndImages(t
 			nil,
 		)
 
-		result, err := svc.RunTestBackgroundWithPromptAndUserAgent(context.Background(), account.ID, "gpt-image-2", "draw", "image-client/1.0")
+		result, err := svc.RunTestBackgroundWithPromptAndUserAgent(context.Background(), account.ID, "gpt-image-1", "draw", "image-client/1.0")
 
 		require.NoError(t, err)
 		require.Equal(t, "success", result.Status)

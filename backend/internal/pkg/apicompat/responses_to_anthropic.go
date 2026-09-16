@@ -203,7 +203,7 @@ type ResponsesEventToAnthropicState struct {
 	ResponseID    string
 	Model         string
 	Created       int64
-	TextByPart    map[responsesTextPart]string
+	TextByPart    map[responsesTextPart]*strings.Builder
 	TextDelivered bool
 }
 
@@ -212,7 +212,7 @@ func NewResponsesEventToAnthropicState() *ResponsesEventToAnthropicState {
 	return &ResponsesEventToAnthropicState{
 		OutputIndexToBlockIdx: make(map[int]int),
 		Created:               time.Now().Unix(),
-		TextByPart:            make(map[responsesTextPart]string),
+		TextByPart:            make(map[responsesTextPart]*strings.Builder),
 	}
 }
 
@@ -401,7 +401,14 @@ func resToAnthHandleTextDelta(evt *ResponsesStreamEvent, state *ResponsesEventTo
 		return nil
 	}
 	part := responsesTextPart{OutputIndex: evt.OutputIndex, ContentIndex: evt.ContentIndex}
-	state.TextByPart[part] += evt.Delta
+	// 使用 Builder 避免长回答的每次增量都复制已有全文。
+	if state.TextByPart == nil {
+		state.TextByPart = make(map[responsesTextPart]*strings.Builder)
+	}
+	if state.TextByPart[part] == nil {
+		state.TextByPart[part] = &strings.Builder{}
+	}
+	state.TextByPart[part].WriteString(evt.Delta)
 	state.TextDelivered = true
 
 	var events []AnthropicStreamEvent
@@ -435,10 +442,47 @@ func resToAnthHandleTextDelta(evt *ResponsesStreamEvent, state *ResponsesEventTo
 	return events
 }
 
+// resToAnthRecoverTerminalText 在上游只把完整文本放到终态 response.output 时补发文本。
+// 只有完全没有收到文本增量时才执行，避免跨 part 不能可靠对齐而重复回答。
+func resToAnthRecoverTerminalText(evt *ResponsesStreamEvent, state *ResponsesEventToAnthropicState) []AnthropicStreamEvent {
+	if state.TextDelivered || evt.Response == nil {
+		return nil
+	}
+	var events []AnthropicStreamEvent
+	for outputIndex, item := range evt.Response.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for contentIndex, content := range item.Content {
+			if content.Type != "output_text" {
+				continue
+			}
+			part := responsesTextPart{OutputIndex: outputIndex, ContentIndex: contentIndex}
+			evtCopy := &ResponsesStreamEvent{Delta: content.Text, OutputIndex: part.OutputIndex, ContentIndex: part.ContentIndex}
+			events = append(events, resToAnthHandleTextDelta(evtCopy, state)...)
+		}
+	}
+	if len(events) > 0 {
+		events = append(events, closeCurrentBlock(state)...)
+	}
+	return events
+}
+
 // done 事件携带完整文本而没有 delta 时，只补未发送的后缀，避免重复回答。
 func resToAnthHandleTextDone(evt *ResponsesStreamEvent, state *ResponsesEventToAnthropicState) []AnthropicStreamEvent {
+	if state.MessageStopSent {
+		return nil
+	}
 	part := responsesTextPart{OutputIndex: evt.OutputIndex, ContentIndex: evt.ContentIndex}
-	delivered := state.TextByPart[part]
+	builder, known := state.TextByPart[part]
+	delivered := ""
+	if known {
+		delivered = builder.String()
+	}
+	// 无法与已发出的 part 对齐时不猜测，以免把整段回答重复补发。
+	if !known && state.TextDelivered {
+		return resToAnthHandleBlockDone(state)
+	}
 	full := evt.Text
 	if full != "" && strings.HasPrefix(full, delivered) && len(full) > len(delivered) {
 		evtCopy := *evt
@@ -506,6 +550,9 @@ func resToAnthHandleFuncArgsDone(evt *ResponsesStreamEvent, state *ResponsesEven
 	}
 
 	raw := evt.Arguments
+	if raw == "" && evt.Type == "response.custom_tool_call_input.done" {
+		raw = evt.Input
+	}
 	if raw == "" {
 		raw = state.CurrentToolArgs
 	}
@@ -655,6 +702,7 @@ func resToAnthHandleCompleted(evt *ResponsesStreamEvent, state *ResponsesEventTo
 
 	var events []AnthropicStreamEvent
 	events = append(events, closeCurrentBlock(state)...)
+	events = append(events, resToAnthRecoverTerminalText(evt, state)...)
 
 	stopReason := "end_turn"
 	if evt.Usage != nil {

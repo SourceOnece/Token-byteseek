@@ -68,4 +68,6 @@
 
 首个按本准则实际落地的双源应用批次为 [bh.026](versions/v0_1_278_bh_026.md)：先选 TokenRouter，再补 sub2api 图片/WS/窗口差额。它是选择性补丁，不代表 T1 或 sub2api 0.2.5 整仓已同步；后续差异比较须使用记录中的具体覆盖映射。
 
+[bh.029](versions/v0_1_278_bh_029.md) 承接未发布的 bh.028 完成已选接口建议项；同批三方目标不前移，明确区分新增、此前部分补齐和仍未采纳的运营/计费冲突项。发布状态以该记录证据为准。
+
 相关文档：[开发流程](development_workflow.md)、[包豪斯设计契约](bauhaus_design_contract.md)、[版本目录](versions/index.md)、[运维目录](index.md)。

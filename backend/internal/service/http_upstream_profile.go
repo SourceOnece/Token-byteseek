@@ -14,6 +14,7 @@ const (
 
 type httpUpstreamProfileContextKey struct{}
 type httpUpstreamDisableRedirectsContextKey struct{}
+type httpUpstreamPublicHostsOnlyContextKey struct{}
 
 // WithHTTPUpstreamProfile 将上游传输 profile 写入 context。
 func WithHTTPUpstreamProfile(ctx context.Context, profile HTTPUpstreamProfile) context.Context {
@@ -36,7 +37,7 @@ func HTTPUpstreamProfileFromContext(ctx context.Context) HTTPUpstreamProfile {
 		return HTTPUpstreamProfileDefault
 	}
 	switch profile {
-	case HTTPUpstreamProfileOpenAI, HTTPUpstreamProfileGrok:
+	case HTTPUpstreamProfileOpenAI, HTTPUpstreamProfileGrok, HTTPUpstreamProfileLongStream:
 		return profile
 	default:
 		return HTTPUpstreamProfileDefault
@@ -53,4 +54,17 @@ func WithHTTPUpstreamRedirectsDisabled(ctx context.Context) context.Context {
 
 func HTTPUpstreamRedirectsDisabled(ctx context.Context) bool {
 	return ctx != nil && ctx.Value(httpUpstreamDisableRedirectsContextKey{}) == true
+}
+
+// WithHTTPUpstreamPublicHostsOnly 对不可信图片 URL 强制执行公网主机校验。
+func WithHTTPUpstreamPublicHostsOnly(ctx context.Context) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, httpUpstreamPublicHostsOnlyContextKey{}, true)
+}
+
+// HTTPUpstreamPublicHostsOnly 供共享客户端识别下载安全标记。
+func HTTPUpstreamPublicHostsOnly(ctx context.Context) bool {
+	return ctx != nil && ctx.Value(httpUpstreamPublicHostsOnlyContextKey{}) == true
 }

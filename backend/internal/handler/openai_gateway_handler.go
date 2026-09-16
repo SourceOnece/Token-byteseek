@@ -852,6 +852,12 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 			})
 		}
 		if err != nil {
+			// 下游已断开时只提交已知用量，不追加错误帧或继续换号重放。
+			if (result != nil && result.ClientDisconnect) || failoverClientGone(c) {
+				reqLog.Info("openai.client_disconnected", zap.Int64("account_id", account.ID), zap.Error(err))
+				submitResponsesUsage(result)
+				return
+			}
 			if result != nil && result.ImageCount > 0 {
 				reqLog.Warn("openai.forward_partial_error_with_image_result",
 					zap.Int64("account_id", account.ID),
@@ -3421,6 +3427,13 @@ func (h *OpenAIGatewayHandler) ensureForwardErrorResponse(c *gin.Context, stream
 
 func (h *OpenAIGatewayHandler) ensureOpenAIForwardErrorResponse(c *gin.Context, streamStarted bool, err error) bool {
 	if c == nil || c.Writer == nil {
+		return false
+	}
+	if c.Request != nil && errors.Is(c.Request.Context().Err(), context.Canceled) {
+		// 先停止可能运行中的心跳，避免返回后仍持有 Writer。
+		service.StopOpenAICompactSSEKeepaliveCommitted(c)
+		service.StopOpenAIImagesJSONKeepaliveCommitted(c)
+		failoverClientGone(c)
 		return false
 	}
 	// 先停止两类心跳再读 Writer 状态，避免与心跳 goroutine 竞争。

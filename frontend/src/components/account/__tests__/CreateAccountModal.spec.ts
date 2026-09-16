@@ -297,6 +297,21 @@ describe('CreateAccountModal OpenAI account options', () => {
     expect(wrapper.get('[data-testid="create-openai-continuation-supported"]').attributes('role')).toBe('switch')
   })
 
+  // 开关需由管理员显式启用，创建请求持久化为布尔值。
+  it('opts into image URL backfill for OpenAI API-key accounts', async () => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenAI')
+    await selectButtonByText(wrapper, 'API Key')
+    const toggle = wrapper.get('[data-testid="create-openai-images-url-to-b64-json"]')
+    expect(toggle.attributes('aria-checked')).toBe('false')
+    await toggle.trigger('click')
+    await wrapper.get('form#create-account-form input[type="text"]').setValue('Images account')
+    await wrapper.get('form#create-account-form input[type="password"]').setValue('test-api-key')
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(createAccountMock.mock.calls[0]?.[0]?.extra?.images_url_to_b64_json).toBe(true)
+  })
+
   it('allows an explicit empty workload capability set independently from text routing', async () => {
     const wrapper = mountModal()
     await selectButtonByText(wrapper, 'OpenAI')

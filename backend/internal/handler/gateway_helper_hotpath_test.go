@@ -519,3 +519,18 @@ type helperConcurrencyCacheStubWithError struct {
 func (s *helperConcurrencyCacheStubWithError) AcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int, requestID string) (bool, error) {
 	return false, s.err
 }
+
+func TestSetClaudeCodeClientContext_ParsedRequestProbeWithoutSystemPrompt(t *testing.T) {
+	c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
+	c.Request.Header.Set("User-Agent", "claude-cli/2.1.260 (external, cli)")
+
+	// 热路径复用解析结果时，探测字段不能丢失。
+	parsed := &service.ParsedRequest{Model: "claude-sonnet-4-5", MaxTokens: 1}
+	SetClaudeCodeClientContext(c, nil, parsed)
+	require.True(t, service.IsClaudeCodeClient(c.Request.Context()))
+
+	c2, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
+	c2.Request.Header.Set("User-Agent", "claude-cli/2.1.260 (external, cli)")
+	SetClaudeCodeClientContext(c2, nil, &service.ParsedRequest{Model: "claude-sonnet-4-5", MaxTokens: 64})
+	require.False(t, service.IsClaudeCodeClient(c2.Request.Context()))
+}

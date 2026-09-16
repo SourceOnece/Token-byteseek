@@ -60,8 +60,9 @@ func shouldStripOpenAIResponsesInputNamespaces(account *Account, transport OpenA
 //   - compact 端点的 schema 不含该字段，携带即 400 `Unknown parameter:
 //     input[N].namespace`（issue #4761 正文），故 compact 一律清理。
 //   - API Key 出口默认按标准 Responses API 处理并清理该字段；但当请求本身声明
-//     namespace 工具时，上游显然使用了 namespace 扩展，此时必须保留调用项上的
-//     namespace，否则声明与历史调用会失配并触发 Missing namespace。
+//     namespace 工具时（包括 Responses Lite 的 input[].additional_tools），上游显然
+//     使用了 namespace 扩展，此时必须保留调用项上的 namespace，否则声明与历史
+//     调用会失配并触发 Missing namespace。
 //   - 摊平模式下调用项已被改写成平名，残留 namespace 指向的声明已不存在，一律清理。
 func shouldKeepOpenAIResponsesToolCallNamespaces(
 	account *Account,
@@ -86,13 +87,37 @@ func shouldKeepOpenAIResponsesToolCallNamespaces(
 }
 
 func hasOpenAIResponsesNamespaceToolDeclaration(body []byte) bool {
-	tools := gjson.GetBytes(body, "tools")
-	if !tools.IsArray() {
+	hasNamespaceTool := func(tools gjson.Result) bool {
+		if !tools.IsArray() {
+			return false
+		}
+		found := false
+		tools.ForEach(func(_, tool gjson.Result) bool {
+			if strings.EqualFold(strings.TrimSpace(tool.Get("type").String()), "namespace") {
+				found = true
+				return false
+			}
+			return true
+		})
+		return found
+	}
+
+	if hasNamespaceTool(gjson.GetBytes(body, "tools")) {
+		return true
+	}
+
+	// Responses Lite 可以通过历史中的 additional_tools 声明 namespace，
+	// 不能只检查顶层 tools 后删掉工具调用的命名空间。
+	input := gjson.GetBytes(body, "input")
+	if !input.IsArray() {
 		return false
 	}
 	found := false
-	tools.ForEach(func(_, tool gjson.Result) bool {
-		if strings.EqualFold(strings.TrimSpace(tool.Get("type").String()), "namespace") {
+	input.ForEach(func(_, item gjson.Result) bool {
+		if !strings.EqualFold(strings.TrimSpace(item.Get("type").String()), "additional_tools") {
+			return true
+		}
+		if hasNamespaceTool(item.Get("tools")) {
 			found = true
 			return false
 		}

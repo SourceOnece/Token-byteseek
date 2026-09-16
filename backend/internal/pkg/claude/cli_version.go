@@ -1,10 +1,11 @@
 package claude
 
 import (
-	"golang.org/x/mod/semver"
 	"log/slog"
 	"os"
 	"strings"
+
+	"golang.org/x/mod/semver"
 )
 
 // CLIVersionEnv 是 Claude CLI 版本覆盖变量，进程启动时只读取一次。

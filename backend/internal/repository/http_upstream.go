@@ -216,7 +216,7 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 	}
 
 	// 执行请求
-	client := httpClientForUpstreamRequest(entry.client, req)
+	client := httpClientForUpstreamRequest(s, entry.client, req)
 	client = httpClientWithGrokAccessDeniedFallback(client)
 	// 首次上游尝试前清除其它依赖的 trace 回调，后续重试沿用同一请求状态。
 	if req != nil {
@@ -283,7 +283,7 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 		return nil, err
 	}
 
-	client := httpClientForUpstreamRequest(entry.client, req)
+	client := httpClientForUpstreamRequest(s, entry.client, req)
 	client = httpClientWithGrokAccessDeniedFallback(client)
 	// 首次上游尝试前清除其它依赖的 trace 回调，后续重试沿用同一请求状态。
 	if req != nil {
@@ -309,16 +309,41 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 	return resp, nil
 }
 
-// httpClientForUpstreamRequest 为禁止重定向的凭据探测复制客户端，避免修改共享连接池客户端。
-func httpClientForUpstreamRequest(client *http.Client, req *http.Request) *http.Client {
-	if client == nil || req == nil || !service.HTTPUpstreamRedirectsDisabled(req.Context()) {
+// httpClientForUpstreamRequest 按请求标记派生客户端，避免修改共享连接池客户端。
+func httpClientForUpstreamRequest(s *httpUpstreamService, client *http.Client, req *http.Request) *http.Client {
+	if client == nil || req == nil {
 		return client
 	}
-	clone := *client
-	clone.CheckRedirect = func(*http.Request, []*http.Request) error {
-		return http.ErrUseLastResponse
+	ctx := req.Context()
+	switch {
+	case service.HTTPUpstreamRedirectsDisabled(ctx):
+		clone := *client
+		clone.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+		return &clone
+	case service.HTTPUpstreamPublicHostsOnly(ctx) && s != nil:
+		clone := *client
+		clone.CheckRedirect = func(next *http.Request, via []*http.Request) error {
+			// 每跳继承下载安全标记，同时保留客户端已有的重定向约束。
+			*next = *next.WithContext(service.WithHTTPUpstreamPublicHostsOnly(next.Context()))
+			if next.URL == nil || (next.URL.Scheme != "https" && next.URL.Scheme != "http") || next.URL.User != nil {
+				return errors.New("invalid image redirect URL")
+			}
+			// HTTPS 下载不允许通过重定向降级为明文 HTTP。
+			if req.URL.Scheme == "https" && next.URL.Scheme != "https" {
+				return errors.New("image redirect scheme downgrade is not allowed")
+			}
+			if err := s.redirectChecker(next, via); err != nil {
+				return err
+			}
+			if client.CheckRedirect != nil {
+				return client.CheckRedirect(next, via)
+			}
+			return nil
+		}
+		return &clone
+	default:
+		return client
 	}
-	return &clone
 }
 
 // grokAccessDeniedFallbackTransport 保持订阅 CLI 代理为 OAuth 主路由；仅当代理返回
@@ -605,7 +630,8 @@ func (s *httpUpstreamService) shouldValidateResolvedIP() bool {
 }
 
 func (s *httpUpstreamService) validateRequestHost(req *http.Request) error {
-	if !s.shouldValidateResolvedIP() {
+	publicHostsOnly := req != nil && service.HTTPUpstreamPublicHostsOnly(req.Context())
+	if !s.shouldValidateResolvedIP() && !publicHostsOnly {
 		return nil
 	}
 	if req == nil || req.URL == nil {
@@ -1040,14 +1066,14 @@ func (s *httpUpstreamService) resolveProtocolMode(profile service.HTTPUpstreamPr
 
 func (s *httpUpstreamService) resolveTLSFingerprintProtocolMode(profile service.HTTPUpstreamProfile, proxyKey string, parsedProxy *url.URL, tlsProfile *tlsfingerprint.Profile) string {
 	protocolMode := s.resolveProtocolMode(profile, proxyKey, parsedProxy)
-	if protocolMode != upstreamProtocolModeOpenAIH2 || tlsfingerprint.SupportsHTTP2(tlsProfile) {
+	if (protocolMode != upstreamProtocolModeOpenAIH2 && protocolMode != upstreamProtocolModeLongStreamH2) || tlsfingerprint.SupportsHTTP2(tlsProfile) {
 		return protocolMode
 	}
 	return upstreamProtocolModeOpenAIH1
 }
 
 func resolveTLSFingerprintTransportProfile(profile *tlsfingerprint.Profile, protocolMode string) *tlsfingerprint.Profile {
-	if protocolMode != upstreamProtocolModeOpenAIH2 {
+	if protocolMode != upstreamProtocolModeOpenAIH2 && protocolMode != upstreamProtocolModeLongStreamH2 {
 		return tlsfingerprint.HTTP1OnlyProfile(profile)
 	}
 	return profile
@@ -1376,7 +1402,7 @@ func buildUpstreamTransport(settings poolSettings, proxyURL *url.URL, protocolMo
 	return transport, nil
 }
 
-// enableOpenAIHTTP2KeepAlive 在 http.Transport 上显式配置 HTTP/2 并启用连接健康探测。
+// enableHTTP2KeepAlive 在 http.Transport 上显式配置 HTTP/2 并启用连接健康探测。
 // Go 默认惰性配置 http2 且 ReadIdleTimeout=0（不发健康 PING），无法检测被代理/NAT
 // 静默掐断的死连接。此处主动设置 ReadIdleTimeout/PingTimeout，让死连接被提前 PING
 // 出并关闭，请求得以重建连接而非挂到 TCP 重传超时。返回底层 *http2.Transport 便于测试。
@@ -1415,7 +1441,7 @@ func enableOpenAIHTTP2KeepAlive(transport *http.Transport) (*http2.Transport, er
 //   - https: 指纹拨号器不支持 TLS 代理，回退普通 transport
 //   - socks5: SOCKS5 代理，使用 SOCKS5ProxyDialer（SOCKS5 隧道 + utls 握手）
 func buildUpstreamTransportWithTLSFingerprint(settings poolSettings, proxyURL *url.URL, profile *tlsfingerprint.Profile, protocolMode string) (http.RoundTripper, error) {
-	useHTTP2 := protocolMode == upstreamProtocolModeOpenAIH2 && tlsfingerprint.SupportsHTTP2(profile)
+	useHTTP2 := (protocolMode == upstreamProtocolModeOpenAIH2 || protocolMode == upstreamProtocolModeLongStreamH2) && tlsfingerprint.SupportsHTTP2(profile)
 	transport := &http.Transport{
 		MaxIdleConns:          settings.maxIdleConns,
 		MaxIdleConnsPerHost:   settings.maxIdleConnsPerHost,

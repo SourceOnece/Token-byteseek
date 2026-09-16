@@ -883,6 +883,8 @@ export default {
         textRouteForceResponses: '强制 Responses',
         textRouteForceChatCompletions: '强制 Chat Completions',
         textRouteTextDisabledHint: '关闭文本生成能力后，文本协议路由设置不适用。',
+        imagesURLToB64JSON: '自动补全图片 Base64',
+        imagesURLToB64JSONDesc: '非流式生图结果只有 URL 时，下载图片并补全 b64_json。明确请求 URL 格式时不转换；下载失败仍返回原始 URL。',
         responsesContinuationSupported: '支持 HTTP Continuation',
         responsesContinuationSupportedDesc: '仅在确认上游支持 HTTP previous_response_id 时开启；嵌套 Sub2API 且内层可能使用 OAuth 时应关闭。该设置不改变文本协议路由。',
         responsesContinuationSupportedEnabled: '允许发送和缓存 previous_response_id',

@@ -86,7 +86,7 @@ func TestOpenAISetupTokenImagesUsesOAuthResponsesPath(t *testing.T) {
 	}
 	parsed := &OpenAIImagesRequest{
 		Endpoint:       openAIImagesGenerationsEndpoint,
-		Model:          "gpt-image-2",
+		Model:          "gpt-image-1",
 		Prompt:         "draw a square",
 		N:              1,
 		ResponseFormat: "b64_json",

@@ -162,6 +162,12 @@ func isAllowedHost(host string, allowlist []string) bool {
 	return false
 }
 
+// IsBlockedHost 报告 host 是否为本机、回环或内网地址字面量。
+// DNS 解析后的地址仍由实际上游请求的解析校验继续检查。
+func IsBlockedHost(host string) bool {
+	return isBlockedHost(strings.ToLower(strings.TrimSpace(host)))
+}
+
 func isBlockedHost(host string) bool {
 	if host == "localhost" || strings.HasSuffix(host, ".localhost") {
 		return true

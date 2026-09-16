@@ -319,7 +319,49 @@ func responsesInputToChatMessagesWithOptions(instructions string, inputRaw json.
 	if err != nil {
 		return nil, err
 	}
-	return normalizeChatMessagesWithToolOutputMedia(built, mediaByCallID), nil
+	normalized := normalizeChatMessagesWithToolOutputMedia(built, mediaByCallID)
+	return normalizeResponsesDerivedChatMessageRoles(normalized), nil
+}
+
+// normalizeResponsesDerivedChatMessageRoles 合并开头的系统指令；中途控制消息保留位置并转为 user，兼容严格的 Chat 上游。
+func normalizeResponsesDerivedChatMessageRoles(messages []ChatMessage) []ChatMessage {
+	isInstructionRole := func(role string) bool {
+		return role == "system" || role == "developer"
+	}
+
+	leading := 0
+	for leading < len(messages) && isInstructionRole(messages[leading].Role) {
+		leading++
+	}
+
+	out := make([]ChatMessage, 0, len(messages))
+	switch leading {
+	case 0:
+		// 没有前置指令，无需合并。
+	case 1:
+		// 单条前置指令原样保留。
+		// 不对正文作不必要的解析重写。
+		out = append(out, messages[0])
+	default:
+		merged := make([]string, 0, leading)
+		for _, m := range messages[:leading] {
+			if text := strings.TrimSpace(chatMessageContentText(m.Content)); text != "" {
+				merged = append(merged, text)
+			}
+		}
+		if len(merged) > 0 {
+			content, _ := json.Marshal(strings.Join(merged, "\n\n"))
+			out = append(out, ChatMessage{Role: "system", Content: content})
+		}
+	}
+
+	for _, m := range messages[leading:] {
+		if isInstructionRole(m.Role) {
+			m.Role = "user"
+		}
+		out = append(out, m)
+	}
+	return out
 }
 
 // buildChatMessagesFromItems 遍历 Responses input items，并追加对应的 Chat message。

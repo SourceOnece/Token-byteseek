@@ -68,6 +68,11 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 		writeGeminiModelsListWithAPIKeyAliases(c, antigravity.FallbackGeminiModelsList(), apiKey)
 		return
 	}
+	// Gemini 原生列表也遵循分组自定义列表，并沿用 Key 精确别名投影。
+	if models, ok := customGeminiModelsList(apiKey.Group); ok {
+		writeGeminiModelsListWithAPIKeyAliases(c, models, apiKey)
+		return
+	}
 
 	account, err := h.geminiCompatService.SelectAccountForAIStudioEndpoints(c.Request.Context(), apiKey.GroupID)
 	if err != nil {
@@ -94,6 +99,18 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 	}
 	res.Body = appendAPIKeyAliasesToGeminiModelsJSON(res.Body, apiKey.ModelMapping)
 	writeUpstreamResponse(c, res)
+}
+
+// customGeminiModelsList 保留分组顺序和 Gemini 原生能力元数据。
+func customGeminiModelsList(group *service.Group) (gemini.ModelsListResponse, bool) {
+	if group == nil || !group.CustomModelsListEnabled() {
+		return gemini.ModelsListResponse{}, false
+	}
+	models := make([]gemini.Model, 0, len(group.ModelsListConfig.Models))
+	for _, modelID := range group.ModelsListConfig.Models {
+		models = append(models, gemini.FallbackModel(modelID))
+	}
+	return gemini.ModelsListResponse{Models: models}, true
 }
 
 // writeGeminiModelsListWithAPIKeyAliases 返回 Gemini 列表并追加当前可请求目标的精确别名。

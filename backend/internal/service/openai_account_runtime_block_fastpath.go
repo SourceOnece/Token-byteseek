@@ -38,9 +38,8 @@ const (
 	openAIOAuth429QuotaReset
 )
 
-// classifyOpenAIOAuth429 区分账号配额耗尽信号与普通瞬时 429。明确窗口达到
-// 100% 时以该窗口为准；没有 100% 标记但包含重置头时，沿用 v179 的兼容语义，
-// 仍视为配额限流信号。
+// classifyOpenAIOAuth429 区分账号配额耗尽信号与普通瞬时 429；只有明确窗口达到
+// 100% 或响应体给出 reset 时间时才进入长期冷却。
 func classifyOpenAIOAuth429(headers http.Header, responseBody []byte) (openAIOAuth429Disposition, *time.Time) {
 	if snapshot := ParseCodexRateLimitHeaders(headers); snapshot != nil {
 		if normalized := snapshot.Normalize(); normalized != nil {
@@ -62,6 +61,7 @@ func classifyOpenAIOAuth429(headers http.Header, responseBody []byte) (openAIOAu
 			}
 		}
 	}
+	// calculateOpenAI429ResetTime 已仅在 100% 窗口返回时间；普通 429 继续走短冷却。
 	if resetAt := calculateOpenAI429ResetTime(headers); resetAt != nil {
 		return openAIOAuth429QuotaReset, resetAt
 	}

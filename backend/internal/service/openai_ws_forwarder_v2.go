@@ -414,6 +414,51 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 	var upstreamWarning *OpenAIUpstreamWarning
 	upstreamTerminalEvent := ""
 
+	clientDisconnected := false
+	clientDisconnectDrainStartedAt := time.Time{}
+	readTimeout := s.openAIWSReadTimeout()
+	upstreamReadCtx := context.WithValue(ctx, openAIWSDrainableReadContextKey{}, true)
+	upstreamReadDetached := false
+	clientRequestCanceled := func() bool { return ctx != nil && errors.Is(ctx.Err(), context.Canceled) }
+	markClientDisconnected := func(cause string) {
+		if clientDisconnected {
+			return
+		}
+		clientDisconnected = true
+		clientDisconnectDrainStartedAt = time.Now()
+		upstreamReadCtx = context.WithoutCancel(ctx)
+		upstreamReadDetached = true
+		logOpenAIWSModeInfo("client_disconnected account_id=%d conn_id=%s cause=%s", account.ID, connID, cause)
+	}
+	markClientRequestCanceled := func() {
+		if clientRequestCanceled() {
+			markClientDisconnected("request_context_canceled")
+		}
+	}
+	// 断开后也保留已知用量、图片与本地推理/风控字段，交给原结算链只记账一次。
+	resultWithUsage := func() *OpenAIForwardResult {
+		return &OpenAIForwardResult{
+			ClientDisconnect:            clientDisconnected,
+			RequestID:                   responseID,
+			Usage:                       *usage,
+			Model:                       originalModel,
+			UpstreamModel:               mappedModel,
+			UpstreamResponseServiceTier: responseModelObserver.ServiceTier(),
+			ImageCount:                  imageCounter.Count(),
+			ImageOutputSizes:            imageCounter.Sizes(),
+			ServiceTier:                 resolvedOpenAIUpstreamServiceTierFromObserver(responseModelObserver, extractOpenAIServiceTier(reqBody)),
+			ReasoningEffort:             ApplyThinkingEnabledFallback(extractOpenAIReasoningEffort(reqBody, mappedModel, originalModel), payloadAsJSONBytes(payload), mappedModel),
+			RequestedReasoningEffort:    CanonicalRequestedReasoningEffortFromReqBody(reqBody, originalModel, mappedModel),
+			Stream:                      reqStream,
+			OpenAIWSMode:                true,
+			UpstreamTerminalEvent:       upstreamTerminalEvent,
+			ResponseHeaders:             lease.HandshakeHeaders(),
+			Duration:                    time.Since(startTime),
+			FirstTokenMs:                firstTokenMs,
+			UpstreamWarning:             upstreamWarning,
+		}
+	}
+
 	var flusher http.Flusher
 	if reqStream {
 		if s.responseHeaderFilter != nil {
@@ -431,7 +476,6 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 		flusher = f
 	}
 
-	clientDisconnected := false
 	flushBatchSize := s.openAIWSEventFlushBatchSize()
 	flushInterval := s.openAIWSEventFlushInterval()
 	pendingFlushEvents := 0
@@ -464,7 +508,7 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 			flushStreamWriter(forceFlush)
 			return
 		}
-		clientDisconnected = true
+		markClientDisconnected("downstream_write_error")
 		logger.LegacyPrintf("service.openai_gateway", "[OpenAI WS Mode] client disconnected, continue draining upstream: account=%d", account.ID)
 	}
 	flushBufferedStreamEvents := func(reason string) {
@@ -491,17 +535,31 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 		}
 	}
 
-	readTimeout := s.openAIWSReadTimeout()
+	// 已连接时保留每次读超时；客户端断开后将它作为整个排水阶段的总预算。
 	var pendingJSONDocuments [][]byte
 
+readLoop:
 	for {
+		markClientRequestCanceled()
 		var message []byte
 		var readErr error
+		readUsedDetachedContext := upstreamReadDetached
 		if len(pendingJSONDocuments) > 0 {
 			message = pendingJSONDocuments[0]
 			pendingJSONDocuments = pendingJSONDocuments[1:]
 		} else {
-			message, readErr = lease.ReadMessageWithContextTimeout(ctx, readTimeout)
+			currentReadTimeout := readTimeout
+			if clientDisconnected {
+				remaining := readTimeout - time.Since(clientDisconnectDrainStartedAt)
+				if remaining <= 0 {
+					lease.MarkBroken()
+					break readLoop
+				}
+				if remaining < currentReadTimeout {
+					currentReadTimeout = remaining
+				}
+			}
+			message, readErr = lease.ReadMessageWithContextTimeout(upstreamReadCtx, currentReadTimeout)
 			if readErr == nil {
 				if documents, repaired := splitOpenAIConcatenatedJSONDocuments(message); repaired {
 					logOpenAIWSModeInfo(
@@ -516,6 +574,7 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 				}
 			}
 		}
+		markClientRequestCanceled()
 		// 拼接文档修复后仍不是完整 JSON 的事件不得进入解析或下游输出链路。
 		if readErr == nil && !json.Valid(message) {
 			eventType, _, _ := parseOpenAIWSEventEnvelope(message)
@@ -537,6 +596,10 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 			return nil, errors.New("upstream websocket returned malformed Responses event JSON after downstream output")
 		}
 		if readErr != nil {
+			// 取消只中断当前等待时不能先淘汰连接，否则后续脱离上下文的排水无从继续。
+			if clientDisconnected && !readUsedDetachedContext && errors.Is(readErr, context.Canceled) && clientRequestCanceled() {
+				continue
+			}
 			lease.MarkBroken()
 			closeStatus, closeReason := summarizeOpenAIWSReadCloseError(readErr)
 			logOpenAIWSModeInfo(
@@ -555,11 +618,11 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 				truncateOpenAIWSLogValue(firstEventType, openAIWSLogValueMaxLen),
 				truncateOpenAIWSLogValue(lastEventType, openAIWSLogValueMaxLen),
 			)
-			if !wroteDownstream {
-				return nil, wrapOpenAIWSFallback(classifyOpenAIWSReadFallbackReason(readErr), readErr)
-			}
 			if clientDisconnected {
 				break
+			}
+			if !wroteDownstream {
+				return nil, wrapOpenAIWSFallback(classifyOpenAIWSReadFallbackReason(readErr), readErr)
 			}
 			setOpsUpstreamError(c, 0, sanitizeUpstreamErrorMessage(readErr.Error()), "")
 			return nil, fmt.Errorf("openai ws read event: %w", readErr)
@@ -829,7 +892,13 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 		}
 	}
 
+	if clientDisconnected && terminalEventCount == 0 {
+		return resultWithUsage(), fmt.Errorf("openai ws stream incomplete after client disconnect: %w", context.Canceled)
+	}
 	if !reqStream {
+		if clientDisconnected {
+			return resultWithUsage(), nil
+		}
 		if len(finalResponse) == 0 {
 			logOpenAIWSModeInfo(
 				"missing_final_response account_id=%d conn_id=%s events=%d token_events=%d terminal_events=%d wrote_downstream=%v",
@@ -899,25 +968,7 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 		clientDisconnected,
 	)
 
-	return &OpenAIForwardResult{
-		RequestID:                   responseID,
-		Usage:                       *usage,
-		Model:                       originalModel,
-		UpstreamModel:               mappedModel,
-		UpstreamResponseServiceTier: responseModelObserver.ServiceTier(),
-		ImageCount:                  imageCounter.Count(),
-		ImageOutputSizes:            imageCounter.Sizes(),
-		ServiceTier:                 resolvedOpenAIUpstreamServiceTierFromObserver(responseModelObserver, extractOpenAIServiceTier(reqBody)),
-		ReasoningEffort:             ApplyThinkingEnabledFallback(extractOpenAIReasoningEffort(reqBody, mappedModel, originalModel), payloadAsJSONBytes(payload), mappedModel),
-		RequestedReasoningEffort:    CanonicalRequestedReasoningEffortFromReqBody(reqBody, originalModel, mappedModel),
-		Stream:                      reqStream,
-		OpenAIWSMode:                true,
-		UpstreamTerminalEvent:       upstreamTerminalEvent,
-		ResponseHeaders:             lease.HandshakeHeaders(),
-		Duration:                    time.Since(startTime),
-		FirstTokenMs:                firstTokenMs,
-		UpstreamWarning:             upstreamWarning,
-	}, nil
+	return resultWithUsage(), nil
 }
 
 // stripCodexSparkImageGenerationToolFromRawPayload 会在上游模型为 Spark 时，从原始

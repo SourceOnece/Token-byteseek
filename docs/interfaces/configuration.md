@@ -27,6 +27,8 @@
 <a id="configuration_sources"></a>
 ## 进程配置来源
 
+`SUB2API_CLAUDE_CLI_VERSION` 属于 Claude 包初始化时读取的可选环境覆盖，不是数据库设置；四种 Compose 模板会透传，留空使用内置版本，修改后需重建应用容器。格式、最小版本和请求头/归因一致性见 [Anthropic 上游](anthropic_upstream.md)。
+
 `config.load` 使用 Viper，最终优先级为：
 
 ```text

@@ -1133,8 +1133,11 @@ func OpsErrorLoggerMiddleware(ops *service.OpsService) gin.HandlerFunc {
 			} else {
 				// 已固化为 200 的流内错误按请求失败记录；其余重试或切号事件保留
 				// 2xx 状态，只用于展示被恢复的上游健康异常。
-				if len(service.GetOpsStreamErrors(c)) > 0 {
+				if streamErrs := service.GetOpsStreamErrors(c); len(streamErrs) > 0 {
 					logOpsStreamError(c, ops, status)
+					if opsStreamErrorsAllRequestScoped(streamErrs) {
+						logOpsRecoveredUpstream(c, ops, status)
+					}
 				} else {
 					logOpsRecoveredUpstream(c, ops, status)
 				}
@@ -1423,9 +1426,22 @@ func logOpsStreamError(c *gin.Context, ops *service.OpsService, wireStatus int) 
 	}
 }
 
+// opsStreamErrorsAllRequestScoped 区分请求本身的内容拒绝与账号故障。
+func opsStreamErrorsAllRequestScoped(streamErrs []service.OpsStreamError) bool {
+	if len(streamErrs) == 0 {
+		return false
+	}
+	for _, streamErr := range streamErrs {
+		if !streamErr.RequestScoped {
+			return false
+		}
+	}
+	return true
+}
+
 func logOpsStreamErrorValue(c *gin.Context, ops *service.OpsService, wireStatus int, streamErr service.OpsStreamError) {
 	// 命中 skip_monitoring=true 透传规则的请求跳过落库，与其它分支一致。
-	if streamErr.SkipMonitoring || (streamErr.Turn == 0 && shouldSkipFinalOpsFailure(c)) {
+	if streamErr.SkipMonitoring || (streamErr.Turn == 0 && !streamErr.RequestScoped && shouldSkipFinalOpsFailure(c)) {
 		return
 	}
 
@@ -1441,8 +1457,14 @@ func logOpsStreamErrorValue(c *gin.Context, ops *service.OpsService, wireStatus 
 	}
 	normalizedType := normalizeOpsErrorType(streamErr.ErrType, streamErr.Code, streamErr.Message)
 	phase, isBusinessLimited, errorOwner, errorSource := classifyOpsErrorLog(c, normalizedType, streamErr.Message, streamErr.Code, classifyStatus)
+	if streamErr.RequestScoped {
+		phase = classifyOpsPhase(normalizedType, streamErr.Message, streamErr.Code)
+		isBusinessLimited = true
+		errorOwner = classifyOpsErrorOwner(phase, streamErr.Message)
+		errorSource = classifyOpsErrorSource(phase, streamErr.Message)
+	}
 	recordedStatus := wireStatus
-	if streamErr.CountTowardsSLA && streamErr.IntendedStatus >= 400 {
+	if (streamErr.CountTowardsSLA || streamErr.RequestScoped) && streamErr.IntendedStatus >= 400 {
 		recordedStatus = streamErr.IntendedStatus
 	}
 	errorBody := ""
@@ -1493,8 +1515,8 @@ func logOpsStreamErrorValue(c *gin.Context, ops *service.OpsService, wireStatus 
 			}
 			return ""
 		}(),
-		// 就地 SSE 错误只出现在流式请求上。
-		Stream:           true,
+		// 带内错误也可能来自非流式 Gemini JSON 正文。
+		Stream:           !streamErr.NonStream,
 		InboundEndpoint:  GetInboundEndpoint(c),
 		UpstreamEndpoint: GetUpstreamEndpoint(c, platform),
 		RequestedModel:   modelName,
@@ -1535,8 +1557,14 @@ func logOpsStreamErrorValue(c *gin.Context, ops *service.OpsService, wireStatus 
 		CreatedAt: time.Now(),
 	}
 	applyOpsLatencyFieldsFromContext(c, entry)
-	applyOpsUpstreamFieldsFromContext(c, entry)
-	if streamErr.Turn > 0 {
+	if !streamErr.RequestScoped {
+		applyOpsUpstreamFieldsFromContext(c, entry)
+	} else {
+		entry.AccountID = nil
+		entry.UpstreamModel = ""
+		entry.UpstreamEndpoint = ""
+	}
+	if streamErr.Turn > 0 && !streamErr.RequestScoped {
 		applyOpsStreamErrorSnapshot(entry, streamErr)
 	}
 

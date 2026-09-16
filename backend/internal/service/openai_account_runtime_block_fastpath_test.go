@@ -132,7 +132,7 @@ func TestOpenAIStream429IgnoresSuccessfulQuotaSnapshotHeaders(t *testing.T) {
 	}
 }
 
-func TestOpenAIHTTP429StillUsesQuotaResetHeaders(t *testing.T) {
+func TestOpenAIHTTP429WithoutExhaustionDoesNotCreateLongRuntimeBlock(t *testing.T) {
 	svc := &OpenAIGatewayService{rateLimitService: &RateLimitService{}}
 	account := &Account{ID: 422, Platform: PlatformOpenAI, Type: AccountTypeOAuth}
 	svc.openaiOAuth429RetryStartedAt.Store(account.ID, time.Now().Add(-openAIOAuth429RetryWindow-time.Second))
@@ -147,7 +147,8 @@ func TestOpenAIHTTP429StillUsesQuotaResetHeaders(t *testing.T) {
 	require.True(t, ok)
 	blockedUntil, ok := value.(time.Time)
 	require.True(t, ok)
-	require.Greater(t, time.Until(blockedUntil), 6*24*time.Hour, "real HTTP 429 must retain the upstream quota reset")
+	// 重试窗口耗尽后仍保留短冷却，不能拿未耗尽的周配额倒计时封禁数天。
+	require.InDelta(t, openAIOAuth429FallbackCooldown.Seconds(), time.Until(blockedUntil).Seconds(), 1)
 }
 
 func TestOpenAI429FastPath_SparkQuotaOnlyBlocksSparkModel(t *testing.T) {
