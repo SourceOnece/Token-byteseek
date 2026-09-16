@@ -364,7 +364,7 @@ func scheduleOllamaCloudUsageActivity(deferred *DeferredService, account *Accoun
 	deferred.ScheduleLastUsedUpdate(account.ID)
 }
 
-// OllamaCloudUsageService 刷新官方设置页 HTML，不影响账号调度状态。
+// OllamaCloudUsageService 常规刷新只更新用量；429 事件回调由限流服务有条件写回调度状态。
 type OllamaCloudUsageService struct {
 	accountRepo             AccountRepository
 	httpUpstream            HTTPUpstream
@@ -385,6 +385,11 @@ type OllamaCloudUsageService struct {
 	lockCache    LeaderLockCache
 	db           *sql.DB
 	instanceID   string
+	// 429 事件使用单一有界协调队列，与定时刷新共享账号/凭据组结果。
+	probeMu     sync.Mutex
+	probeQueue  []ollamaCloudUsageProbeRequest
+	probeWake   chan struct{}
+	probeGroups map[string]ollamaCloudUsageProbeGroupEntry
 }
 
 func NewOllamaCloudUsageService(
@@ -406,6 +411,8 @@ func NewOllamaCloudUsageService(
 		refreshSlots:            make(chan struct{}, ollamaCloudUsageConcurrency),
 		now:                     time.Now,
 		instanceID:              uuid.NewString(),
+		probeWake:               make(chan struct{}, 1),
+		probeGroups:             make(map[string]ollamaCloudUsageProbeGroupEntry),
 	}
 }
 
@@ -436,9 +443,10 @@ func (s *OllamaCloudUsageService) Start() {
 		return
 	}
 	s.started = true
-	s.wg.Add(1)
+	s.wg.Add(2)
 	s.mu.Unlock()
 	go s.runLoop()
+	go s.probeLoop()
 }
 
 func (s *OllamaCloudUsageService) Stop() {

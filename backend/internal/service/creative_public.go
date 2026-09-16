@@ -645,6 +645,12 @@ func (s *CreativePublicService) creativeModelsForGroup(ctx context.Context, grou
 			}
 		}
 	}
+	// 创作台走 JWT 而非网关 Key 中间件，目录和创建任务必须在这里共同收窄。
+	for model := range out {
+		if !group.ModelAllowlist.Allows(model) {
+			delete(out, model)
+		}
+	}
 	return out, nil
 }
 

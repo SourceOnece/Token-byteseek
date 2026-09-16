@@ -152,6 +152,19 @@ func TestAccountTestService_AdaptiveKimiAlsoTestsResponsesEndpoint(t *testing.T)
 	require.Contains(t, recorder.Body.String(), "已通过原生 /responses 验证")
 }
 
+func TestAccountTestService_MiniMaxAdaptiveUsesEachConfiguredEndpoint(t *testing.T) {
+	account := adaptiveCNAccountTestAccount(310, PlatformMiniMax)
+	svc, upstream := adaptiveCNAccountTestService(account, adaptiveCNChatTestResponse(), adaptiveCNAnthropicTestResponse(), adaptiveCNResponsesTestResponse())
+	c, recorder := newTestContext()
+	require.NoError(t, svc.TestAccountConnection(c, account.ID, "MiniMax-M3", "test", AccountTestModeDefault))
+	require.Len(t, upstream.requests, 3)
+	for i, target := range []string{"http://chat.example/v1/chat/completions", "http://anthropic.example/v1/messages", "http://responses.example/v1/responses"} {
+		require.Equal(t, target, upstream.requests[i].URL.String())
+		require.Equal(t, "MiniMax-M3", gjson.GetBytes(upstream.bodies[i], "model").String())
+	}
+	require.Contains(t, recorder.Body.String(), `"type":"test_complete"`)
+}
+
 func TestAccountTestService_AdaptiveStopsAndNamesFailingEndpoint(t *testing.T) {
 	account := adaptiveCNAccountTestAccount(303, PlatformDeepseek)
 	svc, upstream := adaptiveCNAccountTestService(

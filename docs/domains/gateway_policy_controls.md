@@ -54,6 +54,10 @@ endpoint capability 还会由账号类型和探测结果继续收窄。例如 Em
 
 Group 可以启用模型路由、默认映射和 OpenAI Messages 专用模型配置。OpenAI Messages 专用配置中的精确规则优先于系列规则，只有非空目标值才生效；空配置或空系列字段不使用内置默认模型，当前渠道模型保持不变并继续进入账号层。Channel 决定分组内的映射、价格和功能；Account 则处理供应商或站点差异。可见模型只包含当前可请求结果，未知或歧义定价以未定价表达，不使用猜测价格。
 
+`model_allowlist` 是独立的分组调用准入配置，默认 `enabled=false`。旧 `models_list_config` 仍仅控制展示，不重命名、不自动迁移为强制规则。启用后列表不能为空，允许精确项及末尾 `*` 通配，大小写去重保序。HTTP 检查复合 Key 去前缀后、Key 重定向前的客户端模型；JSON 重复键/大小写变体和 multipart 重复字段的所有候选都要命中。Gemini 从路径提取，Live 从 session 提取，图片缺省模型补充检查；读取正文后回填不可变已读内容，不改变原大小限制或解压规则。
+
+Responses WS 首帧在选号前检查，后续 `response.create` 和 `session.update` 在 R→C→U 映射前通过现有路由 hook 检查；不能拿已改写的 U 去匹配客户端别名。省略模型沿用实际客户端会话模型。兜底分组也重新检查其规则；公开模型列表在 Key 别名投影后过滤，复合列表在加前缀前按各自分组过滤，模型广场及批量图片/Gemini 列表同样收窄。规则不是账号模型能力声明，命中后仍需通过原有账号/渠道资格。新列由迁移 272 增加；鉴权快照版本 38 和持久失效 outbox 覆盖普通/复合 Key，避免继续读取不含规则的旧快照。
+
 Group 的 fallback 包括普通 fallback、invalid-request fallback 和 unavailable fallback。它们是显式的跨分组策略：目标分组仍要重新执行平台、Key、模型、权限、计费和 `scheduler_type` 约束，不能只把原账号列表替换掉。循环、目标失效或策略不匹配必须终止。
 
 `scheduler_type` 仅属于 Group，`basic` 为默认值，`advanced` 表示该分组在硬过滤后使用通用高级评分。高级调度的 Top-K、评分权重、粘性加权和订阅优先是网关通用设置，不存在全局启用开关；设置不能把基础分组隐式切换为高级，也不能让 OpenAI/Grok 特有能力作用于不具备该能力的账号。

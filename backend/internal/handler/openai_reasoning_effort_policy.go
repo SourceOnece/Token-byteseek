@@ -4,19 +4,43 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
 	"github.com/TokenFlux/TokenRouter/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 )
 
-// openAIReasoningEffortPolicyForRequest 返回当前请求最终落到 OpenAI 分组时的策略。
+// reasoningEffortPolicyForRequest 返回请求目标平台对应的分组策略。
 // 复合 Key 已由鉴权中间件投影到具体分组，这里不重新引入旧的复合平台解析层。
-func openAIReasoningEffortPolicyForRequest(c *gin.Context, apiKey *service.APIKey) (string, []service.ReasoningEffortMapping, string, bool) {
-	if apiKey == nil || apiKey.Group == nil || apiKey.Group.Platform != service.PlatformOpenAI {
+func reasoningEffortPolicyForRequest(c *gin.Context, apiKey *service.APIKey, platform string) (string, []service.ReasoningEffortMapping, string, bool) {
+	if apiKey == nil || apiKey.Group == nil || apiKey.Group.Platform != platform {
 		return "", nil, "", false
 	}
-	if effectiveAPIKeyPlatform(c, apiKey) != service.PlatformOpenAI {
+	if effectiveAPIKeyPlatform(c, apiKey) != platform {
 		return "", nil, "", false
+	}
+	return apiKey.Group.MaxReasoningEffort,
+		apiKey.Group.ReasoningEffortMappings,
+		apiKey.Group.MaxReasoningEffortOverLimit,
+		true
+}
+
+// openAIReasoningEffortPolicyForRequest 返回 OpenAI 分组策略。
+func openAIReasoningEffortPolicyForRequest(c *gin.Context, apiKey *service.APIKey) (string, []service.ReasoningEffortMapping, string, bool) {
+	return reasoningEffortPolicyForRequest(c, apiKey, service.PlatformOpenAI)
+}
+
+// anthropicReasoningEffortPolicyForRequest 返回 Anthropic 分组策略。
+func anthropicReasoningEffortPolicyForRequest(c *gin.Context, apiKey *service.APIKey) (string, []service.ReasoningEffortMapping, string, bool) {
+	// /v1/messages 由通用 Anthropic handler 独立承接，不能使用 OpenAI 兼容
+	// handler 的默认平台推断，否则 Anthropic 分组会被误判为 OpenAI。
+	if apiKey == nil || apiKey.Group == nil || apiKey.Group.Platform != service.PlatformAnthropic {
+		return "", nil, "", false
+	}
+	if c != nil {
+		if platform, forced := middleware.GetForcePlatformFromContext(c); forced && platform != service.PlatformAnthropic {
+			return "", nil, "", false
+		}
 	}
 	return apiKey.Group.MaxReasoningEffort,
 		apiKey.Group.ReasoningEffortMappings,
@@ -29,6 +53,18 @@ func applyOpenAIReasoningEffortPolicyForRequest(c *gin.Context, apiKey *service.
 	model := strings.TrimSpace(gjson.GetBytes(body, "model").String())
 	bindRequestedReasoningEffort(c, body, model)
 	maxEffort, mappings, overLimit, ok := openAIReasoningEffortPolicyForRequest(c, apiKey)
+	if !ok {
+		return body, false, nil
+	}
+	return service.ApplyOpenAIReasoningEffortPolicy(body, maxEffort, mappings, overLimit)
+}
+
+// applyAnthropicReasoningEffortPolicyForRequest 在 Anthropic Messages/Responses
+// 请求转发前执行分组策略，支持 output_config.effort 和 reasoning.effort。
+func applyAnthropicReasoningEffortPolicyForRequest(c *gin.Context, apiKey *service.APIKey, body []byte) ([]byte, bool, error) {
+	model := strings.TrimSpace(gjson.GetBytes(body, "model").String())
+	bindRequestedReasoningEffort(c, body, model)
+	maxEffort, mappings, overLimit, ok := anthropicReasoningEffortPolicyForRequest(c, apiKey)
 	if !ok {
 		return body, false, nil
 	}

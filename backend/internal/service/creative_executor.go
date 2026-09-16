@@ -106,7 +106,7 @@ func (e *CreativeExecutor) Prepare(ctx context.Context, run CreativeRun) (*Creat
 	if e == nil {
 		return nil, errors.New("creative executor is not configured")
 	}
-	platform, err := e.resolveGroupPlatform(ctx, run.GroupID)
+	platform, err := e.resolveGroupPlatform(ctx, run.GroupID, run.Model)
 	if err != nil {
 		return nil, err
 	}
@@ -267,13 +267,17 @@ func (e *CreativeExecutor) reportScheduleResult(execution *CreativeExecution, ac
 }
 
 // resolveGroupPlatform 读取分组平台；平台决定执行协议分派。
-func (e *CreativeExecutor) resolveGroupPlatform(ctx context.Context, groupID int64) (string, error) {
+func (e *CreativeExecutor) resolveGroupPlatform(ctx context.Context, groupID int64, model string) (string, error) {
 	if e.groupRepo == nil {
 		return "", errors.New("creative group repository is not configured")
 	}
 	group, err := e.groupRepo.GetByIDLite(ctx, groupID)
 	if err != nil || group == nil {
 		return "", creativeNonRetryableError("creative group %d is unavailable", groupID)
+	}
+	// 硬准入规则作用于未执行任务；拒绝后由原 worker 失败路径释放预占。
+	if !group.ModelAllowlist.Allows(model) {
+		return "", creativeNonRetryableError("creative model is not allowed for group %d", groupID)
 	}
 	switch group.Platform {
 	case PlatformOpenAI, PlatformGrok, PlatformGemini:

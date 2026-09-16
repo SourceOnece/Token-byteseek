@@ -1,11 +1,19 @@
 <template>
-  <div v-if="siteKey" class="turnstile-wrapper">
+  <div v-if="siteKey" class="turnstile-wrapper relative">
+    <div
+      v-if="loading"
+      role="status"
+      class="turnstile-loading absolute inset-0 flex items-center justify-center text-sm font-bold text-bh-blue dark:text-blue-300"
+    >
+      {{ t('auth.captchaLoading') }}
+    </div>
     <div ref="containerRef" class="turnstile-container"></div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 interface TurnstileRenderOptions {
   sitekey: string
@@ -47,6 +55,8 @@ const emit = defineEmits<{
   (e: 'error'): void
 }>()
 
+const { t } = useI18n()
+const loading = ref(true)
 const containerRef = ref<HTMLElement | null>(null)
 const widgetId = ref<string | null>(null)
 const scriptLoaded = ref(false)
@@ -141,6 +151,8 @@ onMounted(async () => {
   } catch (error) {
     console.error('Failed to initialize Turnstile:', error)
     emit('error')
+  } finally {
+    loading.value = false
   }
 })
 
@@ -166,6 +178,11 @@ watch(
 </script>
 
 <style scoped>
+/* 验证加载占位复用全站纸色、直角和硬边框。 */
+.turnstile-loading {
+  border: var(--bh-border);
+  background: var(--bh-paper);
+}
 .turnstile-wrapper {
   width: 100%;
 }

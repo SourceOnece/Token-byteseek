@@ -13,12 +13,22 @@ const openAIReasoningEffortValues = [
   "max",
 ] as const;
 
+const anthropicReasoningEffortValues = [
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+
 // none 不属于可排序的分组上限，但可作为映射规则的输入或输出，
 // 由分组管理员按实际上游模型的协议能力决定是否改写。
 const openAIReasoningEffortMappingValues = [
   "none",
   ...openAIReasoningEffortValues,
 ] as const;
+
+const anthropicReasoningEffortMappingValues = anthropicReasoningEffortValues;
 
 export const reasoningEffortOverLimitDowngrade = "downgrade";
 export const reasoningEffortOverLimitDeny = "deny";
@@ -32,12 +42,20 @@ const reasoningEffortMatchTypes: readonly ReasoningEffortMatchType[] = [
 const reasoningEffortValuesForPlatform = (
   platform: GroupPlatform,
 ): readonly string[] =>
-  platform === "openai" ? openAIReasoningEffortValues : [];
+  platform === "anthropic"
+    ? anthropicReasoningEffortValues
+    : platform === "openai"
+      ? openAIReasoningEffortValues
+      : [];
 
 const reasoningEffortMappingValuesForPlatform = (
   platform: GroupPlatform,
 ): readonly string[] =>
-  platform === "openai" ? openAIReasoningEffortMappingValues : [];
+  platform === "anthropic"
+    ? anthropicReasoningEffortMappingValues
+    : platform === "openai"
+      ? openAIReasoningEffortMappingValues
+      : [];
 
 export function reasoningEffortOptionsForPlatform(platform: GroupPlatform) {
   return reasoningEffortValuesForPlatform(platform).map((value) => ({

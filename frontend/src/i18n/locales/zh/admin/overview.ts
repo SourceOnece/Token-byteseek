@@ -461,6 +461,13 @@ affiliates: {
       title: '用户管理',
       description: '管理用户账户和权限',
       createUser: '创建用户',
+      bulkDelete: {
+        action: '批量删除（{count}）',
+        title: '删除已选用户',
+        confirm: '确定删除已选的 {count} 个用户吗？此操作无法撤销。管理员账号无法删除。',
+        success: '已删除 {count} 个用户',
+        failed: '{count} 个用户删除失败，已保留选中，可重试。'
+      },
       bulkLimits: {
         action: '批量设置限制（{count}）',
         title: '批量设置用户限制',
@@ -891,7 +898,7 @@ affiliates: {
         rpmLimitHint: '每用户在本分组每分钟最大请求数，0 = 不限制；一旦设置即接管该用户的限流（覆盖用户级 rpm_limit）',
         maxReasoningEffort: '推理强度上限',
         maxReasoningEffortUnlimited: '不限制（跟随请求）',
-        maxReasoningEffortHint: '仅限制客户端主动请求的 OpenAI reasoning effort；不会为缺省请求主动开启推理。上限优先级高于推理强度映射。',
+        maxReasoningEffortHint: '仅限制客户端主动请求的 OpenAI 或 Anthropic reasoning effort；不会为缺省请求主动开启推理。上限优先级高于推理强度映射。',
         maxReasoningEffortOverLimit: '超限访问控制',
         maxReasoningEffortOverLimitDowngrade: '超过上限时自动降档',
         maxReasoningEffortOverLimitDeny: '拒绝访问',
@@ -1017,6 +1024,8 @@ affiliates: {
         kimi: 'Kimi',
         zhipu: 'Zhipu GLM',
         deepseek: 'DeepSeek',
+        minimax: 'MiniMax',
+        opencode_go: 'OpenCode',
       },
       saving: '保存中...',
       noGroups: '暂无分组',
@@ -1158,6 +1167,7 @@ affiliates: {
         peakMultiplier: '高峰倍率',
         multiplierHint: '作用于 token 计费倍率；token 计费的图片 token 同样适用，0 表示高峰 token 请求按 0 倍计费'
       },
+      modelAllowlist: { title: '启用模型调用白名单', models: '允许调用的模型' },
       modelsList: {
         title: '自定义 /v1/models 模型列表',
         hint: '仅影响 /v1/models 展示结果，不影响白名单模型调用和账号调度。',

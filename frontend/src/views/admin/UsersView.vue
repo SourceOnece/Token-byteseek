@@ -237,6 +237,16 @@
             </button>
 
             <!-- Create User Button (full width on mobile, auto width on desktop) -->
+            <button
+              v-if="selectedCount > 0"
+              class="btn btn-danger h-9 flex-none whitespace-nowrap px-3"
+              data-test="bulk-delete-users"
+              :disabled="bulkDeleting"
+              @click="bulkDeleteIds = [...selectedIds]"
+            >
+              <Icon name="trash" size="sm" class="mr-2" />
+              {{ t('admin.users.bulkDelete.action', { count: selectedCount }) }}
+            </button>
             <button @click="showCreateModal = true" class="btn btn-primary h-9 flex-none whitespace-nowrap px-3 md:flex-initial">
               <Icon name="plus" size="md" class="mr-2" />
               {{ t('admin.users.createUser') }}
@@ -718,6 +728,16 @@
     </Teleport>
 
     <ConfirmDialog :show="showDeleteDialog" :title="t('admin.users.deleteUser')" :message="t('admin.users.deleteConfirm', { email: deletingUser?.email })" :danger="true" @confirm="confirmDelete" @cancel="showDeleteDialog = false" />
+    <ConfirmDialog
+      :show="bulkDeleteIds.length > 0"
+      :title="t('admin.users.bulkDelete.title')"
+      :message="t('admin.users.bulkDelete.confirm', { count: bulkDeleteIds.length })"
+      :confirm-text="t('common.delete')"
+      :loading="bulkDeleting"
+      danger
+      @confirm="confirmBulkDelete"
+      @cancel="bulkDeleteIds = []"
+    />
     <UserCreateModal :show="showCreateModal" @close="showCreateModal = false" @success="loadUsers" />
     <UserEditModal :show="showEditModal" :user="editingUser" @close="closeEditModal" @success="loadUsers" />
     <BulkEditUserModal
@@ -1273,7 +1293,8 @@ const {
   selectedIds,
   selectedCount,
   setSelectedIds,
-  clear: clearSelection
+  clear: clearSelection,
+  removeMany: removeSelectedIds
 } = useTableSelection<AdminUser>({
   rows: sortedUsers,
   getId: (user) => user.id
@@ -1300,6 +1321,8 @@ const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showBulkEditModal = ref(false)
 const showDeleteDialog = ref(false)
+const bulkDeleteIds = ref<number[]>([])
+const bulkDeleting = ref(false)
 const showApiKeysModal = ref(false)
 const showAttributesModal = ref(false)
 const showPlatformQuotaModal = ref(false)
@@ -1760,6 +1783,35 @@ const confirmDelete = async () => {
   } catch (error: any) {
     appStore.showError(error.response?.data?.detail || t('admin.users.failedToDelete'))
     console.error('Error deleting user:', error)
+  }
+}
+
+const confirmBulkDelete = async () => {
+  if (bulkDeleting.value || bulkDeleteIds.value.length === 0) return
+  // 确认后固定 ID 快照，新选择不能被本次删除带走。
+  const ids = [...new Set(bulkDeleteIds.value)]
+  bulkDeleteIds.value = []
+  bulkDeleting.value = true
+  const deletedIds: number[] = []
+  try {
+    for (const id of ids) {
+      try {
+        await adminAPI.users.delete(id)
+        deletedIds.push(id)
+      } catch (error) {
+        console.error('Error deleting user:', error)
+      }
+    }
+    removeSelectedIds(deletedIds)
+    if (deletedIds.length > 0) {
+      appStore.showSuccess(t('admin.users.bulkDelete.success', { count: deletedIds.length }))
+      pagination.page = 1
+    }
+    const failed = ids.length - deletedIds.length
+    if (failed > 0) appStore.showError(t('admin.users.bulkDelete.failed', { count: failed }))
+    await loadUsers()
+  } finally {
+    bulkDeleting.value = false
   }
 }
 

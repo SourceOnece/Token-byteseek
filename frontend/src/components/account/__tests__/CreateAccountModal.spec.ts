@@ -378,6 +378,25 @@ describe('CreateAccountModal OpenAI account options', () => {
     })
   })
 
+  it.each(['payg', 'coding'])('保存 MiniMax %s 账号及独立端点，不改成 OpenAI 平台', async mode => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'MiniMax')
+    if (mode === 'coding') await selectButtonByText(wrapper, 'admin.accounts.cnProviders.accountMode.coding')
+    await wrapper.get('form#create-account-form input[type="text"]').setValue('MiniMax test')
+    await wrapper.get('form#create-account-form input[type="password"]').setValue('sk-minimax-test')
+    await wrapper.get('[data-testid="cn-adaptive-base-url-responses"]').setValue('https://relay.example/custom/responses')
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(createAccountMock).toHaveBeenCalledTimes(1)
+    expect(createAccountMock.mock.calls[0]?.[0]).toMatchObject({
+      platform: 'minimax', type: 'apikey', credentials: {
+        account_mode: mode, api_protocol: 'adaptive', base_url: 'https://api.minimaxi.com/v1',
+        api_base_urls: { chat_completions: 'https://api.minimaxi.com/v1', anthropic: 'https://api.minimaxi.com/anthropic', responses: 'https://relay.example/custom/responses' }
+      }
+    })
+    wrapper.unmount()
+  })
+
   it('submits adaptive Kimi Coding Plan Responses endpoint', async () => {
     const wrapper = mountModal()
     await selectButtonByText(wrapper, 'Kimi')
@@ -415,6 +434,23 @@ describe('CreateAccountModal OpenAI account options', () => {
       base_url: 'https://relay.example.com/v1',
       api_key: 'sk-relay'
     })
+  })
+
+  it.each(['go', 'zen'])('OpenCode %s 模式保存明确空协议规则和自定义端点', async mode => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenCode')
+    if (mode === 'zen') await selectButtonByText(wrapper, 'admin.accounts.cnProviders.accountMode.zen')
+    await wrapper.get('form#create-account-form input[type="text"]').setValue('OpenCode test')
+    await wrapper.get('form#create-account-form input[type="password"]').setValue('sk-opencode-test')
+    await wrapper.get('[data-testid="cn-adaptive-base-url-anthropic"]').setValue('https://relay.example/proxy/v1')
+    wrapper.getComponent({ name: 'OpenCodeGoProtocolRulesEditor' }).vm.$emit('update:rows', [])
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(createAccountMock).toHaveBeenCalledTimes(1)
+    expect(createAccountMock.mock.calls[0]?.[0]).toMatchObject({
+      platform: 'opencode_go', type: 'apikey', credentials: { account_mode: mode, api_protocol: 'adaptive', protocol_rules: [], api_base_urls: { anthropic: 'https://relay.example/proxy/v1' } }
+    })
+    wrapper.unmount()
   })
 
   it('exposes Agent Identity in the OpenAI authorization methods', async () => {

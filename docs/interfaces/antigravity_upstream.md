@@ -40,6 +40,8 @@ Claude Code 可把 base URL 指向部署地址的 `/antigravity`，认证值仍�
 
 ## 协议适配
 
+混合内置搜索/代码执行与客户端函数工具时，v1internal 请求优先保留客户端函数，移除冲突的内置工具，不再强制切到纯搜索模型；只有内置搜索时沿用原搜索路径。无工具的推理请求也写出 `toolConfig`。这个限制不是所有 Gemini 接口的全局规则，只适用于本适配器。
+
 Antigravity 分组支持 Messages、Responses、Chat 和 Gemini GenerateContent，新建时默认启用 Messages 与 Gemini GenerateContent；四项都可关闭，迁移前已有分组启用四项。通用入口和 `/antigravity/*` 别名都按最终分组执行对应协议门禁；Gemini 模型列表 GET 不受生成协议开关影响。
 
 Anthropic Messages 经过 Antigravity request transformer 生成上游 Gemini/内部请求形状，响应和 SSE 再恢复为 Anthropic 协议。工具定义、tool choice、thinking、缓存断点、图片输入、token 用量和停止原因都需要双向转换；schema cleaner 会移除上游不接受的 JSON Schema 表达。
@@ -60,6 +62,8 @@ Chat Completions / Responses
 兼容层把 Chat 请求中的正数 `max_completion_tokens`（缺省时使用 `max_tokens`）在转换为 Anthropic 请求前封顶为 64000；零、负数或缺省值不会覆盖转换器已有的默认上限，避免超大客户端参数被上游拒绝。
 
 ## 混合调度
+
+OAuth token 缓存始终按账号 ID 隔离，不再因两个账号共享 project ID 复用令牌；刷新时同时清理旧 project 键与当前账号键。OAuth 结果可返回 `plan_type`，浏览器创建/重授权沿用实际识别结果，不凭空填写计划。刷新成功但 project 暂不可用时仍返回更新后的账号并展示警告，不能把警告对象当账号覆盖列表。
 
 Antigravity 账号 `extra.mixed_scheduling` 为布尔 `true` 时，可以作为 Anthropic 或 Gemini 原生分组的候选账号。缺失、`false` 或字符串 `"true"` 都视为未启用。候选账号还必须属于目标分组、状态 active/schedulable，并满足模型、额度、并发、资格和 endpoint 能力。
 

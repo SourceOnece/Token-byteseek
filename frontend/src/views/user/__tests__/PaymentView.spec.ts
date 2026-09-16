@@ -67,6 +67,8 @@ const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
 const bridgeInvoke = vi.hoisted(() => vi.fn())
 const translate = vi.hoisted(() => vi.fn((key: string) => key))
+const purchaseSettings = vi.hoisted(() => ({ subscription_enabled: true }))
+beforeEach(() => { purchaseSettings.subscription_enabled = true })
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -113,6 +115,7 @@ vi.mock('@/stores/subscriptions', () => ({
 
 vi.mock('@/stores', () => ({
   useAppStore: () => ({
+    cachedPublicSettings: purchaseSettings,
     showError,
     showInfo,
     showWarning,
@@ -388,6 +391,18 @@ async function mountSubscriptionPlanList(planCount: number) {
 }
 
 describe('PaymentView subscription plan group matching', () => {
+  it('仅充值模式忽略订阅购买链接，但仍读取已有权益', async () => {
+    purchaseSettings.subscription_enabled = false
+    const wrapper = await mountSubscriptionConfirm()
+    const state = wrapper.vm as unknown as { activeTab: string; selectedPlan: SubscriptionPlan | null }
+    expect(state.activeTab).toBe('recharge')
+    expect(state.selectedPlan).toBeNull()
+    expect(wrapper.findComponent(SubscriptionPlanCard).exists()).toBe(false)
+    expect(fetchActiveSubscriptions).toHaveBeenCalled()
+    expect(createOrder).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('selects a plan when the route group is included in group_ids', async () => {
     const wrapper = await mountSubscriptionConfirm({
       plan: {

@@ -139,6 +139,7 @@ type Group struct {
 	DefaultMappedModel          string
 	MessagesDispatchModelConfig OpenAIMessagesDispatchModelConfig
 	ModelsListConfig            GroupModelsListConfig
+	ModelAllowlist              GroupModelAllowlist
 	// AvailabilityProbeConfig 控制该分组的主动可用性探测。
 	AvailabilityProbeConfig GroupAvailabilityProbeConfig
 
@@ -146,8 +147,8 @@ type Group struct {
 	// 一旦设置即接管该分组用户的限流（覆盖用户级 rpm_limit），可被 user-group rpm_override 进一步覆盖。
 	RPMLimit int
 
-	// MaxReasoningEffort 限制实际生效的 OpenAI/Codex 推理强度。
-	// 空字符串表示不限制；支持 minimal/low/medium/high/xhigh/max。
+	// MaxReasoningEffort 限制实际生效的 OpenAI/Anthropic 推理强度。
+	// 空字符串表示不限制；Anthropic 不支持 minimal。
 	MaxReasoningEffort string
 	// MaxReasoningEffortOverLimit 控制显式推理强度超过上限时降档或拒绝。
 	MaxReasoningEffortOverLimit string

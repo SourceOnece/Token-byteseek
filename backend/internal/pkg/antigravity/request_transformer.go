@@ -88,11 +88,11 @@ func TransformClaudeToGeminiWithOptions(claudeReq *ClaudeRequest, projectID, map
 	// 用于存储 tool_use id -> name 映射
 	toolIDToName := make(map[string]string)
 
-	// 检测是否有 web_search 工具
-	hasWebSearchTool := hasWebSearchTool(claudeReq.Tools)
+	// 客户端函数存在时保留函数工具，不触发纯内置搜索的降级模型。
+	useWebSearchRequest := hasWebSearchTool(claudeReq.Tools) && !hasClientFunctionTools(claudeReq.Tools)
 	requestType := "agent"
 	targetModel := mappedModel
-	if hasWebSearchTool {
+	if useWebSearchRequest {
 		requestType = "web_search"
 		if targetModel != webSearchFallbackModel {
 			targetModel = webSearchFallbackModel
@@ -147,20 +147,11 @@ func TransformClaudeToGeminiWithOptions(claudeReq *ClaudeRequest, projectID, map
 		SessionID: generateStableSessionID(contents),
 	}
 
-	// 针对 Gemini Reasoning 模型（如 gemini-3.1-pro-high等）过滤强制空 ToolConfig
-	isReasoning := IsGeminiReasoningModel(targetModel)
-	if !isReasoning || len(tools) > 0 {
-		// 总是设置 toolConfig，与官方客户端一致
-		innerRequest.ToolConfig = &GeminiToolConfig{
-			FunctionCallingConfig: &GeminiFunctionCallingConfig{
-				Mode: "VALIDATED",
-			},
-		}
-		// 函数声明与 Google Search 混用时，上游要求显式开启服务端工具调用。
-		if hasMixedToolInvocations(tools) {
-			enabled := true
-			innerRequest.ToolConfig.IncludeServerSideToolInvocations = &enabled
-		}
+	// 无工具推理请求也需要 toolConfig；混合工具已由 buildTools 消解。
+	innerRequest.ToolConfig = &GeminiToolConfig{
+		FunctionCallingConfig: &GeminiFunctionCallingConfig{
+			Mode: "VALIDATED",
+		},
 	}
 
 	if systemInstruction != nil {
@@ -714,19 +705,20 @@ func isCodeExecutionTool(tool ClaudeTool) bool {
 	return strings.TrimSpace(tool.Type) == "code_execution"
 }
 
-// hasMixedToolInvocations 判断构建后的工具声明是否同时包含函数声明与内置工具
-// （googleSearch/codeExecution）。仅在两者并存时需要开启 includeServerSideToolInvocations。
-func hasMixedToolInvocations(declarations []GeminiToolDeclaration) bool {
-	hasFunctions, hasBuiltin := false, false
-	for _, declaration := range declarations {
-		if len(declaration.FunctionDeclarations) > 0 {
-			hasFunctions = true
+// hasClientFunctionTools 判断是否存在可转发的客户端函数。
+func hasClientFunctionTools(tools []ClaudeTool) bool {
+	for _, tool := range tools {
+		if isWebSearchTool(tool) || isCodeExecutionTool(tool) {
+			continue
 		}
-		if declaration.GoogleSearch != nil || declaration.CodeExecution != nil {
-			hasBuiltin = true
+		if tool.Type == "custom" && (tool.Custom == nil || tool.Custom.InputSchema == nil) {
+			continue
+		}
+		if strings.TrimSpace(tool.Name) != "" {
+			return true
 		}
 	}
-	return hasFunctions && hasBuiltin
+	return false
 }
 
 // buildTools 构建 tools
@@ -794,6 +786,13 @@ func buildTools(tools []ClaudeTool) []GeminiToolDeclaration {
 		})
 	}
 
+	// v1internal 不接受内置工具与函数混用，优先保留代理工作流的客户端函数。
+	if len(funcDecls) > 0 {
+		if hasWebSearch || hasCodeExecution {
+			log.Printf("[antigravity] dropping incompatible built-in tools because client functions are present")
+		}
+		hasWebSearch, hasCodeExecution = false, false
+	}
 	var declarations []GeminiToolDeclaration
 	if len(funcDecls) > 0 {
 		declarations = append(declarations, GeminiToolDeclaration{

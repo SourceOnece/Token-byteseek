@@ -85,6 +85,7 @@ func (s *OpenAIGatewayService) forwardResponsesViaRawChatCompletions(
 		return nil, err
 	}
 	// Usage Log 以 Responses→Chat 转换和策略处理后的最终上游请求为准。
+	chatBody = clampOllamaCloudUpstreamMaxTokens(account, chatBody)
 	reasoningEffort := extractEffectiveOpenAIReasoningEffortFromBody(chatBody, body, upstreamModel, billingModel, originalModel)
 	// 国产模型没有显式 effort 档位时，thinking 启用后补默认展示值。
 	reasoningEffort = ApplyThinkingEnabledFallback(reasoningEffort, chatBody, billingModel)

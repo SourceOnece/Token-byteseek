@@ -143,6 +143,32 @@ export async function update(id: number, updates: UpdateApiKeyRequest): Promise<
   return data
 }
 
+export interface BulkUpdateApiKeysResult {
+  succeededIds: number[]
+  failures: Array<{ id: number; error: unknown }>
+}
+
+/** 复用单 Key 权限和校验，最多五个并行请求，只回报各项实际结果。 */
+export async function bulkUpdate(
+  ids: number[],
+  updates: UpdateApiKeyRequest
+): Promise<BulkUpdateApiKeysResult> {
+  const uniqueIds = [...new Set(ids)]
+  const result: BulkUpdateApiKeysResult = { succeededIds: [], failures: [] }
+  for (let offset = 0; offset < uniqueIds.length; offset += 5) {
+    const batch = uniqueIds.slice(offset, offset + 5)
+    const responses = await Promise.allSettled(batch.map((id) => update(id, updates)))
+    responses.forEach((response, index) => {
+      if (response.status === 'fulfilled') {
+        result.succeededIds.push(batch[index])
+      } else {
+        result.failures.push({ id: batch[index], error: response.reason })
+      }
+    })
+  }
+  return result
+}
+
 /**
  * Delete API key
  * @param id - API key ID
@@ -170,6 +196,7 @@ export const keysAPI = {
   create,
   createWithPayload,
   update,
+  bulkUpdate,
   delete: deleteKey,
   toggleStatus
 }

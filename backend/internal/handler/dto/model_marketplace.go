@@ -13,6 +13,7 @@ type ModelMarketplaceStats struct {
 }
 
 type ModelMarketplacePricing struct {
+	MaxReasoningEffortMultiplier  *float64                          `json:"max_reasoning_effort_multiplier,omitempty"`
 	PricingMode                   string                            `json:"pricing_mode"`
 	PriceStatus                   string                            `json:"price_status"`
 	InputPricePerToken            float64                           `json:"input_price_per_token,omitempty"`
@@ -210,6 +211,7 @@ func modelMarketplacePricingFromService(pricing service.ModelDisplayPricing) Mod
 	}
 
 	return ModelMarketplacePricing{
+		MaxReasoningEffortMultiplier:  pricing.MaxReasoningEffortMultiplier,
 		PricingMode:                   pricing.PricingMode,
 		PriceStatus:                   pricing.PriceStatus,
 		InputPricePerToken:            pricing.InputPricePerToken,

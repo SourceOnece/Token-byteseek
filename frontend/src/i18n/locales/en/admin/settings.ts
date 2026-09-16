@@ -91,6 +91,7 @@ export default {
           'If the window and bucket size would produce more than 720 bars, the backend widens the bucket size automatically.'
       },
       features: {
+        siteBillingMode: { title: 'Site Purchase Options', both: 'Recharge and subscription', recharge: 'Recharge only', subscription: 'Subscription only' },
         team: {
           invitationCooldown: 'Same-email invite interval (seconds)',
           invitationCooldownHint: 'Minimum interval per team and recipient. Default: 60 seconds; range: 1–86400.',
@@ -841,7 +842,7 @@ export default {
         validationFieldRequired: '{field} is required',
         validationEasyPayCustomMethodRequired: 'Each custom EasyPay method requires both a payment type and an upstream type',
         validationEasyPayCustomMethodTypeInvalid: 'Custom EasyPay payment types may only contain lowercase letters, digits, underscores, and hyphens',
-        validationEasyPayCustomMethodUpstreamTypeInvalid: 'EasyPay upstream types may only contain lowercase letters, digits, underscores, and hyphens',
+        validationEasyPayCustomMethodUpstreamTypeInvalid: 'EasyPay upstream types may only contain lowercase letters, digits, periods, underscores, and hyphens',
         validationEasyPayCustomMethodReserved: 'Custom EasyPay payment types cannot use built-in alipay or wxpay',
         validationEasyPayCustomMethodPrefixReserved: 'Custom EasyPay payment types cannot start with alipay or wxpay',
         validationEasyPayCustomMethodDuplicate: 'Custom EasyPay payment types must be unique',
@@ -1181,7 +1182,7 @@ export default {
       },
       openaiFastPolicy: {
         title: 'OpenAI Fast/Flex Policy',
-        description: 'Intercept, filter, or pass OpenAI fast(priority) / flex requests based on the request body service_tier field. Applies to the OpenAI gateway only.',
+        description: 'Intercept, filter, or pass OpenAI fast(priority), ultrafast, or flex requests based on the request body service_tier field. Applies to the OpenAI gateway only. "All tier values" includes explicitly sent tiers only.',
         empty: 'No rules configured. Click the button below to add one.',
         ruleHeader: 'Rule #{index}',
         removeRule: 'Remove rule',
@@ -1189,7 +1190,9 @@ export default {
         saveHint: 'Saved together with system settings (click the global Save button at the bottom of the page).',
         serviceTier: 'service_tier match',
         tierAll: 'All tier values',
+        tierMissing: 'Omitted tier',
         tierPriority: 'priority (fast)',
+        tierUltrafast: 'ultrafast',
         tierFlex: 'flex',
         action: 'Action',
         actionPass: 'Pass (keep service_tier)',

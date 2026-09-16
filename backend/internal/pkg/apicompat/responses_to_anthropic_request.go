@@ -84,26 +84,21 @@ func defaultThinkingBudget(effort string) int {
 		return 4096
 	case "high":
 		return 10240
-	case "max":
+	case "xhigh", "max":
 		return 32768
 	default:
 		return 10240
 	}
 }
 
-// mapResponsesEffortToAnthropic converts OpenAI Responses reasoning effort to
-// Anthropic effort levels. Reverse of mapAnthropicEffortToResponses.
-//
-//	low    → low
-//	medium → medium
-//	high   → high
-//	xhigh  → max
+// mapResponsesEffortToAnthropic 保留 Anthropic 已支持的 xhigh/max 区分，
+// 避免兼容桥将 xhigh 隐式提升到会触发独立计费倍率的 max。
 func mapResponsesEffortToAnthropic(effort string) string {
-	switch strings.ToLower(strings.TrimSpace(effort)) {
-	case "xhigh", "max":
-		return "max"
+	switch value := strings.ToLower(strings.TrimSpace(effort)); value {
+	case "low", "medium", "high", "xhigh", "max":
+		return value
 	default:
-		return effort // low→low, medium→medium, high→high, unknown→passthrough
+		return effort
 	}
 }
 

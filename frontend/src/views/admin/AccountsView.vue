@@ -844,7 +844,8 @@ const accountSupportsBatchUsage = (account: Account) => {
 
 const isUpstreamUsageAccount = (account: Account) =>
   account.type === 'apikey' &&
-  !(account.platform === 'zhipu' && account.credentials?.account_mode !== 'coding')
+  !(account.platform === 'opencode_go' && account.credentials?.account_mode === 'zen') &&
+  !(['zhipu', 'minimax'].includes(account.platform) && account.credentials?.account_mode !== 'coding')
 
 const effectiveUpstreamUsageAdapter = (account: Account) => {
   if (account.platform === 'kimi') {
@@ -854,6 +855,8 @@ const effectiveUpstreamUsageAdapter = (account: Account) => {
     return account.credentials?.account_mode === 'coding' ? 'zhipu_coding' : ''
   }
   if (account.platform === 'deepseek') return 'deepseek_balance'
+  if (account.platform === 'minimax') return account.credentials?.account_mode === 'coding' ? 'minimax_coding' : ''
+  if (account.platform === 'opencode_go') return account.credentials?.account_mode === 'zen' ? '' : 'opencode_go'
   const rawConfig = account.extra?.upstream_usage_query as Record<string, unknown> | undefined
   return rawConfig?.adapter === 'new_api' || rawConfig?.adapter === 'zivv'
     ? rawConfig.adapter
@@ -2899,9 +2902,10 @@ const handleDuplicateAccount = async (a: Account) => {
 const handleRefresh = async (a: Account) => {
   try {
     invalidateUpstreamUsageCache(a.id)
-    const updated = await adminAPI.accounts.refreshCredentials(a.id)
-    patchAccountInList(updated)
+    const result = await adminAPI.accounts.refreshCredentials(a.id)
+    patchAccountInList(result.account)
     enterAutoRefreshSilentWindow()
+    if (result.warning) appStore.showWarning(result.message)
   } catch (error) {
     console.error('Failed to refresh credentials:', error)
   }

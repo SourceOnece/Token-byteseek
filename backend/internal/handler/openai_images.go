@@ -74,6 +74,15 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 		return
 	}
 	requestModel := parsed.Model
+	// 无 model 的图片请求仍有默认模型；Key 别名按客户端原名校验。
+	allowlistModel := requestModel
+	if trace, ok := service.APIKeyModelRedirectTraceFromContext(c.Request.Context()); ok {
+		allowlistModel = trace.ClientModel
+	}
+	if blocked := blockedModelAllowlistCandidate(apiKey.Group, []string{allowlistModel}); blocked != "" {
+		h.errorResponse(c, http.StatusNotFound, "model_not_allowed", "Model is not available for this group")
+		return
+	}
 	// Images 端点必须先得到渠道模型 C，再校验模型族和账号所需能力。
 	channelMapping, _ := h.gatewayService.ResolveChannelMappingAndRestrict(c.Request.Context(), apiKey.GroupID, requestModel)
 	routingModel := openAIChannelMappedModel(requestModel, channelMapping)

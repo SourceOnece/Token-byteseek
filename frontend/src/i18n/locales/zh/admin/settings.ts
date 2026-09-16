@@ -89,6 +89,7 @@ export default {
         bucketLimitHint: '如果窗口和粒度会产生超过 720 根柱子，后端会自动放大单柱时间窗口。'
       },
       features: {
+        siteBillingMode: { title: '站点购买方式', both: '充值和订阅', recharge: '仅充值', subscription: '仅订阅' },
         team: {
           invitationCooldown: '同邮箱邀请间隔（秒）',
           invitationCooldownHint: '同一团队对同一邮箱的最短发送间隔，默认 60 秒，可设 1–86400 秒。',
@@ -834,7 +835,7 @@ export default {
         validationFieldRequired: '{field} 不能为空',
         validationEasyPayCustomMethodRequired: '每个易支付自定义方式都必须填写支付方式和上游 type',
         validationEasyPayCustomMethodTypeInvalid: '易支付自定义支付方式只能包含小写字母、数字、下划线和短横线',
-        validationEasyPayCustomMethodUpstreamTypeInvalid: '易支付上游 type 只能包含小写字母、数字、下划线和短横线',
+        validationEasyPayCustomMethodUpstreamTypeInvalid: '易支付上游 type 只能包含小写字母、数字、点号、下划线和短横线',
         validationEasyPayCustomMethodReserved: '易支付自定义支付方式不能使用内置的 alipay 或 wxpay',
         validationEasyPayCustomMethodPrefixReserved: '易支付自定义支付方式不能以 alipay 或 wxpay 开头',
         validationEasyPayCustomMethodDuplicate: '易支付自定义支付方式不能重复',
@@ -1173,7 +1174,7 @@ export default {
       },
       openaiFastPolicy: {
         title: 'OpenAI Fast/Flex 策略',
-        description: '基于请求体 service_tier 字段拦截/过滤/透传 OpenAI fast(priority) 与 flex 请求；仅作用于 OpenAI 网关。',
+        description: '基于请求体 service_tier 字段拦截/过滤/透传 OpenAI fast(priority)、ultrafast 与 flex 请求；仅作用于 OpenAI 网关。“全部 tier 值”仅包含显式传入的 tier。',
         empty: '尚未配置任何规则。点击下方按钮新增。',
         ruleHeader: '规则 #{index}',
         removeRule: '删除规则',
@@ -1181,7 +1182,9 @@ export default {
         saveHint: '保存时随系统设置一起提交（点击页面底部「保存」按钮）。',
         serviceTier: 'service_tier 匹配',
         tierAll: '全部 tier 值',
+        tierMissing: '省略 tier',
         tierPriority: 'priority（fast）',
+        tierUltrafast: 'ultrafast',
         tierFlex: 'flex',
         action: '处理方式',
         actionPass: '透传（保留 service_tier）',

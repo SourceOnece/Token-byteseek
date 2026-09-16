@@ -14,7 +14,7 @@ import (
 )
 
 func TestResolveMessagesDispatchModelCNProvidersSkipOpenAIMapping(t *testing.T) {
-	for _, platform := range []string{PlatformKimi, PlatformZhipu, PlatformDeepseek} {
+	for _, platform := range []string{PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax} {
 		group := &Group{
 			Platform: platform,
 			MessagesDispatchModelConfig: OpenAIMessagesDispatchModelConfig{

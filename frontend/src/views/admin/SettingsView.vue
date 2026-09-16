@@ -1387,6 +1387,7 @@
                           | 'all'
                           | 'priority'
                           | 'flex'
+                          | 'missing'
                       "
                       :options="openaiFastPolicyTierOptions"
                     />
@@ -4216,7 +4217,7 @@
                       </tr>
                     </thead>
                     <tbody class="space-y-2">
-                      <tr v-for="p in (['anthropic', 'openai', 'gemini', 'antigravity', 'qoder', 'grok', 'kimi', 'zhipu', 'deepseek'] as const)" :key="p" class="align-top">
+                      <tr v-for="p in (['anthropic', 'openai', 'gemini', 'antigravity', 'qoder', 'grok', 'kimi', 'zhipu', 'deepseek', 'minimax', 'opencode_go'] as const)" :key="p" class="align-top">
                         <td class="pr-4 py-1">
                           <span class="font-mono text-xs text-gray-700 dark:text-gray-300">{{ p }}</span>
                         </td>
@@ -4472,7 +4473,7 @@
                             </tr>
                           </thead>
                           <tbody>
-                            <tr v-for="p in (['anthropic', 'openai', 'gemini', 'antigravity', 'qoder', 'grok', 'kimi', 'zhipu', 'deepseek'] as const)" :key="`${authSource.source}-pq-${p}`" class="align-top">
+                            <tr v-for="p in (['anthropic', 'openai', 'gemini', 'antigravity', 'qoder', 'grok', 'kimi', 'zhipu', 'deepseek', 'minimax', 'opencode_go'] as const)" :key="`${authSource.source}-pq-${p}`" class="align-top">
                               <td class="pr-4 py-1">
                                 <span class="font-mono text-xs text-gray-700 dark:text-gray-300">{{ p }}</span>
                               </td>
@@ -7877,6 +7878,10 @@
                 </div>
                 <Toggle v-model="form.payment_enabled" />
               </div>
+              <div class="grid gap-2 sm:grid-cols-[1fr_16rem] sm:items-center">
+                <label class="input-label mb-0">{{ t('admin.settings.features.siteBillingMode.title') }}</label>
+                <Select :model-value="siteBillingMode" :options="siteBillingModeOptions" @update:model-value="siteBillingMode = $event as SiteBillingMode" />
+              </div>
               <template v-if="form.payment_enabled">
                 <!-- Row 1: Product name -->
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -9023,6 +9028,7 @@ import Icon from "@/components/icons/Icon.vue";
 import HelpTooltip from "@/components/common/HelpTooltip.vue";
 import ProviderIcon from "@/components/common/ProviderIcon.vue";
 import Select from "@/components/common/Select.vue";
+import { resolveSiteBillingMode, billingModeToSettings, type SiteBillingMode } from "@/utils/siteBillingMode";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import PaymentProviderList from "@/components/payment/PaymentProviderList.vue";
 import PaymentProviderDialog from "@/components/payment/PaymentProviderDialog.vue";
@@ -9718,6 +9724,7 @@ const form = reactive<SettingsForm>({
   backend_mode_enabled: false,
   hide_ccs_import_button: false,
   payment_enabled: false,
+  subscription_enabled: true,
   payment_min_amount: 1,
   payment_max_amount: 10000,
   payment_daily_limit: 50000,
@@ -11593,6 +11600,17 @@ function findDuplicateDefaultSubscription(
   });
 }
 
+// 只有用户明确选择时才成对改写；加载或保存其它设置不修正原有组合。
+const siteBillingMode = computed<SiteBillingMode>({
+  get: () => resolveSiteBillingMode(form),
+  set: (value) => Object.assign(form, billingModeToSettings(value)),
+});
+const siteBillingModeOptions = computed(() => [
+  { value: 'recharge_and_subscription', label: t('admin.settings.features.siteBillingMode.both') },
+  { value: 'recharge_only', label: t('admin.settings.features.siteBillingMode.recharge') },
+  { value: 'subscription_only', label: t('admin.settings.features.siteBillingMode.subscription') },
+]);
+
 async function saveSettings() {
   saving.value = true;
   try {
@@ -12075,6 +12093,7 @@ async function saveSettings() {
         normalizeUserPromptReplacementConfigForSave(),
       // Payment configuration
       payment_enabled: form.payment_enabled,
+      subscription_enabled: form.subscription_enabled,
       // 页面功能开关
       team_enabled: form.team_enabled,
       team_invitation_cooldown_seconds: form.team_invitation_cooldown_seconds,
@@ -12793,7 +12812,12 @@ const openaiFastPolicyTierOptions = computed(() => [
     value: "priority",
     label: t("admin.settings.openaiFastPolicy.tierPriority"),
   },
+  {
+    value: "ultrafast",
+    label: t("admin.settings.openaiFastPolicy.tierUltrafast"),
+  },
   { value: "flex", label: t("admin.settings.openaiFastPolicy.tierFlex") },
+  { value: "missing", label: t("admin.settings.openaiFastPolicy.tierMissing") },
 ]);
 
 const openaiFastPolicyActionOptions = computed(() => [

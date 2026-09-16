@@ -61,6 +61,10 @@ func EvaluateAccountSchedulingThreshold(account *Account, thresholds map[string]
 		winner = pickLatestResetSchedulingCandidate(cnProviderThresholdCandidates(account, PlatformKimi), threshold, now)
 	case PlatformZhipu:
 		winner = pickLatestResetSchedulingCandidate(cnProviderThresholdCandidates(account, PlatformZhipu), threshold, now)
+	case PlatformMiniMax:
+		winner = pickLatestResetSchedulingCandidate(cnProviderThresholdCandidates(account, PlatformMiniMax), threshold, now)
+	case PlatformOpenCodeGo:
+		winner = pickLatestResetSchedulingCandidate(cnProviderThresholdCandidates(account, PlatformOpenCodeGo), threshold, now)
 	default:
 		return decision
 	}

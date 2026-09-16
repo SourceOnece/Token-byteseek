@@ -60,6 +60,16 @@ Claude Code-only 约束会在 CLI UA 之后校验必需 Header、metadata 与官
 
 ## 配额与调度
 
+<a id="bedrock_region_routing"></a>
+### Bedrock 区域路由（本批适配中）
+
+按模型的精确推理 ID、账号来源区域和显式全局开关选择 Bedrock 路由；签名区域保持账号 aws_region，不按地域前缀猜测所有模型支持。未知完整 ID/ARN 保留显式值交上游验证；默认型号的未核实组合不自动跨区域。正式请求、模型资格与后台测试共用解析器，不修改账号凭据或绕过质量/分组门禁。具体适配状态见 bh.030，未验证前不发布。
+
+<a id="claude_billing_fingerprint"></a>
+### Claude 请求归因一致性（本批适配中）
+
+Messages/CountTokens 的正文 cc_version 与最终 User-Agent 同步；版本改变时重新计算既有三位指纹后缀，用户消息不改。OAuth mimic 使用最终默认身份而非随后被覆盖的缓存 UA；这不是被撤回的 Codex Metadata 功能。
+
 账号必须通过状态、分组、模型、endpoint、凭据、限流和并发筛选。粘性会话尽量复用同一账号；账号失效、模型限流或策略变化会丢弃旧绑定并重新选择。等待队列只等待可能恢复的并发/限流条件，不会把永久凭据错误变成无限等待。
 
 API Key/Bedrock 可配置本地账号配额和亲和策略。可用的上游用量/配额状态、账号优先级与近期错误可以参与资格判断或调度，但不替代用户余额、订阅和用户平台额度。Anthropic 不再采集上游站点声明倍率，也不按该值排序或评分；账户本地 `rate_multiplier` 仅保留为结算输入。Antigravity 账号只有显式启用 mixed scheduling 后才能加入 Anthropic 候选，并继续遵守 Anthropic 分组语义。

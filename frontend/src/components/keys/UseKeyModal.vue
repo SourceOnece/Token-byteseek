@@ -382,7 +382,9 @@ const openCodeProtocolPriority: Record<GroupPlatform, readonly GroupClientProtoc
   grok: ['openai_responses', 'openai_chat_completions', 'anthropic_messages'],
   kimi: ['anthropic_messages', 'openai_responses', 'openai_chat_completions'],
   zhipu: ['anthropic_messages', 'openai_responses', 'openai_chat_completions'],
-  deepseek: ['anthropic_messages', 'openai_responses', 'openai_chat_completions']
+  deepseek: ['anthropic_messages', 'openai_responses', 'openai_chat_completions'],
+  minimax: ['anthropic_messages', 'openai_responses', 'openai_chat_completions'],
+  opencode_go: ['anthropic_messages', 'openai_responses', 'openai_chat_completions']
 }
 
 function preferredOpenCodeProtocol(
@@ -811,6 +813,8 @@ const currentFiles = computed((): FileConfig[] => {
   }
 
   if (activeClientTab.value === 'claude') {
+    if (props.platform === 'minimax') return generateAnthropicFiles(baseRoot, apiKey, 'MiniMax-M3')
+    if (props.platform === 'opencode_go') return generateAnthropicFiles(baseRoot, apiKey, 'glm-5.3')
     if (props.platform === 'grok') {
       return generateGrokClaudeFiles(baseRoot, apiKey)
     }
@@ -842,7 +846,7 @@ const currentFiles = computed((): FileConfig[] => {
   return []
 })
 
-function generateAnthropicFiles(baseUrl: string, apiKey: string): FileConfig[] {
+function generateAnthropicFiles(baseUrl: string, apiKey: string, model?: string): FileConfig[] {
   let path: string
   let content: string
 
@@ -852,18 +856,21 @@ function generateAnthropicFiles(baseUrl: string, apiKey: string): FileConfig[] {
       content = `export ANTHROPIC_BASE_URL="${baseUrl}"
 export ANTHROPIC_AUTH_TOKEN="${apiKey}"
 export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
+      if (model) content += `\nexport ANTHROPIC_MODEL="${model}"`
       break
     case 'cmd':
       path = 'Command Prompt'
       content = `set ANTHROPIC_BASE_URL=${baseUrl}
 set ANTHROPIC_AUTH_TOKEN=${apiKey}
 set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
+      if (model) content += `\nset ANTHROPIC_MODEL=${model}`
       break
     case 'powershell':
       path = 'PowerShell'
       content = `$env:ANTHROPIC_BASE_URL="${baseUrl}"
 $env:ANTHROPIC_AUTH_TOKEN="${apiKey}"
 $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
+      if (model) content += `\n$env:ANTHROPIC_MODEL="${model}"`
       break
     default:
       path = 'Terminal'
@@ -874,7 +881,7 @@ $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
     ? '~/.claude/settings.json'
     : '%USERPROFILE%\\.claude\\settings.json'
 
-  const vscodeContent = `{
+  let vscodeContent = `{
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
     "ANTHROPIC_BASE_URL": "${baseUrl}",
@@ -883,6 +890,12 @@ $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`
   }
 }`
 
+  // 新平台只补模型配置，不改变旧平台生成文件的默认内容。
+  if (model) {
+    const settings = JSON.parse(vscodeContent)
+    settings.env.ANTHROPIC_MODEL = model
+    vscodeContent = JSON.stringify(settings, null, 2)
+  }
   return [
     { path, content },
     {
@@ -1050,7 +1063,7 @@ function generateCompatibleCodexFiles(
     provider: string
     name: string
     model: string
-    contextWindow: number
+    contextWindow?: number
   }> = {
     anthropic: {
       provider: 'tokenrouter_anthropic',
@@ -1105,13 +1118,22 @@ function generateCompatibleCodexFiles(
       name: 'TokenRouter DeepSeek',
       model: 'deepseek-chat',
       contextWindow: 131072
+    },
+    minimax: {
+      provider: 'tokenrouter_minimax',
+      name: 'TokenRouter MiniMax',
+      model: 'MiniMax-M3'
+    },
+    opencode_go: {
+      provider: 'tokenrouter_opencode',
+      name: 'TokenRouter OpenCode',
+      model: 'glm-5.3'
     }
   }
   const config = platformConfig[platform]
   const configContent = `model_provider = "${config.provider}"
 model = "${config.model}"
-model_context_window = ${config.contextWindow}
-disable_response_storage = true
+${config.contextWindow ? `model_context_window = ${config.contextWindow}\n` : ''}disable_response_storage = true
 
 [model_providers.${config.provider}]
 name = "${config.name}"
@@ -1906,6 +1928,15 @@ function generateOpenCodeConfig(
   } else if (profile === 'grok') {
     provider[profile].name = 'Grok'
     provider[profile].models = withOpenCodeToolCalling(grokModels)
+  } else if (profile === 'minimax') {
+    provider[profile].name = 'MiniMax'
+    provider[profile].models = withOpenCodeToolCalling({
+      'MiniMax-M3': { name: 'MiniMax M3' },
+      'MiniMax-M2.7': { name: 'MiniMax M2.7' }
+    })
+  } else if (profile === 'opencode_go') {
+    provider[profile].name = 'OpenCode'
+    provider[profile].models = withOpenCodeToolCalling({ 'glm-5.3': { name: 'GLM 5.3' }, 'gpt-5.6-luna': { name: 'GPT 5.6 Luna' } })
   }
 
   const agent =

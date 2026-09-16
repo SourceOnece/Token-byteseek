@@ -14,7 +14,7 @@ import (
 	"github.com/dgraph-io/ristretto"
 )
 
-const apiKeyAuthSnapshotVersion = 37 // v37：认证快照字段结构变更，强制重建旧缓存
+const apiKeyAuthSnapshotVersion = 38 // v38：包含独立模型准入规则，强制重建旧缓存
 
 type apiKeyAuthCacheConfig struct {
 	l1Size        int
@@ -486,6 +486,7 @@ func (s *APIKeyService) snapshotFromAPIKey(ctx context.Context, apiKey *APIKey) 
 			DefaultMappedModel:              apiKey.Group.DefaultMappedModel,
 			MessagesDispatchModelConfig:     apiKey.Group.MessagesDispatchModelConfig,
 			ModelsListConfig:                apiKey.Group.ModelsListConfig,
+			ModelAllowlist:                  CloneGroupModelAllowlist(apiKey.Group.ModelAllowlist),
 			RPMLimit:                        apiKey.Group.RPMLimit,
 			MaxReasoningEffort:              apiKey.Group.MaxReasoningEffort,
 			MaxReasoningEffortOverLimit:     apiKey.Group.MaxReasoningEffortOverLimit,
@@ -623,6 +624,7 @@ func (s *APIKeyService) snapshotToAPIKey(key string, snapshot *APIKeyAuthSnapsho
 			DefaultMappedModel:              snapshot.Group.DefaultMappedModel,
 			MessagesDispatchModelConfig:     snapshot.Group.MessagesDispatchModelConfig,
 			ModelsListConfig:                snapshot.Group.ModelsListConfig,
+			ModelAllowlist:                  CloneGroupModelAllowlist(snapshot.Group.ModelAllowlist),
 			RPMLimit:                        snapshot.Group.RPMLimit,
 			MaxReasoningEffort:              snapshot.Group.MaxReasoningEffort,
 			MaxReasoningEffortOverLimit:     snapshot.Group.MaxReasoningEffortOverLimit,
@@ -678,7 +680,8 @@ func authGroupSnapshotFromGroup(group *Group) *APIKeyAuthGroupSnapshot {
 		SupportedModelScopes: group.SupportedModelScopes, AllowedClientProtocols: cloneGroupClientProtocols(group.AllowedClientProtocols),
 		AllowLive: group.AllowLive, ForceOpenAIFast: group.ForceOpenAIFast, FreeOpenAIFast: group.FreeOpenAIFast, DefaultMappedModel: group.DefaultMappedModel,
 		MessagesDispatchModelConfig: group.MessagesDispatchModelConfig, ModelsListConfig: group.ModelsListConfig,
-		RPMLimit: group.RPMLimit, MaxReasoningEffort: group.MaxReasoningEffort,
+		ModelAllowlist: CloneGroupModelAllowlist(group.ModelAllowlist),
+		RPMLimit:       group.RPMLimit, MaxReasoningEffort: group.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit: group.MaxReasoningEffortOverLimit,
 		ReasoningEffortMappings:     group.ReasoningEffortMappings, PeakRateEnabled: group.PeakRateEnabled,
 		PeakStart: group.PeakStart, PeakEnd: group.PeakEnd, PeakRateMultiplier: group.PeakRateMultiplier,
@@ -714,7 +717,8 @@ func groupFromAuthSnapshot(snapshot *APIKeyAuthGroupSnapshot) *Group {
 		SupportedModelScopes: snapshot.SupportedModelScopes, AllowedClientProtocols: cloneGroupClientProtocols(snapshot.AllowedClientProtocols),
 		AllowLive: snapshot.AllowLive, ForceOpenAIFast: snapshot.ForceOpenAIFast, FreeOpenAIFast: snapshot.FreeOpenAIFast, DefaultMappedModel: snapshot.DefaultMappedModel,
 		MessagesDispatchModelConfig: snapshot.MessagesDispatchModelConfig, ModelsListConfig: snapshot.ModelsListConfig,
-		RPMLimit: snapshot.RPMLimit, MaxReasoningEffort: snapshot.MaxReasoningEffort,
+		ModelAllowlist: CloneGroupModelAllowlist(snapshot.ModelAllowlist),
+		RPMLimit:       snapshot.RPMLimit, MaxReasoningEffort: snapshot.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit: snapshot.MaxReasoningEffortOverLimit,
 		ReasoningEffortMappings:     snapshot.ReasoningEffortMappings, PeakRateEnabled: snapshot.PeakRateEnabled,
 		PeakStart: snapshot.PeakStart, PeakEnd: snapshot.PeakEnd, PeakRateMultiplier: snapshot.PeakRateMultiplier,

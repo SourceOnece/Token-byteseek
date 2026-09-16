@@ -176,8 +176,8 @@
             Grok
           </button>
         </div>
-        <!-- 国产供应商行：Kimi / 智谱 GLM / DeepSeek -->
-        <div class="mt-2 flex flex-wrap rounded-lg bg-gray-100 p-1 dark:bg-dark-700">
+        <!-- 国产供应商在手机上使用两列，避免增加平台后横向挤出弹窗。 -->
+        <div class="mt-2 grid grid-cols-2 gap-1 rounded-none bg-gray-100 p-1 dark:bg-dark-700 sm:grid-cols-4">
           <button
             type="button"
             @click="selectCNPlatform('kimi')"
@@ -216,6 +216,19 @@
           >
             <PlatformIcon platform="deepseek" size="sm" />
             DeepSeek
+          </button>
+          <button
+            type="button"
+            @click="selectCNPlatform('minimax')"
+            class="btn h-9 min-w-0 gap-2 px-3 py-1.5 text-sm"
+            :class="form.platform === 'minimax' ? 'bg-bh-red text-white' : 'btn-secondary'"
+            :aria-pressed="form.platform === 'minimax'"
+          >
+            <PlatformIcon platform="minimax" size="sm" />
+            MiniMax
+          </button>
+          <button type="button" class="btn h-9 min-w-0 gap-2 px-3 py-1.5 text-sm" :class="form.platform === 'opencode_go' ? 'btn-primary' : 'btn-secondary'" :aria-pressed="form.platform === 'opencode_go'" @click="selectCNPlatform('opencode_go')">
+            <Icon name="terminal" size="sm" />OpenCode
           </button>
         </div>
       </div>
@@ -475,10 +488,10 @@
           <!-- 按量付费（Token 余额） -->
           <button
             type="button"
-            @click="accountMode = 'payg'"
+            @click="accountMode = form.platform === 'opencode_go' ? 'zen' : 'payg'"
             :class="[
               'flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-all',
-              accountMode === 'payg'
+              accountMode === 'payg' || accountMode === 'zen'
                 ? cnAccentActiveClass
                 : 'border-gray-200 hover:border-gray-400 dark:border-dark-600 dark:hover:border-gray-600'
             ]"
@@ -486,7 +499,7 @@
             <div
               :class="[
                 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                accountMode === 'payg'
+                accountMode === 'payg' || accountMode === 'zen'
                   ? cnAccentIconClass
                   : 'bg-gray-100 text-gray-500 dark:bg-dark-600 dark:text-gray-400'
               ]"
@@ -494,18 +507,18 @@
               <Icon name="creditCard" size="sm" />
             </div>
             <div>
-              <span class="block text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.accounts.cnProviders.accountMode.payg') }}</span>
-              <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.cnProviders.accountMode.paygDesc') }}</span>
+              <span class="block text-sm font-medium text-gray-900 dark:text-white">{{ t(form.platform === 'opencode_go' ? 'admin.accounts.cnProviders.accountMode.zen' : 'admin.accounts.cnProviders.accountMode.payg') }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">{{ t(form.platform === 'opencode_go' ? 'admin.accounts.cnProviders.accountMode.zenDesc' : form.platform === 'minimax' ? 'admin.accounts.cnProviders.accountMode.minimaxPaygDesc' : 'admin.accounts.cnProviders.accountMode.paygDesc') }}</span>
             </div>
           </button>
           <!-- Coding Plan 仅支持 Kimi / 智谱，DeepSeek 不支持 -->
           <button
             v-if="form.platform !== 'deepseek'"
             type="button"
-            @click="accountMode = 'coding'"
+            @click="accountMode = form.platform === 'opencode_go' ? 'go' : 'coding'"
             :class="[
               'flex items-center gap-3 rounded-lg border-2 p-3 text-left transition-all',
-              accountMode === 'coding'
+              accountMode === 'coding' || accountMode === 'go'
                 ? cnAccentActiveClass
                 : 'border-gray-200 hover:border-gray-400 dark:border-dark-600 dark:hover:border-gray-600'
             ]"
@@ -513,7 +526,7 @@
             <div
               :class="[
                 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                accountMode === 'coding'
+                accountMode === 'coding' || accountMode === 'go'
                   ? cnAccentIconClass
                   : 'bg-gray-100 text-gray-500 dark:bg-dark-600 dark:text-gray-400'
               ]"
@@ -521,8 +534,8 @@
               <Icon name="bolt" size="sm" />
             </div>
             <div>
-              <span class="block text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.accounts.cnProviders.accountMode.coding') }}</span>
-              <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.cnProviders.accountMode.codingDesc') }}</span>
+              <span class="block text-sm font-medium text-gray-900 dark:text-white">{{ t(form.platform === 'opencode_go' ? 'admin.accounts.cnProviders.accountMode.go' : 'admin.accounts.cnProviders.accountMode.coding') }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">{{ t(form.platform === 'opencode_go' ? 'admin.accounts.cnProviders.accountMode.goDesc' : 'admin.accounts.cnProviders.accountMode.codingDesc') }}</span>
             </div>
           </button>
         </div>
@@ -556,13 +569,14 @@
             </div>
             <div>
               <span class="block text-sm font-medium text-gray-900 dark:text-white">{{ t(`admin.accounts.cnProviders.apiProtocol.${opt.labelKey}`) }}</span>
-              <span class="text-xs text-gray-500 dark:text-gray-400">{{ t(`admin.accounts.cnProviders.apiProtocol.${opt.labelKey}Desc`) }}</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">{{ t(form.platform === 'opencode_go' && opt.value === 'adaptive' ? 'admin.accounts.opencodeGo.protocolRules.hint' : `admin.accounts.cnProviders.apiProtocol.${opt.labelKey}Desc`) }}</span>
             </div>
           </button>
         </div>
       </div>
 
       <!-- 智谱团队版 Coding Plan：组织/项目 ID 可选，填写组织 ID 后切换团队额度端点。 -->
+      <OpenCodeGoProtocolRulesEditor v-if="form.platform === 'opencode_go' && apiProtocol === 'adaptive'" v-model:rows="openCodeRules" :plan="accountMode === 'zen' ? 'zen' : 'go'" class="mt-4" />
       <div v-if="form.platform === 'zhipu' && accountMode === 'coding'" class="mt-4">
         <div class="flex items-center gap-1">
           <label class="input-label">{{ t('admin.accounts.cnProviders.zhipuTeam.title') }}</label>
@@ -4246,6 +4260,8 @@ import ModelWhitelistSelector from '@/components/account/ModelWhitelistSelector.
 import QuotaLimitCard from '@/components/account/QuotaLimitCard.vue'
 import GrokBaseUrlPresets from '@/components/account/GrokBaseUrlPresets.vue'
 import CnBaseUrlPresets from '@/components/account/CnBaseUrlPresets.vue'
+import OpenCodeGoProtocolRulesEditor from '@/components/account/OpenCodeGoProtocolRulesEditor.vue'
+import { cloneOpenCodeGoProtocolRules, defaultOpenCodeProtocolRules, applyOpenCodeGoProtocolRules, validOpenCodeGoProtocolRules } from '@/components/account/credentialsBuilder'
 import HeaderOverrideEditor from '@/components/account/HeaderOverrideEditor.vue'
 import UpstreamUsageConfigEditor from '@/components/account/UpstreamUsageConfigEditor.vue'
 import {
@@ -4492,6 +4508,7 @@ const upstreamUsageWalletUserId = ref('')
 
 // 国产供应商账号的计费模式、协议与默认端点彼此联动。
 const accountMode = ref<CnAccountMode>('payg')
+const openCodeRules = ref(cloneOpenCodeGoProtocolRules())
 // 智谱团队版 Coding Plan 的组织/项目 ID，仅在创建团队账号时写入凭据。
 const zhipuOrganization = ref('')
 const zhipuProject = ref('')
@@ -4504,11 +4521,11 @@ const adaptiveBaseUrls = ref<Record<CnNativeApiProtocol, string>>({
   responses: ''
 })
 const isCNPlatform = computed(
-  () => form.platform === 'kimi' || form.platform === 'zhipu' || form.platform === 'deepseek'
+  () => form.platform === 'kimi' || form.platform === 'zhipu' || form.platform === 'deepseek' || form.platform === 'minimax' || form.platform === 'opencode_go'
 )
 // 模板不支持联合类型断言，因此在脚本中收窄预设组件的平台类型。
-const cnPresetPlatform = computed<'kimi' | 'zhipu' | 'deepseek'>(() => {
-  if (form.platform === 'kimi' || form.platform === 'zhipu' || form.platform === 'deepseek') {
+const cnPresetPlatform = computed<'kimi' | 'zhipu' | 'deepseek' | 'minimax' | 'opencode_go'>(() => {
+  if (form.platform === 'kimi' || form.platform === 'zhipu' || form.platform === 'deepseek' || form.platform === 'minimax' || form.platform === 'opencode_go') {
     return form.platform
   }
   return 'kimi'
@@ -4534,7 +4551,7 @@ const cnAdaptiveProtocolOptions = computed<Array<{ value: CnNativeApiProtocol; l
   return opts
 })
 
-function resetAdaptiveBaseUrls(platform: 'kimi' | 'zhipu' | 'deepseek', mode: CnAccountMode) {
+function resetAdaptiveBaseUrls(platform: 'kimi' | 'zhipu' | 'deepseek' | 'minimax' | 'opencode_go', mode: CnAccountMode) {
   adaptiveBaseUrls.value = defaultCNAdaptiveBaseUrls(platform, mode)
 }
 // 当前选中平台的品牌色（选中卡片描边 / 图标底色），与 platformColors 取色一致。
@@ -4546,6 +4563,8 @@ const cnAccentActiveClass = computed(() => {
       return 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
     case 'deepseek':
       return 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
+    case 'minimax':
+      return 'border-bh-red bg-red-50 dark:bg-red-950/20'
     default:
       return 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
   }
@@ -4558,17 +4577,23 @@ const cnAccentIconClass = computed(() => {
       return 'bg-indigo-500 text-white'
     case 'deepseek':
       return 'bg-teal-500 text-white'
+    case 'minimax':
+      return 'bg-bh-red text-white'
     default:
       return 'bg-primary-500 text-white'
   }
 })
 // 切换国产供应商平台：强制 apikey 类型，deepseek 无 coding 套餐故锁定 payg，
 // 协议回落 adaptive，并把 base url 重置为该平台默认端点。
-function selectCNPlatform(platform: 'kimi' | 'zhipu' | 'deepseek') {
+function selectCNPlatform(platform: 'kimi' | 'zhipu' | 'deepseek' | 'minimax' | 'opencode_go') {
   form.platform = platform
   form.type = 'apikey'
   accountCategory.value = 'apikey'
   apiProtocol.value = 'adaptive'
+  if (platform === 'opencode_go') {
+    accountMode.value = 'go'
+    openCodeRules.value = cloneOpenCodeGoProtocolRules()
+  } else if (accountMode.value === 'go' || accountMode.value === 'zen') accountMode.value = 'payg'
   if (platform === 'deepseek') {
     accountMode.value = 'payg'
   }
@@ -4582,6 +4607,12 @@ function selectCNPlatform(platform: 'kimi' | 'zhipu' | 'deepseek') {
 // 账号类型 / 协议变更时同步默认 base url。
 watch(accountMode, (mode, previousMode) => {
   if (!isCNPlatform.value) return
+  if (form.platform === 'opencode_go') {
+    const previousRules = defaultOpenCodeProtocolRules(previousMode === 'zen' ? 'zen' : 'go')
+    if (JSON.stringify(openCodeRules.value) === JSON.stringify(previousRules)) {
+      openCodeRules.value = cloneOpenCodeGoProtocolRules(defaultOpenCodeProtocolRules(mode === 'zen' ? 'zen' : 'go'))
+    }
+  }
   if (apiProtocol.value === 'adaptive') {
     const previousDefaults = defaultCNAdaptiveBaseUrls(cnPresetPlatform.value, previousMode)
     const nextDefaults = defaultCNAdaptiveBaseUrls(cnPresetPlatform.value, mode)
@@ -6319,6 +6350,10 @@ const handleVertexServiceAccountDrop = async (event: DragEvent) => {
 }
 
 const handleSubmit = async () => {
+  if (form.platform === 'opencode_go' && !validOpenCodeGoProtocolRules(openCodeRules.value)) {
+    appStore.showError(t('admin.accounts.opencodeGo.protocolRules.invalid'))
+    return
+  }
   // For OAuth-based type, handle OAuth flow (goes to step 2)
   if (isOAuthFlow.value) {
     if (!isGrokSSOInputMethod.value && !form.name.trim()) {
@@ -6544,9 +6579,10 @@ const handleSubmit = async () => {
   // 国产供应商：账号模式 + 协议 + 对应端点写入凭据；后端按 account_mode 路由
   // 额度/余额探测，按 api_protocol 路由转发端点与格式。注意 CN apikey 走本函数
   // 的通用路径（直接 doCreateAccount），不经过 createAccountAndFinish。
-  if (form.platform === 'kimi' || form.platform === 'zhipu' || form.platform === 'deepseek') {
+  if (form.platform === 'kimi' || form.platform === 'zhipu' || form.platform === 'deepseek' || form.platform === 'minimax' || form.platform === 'opencode_go') {
     credentials.account_mode = accountMode.value
     credentials.api_protocol = apiProtocol.value
+    if (form.platform === 'opencode_go') applyOpenCodeGoProtocolRules(credentials, openCodeRules.value, 'create')
     if (apiProtocol.value === 'adaptive') {
       const defaults = defaultCNAdaptiveBaseUrls(form.platform, accountMode.value)
       const protocolBaseUrls: Record<string, string> = {}

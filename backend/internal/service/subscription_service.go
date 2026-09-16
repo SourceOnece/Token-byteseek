@@ -320,13 +320,21 @@ type BulkAssignResult struct {
 }
 
 func (s *SubscriptionService) BulkAssignSubscription(ctx context.Context, input *BulkAssignSubscriptionInput) (*BulkAssignResult, error) {
+	if input == nil {
+		return nil, ErrSubscriptionNilInput
+	}
 	result := &BulkAssignResult{
 		Subscriptions: make([]UserSubscription, 0),
 		Errors:        make([]string, 0),
 		Statuses:      make(map[int64]string),
 	}
 
+	seen := make(map[int64]struct{}, len(input.UserIDs))
 	for _, userID := range input.UserIDs {
+		if _, ok := seen[userID]; ok {
+			continue
+		}
+		seen[userID] = struct{}{}
 		sub, queued, err := s.AssignOrExtendSubscription(ctx, &AssignSubscriptionInput{
 			UserID:          userID,
 			PlanID:          input.PlanID,

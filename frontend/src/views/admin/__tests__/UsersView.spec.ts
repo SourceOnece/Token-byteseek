@@ -9,13 +9,19 @@ const {
   getAllGroups,
   getBatchUsersUsage,
   listEnabledDefinitions,
-  getBatchUserAttributes
+  getBatchUserAttributes,
+  deleteUser,
+  showError,
+  showSuccess
 } = vi.hoisted(() => ({
   listUsers: vi.fn(),
   getAllGroups: vi.fn(),
   getBatchUsersUsage: vi.fn(),
   listEnabledDefinitions: vi.fn(),
-  getBatchUserAttributes: vi.fn()
+  getBatchUserAttributes: vi.fn(),
+  deleteUser: vi.fn(),
+  showError: vi.fn(),
+  showSuccess: vi.fn()
 }))
 
 vi.mock('@/api/admin', () => ({
@@ -23,7 +29,7 @@ vi.mock('@/api/admin', () => ({
     users: {
       list: listUsers,
       toggleStatus: vi.fn(),
-      delete: vi.fn()
+      delete: deleteUser
     },
     groups: {
       getAll: getAllGroups
@@ -40,8 +46,8 @@ vi.mock('@/api/admin', () => ({
 
 vi.mock('@/stores/app', () => ({
   useAppStore: () => ({
-    showError: vi.fn(),
-    showSuccess: vi.fn()
+    showError,
+    showSuccess
   })
 }))
 
@@ -50,7 +56,7 @@ vi.mock('vue-i18n', async () => {
   return {
     ...actual,
     useI18n: () => ({
-      t: (key: string) => key
+      t: (key: string, params?: { count?: number }) => params?.count === undefined ? key : `${key}:${params.count}`
     })
   }
 })
@@ -85,7 +91,7 @@ const mountUsersView = () => mount(UsersView, {
       },
       DataTable: DataTableStub,
       Pagination: true,
-      ConfirmDialog: true,
+      ConfirmDialog: { props: ['show', 'message'], emits: ['confirm', 'cancel'], template: '<div v-if="show"><span>{{ message }}</span><button data-test="confirm-delete" @click="$emit(\'confirm\')">confirm</button><button data-test="cancel-delete" @click="$emit(\'cancel\')">cancel</button></div>' },
       EmptyState: true,
       GroupBadge: true,
       Select: true,
@@ -159,6 +165,9 @@ describe('admin UsersView', () => {
     localStorage.clear()
 
     listUsers.mockReset()
+    deleteUser.mockReset()
+    showError.mockReset()
+    showSuccess.mockReset()
     getAllGroups.mockReset()
     getBatchUsersUsage.mockReset()
     listEnabledDefinitions.mockReset()
@@ -179,6 +188,53 @@ describe('admin UsersView', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('confirms bulk user deletion and keeps failed IDs selected', async () => {
+    deleteUser.mockImplementation(async (id: number) => { if (id === 43) throw new Error('cannot delete') })
+    listUsers.mockResolvedValue({ items: [createAdminUser({ id: 42 }), createAdminUser({ id: 43 })], total: 2, page: 1, page_size: 20, pages: 1 })
+    const wrapper = mountUsersView()
+    await flushPromises()
+    await wrapper.get('[data-test="select-42"]').trigger('click')
+    await wrapper.get('[data-test="select-43"]').trigger('click')
+    await wrapper.get('[data-test="bulk-delete-users"]').trigger('click')
+    expect(deleteUser).not.toHaveBeenCalled()
+    await wrapper.get('[data-test="confirm-delete"]').trigger('click')
+    await flushPromises()
+    expect(deleteUser.mock.calls).toEqual([[42], [43]])
+    expect(wrapper.get('[data-test="selected-keys"]').text()).toBe('43')
+    expect(showSuccess).toHaveBeenCalledWith('admin.users.bulkDelete.success:1')
+    expect(showError).toHaveBeenCalledWith('admin.users.bulkDelete.failed:1')
+    wrapper.unmount()
+  })
+
+  it('取消批量删除不调用接口且保留选择', async () => {
+    const wrapper = mountUsersView()
+    await flushPromises()
+    await wrapper.get('[data-test="select-42"]').trigger('click')
+    await wrapper.get('[data-test="bulk-delete-users"]').trigger('click')
+    await wrapper.get('[data-test="cancel-delete"]').trigger('click')
+    expect(deleteUser).not.toHaveBeenCalled()
+    expect(wrapper.get('[data-test="selected-keys"]').text()).toBe('42')
+    wrapper.unmount()
+  })
+
+  it('删除只处理确认快照，不删除操作期间新选中的用户', async () => {
+    listUsers.mockResolvedValue({ items: [createAdminUser({ id: 42 }), createAdminUser({ id: 43 })], total: 2, page: 1, page_size: 20, pages: 1 })
+    let finish!: () => void
+    deleteUser.mockReturnValue(new Promise<void>(resolve => { finish = resolve }))
+    const wrapper = mountUsersView()
+    await flushPromises()
+    await wrapper.get('[data-test="select-42"]').trigger('click')
+    await wrapper.get('[data-test="bulk-delete-users"]').trigger('click')
+    await wrapper.get('[data-test="confirm-delete"]').trigger('click')
+    expect(wrapper.get('[data-test="bulk-delete-users"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('[data-test="select-43"]').trigger('click')
+    finish()
+    await flushPromises()
+    expect(deleteUser.mock.calls).toEqual([[42]])
+    expect(wrapper.get('[data-test="selected-keys"]').text()).toBe('43')
+    wrapper.unmount()
   })
 
   it('shows active, used, and created activity columns in order and requests last_used_at sort', async () => {

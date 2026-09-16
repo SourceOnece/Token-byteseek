@@ -95,6 +95,13 @@
             :api-base-url="publicSettings?.api_base_url || ''"
             :custom-endpoints="publicSettings?.custom_endpoints || []"
           />
+          <div v-if="selectedIds.length" class="flex flex-wrap items-center gap-3 text-sm font-bold">
+            <span>{{ t('keys.bulkEdit.selectedCount', { count: selectedIds.length }) }}</span>
+            <button type="button" class="btn btn-primary btn-sm" :disabled="loading" data-test="bulk-edit-keys" @click="showBulkEditModal = true">
+              <Icon name="edit" size="sm" class="mr-2" />{{ t('keys.bulkEdit.title') }}
+            </button>
+            <button type="button" class="btn btn-secondary h-9 w-9 p-0" :title="t('keys.bulkEdit.clearSelection')" @click="selectedIds = []"><Icon name="x" size="sm" /></button>
+          </div>
         </div>
       </template>
 
@@ -103,6 +110,11 @@
           :columns="columns"
           :data="apiKeys"
           :loading="loading"
+          selectable
+          row-key="id"
+          :selected-keys="selectedIds"
+          :selection-label="(key: ApiKey) => t('keys.bulkEdit.selectKey', { name: key.name })"
+          @update:selected-keys="handleSelectionChange"
           :server-side-sort="true"
           default-sort-key="created_at"
           default-sort-order="desc"
@@ -541,11 +553,34 @@
           </div>
         </div>
 
+        <fieldset v-if="showCreateModal && !formData.is_composite" data-tour="key-form-provider">
+          <legend class="input-label">{{ t('keys.providerLabel') }}</legend>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <label v-for="provider in createProviderOptions" :key="provider.value" class="min-w-0">
+              <input
+                type="radio"
+                name="key-provider"
+                :value="provider.value"
+                :checked="createProvider === provider.value"
+                :disabled="provider.count === 0 || formGroupsLoading"
+                class="peer sr-only"
+                @change="selectCreateProvider(provider.value)"
+              />
+              <span class="flex h-16 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 border-2 border-[color:var(--bh-border)] bg-[var(--bh-surface)] px-1 text-sm font-bold text-[var(--bh-ink)] shadow-[var(--bh-shadow-sm)] peer-checked:bg-[var(--bh-blue)] peer-checked:text-white peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--bh-blue)] peer-disabled:pointer-events-none peer-disabled:cursor-not-allowed peer-disabled:opacity-40 motion-safe:transition-transform active:translate-x-0.5 active:translate-y-0.5 active:shadow-none">
+                <span class="flex items-center gap-1" aria-hidden="true">
+                  <PlatformIcon v-for="platform in KEY_GROUP_PROVIDER_ICONS[provider.value]" :key="platform" :platform="platform" size="sm" />
+                </span>
+                <span>{{ provider.label }}</span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
         <div v-if="!formData.is_composite">
           <label class="input-label">{{ t('keys.groupLabel') }}</label>
           <Select
             v-model="formData.group_id"
-            :options="formGroupOptions"
+            :options="singleFormGroupOptions"
             :placeholder="t('keys.selectGroup')"
             :searchable="true"
             :search-placeholder="t('keys.searchGroup')"
@@ -1187,6 +1222,8 @@
       </template>
     </BaseDialog>
 
+    <BulkEditKeysModal :show="showBulkEditModal" :selected-keys="selectedApiKeys" :groups="groups" @close="showBulkEditModal = false" @updated="handleBulkUpdated" />
+
     <!-- Delete Confirmation Dialog -->
     <ConfirmDialog
       :show="showDeleteDialog"
@@ -1371,7 +1408,7 @@
 </template>
 
 <script setup lang="ts">
-	import { ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
+	import { ref, reactive, computed, watch, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useRoute } from 'vue-router'
 	import { useAppStore } from '@/stores/app'
@@ -1383,6 +1420,7 @@ import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 const { t } = useI18n()
 import { keysAPI, authAPI, usageAPI, userGroupsAPI } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import BulkEditKeysModal from '@/components/keys/BulkEditKeysModal.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import DataTable from '@/components/common/DataTable.vue'
 	import Pagination from '@/components/common/Pagination.vue'
@@ -1414,6 +1452,8 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import type { Column } from '@/components/common/types'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import { formatDateTime } from '@/utils/format'
+import PlatformIcon from '@/components/common/PlatformIcon.vue'
+import { KEY_GROUP_PROVIDERS, KEY_GROUP_PROVIDER_ICONS, getKeyGroupProvider, type KeyGroupProvider } from '@/utils/keyGroupProviders'
 import {
   buildCcSwitchImportDeeplink,
   buildCcSwitchUsageScript,
@@ -1558,6 +1598,18 @@ const columns = computed<Column[]>(() =>
 )
 
 const apiKeys = ref<ApiKey[]>([])
+const selectedIds = ref<number[]>([])
+const showBulkEditModal = ref(false)
+const selectedApiKeys = computed(() => apiKeys.value.filter(key => selectedIds.value.includes(key.id)))
+const handleSelectionChange = (ids: Array<string | number>) => {
+  const visible = new Set(apiKeys.value.map(key => key.id))
+  selectedIds.value = [...new Set(ids.map(Number))].filter(id => visible.has(id))
+}
+const handleBulkUpdated = (succeededIds: number[]) => {
+  const succeeded = new Set(succeededIds)
+  selectedIds.value = selectedIds.value.filter(id => !succeeded.has(id))
+  void loadApiKeys()
+}
 const groups = ref<Group[]>([])
 // 表单分组独立于列表筛选分组，指定订阅时只收窄表单选择范围。
 const formGroups = ref<Group[]>([])
@@ -1845,6 +1897,7 @@ const handleFilterClickOutside = (event: MouseEvent) => {
 }
 
 const onFilterChange = () => {
+  selectedIds.value = []
   pagination.value.page = 1
   loadApiKeys()
 }
@@ -1878,6 +1931,33 @@ const buildGroupOptions = (source: Group[]) =>
 // 指定订阅时仅使用服务端返回的权限与套餐分组交集。
 const formGroupOptions = computed(() => buildGroupOptions(formGroups.value))
 const allGroupOptions = computed(() => buildGroupOptions(groups.value))
+
+const createProvider = ref<KeyGroupProvider>('anthropic')
+// 先沿用服务端的用户/团队/指定套餐交集，再按供应商收窄；不改变复合 Key 的多平台映射。
+const createProviderOptions = computed(() => KEY_GROUP_PROVIDERS.map((value) => ({
+  value,
+  label: t(`keys.providers.${value}`),
+  count: formGroups.value.filter((group) => getKeyGroupProvider(group.platform) === value).length
+})))
+const singleFormGroupOptions = computed(() => showCreateModal.value
+  ? formGroupOptions.value.filter((group) => getKeyGroupProvider(group.platform) === createProvider.value)
+  : formGroupOptions.value
+)
+const selectCreateProvider = (provider: KeyGroupProvider) => {
+  if (createProvider.value === provider) return
+  createProvider.value = provider
+  formData.value.group_id = null
+}
+
+// 异步分组到达或切换套餐时更新可选分类，但不替用户选择具体分组。
+watch([showCreateModal, createProviderOptions, () => formData.value.is_composite], ([open, providers, composite], [wasOpen]) => {
+  if (!open || composite) return
+  if (!wasOpen || !providers.some((provider) => provider.value === createProvider.value && provider.count > 0)) {
+    const selected = formGroups.value.find((group) => group.id === formData.value.group_id)
+    createProvider.value = selected ? getKeyGroupProvider(selected.platform) : providers.find((provider) => provider.count > 0)?.value ?? 'anthropic'
+  }
+  if (!singleFormGroupOptions.value.some((group) => group.value === formData.value.group_id)) formData.value.group_id = null
+})
 
 // 切换复合模式时保留普通 Key 的原分组，前缀仍要求用户明确填写。
 const onCompositeModeChange = (enabled: boolean) => {
@@ -2040,6 +2120,7 @@ const loadApiKeys = async () => {
     })
     if (signal.aborted) return
     apiKeys.value = response.items
+    handleSelectionChange(selectedIds.value)
     pagination.value.total = response.total
     pagination.value.pages = response.pages
     // Key 列表先解除加载态，用量单元格在后台独立填充。
@@ -2177,17 +2258,20 @@ const closeTfCliImportDialog = () => {
 }
 
 const handlePageChange = (page: number) => {
+  selectedIds.value = []
   pagination.value.page = page
   loadApiKeys()
 }
 
 const handlePageSizeChange = (pageSize: number) => {
+  selectedIds.value = []
   pagination.value.page_size = pageSize
   pagination.value.page = 1
   loadApiKeys()
 }
 
 const handleSort = (key: string, order: 'asc' | 'desc') => {
+  selectedIds.value = []
   sortState.value.sort_by = key
   sortState.value.sort_order = order
   pagination.value.page = 1
@@ -2506,6 +2590,8 @@ const submitKeyForm = async () => {
 
 // 切换作用域后清空分页与筛选缓存，并只重新加载当前内容区域的数据。
 const onScopeChange = () => {
+  selectedIds.value = []
+  showBulkEditModal.value = false
   pagination.value.page = 1
   filterGroupId.value = ''
   void Promise.all([loadApiKeys(), loadGroups(), loadUserGroupRates(), loadBillingOptions(), loadFormGroups()])
@@ -2617,14 +2703,19 @@ const setExpirationDays = (days: number) => {
 
 // 重置 API Key 已用额度。
 const resetQuotaUsed = async () => {
-  if (!selectedKey.value) return
+  const key = selectedKey.value
+  if (!key) return
   showResetQuotaDialog.value = false
   try {
-    await keysAPI.update(selectedKey.value.id, { reset_quota: true })
+    const updatedKey = await keysAPI.update(key.id, { reset_quota: true })
     appStore.showSuccess(t('keys.quotaResetSuccess'))
-    // 同步更新本地状态。
-    if (selectedKey.value) {
-      selectedKey.value.quota_used = 0
+    // 只更新发起操作的 Key，避免请求途中换选项后更新错行。
+    key.quota_used = updatedKey.quota_used
+    if (key.status !== updatedKey.status) {
+      key.status = updatedKey.status
+      if (selectedKey.value?.id === key.id) {
+        formData.value.status = updatedKey.status === 'active' ? 'active' : 'inactive'
+      }
     }
   } catch (error: any) {
     const errorMsg = error.response?.data?.detail || t('keys.failedToResetQuota')

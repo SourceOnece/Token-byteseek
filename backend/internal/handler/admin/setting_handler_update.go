@@ -22,6 +22,7 @@ import (
 
 // UpdateSettingsRequest 更新设置请求
 type UpdateSettingsRequest struct {
+	SubscriptionEnabled *bool `json:"subscription_enabled"`
 	// 注册设置
 	RegistrationEnabled                 bool                         `json:"registration_enabled"`
 	EmailVerifyEnabled                  bool                         `json:"email_verify_enabled"`
@@ -1842,28 +1843,34 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		HomeContent:                            req.HomeContent,
 		HideCcsImportButton:                    req.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:            purchaseEnabled,
-		PurchaseSubscriptionURL:                purchaseURL,
-		TableDefaultPageSize:                   req.TableDefaultPageSize,
-		TablePageSizeOptions:                   req.TablePageSizeOptions,
-		UsageRankingLimit:                      usageRanking.Limit,
-		UsageRankingEnabled:                    usageRanking.Enabled,
-		UsageRankingSortBy:                     string(usageRanking.SortBy),
-		UsageRankingShowTotalTokens:            usageRanking.ShowTotalTokens,
-		UsageRankingShowRequests:               usageRanking.ShowRequests,
-		UsageRankingShowActualCost:             usageRanking.ShowActualCost,
-		CustomMenuItems:                        customMenuJSON,
-		CustomEndpoints:                        customEndpointsJSON,
-		FooterLinks:                            footerLinksJSON,
-		FooterText:                             footerText,
-		HomeFeaturedModels:                     homeFeaturedModelsJSON,
-		DefaultConcurrency:                     req.DefaultConcurrency,
-		DefaultBalance:                         req.DefaultBalance,
-		AffiliateEnabled:                       req.AffiliateEnabled,
-		AffiliateRebateRate:                    req.AffiliateRebateRate,
-		AffiliateRebateFreezeHours:             req.AffiliateRebateFreezeHours,
-		AffiliateRebateDurationDays:            req.AffiliateRebateDurationDays,
-		AffiliateRebatePerInviteeCap:           req.AffiliateRebatePerInviteeCap,
-		AdminRechargeRebateEnabled:             adminRechargeRebateEnabled,
+		SubscriptionEnabled: func() bool {
+			if req.SubscriptionEnabled != nil {
+				return *req.SubscriptionEnabled
+			}
+			return previousSettings.SubscriptionEnabled
+		}(),
+		PurchaseSubscriptionURL:      purchaseURL,
+		TableDefaultPageSize:         req.TableDefaultPageSize,
+		TablePageSizeOptions:         req.TablePageSizeOptions,
+		UsageRankingLimit:            usageRanking.Limit,
+		UsageRankingEnabled:          usageRanking.Enabled,
+		UsageRankingSortBy:           string(usageRanking.SortBy),
+		UsageRankingShowTotalTokens:  usageRanking.ShowTotalTokens,
+		UsageRankingShowRequests:     usageRanking.ShowRequests,
+		UsageRankingShowActualCost:   usageRanking.ShowActualCost,
+		CustomMenuItems:              customMenuJSON,
+		CustomEndpoints:              customEndpointsJSON,
+		FooterLinks:                  footerLinksJSON,
+		FooterText:                   footerText,
+		HomeFeaturedModels:           homeFeaturedModelsJSON,
+		DefaultConcurrency:           req.DefaultConcurrency,
+		DefaultBalance:               req.DefaultBalance,
+		AffiliateEnabled:             req.AffiliateEnabled,
+		AffiliateRebateRate:          req.AffiliateRebateRate,
+		AffiliateRebateFreezeHours:   req.AffiliateRebateFreezeHours,
+		AffiliateRebateDurationDays:  req.AffiliateRebateDurationDays,
+		AffiliateRebatePerInviteeCap: req.AffiliateRebatePerInviteeCap,
+		AdminRechargeRebateEnabled:   adminRechargeRebateEnabled,
 		TeamEnabled: func() bool {
 			if req.TeamEnabled != nil {
 				return *req.TeamEnabled
@@ -2436,6 +2443,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		HomeContent:                                      updatedSettings.HomeContent,
 		HideCcsImportButton:                              updatedSettings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:                      updatedSettings.PurchaseSubscriptionEnabled,
+		SubscriptionEnabled:                              updatedSettings.SubscriptionEnabled,
 		PurchaseSubscriptionURL:                          updatedSettings.PurchaseSubscriptionURL,
 		TableDefaultPageSize:                             updatedSettings.TableDefaultPageSize,
 		TablePageSizeOptions:                             updatedSettings.TablePageSizeOptions,

@@ -259,6 +259,8 @@ export interface PublicSettings {
   home_content: string
   hide_ccs_import_button: boolean
   payment_enabled: boolean
+  subscription_enabled?: boolean
+  payment_balance_disabled?: boolean
   team_enabled?: boolean
   team_self_service_enabled?: boolean
   // 旧版公开设置可能缺少该字段，调用方应仅在明确为 false 时关闭创作台入口。
@@ -566,6 +568,8 @@ export type GroupPlatform =
   | 'kimi'
   | 'zhipu'
   | 'deepseek'
+  | 'minimax'
+  | 'opencode_go'
 export type GroupSchedulerType = 'basic' | 'advanced'
 export type VideoModelPrices = Record<string, Record<string, number>>
 
@@ -617,6 +621,7 @@ export interface MarketplacePricingInterval {
 }
 
 export interface MarketplaceModelPricing {
+  max_reasoning_effort_multiplier?: number | null
   pricing_mode: MarketplacePricingMode
   price_status: MarketplacePriceStatus
   input_price_per_token?: number
@@ -823,6 +828,7 @@ export interface AdminGroup extends Group {
   default_mapped_model?: string
   messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   models_list_config?: ModelsListConfig
+  model_allowlist?: ModelsListConfig
 
   // 分组排序
   sort_order: number
@@ -988,6 +994,7 @@ export interface CreateGroupRequest {
   mcp_xml_inject?: boolean
   supported_model_scopes?: string[]
   models_list_config?: ModelsListConfig
+  model_allowlist?: ModelsListConfig
   availability_probe_config?: GroupAvailabilityProbeConfig
   allowed_client_protocols?: GroupClientProtocol[]
   allow_messages_dispatch?: boolean
@@ -1054,6 +1061,7 @@ export interface UpdateGroupRequest {
   mcp_xml_inject?: boolean
   supported_model_scopes?: string[]
   models_list_config?: ModelsListConfig
+  model_allowlist?: ModelsListConfig
   availability_probe_config?: GroupAvailabilityProbeConfig
   allowed_client_protocols?: GroupClientProtocol[]
   allow_messages_dispatch?: boolean
@@ -1083,6 +1091,8 @@ export type AccountPlatform =
   | 'kimi'
   | 'zhipu'
   | 'deepseek'
+  | 'minimax'
+  | 'opencode_go'
 export type AccountType = 'oauth' | 'setup-token' | 'apikey' | 'upstream' | 'bedrock' | 'service_account' | 'cosy'
 export type OAuthAddMethod = 'oauth' | 'setup-token'
 export type ProxyProtocol = 'http' | 'https' | 'socks5' | 'socks5h'
@@ -1575,6 +1585,8 @@ export type UpstreamUsageAdapter =
   | 'kimi_coding'
   | 'zhipu_coding'
   | 'deepseek_balance'
+  | 'minimax_coding'
+  | 'opencode_go'
 
 export interface UpstreamUsageQueryConfig {
   enabled: boolean

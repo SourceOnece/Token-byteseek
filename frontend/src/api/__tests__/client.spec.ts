@@ -267,6 +267,33 @@ describe('API Client', () => {
   // --- 401 Token 刷新 ---
 
   describe('401 Token 刷新', () => {
+    // 临时服务故障不能当成账号退出；保留本地刷新令牌供下次使用。
+    it.each([0, 429, 500, 503])('刷新临时失败 %s 时保留登录', async (status) => {
+      // 此测试不覆盖无锁多标签竞争，避免等待完整的 30 秒刷新窗口。
+      Object.defineProperty(navigator, 'locks', {
+        configurable: true,
+        value: { request: (_name: string, callback: () => Promise<unknown>) => callback() }
+      })
+      sessionStorage.clear()
+      localStorage.setItem('auth_token', 'expired-token')
+      localStorage.setItem('refresh_token', 'refresh-token')
+      localStorage.setItem('auth_user', JSON.stringify({ id: 7 }))
+      apiClient.defaults.adapter = vi.fn().mockRejectedValue({
+        response: { status: 401, data: { code: 'TOKEN_EXPIRED' } },
+        config: { url: '/test', headers: { Authorization: 'Bearer expired-token' } }
+      })
+      vi.spyOn(axios, 'post').mockRejectedValueOnce({
+        isAxiosError: true,
+        message: 'temporary error',
+        ...(status ? { response: { status, data: { message: 'temporary error' } } } : {})
+      })
+      await expect(apiClient.get('/test')).rejects.toMatchObject({ code: 'TOKEN_REFRESH_UNAVAILABLE', status })
+      expect(localStorage.getItem('auth_token')).toBe('expired-token')
+      expect(localStorage.getItem('refresh_token')).toBe('refresh-token')
+      expect(localStorage.getItem('auth_user')).toBe(JSON.stringify({ id: 7 }))
+      expect(sessionStorage.getItem('auth_expired')).toBeNull()
+    })
+
     it('无 refresh_token 时 401 清除 localStorage', async () => {
       localStorage.setItem('auth_token', 'expired-token')
       // 不设置 refresh_token

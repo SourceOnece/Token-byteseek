@@ -25,6 +25,18 @@ func forceHTTPVersion(t *testing.T, client *req.Client) string {
 	return reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().String()
 }
 
+func TestPrivacyReqClientBrowserProfileIsIsolated(t *testing.T) {
+	sharedReqClients = sync.Map{}
+	privacy, err := CreatePrivacyReqClient("")
+	require.NoError(t, err)
+	require.Contains(t, privacy.Headers.Get("User-Agent"), "Firefox/")
+	require.NotContains(t, privacy.Headers.Get("User-Agent"), "Chrome/")
+	plain, err := getSharedReqClient(reqClientOptions{Timeout: 30 * time.Second})
+	require.NoError(t, err)
+	require.NotSame(t, privacy, plain)
+	require.NotContains(t, plain.Headers.Get("User-Agent"), "Firefox/")
+}
+
 func TestGetSharedReqClient_ForceHTTP2SeparatesCache(t *testing.T) {
 	sharedReqClients = sync.Map{}
 	base := reqClientOptions{

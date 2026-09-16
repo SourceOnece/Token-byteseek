@@ -74,6 +74,22 @@ function createUser(overrides: Partial<User> = {}): User {
 }
 
 describe('ProfileEditForm', () => {
+  // 原有成功更新断言继续保留，补结构化 API 错误与旧 detail 回退。
+  it.each([
+    [{ status: 400, message: 'username is too long' }, 'username is too long'],
+    [{ response: { data: { detail: 'backend failure' } } }, 'backend failure'],
+    [{}, 'Update failed'],
+  ])('保留失败前的用户状态 %j', async (error, expectedMessage) => {
+    updateProfileMock.mockRejectedValue(error)
+    authStoreState.user = createUser({ username: 'alice' })
+    const wrapper = mount(ProfileEditForm, { props: { initialUsername: 'alice' } })
+    await wrapper.get('#username').setValue('new-name')
+    await wrapper.get('form').trigger('submit')
+    expect(showErrorMock).toHaveBeenLastCalledWith(expectedMessage)
+    expect(authStoreState.user.username).toBe('alice')
+    wrapper.unmount()
+  })
+
   beforeEach(() => {
     updateProfileMock.mockReset()
     showSuccessMock.mockReset()

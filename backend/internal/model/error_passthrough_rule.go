@@ -41,11 +41,13 @@ const (
 	PlatformKimi        = "kimi"
 	PlatformZhipu       = "zhipu"
 	PlatformDeepseek    = "deepseek"
+	PlatformMiniMax     = "minimax"
+	PlatformOpenCodeGo  = "opencode_go"
 )
 
 // AllPlatforms 返回所有支持的平台列表
 func AllPlatforms() []string {
-	return []string{PlatformAnthropic, PlatformOpenAI, PlatformGemini, PlatformAntigravity, PlatformQoder, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek}
+	return []string{PlatformAnthropic, PlatformOpenAI, PlatformGemini, PlatformAntigravity, PlatformQoder, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformOpenCodeGo}
 }
 
 // Validate 验证规则配置的有效性

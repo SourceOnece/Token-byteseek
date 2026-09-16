@@ -52,6 +52,10 @@ func truncateModelListForError(models []string) []string {
 // defaultRequestModelIDsForPlatform 返回指定平台没有显式白名单时展示的默认模型列表。
 func defaultRequestModelIDsForPlatform(platform string) []string {
 	switch platform {
+	case PlatformMiniMax:
+		return MiniMaxDefaultModelIDs()
+	case PlatformOpenCodeGo:
+		return DefaultOpenCodeGoModelIDs()
 	case PlatformOpenAI:
 		return openai.DefaultModelIDs()
 	case PlatformGemini:

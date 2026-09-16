@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/handler/dto"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
@@ -170,6 +171,26 @@ func (h *SubscriptionHandler) BulkAssign(c *gin.Context) {
 
 	// 从上下文获取管理员用户 ID。
 	adminID := getAdminIDFromContext(c)
+	if strings.TrimSpace(c.GetHeader("Idempotency-Key")) != "" {
+		if len(req.UserIDs) > service.MaxBulkSubscriptionActions {
+			response.BadRequest(c, "at most 100 users can be assigned in one batch")
+			return
+		}
+		for _, id := range req.UserIDs {
+			if id <= 0 {
+				response.BadRequest(c, "user IDs must be positive")
+				return
+			}
+		}
+		executeSubscriptionBatch(c, "admin.subscriptions.bulk_assign", req, func(ctx context.Context) (any, error) {
+			result, err := h.subscriptionService.BulkAssignSubscription(ctx, &service.BulkAssignSubscriptionInput{UserIDs: req.UserIDs, PlanID: req.PlanID, ValidityDays: req.ValidityDays, AssignedBy: adminID, Notes: req.Notes})
+			if err != nil {
+				return nil, err
+			}
+			return dto.BulkAssignResultFromService(result), nil
+		})
+		return
+	}
 
 	result, err := h.subscriptionService.BulkAssignSubscription(c.Request.Context(), &service.BulkAssignSubscriptionInput{
 		UserIDs:      req.UserIDs,

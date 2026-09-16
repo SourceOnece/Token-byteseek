@@ -39,7 +39,37 @@ func (s *RedeemCacheSuite) TestIncrementAndGetRedeemAttemptCount() {
 
 	ttl, err := s.rdb.TTL(s.ctx, key).Result()
 	require.NoError(s.T(), err, "TTL")
-	s.AssertTTLWithin(ttl, 1*time.Second, redeemRateLimitDuration)
+	s.AssertTTLWithin(ttl, redeemRateLimitWindow-time.Second, redeemRateLimitWindow)
+}
+
+func (s *RedeemCacheSuite) TestIncrementDoesNotRefreshFixedWindow() {
+	key := redeemRateLimitKey(3)
+	require.NoError(s.T(), s.cache.IncrementRedeemAttemptCount(s.ctx, 3))
+	require.NoError(s.T(), s.rdb.PExpire(s.ctx, key, 5*time.Minute).Err())
+	require.NoError(s.T(), s.cache.IncrementRedeemAttemptCount(s.ctx, 3))
+	ttl, err := s.rdb.PTTL(s.ctx, key).Result()
+	require.NoError(s.T(), err)
+	s.AssertTTLWithin(ttl, 5*time.Minute-time.Second, 5*time.Minute)
+}
+
+func (s *RedeemCacheSuite) TestIncrementRepairsMissingTTL() {
+	key := redeemRateLimitKey(4)
+	require.NoError(s.T(), s.rdb.Set(s.ctx, key, 5, 0).Err())
+	require.NoError(s.T(), s.cache.IncrementRedeemAttemptCount(s.ctx, 4))
+	count, err := s.cache.GetRedeemAttemptCount(s.ctx, 4)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), 6, count)
+	ttl, err := s.rdb.PTTL(s.ctx, key).Result()
+	require.NoError(s.T(), err)
+	s.AssertTTLWithin(ttl, redeemRateLimitWindow-time.Second, redeemRateLimitWindow)
+}
+
+func (s *RedeemCacheSuite) TestLegacyCounterDoesNotCarryOldWindow() {
+	// 新旧键隔离，升级后不继承旧版每次延期的 24 小时限制。
+	require.NoError(s.T(), s.rdb.Set(s.ctx, "redeem:ratelimit:5", 20, 24*time.Hour).Err())
+	count, err := s.cache.GetRedeemAttemptCount(s.ctx, 5)
+	require.NoError(s.T(), err)
+	require.Zero(s.T(), count)
 }
 
 func (s *RedeemCacheSuite) TestMultipleIncrements() {

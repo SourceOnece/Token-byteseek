@@ -88,6 +88,10 @@ func (s *adminServiceImpl) GetGroupModelsListCandidates(ctx context.Context, id 
 
 func defaultModelsListCandidateIDs(platform string) []string {
 	switch platform {
+	case PlatformMiniMax:
+		return MiniMaxDefaultModelIDs()
+	case PlatformOpenCodeGo:
+		return DefaultOpenCodeGoModelIDs()
 	case PlatformOpenAI:
 		return openai.DefaultModelIDs()
 	case PlatformGemini:
@@ -311,6 +315,10 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 	if err != nil {
 		return nil, err
 	}
+	modelAllowlist, err := normalizeGroupModelAllowlist(input.ModelAllowlist)
+	if err != nil {
+		return nil, err
+	}
 
 	sortOrder := 0
 	if input.SortOrder != nil {
@@ -371,6 +379,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		DefaultMappedModel:              input.DefaultMappedModel,
 		MessagesDispatchModelConfig:     normalizeOpenAIMessagesDispatchModelConfig(input.MessagesDispatchModelConfig),
 		ModelsListConfig:                normalizeGroupModelsListConfig(input.ModelsListConfig),
+		ModelAllowlist:                  modelAllowlist,
 		AvailabilityProbeConfig:         availabilityProbeConfig,
 		RPMLimit:                        input.RPMLimit,
 		MaxReasoningEffort:              maxReasoningEffort,
@@ -815,6 +824,13 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 	if input.ModelsListConfig != nil {
 		group.ModelsListConfig = normalizeGroupModelsListConfig(*input.ModelsListConfig)
+	}
+	if input.ModelAllowlist != nil {
+		normalized, err := normalizeGroupModelAllowlist(*input.ModelAllowlist)
+		if err != nil {
+			return nil, err
+		}
+		group.ModelAllowlist = normalized
 	}
 	if input.AvailabilityProbeConfig != nil {
 		config, err := normalizeGroupAvailabilityProbeConfigForAdminWrite(*input.AvailabilityProbeConfig)

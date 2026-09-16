@@ -54,6 +54,7 @@ func TestProvideCleanup_WithMinimalDependencies_NoPanic(t *testing.T) {
 	opsSystemLogSinkSvc := service.NewOpsSystemLogSink(nil)
 
 	cleanup := provideCleanup(
+		nil, // 渠道缓存订阅在该关闭顺序用例中不启用。
 		nil, // entClient
 		nil, // redis
 		&service.OpsMetricsCollector{},

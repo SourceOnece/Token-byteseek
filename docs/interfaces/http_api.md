@@ -92,6 +92,10 @@ POST /api/v1/creative/runs/{id}/outputs/{index}/ack
 
 部分下载路由使用短期签名票据，以支持浏览器原生下载大文件；票据只授权一个预生成资源，不能等价为用户 JWT。模型列表、用量和既有批任务管理即使跳过消费余额检查，仍要执行 Key 身份和资源归属验证。
 
+`GET /v1/models`、`GET /models` 返回当前分组、账号能力、渠道映射、Key 别名和白名单共同筛选后的目录；`GET /v1/models/{model}` 与裸别名返回同一目录中的单项原始条目，找不到返回协议兼容的 `model_not_found`，不会直接请求任意上游或绕过复合 Key 的订阅范围。模型 ID 含 `/` 时路由保留完整路径；复合 Key 的 `前缀/模型` 由列表聚合逻辑解析，单项查询仍先经过身份、额度和分组边界。
+
+管理员账号模型选择器对 MiniMax、OpenCode Go/Zen 使用各自预设，不再错误显示 Claude 默认目录；显式账号模型仍优先。新接口只扩展模型发现响应，不改变生成、结算或调度。
+
 上游声明倍率探测与 Key 账单自省已从路由表完全注销：`GET /v1/sub2api/billing`，`GET|PUT /api/v1/admin/accounts/upstream-billing-probe/settings`，`POST /api/v1/admin/accounts/upstream-billing-probe/batch`，以及 `PUT|POST /api/v1/admin/accounts/:id/upstream-billing-probe` 都返回普通 `404`。这些路径没有兼容 handler、重定向或弃用响应，也不再享有 API Key 非消费请求豁免。
 
 账号批量删除使用 `POST /api/v1/admin/accounts/batch-delete`，请求体为 `account_ids`。服务端先去除非正数和重复 ID，再以最多 5 路并发执行删除；同批选择父账号及其影子账号时只删除根账号一次，并将级联影响映射回逐账号结果。响应返回稳定排序的 `success_ids`、`failed_ids` 和错误明细，单项失败不会取消其它账号。管理端“全选筛选结果”先以同一筛选快照分页读取轻量 ID，任何分页缺失或重复都保留原选择，不得提交部分集合。

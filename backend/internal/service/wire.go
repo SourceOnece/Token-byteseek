@@ -15,6 +15,16 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// ProvideChannelService 在生产装配跨实例通知，测试可继续使用原两参数构造器。
+func ProvideChannelService(repo ChannelRepository, invalidator APIKeyAuthCacheInvalidator, bus ChannelCachePubSub) *ChannelService {
+	svc := NewChannelService(repo, invalidator)
+	svc.cachePubSub = bus
+	if bus != nil {
+		bus.SubscribeUpdates(context.Background(), svc.clearLocalCache)
+	}
+	return svc
+}
+
 func ProvideGrokOAuthService(proxyRepo ProxyRepository, oauthClient GrokOAuthClient, cfg *config.Config, redisClient *redis.Client) *GrokOAuthService {
 	svc := NewGrokOAuthService(proxyRepo, oauthClient, cfg)
 	// Wire 层允许直接依赖 Redis，在这里装配跨实例单次消费的会话存储。
@@ -481,6 +491,7 @@ func ProvideRateLimitService(
 	openAI403CounterCache OpenAI403CounterCache,
 	settingService *SettingService,
 	tokenCacheInvalidator TokenCacheInvalidator,
+	ollamaCloudUsage *OllamaCloudUsageService,
 ) *RateLimitService {
 	svc := NewRateLimitService(accountRepo, usageRepo, cfg, geminiQuotaService, tempUnschedCache)
 	if healthCache, ok := tempUnschedCache.(OpenAIAPIKeyHealthCache); ok {
@@ -490,6 +501,7 @@ func ProvideRateLimitService(
 	svc.SetOpenAI403CounterCache(openAI403CounterCache)
 	svc.SetSettingService(settingService)
 	svc.SetTokenCacheInvalidator(tokenCacheInvalidator)
+	svc.SetOllamaCloudUsageProbeScheduler(ollamaCloudUsage)
 	return svc
 }
 
@@ -918,7 +930,7 @@ var ProviderSet = wire.NewSet(
 	ProvideScheduledTestRunnerService,
 	ProvideGroupAvailabilityProbeRunnerService,
 	NewGroupCapacityService,
-	NewChannelService,
+	ProvideChannelService,
 	wire.Bind(new(ChannelCacheInvalidator), new(*ChannelService)),
 	NewModelPricingResolver,
 	ProvideContentModerationService,

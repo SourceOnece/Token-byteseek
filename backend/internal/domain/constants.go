@@ -34,6 +34,8 @@ const (
 	PlatformKimi        = "kimi"
 	PlatformZhipu       = "zhipu"
 	PlatformDeepseek    = "deepseek"
+	PlatformMiniMax     = "minimax"
+	PlatformOpenCodeGo  = "opencode_go"
 	PlatformComposite   = "composite"
 )
 
@@ -41,6 +43,8 @@ const (
 const (
 	AccountModePayG   = "payg"
 	AccountModeCoding = "coding"
+	AccountModeZen    = "zen"
+	AccountModeGo     = "go"
 )
 
 // 国产供应商上游协议与账号模式正交，决定实际 wire protocol。
@@ -151,6 +155,18 @@ var DefaultAntigravityModelMapping = map[string]string{
 	"gemini-3.6-flash-low":    "gemini-3.6-flash-low",
 	"gemini-3.6-flash-medium": "gemini-3.6-flash-medium",
 	"gemini-3.6-flash-tiered": "gemini-3.6-flash-tiered",
+	// Gemini 3.7 Flash tiered models
+	"gemini-3.7-flash":        "gemini-3.7-flash",
+	"gemini-3.7-flash-high":   "gemini-3.7-flash-high",
+	"gemini-3.7-flash-low":    "gemini-3.7-flash-low",
+	"gemini-3.7-flash-medium": "gemini-3.7-flash-medium",
+	"gemini-3.7-flash-tiered": "gemini-3.7-flash-tiered",
+	// Gemini 3.8 Flash tiered models
+	"gemini-3.8-flash":        "gemini-3.8-flash",
+	"gemini-3.8-flash-high":   "gemini-3.8-flash-high",
+	"gemini-3.8-flash-low":    "gemini-3.8-flash-low",
+	"gemini-3.8-flash-medium": "gemini-3.8-flash-medium",
+	"gemini-3.8-flash-tiered": "gemini-3.8-flash-tiered",
 	// Gemini 3 image 兼容映射（向 3.1 image 迁移）
 	"gemini-3-pro-image":         "gemini-3.1-flash-image",
 	"gemini-3-pro-image-preview": "gemini-3.1-flash-image",
@@ -168,8 +184,10 @@ var DefaultBedrockModelMapping = map[string]string{
 	"claude-fable-5-1": "anthropic.claude-fable-5-1",
 	"claude-fable-5":   "anthropic.claude-fable-5",
 	// Claude Opus
-	"claude-opus-4-8":          "us.anthropic.claude-opus-4-8-v1",
-	"claude-opus-4-7":          "us.anthropic.claude-opus-4-7-v1",
+	// 新版模型使用无版本后缀的 Bedrock ID，不能沿用 Opus 4.6 的 -v1。
+	"claude-opus-5":            "us.anthropic.claude-opus-5",
+	"claude-opus-4-8":          "us.anthropic.claude-opus-4-8",
+	"claude-opus-4-7":          "us.anthropic.claude-opus-4-7",
 	"claude-opus-4-6-thinking": "us.anthropic.claude-opus-4-6-v1",
 	"claude-opus-4-6":          "us.anthropic.claude-opus-4-6-v1",
 	"claude-opus-4-5-thinking": "us.anthropic.claude-opus-4-5-20251101-v1:0",
@@ -177,7 +195,7 @@ var DefaultBedrockModelMapping = map[string]string{
 	"claude-opus-4-1":          "us.anthropic.claude-opus-4-1-20250805-v1:0",
 	"claude-opus-4-20250514":   "us.anthropic.claude-opus-4-20250514-v1:0",
 	// Claude Sonnet
-	"claude-sonnet-5":            "us.anthropic.claude-sonnet-5-v1",
+	"claude-sonnet-5":            "us.anthropic.claude-sonnet-5",
 	"claude-sonnet-4-6-thinking": "us.anthropic.claude-sonnet-4-6",
 	"claude-sonnet-4-6":          "us.anthropic.claude-sonnet-4-6",
 	"claude-sonnet-4-5":          "us.anthropic.claude-sonnet-4-5-20250929-v1:0",

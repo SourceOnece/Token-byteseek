@@ -36,6 +36,8 @@ const (
 	UpstreamUsageAdapterZhipuCoding     = "zhipu_coding"
 	UpstreamUsageAdapterKimiBalance     = "kimi_balance"
 	UpstreamUsageAdapterDeepseekBalance = "deepseek_balance"
+	UpstreamUsageAdapterMiniMaxCoding   = "minimax_coding"
+	UpstreamUsageAdapterOpenCodeGo      = "opencode_go"
 
 	// New API 钱包接口在官方部署中需要用户级访问令牌；它与转发 API Key
 	// 分开保存，避免把一个 token 的额度误当成用户钱包余额。
@@ -207,6 +209,8 @@ var upstreamUsageAdapterRegistry = []upstreamUsageAdapterRegistration{
 	{Name: UpstreamUsageAdapterZhipuCoding, Label: "Zhipu Coding Plan", Automatic: true, Factory: func() UpstreamUsageAdapter { return &zhipuCodingUsageAdapter{} }},
 	{Name: UpstreamUsageAdapterKimiBalance, Label: "Kimi Balance", Automatic: true, Factory: func() UpstreamUsageAdapter { return &kimiBalanceUsageAdapter{} }},
 	{Name: UpstreamUsageAdapterDeepseekBalance, Label: "DeepSeek Balance", Automatic: true, Factory: func() UpstreamUsageAdapter { return &deepseekBalanceUsageAdapter{} }},
+	{Name: UpstreamUsageAdapterMiniMaxCoding, Label: "MiniMax Coding Plan", Automatic: true, Factory: func() UpstreamUsageAdapter { return &minimaxCodingUsageAdapter{} }},
+	{Name: UpstreamUsageAdapterOpenCodeGo, Label: "OpenCode Go", Automatic: true, Factory: func() UpstreamUsageAdapter { return &openCodeGoUsageAdapter{} }},
 }
 
 // UpstreamUsageAdapterOptions 返回稳定排序的内置适配器列表。
@@ -335,7 +339,7 @@ func EffectiveUpstreamUsageConfig(account *Account) (UpstreamUsageQueryConfig, e
 		if !ok || strings.TrimSpace(parsed) == "" {
 			return UpstreamUsageQueryConfig{}, ErrUpstreamUsageConfigInvalid
 		}
-		if !account.IsCNProvider() {
+		if !account.IsMultiProtocolAPIKey() {
 			config.Adapter = strings.TrimSpace(parsed)
 		}
 	}
@@ -500,7 +504,7 @@ func (s *UpstreamUsageService) QueryAccount(ctx context.Context, accountID int64
 	}
 	// 国产供应商不允许管理员把协议适配器误选成通用站点适配器；按平台和
 	// account_mode 自动选择只读适配器，保留现有查询开关与身份指纹语义。
-	if account.IsCNProvider() {
+	if account.IsMultiProtocolAPIKey() {
 		queryConfig.Adapter = cnUpstreamUsageAdapterName(account)
 		if queryConfig.Adapter == "" {
 			return nil, ErrUpstreamUsageUnsupported
@@ -534,8 +538,11 @@ func (s *UpstreamUsageService) QueryAccount(ctx context.Context, accountID int64
 }
 
 func cnUpstreamUsageAdapterName(account *Account) string {
-	if account == nil || !account.IsCNProvider() {
+	if account == nil || !account.IsMultiProtocolAPIKey() {
 		return ""
+	}
+	if account.IsOpenCodeGoPlan() {
+		return UpstreamUsageAdapterOpenCodeGo
 	}
 	if account.IsCodingPlan() {
 		switch account.Platform {
@@ -543,6 +550,8 @@ func cnUpstreamUsageAdapterName(account *Account) string {
 			return UpstreamUsageAdapterKimiCoding
 		case PlatformZhipu:
 			return UpstreamUsageAdapterZhipuCoding
+		case PlatformMiniMax:
+			return UpstreamUsageAdapterMiniMaxCoding
 		default:
 			return ""
 		}
@@ -808,7 +817,7 @@ func upstreamUsageAccountBaseURL(account *Account) string {
 		return account.GetGeminiBaseURL("https://generativelanguage.googleapis.com")
 	case PlatformAntigravity:
 		return account.GetGeminiBaseURL("https://generativelanguage.googleapis.com")
-	case PlatformKimi, PlatformZhipu, PlatformDeepseek:
+	case PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformOpenCodeGo:
 		// 用量端点只替换路径并保留账号主机；缺少自定义地址时使用平台默认值。
 		return account.GetOpenAIBaseURL()
 	default:

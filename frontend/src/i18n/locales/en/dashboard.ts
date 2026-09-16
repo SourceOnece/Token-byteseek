@@ -87,6 +87,22 @@ export default {
     columnSettings: 'Column Settings',
     createKey: 'Create API Key',
     editKey: 'Edit API Key',
+    bulkEdit: {
+      compositeGroupLocked: 'Composite keys selected; edit their group mappings individually',
+      title: 'Bulk Edit',
+      selectedCount: '{count} keys selected',
+      selectKey: 'Select key {name}',
+      clearSelection: 'Clear selection',
+      hint: 'Check the fields to update. Unchecked fields keep their current values.',
+      limitHint: 'Enter 0 for no limit. Existing usage is preserved.',
+      ipHint: 'One IP or CIDR per line. Leave empty to clear this list on the selected keys.',
+      invalidLimit: 'Enter a valid amount greater than or equal to 0.',
+      invalidExpiration: 'Choose a valid expiration date or select Never expires.',
+      apply: 'Apply to {count} keys',
+      success: 'Updated {count} keys',
+      partialFailure: 'Updated {success} keys; {failed} failed',
+      failureHint: 'These keys could not be updated. Adjust the settings and retry. Only failed keys will be retried.'
+    },
     deleteKey: 'Delete API Key',
     deleteConfirmMessage: "Are you sure you want to delete '{name}'? This action cannot be undone.",
     id: 'ID',
@@ -136,6 +152,13 @@ export default {
     enable: 'Enable',
     disable: 'Disable',
     nameLabel: 'Name',
+    providerLabel: 'Provider',
+    providers: {
+      anthropic: 'Anthropic',
+      openai: 'OpenAI',
+      domestic: 'Chinese Models',
+      other: 'Other'
+    },
     namePlaceholder: 'My API Key',
     groupLabel: 'Group',
     selectGroup: 'Select a group',
@@ -482,6 +505,7 @@ export default {
     cacheWrite1h: 'Write (1h)',
     serviceTier: 'Service tier',
     serviceTierPriority: 'Fast',
+    serviceTierUltrafast: 'Ultrafast',
     serviceTierFlex: 'Flex',
     serviceTierStandard: 'Standard',
     rate: 'Rate',
@@ -568,6 +592,7 @@ export default {
     codeAlreadyUsed: 'You have already redeemed this code',
     failedToRedeem: 'Failed to redeem code. Please check the code and try again.',
     subscriptionRefreshFailed: 'Redeemed successfully, but failed to refresh subscription status.',
+    userRefreshFailed: 'Redeemed successfully, but failed to refresh account information.',
     pleaseEnterCode: 'Please enter a redeem code'
   },
 affiliate: {

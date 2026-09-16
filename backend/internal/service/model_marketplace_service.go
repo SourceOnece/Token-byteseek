@@ -564,7 +564,7 @@ func (s *ModelMarketplaceService) resolveGroupModels(ctx context.Context, group 
 		groupID := group.ID
 		resolution := s.gatewayService.ResolveRequestableModels(ctx, &groupID, group.Platform)
 		if len(resolution.Models) > 0 {
-			return buildMarketplaceModelDefsFromRequestable(resolution.Models, group.Platform)
+			return filterMarketplaceAllowlist(buildMarketplaceModelDefsFromRequestable(resolution.Models, group.Platform), group)
 		}
 		// 已完成账号和渠道解析后，空结果必须保持为空，不能再次回退平台默认模型。
 		return nil
@@ -573,7 +573,7 @@ func (s *ModelMarketplaceService) resolveGroupModels(ctx context.Context, group 
 	if group == nil {
 		return nil
 	}
-	return defaultMarketplaceModelDefs(group.Platform)
+	return filterMarketplaceAllowlist(defaultMarketplaceModelDefs(group.Platform), group)
 }
 
 // resolveGroupModelsWithAccounts 直接使用预取账号生成候选和执行 R -> C -> U 校验。
@@ -587,7 +587,21 @@ func (s *ModelMarketplaceService) resolveGroupModelsWithAccounts(ctx context.Con
 	if len(resolution.Models) == 0 {
 		return nil
 	}
-	return buildMarketplaceModelDefsFromRequestable(resolution.Models, group.Platform)
+	return filterMarketplaceAllowlist(buildMarketplaceModelDefsFromRequestable(resolution.Models, group.Platform), group)
+}
+
+// 公开市场不展示被分组硬白名单禁用的模型，仍保留原解析结果及顺序。
+func filterMarketplaceAllowlist(models []marketplaceModelDef, group *Group) []marketplaceModelDef {
+	if group == nil || !group.ModelAllowlistEnabled() {
+		return models
+	}
+	filtered := make([]marketplaceModelDef, 0, len(models))
+	for _, model := range models {
+		if group.ModelAllowlist.Allows(model.ID) {
+			filtered = append(filtered, model)
+		}
+	}
+	return filtered
 }
 
 type marketplaceModelDef struct {
@@ -614,6 +628,20 @@ func buildMarketplaceModelDefsFromRequestable(models []RequestableModel, platfor
 
 func defaultMarketplaceModelDefs(platform string) []marketplaceModelDef {
 	switch platform {
+	case PlatformOpenCodeGo:
+		ids := DefaultOpenCodeGoModelIDs()
+		models := make([]marketplaceModelDef, 0, len(ids))
+		for _, id := range ids {
+			models = append(models, marketplaceModelDef{ID: id, DisplayName: id})
+		}
+		return models
+	case PlatformMiniMax:
+		ids := MiniMaxDefaultModelIDs()
+		models := make([]marketplaceModelDef, 0, len(ids))
+		for _, id := range ids {
+			models = append(models, marketplaceModelDef{ID: id, DisplayName: id})
+		}
+		return models
 	case PlatformOpenAI:
 		models := make([]marketplaceModelDef, 0, len(openai.DefaultModels))
 		for _, model := range openai.DefaultModels {

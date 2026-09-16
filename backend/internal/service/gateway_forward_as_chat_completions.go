@@ -165,6 +165,10 @@ func (s *GatewayService) ForwardAsChatCompletions(
 
 	// 13. Extract reasoning effort from CC request body
 	reasoningEffort := extractCCReasoningEffortFromBody(body, mappedModel, originalModel)
+	// 按 Anthropic 出站档位记录，不能用 OpenAI 模型能力过滤掉 Claude 的 max。
+	if anthropicReq.OutputConfig != nil {
+		reasoningEffort = NormalizeClaudeOutputEffort(anthropicReq.OutputConfig.Effort)
+	}
 	// 国产模型没有显式 effort 档位时，thinking 启用后补默认展示值。
 	reasoningEffort = ApplyThinkingEnabledFallback(reasoningEffort, body, mappedModel)
 

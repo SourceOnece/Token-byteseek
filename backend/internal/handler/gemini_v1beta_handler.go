@@ -98,6 +98,13 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 		return
 	}
 	res.Body = appendAPIKeyAliasesToGeminiModelsJSON(res.Body, apiKey.ModelMapping)
+	if res.StatusCode == http.StatusOK {
+		res.Body, err = filterGeminiModelsAllowlist(res.Body, apiKey.Group)
+		if err != nil {
+			googleError(c, http.StatusBadGateway, "Invalid upstream model list")
+			return
+		}
+	}
 	writeUpstreamResponse(c, res)
 }
 
@@ -122,8 +129,46 @@ func writeGeminiModelsListWithAPIKeyAliases(c *gin.Context, payload any, apiKey 
 	}
 	if apiKey != nil {
 		body = appendAPIKeyAliasesToGeminiModelsJSON(body, apiKey.ModelMapping)
+		body, err = filterGeminiModelsAllowlist(body, apiKey.Group)
+		if err != nil {
+			googleError(c, http.StatusBadGateway, "Invalid upstream model list")
+			return
+		}
 	}
 	c.Data(http.StatusOK, "application/json; charset=utf-8", body)
+}
+
+// 过滤放在 Key 别名投影之后，不能把允许的别名因其内部目标名称而误删。
+func filterGeminiModelsAllowlist(body []byte, group *service.Group) ([]byte, error) {
+	if group == nil || !group.ModelAllowlistEnabled() {
+		return body, nil
+	}
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return nil, err
+	}
+	var models []json.RawMessage
+	if err := json.Unmarshal(envelope["models"], &models); err != nil {
+		return nil, err
+	}
+	filtered := make([]json.RawMessage, 0, len(models))
+	for _, raw := range models {
+		var model struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(raw, &model); err != nil {
+			return nil, err
+		}
+		if model.Name != "" && group.ModelAllowlist.Allows(model.Name) {
+			filtered = append(filtered, raw)
+		}
+	}
+	var err error
+	envelope["models"], err = json.Marshal(filtered)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(envelope)
 }
 
 // appendAPIKeyAliasesToGeminiModelsJSON 克隆目标元数据，仅改写 Gemini 协议的模型字段。

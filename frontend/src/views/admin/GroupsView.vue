@@ -157,6 +157,8 @@
                           ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
                           : value === 'zhipu'
                             ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+                            : value === 'minimax'
+                              ? 'bg-red-50 text-bh-red dark:bg-red-950/20 dark:text-red-300'
                             : value === 'deepseek'
                               ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
                               : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
@@ -753,7 +755,7 @@
             </div>
             <ReasoningEffortPolicyFields
               data-group-field="reasoning"
-              v-if="createForm.platform === 'openai'"
+              v-if="createForm.platform === 'openai' || createForm.platform === 'anthropic'"
               ref="createReasoningEffortPolicyRef"
               id-prefix="create-group-reasoning"
               :platform="createForm.platform"
@@ -1882,6 +1884,7 @@
                 </p>
               </div>
             </div>
+            <ModelAllowlistField v-model="createModelAllowlist" />
             <div class="border-t pt-4">
               <div class="mb-3 flex items-center justify-between gap-3">
                 <div>
@@ -2429,7 +2432,7 @@
             </div>
             <ReasoningEffortPolicyFields
               data-group-field="reasoning"
-              v-if="editForm.platform === 'openai'"
+              v-if="editForm.platform === 'openai' || editForm.platform === 'anthropic'"
               ref="editReasoningEffortPolicyRef"
               id-prefix="edit-group-reasoning"
               :platform="editForm.platform"
@@ -3557,6 +3560,7 @@
                 </p>
               </div>
             </div>
+            <ModelAllowlistField v-model="editModelAllowlist" />
             <div class="border-t pt-4">
               <div class="mb-3 flex items-center justify-between gap-3">
                 <div>
@@ -3761,6 +3765,8 @@
                               ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
                               : group.platform === 'zhipu'
                                 ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+                                : group.platform === 'minimax'
+                                  ? 'bg-red-50 text-bh-red dark:bg-red-950/20 dark:text-red-300'
                                 : group.platform === 'deepseek'
                                   ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
                                   : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
@@ -3895,6 +3901,8 @@ import {
   resolveProviderBrand,
 } from "@/utils/providerBrand";
 import { extractApiErrorMessage } from "@/utils/apiError";
+import ModelAllowlistField from "@/components/admin/group/ModelAllowlistField.vue";
+import type { ModelsListConfig } from "@/types";
 import {
   defaultGroupClientProtocols,
   effectiveGroupClientProtocols,
@@ -4514,6 +4522,8 @@ const createMessagesDispatchDefaults = createDefaultMessagesDispatchFormState();
 const editMessagesDispatchDefaults = createDefaultMessagesDispatchFormState();
 const createModelsListState = reactive(createInitialModelsListState());
 const editModelsListState = reactive(createInitialModelsListState());
+const createModelAllowlist = ref<ModelsListConfig>({ enabled: false, models: [] });
+const editModelAllowlist = ref<ModelsListConfig>({ enabled: false, models: [] });
 const createModelsListLoading = ref(false);
 const editModelsListLoading = ref(false);
 type ReasoningEffortPolicyFieldsExpose = {
@@ -5510,6 +5520,7 @@ const closeCreateModal = () => {
   createReasoningEffortPolicyRef.value?.resetValidation();
   resetAvailabilityProbeFormState(createForm);
   resetModelsListState(createModelsListState);
+  createModelAllowlist.value = { enabled: false, models: [] };
   createModelRoutingRules.value = [];
 };
 
@@ -5540,7 +5551,7 @@ const validateGroupForm = async (target: "create" | "edit"): Promise<boolean> =>
     await tabs?.revealField('[data-group-field="name"]');
     return false;
   }
-  if (form.platform === "openai" && reasoning && !reasoning.validate()) {
+  if ((form.platform === "openai" || form.platform === "anthropic") && reasoning && !reasoning.validate()) {
     await nextTick();
     await tabs?.revealField('[data-group-field="reasoning"] [role="alert"]');
     return false;
@@ -5576,6 +5587,7 @@ const handleCreateGroup = async () => {
         createModelRoutingRules.value,
       ),
       models_list_config: buildModelsListConfig(createModelsListState),
+      model_allowlist: createModelAllowlist.value,
       availability_probe_config: availabilityProbeConfig,
       supported_model_scopes: normalizeSupportedModelScopesForPlatform(
         createForm.platform,
@@ -5777,6 +5789,7 @@ const handleEdit = async (group: AdminGroup) => {
   );
   resetAvailabilityProbeFormState(editForm, group.availability_probe_config);
   resetModelsListState(editModelsListState, group.models_list_config);
+  editModelAllowlist.value = { enabled: group.model_allowlist?.enabled ?? false, models: [...(group.model_allowlist?.models ?? [])] };
   // 加载模型路由规则（异步加载账号名称）
   editModelRoutingRules.value = await convertApiFormatToRoutingRules(
     group.model_routing,
@@ -5826,6 +5839,7 @@ const closeEditModal = () => {
   editForm.force_openai_fast = false;
   editForm.free_openai_fast = false;
   resetModelsListState(editModelsListState);
+  editModelAllowlist.value = { enabled: false, models: [] };
 };
 
 const handleUpdateGroup = async () => {
@@ -5859,6 +5873,7 @@ const handleUpdateGroup = async () => {
         editModelRoutingRules.value,
       ),
       models_list_config: buildModelsListConfig(editModelsListState),
+      model_allowlist: editModelAllowlist.value,
       availability_probe_config: availabilityProbeConfig,
       supported_model_scopes: normalizeSupportedModelScopesForPlatform(
         editForm.platform,

@@ -171,7 +171,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		return errors.New("openai usage result is nil")
 	}
 	if s.rateLimitService != nil && input.Account != nil &&
-		(input.Account.Platform == PlatformOpenAI || input.Account.IsCNProvider()) {
+		(input.Account.Platform == PlatformOpenAI || input.Account.IsMultiProtocolAPIKey()) {
 		s.rateLimitService.ResetOpenAI403Counter(ctx, input.Account.ID)
 	}
 
@@ -477,7 +477,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	if apiKey.GroupID != nil {
 		applyAccountStatsCost(ctx, usageLog, s.channelService, s.billingService,
 			account.ID, *apiKey.GroupID, result.UpstreamModel, requestedModel, input.ChannelMappedModel,
-			tokens, cost.TotalCost,
+			tokens, cost.TotalCost, rateNow,
 		)
 	}
 
@@ -607,6 +607,7 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCostAt(
 				pricingAt,
 				tokens,
 				serviceTier,
+				forwardResultReasoningEffort(result),
 			)
 			if err == nil {
 				tokenCost = cost
@@ -698,23 +699,36 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageTokenCostAt(
 	pricingAt time.Time,
 	tokens UsageTokens,
 	serviceTier string,
+	reasoningEffort string,
 ) (*CostBreakdown, error) {
 	if s.resolver != nil && apiKey.Group != nil {
 		gid := apiKey.Group.ID
 		return s.billingService.CalculateCostUnified(CostInput{
-			Ctx:            ctx,
-			Model:          billingModel,
-			GroupID:        &gid,
-			Group:          apiKey.Group,
-			Tokens:         tokens,
-			RequestCount:   1,
-			RateMultiplier: multiplier,
-			PricingAt:      pricingAt,
-			ServiceTier:    serviceTier,
-			Resolver:       s.resolver,
+			Ctx:             ctx,
+			Model:           billingModel,
+			GroupID:         &gid,
+			Group:           apiKey.Group,
+			Tokens:          tokens,
+			RequestCount:    1,
+			RateMultiplier:  multiplier,
+			PricingAt:       pricingAt,
+			ServiceTier:     serviceTier,
+			ReasoningEffort: reasoningEffort,
+			Resolver:        s.resolver,
 		})
 	}
-	return s.billingService.CalculateCostWithServiceTier(billingModel, tokens, multiplier, serviceTier)
+	return s.billingService.CalculateCostUnified(CostInput{
+		Ctx: ctx, Model: billingModel, Tokens: tokens, RateMultiplier: multiplier,
+		ServiceTier: serviceTier, ReasoningEffort: reasoningEffort,
+	})
+}
+
+// forwardResultReasoningEffort 只使用实际转发档位，避免按客户端改写前的 max 扣费。
+func forwardResultReasoningEffort(result *OpenAIForwardResult) string {
+	if result == nil || result.ReasoningEffort == nil {
+		return ""
+	}
+	return *result.ReasoningEffort
 }
 
 func (s *OpenAIGatewayService) calculateOpenAIImageCost(
@@ -895,7 +909,7 @@ func (s *OpenAIGatewayService) filterCNProviderBillingModelCandidates(
 	apiKey *APIKey,
 	candidates []string,
 ) []string {
-	if account == nil || !account.IsCNProvider() {
+	if account == nil || !account.IsMultiProtocolAPIKey() {
 		return candidates
 	}
 	filtered := make([]string, 0, len(candidates))

@@ -428,20 +428,57 @@ const (
 
 // resolveRedeemAction decides the idempotency action based on an existing redeem code lookup.
 // existing is the result of GetByCode; lookupErr is the error from that call.
-func resolveRedeemAction(existing *RedeemCode, lookupErr error) redeemAction {
-	if existing == nil || lookupErr != nil {
-		return redeemActionCreate
+func resolveRedeemAction(existing *RedeemCode, lookupErr error) (redeemAction, error) {
+	if lookupErr != nil && !errors.Is(lookupErr, ErrRedeemCodeNotFound) {
+		return redeemActionCreate, fmt.Errorf("lookup payment redeem code: %w", lookupErr)
+	}
+	if existing == nil || errors.Is(lookupErr, ErrRedeemCodeNotFound) {
+		return redeemActionCreate, nil
 	}
 	if existing.IsUsed() {
-		return redeemActionSkipCompleted
+		return redeemActionSkipCompleted, nil
 	}
-	return redeemActionRedeem
+	return redeemActionRedeem, nil
+}
+
+// 订单专用兑换码只能发放一次且必须匹配订单；普通多次兑换码不受此限制。
+func validatePaymentRedeemCode(o *dbent.PaymentOrder, code *RedeemCode) error {
+	if o == nil || code == nil {
+		return errors.New("payment redeem code validation requires an order and code")
+	}
+	if code.Code != o.RechargeCode || code.Type != RedeemTypeBalance || code.MaxUses != 1 {
+		return fmt.Errorf("payment redeem code identity or type mismatch for order %d", o.ID)
+	}
+	if math.IsNaN(code.Value) || math.IsInf(code.Value, 0) || math.IsNaN(o.Amount) || math.IsInf(o.Amount, 0) || math.Abs(code.Value-o.Amount) > 1e-8 {
+		return fmt.Errorf("payment redeem code amount mismatch for order %d", o.ID)
+	}
+	switch code.Status {
+	case StatusUnused:
+		if code.UsedBy != nil || code.UsedCount != 0 {
+			return fmt.Errorf("unused payment redeem code has usage for order %d", o.ID)
+		}
+	case StatusUsed:
+		if code.UsedBy == nil || *code.UsedBy != o.UserID || code.UsedCount != 1 {
+			return fmt.Errorf("payment redeem code user mismatch for order %d", o.ID)
+		}
+	default:
+		return fmt.Errorf("payment redeem code status mismatch for order %d", o.ID)
+	}
+	return nil
 }
 
 func (s *PaymentService) doBalance(ctx context.Context, o *dbent.PaymentOrder, lease *paymentFulfillmentLease) error {
 	// Idempotency: check if redeem code already exists (from a previous partial run)
 	existing, lookupErr := s.redeemService.GetByCode(ctx, o.RechargeCode)
-	action := resolveRedeemAction(existing, lookupErr)
+	action, err := resolveRedeemAction(existing, lookupErr)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		if err := validatePaymentRedeemCode(o, existing); err != nil {
+			return err
+		}
+	}
 
 	switch action {
 	case redeemActionSkipCompleted:
@@ -458,7 +495,7 @@ func (s *PaymentService) doBalance(ctx context.Context, o *dbent.PaymentOrder, l
 	case redeemActionRedeem:
 		// Code exists but unused — skip creation, proceed to redeem
 	}
-	if _, err := s.redeemService.Redeem(ContextSkipRedeemAffiliate(ctx), o.UserID, o.RechargeCode); err != nil {
+	if _, err := s.redeemService.redeemForPaymentFulfillment(ctx, o); err != nil {
 		return fmt.Errorf("redeem balance: %w", err)
 	}
 	if err := s.applyAffiliateRebateForOrder(ctx, o); err != nil {

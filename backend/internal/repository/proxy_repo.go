@@ -738,25 +738,25 @@ func (r *proxyRepository) sweepOneExpiredProxyOnExec(ctx context.Context, exec s
 	)
 	if target == nil {
 		rows, err = exec.QueryContext(ctx, `
-			UPDATE accounts SET proxy_id=NULL, proxy_fallback_origin_id=$1,
+			UPDATE accounts SET proxy_id=NULL, proxy_fallback_origin_id=COALESCE(proxy_fallback_origin_id,$1),
 				extra=(CASE
 					WHEN platform IN ('openai', 'anthropic') AND type='apikey'
 					THEN COALESCE(extra, '{}'::jsonb) - 'ollama_cloud_usage_snapshot'
 					ELSE COALESCE(extra, '{}'::jsonb)
 				END) - 'upstream_billing_probe' - 'upstream_billing_probe_enabled',
 				updated_at=NOW()
-			WHERE proxy_id=$1 AND proxy_fallback_origin_id IS NULL AND deleted_at IS NULL
+			WHERE proxy_id=$1 AND deleted_at IS NULL
 			RETURNING id`, proxyID)
 	} else {
 		rows, err = exec.QueryContext(ctx, `
-			UPDATE accounts SET proxy_id=$2, proxy_fallback_origin_id=$1,
+			UPDATE accounts SET proxy_id=$2, proxy_fallback_origin_id=COALESCE(proxy_fallback_origin_id,$1),
 				extra=(CASE
 					WHEN platform IN ('openai', 'anthropic') AND type='apikey'
 					THEN COALESCE(extra, '{}'::jsonb) - 'ollama_cloud_usage_snapshot'
 					ELSE COALESCE(extra, '{}'::jsonb)
 				END) - 'upstream_billing_probe' - 'upstream_billing_probe_enabled',
 				updated_at=NOW()
-			WHERE proxy_id=$1 AND proxy_fallback_origin_id IS NULL AND deleted_at IS NULL
+			WHERE proxy_id=$1 AND deleted_at IS NULL
 			RETURNING id`, proxyID, *target)
 	}
 	if err != nil {

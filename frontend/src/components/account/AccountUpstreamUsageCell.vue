@@ -115,7 +115,7 @@ const queryEnabled = computed(() => {
 
 // 未执行本次会话的手动查询时，可展示后台监控最近一次成功快照；组件挂载不会发请求。
 const monitorResult = computed<UpstreamUsageQueryResult | null>(() => {
-  if (!['kimi', 'zhipu', 'deepseek'].includes(props.account.platform)) return null
+  if (!['kimi', 'zhipu', 'deepseek', 'minimax', 'opencode_go'].includes(props.account.platform)) return null
   const raw = props.account.extra?.cn_usage_monitor_snapshot
   if (!raw || typeof raw !== 'object') return null
   const snapshot = raw as Record<string, unknown>

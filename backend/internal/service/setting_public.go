@@ -196,6 +196,8 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyHomeContent,
 		SettingKeyHideCcsImportButton,
 		SettingKeyPurchaseSubscriptionEnabled,
+		SettingKeySubscriptionEnabled,
+		SettingBalancePayDisabled,
 		SettingKeyPurchaseSubscriptionURL,
 		SettingKeyTableDefaultPageSize,
 		SettingKeyTablePageSizeOptions,
@@ -372,6 +374,8 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		HomeContent:                         settings[SettingKeyHomeContent],
 		HideCcsImportButton:                 settings[SettingKeyHideCcsImportButton] == "true",
 		PurchaseSubscriptionEnabled:         settings[SettingKeyPurchaseSubscriptionEnabled] == "true",
+		SubscriptionEnabled:                 !isFalseSettingValue(settings[SettingKeySubscriptionEnabled]),
+		PaymentBalanceDisabled:              settings[SettingBalancePayDisabled] == "true",
 		PurchaseSubscriptionURL:             strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),
 		TableDefaultPageSize:                tableDefaultPageSize,
 		TablePageSizeOptions:                tablePageSizeOptions,
@@ -473,6 +477,8 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		HomeContent                         string                   `json:"home_content,omitempty"`
 		HideCcsImportButton                 bool                     `json:"hide_ccs_import_button"`
 		PurchaseSubscriptionEnabled         bool                     `json:"purchase_subscription_enabled"`
+		SubscriptionEnabled                 bool                     `json:"subscription_enabled"`
+		PaymentBalanceDisabled              bool                     `json:"payment_balance_disabled"`
 		PurchaseSubscriptionURL             string                   `json:"purchase_subscription_url,omitempty"`
 		TableDefaultPageSize                int                      `json:"table_default_page_size"`
 		TablePageSizeOptions                []int                    `json:"table_page_size_options"`
@@ -559,6 +565,8 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		HomeContent:                         settings.HomeContent,
 		HideCcsImportButton:                 settings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:         settings.PurchaseSubscriptionEnabled,
+		SubscriptionEnabled:                 settings.SubscriptionEnabled,
+		PaymentBalanceDisabled:              settings.PaymentBalanceDisabled,
 		PurchaseSubscriptionURL:             settings.PurchaseSubscriptionURL,
 		TableDefaultPageSize:                settings.TableDefaultPageSize,
 		TablePageSizeOptions:                settings.TablePageSizeOptions,

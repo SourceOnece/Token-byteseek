@@ -2100,6 +2100,48 @@ func (r *accountRepository) ClearRateLimitIfObserved(ctx context.Context, id int
 	return true, nil
 }
 
+// SetRateLimitedIfUnchanged 用同一条语句核对行版本和限流代次，防止异步探测覆盖换 Key、
+// 管理员清除及新 429。仅更新成功后发送调度通知，调用者不能再作无条件限流写入。
+func (r *accountRepository) SetRateLimitedIfUnchanged(
+	ctx context.Context,
+	id int64,
+	expectedUpdatedAt time.Time,
+	expectedLimitedAt, expectedResetAt *time.Time,
+	newResetAt time.Time,
+) (bool, error) {
+	preds := []dbpredicate.Account{dbaccount.IDEQ(id), dbaccount.UpdatedAtEQ(expectedUpdatedAt)}
+	if expectedLimitedAt == nil {
+		preds = append(preds, dbaccount.RateLimitedAtIsNil())
+	} else {
+		preds = append(preds, dbaccount.RateLimitedAtEQ(*expectedLimitedAt))
+	}
+	if expectedResetAt == nil {
+		preds = append(preds, dbaccount.RateLimitResetAtIsNil())
+	} else {
+		preds = append(preds, dbaccount.RateLimitResetAtEQ(*expectedResetAt))
+	}
+
+	now := time.Now()
+	updated, err := r.client.Account.Update().
+		Where(preds...).
+		SetRateLimitedAt(now).
+		SetRateLimitResetAt(newResetAt).
+		Save(ctx)
+	if err != nil {
+		return false, err
+	}
+	if updated == 0 {
+		// 版本或代次已经变化，不通知旧结果，只刷新当前快照。
+		r.syncSchedulerAccountSnapshot(ctx, id)
+		return false, nil
+	}
+	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventAccountChanged, &id, nil, nil); err != nil {
+		logger.LegacyPrintf("repository.account", "[SchedulerOutbox] enqueue rate limit failed: account=%d err=%v", id, err)
+	}
+	r.syncSchedulerAccountSnapshot(ctx, id)
+	return true, nil
+}
+
 func (r *accountRepository) SetModelRateLimit(ctx context.Context, id int64, scope string, resetAt time.Time, reason ...string) error {
 	if scope == "" {
 		return nil

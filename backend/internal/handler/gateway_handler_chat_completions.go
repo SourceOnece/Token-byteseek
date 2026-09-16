@@ -79,7 +79,13 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
-	bindRequestedReasoningEffort(c, body, reqModel)
+	// 与 Messages/Responses 使用相同策略，避免兼容入口绕过分组上限。
+	if policyBody, _, policyErr := applyAnthropicReasoningEffortPolicyForRequest(c, apiKey, body); policyErr != nil {
+		respondOpenAIReasoningEffortPolicyError(c, policyErr, h.chatCompletionsErrorResponse)
+		return
+	} else {
+		body = policyBody
+	}
 	reqStream, ok := parseOpenAICompatibleStream(body)
 	if !ok {
 		h.chatCompletionsErrorResponse(c, http.StatusBadRequest, "invalid_request_error", invalidStreamFieldTypeMessage)

@@ -25,9 +25,13 @@ var (
 	// openAIReasoningEffortValues 是可用于分组上限的有序档位；none 没有强度排名，
 	// 因此不能作为上限值。
 	openAIReasoningEffortValues = []string{"minimal", "low", "medium", "high", "xhigh", "max"}
+	// anthropicReasoningEffortValues 是 Anthropic output_config.effort 支持的档位。
+	anthropicReasoningEffortValues = []string{"low", "medium", "high", "xhigh", "max"}
 	// openAIReasoningEffortMappingValues 是映射规则允许的显式输入/输出值。
 	// 保留 none 使管理员能为不同上游自行配置兼容策略。
 	openAIReasoningEffortMappingValues = []string{"none", "minimal", "low", "medium", "high", "xhigh", "max"}
+	// Anthropic 不接受 OpenAI 专用的 minimal/none 映射值。
+	anthropicReasoningEffortMappingValues = anthropicReasoningEffortValues
 )
 
 type requestedReasoningEffortContextKey struct{}
@@ -138,17 +142,25 @@ func normalizeRequestedOpenAIReasoningEffort(raw string) string {
 }
 
 func reasoningEffortValuesForPlatform(platform string) []string {
-	if platform != PlatformOpenAI {
+	switch platform {
+	case PlatformOpenAI:
+		return openAIReasoningEffortValues
+	case PlatformAnthropic:
+		return anthropicReasoningEffortValues
+	default:
 		return nil
 	}
-	return openAIReasoningEffortValues
 }
 
 func reasoningEffortMappingValuesForPlatform(platform string) []string {
-	if platform != PlatformOpenAI {
+	switch platform {
+	case PlatformOpenAI:
+		return openAIReasoningEffortMappingValues
+	case PlatformAnthropic:
+		return anthropicReasoningEffortMappingValues
+	default:
 		return nil
 	}
-	return openAIReasoningEffortMappingValues
 }
 
 func normalizeMaxReasoningEffortForPlatform(platform, raw string) (string, error) {
@@ -158,7 +170,7 @@ func normalizeMaxReasoningEffortForPlatform(platform, raw string) (string, error
 
 	allowedValues := reasoningEffortValuesForPlatform(platform)
 	if len(allowedValues) == 0 {
-		return "", fmt.Errorf("reasoning effort policy is only supported for platform %q", PlatformOpenAI)
+		return "", fmt.Errorf("reasoning effort policy is only supported for platforms %q and %q", PlatformAnthropic, PlatformOpenAI)
 	}
 
 	value := NormalizeMaxReasoningEffort(raw)
@@ -182,7 +194,7 @@ func normalizeReasoningEffortMappingValueForPlatform(platform, raw string) (stri
 
 	allowedValues := reasoningEffortMappingValuesForPlatform(platform)
 	if len(allowedValues) == 0 {
-		return "", fmt.Errorf("reasoning effort policy is only supported for platform %q", PlatformOpenAI)
+		return "", fmt.Errorf("reasoning effort policy is only supported for platforms %q and %q", PlatformAnthropic, PlatformOpenAI)
 	}
 
 	value := normalizeReasoningEffortMappingValue(raw)
@@ -226,9 +238,10 @@ func normalizeMaxReasoningEffortOverLimitForPlatform(platform, raw string) (stri
 	if value == ReasoningEffortOverLimitDowngrade {
 		return value, nil
 	}
-	if platform != PlatformOpenAI {
+	if platform != PlatformAnthropic && platform != PlatformOpenAI {
 		return "", fmt.Errorf(
-			"reasoning effort over-limit deny is only supported for platform %q",
+			"reasoning effort over-limit deny is only supported for platforms %q and %q",
+			PlatformAnthropic,
 			PlatformOpenAI,
 		)
 	}
@@ -463,7 +476,7 @@ func sanitizeGroupReasoningEffortPolicy(group *Group) {
 		mappings = []ReasoningEffortMapping{}
 	}
 	overLimit := NormalizeMaxReasoningEffortOverLimit(group.MaxReasoningEffortOverLimit)
-	if overLimit == "" || (overLimit == ReasoningEffortOverLimitDeny && group.Platform != PlatformOpenAI) {
+	if overLimit == "" || (overLimit == ReasoningEffortOverLimitDeny && group.Platform != PlatformAnthropic && group.Platform != PlatformOpenAI) {
 		overLimit = ReasoningEffortOverLimitDowngrade
 	}
 	group.MaxReasoningEffort = maxEffort
@@ -490,7 +503,7 @@ func applyOpenAIReasoningEffortPolicy(body []byte, maxEffort string, mappings []
 	canonicalMax := NormalizeMaxReasoningEffort(maxEffort)
 	result := body
 	changed := false
-	for _, path := range []string{"reasoning.effort", "reasoning_effort"} {
+	for _, path := range []string{"reasoning.effort", "reasoning_effort", "output_config.effort"} {
 		field := gjson.GetBytes(result, path)
 		if !field.Exists() || field.Type != gjson.String {
 			continue

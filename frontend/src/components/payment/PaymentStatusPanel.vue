@@ -480,7 +480,7 @@ async function verifyOrderWithUpstream(outTradeNo: string): Promise<PaymentOrder
 }
 
 async function tryRecoverPendingOrder(order: PaymentOrder | null): Promise<PaymentOrder | null> {
-  if (!order || (!isWxpay.value && !isMobileAlipayDeepLink.value)) return order
+  if (!order || (!isWxpay.value && !isAlipay.value)) return order
   const outTradeNo = String(order.out_trade_no || props.outTradeNo || '').trim()
   if (!outTradeNo) return order
   if (String(order.status || '').trim().toUpperCase() !== 'PENDING') return order

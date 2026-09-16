@@ -51,8 +51,12 @@ New API 钱包若需要用户级认证，可在 `credentials` 中保存
 | Kimi coding | `kimi_coding` | `/v1/usages` | `PERCENT` 周期限额 |
 | Zhipu coding | `zhipu_coding` | `/api/monitor/usage/quota/limit` | `PERCENT` 周期限额 |
 | DeepSeek payg | `deepseek_balance` | `/user/balance` | 多币种 `balances[]`、主 `balance` 和 `available` |
+| MiniMax coding | `minimax_coding` | `/v1/api/openplatform/coding_plan/remains` | `general` 编程套餐的 5h/weekly 百分比窗口 |
+| OpenCode Go | `opencode_go` | 配置路径前缀下 `/v1/usage` | rolling/weekly/monthly 百分比窗口；Zen 不支持 |
 
-Zhipu payg 没有公开余额协议，DeepSeek coding 也不是合法账号组合，因此查询明确返回不支持且不发送请求。Kimi/Zhipu 的 coding 周期把使用百分比归一化为上限 `100`、已用百分比和剩余百分比；DeepSeek 保留全部合法币种余额，任何一个币种仍高于监控阈值时都不会因另一个低余额币种停调。四个适配器只解析供应商固定 JSON 响应，不执行脚本、不接受自定义方法/路径，也不直接写数据库。
+Zhipu payg 没有公开余额协议，DeepSeek coding 也不是合法账号组合，因此查询明确返回不支持且不发送请求。Kimi/Zhipu 的 coding 周期把使用百分比归一化为上限 `100`、已用百分比和剩余百分比；DeepSeek 保留全部合法币种余额，任何一个币种仍高于监控阈值时都不会因另一个低余额币种停调。上述适配器只解析供应商固定 JSON 响应，不执行脚本、不接受自定义方法/路径，也不直接写数据库。
+
+MiniMax 只读取 `model_name=general`，视频套餐不参与编程额度；周窗口仅在上游标记启用时采纳。剩余百分比转换为已用百分比，非法或缺失值不当作满额度；重置时间兼容秒和毫秒。MiniMax payg 没有本批采用的余额查询契约，返回不支持且不发请求。用量目标始终由账号配置的主机派生，不因名称包含厂商字符串而跨域转发密钥。
 
 适配器拒绝 HTTP 非成功、认证失败、限流、超时、重定向、超大响应体、缺字段或不一致数值。选择的适配器失败时不会自动回退到另一个协议，也不会修改账号配置。
 
@@ -71,7 +75,7 @@ Zhipu payg 没有公开余额协议，DeepSeek coding 也不是合法账号组�
 
 ## 国产供应商周期监控
 
-`gateway.cn_providers.monitor_enabled` 默认 `false`；启用后，后台只扫描 active、`type=apikey`、用量查询未关闭且具有固定适配器的 Kimi/Zhipu/DeepSeek 账号。首次探测等待一个完整周期，多实例通过共享 leader lock 保证同轮只有一个执行者；整轮有总预算，每个请求有独立超时，并发受配置限制，服务关闭会取消当前轮并等待退出。
+`gateway.cn_providers.monitor_enabled` 默认 `false`；启用后，后台只扫描 active、`type=apikey`、用量查询未关闭且具有固定适配器的 Kimi/Zhipu/DeepSeek/MiniMax 账号。首次探测等待一个完整周期，多实例通过共享 leader lock 保证同轮只有一个执行者；整轮有总预算，每个请求有独立超时，并发受配置限制，服务关闭会取消当前轮并等待退出。
 
 成功或失败状态统一保存到 `extra.cn_usage_monitor_snapshot`。快照包含版本、适配器、完整查询身份 hash、最近成功的归一化数据、最近尝试时间和脱敏错误码；失败只更新尝试/错误，不抹掉最近成功数据。Repository 用账号 `updated_at` 做 CAS，并在同一 SQL 中写 scheduler outbox；凭据、平台、模式、协议、代理、Base URL、TLS 或查询配置变化会清理旧快照，读取方也必须重新计算身份 hash，不能消费旧身份数据。
 

@@ -83,6 +83,8 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		HomeContent:                         settings.HomeContent,
 		HideCcsImportButton:                 settings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:         settings.PurchaseSubscriptionEnabled,
+		SubscriptionEnabled:                 settings.SubscriptionEnabled,
+		PaymentBalanceDisabled:              settings.PaymentBalanceDisabled,
 		PurchaseSubscriptionURL:             settings.PurchaseSubscriptionURL,
 		TableDefaultPageSize:                settings.TableDefaultPageSize,
 		TablePageSizeOptions:                settings.TablePageSizeOptions,

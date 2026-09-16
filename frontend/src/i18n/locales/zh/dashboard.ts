@@ -87,6 +87,22 @@ export default {
     columnSettings: '列设置',
     createKey: '创建密钥',
     editKey: '编辑密钥',
+    bulkEdit: {
+      compositeGroupLocked: '已选复合密钥，分组映射需单独编辑',
+      title: '批量编辑',
+      selectedCount: '已选择 {count} 个密钥',
+      selectKey: '选择密钥 {name}',
+      clearSelection: '取消选择',
+      hint: '勾选需要修改的字段，未勾选的字段保持原值。',
+      limitHint: '输入 0 表示不限制；已用额度保持不变。',
+      ipHint: '每行一个 IP 或 CIDR；留空将清空所选密钥的此项名单。',
+      invalidLimit: '请输入大于或等于 0 的有效金额。',
+      invalidExpiration: '请选择有效的过期时间，或勾选永久有效。',
+      apply: '应用到 {count} 个密钥',
+      success: '已更新 {count} 个密钥',
+      partialFailure: '已更新 {success} 个密钥，{failed} 个失败',
+      failureHint: '以下密钥更新失败，可修改设置后重试。再次提交只会更新失败的密钥。'
+    },
     deleteKey: '删除密钥',
     deleteConfirmMessage: "确定要删除 '{name}' 吗？此操作无法撤销。",
     id: 'ID',
@@ -137,6 +153,13 @@ export default {
     disable: '禁用',
     nameLabel: '名称',
     namePlaceholder: '我的 API 密钥',
+    providerLabel: '供应商',
+    providers: {
+      anthropic: 'Anthropic',
+      openai: 'OpenAI',
+      domestic: '国产模型',
+      other: '其他'
+    },
     groupLabel: '分组',
     selectGroup: '选择分组',
     composite: {
@@ -487,6 +510,7 @@ export default {
     cacheWrite1h: '写入（1h）',
     serviceTier: '服务档位',
     serviceTierPriority: 'Fast',
+    serviceTierUltrafast: 'Ultrafast',
     serviceTierFlex: 'Flex',
     serviceTierStandard: 'Standard',
     rate: '倍率',
@@ -573,6 +597,7 @@ export default {
     codeAlreadyUsed: '您已经兑换过该兑换码',
     failedToRedeem: '兑换失败，请检查兑换码后重试。',
     subscriptionRefreshFailed: '兑换成功，但订阅状态刷新失败。',
+    userRefreshFailed: '兑换成功，但账户信息刷新失败。',
     pleaseEnterCode: '请输入兑换码'
   },
 affiliate: {

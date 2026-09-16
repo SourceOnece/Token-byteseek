@@ -412,6 +412,9 @@ func normalizeAccountConcurrency(platform, accountType string, concurrency int) 
 // 旧记录缺少 mode/protocol 时由 Account 方法按 payg + chat_completions 读取，避免无关编辑
 // 把兼容数据强制改写；新建记录则显式保存默认值，方便前端和监控选择适配器。
 func normalizeCNProviderCredentials(account *Account, isCreate bool) error {
+	if account != nil && account.IsOpenCodeGo() {
+		return normalizeOpenCodeAccountCredentials(account, isCreate)
+	}
 	if account == nil || !IsCNProvider(account.Platform) {
 		return nil
 	}
@@ -441,10 +444,10 @@ func normalizeCNProviderCredentials(account *Account, isCreate bool) error {
 		}
 	}
 	switch protocol {
-	case APIProtocolChatCompletions, APIProtocolAnthropic:
+	case APIProtocolChatCompletions, APIProtocolAnthropic, APIProtocolAdaptive:
 	case APIProtocolResponses:
-		if account.Platform != PlatformDeepseek {
-			return infraerrors.BadRequest("CN_PROVIDER_PROTOCOL_INVALID", "only DeepSeek supports Responses protocol")
+		if !account.SupportsNativeCNResponses() {
+			return infraerrors.BadRequest("CN_PROVIDER_PROTOCOL_INVALID", "this platform does not support native Responses protocol")
 		}
 	default:
 		return infraerrors.BadRequest("CN_PROVIDER_PROTOCOL_INVALID", "api_protocol is unsupported")

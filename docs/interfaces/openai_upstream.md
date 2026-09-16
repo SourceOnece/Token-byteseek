@@ -26,6 +26,8 @@ OpenAI OAuth 账号的 `extra.codex_fingerprint_mode` 控制 Codex Responses 的
 OpenAI 兼容请求的显式粘性会话头按 `session-id`、`session_id`、`conversation_id`、OpenCode 会话头和 CodeBuddy 会话头依次读取；其中 `session-id` 是 Codex 客户端使用的连字符形式，优先于旧下划线形式。WebSocket 会话日志采用相同优先级，缺少显式会话头时才回退到 `prompt_cache_key`，避免重连时因头名差异漂移到其它账号。
 
 <a id="openai_protocol_dispatch"></a>
+隐私设置、accounts/check 与订阅到期补全的专用 `CreatePrivacyReqClient` 使用 Firefox 浏览器配置；普通 OAuth 刷新工厂、网关 HTTPUpstream 和账号 TLS 模板不变。403/503 的 `cf-mitigated: challenge` 明确记为挑战失败，账号信息错误警告只记录状态和挑战标识，不记录新响应正文。仍为 best-effort 补全，不保证特定出口可通过，失败不冒充隐私或套餐成功。
+
 ## 协议与传输
 
 OpenAI 平台拥有以下正式协议族：
@@ -160,6 +162,8 @@ OAuth 账号的 5 小时、7 天等上游窗口和重置时间保存在账号运
 管理 API 的 `GET /admin/openai/accounts/:id/quota` 保持只读；账号列表使用 `POST /admin/openai/accounts/:id/quota/refresh` 查询上游并把重置次数写入 `account.extra.codex_reset_credit_snapshot`。正数次数只有同时取得到期明细时才覆盖快照，前端水合时过滤已过期明细并把次数收敛到仍有效的卡片数量。该 extra 键只用于展示缓存，不触发调度 outbox；Spark 影子账号的查询可解析母账号额度，但快照仍写在被查询的行上，且列表继续只提供查询入口，不提供真实重置按钮。
 
 ## 失败与诊断
+
+合成 Responses SSE/WS 错误事件包含 `sequence_number`，避免严格客户端因缺字段无法识别终态；未知上一帧时使用 0，Compact 合成完整流从 0 递增。它只补齐本地合成事件，不重新编号官方透传事件，也不恢复 Metadata 实验。
 
 HTTP/SSE 入站使用 WS 上游时，客户端取消后继续读取上游已发生的用量；排水总预算为现有 WS read timeout，不因不断收到数据无限延长。已断开的下游不追加错误帧、不因取消换号重放；不完整终态也保留已知用量/图片/推理字段交给原有幂等结算。原生入站 WebSocket 的租约与硬兼容隔离保持不变。
 

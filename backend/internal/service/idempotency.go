@@ -87,6 +87,10 @@ type IdempotencyExecuteOptions struct {
 	Payload        any
 	TTL            time.Duration
 	RequireKey     bool
+	// 仅显式启用的长批次脱离客户端断开，执行仍受时限约束。
+	ExecutionTimeout time.Duration
+	// 新批量响应可显式扩大存储上限；超限拒绝落残缺 JSON，旧调用保持原行为。
+	MaxStoredResponseLen int
 }
 
 type IdempotencyExecuteResult struct {
@@ -202,6 +206,11 @@ func (c *IdempotencyCoordinator) Execute(
 	opts IdempotencyExecuteOptions,
 	execute func(context.Context) (any, error),
 ) (*IdempotencyExecuteResult, error) {
+	if opts.ExecutionTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.WithoutCancel(ctx), opts.ExecutionTimeout)
+		defer cancel()
+	}
 	if execute == nil {
 		return nil, infraerrors.InternalServer("IDEMPOTENCY_EXECUTOR_NIL", "idempotency executor is nil")
 	}
@@ -238,9 +247,16 @@ func (c *IdempotencyCoordinator) Execute(
 	if ttl <= 0 {
 		ttl = c.cfg.DefaultTTL
 	}
+	// 批次处理记录不得在仍执行或写回结果时过期而被其他请求接管。
+	if opts.ExecutionTimeout > 0 && ttl < opts.ExecutionTimeout+5*time.Second {
+		ttl = opts.ExecutionTimeout + 5*time.Second
+	}
 	now := time.Now()
 	expiresAt := now.Add(ttl)
 	lockedUntil := now.Add(c.cfg.ProcessingTimeout)
+	if opts.ExecutionTimeout > 0 && c.cfg.ProcessingTimeout < opts.ExecutionTimeout+5*time.Second {
+		lockedUntil = now.Add(opts.ExecutionTimeout + 5*time.Second)
+	}
 	keyHash := HashIdempotencyKey(key)
 
 	record := &IdempotencyRecord{
@@ -398,6 +414,14 @@ func (c *IdempotencyCoordinator) Execute(
 	}()
 
 	data, execErr := execute(ctx)
+	persistCtx := ctx
+	if opts.ExecutionTimeout > 0 {
+		// 超时后仍保存已完成条目，重试同一操作只能取回本批结果。
+		var cancel context.CancelFunc
+		persistCtx, cancel = context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		expiresAt = time.Now().Add(ttl)
+	}
 	if execErr != nil {
 		backoffUntil := time.Now().Add(c.cfg.FailedRetryBackoff)
 		reason := infraerrors.Reason(execErr)
@@ -408,7 +432,7 @@ func (c *IdempotencyCoordinator) Execute(
 		logIdempotencyAudit(opts.Route, opts.Scope, keyHash, "processing->failed_retryable", false, map[string]string{
 			"reason": reason,
 		})
-		if markErr := c.repo.MarkFailedRetryable(ctx, record.ID, reason, backoffUntil, expiresAt); markErr != nil {
+		if markErr := c.repo.MarkFailedRetryable(persistCtx, record.ID, reason, backoffUntil, expiresAt); markErr != nil {
 			RecordIdempotencyStoreUnavailable(opts.Route, opts.Scope, "mark_failed_retryable_error")
 			logIdempotencyAudit(opts.Route, opts.Scope, keyHash, "processing->store_unavailable", false, map[string]string{
 				"operation": "mark_failed_retryable",
@@ -417,7 +441,7 @@ func (c *IdempotencyCoordinator) Execute(
 		return nil, execErr
 	}
 
-	storedBody, marshalErr := c.marshalStoredResponse(data)
+	storedBody, marshalErr := c.marshalStoredResponse(data, opts.MaxStoredResponseLen)
 	if marshalErr != nil {
 		RecordIdempotencyStoreUnavailable(opts.Route, opts.Scope, "marshal_response_error")
 		logIdempotencyAudit(opts.Route, opts.Scope, keyHash, "processing->store_unavailable", false, map[string]string{
@@ -425,7 +449,7 @@ func (c *IdempotencyCoordinator) Execute(
 		})
 		return nil, ErrIdempotencyStoreUnavail.WithCause(marshalErr)
 	}
-	if markErr := c.repo.MarkSucceeded(ctx, record.ID, 200, storedBody, expiresAt); markErr != nil {
+	if markErr := c.repo.MarkSucceeded(persistCtx, record.ID, 200, storedBody, expiresAt); markErr != nil {
 		RecordIdempotencyStoreUnavailable(opts.Route, opts.Scope, "mark_succeeded_error")
 		logIdempotencyAudit(opts.Route, opts.Scope, keyHash, "processing->store_unavailable", false, map[string]string{
 			"operation": "mark_succeeded",
@@ -448,12 +472,18 @@ func (c *IdempotencyCoordinator) conflictWithRetryAfter(base *infraerrors.Applic
 	return base.WithMetadata(map[string]string{"retry_after": strconv.Itoa(sec)})
 }
 
-func (c *IdempotencyCoordinator) marshalStoredResponse(data any) (string, error) {
+func (c *IdempotencyCoordinator) marshalStoredResponse(data any, limits ...int) (string, error) {
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return "", err
 	}
 	redacted := logredact.RedactText(string(raw))
+	if len(limits) > 0 && limits[0] > 0 {
+		if len(redacted) > limits[0] {
+			return "", fmt.Errorf("idempotency response exceeds %d bytes", limits[0])
+		}
+		return redacted, nil
+	}
 	if c.cfg.MaxStoredResponseLen > 0 && len(redacted) > c.cfg.MaxStoredResponseLen {
 		redacted = truncateUTF8(redacted, c.cfg.MaxStoredResponseLen) + "...(truncated)"
 	}

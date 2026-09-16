@@ -680,11 +680,11 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 		{name: "openai legacy codex mini latest falls back to gpt5.3 codex", model: "codex-mini-latest", expectedInput: 1.5e-6},
 		{name: "openai unknown no fallback", model: "gpt-unknown-model", expectNilPricing: true},
 		{name: "deepseek v4 pro", model: "deepseek-v4-pro", expectedInput: 6.6e-7, expectedOutput: testPtrFloat64(1.98e-6), expectedCache: testPtrFloat64(2.2e-8)},
-		{name: "deepseek v4 flash", model: "deepseek-v4-flash", expectedInput: 2.2e-7, expectedOutput: testPtrFloat64(6.6e-7), expectedCache: testPtrFloat64(7e-9)},
-		{name: "deepseek v4 flash vision exp", model: "deepseek-v4-flash-vision-exp", expectedInput: 2.2e-7, expectedOutput: testPtrFloat64(6.6e-7), expectedCache: testPtrFloat64(7e-9)},
-		{name: "deepseek chat discontinued fallback", model: "deepseek-chat", expectedInput: 2.2e-7, expectedOutput: testPtrFloat64(6.6e-7), expectedCache: testPtrFloat64(7e-9)},
-		{name: "deepseek reasoner discontinued fallback", model: "deepseek-reasoner", expectedInput: 2.2e-7, expectedOutput: testPtrFloat64(6.6e-7), expectedCache: testPtrFloat64(7e-9)},
-		{name: "unknown deepseek fallback", model: "deepseek-foo", expectedInput: 2.2e-7, expectedOutput: testPtrFloat64(6.6e-7), expectedCache: testPtrFloat64(7e-9)},
+		{name: "deepseek v4 flash", model: "deepseek-v4-flash", expectedInput: 1.5e-7, expectedOutput: testPtrFloat64(6e-7), expectedCache: testPtrFloat64(3e-9)},
+		{name: "deepseek v4 flash vision exp", model: "deepseek-v4-flash-vision-exp", expectedInput: 1.5e-7, expectedOutput: testPtrFloat64(6e-7), expectedCache: testPtrFloat64(3e-9)},
+		{name: "deepseek chat discontinued fallback", model: "deepseek-chat", expectedInput: 1.5e-7, expectedOutput: testPtrFloat64(6e-7), expectedCache: testPtrFloat64(3e-9)},
+		{name: "deepseek reasoner discontinued fallback", model: "deepseek-reasoner", expectedInput: 1.5e-7, expectedOutput: testPtrFloat64(6e-7), expectedCache: testPtrFloat64(3e-9)},
+		{name: "unknown deepseek fallback", model: "deepseek-foo", expectedInput: 1.5e-7, expectedOutput: testPtrFloat64(6e-7), expectedCache: testPtrFloat64(3e-9)},
 		{name: "glm 5.2 ordering", model: "glm-5.2", expectedInput: 1.4e-6, expectedOutput: testPtrFloat64(4.4e-6), expectedCache: testPtrFloat64(0.26e-6)},
 		{name: "glm 5.1 ordering", model: "glm-5.1", expectedInput: 1.4e-6, expectedOutput: testPtrFloat64(4.4e-6), expectedCache: testPtrFloat64(0.26e-6)},
 		{name: "glm 5 turbo", model: "glm-5-turbo", expectedInput: 1.2e-6, expectedOutput: testPtrFloat64(4e-6), expectedCache: testPtrFloat64(0.24e-6)},
@@ -1442,6 +1442,7 @@ func TestServiceTierCostMultiplier(t *testing.T) {
 	require.InDelta(t, 2.0, serviceTierCostMultiplier("priority"), 1e-12)
 	require.InDelta(t, 2.0, serviceTierCostMultiplier("fast"), 1e-12)
 	require.InDelta(t, 2.0, serviceTierCostMultiplier(" Priority "), 1e-12)
+	require.InDelta(t, 2.0, serviceTierCostMultiplier("ultrafast"), 1e-12)
 	require.InDelta(t, 0.5, serviceTierCostMultiplier("flex"), 1e-12)
 	require.InDelta(t, 1.0, serviceTierCostMultiplier(""), 1e-12)
 	require.InDelta(t, 1.0, serviceTierCostMultiplier("default"), 1e-12)
@@ -1911,6 +1912,7 @@ func TestGetModelPricing_Fable51FallbackPricing(t *testing.T) {
 	require.InDelta(t, 12.5e-6, pricing.CacheCreation5mPrice, 1e-12)
 	require.InDelta(t, 20e-6, pricing.CacheCreation1hPrice, 1e-12)
 	require.InDelta(t, 0.25e-6, pricing.CacheReadPricePerToken, 1e-12)
+	require.Nil(t, pricing.MaxReasoningEffortMultiplier, "未显式配置时不新增模型收费")
 }
 
 func TestGetModelPricingWithChannel_CacheReadPriceAffectsPriority(t *testing.T) {

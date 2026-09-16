@@ -801,7 +801,7 @@ func (s *SchedulerSnapshotService) rebuildByAccount(ctx context.Context, account
 }
 
 func schedulerSnapshotPlatforms() []string {
-	return []string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformQoder, PlatformGrok}
+	return []string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformQoder, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformOpenCodeGo}
 }
 
 // 生命周期辅助函数有意排除 group0；full rebuild 构造 group0 canonical 集时必须显式调用 canonical helper。

@@ -315,6 +315,21 @@ describe('UseKeyModal', () => {
     expect(codeBlocks).toContain('$env:TOKENROUTER_API_KEY="sk-grok-codex-test"')
   })
 
+  it('MiniMax 导出使用自身模型和中转地址，不猜测上下文长度', async () => {
+    const wrapper = mount(UseKeyModal, {
+      props: { show: true, apiKey: 'sk-minimax-test', baseUrl: 'https://relay.example/v1', platform: 'minimax', allowedClientProtocols: ['anthropic_messages', 'openai_responses', 'openai_chat_completions'] },
+      global: { stubs: { BaseDialog: { template: '<div><slot /><slot name="footer" /></div>' }, Icon: true } }
+    })
+    expect(wrapper.findAll('pre code').map(code => code.text()).join('\n')).toContain('ANTHROPIC_MODEL="MiniMax-M3"')
+    const codexTab = wrapper.findAll('button').find(button => button.text().includes('keys.useKeyModal.cliTabs.codexCli'))
+    await codexTab!.trigger('click')
+    const config = wrapper.findAll('pre code').map(code => code.text()).find(code => code.includes('[model_providers.tokenrouter_minimax]'))
+    expect(config).toContain('model = "MiniMax-M3"')
+    expect(config).toContain('base_url = "https://relay.example/v1"')
+    expect(config).not.toContain('model_context_window')
+    wrapper.unmount()
+  })
+
   it('keeps legacy OpenAI Codex config as the default', () => {
     const wrapper = mount(UseKeyModal, {
       props: {

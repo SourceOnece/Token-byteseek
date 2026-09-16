@@ -381,6 +381,8 @@ export const useAppStore = defineStore('app', () => {
         home_content: '',
         hide_ccs_import_button: false,
         payment_enabled: false,
+        subscription_enabled: true,
+        payment_balance_disabled: false,
         // 页面功能默认开启，兼容尚未返回新字段的旧后端。
         team_enabled: true,
         creative_enabled: true,

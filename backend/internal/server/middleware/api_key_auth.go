@@ -196,6 +196,10 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		ctx := context.WithValue(c.Request.Context(), ctxkey.UserID, apiKey.User.ID)
 		ctx = context.WithValue(ctx, ctxkey.APIKeyFastModePolicy, apiKey.FastModePolicy)
 		c.Request = c.Request.WithContext(ctx)
+		checkGroupModelAllowlist(c, apiKey)
+		if c.IsAborted() {
+			return
+		}
 		applyAPIKeyModelRedirect(c, apiKey)
 		// 批任务管理只读取已有数据或释放冻结；即使任务耗尽额度，结果仍应可取回或取消。
 		skipBilling := isAPIKeyUsageRequest(c.Request.Method, c.Request.URL.Path) ||
@@ -398,7 +402,7 @@ func isAPIKeyNonConsumingRequest(method, path string) bool {
 		return true
 	}
 	if method == http.MethodGet {
-		if strings.HasSuffix(path, "/models") || isBatchImageManagementRequest(method, path) || isGrokVideoTaskRead(method, path) {
+		if strings.HasSuffix(path, "/models") || isStandardModelRetrieveEndpoint(method, path) || isBatchImageManagementRequest(method, path) || isGrokVideoTaskRead(method, path) {
 			return true
 		}
 	}

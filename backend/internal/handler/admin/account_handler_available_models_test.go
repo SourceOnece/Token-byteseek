@@ -38,6 +38,27 @@ func setupAvailableModelsRouter(adminSvc service.AdminService) *gin.Engine {
 	return router
 }
 
+func TestAccountHandlerModelsNewProvidersPreserveOwnCatalogue(t *testing.T) {
+	for platform, expected := range map[string]string{service.PlatformMiniMax: "MiniMax-M3", service.PlatformOpenCodeGo: "glm-5.3"} {
+		for _, explicit := range []bool{false, true} {
+			account := service.Account{ID: 1, Platform: platform, Type: service.AccountTypeAPIKey}
+			if explicit {
+				account.Credentials = map[string]any{"model_whitelist": []any{"custom-model"}}
+			}
+			router := setupAvailableModelsRouter(&availableModelsAdminService{account: account})
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, httptest.NewRequest("GET", "/api/v1/admin/accounts/1/models", nil))
+			require.Equal(t, http.StatusOK, w.Code)
+			if explicit {
+				require.Contains(t, w.Body.String(), "custom-model")
+				require.NotContains(t, w.Body.String(), expected)
+			} else {
+				require.Contains(t, w.Body.String(), expected)
+			}
+		}
+	}
+}
+
 type syncUpstreamHTTPUpstream struct {
 	resp *http.Response
 	err  error

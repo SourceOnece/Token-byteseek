@@ -109,9 +109,28 @@ async function mountView() {
 async function fillRequiredFields(wrapper: ReturnType<typeof mount>) {
   await wrapper.get('#email').setValue('alice@example.com')
   await wrapper.get('#password').setValue('secret123')
+  await wrapper.get('#confirmPassword').setValue('secret123')
 }
 
 describe('RegisterView', () => {
+  it.each(['', 'different-password'])('确认密码不匹配时不提交注册 %j', async (confirmation) => {
+    getPublicSettingsMock.mockResolvedValueOnce({ registration_enabled: true, invitation_code_enabled: false })
+    const wrapper = await mountView()
+    await fillRequiredFields(wrapper)
+    await wrapper.get('#confirmPassword').setValue(confirmation)
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(registerMock).not.toHaveBeenCalled()
+    expect(sessionStorage.getItem('register_data')).toBeNull()
+    expect(showErrorMock).toHaveBeenCalledWith(confirmation ? 'auth.passwordsDoNotMatch' : 'auth.confirmPasswordRequired')
+    await wrapper.get('#confirmPassword').setValue('secret123')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(registerMock).toHaveBeenCalledTimes(1)
+    expect(registerMock.mock.calls[0][0]).not.toHaveProperty('confirmPassword')
+    wrapper.unmount()
+  })
+
   beforeEach(() => {
     vi.useFakeTimers()
     pushMock.mockReset().mockResolvedValue(undefined)
@@ -291,6 +310,7 @@ describe('RegisterView', () => {
     const wrapper = await mountView()
     await wrapper.get('#email').setValue('first@custom.example')
     await wrapper.get('#password').setValue('secret123')
+  await wrapper.get('#confirmPassword').setValue('secret123')
     await wrapper.get('form').trigger('submit.prevent')
     await flushPromises()
 
@@ -326,6 +346,7 @@ describe('RegisterView', () => {
     const wrapper = await mountView()
     await wrapper.get('#email').setValue('second@custom.example')
     await wrapper.get('#password').setValue('secret123')
+  await wrapper.get('#confirmPassword').setValue('secret123')
     await wrapper.get('form').trigger('submit.prevent')
     await flushPromises()
 
@@ -353,6 +374,7 @@ describe('RegisterView', () => {
     const wrapper = await mountView()
     await wrapper.get('#email').setValue('first@custom.example')
     await wrapper.get('#password').setValue('secret123')
+  await wrapper.get('#confirmPassword').setValue('secret123')
     await wrapper.get('form').trigger('submit.prevent')
     await flushPromises()
 
@@ -382,6 +404,7 @@ describe('RegisterView', () => {
     const wrapper = await mountView()
     await wrapper.get('#email').setValue('user@allowed.example')
     await wrapper.get('#password').setValue('secret123')
+  await wrapper.get('#confirmPassword').setValue('secret123')
     await wrapper.get('form').trigger('submit.prevent')
     await flushPromises()
 

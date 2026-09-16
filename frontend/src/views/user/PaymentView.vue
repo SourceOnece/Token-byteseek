@@ -34,7 +34,8 @@
         <!-- Tab content (select phase) -->
         <template v-else>
           <!-- Top-up Tab -->
-          <template v-if="activeTab === 'recharge'">
+          <div v-if="tabs.length === 0" class="py-12 text-center text-sm font-bold">{{ t('payment.billingUnavailable') }}</div>
+          <template v-else-if="activeTab === 'recharge'">
             <!-- Recharge Account Card -->
             <div class="card p-5">
               <p class="text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('payment.rechargeAccount') }}</p>
@@ -297,13 +298,13 @@
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="showRenewalModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="closeRenewalModal">
-          <div class="relative w-full max-w-lg rounded-surface border border-gray-200 bg-white p-6 shadow-2xl dark:border-dark-700 dark:bg-dark-900 sm:rounded-dialog">
+          <div class="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col border-2 border-[var(--bh-ink)] bg-[var(--bh-paper)] p-6 shadow-[var(--bh-shadow)]">
             <!-- Close button -->
             <button class="absolute right-4 top-4 rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-200" @click="closeRenewalModal">
               <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
-            <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">{{ t('payment.selectPlan') }}</h3>
-            <div class="space-y-4">
+            <h3 class="mb-4 shrink-0 pr-8 text-lg font-semibold text-gray-900 dark:text-white">{{ t('payment.selectPlan') }}</h3>
+            <div class="min-h-0 space-y-4 overflow-y-auto p-1">
               <SubscriptionPlanCard v-for="plan in renewalPlans" :key="plan.id" :plan="plan" :active-subscriptions="activeSubscriptions" @select="selectPlanFromModal" />
             </div>
           </div>
@@ -595,11 +596,19 @@ const checkout = ref<CheckoutInfoResponse>({
   plans: [], balance_disabled: false, balance_recharge_multiplier: 1, subscription_usd_to_cny_rate: 0, recharge_fee_rate: 0, method_fees: {}, help_text: '', help_image_url: '', stripe_publishable_key: '',
 })
 
+const subscriptionEnabled = computed(() => appStore.cachedPublicSettings?.subscription_enabled !== false)
 const tabs = computed(() => {
   const result: { key: 'recharge' | 'subscription'; label: string }[] = []
   if (!checkout.value.balance_disabled) result.push({ key: 'recharge', label: t('payment.tabTopUp') })
-  result.push({ key: 'subscription', label: t('payment.tabSubscribe') })
+  if (subscriptionEnabled.value) result.push({ key: 'subscription', label: t('payment.tabSubscribe') })
   return result
+})
+
+// 已经进入支付阶段的订单不取消；模式变化仅校正下一次选择。
+watch(tabs, (available) => {
+  if (available.some(tab => tab.key === activeTab.value)) return
+  activeTab.value = available[0]?.key ?? 'recharge'
+  selectedPlan.value = null
 })
 
 const visibleMethods = computed(() => getVisibleMethods(checkout.value.methods))
@@ -1390,10 +1399,10 @@ onMounted(async () => {
       }
     }
     await resumeWechatPaymentFromQuery()
-    if (checkout.value.balance_disabled) {
+    if (checkout.value.balance_disabled && subscriptionEnabled.value) {
       activeTab.value = 'subscription'
     }
-    if (route.query.tab === 'subscription') {
+    if (route.query.tab === 'subscription' && subscriptionEnabled.value) {
       activeTab.value = 'subscription'
       const planId = Number(route.query.plan)
       if (planId > 0) {

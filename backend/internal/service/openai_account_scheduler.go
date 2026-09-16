@@ -150,6 +150,7 @@ type openAIAccountSchedulerMetrics struct {
 	selectTotal            atomic.Int64
 	stickyPreviousHitTotal atomic.Int64
 	stickySessionHitTotal  atomic.Int64
+	stickyHitTotal         atomic.Int64
 	loadBalanceSelectTotal atomic.Int64
 	accountSwitchTotal     atomic.Int64
 	latencyMsTotal         atomic.Int64
@@ -189,6 +190,9 @@ func (m *openAIAccountSchedulerMetrics) recordSelect(decision OpenAIAccountSched
 	}
 	if decision.StickySessionHit {
 		m.stickySessionHitTotal.Add(1)
+	}
+	if decision.StickyPreviousHit || decision.StickySessionHit {
+		m.stickyHitTotal.Add(1)
 	}
 	if decision.Layer == openAIAccountScheduleLayerLoadBalance {
 		m.loadBalanceSelectTotal.Add(1)
@@ -1352,7 +1356,7 @@ func (s *defaultOpenAIAccountScheduler) SnapshotMetrics() OpenAIAccountScheduler
 	}
 	if selectTotal > 0 {
 		snapshot.SchedulerLatencyMsAvg = float64(latencyTotal) / float64(selectTotal)
-		snapshot.StickyHitRatio = float64(prevHit+sessionHit) / float64(selectTotal)
+		snapshot.StickyHitRatio = float64(s.metrics.stickyHitTotal.Load()) / float64(selectTotal)
 		snapshot.AccountSwitchRate = float64(switchTotal) / float64(selectTotal)
 		snapshot.LoadSkewAvg = float64(loadSkewTotal) / 1000 / float64(selectTotal)
 	}
@@ -1832,6 +1836,11 @@ func (s *OpenAIGatewayService) selectAccountWithSchedulerForRouting(
 	}
 	ctx = resolvedCtx
 	groupID = resolvedGroupID
+	if group, ok := ctx.Value(ctxkey.Group).(*Group); ok {
+		if policyErr := validateGroupModelAllowlistForSelection(ctx, group, requestedModel); policyErr != nil {
+			return nil, OpenAIAccountScheduleDecision{}, policyErr
+		}
+	}
 	if derefGroupID(groupID) != originalGroupID {
 		// 回退后的分组可能有不同渠道映射，必须重新解析账号层模型。
 		routingModel = s.resolveChannelRoutingModel(ctx, groupID, requestedModel)

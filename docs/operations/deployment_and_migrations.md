@@ -72,6 +72,16 @@
 
 升级前先创建并实际验证 PostgreSQL 备份，同时保存 Redis/对象存储中业务要求恢复的数据。后台备份服务可把数据库 dump 流式写入本地或 S3 兼容存储，并用维护锁串行化备份/恢复；敏感存储配置需要稳定的安全密钥。备份内容策略可能排除大体量历史表，恢复目标必须先核对备份范围。
 
+后台 `PgDumper` 在启动 `pg_dump` 前取得与迁移 runner 相同的 PostgreSQL advisory lock，读取流关闭后才释放；启动失败同样释放。锁使用专用连接，获取或释放结果不明确时丢弃连接，避免带锁回到连接池。现有大表排除配置继续保留。这使受本服务控制的备份与迁移互斥，不代表任意外部 DDL 或手工备份也自动遵守锁。
+
+### 可选倍率与模型准入
+
+bh.030 新增 `271_channel_max_reasoning_effort_multiplier.sql`（TokenRouter 268 重编号）及 `272_group_model_allowlist.sql`（sub2api 235/236 目的的独立适配）。倍率 NULL 表示不额外加价；硬白名单默认关闭，原展示模型列不改名也不转成限制。后者扩展分组鉴权失效 outbox 覆盖普通及复合 Key。旧二进制虽可忽略新列，却不认识启用后的准入/倍率规则，因此开放新配置前应完成所有实例升级；回退时先停用新配置，不删除迁移记录。
+
+迁移 `273_add_minimax_platform_quota.sql` 对应 sub2api 原 237，只扩展本 fork 实际存在的 `user_platform_quotas` CHECK，保留 Qoder，不恢复已移除的 Composite 平台或上游独立监控表。无已有用户回填，缺省额度仍无限；注册的十平台批量插入与 Ent 校验同步，真实数据库已验证既有 OpenAI 额度不变。
+
+迁移 `274_add_opencode_platform_quota.sql` 对应 sub2api 原 238，在 273 后把 OpenCode Zen/Go 的共同平台 `opencode_go` 加入额度约束，不为旧用户回填。两种账号模式共享该平台用户额度；十一平台注册初始化、旧额度保留和重复插入约束已在临时 PostgreSQL 验证。
+
 ### Codex 题目测试结果表
 
 `269_add_usage_log_upstream_request_id.sql` 和 `270_add_usage_log_upstream_request_id_index_notx.sql` 为 bh.026 从 TokenRouter 原 266/267 重编号迁入：新增 nullable `usage_logs.upstream_request_id VARCHAR(128)` 和仅非空行的并发索引。旧用量行保持 NULL，不回填；不修改本 fork 266–268 质量测试表。旧二进制可忽略新增列/索引，回滚代码时应保留迁移记录。升级前仍须备份；大用量表创建索引有 I/O 成本。

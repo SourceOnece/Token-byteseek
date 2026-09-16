@@ -93,10 +93,12 @@ type ChannelModelPricing struct {
 	// FastMultiplier 是新的通用 Fast/priority 倍率；为空时兼容旧字段。
 	FastMultiplier *float64 `json:"fast_multiplier,omitempty"`
 	// FlexMultiplier 是渠道级 Flex 倍率；为空时使用系统默认 0.5。
-	FlexMultiplier  *float64 `json:"flex_multiplier,omitempty"`
-	InputPrice      *float64 `json:"input_price"`
-	OutputPrice     *float64 `json:"output_price"`
-	CacheWritePrice *float64 `json:"cache_write_price"`
+	FlexMultiplier *float64 `json:"flex_multiplier,omitempty"`
+	// MaxReasoningEffortMultiplier 仅在最终转发档位为 max 时应用；nil 沿用模型默认倍率。
+	MaxReasoningEffortMultiplier *float64 `json:"max_reasoning_effort_multiplier,omitempty"`
+	InputPrice                   *float64 `json:"input_price"`
+	OutputPrice                  *float64 `json:"output_price"`
+	CacheWritePrice              *float64 `json:"cache_write_price"`
 	// CacheWrite1hPrice 是可选的 1 小时缓存写入单价；为空时沿用 CacheWritePrice。
 	CacheWrite1hPrice *float64            `json:"cache_write_1h_price"`
 	CacheReadPrice    *float64            `json:"cache_read_price"`
@@ -227,7 +229,8 @@ func (p *ChannelModelPricing) HasEffectivePricing() bool {
 			p.ImageInputPrice != nil ||
 			p.ImageOutputPrice != nil ||
 			p.FastMultiplier != nil ||
-			p.FlexMultiplier != nil {
+			p.FlexMultiplier != nil ||
+			p.MaxReasoningEffortMultiplier != nil {
 			return true
 		}
 		for i := range p.Intervals {

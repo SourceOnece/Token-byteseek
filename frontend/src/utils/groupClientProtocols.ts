@@ -45,6 +45,14 @@ const GROUP_CLIENT_PROTOCOL_POLICIES: Record<GroupPlatform, GroupClientProtocolP
     supported: ['anthropic_messages', 'openai_responses', 'openai_chat_completions'],
     defaults: ['anthropic_messages', 'openai_responses', 'openai_chat_completions']
   },
+  opencode_go: {
+    supported: ['anthropic_messages', 'openai_responses', 'openai_chat_completions'],
+    defaults: ['anthropic_messages', 'openai_responses', 'openai_chat_completions']
+  },
+  minimax: {
+    supported: ['anthropic_messages', 'openai_responses', 'openai_chat_completions'],
+    defaults: ['anthropic_messages', 'openai_responses', 'openai_chat_completions']
+  },
   deepseek: {
     supported: ['anthropic_messages', 'openai_responses', 'openai_chat_completions'],
     defaults: ['anthropic_messages', 'openai_responses', 'openai_chat_completions']

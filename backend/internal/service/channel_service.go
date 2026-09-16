@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -167,9 +169,35 @@ const (
 type ChannelService struct {
 	repo                 ChannelRepository
 	authCacheInvalidator APIKeyAuthCacheInvalidator
+	cachePubSub          ChannelCachePubSub
+	cacheMu              sync.Mutex
+	cacheGeneration      uint64
 
 	cache   atomic.Value // *channelCache
 	cacheSF singleflight.Group
+}
+
+// ChannelCachePubSub 只广播失效事件，不传输价格、凭据或用户数据。
+type ChannelCachePubSub interface {
+	NotifyUpdate(context.Context) error
+	SubscribeUpdates(context.Context, func())
+	StopSubscription()
+}
+
+// Stop 在 Redis 关闭前停止渠道缓存订阅。
+func (s *ChannelService) Stop() {
+	if s != nil && s.cachePubSub != nil {
+		s.cachePubSub.StopSubscription()
+	}
+}
+
+// clearLocalCache 不转发通知，避免实例之间反复广播。
+func (s *ChannelService) clearLocalCache() {
+	s.cacheMu.Lock()
+	s.cacheGeneration++
+	s.cache.Store((*channelCache)(nil))
+	s.cacheMu.Unlock()
+	s.cacheSF.Forget("channel_cache")
 }
 
 // NewChannelService 创建渠道服务实例
@@ -273,28 +301,38 @@ func expandMappingToCache(cache *channelCache, ch *Channel, gid int64, platform 
 	}
 }
 
-// storeErrorCache 存入短 TTL 空缓存，防止 DB 错误后紧密重试。
-// 通过回退 loadedAt 使剩余 TTL = channelErrorTTL。
-func (s *ChannelService) storeErrorCache() {
-	errorCache := newEmptyChannelCache()
-	errorCache.loadedAt = time.Now().Add(-(channelCacheTTL - channelErrorTTL))
-	s.cache.Store(errorCache)
-}
-
 // buildCache 从数据库构建渠道缓存。
 // 使用独立 context 避免请求取消导致空值被长期缓存。
 func (s *ChannelService) buildCache(ctx context.Context) (*channelCache, error) {
 	dbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), channelCacheDBTimeout)
 	defer cancel()
-
-	channels, groupPlatforms, err := s.fetchChannelData(dbCtx)
-	if err != nil {
-		return nil, err
+	for attempt := 0; attempt < 3; attempt++ {
+		s.cacheMu.Lock()
+		generation := s.cacheGeneration
+		s.cacheMu.Unlock()
+		channels, groupPlatforms, err := s.fetchChannelData(dbCtx)
+		cache := populateChannelCache(channels, groupPlatforms)
+		s.cacheMu.Lock()
+		// 成功和失败快照都必须匹配当前代数，避免旧查询覆盖新价格。
+		if generation != s.cacheGeneration {
+			s.cacheMu.Unlock()
+			if dbCtx.Err() != nil {
+				return nil, dbCtx.Err()
+			}
+			continue
+		}
+		if err != nil {
+			cache = newEmptyChannelCache()
+			cache.loadedAt = time.Now().Add(-(channelCacheTTL - channelErrorTTL))
+		}
+		s.cache.Store(cache)
+		s.cacheMu.Unlock()
+		if err != nil {
+			return nil, err
+		}
+		return cache, nil
 	}
-
-	cache := populateChannelCache(channels, groupPlatforms)
-	s.cache.Store(cache)
-	return cache, nil
+	return nil, fmt.Errorf("channel cache changed repeatedly during refresh")
 }
 
 // fetchChannelData 从数据库加载渠道列表和分组平台映射。
@@ -302,7 +340,6 @@ func (s *ChannelService) fetchChannelData(ctx context.Context) ([]Channel, map[i
 	channels, err := s.repo.ListAll(ctx)
 	if err != nil {
 		slog.Warn("failed to build channel cache", "error", err)
-		s.storeErrorCache()
 		return nil, nil, fmt.Errorf("list all channels: %w", err)
 	}
 
@@ -316,7 +353,6 @@ func (s *ChannelService) fetchChannelData(ctx context.Context) ([]Channel, map[i
 		groupPlatforms, err = s.repo.GetGroupPlatforms(ctx, allGroupIDs)
 		if err != nil {
 			slog.Warn("failed to load group platforms for channel cache", "error", err)
-			s.storeErrorCache()
 			return nil, nil, fmt.Errorf("get group platforms: %w", err)
 		}
 	}
@@ -364,12 +400,18 @@ func (s *ChannelService) InvalidateCache() {
 
 // invalidateCache 使缓存失效，并立即尝试重建。
 func (s *ChannelService) invalidateCache() {
-	s.cache.Store((*channelCache)(nil))
-	s.cacheSF.Forget("channel_cache")
+	s.clearLocalCache()
 
 	// 主动重建缓存，确保 CRUD 后立即生效
 	if _, err := s.buildCache(context.Background()); err != nil {
 		slog.Warn("failed to rebuild channel cache after invalidation", "error", err)
+	}
+	if s.cachePubSub != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if err := s.cachePubSub.NotifyUpdate(ctx); err != nil {
+			slog.Warn("channel cache notification failed", "error", err)
+		}
 	}
 }
 
@@ -763,18 +805,23 @@ func checkBillingModeRequirements(p ChannelModelPricing) error {
 			)
 		}
 	}
+	// 计费倍率必须有限，防止内部配置写入 NaN/Inf 后污染所有成本桶。
+	if p.MaxReasoningEffortMultiplier != nil && (math.IsNaN(*p.MaxReasoningEffortMultiplier) || math.IsInf(*p.MaxReasoningEffortMultiplier, 0)) {
+		return infraerrors.BadRequest("INVALID_MULTIPLIER", "max_reasoning_effort_multiplier must be finite and > 0")
+	}
 	for _, c := range []struct {
 		field string
 		val   *float64
 	}{
 		{"fast_multiplier", p.FastMultiplier},
 		{"flex_multiplier", p.FlexMultiplier},
+		{"max_reasoning_effort_multiplier", p.MaxReasoningEffortMultiplier},
 	} {
 		if c.val != nil && *c.val <= 0 {
 			return infraerrors.BadRequest("INVALID_MULTIPLIER", fmt.Sprintf("%s must be > 0", c.field))
 		}
 	}
-	if p.FastMultiplier != nil || p.FlexMultiplier != nil {
+	if p.FastMultiplier != nil || p.FlexMultiplier != nil || p.MaxReasoningEffortMultiplier != nil {
 		mode := p.BillingMode
 		if mode == "" {
 			mode = BillingModeToken
@@ -782,7 +829,7 @@ func checkBillingModeRequirements(p ChannelModelPricing) error {
 		if mode != BillingModeToken {
 			return infraerrors.BadRequest(
 				"TIER_MULTIPLIER_UNSUPPORTED_BILLING_MODE",
-				"fast_multiplier and flex_multiplier are only supported for token billing mode",
+				"fast_multiplier, flex_multiplier and max_reasoning_effort_multiplier are only supported for token billing mode",
 			)
 		}
 	}
@@ -856,6 +903,12 @@ func validateAccountStatsPricingEntries(pricing []ChannelModelPricing) error {
 			return infraerrors.BadRequest(
 				"ACCOUNT_STATS_TIER_MULTIPLIER_UNSUPPORTED",
 				"service tier multipliers are not supported for account stats pricing",
+			)
+		}
+		if p.MaxReasoningEffortMultiplier != nil {
+			return infraerrors.BadRequest(
+				"ACCOUNT_STATS_REASONING_MULTIPLIER_UNSUPPORTED",
+				"max_reasoning_effort_multiplier is not supported for account stats pricing",
 			)
 		}
 		if p.TimePricing != nil && len(p.TimePricing.Periods) > 0 {

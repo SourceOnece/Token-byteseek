@@ -140,8 +140,13 @@ func isCompositeKeyModelListEndpoint(method, path string) bool {
 	case "/v1/models", "/models", "/v1beta/models", "/antigravity/models", "/antigravity/v1/models", "/antigravity/v1beta/models", "/v1/images/batches/models":
 		return true
 	default:
-		return false
+		return isStandardModelRetrieveEndpoint(method, path)
 	}
+}
+
+// 单项模型查询仍从完整授权目录取值，不在中间件抢先裁掉复合前缀。
+func isStandardModelRetrieveEndpoint(method, path string) bool {
+	return method == http.MethodGet && (strings.HasPrefix(path, "/v1/models/") || strings.HasPrefix(path, "/models/"))
 }
 
 // isCompositeKeyBillingBypassEndpoint 仅识别按 Key 身份读取既有数据的入口。

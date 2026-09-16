@@ -705,6 +705,58 @@ describe('user KeysView column settings', () => {
     expect(form.classes()).toEqual(expect.arrayContaining(['min-w-0', 'max-w-full']))
   })
 
+  it('创建密钥按真实平台分类，切换清除旧选择，复合模式仍允许跨平台', async () => {
+    getAvailableGroups.mockResolvedValue([
+      { id: 1, name: 'OpenAI display name', platform: 'anthropic' },
+      { id: 2, name: 'Claude display name', platform: 'openai' },
+      { id: 3, name: 'MiniMax', platform: 'minimax' },
+      { id: 4, name: 'Qoder', platform: 'qoder' }
+    ])
+    const wrapper = await mountView()
+    await getButtonByText(wrapper, 'Create API Key').trigger('click')
+    await flushPromises()
+    const select = () => wrapper.findAllComponents({ name: 'Select' }).find((el) => el.attributes('data-tour') === 'key-form-group')!
+    expect(select().props('options').map((group: { value: number }) => group.value)).toEqual([1])
+    select().vm.$emit('update:modelValue', 1)
+    await wrapper.get('input[name="key-provider"][value="openai"]').setValue(true)
+    expect(select().props('modelValue')).toBeNull()
+    expect(select().props('options').map((group: { value: number }) => group.value)).toEqual([2])
+    await wrapper.get('input[name="key-provider"][value="domestic"]').setValue(true)
+    expect(select().props('options').map((group: { value: number }) => group.value)).toEqual([3])
+    await wrapper.get('[data-test="composite-key-toggle"]').trigger('click')
+    expect(wrapper.find('[data-tour="key-form-provider"]').exists()).toBe(false)
+    const composite = wrapper.get('[data-test="composite-group-editor"]').getComponent({ name: 'Select' })
+    expect(composite.props('options')).toHaveLength(4)
+    wrapper.unmount()
+  })
+
+  it('供应商筛选不越过指定订阅范围，编辑已有密钥不增加分类限制', async () => {
+    getAvailableGroups.mockImplementation((_scope, subscriptionID?: number) => Promise.resolve(subscriptionID === 71
+      ? [{ id: 2, name: 'Allowed', platform: 'openai' }]
+      : [{ id: 1, name: 'Claude', platform: 'anthropic' }, { id: 2, name: 'Allowed', platform: 'openai' }]
+    ))
+    const wrapper = await mountView()
+    await getButtonByText(wrapper, 'Create API Key').trigger('click')
+    await flushPromises()
+    const selectByTest = (test: string) => wrapper.findAllComponents({ name: 'Select' }).find((el) => el.attributes('data-test') === test)!
+    selectByTest('api-key-billing-mode').vm.$emit('change', 'subscription')
+    await nextTick()
+    selectByTest('api-key-preferred-subscription').vm.$emit('change', 71)
+    await flushPromises()
+    expect(wrapper.get<HTMLInputElement>('input[value="anthropic"]').element.disabled).toBe(true)
+    expect(wrapper.get<HTMLInputElement>('input[value="openai"]').element.checked).toBe(true)
+    const select = wrapper.findAllComponents({ name: 'Select' }).find((el) => el.attributes('data-tour') === 'key-form-group')!
+    expect(select.props('options').map((group: { value: number }) => group.value)).toEqual([2])
+    wrapper.unmount()
+
+    const editing = await mountView()
+    await getButtonByText(editing, 'Edit').trigger('click')
+    await flushPromises()
+    expect(editing.find('[data-tour="key-form-provider"]').exists()).toBe(false)
+    expect(editing.findAllComponents({ name: 'Select' }).find((el) => el.attributes('data-tour') === 'key-form-group')!.props('options')).toHaveLength(2)
+    editing.unmount()
+  })
+
   it('用户侧分组选择器不展示或投影容量数据', async () => {
     getAvailableGroups.mockResolvedValueOnce([{
       id: 42,

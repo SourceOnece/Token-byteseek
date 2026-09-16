@@ -22,21 +22,21 @@ import (
 
 // Cancel rate limit configuration constants.
 const (
-	rateLimitUnitDay           = "day"
-	rateLimitUnitMinute        = "minute"
-	rateLimitUnitHour          = "hour"
-	rateLimitModeFixed         = "fixed"
-	checkPaidResultAlreadyPaid = "already_paid"
-	checkPaidResultCancelled   = "cancelled"
-	checkPaidResultProcessing  = "processing"
-	checkPaidResultFailed      = "failed"
-	checkPaidResultUncertain   = "uncertain"
-	pendingWxpayReconcileLimit = 20
-	processingReconcileLimit   = 20
-	fulfillmentReconcileLimit  = 20
-	fulfillmentRetryDelay      = time.Minute
-	processingStaleAfter       = 24 * time.Hour
-	paymentExpiryRetryDelay    = 15 * time.Minute
+	rateLimitUnitDay             = "day"
+	rateLimitUnitMinute          = "minute"
+	rateLimitUnitHour            = "hour"
+	rateLimitModeFixed           = "fixed"
+	checkPaidResultAlreadyPaid   = "already_paid"
+	checkPaidResultCancelled     = "cancelled"
+	checkPaidResultProcessing    = "processing"
+	checkPaidResultFailed        = "failed"
+	checkPaidResultUncertain     = "uncertain"
+	pendingPaymentReconcileLimit = 20
+	processingReconcileLimit     = 20
+	fulfillmentReconcileLimit    = 20
+	fulfillmentRetryDelay        = time.Minute
+	processingStaleAfter         = 24 * time.Hour
+	paymentExpiryRetryDelay      = 15 * time.Minute
 )
 
 var createPaymentProviderFromInstance = provider.CreateProvider
@@ -508,8 +508,8 @@ func (s *PaymentService) VerifyOrderByOutTradeNo(ctx context.Context, outTradeNo
 	return o, nil
 }
 
-// ReconcilePendingWxpayOrders 主动补偿未收到回调的微信待支付订单，避免等到过期才发现已支付。
-func (s *PaymentService) ReconcilePendingWxpayOrders(ctx context.Context) (int, error) {
+// ReconcilePendingPaymentOrders 主动补偿未收到回调的支付宝和微信待支付订单，避免等到过期才发现已支付。
+func (s *PaymentService) ReconcilePendingPaymentOrders(ctx context.Context) (int, error) {
 	now := time.Now()
 	orders, err := s.entClient.PaymentOrder.Query().
 		Where(
@@ -520,20 +520,24 @@ func (s *PaymentService) ReconcilePendingWxpayOrders(ctx context.Context) (int, 
 				paymentorder.PaymentTypeHasPrefix(payment.TypeWxpay+"_"),
 				paymentorder.ProviderKeyEQ(payment.TypeWxpay),
 				paymentorder.ProviderKeyHasPrefix(payment.TypeWxpay+"_"),
+				paymentorder.PaymentTypeEQ(payment.TypeAlipay),
+				paymentorder.PaymentTypeHasPrefix(payment.TypeAlipay+"_"),
+				paymentorder.ProviderKeyEQ(payment.TypeAlipay),
+				paymentorder.ProviderKeyHasPrefix(payment.TypeAlipay+"_"),
 			),
 		).
 		Order(dbent.Asc(paymentorder.FieldCreatedAt)).
-		Limit(pendingWxpayReconcileLimit).
+		Limit(pendingPaymentReconcileLimit).
 		All(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("query pending wxpay orders: %w", err)
+		return 0, fmt.Errorf("query pending payment orders: %w", err)
 	}
 
 	recovered := 0
 	for _, order := range orders {
 		outcome, checkErr := s.checkPaid(ctx, order)
 		if checkErr != nil {
-			slog.Warn("reconcile pending wxpay order failed", "orderID", order.ID, "error", checkErr)
+			slog.Warn("reconcile pending payment order failed", "orderID", order.ID, "error", checkErr)
 			continue
 		}
 		if outcome == checkPaidResultAlreadyPaid {

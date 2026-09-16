@@ -36,6 +36,9 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	tlsRouterMatch ...TLSFingerprintRouterMatchResult,
 ) (*OpenAIForwardResult, error) {
 	beginUpstreamResponseModelObservation(c)
+	if account.IsOpenCodeGo() {
+		rememberOpenCodeInboundSession(c, body)
+	}
 	ClearActualOpenAIUpstreamEndpoint(c)
 	if shouldForwardOpenAIResponsesViaRawChatCompletions(account) {
 		SetActualOpenAIUpstreamEndpoint(c, "/v1/chat/completions")
@@ -48,7 +51,16 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	// 国产供应商 Anthropic / adaptive 协议使用原生 Messages 端点，
 	// /v1/messages 请求零转换直通（仅模型名映射 + 少量 body 清洗），完整保留
 	// thinking / tool_use / cache 语义，适配 Claude Code 等原生客户端。
-	if account.IsAnthropicProtocol() || account.IsAdaptiveAPIProtocol() {
+	if account.IsOpenCodeGo() {
+		mapped := resolveOpenCodeGoMappedModel(account, body, defaultMappedModel)
+		switch openCodeGoNativeProtocol(account, mapped) {
+		case APIProtocolAnthropic:
+			return s.forwardAnthropicViaNativeAnthropicEndpoint(ctx, c, account, body, defaultMappedModel)
+		case APIProtocolResponses:
+		default:
+			return s.forwardAnthropicViaRawChatCompletions(ctx, c, account, body, defaultMappedModel, tlsRouterMatch...)
+		}
+	} else if account.IsAnthropicProtocol() || account.IsAdaptiveAPIProtocol() {
 		return s.forwardAnthropicViaNativeAnthropicEndpoint(ctx, c, account, body, defaultMappedModel)
 	}
 
@@ -57,7 +69,7 @@ func (s *OpenAIGatewayService) ForwardAsAnthropic(
 	if shouldForwardOpenAIResponsesViaRawChatCompletions(account) {
 		return s.forwardAnthropicViaRawChatCompletions(ctx, c, account, body, defaultMappedModel, tlsRouterMatch...)
 	}
-	if !account.IsCNProvider() && resolveOpenAITextProtocolForAttempt(
+	if !account.IsMultiProtocolAPIKey() && resolveOpenAITextProtocolForAttempt(
 		c,
 		account,
 		openai_compat.TextProtocolResponses,

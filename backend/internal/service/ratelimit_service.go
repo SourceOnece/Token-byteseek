@@ -20,6 +20,7 @@ import (
 
 // RateLimitService 处理限流和过载状态管理
 type RateLimitService struct {
+	ollamaCloudUsageProbe  ollamaCloudUsageProbeScheduler
 	accountRepo            AccountRepository
 	usageRepo              UsageLogRepository
 	cfg                    *config.Config
@@ -635,7 +636,7 @@ func (s *RateLimitService) handleDefaultUpstreamError(ctx context.Context, accou
 	case 402:
 		// 国产供应商：余额不足是可恢复状态（充值/检测恢复后由周期任务自动解除），
 		// 不能走 handleAuthError 永久置 status=error。改为可恢复的临时停调。
-		if account.IsCNProvider() {
+		if account.IsMultiProtocolAPIKey() {
 			s.handleCNProviderInsufficientBalance(ctx, account, upstreamMsg)
 			shouldDisable = true
 			break
@@ -1102,7 +1103,7 @@ func (s *RateLimitService) handle403(ctx context.Context, account *Account, upst
 		s.handleCNProviderConcurrencyLimit403(ctx, account)
 		return true
 	}
-	if account.Platform == PlatformOpenAI || account.IsCNProvider() {
+	if account.Platform == PlatformOpenAI || account.IsMultiProtocolAPIKey() {
 		return s.handleOpenAI403(ctx, account, upstreamMsg, responseBody)
 	}
 	// 非 Antigravity 平台：保持原有行为
@@ -1182,7 +1183,7 @@ func (s *RateLimitService) handleOpenAI403(ctx context.Context, account *Account
 
 	until := time.Now().Add(time.Duration(cooldownMinutes) * time.Minute)
 	platformLabel := "OpenAI"
-	if account.IsCNProvider() {
+	if account.IsMultiProtocolAPIKey() {
 		platformLabel = account.Platform
 	}
 	reason := fmt.Sprintf("%s 403 temporary cooldown: %s", platformLabel, msg)
@@ -1291,6 +1292,11 @@ func (s *RateLimitService) handleCustomErrorCode(ctx context.Context, account *A
 // handle429 处理429限流错误
 // 解析响应头获取重置时间，标记账号为限流状态
 func (s *RateLimitService) handle429(ctx context.Context, account *Account, headers http.Header, responseBody []byte) {
+	// 已配置的真实 Ollama 账号不应套用 OpenAI/Anthropic 的限流窗口解释。
+	if account != nil && IsOllamaCloudUsageAccount(account) {
+		s.handleOllamaCloudUsage429(ctx, account, headers)
+		return
+	}
 	// Spark 影子：限流/熔断状态 100% 由 QueryUsage(/wham/usage body 的 codex_bengalfox)驱动。
 	// /responses 的 429 携带的 x-codex-*/usage_limit_reached 是 global codex 道(plan/spec §8),
 	// 套到影子会把 spark 误耦合到 global 窗口——即便 spark 仍有配额也会被冷却到 global reset,
@@ -1306,7 +1312,7 @@ func (s *RateLimitService) handle429(ctx context.Context, account *Account, head
 	}
 	// 国产供应商（kimi/zhipu/deepseek）的 429 走专用可恢复路径：余额不足 → 临时停调，
 	// Coding Plan 窗口耗尽 → 冷却到快照重置点。未命中则继续默认 429 逻辑。
-	if account.IsCNProvider() {
+	if account.IsMultiProtocolAPIKey() {
 		if s.applyCNProviderReactive429(ctx, account, headers, responseBody) {
 			return
 		}

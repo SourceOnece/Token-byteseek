@@ -57,7 +57,8 @@ func TestGetModelPricing_DeepseekUsesOfficialRatesForStaleEntries(t *testing.T) 
 	}
 	for _, tt := range tests {
 		t.Run(tt.model, func(t *testing.T) {
-			pricing, err := bs.GetModelPricing(tt.model)
+			// 旧价断言固定在 Pro 切换前，不能随运行日期变化。
+			pricing, err := bs.getModelPricingAt(tt.model, time.Date(2026, 9, 13, 12, 0, 0, 0, time.UTC))
 			require.NoError(t, err)
 			require.InDelta(t, tt.input, pricing.InputPricePerToken, 1e-15)
 			require.InDelta(t, tt.output, pricing.OutputPricePerToken, 1e-15)
@@ -105,7 +106,7 @@ func TestDeepseekPricingFileContainsOnlyCurrentCatalogEntries(t *testing.T) {
 		_, exists := pricingData[removed]
 		require.False(t, exists, "%s 不应继续作为本地价格目录条目", removed)
 	}
-	for _, model := range []string{"deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro"} {
+	for _, model := range []string{"deepseek-flash", "deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro"} {
 		entry, exists := pricingData[model]
 		require.True(t, exists, "%s 必须存在于本地价格目录", model)
 		require.NotNil(t, entry)

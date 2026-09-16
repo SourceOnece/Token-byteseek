@@ -110,3 +110,17 @@ func TestGatewayRoutesCodexModelsManifestPathIsRemoved(t *testing.T) {
 	require.Empty(t, registered[http.MethodGet+" /backend-api/codex/models"])
 	require.Equal(t, registered[http.MethodGet+" /v1/models"], registered[http.MethodGet+" /models"])
 }
+
+func TestGatewayRoutesRetrieveModelAliasesAndSlashIDs(t *testing.T) {
+	repo := &codexModelsRemovalAccountRepo{accounts: []service.Account{{ID: 1, Platform: service.PlatformOpenAI, Type: service.AccountTypeAPIKey, Credentials: map[string]any{
+		"model_whitelist": []any{"vendor/model"},
+	}}}}
+	router := newGatewayRoutesTestRouterWithGatewayHandler(newCodexModelsRemovalGatewayHandler(repo), service.PlatformOpenAI)
+	for _, root := range []string{"/v1/models/", "/models/"} {
+		for model, status := range map[string]int{"vendor/model": 200, "missing": 404} {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, httptest.NewRequest("GET", root+model+"?client_version=0.144.0", nil))
+			require.Equal(t, status, w.Code, w.Body.String())
+		}
+	}
+}

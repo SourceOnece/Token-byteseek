@@ -777,7 +777,7 @@ const billingModelSourceHint = computed(() => {
 let abortController: AbortController | null = null
 
 // ── Platform config ──
-const platformOrder: GroupPlatform[] = ['anthropic', 'openai', 'gemini', 'antigravity', 'qoder', 'grok', 'kimi', 'zhipu', 'deepseek']
+const platformOrder: GroupPlatform[] = ['anthropic', 'openai', 'gemini', 'antigravity', 'qoder', 'grok', 'kimi', 'zhipu', 'deepseek', 'minimax', 'opencode_go']
 
 // ── Helpers ──
 function formatDate(value: string): string {
@@ -872,6 +872,7 @@ function addPricingEntry(sectionIdx: number) {
     fast_mode_multiplier: null,
     fast_multiplier: null,
     flex_multiplier: null,
+    max_reasoning_effort_multiplier: null,
     input_price: null,
     output_price: null,
     cache_write_price: null,
@@ -903,14 +904,15 @@ async function syncLatestModels(sectionIdx: number) {
       appStore.showSuccess(t('admin.channels.form.syncModelsAlreadyUpToDate'))
       return
     }
-    let defaultPricing: Pick<PricingFormEntry, 'input_price' | 'output_price' | 'cache_write_price' | 'cache_write_1h_price' | 'cache_read_price' | 'image_input_price' | 'image_output_price'> = {
+    let defaultPricing: Pick<PricingFormEntry, 'input_price' | 'output_price' | 'cache_write_price' | 'cache_write_1h_price' | 'cache_read_price' | 'image_input_price' | 'image_output_price' | 'max_reasoning_effort_multiplier'> = {
       input_price: null,
       output_price: null,
       cache_write_price: null,
       cache_write_1h_price: null,
       cache_read_price: null,
       image_input_price: null,
-      image_output_price: null
+      image_output_price: null,
+      max_reasoning_effort_multiplier: null
     }
     if (platform === 'qoder') {
       try {
@@ -923,7 +925,8 @@ async function syncLatestModels(sectionIdx: number) {
             cache_write_1h_price: perTokenToMTok(pricing.cache_write_1h_price ?? null),
             cache_read_price: perTokenToMTok(pricing.cache_read_price ?? null),
             image_input_price: perTokenToMTok(pricing.image_input_price ?? null),
-            image_output_price: perTokenToMTok(pricing.image_output_price ?? null)
+            image_output_price: perTokenToMTok(pricing.image_output_price ?? null),
+            max_reasoning_effort_multiplier: pricing.max_reasoning_effort_multiplier ?? null
           }
         }
       } catch {
@@ -938,6 +941,7 @@ async function syncLatestModels(sectionIdx: number) {
       fast_mode_multiplier: null,
       fast_multiplier: null,
       flex_multiplier: null,
+      max_reasoning_effort_multiplier: defaultPricing.max_reasoning_effort_multiplier ?? null,
       input_price: defaultPricing.input_price,
       output_price: defaultPricing.output_price,
       cache_write_price: defaultPricing.cache_write_price,
@@ -1009,6 +1013,7 @@ function addRulePricingEntry(sectionIdx: number, ruleIndex: number) {
     fast_mode_multiplier: null,
     fast_multiplier: null,
     flex_multiplier: null,
+    max_reasoning_effort_multiplier: null,
     input_price: null,
     output_price: null,
     cache_write_price: null,
@@ -1131,6 +1136,7 @@ function accountStatsRulesToAPI(): AccountStatsPricingRule[] {
             fast_mode_multiplier: toNullableNumber(p.fast_mode_multiplier),
             fast_multiplier: toNullableNumber(p.fast_multiplier),
             flex_multiplier: toNullableNumber(p.flex_multiplier),
+            max_reasoning_effort_multiplier: toNullableNumber(p.max_reasoning_effort_multiplier),
             input_price: mTokToPerToken(p.input_price),
             output_price: mTokToPerToken(p.output_price),
             cache_write_price: mTokToPerToken(p.cache_write_price),
@@ -1178,6 +1184,7 @@ function formToAPI(): { group_ids: number[], model_pricing: ChannelModelPricing[
         fast_mode_multiplier: toNullableNumber(entry.fast_mode_multiplier),
         fast_multiplier: toNullableNumber(entry.fast_multiplier),
         flex_multiplier: toNullableNumber(entry.flex_multiplier),
+        max_reasoning_effort_multiplier: toNullableNumber(entry.max_reasoning_effort_multiplier),
         input_price: mTokToPerToken(entry.input_price),
         output_price: mTokToPerToken(entry.output_price),
         cache_write_price: mTokToPerToken(entry.cache_write_price),
@@ -1274,6 +1281,7 @@ function apiToForm(channel: Channel): PlatformSection[] {
         fast_mode_multiplier: null,
         fast_multiplier: p.fast_multiplier ?? p.fast_mode_multiplier ?? null,
         flex_multiplier: p.flex_multiplier ?? null,
+        max_reasoning_effort_multiplier: p.max_reasoning_effort_multiplier ?? null,
         input_price: perTokenToMTok(p.input_price),
         output_price: perTokenToMTok(p.output_price),
         cache_write_price: perTokenToMTok(p.cache_write_price),
@@ -1469,6 +1477,7 @@ function distributeRulesToPlatforms(apiRules: AccountStatsPricingRule[]) {
         fast_mode_multiplier: null,
         fast_multiplier: p.fast_multiplier ?? null,
         flex_multiplier: p.flex_multiplier ?? null,
+        max_reasoning_effort_multiplier: p.max_reasoning_effort_multiplier ?? null,
         input_price: perTokenToMTok(p.input_price),
         output_price: perTokenToMTok(p.output_price),
         cache_write_price: perTokenToMTok(p.cache_write_price),
@@ -1630,7 +1639,8 @@ async function handleSubmit() {
   for (const section of form.platforms.filter(s => s.enabled)) {
     for (const entry of section.model_pricing) {
       if (isValidPositiveMultiplier(entry.fast_multiplier) &&
-          isValidPositiveMultiplier(entry.flex_multiplier)) continue
+          isValidPositiveMultiplier(entry.flex_multiplier) &&
+          isValidPositiveMultiplier(entry.max_reasoning_effort_multiplier)) continue
       const models = entry.models.join(', ')
       appStore.showError(t(
         'admin.channels.form.tierMultiplierMustBePositive',

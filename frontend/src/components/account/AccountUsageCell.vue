@@ -178,7 +178,7 @@
     <template
       v-else-if="
         account.type === 'apikey' &&
-        (account.platform === 'kimi' || account.platform === 'zhipu' || account.platform === 'deepseek')
+        (account.platform === 'kimi' || account.platform === 'zhipu' || account.platform === 'deepseek' || account.platform === 'minimax' || account.platform === 'opencode_go')
       "
     >
       <AccountUpstreamUsageCell
@@ -868,7 +868,7 @@ const upstreamUsageDisabled = computed(() => {
 const showUsageWindows = computed(() => {
   if (
     props.account.type === 'apikey' &&
-    (props.account.platform === 'kimi' || props.account.platform === 'zhipu' || props.account.platform === 'deepseek')
+    (props.account.platform === 'kimi' || props.account.platform === 'zhipu' || props.account.platform === 'deepseek' || props.account.platform === 'minimax' || props.account.platform === 'opencode_go')
   ) return true
   // API Key 的上游余额由独立子组件按需查询；不能沿用 OAuth/Gemini
   // 用量模型在列表加载或进入视口时主动请求上游。

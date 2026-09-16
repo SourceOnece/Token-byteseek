@@ -13,6 +13,7 @@ func TestOpenAICompatibleRequestPlatformPreservesCNPlatform(t *testing.T) {
 		service.PlatformKimi,
 		service.PlatformZhipu,
 		service.PlatformDeepseek,
+		service.PlatformMiniMax,
 	} {
 		apiKey := &service.APIKey{Group: &service.Group{Platform: platform}}
 		require.Equal(t, platform, openAICompatibleRequestPlatform(apiKey))
@@ -25,7 +26,7 @@ func TestOpenAICompatibleRequestPlatformPreservesCNPlatform(t *testing.T) {
 
 func TestAllowOpenAICompatibleMessagesDispatchUsesProtocolCollectionForCN(t *testing.T) {
 	require.True(t, allowOpenAICompatibleMessagesDispatch(nil))
-	for _, platform := range []string{service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek} {
+	for _, platform := range []string{service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek, service.PlatformMiniMax} {
 		disabled := &service.APIKey{Group: &service.Group{Platform: platform}}
 		require.False(t, allowOpenAICompatibleMessagesDispatch(disabled), platform)
 

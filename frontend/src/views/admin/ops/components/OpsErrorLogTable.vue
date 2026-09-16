@@ -219,11 +219,17 @@ const allColumns = computed<Column[]>(() => [
 ])
 
 // 传入 visibleColumnKeys 时按其过滤；未传时显示全部列。
-const columns = computed<Column[]>(() =>
-  props.visibleColumnKeys
+const columns = computed<Column[]>(() => {
+  const visibleColumns = props.visibleColumnKeys
     ? allColumns.value.filter((c) => props.visibleColumnKeys!.includes(c.key))
     : allColumns.value
-)
+  if (!props.summaryFirst) return visibleColumns
+  return [
+    ...visibleColumns.filter(c => c.key === 'created_at'),
+    ...visibleColumns.filter(c => c.key === 'message'),
+    ...visibleColumns.filter(c => c.key !== 'created_at' && c.key !== 'message'),
+  ]
+})
 
 function isUpstreamRow(log: OpsErrorLog): boolean {
   const phase = String(log.phase || '').toLowerCase()
@@ -293,6 +299,8 @@ interface Props {
   userClickable?: boolean
   /** 列设置，仅显示这些 key 对应的列；未传时显示全部列。 */
   visibleColumnKeys?: string[]
+  /** 仅运维详情弹窗把时间和错误摘要放到最前，其余页面保持原列顺序。 */
+  summaryFirst?: boolean
   /** 嵌入统一卡片内使用：去掉自身卡片外观 */
   flat?: boolean
   /** 页面已有独立批量地区按钮时关闭表格内部工具条。 */

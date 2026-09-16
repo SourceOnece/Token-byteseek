@@ -34,12 +34,12 @@ func setOpenAICodexRoutingHint(headers http.Header, account *Account, model stri
 	}
 
 	// Codex 将 default 视为标准路由哨兵而非发往后端的服务层级；fast 沿用
-	// 网关现有规范化规则转为 priority，flex 保持不变。
+	// 网关现有规范化规则转为 priority，flex 和 ultrafast 保持不变。
 	canonicalTier := normalizedOpenAIServiceTierValue(serviceTier)
 	// 当前回移不含 Codex 模型目录快照，无法校验任意层级 ID，因此只发送
-	// Codex 实际选择的两种有效层级；default、空值和其他兼容 API 值仅保留模型。
+	// Codex 实际选择的有效层级；default、空值和其他兼容 API 值仅保留模型。
 	switch canonicalTier {
-	case OpenAIFastTierPriority, OpenAIFastTierFlex:
+	case OpenAIFastTierPriority, OpenAIFastTierFlex, OpenAIFastTierUltrafast:
 	default:
 		canonicalTier = ""
 	}

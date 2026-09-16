@@ -118,7 +118,7 @@ func (s *RateLimitService) cnBalanceCooldownDuration() time.Duration {
 // 周期额度探测刷新快照后阈值评估会再次停调到正确的时间点。
 // 无快照或均已过期返回 nil。
 func cnProviderQuotaSnapshotReset(account *Account, now time.Time) *time.Time {
-	if account == nil || !account.IsCNProvider() || !account.IsCodingPlan() {
+	if account == nil || !account.IsMultiProtocolAPIKey() || !account.IsCodingPlan() {
 		return nil
 	}
 	snapshot := validCNUsageMonitorSnapshot(account)
@@ -146,6 +146,26 @@ func (s *RateLimitService) applyCNProviderReactive429(
 	headers http.Header,
 	responseBody []byte,
 ) bool {
+	if account.IsOpenCodeGo() {
+		until := cnProviderQuotaSnapshotReset(account, time.Now())
+		if until == nil {
+			if reset := parseOpenAIRateLimitResetTime(responseBody); reset != nil {
+				parsed := time.Unix(*reset, 0)
+				if parsed.After(time.Now()) {
+					until = &parsed
+				}
+			}
+		}
+		if until == nil {
+			return false
+		}
+		if err := s.accountRepo.SetRateLimited(ctx, account.ID, *until); err != nil {
+			slog.Warn("opencode_rate_limit_set_failed", "account_id", account.ID, "error", err)
+			return true
+		}
+		s.notifyAccountSchedulingBlocked(account, *until, "opencode_429")
+		return true
+	}
 	if !account.IsCNProvider() {
 		return false
 	}

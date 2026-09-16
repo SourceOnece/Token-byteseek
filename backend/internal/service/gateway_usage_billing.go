@@ -699,7 +699,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 				CacheReadTokens:     result.Usage.CacheReadInputTokens,
 				ImageOutputTokens:   result.Usage.ImageOutputTokens,
 			},
-			cost.TotalCost,
+			cost.TotalCost, rateNow,
 		)
 	}
 
@@ -940,17 +940,18 @@ func (s *GatewayService) calculateTokenCost(
 	if resolved, resolvedModel := s.resolveChannelPricingForUsage(ctx, billingModel, requestedModel, billingModelSource, channelMappedModel, result.UpstreamModel, apiKey, account); resolved != nil {
 		gid := apiKey.Group.ID
 		cost, err = s.billingService.CalculateCostUnified(CostInput{
-			Ctx:            ctx,
-			Model:          resolvedModel,
-			GroupID:        &gid,
-			Group:          apiKey.Group,
-			Tokens:         tokens,
-			RequestCount:   1,
-			RateMultiplier: multiplier,
-			PricingAt:      opts.PricingAt,
-			ServiceTier:    serviceTier,
-			Resolver:       s.resolver,
-			Resolved:       resolved,
+			Ctx:             ctx,
+			Model:           resolvedModel,
+			GroupID:         &gid,
+			Group:           apiKey.Group,
+			Tokens:          tokens,
+			RequestCount:    1,
+			RateMultiplier:  multiplier,
+			PricingAt:       opts.PricingAt,
+			ServiceTier:     serviceTier,
+			ReasoningEffort: stringValueOrEmpty(result.ReasoningEffort),
+			Resolver:        s.resolver,
+			Resolved:        resolved,
 		})
 	} else {
 		if isQoderBillingContext(account, apiKey) {
@@ -963,19 +964,23 @@ func (s *GatewayService) calculateTokenCost(
 		case s.resolver != nil && apiKey.Group != nil:
 			gid := apiKey.Group.ID
 			cost, err = s.billingService.CalculateCostUnified(CostInput{
-				Ctx:            ctx,
-				Model:          billingModel,
-				GroupID:        &gid,
-				Group:          apiKey.Group,
-				Tokens:         tokens,
-				RequestCount:   1,
-				RateMultiplier: multiplier,
-				PricingAt:      opts.PricingAt,
-				ServiceTier:    serviceTier,
-				Resolver:       s.resolver,
+				Ctx:             ctx,
+				Model:           billingModel,
+				GroupID:         &gid,
+				Group:           apiKey.Group,
+				Tokens:          tokens,
+				RequestCount:    1,
+				RateMultiplier:  multiplier,
+				PricingAt:       opts.PricingAt,
+				ServiceTier:     serviceTier,
+				ReasoningEffort: stringValueOrEmpty(result.ReasoningEffort),
+				Resolver:        s.resolver,
 			})
 		default:
 			cost, err = s.billingService.CalculateCostWithServiceTier(billingModel, tokens, multiplier, serviceTier)
+			if err == nil {
+				applyCostBreakdownMultiplier(cost, maxReasoningEffortBillingMultiplier(billingModel, stringValueOrEmpty(result.ReasoningEffort), nil))
+			}
 		}
 	}
 	if err != nil {

@@ -29,6 +29,7 @@ export interface PricingFormEntry {
   // 通用 Fast/priority 与 Flex 服务层级倍率。
   fast_multiplier?: number | string | null
   flex_multiplier?: number | string | null
+  max_reasoning_effort_multiplier?: number | string | null
   input_price: number | string | null
   output_price: number | string | null
   cache_write_price: number | string | null

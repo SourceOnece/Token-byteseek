@@ -46,7 +46,7 @@ func NewGroupHandler(adminService service.AdminService, dashboardService *servic
 type CreateGroupRequest struct {
 	Name                       string                                  `json:"name" binding:"required"`
 	Description                string                                  `json:"description"`
-	Platform                   string                                  `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity qoder grok kimi zhipu deepseek"`
+	Platform                   string                                  `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity qoder grok kimi zhipu deepseek minimax opencode_go"`
 	SchedulerType              string                                  `json:"scheduler_type" binding:"omitempty,oneof=basic advanced"`
 	AdvancedSchedulerOverrides service.GroupAdvancedSchedulerOverrides `json:"advanced_scheduler_overrides"`
 	DisplayBrand               string                                  `json:"display_brand"`
@@ -108,6 +108,7 @@ type CreateGroupRequest struct {
 	DefaultMappedModel          string                                    `json:"default_mapped_model"`
 	MessagesDispatchModelConfig service.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
 	ModelsListConfig            service.GroupModelsListConfig             `json:"models_list_config"`
+	ModelAllowlist              service.GroupModelAllowlist               `json:"model_allowlist"`
 	AvailabilityProbeConfig     service.GroupAvailabilityProbeConfig      `json:"availability_probe_config"`
 	// 分组 RPM 上限（0 = 不限制）
 	RPMLimit int `json:"rpm_limit"`
@@ -125,7 +126,7 @@ type CreateGroupRequest struct {
 type UpdateGroupRequest struct {
 	Name                       string                                   `json:"name"`
 	Description                *string                                  `json:"description"`
-	Platform                   string                                   `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity qoder grok kimi zhipu deepseek"`
+	Platform                   string                                   `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity qoder grok kimi zhipu deepseek minimax opencode_go"`
 	SchedulerType              *string                                  `json:"scheduler_type" binding:"omitempty,oneof=basic advanced"`
 	AdvancedSchedulerOverrides *service.GroupAdvancedSchedulerOverrides `json:"advanced_scheduler_overrides"`
 	DisplayBrand               *string                                  `json:"display_brand"`
@@ -188,6 +189,7 @@ type UpdateGroupRequest struct {
 	DefaultMappedModel          *string                                    `json:"default_mapped_model"`
 	MessagesDispatchModelConfig *service.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
 	ModelsListConfig            *service.GroupModelsListConfig             `json:"models_list_config"`
+	ModelAllowlist              *service.GroupModelAllowlist               `json:"model_allowlist"`
 	AvailabilityProbeConfig     *service.GroupAvailabilityProbeConfig      `json:"availability_probe_config"`
 	// 分组 RPM 上限（0 = 不限制）；nil 表示未提供不改动
 	RPMLimit *int `json:"rpm_limit"`
@@ -377,6 +379,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		DefaultMappedModel:              req.DefaultMappedModel,
 		MessagesDispatchModelConfig:     req.MessagesDispatchModelConfig,
 		ModelsListConfig:                req.ModelsListConfig,
+		ModelAllowlist:                  req.ModelAllowlist,
 		AvailabilityProbeConfig:         req.AvailabilityProbeConfig,
 		RPMLimit:                        req.RPMLimit,
 		MaxReasoningEffort:              req.MaxReasoningEffort,
@@ -511,6 +514,7 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		DefaultMappedModel:              req.DefaultMappedModel,
 		MessagesDispatchModelConfig:     req.MessagesDispatchModelConfig,
 		ModelsListConfig:                req.ModelsListConfig,
+		ModelAllowlist:                  req.ModelAllowlist,
 		AvailabilityProbeConfig:         req.AvailabilityProbeConfig,
 		RPMLimit:                        req.RPMLimit,
 		MaxReasoningEffort:              req.MaxReasoningEffort,

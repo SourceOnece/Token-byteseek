@@ -43,6 +43,11 @@
 
 ## 记录与安全边界
 
+<a id="upstream_cyber_policy"></a>
+### 上游 Cyber Policy 记录
+
+OpenAI WS/HTTP 桥在错误重试或提前返回前保存明确的 cyber_policy 证据和用量，现有 AfterTurn 消费后按轮清理；避免错误早退漏记，但不新增账号永久停调策略。
+
 审核记录可能包含命中文本或媒体引用，留存策略区分命中与未命中。普通 Ops/system log 只记录必要元数据、摘要和错误，不写完整 prompt、图片、审核密钥或上游原始响应。管理端展示和删除 hash/媒体时必须保持授权范围。
 
 `ContentModerationCheckInput.NoMediaRetention` 为 true 时进入“无媒体留存”模式（创作台等敏感场景强制开启）：不做命中媒体快照，不落 `input_excerpt` 与正文输入项，审核日志只保留输入 hash、分类、分数和决策等元数据；请求报文中的 base64 媒体与 prompt 明文不会因此落库。创作台（Creative Studio）送审必须开启该字段，通用约定见[创作台](creative_studio.md)。

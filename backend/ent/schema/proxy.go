@@ -73,6 +73,9 @@ func (Proxy) Edges() []ent.Edge {
 		// accounts: 使用此代理的账户（反向边）
 		edge.From("accounts", Account.Type).
 			Ref("proxy"),
+		// 多个主代理可以共用备用代理，明确反向边以避免自引用被当成对称关系。
+		edge.From("primary_proxies", Proxy.Type).
+			Ref("backup_proxy"),
 		edge.To("backup_proxy", Proxy.Type).
 			Field("backup_proxy_id").
 			Unique(),

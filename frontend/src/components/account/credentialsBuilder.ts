@@ -45,7 +45,8 @@ export function isHeaderOverrideCapable(platform: string, type: string): boolean
     platform === 'openai' ||
     platform === 'kimi' ||
     platform === 'zhipu' ||
-    platform === 'deepseek'
+    platform === 'deepseek' ||
+    platform === 'minimax' || platform === 'opencode_go'
   ) {
     return type === 'apikey'
   }
@@ -257,7 +258,8 @@ export const GROK_BASE_URL_PRESETS: GrokBaseUrlPreset[] = [
 // API 协议（chat_completions / anthropic / responses）决定转发端点与格式，
 // 两者正交。同协议请求零转换直通，跨协议组合才走转换链。
 
-export type CnAccountMode = 'payg' | 'coding'
+export type OpenCodeAccountMode = 'zen' | 'go'
+export type CnAccountMode = 'payg' | 'coding' | OpenCodeAccountMode
 
 /** deepseek / kimi 支持原生 responses；adaptive 会按入站协议选择原生端点。 */
 export type CnApiProtocol = 'adaptive' | 'chat_completions' | 'anthropic' | 'responses'
@@ -265,8 +267,98 @@ export type CnNativeApiProtocol = Exclude<CnApiProtocol, 'adaptive'>
 
 /** DeepSeek 与 Kimi（按量付费 / Coding Plan）提供原生 Responses 端点。 */
 export function cnSupportsNativeResponses(platform: string): boolean {
-  return platform === 'deepseek' || platform === 'kimi'
+  return platform === 'deepseek' || platform === 'kimi' || platform === 'minimax' || platform === 'opencode_go'
 }
+
+export const OPENCODE_GO_BASE_URL = 'https://opencode.ai/zen/go/v1'
+export const OPENCODE_GO_ANTHROPIC_BASE_URL = 'https://opencode.ai/zen/go'
+export const OPENCODE_ZEN_BASE_URL = 'https://opencode.ai/zen/v1'
+export const OPENCODE_ZEN_ANTHROPIC_BASE_URL = 'https://opencode.ai/zen'
+
+export function isOpenCodeGoPlatform(platform: string): boolean {
+  return platform === 'opencode_go'
+}
+
+export const OPENCODE_GO_PROTOCOL_RULES_KEY = 'protocol_rules'
+
+export interface OpenCodeGoProtocolRule {
+  pattern: string
+  protocol: CnNativeApiProtocol
+}
+
+export const DEFAULT_OPENCODE_GO_PROTOCOL_RULES: OpenCodeGoProtocolRule[] = [
+  { pattern: 'grok-*', protocol: 'responses' },
+  { pattern: 'gpt-*', protocol: 'responses' },
+  { pattern: 'muse-spark-*', protocol: 'responses' },
+  { pattern: 'minimax-*', protocol: 'anthropic' },
+  { pattern: 'qwen*', protocol: 'anthropic' }
+]
+
+export const DEFAULT_OPENCODE_ZEN_PROTOCOL_RULES: OpenCodeGoProtocolRule[] = [
+  { pattern: 'grok-*', protocol: 'responses' },
+  { pattern: 'gpt-*', protocol: 'responses' },
+  { pattern: 'muse-spark-*', protocol: 'responses' },
+  { pattern: 'claude-*', protocol: 'anthropic' },
+  { pattern: 'qwen*', protocol: 'anthropic' }
+]
+
+export function resolveOpenCodeAccountMode(value: unknown): OpenCodeAccountMode {
+  return value === 'zen' ? 'zen' : 'go'
+}
+
+export function defaultOpenCodeProtocolRules(mode: OpenCodeAccountMode = 'go'): OpenCodeGoProtocolRule[] {
+  return mode === 'zen' ? DEFAULT_OPENCODE_ZEN_PROTOCOL_RULES : DEFAULT_OPENCODE_GO_PROTOCOL_RULES
+}
+
+export function cloneOpenCodeGoProtocolRules(
+  rules: OpenCodeGoProtocolRule[] = DEFAULT_OPENCODE_GO_PROTOCOL_RULES
+): OpenCodeGoProtocolRule[] {
+  return rules.map(rule => ({ pattern: rule.pattern, protocol: rule.protocol }))
+}
+
+function isNativeOpenCodeGoProtocol(value: unknown): value is CnNativeApiProtocol {
+  return value === 'chat_completions' || value === 'anthropic' || value === 'responses'
+}
+
+export function parseOpenCodeGoProtocolRules(raw: unknown): OpenCodeGoProtocolRule[] | null {
+  if (raw == null) return null
+  if (!Array.isArray(raw)) return cloneOpenCodeGoProtocolRules()
+  const rules: OpenCodeGoProtocolRule[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const pattern = typeof (item as { pattern?: unknown }).pattern === 'string'
+      ? (item as { pattern: string }).pattern.trim()
+      : ''
+    const protocol = (item as { protocol?: unknown }).protocol
+    if (!pattern || !isNativeOpenCodeGoProtocol(protocol)) continue
+    rules.push({ pattern, protocol })
+  }
+  return rules
+}
+
+export function applyOpenCodeGoProtocolRules(
+  credentials: Record<string, unknown>,
+  rules: OpenCodeGoProtocolRule[],
+  _mode: 'create' | 'edit'
+): void {
+  const serialized = rules
+    .map(rule => ({
+      pattern: rule.pattern.trim().toLowerCase(),
+      protocol: rule.protocol
+    }))
+
+  // 空数组表示明确全部走 Chat，创建时也必须保留，不能回退默认规则。
+  credentials[OPENCODE_GO_PROTOCOL_RULES_KEY] = serialized
+}
+
+export function validOpenCodeGoProtocolRules(rules: OpenCodeGoProtocolRule[]): boolean {
+  return rules.length <= 64 && rules.every(rule => {
+    const pattern = rule.pattern.trim()
+    return pattern.length > 0 && new TextEncoder().encode(pattern).length <= 128 &&
+      !/\s/.test(pattern) && /^(?:[^*]+\*?|\*)$/.test(pattern) && isNativeOpenCodeGoProtocol(rule.protocol)
+  })
+}
+
 
 export interface CnBaseUrlPreset {
   mode: CnAccountMode
@@ -277,7 +369,20 @@ export interface CnBaseUrlPreset {
 }
 
 /** 各供应商按账号类型 × API 协议分档的快捷端点（点击快速填充，输入框仍可自由填写）。 */
-export const CN_BASE_URL_PRESETS: Record<'kimi' | 'zhipu' | 'deepseek', CnBaseUrlPreset[]> = {
+export const CN_BASE_URL_PRESETS: Record<'kimi' | 'zhipu' | 'deepseek' | 'minimax' | 'opencode_go', CnBaseUrlPreset[]> = {
+  opencode_go: (['zen', 'go'] as const).flatMap(mode => [
+    { mode, protocol: 'chat_completions', label: mode === 'zen' ? 'OpenCode Zen' : 'OpenCode Go', url: mode === 'zen' ? OPENCODE_ZEN_BASE_URL : OPENCODE_GO_BASE_URL },
+    { mode, protocol: 'responses', label: mode === 'zen' ? 'Zen Responses' : 'Go Responses', url: mode === 'zen' ? OPENCODE_ZEN_BASE_URL : OPENCODE_GO_BASE_URL },
+    { mode, protocol: 'anthropic', label: mode === 'zen' ? 'Zen Messages' : 'Go Messages', url: mode === 'zen' ? OPENCODE_ZEN_ANTHROPIC_BASE_URL : OPENCODE_GO_ANTHROPIC_BASE_URL },
+  ]),
+  minimax: (['payg', 'coding'] as const).flatMap(mode => [
+    { mode, protocol: 'chat_completions', label: 'MiniMax CN', url: 'https://api.minimaxi.com/v1' },
+    { mode, protocol: 'anthropic', label: 'MiniMax CN Anthropic', url: 'https://api.minimaxi.com/anthropic' },
+    { mode, protocol: 'responses', label: 'MiniMax CN Responses', url: 'https://api.minimaxi.com/v1' },
+    { mode, protocol: 'chat_completions', label: 'MiniMax Global', url: 'https://api.minimax.io/v1' },
+    { mode, protocol: 'anthropic', label: 'MiniMax Global Anthropic', url: 'https://api.minimax.io/anthropic' },
+    { mode, protocol: 'responses', label: 'MiniMax Global Responses', url: 'https://api.minimax.io/v1' },
+  ]),
   kimi: [
     { mode: 'payg', protocol: 'chat_completions', label: 'Moonshot', url: 'https://api.moonshot.cn/v1' },
     { mode: 'payg', protocol: 'anthropic', label: 'Moonshot Anthropic', url: 'https://api.moonshot.cn/anthropic' },
@@ -313,6 +418,10 @@ export function defaultCNBaseUrl(
         return 'https://open.bigmodel.cn/api/anthropic'
       case 'deepseek':
         return 'https://api.deepseek.com/anthropic'
+      case 'minimax':
+        return 'https://api.minimaxi.com/anthropic'
+      case 'opencode_go':
+        return mode === 'zen' ? OPENCODE_ZEN_ANTHROPIC_BASE_URL : OPENCODE_GO_ANTHROPIC_BASE_URL
       default:
         return ''
     }
@@ -327,6 +436,10 @@ export function defaultCNBaseUrl(
         : 'https://open.bigmodel.cn/api/paas/v4'
     case 'deepseek':
       return 'https://api.deepseek.com'
+    case 'minimax':
+      return 'https://api.minimaxi.com/v1'
+    case 'opencode_go':
+      return mode === 'zen' ? OPENCODE_ZEN_BASE_URL : OPENCODE_GO_BASE_URL
     default:
       return ''
   }
@@ -334,7 +447,7 @@ export function defaultCNBaseUrl(
 
 /** 返回自适应模式下需要配置的原生协议及其默认端点。 */
 export function defaultCNAdaptiveBaseUrls(
-  platform: 'kimi' | 'zhipu' | 'deepseek',
+  platform: 'kimi' | 'zhipu' | 'deepseek' | 'minimax' | 'opencode_go',
   mode: CnAccountMode
 ): Record<CnNativeApiProtocol, string> {
   return {
@@ -349,7 +462,8 @@ export function defaultCNAdaptiveBaseUrls(
 // 共用，避免多处复制条件后一处改另一处漏改。
 
 export function cnQuotaCellVisible(platform: string, accountMode: string): boolean {
-  return (platform === 'kimi' || platform === 'zhipu') && accountMode === 'coding'
+  if (platform === 'opencode_go') return accountMode !== 'zen'
+  return (platform === 'kimi' || platform === 'zhipu' || platform === 'minimax') && accountMode === 'coding'
 }
 
 export function cnBalanceCellVisible(platform: string, accountMode: string): boolean {

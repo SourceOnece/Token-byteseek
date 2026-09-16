@@ -227,7 +227,7 @@ func (s *BatchImagePublicService) Submit(ctx context.Context, owner BatchImageOw
 	}
 	// 与 ListModels 使用同一鉴权谓词（AllowBatchImageGeneration + Platform==Gemini），
 	// 避免两个入口校验口径不一致留下防御纵深缺口。
-	if err := s.ensureGroupAllowsBatchImage(ctx, owner.GroupID); err != nil {
+	if err := s.ensureGroupAllowsBatchImage(ctx, owner.GroupID, normalized.Model); err != nil {
 		return nil, err
 	}
 	requestedModel := normalized.Model
@@ -1087,7 +1087,7 @@ func (s *BatchImagePublicService) listCandidateAccounts(ctx context.Context, gro
 	return s.AccountRepo.ListSchedulableByPlatform(ctx, platform)
 }
 
-func (s *BatchImagePublicService) ensureGroupAllowsBatchImage(ctx context.Context, groupID *int64) error {
+func (s *BatchImagePublicService) ensureGroupAllowsBatchImage(ctx context.Context, groupID *int64, models ...string) error {
 	if groupID == nil || *groupID <= 0 {
 		return nil
 	}
@@ -1103,6 +1103,12 @@ func (s *BatchImagePublicService) ensureGroupAllowsBatchImage(ctx context.Contex
 	}
 	if group.Platform != PlatformGemini {
 		return ErrBatchImageGroupDisabled
+	}
+	// 调用准入使用 Key 映射前的公开别名，目录仍在 handler 别名投影后过滤。
+	for _, model := range models {
+		if err := validateGroupModelAllowlistForSelection(ctx, group, model); err != nil {
+			return ErrBatchImageInvalidModel
+		}
 	}
 	return nil
 }

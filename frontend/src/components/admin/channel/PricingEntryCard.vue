@@ -69,6 +69,12 @@
         >
           Flex {{ entry.flex_multiplier }}x
         </span>
+        <span
+          v-if="props.enableTierMultipliers && entry.billing_mode === 'token' && entry.max_reasoning_effort_multiplier !== null && entry.max_reasoning_effort_multiplier !== undefined && entry.max_reasoning_effort_multiplier !== ''"
+          class="flex-shrink-0 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+        >
+          Max {{ entry.max_reasoning_effort_multiplier }}x
+        </span>
       </div>
 
       <!-- Expanded: show the label "Pricing Entry" or similar -->
@@ -198,7 +204,7 @@
             </div>
           </div>
 
-          <div v-if="props.enableTierMultipliers" class="mt-3 grid max-w-md grid-cols-2 gap-2">
+          <div v-if="props.enableTierMultipliers" class="mt-3 grid max-w-2xl grid-cols-1 gap-2 sm:grid-cols-3">
             <div>
               <label class="text-xs text-gray-400">
                 {{ t('admin.channels.form.fastMultiplier', 'Fast / Priority 倍率') }}
@@ -227,6 +233,21 @@
                 class="input mt-0.5 text-sm"
                 data-testid="flex-multiplier"
                 :placeholder="t('admin.channels.form.multiplierPlaceholder', '沿用默认')"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-gray-400">
+                {{ t('admin.channels.form.maxReasoningEffortMultiplier', 'Max 推理倍率') }}
+              </label>
+              <input
+                :value="entry.max_reasoning_effort_multiplier"
+                @input="emitField('max_reasoning_effort_multiplier', ($event.target as HTMLInputElement).value)"
+                type="number"
+                step="any"
+                min="0.000001"
+                class="input mt-0.5 text-sm"
+                data-testid="max-reasoning-effort-multiplier"
+                :placeholder="maxReasoningEffortMultiplierPlaceholder"
               />
             </div>
           </div>
@@ -388,6 +409,11 @@ const billingModeLabel = computed(() => {
   return opt ? opt.label : props.entry.billing_mode
 })
 
+// 未设置时保持既有收费，不按型号暗中启用新倍率。
+const maxReasoningEffortMultiplierPlaceholder = computed(() =>
+  t('admin.channels.form.defaultMaxReasoningMultiplier', '默认 1（不额外加价）'),
+)
+
 function emitField(field: keyof PricingFormEntry, value: string) {
   emit('update', { ...props.entry, [field]: value === '' ? null : value })
 }
@@ -400,6 +426,7 @@ function onBillingModeUpdate(billingMode: BillingMode) {
     fast_mode_multiplier: billingMode === 'token' ? props.entry.fast_mode_multiplier : null,
     fast_multiplier: billingMode === 'token' ? props.entry.fast_multiplier : null,
     flex_multiplier: billingMode === 'token' ? props.entry.flex_multiplier : null,
+    max_reasoning_effort_multiplier: billingMode === 'token' ? props.entry.max_reasoning_effort_multiplier : null,
     intervals: [],
     time_pricing: billingMode === 'token'
       ? props.entry.time_pricing

@@ -70,6 +70,10 @@
           </div>
         </div>
 
+        <!-- 可选推理倍率公开提示，不改变标准/Fast 基础价格的呈现。 -->
+        <p v-if="model.pricing.max_reasoning_effort_multiplier != null" class="mb-3 border-2 px-2 py-1 text-sm font-extrabold" :class="[pricingRowClass, pricingTextClass]" data-testid="pricing-max-multiplier">
+          {{ t('marketplace.maxReasoningMultiplier', { value: model.pricing.max_reasoning_effort_multiplier }) }}
+        </p>
         <!-- 完整定价：单列展示，标签与价格都不换行。 -->
         <div v-if="activeRows.length > 0" class="space-y-2.5" data-testid="pricing-rows">
           <div

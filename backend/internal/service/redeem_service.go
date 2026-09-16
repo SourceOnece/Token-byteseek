@@ -28,12 +28,17 @@ var (
 )
 
 const (
-	redeemMaxErrorsPerHour  = 20
-	redeemRateLimitDuration = time.Hour
+	// 公共兑换采用十分钟固定失败窗口，成功和可信发放不增加次数。
+	redeemMaxFailedAttempts = 30
 	redeemLockDuration      = 10 * time.Second // 锁超时时间，防止死锁
 )
 
 type ctxKeySkipRedeemAffiliate struct{}
+
+type redeemExecutionPolicy struct {
+	skipAttemptLimit bool
+	paymentOrder     *dbent.PaymentOrder
+}
 
 // ContextSkipRedeemAffiliate 返回跳过兑换层返利的上下文，支付订单会在订单层做带审计去重的返利。
 func ContextSkipRedeemAffiliate(ctx context.Context) context.Context {
@@ -370,7 +375,7 @@ func (s *RedeemService) checkRedeemRateLimit(ctx context.Context, userID int64) 
 		return nil
 	}
 
-	if count >= redeemMaxErrorsPerHour {
+	if count >= redeemMaxFailedAttempts {
 		return ErrRedeemRateLimited
 	}
 
@@ -420,14 +425,33 @@ func unsupportedRedeemTypeError(codeType string) error {
 
 // Redeem 使用兑换码
 func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (*RedeemCode, error) {
+	return s.redeem(ctx, userID, code, redeemExecutionPolicy{})
+}
+
+// 可信订单履约不受用户输错次数影响，返利仍由订单层独立去重。
+func (s *RedeemService) redeemForPaymentFulfillment(ctx context.Context, order *dbent.PaymentOrder) (*RedeemCode, error) {
+	if order == nil {
+		return nil, ErrInvalidInput
+	}
+	return s.redeem(ContextSkipRedeemAffiliate(ctx), order.UserID, order.RechargeCode, redeemExecutionPolicy{skipAttemptLimit: true, paymentOrder: order})
+}
+
+// 管理员履约只跳过公共尝试限流，不跳过码状态、用户和权益事务校验。
+func (s *RedeemService) RedeemForAdminFulfillment(ctx context.Context, userID int64, code string) (*RedeemCode, error) {
+	return s.redeem(ctx, userID, code, redeemExecutionPolicy{skipAttemptLimit: true})
+}
+
+func (s *RedeemService) redeem(ctx context.Context, userID int64, code string, policy redeemExecutionPolicy) (*RedeemCode, error) {
 	code = strings.TrimSpace(code)
 	if code == "" {
 		return nil, ErrRedeemCodeNotFound
 	}
 
 	// 检查限流
-	if err := s.checkRedeemRateLimit(ctx, userID); err != nil {
-		return nil, err
+	if !policy.skipAttemptLimit {
+		if err := s.checkRedeemRateLimit(ctx, userID); err != nil {
+			return nil, err
+		}
 	}
 
 	// 获取分布式锁，防止同一兑换码并发使用
@@ -448,14 +472,24 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 	redeemCode, err := s.redeemRepo.GetByCodeForUpdate(txCtx, code)
 	if err != nil {
 		if errors.Is(err, ErrRedeemCodeNotFound) {
-			s.incrementRedeemErrorCount(ctx, userID)
+			if !policy.skipAttemptLimit {
+				s.incrementRedeemErrorCount(ctx, userID)
+			}
 			return nil, ErrRedeemCodeNotFound
 		}
 		return nil, fmt.Errorf("get redeem code: %w", err)
 	}
 
+	// 在行锁内再次匹配订单，防止预查询之后管理员修改了兑换码金额或类型。
+	if policy.paymentOrder != nil {
+		if err := validatePaymentRedeemCode(policy.paymentOrder, redeemCode); err != nil {
+			return nil, err
+		}
+	}
 	if err := s.validateRedeemCodeForUser(txCtx, redeemCode, userID); err != nil {
-		s.incrementRedeemErrorCount(ctx, userID)
+		if !policy.skipAttemptLimit {
+			s.incrementRedeemErrorCount(ctx, userID)
+		}
 		return nil, err
 	}
 

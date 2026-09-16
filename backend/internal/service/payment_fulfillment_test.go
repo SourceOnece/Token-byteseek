@@ -212,14 +212,16 @@ func ensurePaymentAuditOrderActionUniqueIndex(t *testing.T, ctx context.Context,
 
 func TestResolveRedeemAction_CodeNotFound(t *testing.T) {
 	t.Parallel()
-	action := resolveRedeemAction(nil, nil)
+	action, err := resolveRedeemAction(nil, nil)
+	require.NoError(t, err)
 	assert.Equal(t, redeemActionCreate, action, "nil code with nil error should create")
 }
 
 func TestResolveRedeemAction_LookupError(t *testing.T) {
 	t.Parallel()
-	action := resolveRedeemAction(nil, errors.New("db connection lost"))
-	assert.Equal(t, redeemActionCreate, action, "lookup error should fall back to create")
+	action, err := resolveRedeemAction(nil, errors.New("db connection lost"))
+	require.Error(t, err)
+	assert.Equal(t, redeemActionCreate, action, "错误必须交给调用方终止履约")
 }
 
 func TestResolveRedeemAction_LookupErrorWithNonNilCode(t *testing.T) {
@@ -227,8 +229,9 @@ func TestResolveRedeemAction_LookupErrorWithNonNilCode(t *testing.T) {
 	// Edge case: both code and error are non-nil (shouldn't happen in practice,
 	// but the function should still treat error as authoritative)
 	code := &RedeemCode{Status: StatusUnused}
-	action := resolveRedeemAction(code, errors.New("partial error"))
-	assert.Equal(t, redeemActionCreate, action, "non-nil error should always result in create regardless of code")
+	action, err := resolveRedeemAction(code, errors.New("partial error"))
+	require.Error(t, err)
+	assert.Equal(t, redeemActionCreate, action, "有错误时不得使用返回的动作执行写入")
 }
 
 func TestResolveRedeemAction_CodeExistsAndUsed(t *testing.T) {
@@ -241,7 +244,8 @@ func TestResolveRedeemAction_CodeExistsAndUsed(t *testing.T) {
 		MaxUses:   1,
 		UsedCount: 1,
 	}
-	action := resolveRedeemAction(code, nil)
+	action, err := resolveRedeemAction(code, nil)
+	require.NoError(t, err)
 	assert.Equal(t, redeemActionSkipCompleted, action, "used code should skip to completed")
 }
 
@@ -253,7 +257,8 @@ func TestResolveRedeemAction_CodeExistsAndUnused(t *testing.T) {
 		Type:   RedeemTypeBalance,
 		Value:  25.0,
 	}
-	action := resolveRedeemAction(code, nil)
+	action, err := resolveRedeemAction(code, nil)
+	require.NoError(t, err)
 	assert.Equal(t, redeemActionRedeem, action, "unused code should skip creation and proceed to redeem")
 }
 
@@ -265,7 +270,8 @@ func TestResolveRedeemAction_CodeExistsWithExpiredStatus(t *testing.T) {
 		Code:   "expired-code",
 		Status: StatusExpired,
 	}
-	action := resolveRedeemAction(code, nil)
+	action, err := resolveRedeemAction(code, nil)
+	require.NoError(t, err)
 	assert.Equal(t, redeemActionRedeem, action, "expired-status code is not IsUsed(), should redeem")
 }
 
@@ -323,7 +329,12 @@ func TestResolveRedeemAction_Table(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := resolveRedeemAction(tt.code, tt.err)
+			got, err := resolveRedeemAction(tt.code, tt.err)
+			if tt.err != nil && !errors.Is(tt.err, ErrRedeemCodeNotFound) {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 			assert.Equal(t, tt.expected, got)
 		})
 	}
@@ -354,11 +365,15 @@ func TestResolveRedeemAction_IsUsedCanUseConsistency(t *testing.T) {
 	// Verify our decision function is consistent with the domain model methods
 	assert.True(t, usedCode.IsUsed())
 	assert.False(t, usedCode.CanUse())
-	assert.Equal(t, redeemActionSkipCompleted, resolveRedeemAction(usedCode, nil))
+	action, err := resolveRedeemAction(usedCode, nil)
+	require.NoError(t, err)
+	assert.Equal(t, redeemActionSkipCompleted, action)
 
 	assert.False(t, unusedCode.IsUsed())
 	assert.True(t, unusedCode.CanUse())
-	assert.Equal(t, redeemActionRedeem, resolveRedeemAction(unusedCode, nil))
+	action, err = resolveRedeemAction(unusedCode, nil)
+	require.NoError(t, err)
+	assert.Equal(t, redeemActionRedeem, action)
 }
 
 func TestExpectedNotificationProviderKeyPrefersOrderInstanceProvider(t *testing.T) {
@@ -779,6 +794,7 @@ func TestExecuteBalanceFulfillmentRecoversAfterRedeemWithoutCreditingAgain(t *te
 		order.RechargeCode: {
 			ID:        101,
 			Code:      order.RechargeCode,
+			UsedBy:    &order.UserID,
 			Type:      RedeemTypeBalance,
 			Value:     order.Amount,
 			Status:    StatusUsed,

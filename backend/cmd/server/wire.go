@@ -73,6 +73,7 @@ func provideServiceBuildInfo(buildInfo handler.BuildInfo) service.BuildInfo {
 }
 
 func provideCleanup(
+	channelService *service.ChannelService,
 	entClient *ent.Client,
 	rdb *redis.Client,
 	opsMetricsCollector *service.OpsMetricsCollector,
@@ -131,6 +132,7 @@ func provideCleanup(
 
 		// 应用层清理步骤可并行执行；持久化刷写服务在基础设施关闭前按顺序停止。
 		parallelSteps := []cleanupStep{
+			{"ChannelCacheSubscriber", func() error { channelService.Stop(); return nil }},
 			{"CNUsageMonitor", func() error {
 				if cnUsageMonitor != nil {
 					cnUsageMonitor.Stop()

@@ -163,6 +163,10 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			abortWithGoogleError(c, 403, "API Key 所属专属分组不再允许当前用户使用")
 			return
 		}
+		checkGroupModelAllowlist(c, apiKey)
+		if c.IsAborted() {
+			return
+		}
 		applyAPIKeyModelRedirect(c, apiKey)
 		skipBilling := isAPIKeyUsageRequest(c.Request.Method, c.Request.URL.Path) ||
 			isBatchImageBillingBypassRequest(c.Request.Method, c.Request.URL.Path) ||

@@ -54,6 +54,8 @@ const (
 	PlatformKimi        = domain.PlatformKimi
 	PlatformZhipu       = domain.PlatformZhipu
 	PlatformDeepseek    = domain.PlatformDeepseek
+	PlatformMiniMax     = domain.PlatformMiniMax
+	PlatformOpenCodeGo  = domain.PlatformOpenCodeGo
 	PlatformComposite   = domain.PlatformComposite
 )
 
@@ -61,6 +63,8 @@ const (
 const (
 	AccountModePayG   = domain.AccountModePayG
 	AccountModeCoding = domain.AccountModeCoding
+	AccountModeZen    = domain.AccountModeZen
+	AccountModeGo     = domain.AccountModeGo
 )
 
 // 上游 API 协议（国产供应商）：决定转发端点与格式，与接入模式正交。
@@ -79,25 +83,37 @@ const (
 	DefaultZhipuPayGBaseURL   = "https://open.bigmodel.cn/api/paas/v4"
 	DefaultZhipuCodingBaseURL = "https://open.bigmodel.cn/api/coding/paas/v4"
 	DefaultDeepseekBaseURL    = "https://api.deepseek.com"
+	// MiniMax 的按量与 Coding 套餐使用同一推理主机，由密钥区分权益。
+	DefaultMiniMaxBaseURL     = "https://api.minimaxi.com/v1"
+	DefaultOpenCodeGoBaseURL  = "https://opencode.ai/zen/go/v1"
+	DefaultOpenCodeZenBaseURL = "https://opencode.ai/zen/v1"
 )
 
 // 国产供应商 Anthropic 协议端点的默认 base_url（上游路径为 {base}/v1/messages）。
 // 与前端 credentialsBuilder.ts 中的预设保持一致。
 const (
-	DefaultKimiPayGAnthropicBaseURL   = "https://api.moonshot.cn/anthropic"
-	DefaultKimiCodingAnthropicBaseURL = "https://api.kimi.com/coding"
-	DefaultZhipuAnthropicBaseURL      = "https://open.bigmodel.cn/api/anthropic"
-	DefaultDeepseekAnthropicBaseURL   = "https://api.deepseek.com/anthropic"
+	DefaultKimiPayGAnthropicBaseURL    = "https://api.moonshot.cn/anthropic"
+	DefaultKimiCodingAnthropicBaseURL  = "https://api.kimi.com/coding"
+	DefaultZhipuAnthropicBaseURL       = "https://open.bigmodel.cn/api/anthropic"
+	DefaultDeepseekAnthropicBaseURL    = "https://api.deepseek.com/anthropic"
+	DefaultMiniMaxAnthropicBaseURL     = "https://api.minimaxi.com/anthropic"
+	DefaultOpenCodeGoAnthropicBaseURL  = "https://opencode.ai/zen/go"
+	DefaultOpenCodeZenAnthropicBaseURL = "https://opencode.ai/zen"
 )
 
 // IsCNProvider 报告 platform 是否为国产 OpenAI 兼容供应商（kimi/zhipu/deepseek）。
 func IsCNProvider(platform string) bool {
 	switch platform {
-	case PlatformKimi, PlatformZhipu, PlatformDeepseek:
+	case PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax:
 		return true
 	default:
 		return false
 	}
+}
+
+// IsMultiProtocolAPIKeyProvider 包含国产供应商及按模型选择协议的 OpenCode 平台。
+func IsMultiProtocolAPIKeyProvider(platform string) bool {
+	return IsCNProvider(platform) || platform == PlatformOpenCodeGo
 }
 
 // AllowedQuotaPlatforms 是允许设置 user × platform quota 的平台列表（单一权威来源）。
@@ -113,6 +129,8 @@ var AllowedQuotaPlatforms = []string{
 	PlatformKimi,
 	PlatformZhipu,
 	PlatformDeepseek,
+	PlatformMiniMax,
+	PlatformOpenCodeGo,
 }
 
 // AllowedSchedulingThresholdPlatforms 是允许设置账号自动停调阈值的平台列表。
@@ -124,6 +142,8 @@ var AllowedSchedulingThresholdPlatforms = []string{
 	PlatformGrok,
 	PlatformKimi,
 	PlatformZhipu,
+	PlatformMiniMax,
+	PlatformOpenCodeGo,
 }
 
 // IsAllowedQuotaPlatform 报告 s 是否为合法的 quota platform 标识。
@@ -376,14 +396,16 @@ const (
 	SettingKeyHomeContent                 = "home_content"                  // 首页内容（支持 Markdown/HTML，或 URL 作为 iframe src）
 	SettingKeyHideCcsImportButton         = "hide_ccs_import_button"        // 是否隐藏 API Keys 页面的导入 CCS 按钮
 	SettingKeyPurchaseSubscriptionEnabled = "purchase_subscription_enabled" // 是否展示"购买订阅"页面入口
-	SettingKeyPurchaseSubscriptionURL     = "purchase_subscription_url"     // "购买订阅"页面 URL（作为 iframe src）
-	SettingKeyTableDefaultPageSize        = "table_default_page_size"       // 表格默认每页条数
-	SettingKeyTablePageSizeOptions        = "table_page_size_options"       // 表格可选每页条数（JSON 数组）
-	SettingKeyCustomMenuItems             = "custom_menu_items"             // 自定义菜单项（JSON 数组）
-	SettingKeyCustomEndpoints             = "custom_endpoints"              // 自定义端点列表（JSON 数组）
-	SettingKeyFooterLinks                 = "footer_links"                  // 首页底栏链接分组（JSON 数组）
-	SettingKeyFooterText                  = "footer_text"                   // 首页底栏附加文本（备案号等，支持多行）
-	SettingKeyHomeFeaturedModels          = "home_featured_models"          // 首页展示的模型 ID 列表（JSON 数组，按顺序展示）
+	// 新订阅销售入口默认开启；不影响已有权益、消费和管理权限。
+	SettingKeySubscriptionEnabled     = "subscription_enabled"
+	SettingKeyPurchaseSubscriptionURL = "purchase_subscription_url" // "购买订阅"页面 URL（作为 iframe src）
+	SettingKeyTableDefaultPageSize    = "table_default_page_size"   // 表格默认每页条数
+	SettingKeyTablePageSizeOptions    = "table_page_size_options"   // 表格可选每页条数（JSON 数组）
+	SettingKeyCustomMenuItems         = "custom_menu_items"         // 自定义菜单项（JSON 数组）
+	SettingKeyCustomEndpoints         = "custom_endpoints"          // 自定义端点列表（JSON 数组）
+	SettingKeyFooterLinks             = "footer_links"              // 首页底栏链接分组（JSON 数组）
+	SettingKeyFooterText              = "footer_text"               // 首页底栏附加文本（备案号等，支持多行）
+	SettingKeyHomeFeaturedModels      = "home_featured_models"      // 首页展示的模型 ID 列表（JSON 数组，按顺序展示）
 )
 
 const (

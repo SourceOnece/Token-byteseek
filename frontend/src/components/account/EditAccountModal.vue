@@ -134,7 +134,7 @@
               {{ t(`admin.accounts.cnProviders.accountMode.${opt.labelKey}`) }}
             </button>
           </div>
-          <p class="input-hint">{{ t(`admin.accounts.cnProviders.accountMode.${editAccountMode}Desc`) }}</p>
+          <p class="input-hint">{{ t(account.platform === 'minimax' && editAccountMode === 'payg' ? 'admin.accounts.cnProviders.accountMode.minimaxPaygDesc' : `admin.accounts.cnProviders.accountMode.${editAccountMode}Desc`) }}</p>
         </div>
         <!-- 国产供应商 API 协议选择 -->
         <div v-if="isCNApiKeyAccount">
@@ -155,9 +155,10 @@
               {{ t(`admin.accounts.cnProviders.apiProtocol.${opt.labelKey}`) }}
             </button>
           </div>
-          <p class="input-hint">{{ t(`admin.accounts.cnProviders.apiProtocol.${cnProtocolDescKey}Desc`) }}</p>
+          <p class="input-hint">{{ t(account.platform === 'opencode_go' && editApiProtocol === 'adaptive' ? 'admin.accounts.opencodeGo.protocolRules.hint' : `admin.accounts.cnProviders.apiProtocol.${cnProtocolDescKey}Desc`) }}</p>
         </div>
         <!-- 智谱团队版 Coding Plan：组织/项目 ID 可选，清空组织 ID 即回到个人额度端点。 -->
+        <OpenCodeGoProtocolRulesEditor v-if="account.platform === 'opencode_go' && editApiProtocol === 'adaptive'" v-model:rows="editOpenCodeRules" :plan="editAccountMode === 'zen' ? 'zen' : 'go'" />
         <div v-if="account.platform === 'zhipu' && editAccountMode === 'coding'">
           <div class="flex items-center gap-1">
             <label class="input-label">{{ t('admin.accounts.cnProviders.zhipuTeam.title') }}</label>
@@ -2799,7 +2800,7 @@
       <GroupSelector
         v-if="!authStore.isSimpleMode"
         v-model="form.group_ids"
-        :groups="groups"
+        :groups="selectableGroups"
         :platform="account?.platform"
         :mixed-scheduling="mixedScheduling"
         data-tour="account-form-groups"
@@ -2868,6 +2869,7 @@ import { useQuotaNotifyState } from '@/composables/useQuotaNotifyState'
 import type {
   Account,
   Proxy,
+  Group,
   AdminGroup,
   CheckMixedChannelResponse,
   OpenAICompactMode,
@@ -2917,6 +2919,8 @@ import {
   type CnNativeApiProtocol,
   type HeaderOverrideRow
 } from '@/components/account/credentialsBuilder'
+import OpenCodeGoProtocolRulesEditor from '@/components/account/OpenCodeGoProtocolRulesEditor.vue'
+import { cloneOpenCodeGoProtocolRules, defaultOpenCodeProtocolRules, applyOpenCodeGoProtocolRules, parseOpenCodeGoProtocolRules, validOpenCodeGoProtocolRules, resolveOpenCodeAccountMode } from '@/components/account/credentialsBuilder'
 import { formatDateTime, formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import {
@@ -2966,6 +2970,16 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const appStore = useAppStore()
 const authStore = useAuthStore()
+
+// 活跃列表可能不含停用分组，补回账号已绑定项，允许管理员明确移除。
+const selectableGroups = computed(() => {
+  const available = new Map<number, Group>(props.groups.map((group) => [group.id, group]))
+  const assigned = new Set(props.account?.group_ids ?? [])
+  for (const group of props.account?.groups ?? []) {
+    if (assigned.has(group.id) && !available.has(group.id)) available.set(group.id, group)
+  }
+  return Array.from(available.values())
+})
 
 // Spark 影子账号(parent_account_id 非空):代理恒继承母账号,不可独立编辑(外审 B/P1),
 // 故隐藏代理选择器。
@@ -3035,18 +3049,19 @@ const isCNApiKeyAccount = computed(
     props.account?.type === 'apikey' &&
     (props.account.platform === 'kimi' ||
       props.account.platform === 'zhipu' ||
-      props.account.platform === 'deepseek')
+      props.account.platform === 'deepseek' || props.account.platform === 'minimax' || props.account.platform === 'opencode_go')
 )
 // 模板不支持联合类型断言，因此在脚本中收窄预设组件的平台类型。
-const cnPresetPlatform = computed<'kimi' | 'zhipu' | 'deepseek'>(() => {
+const cnPresetPlatform = computed<'kimi' | 'zhipu' | 'deepseek' | 'minimax' | 'opencode_go'>(() => {
   const platform = props.account?.platform
-  if (platform === 'kimi' || platform === 'zhipu' || platform === 'deepseek') {
+  if (platform === 'kimi' || platform === 'zhipu' || platform === 'deepseek' || platform === 'minimax' || platform === 'opencode_go') {
     return platform
   }
   return 'kimi'
 })
 const editApiProtocol = ref<CnApiProtocol>('adaptive')
 const editAccountMode = ref<CnAccountMode>('payg')
+const editOpenCodeRules = ref(cloneOpenCodeGoProtocolRules())
 // 智谱团队版 Coding Plan 的组织/项目 ID，清空后随完整凭据更新一并移除。
 const editZhipuOrganization = ref('')
 const editZhipuProject = ref('')
@@ -3060,8 +3075,9 @@ const editAdaptiveBaseUrls = ref<Record<CnNativeApiProtocol, string>>({
 // 存储版 base_url（可能是用户自定义/中转地址）覆盖为官方预设并在下次保存时持久化。
 // nextTick 后解除，此后用户主动切换模式/协议仍正常联动重置。
 const syncingForm = ref(false)
-const cnAccountModeOptions = computed<Array<{ value: CnAccountMode; labelKey: 'payg' | 'coding' }>>(
+const cnAccountModeOptions = computed<Array<{ value: CnAccountMode; labelKey: CnAccountMode }>>(
   () => {
+    if (props.account?.platform === 'opencode_go') return [{ value: 'zen', labelKey: 'zen' }, { value: 'go', labelKey: 'go' }]
     if (props.account?.platform === 'deepseek') {
       return [{ value: 'payg', labelKey: 'payg' }]
     }
@@ -3112,6 +3128,9 @@ watch(editApiProtocol, (protocol, previousProtocol) => {
 })
 watch(editAccountMode, (mode, previousMode) => {
   if (!isCNApiKeyAccount.value || syncingForm.value) return
+  if (props.account?.platform === 'opencode_go' && JSON.stringify(editOpenCodeRules.value) === JSON.stringify(defaultOpenCodeProtocolRules(previousMode === 'zen' ? 'zen' : 'go'))) {
+    editOpenCodeRules.value = cloneOpenCodeGoProtocolRules(defaultOpenCodeProtocolRules(mode === 'zen' ? 'zen' : 'go'))
+  }
   const effectiveMode = props.account!.platform === 'deepseek' && mode === 'coding' ? 'payg' : mode
   if (effectiveMode !== mode) {
     editAccountMode.value = effectiveMode
@@ -3619,7 +3638,7 @@ const defaultBaseUrl = computed(() => {
   if (
     props.account?.platform === 'kimi' ||
     props.account?.platform === 'zhipu' ||
-    props.account?.platform === 'deepseek'
+    props.account?.platform === 'deepseek' || props.account?.platform === 'minimax' || props.account?.platform === 'opencode_go'
   ) {
     return defaultCNBaseUrl(props.account.platform, editAccountMode.value, editApiProtocol.value)
   }
@@ -4055,8 +4074,9 @@ const syncFormFromAccount = (newAccount: Account | null) => {
     const credentials = newAccount.credentials as Record<string, unknown>
     // 国产供应商：读取 account_mode 与 api_protocol 作为可编辑初始值
     // （编辑弹窗允许修正两者，用于修复早期存错默认值的账号）。
-    if (newAccount.platform === 'kimi' || newAccount.platform === 'zhipu' || newAccount.platform === 'deepseek') {
-      editAccountMode.value = credentials.account_mode === 'coding' ? 'coding' : 'payg'
+    if (newAccount.platform === 'kimi' || newAccount.platform === 'zhipu' || newAccount.platform === 'deepseek' || newAccount.platform === 'minimax' || newAccount.platform === 'opencode_go') {
+      editAccountMode.value = newAccount.platform === 'opencode_go' ? resolveOpenCodeAccountMode(credentials.account_mode) : credentials.account_mode === 'coding' ? 'coding' : 'payg'
+      if (newAccount.platform === 'opencode_go') editOpenCodeRules.value = parseOpenCodeGoProtocolRules(credentials.protocol_rules) ?? cloneOpenCodeGoProtocolRules(defaultOpenCodeProtocolRules(editAccountMode.value === 'zen' ? 'zen' : 'go'))
       const storedProtocol = credentials.api_protocol
       editApiProtocol.value =
         storedProtocol === 'adaptive' ||
@@ -4064,7 +4084,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
         storedProtocol === 'anthropic' ||
         storedProtocol === 'responses'
           ? storedProtocol
-          : 'chat_completions'
+          : newAccount.platform === 'opencode_go' ? 'adaptive' : 'chat_completions'
       if (!cnSupportsNativeResponses(newAccount.platform) && editApiProtocol.value === 'responses') {
         editApiProtocol.value = 'chat_completions'
       }
@@ -4117,7 +4137,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
             ? 'https://api.x.ai/v1'
             : newAccount.platform === 'kimi' ||
                 newAccount.platform === 'zhipu' ||
-                newAccount.platform === 'deepseek'
+                newAccount.platform === 'deepseek' || newAccount.platform === 'minimax' || newAccount.platform === 'opencode_go'
               ? defaultCNBaseUrl(newAccount.platform, editAccountMode.value, editApiProtocol.value)
               : 'https://api.anthropic.com'
     editBaseUrl.value = isCNApiKeyAccount.value && editApiProtocol.value === 'adaptive'
@@ -4844,6 +4864,10 @@ const submitUpdateAccount = async (accountID: number, updatePayload: Record<stri
 }
 
 const handleSubmit = async () => {
+  if (props.account?.platform === 'opencode_go' && !validOpenCodeGoProtocolRules(editOpenCodeRules.value)) {
+    appStore.showError(t('admin.accounts.opencodeGo.protocolRules.invalid'))
+    return
+  }
   if (!props.account) return
   const accountID = props.account.id
 
@@ -4893,6 +4917,7 @@ const handleSubmit = async () => {
       if (isCNApiKeyAccount.value) {
         newCredentials.account_mode = editAccountMode.value
         newCredentials.api_protocol = editApiProtocol.value
+        if (props.account.platform === 'opencode_go') applyOpenCodeGoProtocolRules(newCredentials, editOpenCodeRules.value, 'edit')
         if (editApiProtocol.value === 'adaptive') {
           const defaults = defaultCNAdaptiveBaseUrls(cnPresetPlatform.value, editAccountMode.value)
           const protocolBaseUrls: Record<string, string> = {}

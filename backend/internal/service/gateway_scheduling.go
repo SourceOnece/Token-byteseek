@@ -59,6 +59,9 @@ func (s *GatewayService) SelectAccountForModelWithExclusions(ctx context.Context
 		platform = PlatformAnthropic
 	}
 
+	if err := validateGroupModelAllowlistForSelection(ctx, resolvedGroup, requestedModel); err != nil {
+		return nil, err
+	}
 	// count_tokens 与可用性探测不占并发槽，但高级分组仍必须复用与主请求相同的
 	// 最终分组、硬过滤和评分逻辑，不能退回基础排序。
 	if resolvedGroup != nil && resolvedGroup.UsesAdvancedScheduler() {
@@ -134,6 +137,9 @@ func (s *GatewayService) SelectAccountWithLoadAwareness(ctx context.Context, gro
 		return nil, err
 	}
 	ctx = s.withGroupContext(ctx, group)
+	if err := validateGroupModelAllowlistForSelection(ctx, group, requestedModel); err != nil {
+		return nil, err
+	}
 	usesAdvancedScheduler := group != nil && group.UsesAdvancedScheduler()
 	// 高级调度开启粘性加权后，旧硬粘性不能抢在评分前返回；否则 session
 	// 粘性不会作为统一候选评分的一部分。关闭加权时保留原有硬粘性语义。

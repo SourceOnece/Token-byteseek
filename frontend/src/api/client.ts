@@ -172,7 +172,7 @@ apiClient.interceptors.response.use(
               originalRequest.headers.Authorization = `Bearer ${tokens.access_token}`
             }
             return apiClient(originalRequest)
-          } catch {
+          } catch (refreshError) {
             // 旧请求刷新期间若已登出或换号，不能清除后来建立的新会话。
             const sessionChanged =
               localStorage.getItem('refresh_token') !== refreshToken ||
@@ -185,6 +185,13 @@ apiClient.interceptors.response.use(
               })
             }
 
+            // 网络/服务临时不可用不代表凭据失效，保留当前登录供稍后重试。
+            if (axios.isAxiosError(refreshError)) {
+              const refreshStatus = refreshError.response?.status ?? 0
+              if (refreshStatus === 0 || refreshStatus === 429 || refreshStatus >= 500) {
+                return Promise.reject({ status: refreshStatus, code: 'TOKEN_REFRESH_UNAVAILABLE', message: refreshError.response?.data?.message || refreshError.message })
+              }
+            }
             // Clear tokens and redirect to login
             localStorage.removeItem('auth_token')
             localStorage.removeItem('refresh_token')

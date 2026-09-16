@@ -13,6 +13,23 @@ afterEach(() => {
 })
 
 describe('BaseDialog 移动端视口约束', () => {
+  it('默认保留关闭按钮，批次执行时可显式隐藏并禁用 Escape', async () => {
+    const wrapper = mount(BaseDialog, {
+      attachTo: document.body,
+      props: { show: true, title: '批量确认' },
+      global: { stubs: { Icon: true } },
+    })
+    wrappers.push(wrapper)
+    expect(document.body.querySelector('.modal-header button')).not.toBeNull()
+    await wrapper.setProps({ showCloseButton: false, closeOnEscape: false })
+    expect(document.body.querySelector('.modal-header button')).toBeNull()
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(wrapper.emitted('close')).toBeUndefined()
+    await wrapper.setProps({ showCloseButton: true, closeOnEscape: true })
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(wrapper.emitted('close')).toHaveLength(1)
+  })
+
   it.each([
     ['narrow', 'sm:max-w-md'],
     ['normal', 'sm:max-w-lg'],

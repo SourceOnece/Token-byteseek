@@ -27,6 +27,8 @@ Ops 面同时接收请求错误、独立上游 attempt 错误、入口准入拒�
 
 历史 dashboard 查询可按配置使用原始表或预聚合，并在覆盖不足时回退。聚合、水位和回填由[使用记录与运维预聚合](pre_aggregation.md)拥有。页面空数据需区分 monitoring 关闭、过滤条件、采集丢弃、聚合覆盖、查询超时和确实无流量。
 
+Token 请求统计沿用本地全平台查询，模型不是 `gpt*` 也可参与，平台/分组筛选只收窄查询。错误详情弹窗显式把时间和响应内容排到前列，独立错误列表和用户用量列表保持原顺序/列设置；排序参数仍按原字段提交。管理用量费用明细展示到 8 位小数，复用本地余额/美元格式化，不改变存储、计费、单位或报表口径。
+
 ## 告警评估
 
 告警规则包含 enabled、metric type、operator、threshold、window、sustained minutes、scope/filter 和通知动作。评估器按运行设置周期执行，使用 leader lock 避免多实例重复事件；连续 breach 达到持续要求后创建或更新 active event，恢复后关闭/标记 resolved。

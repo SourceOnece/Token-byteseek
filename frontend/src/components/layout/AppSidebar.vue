@@ -155,6 +155,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import { sanitizeSvg } from '@/utils/sanitize'
+import { purchaseLabelKey } from '@/utils/siteBillingMode'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
 
 interface NavItem {
@@ -182,8 +183,8 @@ const mobileOpen = computed(() => appStore.mobileOpen)
 const isAdmin = computed(() => authStore.isAdmin)
 const sidebarNavRef = ref<HTMLElement | null>(null)
 
-// Track which parent nav groups are expanded
-const expandedGroups = ref<Set<string>>(new Set())
+// 用户手动折叠/展开优先于当前子路由自动展开，未操作的组继续跟随路由。
+const groupExpandOverrides = ref<Map<string, boolean>>(new Map())
 
 // SVG Icon Components
 const DashboardIcon = {
@@ -598,7 +599,7 @@ const userNavItems = computed((): NavItem[] => {
       ? [
           {
             path: '/purchase',
-            label: t('nav.buySubscription'),
+            label: t(purchaseLabelKey(appStore.cachedPublicSettings)),
             icon: RechargeSubscriptionIcon,
             hideInSimpleMode: true
           },
@@ -653,7 +654,7 @@ const personalNavItems = computed((): NavItem[] => {
       ? [
           {
             path: '/purchase',
-            label: t('nav.buySubscription'),
+            label: t(purchaseLabelKey(appStore.cachedPublicSettings)),
             icon: RechargeSubscriptionIcon,
             hideInSimpleMode: true
           },
@@ -819,15 +820,13 @@ function isGroupActive(item: NavItem): boolean {
 }
 
 function isGroupExpanded(item: NavItem): boolean {
-  return expandedGroups.value.has(item.path) || isGroupActive(item)
+  const override = groupExpandOverrides.value.get(item.path)
+  if (override !== undefined) return override
+  return isGroupActive(item)
 }
 
 function toggleGroup(item: NavItem) {
-  if (expandedGroups.value.has(item.path)) {
-    expandedGroups.value.delete(item.path)
-  } else {
-    expandedGroups.value.add(item.path)
-  }
+  groupExpandOverrides.value.set(item.path, !isGroupExpanded(item))
 }
 
 // Fetch admin settings (for feature-gated nav items like Ops).

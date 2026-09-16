@@ -96,6 +96,17 @@ const unpricedPricing: MarketplaceModelPricing = {
 }
 
 describe('ModelPricingPanel', () => {
+  it('显式 Max 倍率沿用标准绿和 Fast 黄，未设置时不显示', async () => {
+    const wrapper = mountPanel(marketplaceModel('m1', { ...fastPricing, max_reasoning_effort_multiplier: 2 }))
+    await wrapper.get('[data-testid="model-pricing-toggle"]').trigger('click')
+    expect(wrapper.get('[data-testid="pricing-max-multiplier"]').classes()).toContain('text-emerald-700')
+    await wrapper.get('[data-testid="pricing-fast-switch"]').findAll('button')[1].trigger('click')
+    expect(wrapper.get('[data-testid="pricing-max-multiplier"]').classes()).toContain('text-amber-800')
+    await wrapper.setProps({ model: marketplaceModel('m1', fastPricing) })
+    expect(wrapper.find('[data-testid="pricing-max-multiplier"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('无定价模型不渲染展开入口', () => {
     const wrapper = mountPanel(marketplaceModel('m1', unpricedPricing))
 

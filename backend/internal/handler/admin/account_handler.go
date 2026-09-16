@@ -1441,6 +1441,7 @@ func (h *AccountHandler) Refresh(c *gin.Context) {
 
 	if warning == "missing_project_id_temporary" {
 		response.Success(c, gin.H{
+			"account": h.buildAccountResponseWithRuntime(c.Request.Context(), updatedAccount),
 			"message": "Token refreshed successfully, but project_id could not be retrieved (will retry automatically)",
 			"warning": "missing_project_id_temporary",
 		})
@@ -2873,6 +2874,27 @@ func (h *AccountHandler) GetAvailableModels(c *gin.Context) {
 				OwnedBy:     "xai",
 				DisplayName: requestedModel,
 			})
+		}
+		response.Success(c, models)
+		return
+	}
+
+	// 新兼容平台测试选择器使用自己的预设，不能掉入 Claude 默认目录。
+	if account.Platform == service.PlatformMiniMax || account.Platform == service.PlatformOpenCodeGo {
+		ids := account.GetConfiguredRequestModels()
+		if len(ids) == 0 {
+			if account.Platform == service.PlatformMiniMax {
+				ids = service.MiniMaxDefaultModelIDs()
+			} else {
+				ids = service.DefaultOpenCodeGoModelIDs()
+			}
+		}
+		models := make([]openai.Model, 0, len(ids))
+		for _, id := range ids {
+			if strings.Contains(id, "*") {
+				continue
+			}
+			models = append(models, openai.Model{ID: id, Object: "model", Type: "model", DisplayName: id, OwnedBy: account.Platform})
 		}
 		response.Success(c, models)
 		return

@@ -250,6 +250,7 @@ type AdminGroup struct {
 	DefaultMappedModel          string                                   `json:"default_mapped_model"`
 	MessagesDispatchModelConfig domain.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
 	ModelsListConfig            domain.GroupModelsListConfig             `json:"models_list_config"`
+	ModelAllowlist              domain.GroupModelAllowlist               `json:"model_allowlist"`
 	// AvailabilityProbeConfig 控制分组主动可用性探测，仅管理员接口返回。
 	AvailabilityProbeConfig domain.GroupAvailabilityProbeConfig `json:"availability_probe_config"`
 
@@ -501,6 +502,26 @@ type AdminRedeemCode struct {
 }
 
 // NullableTimeField 用于区分 JSON 字段缺失、传入 null 和传入具体时间。
+// NullableInt64Field 区分字段缺省、显式 null 与整数，避免部分编辑误清配置。
+type NullableInt64Field struct {
+	Set   bool
+	Value *int64
+}
+
+func (f *NullableInt64Field) UnmarshalJSON(data []byte) error {
+	f.Set = true
+	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		f.Value = nil
+		return nil
+	}
+	var value int64
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	f.Value = &value
+	return nil
+}
+
 type NullableTimeField struct {
 	Set   bool
 	Value *time.Time

@@ -596,7 +596,7 @@ func (h *QoderGatewayHandler) acquireQoderRetryAccountSlot(c *gin.Context, accou
 }
 
 func (h *QoderGatewayHandler) handleConcurrencyError(c *gin.Context, err error, slotType string, streamStarted bool, endpoint qoderEndpoint) {
-	status, errType, message := concurrencyErrorResponse(err, slotType)
+	status, errType, _, message := concurrencyErrorResponse(err, slotType)
 	h.streamingAwareError(c, status, errType, message, streamStarted, endpoint)
 }
 
@@ -714,7 +714,7 @@ func (h *QoderGatewayHandler) streamingAwareError(c *gin.Context, status int, er
 			return
 		}
 		if endpoint == qoderEndpointResponses {
-			if writeResponsesFailedSSE(c, errType, message) {
+			if writeResponsesFailedSSE(c, errType, "", message) {
 				return
 			}
 		}

@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
 // 回归覆盖 2026-05-24 09:13 CST 左右的生产问题：
@@ -45,9 +46,10 @@ func parseResponsesFailedSSE(t *testing.T, body string) (map[string]any, map[str
 	require.NoError(t, json.Unmarshal([]byte(jsonStr), &parsed), "data must be valid JSON: %s", jsonStr)
 
 	assert.Equal(t, "response.failed", parsed["type"])
-	// 故意不发 sequence_number，避免与后续真实事件的序号冲突。
-	_, hasSeq := parsed["sequence_number"]
-	assert.False(t, hasSeq, "synthetic event must not emit sequence_number")
+	// 合成终止事件必须提供严格客户端必读的序号。
+	seq, hasSeq := parsed["sequence_number"].(float64)
+	assert.True(t, hasSeq)
+	assert.GreaterOrEqual(t, seq, float64(0))
 
 	resp, ok := parsed["response"].(map[string]any)
 	require.True(t, ok, "response object missing")
@@ -170,6 +172,23 @@ func TestGatewayHandleStreamingAwareError_MessagesStreamingKeepsLegacy(t *testin
 
 	body := w.Body.String()
 	assert.True(t, strings.HasPrefix(body, `data: {"type":"error"`), "got: %q", body)
+}
+
+func TestGatewayAdmissionErrorPreservesGatewayCode(t *testing.T) {
+	c, w := newGinContextForEndpoint(t, EndpointMessages)
+	h := &GatewayHandler{}
+	h.handleStreamingAwareErrorWithCode(c, http.StatusTooManyRequests, "rate_limit_error", gatewayQueueFullCode, "Too many pending requests, please retry later", false)
+
+	assert.Equal(t, gatewayQueueFullCode, gjson.GetBytes(w.Body.Bytes(), "error.code").String())
+}
+
+func TestOpenAIAdmissionErrorPreservesGatewayCodeAcrossResponsesSSE(t *testing.T) {
+	c, w := newGinContextForEndpoint(t, EndpointResponses)
+	h := &OpenAIGatewayHandler{}
+	h.handleStreamingAwareErrorWithCode(c, http.StatusTooManyRequests, "rate_limit_error", gatewayConcurrencyLimitCode, "Concurrency limit exceeded for account, please retry later", true, false)
+
+	_, errObj := parseResponsesFailedSSE(t, w.Body.String())
+	assert.Equal(t, gatewayConcurrencyLimitCode, errObj["code"])
 }
 
 // 项目里 /responses 注册在多组路由：/v1/responses（gateway）、裸 /responses（top-level）、

@@ -70,4 +70,6 @@
 
 [bh.029](versions/v0_1_278_bh_029.md) 承接未发布的 bh.028 完成已选接口建议项；同批三方目标不前移，明确区分新增、此前部分补齐和仍未采纳的运营/计费冲突项。发布状态以该记录证据为准。
 
+[bh.030](versions/v0_1_278_bh_030.md) 完成固定 TokenRouter/sub2api 目标的兼容适配、模型发现、批量订阅、供应商筛选、固定兑换窗口和最终验证；完整 pinned manifest 代理、ByteSeek 不存在的独立 channel-monitor 模块及撤回功能明确不采纳。当前尚未构建或推送镜像。
+
 相关文档：[开发流程](development_workflow.md)、[包豪斯设计契约](bauhaus_design_contract.md)、[版本目录](versions/index.md)、[运维目录](index.md)。

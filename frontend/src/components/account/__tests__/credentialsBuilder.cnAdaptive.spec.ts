@@ -3,15 +3,23 @@ import { describe, expect, it } from 'vitest'
 import { cnSupportsNativeResponses, defaultCNAdaptiveBaseUrls } from '../credentialsBuilder'
 
 describe('cnSupportsNativeResponses', () => {
-  it('is true for DeepSeek and Kimi only', () => {
+  it('仅原生 Responses 平台返回 true', () => {
     expect(cnSupportsNativeResponses('deepseek')).toBe(true)
     expect(cnSupportsNativeResponses('kimi')).toBe(true)
+    expect(cnSupportsNativeResponses('minimax')).toBe(true)
     expect(cnSupportsNativeResponses('zhipu')).toBe(false)
     expect(cnSupportsNativeResponses('openai')).toBe(false)
   })
 })
 
 describe('defaultCNAdaptiveBaseUrls', () => {
+  it.each(['payg', 'coding'] as const)('MiniMax %s 模式使用三个明确端点', mode => {
+    expect(defaultCNAdaptiveBaseUrls('minimax', mode)).toEqual({
+      chat_completions: 'https://api.minimaxi.com/v1',
+      anthropic: 'https://api.minimaxi.com/anthropic',
+      responses: 'https://api.minimaxi.com/v1'
+    })
+  })
   it('resolves Kimi endpoints by account mode', () => {
     expect(defaultCNAdaptiveBaseUrls('kimi', 'payg')).toEqual({
       chat_completions: 'https://api.moonshot.cn/v1',

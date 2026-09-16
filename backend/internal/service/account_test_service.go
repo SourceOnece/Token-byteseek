@@ -420,6 +420,9 @@ func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int
 		(account.Platform != PlatformAntigravity || account.Type != AccountTypeAPIKey) {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Image tests are not supported for platform %s", account.Platform))
 	}
+	if account.IsOpenCodeGo() {
+		return s.testOpenCodeAccountConnection(c, account, modelID, prompt)
+	}
 	if account.IsCNProvider() {
 		switch account.GetAPIProtocol() {
 		case APIProtocolAdaptive:
@@ -463,6 +466,10 @@ func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int
 
 func defaultCNProviderTestModel(platform string) string {
 	switch platform {
+	case PlatformOpenCodeGo:
+		return DefaultOpenCodeGoTestModel
+	case PlatformMiniMax:
+		return "MiniMax-M3"
 	case PlatformKimi:
 		return "kimi-k2.5"
 	case PlatformZhipu:
@@ -500,6 +507,9 @@ func (s *AccountTestService) testCNProviderAccountConnection(
 
 	ctx := c.Request.Context()
 	protocol := account.GetAPIProtocol()
+	if account.IsOpenCodeGo() {
+		protocol = openCodeGoNativeProtocol(account, testModelID)
+	}
 	var (
 		apiURL  string
 		payload any
@@ -510,21 +520,31 @@ func (s *AccountTestService) testCNProviderAccountConnection(
 		if err != nil {
 			return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", err.Error()))
 		}
-		if hint := cnAnthropicBaseURLMisconfigHint(baseURL); hint != "" {
+		if hint := cnAnthropicBaseURLMisconfigHint(baseURL); hint != "" && !account.IsOpenCodeGo() {
 			return s.sendErrorAndEnd(c, hint)
 		}
 		apiURL = strings.TrimRight(baseURL, "/") + "/v1/messages"
+		if account.IsOpenCodeGo() {
+			apiURL = buildOpenAIEndpointURL(baseURL, "/v1/messages")
+		}
 		payload, err = createTestPayloadWithPrompt(testModelID, prompt)
 		if err != nil {
 			return s.sendErrorAndEnd(c, "Failed to create test payload")
 		}
 	case APIProtocolResponses:
-		baseURL, err := s.validateUpstreamBaseURL(account.GetOpenAIBaseURL())
+		base := account.GetOpenAIBaseURL()
+		if account.IsOpenCodeGo() && account.IsAdaptiveAPIProtocol() {
+			base = account.GetCNProtocolBaseURL(APIProtocolResponses)
+		}
+		baseURL, err := s.validateUpstreamBaseURL(base)
 		if err != nil {
 			return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", err.Error()))
 		}
 		apiURL = buildOpenAIResponsesURLForPlatform(account.Platform, baseURL)
 		responsesPayload := createOpenAITestPayload(testModelID, prompt, false)
+		if account.IsOpenCodeGo() {
+			delete(responsesPayload, "instructions")
+		}
 		responsesPayload["store"] = false
 		payload = responsesPayload
 	default:
@@ -556,11 +576,12 @@ func (s *AccountTestService) testCNProviderAccountConnection(
 	req.Header.Set("Accept", "text/event-stream")
 	if protocol == APIProtocolAnthropic {
 		req.Header.Set("anthropic-version", "2023-06-01")
-		setAnthropicAPIKeyAuthHeader(req.Header, account, apiKey)
+		setAnthropicAPIKeyAuthHeader(req.Header, account, apiKey, account.GetAnthropicProtocolBaseURL())
 	} else {
 		req.Header.Set("Authorization", "Bearer "+apiKey)
 	}
 	account.ApplyHeaderOverrides(req.Header)
+	applyOpenCodeSessionHeader(c, account, apiURL, req.Header, payloadBytes)
 
 	proxyURL := ""
 	if account.ProxyID != nil && account.Proxy != nil {
@@ -700,7 +721,7 @@ func (s *AccountTestService) testClaudeAccountConnection(c *gin.Context, account
 		req.Header.Set("Authorization", "Bearer "+authToken)
 	} else {
 		req.Header.Set("anthropic-beta", claude.APIKeyBetaHeader)
-		setAnthropicAPIKeyAuthHeader(req.Header, account, authToken)
+		setAnthropicAPIKeyAuthHeader(req.Header, account, authToken, account.GetBaseURL())
 	}
 	applyAccountTestUserAgent(req)
 
@@ -806,12 +827,12 @@ func (s *AccountTestService) testClaudeVertexServiceAccountConnection(c *gin.Con
 
 // testBedrockAccountConnection tests a Bedrock (SigV4 or API Key) account using non-streaming invoke
 func (s *AccountTestService) testBedrockAccountConnection(c *gin.Context, ctx context.Context, account *Account, testModelID string, prompt string) error {
-	region := bedrockRuntimeRegion(account)
-	resolvedModelID, ok := ResolveBedrockModelID(account, testModelID)
-	if !ok {
-		return s.sendErrorAndEnd(c, fmt.Sprintf("Unsupported Bedrock model: %s", testModelID))
+	route, err := resolveBedrockModelRoute(account, testModelID)
+	if err != nil {
+		return s.sendErrorAndEnd(c, bedrockRoutingDiagnostic(err))
 	}
-	testModelID = resolvedModelID
+	region := route.SourceRegion
+	testModelID = route.ModelID
 
 	// Set SSE headers (test UI expects SSE)
 	c.Writer.Header().Set("Content-Type", "text/event-stream")

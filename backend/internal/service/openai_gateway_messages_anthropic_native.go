@@ -141,7 +141,16 @@ func (s *OpenAIGatewayService) nativeAnthropicTargetURL(account *Account) (strin
 	if err != nil {
 		return "", fmt.Errorf("invalid base_url: %w", err)
 	}
+	if account.IsOpenCodeGo() {
+		return buildOpenAIEndpointURL(validatedURL, "/v1/messages"), nil
+	}
 	return strings.TrimRight(validatedURL, "/") + "/v1/messages", nil
+}
+
+// 账号模型映射与调度默认映射先落定，再查原生协议，避免别名命中错误规则。
+func resolveOpenCodeGoMappedModel(account *Account, body []byte, defaultMappedModel string) string {
+	original := strings.TrimSpace(gjson.GetBytes(body, "model").String())
+	return normalizeOpenAIModelForUpstream(account, resolveOpenAIForwardModel(account, original, defaultMappedModel))
 }
 
 func (s *OpenAIGatewayService) buildNativeAnthropicUpstreamRequest(
@@ -166,6 +175,11 @@ func (s *OpenAIGatewayService) buildNativeAnthropicUpstreamRequest(
 		body = sanitized
 	}
 
+	// Ollama Cloud DeepSeek 出站 max_tokens clamp：判定与 nativeAnthropicTargetURL
+	// 的 base 取值同源（GetAnthropicProtocolBaseURL，adaptive 时是 Anthropic 协议
+	// 地址而非 CC/Responses 地址），详见 helper 注释。
+	body = clampOllamaCloudAnthropicMessagesMaxTokens(account, account.GetAnthropicProtocolBaseURL(), body)
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, targetURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, nil, err
@@ -185,12 +199,13 @@ func (s *OpenAIGatewayService) buildNativeAnthropicUpstreamRequest(
 	}
 
 	// 覆盖入站鉴权残留，注入上游认证（默认 x-api-key；可经 extra
-	// anthropic_apikey_auth_scheme 切换 Authorization: Bearer）。
+	// anthropic_apikey_auth_scheme 切换 Authorization: Bearer；Ollama Cloud
+	// 上游按实际 base_url 强制 Bearer，与 nativeAnthropicTargetURL 同源）。
 	req.Header.Del("authorization")
 	req.Header.Del("x-api-key")
 	req.Header.Del("x-goog-api-key")
 	req.Header.Del("cookie")
-	setAnthropicAPIKeyAuthHeader(req.Header, account, apiKey)
+	setAnthropicAPIKeyAuthHeader(req.Header, account, apiKey, account.GetAnthropicProtocolBaseURL())
 
 	if getHeaderRaw(req.Header, "content-type") == "" {
 		setHeaderRaw(req.Header, "content-type", "application/json")
@@ -201,6 +216,7 @@ func (s *OpenAIGatewayService) buildNativeAnthropicUpstreamRequest(
 
 	// 账号级请求头覆写（最终生效，覆盖上面所有来源的同名头）
 	account.ApplyHeaderOverrides(req.Header)
+	applyOpenCodeSessionHeader(c, account, targetURL, req.Header, body)
 
 	return req, body, nil
 }

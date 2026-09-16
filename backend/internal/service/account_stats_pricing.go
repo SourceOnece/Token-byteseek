@@ -3,7 +3,11 @@ package service
 import (
 	"context"
 	"strings"
+	"time"
 )
+
+// accountStatsPricingAtKey 让账号成本与客户售价共用请求已固定的计费时刻。
+type accountStatsPricingAtKey struct{}
 
 // resolveAccountStatsCost 计算账号统计定价费用。
 // 返回 nil 表示不覆盖，使用默认公式（total_cost × account_rate_multiplier）。
@@ -33,8 +37,9 @@ func resolveAccountStatsCost(
 	requestCount int,
 	totalCost float64,
 	serviceTier string,
+	reasoningEfforts ...string,
 ) *float64 {
-	return resolveAccountStatsCostWithMapped(ctx, channelService, billingService, accountID, groupID, upstreamModel, requestedModel, "", tokens, requestCount, totalCost, serviceTier)
+	return resolveAccountStatsCostWithMapped(ctx, channelService, billingService, accountID, groupID, upstreamModel, requestedModel, "", tokens, requestCount, totalCost, serviceTier, reasoningEfforts...)
 }
 
 func resolveAccountStatsCostWithMapped(
@@ -50,7 +55,13 @@ func resolveAccountStatsCostWithMapped(
 	requestCount int,
 	totalCost float64,
 	serviceTier string,
+	reasoningEfforts ...string,
 ) *float64 {
+	reasoningEffort := ""
+	pricingAt, _ := ctx.Value(accountStatsPricingAtKey{}).(time.Time)
+	if len(reasoningEfforts) > 0 {
+		reasoningEffort = reasoningEfforts[0]
+	}
 	if channelService == nil || upstreamModel == "" {
 		return nil
 	}
@@ -87,13 +98,13 @@ func resolveAccountStatsCostWithMapped(
 				if qoderAliasRequiresManualPricingAny(model) {
 					continue
 				}
-				if cost := tryModelFilePricing(billingService, model, tokens, serviceTier); cost != nil {
+				if cost := tryModelFilePricingAt(billingService, model, tokens, serviceTier, pricingAt, reasoningEffort); cost != nil {
 					return cost
 				}
 			}
 			return nil
 		}
-		return tryModelFilePricing(billingService, upstreamModel, tokens, serviceTier)
+		return tryModelFilePricingAt(billingService, upstreamModel, tokens, serviceTier, pricingAt, reasoningEffort)
 	}
 
 	return nil
@@ -161,10 +172,21 @@ func uniqueNonEmptyAccountStatsModels(models []string) []string {
 // 与用户计费共用同一条定价管线，避免这里维护第二份"单价 × token 数"实现后，
 // 每加一个定价特性都要手工镜像一次。channelPricing 为 nil，保持优先级 3 的
 // 语义：只取模型定价文件，不引入渠道自定义定价。
-func tryModelFilePricing(billingService *BillingService, model string, tokens UsageTokens, serviceTier string) *float64 {
-	breakdown, err := billingService.CalculateCostWithServiceTier(
-		model, tokens, 1, normalizeBillingServiceTier(serviceTier),
-	)
+func tryModelFilePricing(billingService *BillingService, model string, tokens UsageTokens, serviceTier string, reasoningEfforts ...string) *float64 {
+	return tryModelFilePricingAt(billingService, model, tokens, serviceTier, time.Time{}, reasoningEfforts...)
+}
+
+func tryModelFilePricingAt(billingService *BillingService, model string, tokens UsageTokens, serviceTier string, pricingAt time.Time, reasoningEfforts ...string) *float64 {
+	reasoningEffort := ""
+	if len(reasoningEfforts) > 0 {
+		reasoningEffort = reasoningEfforts[0]
+	}
+	breakdown, err := billingService.CalculateCostUnified(CostInput{
+		Ctx: context.Background(), Resolver: NewModelPricingResolver(nil, billingService),
+		Model: model, Tokens: tokens, RateMultiplier: 1,
+		PricingAt:   pricingAt,
+		ServiceTier: normalizeBillingServiceTier(serviceTier), ReasoningEffort: reasoningEffort,
+	})
 	if err != nil || breakdown == nil || breakdown.TotalCost <= 0 {
 		return nil
 	}
@@ -185,6 +207,7 @@ func tryCustomRules(
 		if pricing == nil {
 			continue // 规则匹配但模型不在规则定价中，继续下一条
 		}
+		// 自定义统计价是独立的最终成本基数，不继承用户侧的模型/推理倍率。
 		if cost := calculateStatsCost(pricing, tokens, requestCount); cost != nil {
 			return cost
 		}
@@ -290,7 +313,7 @@ func calculateStatsCost(pricing *ChannelModelPricing, tokens UsageTokens, reques
 	// 账号统计规则与实际渠道计费共用同一倍率语义。
 	if multiplier, configured := normalizedPriceMultiplier(pricing); configured {
 		scaled := *cost * multiplier
-		return &scaled
+		cost = &scaled
 	}
 	return cost
 }
@@ -384,7 +407,11 @@ func applyAccountStatsCost(
 	upstreamModel, requestedModel, channelMappedModel string,
 	tokens UsageTokens,
 	totalCost float64,
+	pricingTimes ...time.Time,
 ) {
+	if len(pricingTimes) > 0 {
+		ctx = context.WithValue(ctx, accountStatsPricingAtKey{}, pricingTimes[0])
+	}
 	model := upstreamModel
 	if model == "" {
 		model = requestedModel
@@ -394,10 +421,15 @@ func applyAccountStatsCost(
 		requestCount = usageLog.ImageCount
 	}
 	serviceTier := ""
+	reasoningEffort := ""
 	if usageLog != nil && usageLog.ServiceTier != nil {
 		serviceTier = *usageLog.ServiceTier
 	}
+	if usageLog != nil && usageLog.ReasoningEffort != nil {
+		reasoningEffort = *usageLog.ReasoningEffort
+	}
 	usageLog.AccountStatsCost = resolveAccountStatsCostWithMapped(
 		ctx, cs, bs, accountID, groupID, model, requestedModel, channelMappedModel, tokens, requestCount, totalCost, serviceTier,
+		reasoningEffort,
 	)
 }

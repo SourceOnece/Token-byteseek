@@ -27,7 +27,6 @@ describe("groupsReasoningEffort", () => {
       "max",
     ]);
     for (const platform of [
-      "anthropic",
       "gemini",
       "antigravity",
       "grok",
@@ -39,6 +38,21 @@ describe("groupsReasoningEffort", () => {
         (option) => option.value,
       ),
     ).toEqual(["none", "minimal", "low", "medium", "high", "xhigh", "max"]);
+  });
+
+  // Anthropic 原生和兼容入口共用五档策略，不继承 OpenAI 的 none/minimal。
+  it("round-trips Anthropic mappings and rejects OpenAI-only levels", () => {
+    expect(reasoningEffortOptionsForPlatform("anthropic").map((option) => option.value))
+      .toEqual(["low", "medium", "high", "xhigh", "max"]);
+    const rows = reasoningEffortMappingsToRows([
+      { from: "max", to: "xhigh", match_type: "prefix", model: "claude-" },
+      { from: "minimal", to: "low" },
+      { from: "none", to: "low" },
+    ], "anthropic");
+    expect(reasoningEffortMappingsToAPI(rows)).toEqual([
+      { from: "max", to: "xhigh", match_type: "prefix", model: "claude-" },
+    ]);
+    expect(validateReasoningEffortMappings(rows, "anthropic")).toEqual({});
   });
 
   it("hydrates supported rows and drops stale custom values", () => {

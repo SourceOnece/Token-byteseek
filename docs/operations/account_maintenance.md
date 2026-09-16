@@ -84,6 +84,8 @@ OpenAI API Key 的 Responses 探测只维护 `extra.openai_responses_probe_statu
 
 实时探测失败时保留最近成功快照并同时暴露当前错误，不把旧数据标为实时。任何配额耗尽或 capability 变化都要触发相关调度投影失效。
 
+Ollama Cloud API Key 遇到 429 时先沿用响应重置时间或原有兜底冷却，并保证不缩短已有期限；随后合并重复请求，交给有界后台探测队列。只有真实 `ollama.com` 目标、有效管理会话、当前身份匹配且新鲜的耗尽快照，才会用所有已耗尽窗口中最晚的未来重置时间更新。回写同时核对账号 `updated_at`、原限流开始及结束时间；换凭据、管理员清除或新的限流代次都会令旧结果失效。保留本地 OpenAI/Anthropic API Key 的匹配范围和探测退避，不扩展到普通中转 Base URL，更不恢复已删除的倍率探测。
+
 ## API Key 上游用量查询
 
 API Key 上游用量由独立的 `UpstreamUsageService` 提供，和 OAuth/Setup Token 的 `AccountUsageService` 语义分离。它只服务管理员展示，不参与调度、自动暂停、倍率、本地配额或结算；列表加载、滚动和自动刷新都不会产生上游流量。管理员手动查询时，服务按账号和规范化配置指纹合并并发请求，单次约 60 秒超时、512 KiB 响应体上限、禁止重定向，并复用代理、TLS 指纹、Header Override 和既有 `HTTPUpstream`。

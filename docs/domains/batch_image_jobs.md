@@ -152,6 +152,8 @@ output_deleted             -> output_deleted
 
 任务提交时必须同时快照三种模型身份：`requested_model` 保存客户端提交值（复合 Key 场景包含自定义分组前缀），`internal_model` 保存复合 Key 选组和 API Key 模型重定向完成后、渠道与账号映射前的内部模型，`model` 保存最终提交给提供商的上游模型。异步结算写使用记录时以 `internal_model` 作为 `usage_logs.model`，并把 `model` 写入 `upstream_model`；迁移前任务没有内部模型快照时，才兼容回退到上游模型。
 
+批量提交在原有分组批量图片开关外也检查可选 `model_allowlist`，发生在提供商上传与资金预占前；Key 重定向场景使用去复合前缀后的公开模型名。模型列表仍在 Key 别名投影后、加复合前缀前过滤，不能以内部模型名提前删除可调用别名。已经提交的作业继续按已有快照轮询和结算，不因之后的准入变更重写历史。
+
 ## Redis
 
 Redis 用于唤醒、重试、worker 协调、单作业锁和下载限制。PostgreSQL 始终是权威数据源。

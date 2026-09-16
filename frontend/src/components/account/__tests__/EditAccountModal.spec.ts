@@ -146,6 +146,7 @@ const SelectStub = defineComponent({
 const GroupSelectorStub = defineComponent({
   name: 'GroupSelector',
   props: {
+    groups: { type: Array, default: () => [] },
     modelValue: {
       type: Array,
       default: () => []
@@ -358,6 +359,28 @@ describe('EditAccountModal', () => {
     listTLSProfilesMock.mockResolvedValue([])
   })
 
+  it('补回已绑定停用分组且保留活跃列表最新投影，移除后只提交剩余绑定', async () => {
+    authIsSimpleMode.value = false
+    const account = { ...buildAccount(), group_ids: [1, 2], groups: [
+      { id: 1, name: '旧名称', platform: 'openai', status: 'active' },
+      { id: 2, name: '停用组', platform: 'openai', status: 'inactive' },
+      { id: 3, name: '未绑定组', platform: 'openai', status: 'inactive' }
+    ] }
+    updateAccountMock.mockResolvedValue(account)
+    const wrapper = mountModal(account)
+    await wrapper.setProps({ groups: [{ id: 1, name: '最新名称', platform: 'openai', status: 'active', account_count: 5 }] as any })
+    const selector = wrapper.getComponent(GroupSelectorStub)
+    expect(selector.props('groups')).toEqual([
+      expect.objectContaining({ id: 1, name: '最新名称', account_count: 5 }),
+      expect.objectContaining({ id: 2, status: 'inactive' })
+    ])
+    selector.vm.$emit('update:modelValue', [1])
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(updateAccountMock.mock.calls[0]?.[1].group_ids).toEqual([1])
+    wrapper.unmount()
+  })
+
   it('renders the shared account model rule copy', async () => {
     const account = buildAccount()
     account.credentials.model_whitelist = []
@@ -492,6 +515,30 @@ describe('EditAccountModal', () => {
         anthropic: 'https://open.bigmodel.cn/api/anthropic'
       }
     })
+  })
+
+  it('MiniMax 编辑保留中继端点及 Coding 套餐', async () => {
+    const account = buildAccount()
+    account.platform = 'minimax'
+    account.credentials = { api_key: 'sk-minimax-test', account_mode: 'coding', api_protocol: 'adaptive', base_url: 'https://relay.example/v1', api_base_urls: { chat_completions: 'https://relay.example/v1', anthropic: 'https://relay.example/anthropic', responses: 'https://relay.example/v1' } }
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    checkMixedChannelRiskMock.mockReset().mockResolvedValue({ has_risk: false })
+    const wrapper = mountModal(account)
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock.mock.calls[0]?.[1]?.credentials).toMatchObject(account.credentials)
+    wrapper.unmount()
+  })
+
+  it.each(['go', 'zen'])('OpenCode %s 编辑保留规则顺序和模式', async mode => {
+    const account = buildAccount()
+    account.platform = 'opencode_go'
+    account.credentials = { api_key: 'sk-opencode-test', account_mode: mode, api_protocol: 'adaptive', base_url: 'https://relay.example/v1', api_base_urls: { chat_completions: 'https://relay.example/v1', anthropic: 'https://relay.example/native', responses: 'https://relay.example/v1' }, protocol_rules: [{ pattern: 'gpt-*', protocol: 'chat_completions' }, { pattern: '*', protocol: 'anthropic' }] }
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    checkMixedChannelRiskMock.mockReset().mockResolvedValue({ has_risk: false })
+    const wrapper = mountModal(account)
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock.mock.calls[0]?.[1]?.credentials).toMatchObject(account.credentials)
+    wrapper.unmount()
   })
 
   it.each([

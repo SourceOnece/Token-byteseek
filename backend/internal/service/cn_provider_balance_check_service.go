@@ -203,7 +203,7 @@ func (s *CNProviderBalanceCheckService) runOnce(parents ...context.Context) {
 
 func (s *CNProviderBalanceCheckService) monitorCandidates(ctx context.Context) []Account {
 	result := make([]Account, 0)
-	for _, platform := range []string{PlatformKimi, PlatformZhipu, PlatformDeepseek} {
+	for _, platform := range []string{PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformOpenCodeGo} {
 		accounts, err := s.accountRepo.ListByPlatform(ctx, platform)
 		if err != nil {
 			slog.Warn("cn_usage_monitor_list_failed", "platform", platform, "error", err)
@@ -409,7 +409,7 @@ func cnUsageMonitorSnapshotFromExtra(extra map[string]any) *CNUsageMonitorSnapsh
 
 // validCNUsageMonitorSnapshot 只返回与账号当前完整查询身份匹配的快照。
 func validCNUsageMonitorSnapshot(account *Account) *CNUsageMonitorSnapshot {
-	if account == nil || !account.IsCNProvider() {
+	if account == nil || !account.IsMultiProtocolAPIKey() {
 		return nil
 	}
 	queryConfig, err := EffectiveUpstreamUsageConfig(account)
@@ -430,7 +430,7 @@ func validCNUsageMonitorSnapshot(account *Account) *CNUsageMonitorSnapshot {
 }
 
 func cnUsageMonitorIdentityFingerprint(account *Account) string {
-	if account == nil || !account.IsCNProvider() || account.Type != AccountTypeAPIKey {
+	if account == nil || !account.IsMultiProtocolAPIKey() || account.Type != AccountTypeAPIKey {
 		return ""
 	}
 	queryConfig, err := EffectiveUpstreamUsageConfig(account)
@@ -487,6 +487,10 @@ func cnUsageOfficialHost(platform, host string) bool {
 		return host == "open.bigmodel.cn" || host == "api.z.ai"
 	case PlatformDeepseek:
 		return host == "api.deepseek.com"
+	case PlatformMiniMax:
+		return host == "api.minimaxi.com" || host == "api.minimax.io" || host == "api.minimax.com"
+	case PlatformOpenCodeGo:
+		return host == "opencode.ai"
 	default:
 		return false
 	}
