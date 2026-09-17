@@ -77,3 +77,5 @@
 [bh.031](versions/v0_1_278_bh_031.md) 仅修正添加账号中 MiniMax/OpenCode 与其它平台选项的样式差异，未改变接口和业务；前端定向测试、构建及四组浏览器检查通过，发布状态以该记录为准。
 
 相关文档：[开发流程](development_workflow.md)、[包豪斯设计契约](bauhaus_design_contract.md)、[版本目录](versions/index.md)、[运维目录](index.md)。
+
+[bh.032](versions/v0_1_278_bh_032.md) 调整手动/定时检测为失败保留原调度、仅降智关闭，并增加按管理员隔离的本浏览器测试配置记忆；不回写旧结果或调度，发布状态见该记录。

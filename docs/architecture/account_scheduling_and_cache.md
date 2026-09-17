@@ -68,7 +68,7 @@ Codex 额度余量优先读取规范 `codex_5h_*` / `codex_7d_*`，历史 primar
 
 ## 候选筛选与评分
 
-管理员 Codex 题目测试可按完整回答的关键词结果直接更新所选账号 schedulable：full 开启，degraded/failed 关闭；该写入和最近结果、scheduler outbox 原子提交，并同步账号快照。它不改变以下筛选顺序或评分算法，不清除 inactive/error、过期、限额，也不为未测账号增加新门禁。关键词标签不是持续健康承诺，管理员仍可手动修改调度；详情见[账号维护](../operations/account_maintenance.md#codex_quality_testing)。
+管理员 Codex 题目测试可按完整回答的关键词结果直接更新所选账号 schedulable：full 开启，只有 degraded 关闭；failed 保留原调度状态，仅写最近结果/定时历史，不更新账号时间或发送 scheduler outbox。有效的 full/degraded 写入仍和最近结果、scheduler outbox 原子提交，并同步账号快照。该规则共用于手动和定时检测，不改变以下筛选顺序或评分算法，不清除 inactive/error、过期、限额，也不为未测账号增加新门禁。旧失败结果和旧调度状态不自动回写。关键词标签不是持续健康承诺，管理员仍可手动修改调度；详情见[账号维护](../operations/account_maintenance.md#codex_quality_testing)。
 
 候选账号依次受以下约束收窄：
 

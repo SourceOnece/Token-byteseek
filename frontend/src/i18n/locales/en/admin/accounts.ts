@@ -16,7 +16,7 @@ export default {
           title: 'Codex Scheduled Tests', description: 'Run interval tests on the server even after this page closes. Each plan uses a fixed account list and stores each run with keyword-driven scheduling.',
           create: 'Create schedule', name: 'Plan name', interval: 'Interval (minutes)', keep: 'Recent runs to retain', selected: '{count} accounts selected',
           selectAll: 'Select all matching accounts', fixedSelection: 'Up to 500 accounts. Selection is a fixed snapshot, excluding future accounts, shadows and Agent Identity.',
-          enabled: 'Enabled', paused: 'Paused', enable: 'Enable tests', pause: 'Pause tests', runNow: 'Run now', confirm: 'Confirm recurring quota use and automatic scheduling: enable Full, disable Degraded or Failed. First run starts after the interval; subsequent intervals begin after completion, with no overlap.',
+          enabled: 'Enabled', paused: 'Paused', enable: 'Enable tests', pause: 'Pause tests', runNow: 'Run now', confirm: 'Confirm recurring quota use: enable scheduling for Full, disable only Degraded, and keep scheduling unchanged for Failed. First run starts after the interval; subsequent intervals begin after completion, with no overlap.',
           empty: 'No scheduled tests', intervalValue: 'Every {minutes} minutes · {count} fixed accounts', next: 'Next run', running: 'Run in progress', history: 'Run history', noRuns: 'No runs yet; waiting for the scheduled time',
           runStatus: { running: 'Running', completed: 'Completed', interrupted: 'Interrupted', failed: 'Execution failed' }
         },
@@ -25,7 +25,8 @@ export default {
         disclaimer: '“Full / Degraded” is your keyword classification, not an objective capability assessment. Unselected accounts are unchanged; other platforms, shadows and Agent Identity accounts are skipped.',
         model: 'Test model', effort: 'Reasoning effort', effortDefault: 'Upstream default (omit)', concurrency: 'Concurrency',
         prompt: 'Test prompt', keyword: 'Match keyword', keywordHint: 'A case-sensitive literal substring in the complete visible answer marks it as Full. No regex; prompts and reasoning summaries are excluded.',
-        confirm: 'I confirm: enable scheduling for Full; disable it for mismatches or failed tests. Inactive status, expiry and quota limits remain enforced.',
+        rememberHint: 'Test settings, including the prompt and keyword, are saved per administrator in this browser. Clearing browser data removes them. Account selection and confirmation are not saved.',
+        confirm: 'I confirm: enable scheduling for Full, disable only Degraded, and keep scheduling unchanged for Failed. Inactive status, expiry and quota limits remain enforced.',
         rate: 'Batch full rate', rateHint: 'Full rate = Full / (Full + Degraded + Failed). Skipped, cancelled and stale results are excluded.',
         status: { full: 'Full', degraded: 'Degraded', failed: 'Test failed', skipped: 'Skipped', cancelled: 'Cancelled', stale: 'Stale result' },
         noAnswer: 'No answer available', schedulingOn: 'Scheduling switch enabled; other restrictions still apply', schedulingOff: 'Scheduling switch disabled', schedulingUnchanged: 'No scheduling change applied by this result',

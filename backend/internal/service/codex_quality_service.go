@@ -113,6 +113,7 @@ type CodexQualityResult struct {
 // CodexQualityRepository 用窄接口保持现有账号仓储测试替身兼容。
 type CodexQualityRepository interface {
 	AcquireCodexQualityTest(context.Context, int64, string, int) (bool, error)
+	// 返回值表示有效结果被接受；failed 仅记录结果，不等于已应用调度。
 	FinishCodexQualityTest(context.Context, *Account, string, *CodexQualityResult) (bool, error)
 	ListCodexQualityResults(context.Context, []int64, bool) ([]*CodexQualityResult, error)
 }
@@ -241,14 +242,14 @@ func (s *AccountTestService) RunCodexQualityTest(ctx context.Context, id int64, 
 		result.Status = "stale"
 		result.Error = "账号配置或代理已变化，未修改调度，请重新测试"
 	}
-	applied, saveErr := repo.FinishCodexQualityTest(saveCtx, account, runID, result)
+	accepted, saveErr := repo.FinishCodexQualityTest(saveCtx, account, runID, result)
 	if saveErr != nil {
 		result.Status = "failed"
 		result.SchedulingApplied = false
 		result.Error = "结果保存失败，调度状态未确认，请刷新账号检查"
 		return result
 	}
-	if !applied && result.Status != "cancelled" {
+	if !accepted && result.Status != "cancelled" {
 		result.Status = "stale"
 		result.Error = "测试期间账号已变化，结果未应用调度，请重新测试"
 	}

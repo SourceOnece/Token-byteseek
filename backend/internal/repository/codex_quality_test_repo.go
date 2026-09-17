@@ -30,7 +30,8 @@ func (r *accountRepository) AcquireCodexQualityTest(ctx context.Context, id int6
 	return n > 0, err
 }
 
-// FinishCodexQualityTest 同一 SQL 原子提交结果、调度开关与 outbox；旧快照或旧租约不能开启账号。
+// FinishCodexQualityTest 原子保存有效结果；仅满血/降智更新调度及 outbox。
+// 返回值表示结果已接受，失败结果可被接受但 SchedulingApplied 为 false。
 // @project-doc docs/operations/account_maintenance.md#codex_quality_testing
 func (r *accountRepository) FinishCodexQualityTest(ctx context.Context, account *service.Account, runID string, result *service.CodexQualityResult) (bool, error) {
 	want := result.Status == "full"
@@ -47,20 +48,25 @@ func (r *accountRepository) FinishCodexQualityTest(ctx context.Context, account 
 		), owned AS MATERIALIZED (
 			SELECT account_id FROM codex_quality_tests
 			WHERE account_id=$1 AND run_id=$2 AND lease_until>NOW() FOR UPDATE
+		), eligible AS MATERIALIZED (
+			SELECT a.id,a.schedulable FROM accounts a
+			WHERE a.id IN (SELECT account_id FROM owned)
+			AND a.deleted_at IS NULL AND a.platform='openai' AND a.type IN ('oauth','apikey')
+			AND a.parent_account_id IS NULL AND (a.type<>'oauth' OR LOWER(BTRIM(COALESCE(a.credentials->>'auth_mode',''))) <> 'agentidentity')
+			AND a.updated_at=$4 AND $5 IN ('full','degraded','failed')
+			AND ($8=0 OR EXISTS(SELECT 1 FROM schedule_guard))
+			FOR UPDATE OF a
 		), changed AS (
 			UPDATE accounts SET schedulable=$3,updated_at=NOW()
-			WHERE id IN (SELECT account_id FROM owned)
-			AND deleted_at IS NULL AND platform='openai' AND type IN ('oauth','apikey')
-			AND parent_account_id IS NULL AND (type<>'oauth' OR LOWER(BTRIM(COALESCE(credentials->>'auth_mode',''))) <> 'agentidentity')
-			AND updated_at=$4 AND $5 NOT IN ('cancelled','stale')
-			AND ($8=0 OR EXISTS(SELECT 1 FROM schedule_guard))
+			WHERE id IN (SELECT id FROM eligible) AND $5 IN ('full','degraded')
 			RETURNING id,schedulable
 		), recorded AS (
 			UPDATE codex_quality_tests SET
 				result=$6::jsonb || jsonb_build_object(
 					'scheduling_applied',EXISTS(SELECT 1 FROM changed),
-					'schedulable',COALESCE((SELECT schedulable FROM changed),false),
+					'schedulable',COALESCE((SELECT schedulable FROM changed),(SELECT schedulable FROM eligible),false),
 					'status',CASE WHEN $5='cancelled' THEN 'cancelled'
+						WHEN $5='failed' AND EXISTS(SELECT 1 FROM eligible) THEN 'failed'
 						WHEN EXISTS(SELECT 1 FROM changed) THEN $5 ELSE 'stale' END),
 				lease_until=NOW(),updated_at=NOW()
 			WHERE account_id IN (SELECT account_id FROM owned)
@@ -101,7 +107,7 @@ func (r *accountRepository) FinishCodexQualityTest(ctx context.Context, account 
 	if result.SchedulingApplied {
 		r.syncSchedulerAccountSnapshot(ctx, account.ID)
 	}
-	return result.SchedulingApplied, nil
+	return result.SchedulingApplied || result.Status == "failed", nil
 }
 
 // ListCodexQualityResults 只读当前可见账号的最近结果，不将长回答放入调度缓存。

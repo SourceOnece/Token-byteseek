@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { reactive } from 'vue'
 import CodexQualityTestModal from '../CodexQualityTestModal.vue'
 
 const { runBatch, getModels } = vi.hoisted(() => ({ runBatch: vi.fn(), getModels: vi.fn() }))
+const admin = reactive({ user: { id: 7 } })
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => admin }))
 vi.mock('@/api/admin', () => ({ adminAPI: { accounts: { getAvailableModels: getModels } } }))
 vi.mock('@/api/admin/codexQuality', async () => ({
   ...await vi.importActual<typeof import('@/api/admin/codexQuality')>('@/api/admin/codexQuality'), runCodexQualityBatch: runBatch
@@ -22,7 +25,52 @@ const create = () => mount(CodexQualityTestModal, {
 })
 
 describe('CodexQualityTestModal', () => {
-  beforeEach(() => { getModels.mockResolvedValue([{ id: 'gpt-6-astra' }]); runBatch.mockReset() })
+  beforeEach(() => { localStorage.clear(); admin.user.id = 7; getModels.mockReset(); getModels.mockResolvedValue([{ id: 'gpt-6-astra' }]); runBatch.mockReset() })
+  it('重新挂载和换账号选择仍恢复七项配置，但不自动确认或执行', async () => {
+    const wrapper = create()
+    await wrapper.setProps({ show: true }); await flushPromises()
+    wrapper.getComponent('#quality-model').vm.$emit('update:modelValue', 'custom-model')
+    wrapper.getComponent('#quality-effort').vm.$emit('update:modelValue', 'high')
+    wrapper.getComponent('#quality-protocol').vm.$emit('update:modelValue', 'chat_completions')
+    wrapper.getComponent('#quality-concurrency').vm.$emit('update:modelValue', 4)
+    await wrapper.get('#quality-timeout').setValue('300')
+    await wrapper.get('#quality-prompt').setValue('保留多行\n测试')
+    await wrapper.get('#quality-keyword').setValue('关键词')
+    await wrapper.get('[data-testid="quality-confirm"]').setValue(true)
+    wrapper.unmount()
+
+    getModels.mockRejectedValue(new Error('offline'))
+    const restored = create()
+    await restored.setProps({ show: true, accountIds: [99] }); await flushPromises()
+    expect(restored.getComponent('#quality-model').props('modelValue')).toBe('custom-model')
+    expect(restored.getComponent('#quality-effort').props('modelValue')).toBe('high')
+    expect(restored.getComponent('#quality-protocol').props('modelValue')).toBe('chat_completions')
+    expect(restored.getComponent('#quality-concurrency').props('modelValue')).toBe(4)
+    expect(restored.get<HTMLInputElement>('#quality-timeout').element.value).toBe('300')
+    expect(restored.get<HTMLTextAreaElement>('#quality-prompt').element.value).toBe('保留多行\n测试')
+    expect(restored.get<HTMLInputElement>('#quality-keyword').element.value).toBe('关键词')
+    expect(restored.get<HTMLInputElement>('[data-testid="quality-confirm"]').element.checked).toBe(false)
+    expect(runBatch).not.toHaveBeenCalled()
+    runBatch.mockResolvedValue(undefined)
+    await restored.get('[data-testid="quality-confirm"]').setValue(true)
+    await restored.get('[data-testid="quality-start"]').trigger('click'); await flushPromises()
+    expect(runBatch.mock.calls[0][0]).toMatchObject({ account_ids: [99], model: 'custom-model', timeout_seconds: 300 })
+    restored.unmount()
+  })
+  it('打开期间换管理员清空他人题目，切回可恢复且确认不记住', async () => {
+    const wrapper = create()
+    await wrapper.setProps({ show: true }); await flushPromises()
+    await wrapper.get('#quality-prompt').setValue('管理员7题目')
+    await wrapper.get('#quality-keyword').setValue('答案7')
+    await wrapper.get('[data-testid="quality-confirm"]').setValue(true)
+    admin.user.id = 8; await flushPromises()
+    expect(wrapper.get<HTMLTextAreaElement>('#quality-prompt').element.value).toBe('')
+    expect(wrapper.get<HTMLInputElement>('[data-testid="quality-confirm"]').element.checked).toBe(false)
+    await wrapper.get('#quality-prompt').setValue('管理员8题目')
+    admin.user.id = 7; await flushPromises()
+    expect(wrapper.get<HTMLTextAreaElement>('#quality-prompt').element.value).toBe('管理员7题目')
+    wrapper.unmount()
+  })
   it('显式确认才允许改调度，发送模型题目关键词与冻结账号', async () => {
     runBatch.mockResolvedValue(undefined)
     const wrapper = create()

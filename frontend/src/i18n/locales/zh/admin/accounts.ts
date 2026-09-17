@@ -16,7 +16,7 @@ export default {
           title: 'Codex 定时检测', description: '在服务器后台按间隔检测，关闭页面不影响执行。计划固定账号清单，每轮保存独立结果并按关键词修改调度。',
           create: '创建定时计划', name: '计划名称', interval: '检测间隔（分钟）', keep: '保留最近轮数', selected: '已选 {count} 个账号',
           selectAll: '全选符合条件账号', fixedSelection: '最多 500 个；全选保存当前符合条件的账号，不包含以后新加账号。影子与 Agent Identity 不可选。',
-          enabled: '已启用', paused: '已暂停', enable: '启用检测', pause: '暂停检测', runNow: '立即检测', confirm: '确认周期性消耗所选账号额度，并在每轮将满血开启调度、降智或失败关闭调度。首次在所设间隔后执行；上一轮完成后再计时，不重叠。',
+          enabled: '已启用', paused: '已暂停', enable: '启用检测', pause: '暂停检测', runNow: '立即检测', confirm: '确认周期性消耗所选账号额度：满血开启调度，仅降智关闭调度；测试失败保持原调度状态。首次在所设间隔后执行；上一轮完成后再计时，不重叠。',
           empty: '暂无定时计划', intervalValue: '每 {minutes} 分钟 · 固定 {count} 个账号', next: '下次执行', running: '本轮检测中', history: '查看每轮结果', noRuns: '尚未到执行时间，暂无历史',
           runStatus: { running: '检测中', completed: '已完成', interrupted: '已中断', failed: '执行异常' }
         },
@@ -25,7 +25,8 @@ export default {
         disclaimer: '“满血 / 降智”仅为你的关键词判定，不代表客观模型能力。未选账号不受影响，其他平台、影子及 Agent Identity 账号跳过。',
         model: '测试模型', effort: '思考等级', effortDefault: '上游默认（不传）', concurrency: '并发数量',
         prompt: '测试题目', keyword: '判定关键词', keywordHint: '完整可见回答中包含此关键词即为满血；区分大小写，按字面包含，不是正则。题目与推理摘要不参与匹配。',
-        confirm: '我确认：满血开启调度；未命中或测试失败关闭调度。这不会清除账号禁用、过期或额度限制。',
+        rememberHint: '测试配置（含题目与关键词）会按管理员保存在本浏览器，清理浏览器数据后需重新填写。账号选择和确认勾选不记住。',
+        confirm: '我确认：满血开启调度；仅降智关闭调度；测试失败保持原调度状态。这不会清除账号禁用、过期或额度限制。',
         rate: '本批满血率', rateHint: '满血率 = 满血 ÷（满血 + 降智 + 测试失败）。跳过、取消和过时结果不计入。',
         status: { full: '满血', degraded: '降智', failed: '测试失败', skipped: '已跳过', cancelled: '已取消', stale: '结果过时' },
         noAnswer: '没有可展示的回答', schedulingOn: '已开启调度开关，其他账号限制仍有效', schedulingOff: '已关闭调度开关', schedulingUnchanged: '本结果未应用调度变更',

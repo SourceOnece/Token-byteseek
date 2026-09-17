@@ -5,6 +5,7 @@
         {{ t('admin.accounts.quality.warning', { count: targetIds.length, seconds: timeoutSeconds }) }}
       </p>
       <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.disclaimer') }}</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.rememberHint') }}</p>
       <div class="sm:max-w-sm"><label class="input-label text-bh-blue dark:text-blue-300" for="quality-protocol">{{ t('admin.accounts.quality.protocol') }}</label><Select id="quality-protocol" v-model="protocol" :options="protocols" :disabled="running" /></div>
       <div class="quality-fields grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
@@ -61,16 +62,19 @@ import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
 import { adminAPI } from '@/api/admin'
+import { useAuthStore } from '@/stores/auth'
 import { getModelsByPlatform } from '@/composables/useModelWhitelist'
 import { qualityStats, runCodexQualityBatch, type CodexQualityResult } from '@/api/admin/codexQuality'
 import CodexQualitySummary from './CodexQualitySummary.vue'
 import CodexQualityProgress from './CodexQualityProgress.vue'
 import CodexQualityResultsDialog from './CodexQualityResultsDialog.vue'
 import { qualityProtocolOptions } from './codexQualityPresentation'
+import { loadQualityPreferences, saveQualityPreferences } from './codexQualityPreferences'
 
 const props = defineProps<{ show: boolean; accountIds: number[] }>()
 const emit = defineEmits<{ close: []; result: [result: CodexQualityResult]; finished: [] }>()
 const { t } = useI18n()
+const authStore = useAuthStore()
 const targetIds = ref<number[]>([])
 const model = ref('gpt-6-astra')
 const effort = ref('')
@@ -99,10 +103,22 @@ const stats = computed(() => { const value = qualityStats(results.value); return
 const canStart = computed(() => confirmed.value && model.value.trim() && prompt.value.trim() && keyword.value.trim() && targetIds.value.length > 0 && targetIds.value.length <= 500 && Number.isInteger(timeoutSeconds.value) && timeoutSeconds.value >= 10 && timeoutSeconds.value <= 3600)
 let controller: AbortController | null = null
 let generation = 0
+let preferencesReady = false
+let preferencesOwner: number | undefined
 
-watch(() => props.show, async show => {
+// 显式打开/换管理员时恢复配置；确认框和本轮账号集合始终重新初始化。
+watch([() => props.show, () => authStore.user?.id], async ([show, adminId]) => {
   const version = ++generation
-  if (!show) { controller?.abort(); return }
+  controller?.abort()
+  preferencesReady = false
+  if (!show) return
+  preferencesOwner = adminId
+  const previous = loadQualityPreferences(adminId)
+  model.value = previous.model; effort.value = previous.effort; protocol.value = previous.protocol
+  prompt.value = previous.prompt; keyword.value = previous.keyword
+  concurrency.value = previous.concurrency; timeoutSeconds.value = previous.timeoutSeconds
+  if (!models.value.some(item => item.value === model.value)) models.value = [{ value: model.value, label: model.value }, ...models.value]
+  preferencesReady = true
   // 打开时冻结选中集合，测试中勾选其它账号不会扩大操作范围。
   targetIds.value = [...new Set(props.accountIds)]
   results.value = []; category.value = null; error.value = ''; completed.value = false; confirmed.value = false
@@ -111,10 +127,17 @@ watch(() => props.show, async show => {
     if (!targetIds.value.length) return
     const options = await adminAPI.accounts.getAvailableModels(targetIds.value[0])
     if (version !== generation) return
-    models.value = [...new Set(['gpt-6-astra', ...options.map(item => item.id)])]
+    models.value = [...new Set([model.value, 'gpt-6-astra', ...options.map(item => item.id)])]
       .filter(id => !id.includes('image')).map(value => ({ value, label: value }))
   } catch { /* 模型目录失败仍允许自研 Select 输入模型 ID。 */ }
-})
+}, { immediate: true })
+
+// 同步保存避免紧接着关闭/跳页时遗漏最后一次输入；恢复期间不把默认值写回。
+watch([model, effort, protocol, prompt, keyword, concurrency, timeoutSeconds], () => {
+  if (!preferencesReady || !props.show || preferencesOwner !== authStore.user?.id) return
+  saveQualityPreferences(preferencesOwner, { model: model.value, effort: effort.value, protocol: protocol.value,
+    prompt: prompt.value, keyword: keyword.value, concurrency: concurrency.value, timeoutSeconds: timeoutSeconds.value })
+}, { flush: 'sync' })
 
 async function start() {
   if (!canStart.value || running.value) return

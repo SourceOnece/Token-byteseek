@@ -79,10 +79,11 @@ func TestCodexQualityCompleteAnswerOnly(t *testing.T) {
 
 type qualityRepoStub struct {
 	AccountRepository
-	account   *Account
-	saved     *CodexQualityResult
-	finishErr error
-	onGet     func() *Account
+	account      *Account
+	saved        *CodexQualityResult
+	finishErr    error
+	onGet        func() *Account
+	rejectFinish bool
 }
 
 func (r *qualityRepoStub) GetByID(context.Context, int64) (*Account, error) {
@@ -94,14 +95,20 @@ func (r *qualityRepoStub) GetByID(context.Context, int64) (*Account, error) {
 func (r *qualityRepoStub) AcquireCodexQualityTest(context.Context, int64, string, int) (bool, error) {
 	return true, nil
 }
-func (r *qualityRepoStub) FinishCodexQualityTest(_ context.Context, _ *Account, _ string, result *CodexQualityResult) (bool, error) {
+func (r *qualityRepoStub) FinishCodexQualityTest(_ context.Context, account *Account, _ string, result *CodexQualityResult) (bool, error) {
 	r.saved = result
 	if r.finishErr != nil {
 		return false, r.finishErr
 	}
-	result.SchedulingApplied = result.Status != "cancelled" && result.Status != "stale"
-	result.Schedulable = result.Status == "full"
-	return result.SchedulingApplied, nil
+	if r.rejectFinish {
+		return false, nil
+	}
+	result.SchedulingApplied = result.Status == "full" || result.Status == "degraded"
+	result.Schedulable = account.Schedulable
+	if result.SchedulingApplied {
+		result.Schedulable = result.Status == "full"
+	}
+	return result.SchedulingApplied || result.Status == "failed", nil
 }
 func (r *qualityRepoStub) ListCodexQualityResults(context.Context, []int64, bool) ([]*CodexQualityResult, error) {
 	return nil, nil
@@ -125,7 +132,7 @@ func TestCodexQualityRunClassifiesAndSendsEffort(t *testing.T) {
 			result := svc.RunCodexQualityTest(context.Background(), 1, &opts)
 			require.Equal(t, tt.status, result.Status)
 			require.Equal(t, tt.status == "full", result.Schedulable)
-			require.True(t, result.SchedulingApplied)
+			require.Equal(t, tt.status != "failed", result.SchedulingApplied)
 			require.Equal(t, "test@example.invalid", result.Email)
 			require.Len(t, up.requests, 1)
 			requestBody, err := io.ReadAll(up.requests[0].Body)
@@ -172,6 +179,29 @@ func TestCodexQualityBatchLock(t *testing.T) {
 	svc.EndCodexQualityBatch()
 	require.True(t, svc.BeginCodexQualityBatch())
 	svc.EndCodexQualityBatch()
+}
+
+func TestCodexQualityFailurePreservesSchedulingAndStillReportsFailure(t *testing.T) {
+	for _, enabled := range []bool{true, false} {
+		for _, reject := range []bool{false, true} {
+			t.Run(fmt.Sprintf("enabled=%t/rejected=%t", enabled, reject), func(t *testing.T) {
+				account := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth, Schedulable: enabled, Credentials: map[string]any{"access_token": "fake"}}
+				repo := &qualityRepoStub{account: account, rejectFinish: reject}
+				up := &queuedHTTPUpstream{responses: []*http.Response{newJSONResponse(429, `{"error":{"message":"overloaded"}}`)}}
+				svc := &AccountTestService{accountRepo: repo, httpUpstream: up, openAIGatewayService: &OpenAIGatewayService{}}
+				opts := validQualityRequest()
+				result := svc.RunCodexQualityTest(context.Background(), 1, &opts)
+				require.False(t, result.SchedulingApplied)
+				if reject {
+					require.Equal(t, "stale", result.Status)
+				} else {
+					require.Equal(t, "failed", result.Status)
+					require.Equal(t, enabled, result.Schedulable)
+				}
+				require.Equal(t, enabled, account.Schedulable)
+			})
+		}
+	}
 }
 
 func TestCodexQualityEligibilityIncludesAPIKey(t *testing.T) {
