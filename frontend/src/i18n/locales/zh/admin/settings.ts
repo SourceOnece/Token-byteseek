@@ -1,6 +1,16 @@
 export default {
 // Settings
     settings: {
+      codexTicket: {
+        title: '292 打票（可选）',
+        description: '默认关闭。开启后为可调度的独立 OpenAI OAuth 账号采集 Astra/Sol 票据；关闭后不采集、不注入，保留原转发。',
+        warning: '探测可能消耗上游额度。每轮最多 4 路，单账号模型至少间隔 1 分钟，票据最多缓存 1 小时。仅补充缺失的回合状态头；缺票不关闭调度，也不保证满血或消除 overloaded。多实例设置最长约 2 秒生效。',
+        proxy: '采集代理地址（仅采集使用）',
+        configured: '已配置，密码不回显。留空保留原代理；业务请求仍使用账号原代理。',
+        notConfigured: '未配置。开启前填写 HTTP(S)/SOCKS5(h) 代理地址，代理凭据加密保存。',
+        clearProxy: '清除已保存代理（需关闭功能或填写新代理）',
+        save: '单独保存票据设置', saved: '票据设置已保存'
+      },
       title: '系统设置',
       description: '管理注册、邮箱验证、默认值和 SMTP 设置',
       tabs: {

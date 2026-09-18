@@ -11,6 +11,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apicompat"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/ctxkey"
 	"github.com/TokenFlux/TokenRouter/internal/util/urlvalidator"
 	"github.com/gin-gonic/gin"
@@ -159,7 +160,24 @@ func normalizeDeepSeekResponsesRequestBody(account *Account, body []byte) []byte
 	if stripped, err := sjson.DeleteBytes(normalized, "previous_response_id"); err == nil {
 		normalized = stripped
 	}
-	return normalized
+	// 工具图片移位仅针对 DeepSeek，不扩散至同用无状态规范化的 Kimi/MiniMax。
+	if account.Platform != PlatformDeepseek {
+		return normalized
+	}
+	var requestBody map[string]any
+	if decodeOpenAIJSONUseNumber(normalized, &requestBody) != nil {
+		return normalized
+	}
+	lifted, changed := apicompat.LiftResponsesToolOutputMedia(requestBody["input"])
+	if !changed {
+		return normalized
+	}
+	requestBody["input"] = lifted
+	rebuilt, err := marshalOpenAIUpstreamJSON(requestBody)
+	if err != nil {
+		return normalized
+	}
+	return rebuilt
 }
 
 // trimOpenAIEncryptedReasoningItems 清理一次性解密错误恢复中的账号绑定状态：

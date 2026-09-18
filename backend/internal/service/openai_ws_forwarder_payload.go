@@ -181,6 +181,9 @@ func (s *OpenAIGatewayService) buildOpenAIWSHeaders(
 	// 隔离不兼容握手。
 	applyOpenAICodexBetaFeatures(c, account, headers)
 	setOpenAICodexRoutingHint(headers, account, routingModel, routingServiceTier)
+	if tickets := s.codexTickets.Load(); tickets != nil {
+		tickets.Apply(ctx, account, routingModel, headers)
+	}
 	logOpenAIRoutingDiagnostics(
 		ctx,
 		account,

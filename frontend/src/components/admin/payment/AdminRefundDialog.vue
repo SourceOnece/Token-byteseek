@@ -212,7 +212,8 @@ const maxRefundable = computed(() => {
 
 const balanceInsufficient = computed(() => {
   if (props.userBalance == null || !props.order) return false
-  return props.userBalance < props.order.amount
+  // 部分退款按本次金额判断，不拿整笔订单金额误报余额不足。
+  return props.userBalance < form.amount
 })
 
 const refundInputSymbol = computed(() => {

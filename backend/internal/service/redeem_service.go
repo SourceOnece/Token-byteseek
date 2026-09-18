@@ -723,6 +723,11 @@ func (s *RedeemService) GetStats(ctx context.Context) (map[string]any, error) {
 	return stats, nil
 }
 
+// 分页使用本地兑换使用记录，保留一码多用和套餐，不改成上游 used_by 单人语义。
+func (s *RedeemService) GetUserHistoryPaginated(ctx context.Context, userID int64, params pagination.PaginationParams) ([]RedeemCode, *pagination.PaginationResult, error) {
+	return s.redeemRepo.ListByUserPaginated(ctx, userID, params, "")
+}
+
 // GetUserHistory 获取用户的兑换历史
 func (s *RedeemService) GetUserHistory(ctx context.Context, userID int64, limit int) ([]RedeemCode, error) {
 	codes, err := s.redeemRepo.ListByUser(ctx, userID, limit)

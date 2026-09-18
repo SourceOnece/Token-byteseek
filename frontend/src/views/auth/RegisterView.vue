@@ -422,7 +422,10 @@ const confirmPassword = ref('')
 // Public settings
 const registrationEnabled = ref<boolean>(true)
 const emailVerifyEnabled = ref<boolean>(false)
-const promoCodeEnabled = ref<boolean>(true)
+// 首屏沿用已注入的公开设置；缺少设置时先隐藏优惠码，避免异步加载时闪烁。
+const promoCodeEnabled = ref<boolean>(
+  appStore.cachedPublicSettings?.promo_code_enabled === true
+)
 const invitationCodeEnabled = ref<boolean>(false)
 const affiliateEnabled = ref<boolean>(false)
 const turnstileEnabled = ref<boolean>(false)

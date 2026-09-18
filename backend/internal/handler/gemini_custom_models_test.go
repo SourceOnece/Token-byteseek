@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/antigravity"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/gemini"
 	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
 	"github.com/TokenFlux/TokenRouter/internal/service"
@@ -93,13 +92,19 @@ func TestGeminiV1BetaListModels_ForcedAntigravityIgnoresCustomGroupList(t *testi
 		},
 	})
 	c.Set(string(middleware.ContextKeyForcePlatform), service.PlatformAntigravity)
-
-	(&GatewayHandler{}).GeminiV1BetaListModels(c)
+	id := int64(45)
+	key, _ := middleware.GetAPIKeyFromContext(c)
+	key.GroupID = &id
+	repo := &geminiAllowlistAccountRepoStub{gatewayModelsAccountRepoStub: gatewayModelsAccountRepoStub{byGroup: map[int64][]service.Account{id: {{ID: 1, Platform: service.PlatformAntigravity, Credentials: map[string]any{"model_mapping": map[string]any{"gemini-actual": "gemini-3.8-flash-high"}}}}}}}
+	h := &GatewayHandler{geminiCompatService: service.NewGeminiMessagesCompatService(repo, nil, nil, nil, nil, nil, nil, nil, nil)}
+	h.GeminiV1BetaListModels(c)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	var got antigravity.GeminiModelsListResponse
+	var got gemini.ModelsListResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-	require.Equal(t, antigravity.FallbackGeminiModelsList(), got)
+	// 本地账号映射保留默认模型并追加别名；专用路由不能被分组展示列表取代。
+	require.Contains(t, got.Models, gemini.FallbackModel("gemini-actual"))
+	require.NotContains(t, got.Models, gemini.FallbackModel("gemini-custom"))
 }
 
 func TestCustomGeminiModelsList_DisabledKeepsExistingFlow(t *testing.T) {

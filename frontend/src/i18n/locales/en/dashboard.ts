@@ -587,6 +587,7 @@ export default {
     subscriptionDays: '{days} days',
     days: ' days',
     codeRedeemSuccess: 'Code redeemed successfully!',
+    historyLoadFailed: 'Failed to load activity. Please try again.',
     codeExpired: 'This redeem code has expired',
     codeMaxUsed: 'This redeem code has reached its redemption limit',
     codeAlreadyUsed: 'You have already redeemed this code',

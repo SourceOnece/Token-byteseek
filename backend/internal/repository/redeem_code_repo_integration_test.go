@@ -391,6 +391,35 @@ func (s *RedeemCodeRepoSuite) TestListByUser_WithPlanPreload() {
 	s.Require().Equal(plan.ID, codes[0].Plan.ID)
 }
 
+// 分页按使用记录而非码的最后使用人，多个用户兑换同一码仍分别可见，套餐元数据不丢失。
+func (s *RedeemCodeRepoSuite) TestListByUserPaginated_UsageIsolationAndStableOrder() {
+	user := s.createUser(uniqueTestValue(s.T(), "pages") + "@example.com")
+	other := s.createUser(uniqueTestValue(s.T(), "other") + "@example.com")
+	plan := s.createPlan(uniqueTestValue(s.T(), "page-plan"))
+	now := time.Now().UTC()
+	first := s.createUsedCode(service.RedeemTypeBalance, "PAGE-FIRST", user.ID, now, nil)
+	second := s.createUsedCode(service.RedeemTypeSubscription, "PAGE-SHARED", user.ID, now, &plan.ID)
+	_, err := s.client.RedeemCode.UpdateOneID(second.ID).SetMaxUses(2).SetUsedCount(2).SetUsedBy(other.ID).Save(s.ctx)
+	s.Require().NoError(err)
+	_, err = s.client.RedeemCodeUsage.Create().SetRedeemCodeID(second.ID).SetUserID(other.ID).SetUsedAt(now.Add(time.Minute)).Save(s.ctx)
+	s.Require().NoError(err)
+	page, meta, err := s.repo.ListByUserPaginated(s.ctx, user.ID, pagination.PaginationParams{Page: 1, PageSize: 1}, "")
+	s.Require().NoError(err)
+	s.Require().Equal(int64(2), meta.Total)
+	s.Require().Len(page, 1)
+	s.Require().Equal(second.ID, page[0].ID)
+	s.Require().NotNil(page[0].Plan)
+	s.Require().Equal(plan.ID, page[0].Plan.ID)
+	s.Require().Equal(user.ID, *page[0].UsedBy)
+	page, _, err = s.repo.ListByUserPaginated(s.ctx, user.ID, pagination.PaginationParams{Page: 2, PageSize: 1}, "")
+	s.Require().NoError(err)
+	s.Require().Equal(first.ID, page[0].ID)
+	page, meta, err = s.repo.ListByUserPaginated(s.ctx, other.ID, pagination.PaginationParams{Page: 1, PageSize: 20}, "")
+	s.Require().NoError(err)
+	s.Require().Equal(int64(1), meta.Total)
+	s.Require().Equal(other.ID, *page[0].UsedBy)
+}
+
 func (s *RedeemCodeRepoSuite) TestListByUser_DefaultLimit() {
 	user := s.createUser(uniqueTestValue(s.T(), "deflimit") + "@example.com")
 	s.createUsedCode(service.RedeemTypeBalance, "DEF-LIM", user.ID, time.Now(), nil)

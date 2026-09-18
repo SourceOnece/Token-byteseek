@@ -301,6 +301,9 @@
               {{ t('redeem.historyWillAppear') }}
             </p>
           </div>
+          <!-- 沿用项目分页组件和自研 Select，不引入上游的原生选择框。 -->
+          <Pagination :page="historyPage" :page-size="historyPageSize" :total="historyTotal" :page-size-options="[20, 50, 100]"
+            @update:page="fetchHistory($event)" @update:page-size="fetchHistory(1, $event)" />
         </div>
       </div>
     </div>
@@ -308,7 +311,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
@@ -318,6 +321,7 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import BalanceIcon from '@/components/common/BalanceIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
+import Pagination from '@/components/common/Pagination.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { formatDateTime } from '@/utils/format'
 
@@ -337,6 +341,11 @@ const errorMessage = ref('')
 // History data
 const history = ref<RedeemHistoryItem[]>([])
 const loadingHistory = ref(false)
+const historyPage = ref(1)
+const historyPageSize = ref(20)
+const historyTotal = ref(0)
+let historyRequest = 0
+onBeforeUnmount(() => { historyRequest++ })
 const redeemErrorMap = computed<Record<string, string>>(() => ({
   REDEEM_CODE_EXPIRED: t('redeem.codeExpired'),
   REDEEM_CODE_MAX_USED: t('redeem.codeMaxUsed'),
@@ -390,14 +399,22 @@ const formatSignedBalanceAmount = (value: number, fractionDigits: number) => {
   return `${sign}${formatBalanceAmount(Math.abs(value), { fractionDigits })}`
 }
 
-const fetchHistory = async () => {
+const fetchHistory = async (page = 1, pageSize = historyPageSize.value) => {
+  const request = ++historyRequest
   loadingHistory.value = true
   try {
-    history.value = await redeemAPI.getHistory()
+    const result = await redeemAPI.getHistoryPage(page, pageSize)
+    if (request !== historyRequest) return
+    history.value = result.items
+    historyPage.value = page
+    historyPageSize.value = pageSize
+    historyTotal.value = result.total
   } catch (error) {
+    if (request !== historyRequest) return
+    appStore.showError(t('redeem.historyLoadFailed'))
     console.error('Failed to fetch history:', error)
   } finally {
-    loadingHistory.value = false
+    if (request === historyRequest) loadingHistory.value = false
   }
 }
 

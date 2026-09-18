@@ -327,9 +327,9 @@ func (s *AccountRepoSuite) TestListOAuthRefreshCandidatePage_GrokCursorAndExclus
 			"expires_at":    now.Add(30 * time.Minute).Format(time.RFC3339),
 		},
 	})
-	// 永久关闭调度的 OAuth 账号即使带 refresh token，也不能占用刷新分页容量。
+	// 暂停账号仍参与令牌维护，分页和原调度状态都需保留。
 	unschedulable := mustCreateAccount(s.T(), s.client, &service.Account{
-		Name:        "grok-oauth-unschedulable-excluded",
+		Name:        "grok-oauth-paused-refreshable",
 		Platform:    service.PlatformGrok,
 		Type:        service.AccountTypeOAuth,
 		Status:      service.StatusActive,
@@ -394,15 +394,15 @@ func (s *AccountRepoSuite) TestListOAuthRefreshCandidatePage_GrokCursorAndExclus
 	s.Require().NoError(err)
 	first := firstPage.Accounts
 	s.Require().Len(first, 2)
-	s.Require().Equal([]int64{valid1.ID, valid2.ID}, []int64{first[0].ID, first[1].ID})
-	s.Require().NotContains([]int64{first[0].ID, first[1].ID}, unschedulable.ID)
+	s.Require().Equal([]int64{valid1.ID, unschedulable.ID}, []int64{first[0].ID, first[1].ID})
+	s.Require().False(first[1].Schedulable)
 
 	options.AfterID = first[len(first)-1].ID
 	secondPage, err := s.repo.ListOAuthRefreshCandidatePage(s.ctx, options)
 	s.Require().NoError(err)
 	second := secondPage.Accounts
-	s.Require().Len(second, 1)
-	s.Require().Equal(valid3.ID, second[0].ID)
+	s.Require().Len(second, 2)
+	s.Require().Equal([]int64{valid2.ID, valid3.ID}, []int64{second[0].ID, second[1].ID})
 	s.Require().NotContains([]int64{first[0].ID, first[1].ID}, second[0].ID)
 }
 

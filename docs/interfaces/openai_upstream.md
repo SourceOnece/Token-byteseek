@@ -13,6 +13,9 @@
 
 ## 账号与凭据
 
+<a id="codex_ticket_opt_in"></a>
+可选“292 打票”通过独立管理员设置开启，默认关闭；实现及与上游不同的保守行为见 [Codex 可选票据](codex_ticket.md#ticket_contract)。不属于账号权限、质量检测或 TLS 模板；不可将票据长度当成满血证明。
+
 管理员加号时可从 AT/ID Token 的顶层 email 或 `https://api.openai.com/profile.email` 补全邮箱展示；授权码/RT 换出的 TokenInfo 缺失邮箱时先作本地解码，原官方账号信息补全仍保留。手动 AT/auth.json 创建和导入也补缺失邮箱，已有邮箱不覆盖；导入当次先生成既有去重键再补展示，避免改动本次 RT/AT 匹配规则。JWT 本地解码不验证签名，邮箱仅为管理信息，不构成真实所有权或凭据有效性的证明。无法解码的 opaque token 不猜测邮箱，也不新增未经确认的外部请求。前端 AT 输入可本地预览邮箱，账号管理在满血测试右侧独立列显示，缺失为“未获取”。
 
 OpenAI 正式支持 `oauth` 与 `apikey`。OAuth 账号保存 access/refresh token、账号/组织上下文和 Codex 能力元数据，后台与请求路径都可触发刷新；API Key 账号保存 key、base URL、工作负载能力、文本协议路由和 Responses 探测事实。其它通用导入类型不构成 OpenAI 转发支持，详见[上游账号能力矩阵](upstream_account_matrix.md)。
@@ -29,6 +32,8 @@ OpenAI 兼容请求的显式粘性会话头按 `session-id`、`session_id`、`co
 隐私设置、accounts/check 与订阅到期补全的专用 `CreatePrivacyReqClient` 使用 Firefox 浏览器配置；普通 OAuth 刷新工厂、网关 HTTPUpstream 和账号 TLS 模板不变。403/503 的 `cf-mitigated: challenge` 明确记为挑战失败，账号信息错误警告只记录状态和挑战标识，不记录新响应正文。仍为 best-effort 补全，不保证特定出口可通过，失败不冒充隐私或套餐成功。
 
 ## 协议与传输
+
+严格的原生 Chat 目标（DeepSeek/Kimi/Zhipu 账号，或精确命中受支持的官方主机）将不被支持的 `developer` 角色改为 `system`；其它 OpenAI 兼容主机保持原样，正文其它字段和大整数不丢失。DeepSeek 原生 Responses 还将工具结果图片移到后续 user 图片消息，并把并行工具输出保持连续；只修改该平台当次出站副本，不改变 Kimi/MiniMax 或下一次故障转移的原始输入。
 
 OpenAI 平台拥有以下正式协议族：
 
@@ -162,6 +167,8 @@ OAuth 账号的 5 小时、7 天等上游窗口和重置时间保存在账号运
 管理 API 的 `GET /admin/openai/accounts/:id/quota` 保持只读；账号列表使用 `POST /admin/openai/accounts/:id/quota/refresh` 查询上游并把重置次数写入 `account.extra.codex_reset_credit_snapshot`。正数次数只有同时取得到期明细时才覆盖快照，前端水合时过滤已过期明细并把次数收敛到仍有效的卡片数量。该 extra 键只用于展示缓存，不触发调度 outbox；Spark 影子账号的查询可解析母账号额度，但快照仍写在被查询的行上，且列表继续只提供查询入口，不提供真实重置按钮。
 
 ## 失败与诊断
+
+HTTP 回答完成后保存 response→account 和 owner 关联时，使用脱离客户端取消信号的有界上下文；客户端刚好断开也尽量完成续聊索引。原用户/API Key 归属规则、上游请求取消与缓存过期策略不变，不在此处重新发送或重复计费。
 
 合成 Responses SSE/WS 错误事件包含 `sequence_number`，避免严格客户端因缺字段无法识别终态；未知上一帧时使用 0，Compact 合成完整流从 0 递增。它只补齐本地合成事件，不重新编号官方透传事件，也不恢复 Metadata 实验。
 

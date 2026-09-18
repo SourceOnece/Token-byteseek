@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"strconv"
+
 	"github.com/TokenFlux/TokenRouter/internal/handler/dto"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/response"
 	middleware2 "github.com/TokenFlux/TokenRouter/internal/server/middleware"
 	"github.com/TokenFlux/TokenRouter/internal/service"
@@ -65,6 +68,39 @@ func (h *RedeemHandler) GetHistory(c *gin.Context) {
 	subject, ok := middleware2.GetAuthSubjectFromContext(c)
 	if !ok {
 		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	// 未请求分页的客户端仍拿旧数组，显式传分页参数时才扩展响应。
+	if c.Request.URL.Query().Has("page") || c.Request.URL.Query().Has("page_size") {
+		page, pageSize := 1, 20
+		for name, target := range map[string]*int{"page": &page, "page_size": &pageSize} {
+			if raw, exists := c.GetQuery(name); exists {
+				value, err := strconv.Atoi(raw)
+				if err != nil || value < 1 {
+					response.BadRequest(c, "Invalid "+name)
+					return
+				}
+				*target = value
+			}
+		}
+		if pageSize > 100 {
+			pageSize = 100
+		}
+		if page-1 > int(^uint(0)>>1)/pageSize {
+			response.BadRequest(c, "Invalid page")
+			return
+		}
+		codes, result, err := h.redeemService.GetUserHistoryPaginated(c.Request.Context(), subject.UserID, pagination.PaginationParams{Page: page, PageSize: pageSize})
+		if err != nil {
+			response.ErrorFrom(c, err)
+			return
+		}
+		out := make([]dto.RedeemCode, 0, len(codes))
+		for i := range codes {
+			out = append(out, *dto.RedeemCodeFromService(&codes[i]))
+		}
+		response.Paginated(c, out, result.Total, page, pageSize)
 		return
 	}
 

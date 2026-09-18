@@ -4,6 +4,9 @@ import { flushPromises, mount } from "@vue/test-utils";
 
 import SettingsView from "../SettingsView.vue";
 
+// 票据独立表单的读写在组件测试覆盖，不混入系统设置大表单的依赖替身。
+vi.mock('@/components/admin/settings/CodexTicketSettings.vue', () => ({ default: { template: '<section />' } }));
+
 const {
   getSettings,
   getCreativeModelCandidates,

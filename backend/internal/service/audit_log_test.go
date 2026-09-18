@@ -63,6 +63,17 @@ func TestRedactAuditBody_JSONRedactsSecrets(t *testing.T) {
 	}
 }
 
+// 打票代理使用独立的只写字段，用户名和密码均不可落到管理审计正文。
+func TestRedactAuditBody_CodexHarvestProxy(t *testing.T) {
+	out := RedactAuditBody([]byte(`{"enabled":true,"harvest_proxy_url":"socks5h://test-user:proxy-secret@host:1080"}`), "application/json")
+	if strings.Contains(out, "test-user") || strings.Contains(out, "proxy-secret") || strings.Contains(out, "host:1080") {
+		t.Fatalf("代理凭据未被完整脱敏: %s", out)
+	}
+	if !strings.Contains(out, `"enabled":true`) {
+		t.Fatalf("开关的非敏感状态应保留: %s", out)
+	}
+}
+
 // 裸键 "session"（Ollama Cloud 会话保存的请求体字段）值整体就是浏览器 Cookie 明文，
 // 必须命中键级脱敏；session_id 等运行态标识不受影响，保留以便追责。
 func TestRedactAuditBody_BareSessionKeyRedacted(t *testing.T) {

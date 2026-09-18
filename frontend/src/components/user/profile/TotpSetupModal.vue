@@ -136,6 +136,7 @@
                   :key="index"
                   :ref="(el) => setInputRef(el, index)"
                   data-testid="totp-digit-input"
+                  :value="code[index]"
                   type="text"
                   :maxlength="index === 0 ? 6 : 1"
                   inputmode="numeric"
@@ -175,6 +176,7 @@ import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { totpAPI } from '@/api'
+import { extractApiErrorMessage } from '@/utils/apiError'
 import type { TotpSetupResponse } from '@/types'
 import QRCode from 'qrcode'
 
@@ -333,7 +335,7 @@ const loadVerificationMethod = async () => {
     const method = await totpAPI.getVerificationMethod()
     verificationMethod.value = method.method
   } catch (err: any) {
-    appStore.showError(err.response?.data?.message || t('common.error'))
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
     emit('close')
   } finally {
     methodLoading.value = false
@@ -361,7 +363,7 @@ const handleSendCode = async () => {
       }
     }, 1000)
   } catch (err: any) {
-    appStore.showError(err.response?.data?.message || t('profile.totp.sendCodeFailed'))
+    appStore.showError(extractApiErrorMessage(err, t('profile.totp.sendCodeFailed')))
   } finally {
     sendingCode.value = false
   }
@@ -378,7 +380,7 @@ const handleVerifyAndSetup = async () => {
     setupData.value = await totpAPI.initiateSetup(request)
     step.value = 1
   } catch (err: any) {
-    appStore.showError(err.response?.data?.message || t('profile.totp.setupFailed'))
+    appStore.showError(extractApiErrorMessage(err, t('profile.totp.setupFailed')))
   } finally {
     setupLoading.value = false
   }
@@ -398,7 +400,7 @@ const handleVerify = async () => {
     appStore.showSuccess(t('profile.totp.enableSuccess'))
     emit('success')
   } catch (err: any) {
-    appStore.showError(err.response?.data?.message || t('profile.totp.verifyFailed'))
+    appStore.showError(extractApiErrorMessage(err, t('profile.totp.verifyFailed')))
     code.value = ['', '', '', '', '', '']
     inputRefs.value.forEach((input) => {
       if (input) input.value = ''

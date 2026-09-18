@@ -40,6 +40,8 @@ Claude Code 可把 base URL 指向部署地址的 `/antigravity`，认证值仍�
 
 ## 协议适配
 
+进入 Antigravity 转换器时，仅移除顶层 `system` 字符串或文本块开头的 `x-anthropic-billing-header:` 归属行，保留之后的系统指令；不扫描用户消息、工具结果或正文中段。原生 Anthropic 转发不使用此清理规则。
+
 混合内置搜索/代码执行与客户端函数工具时，v1internal 请求优先保留客户端函数，移除冲突的内置工具，不再强制切到纯搜索模型；只有内置搜索时沿用原搜索路径。无工具的推理请求也写出 `toolConfig`。这个限制不是所有 Gemini 接口的全局规则，只适用于本适配器。
 
 Antigravity 分组支持 Messages、Responses、Chat 和 Gemini GenerateContent，新建时默认启用 Messages 与 Gemini GenerateContent；四项都可关闭，迁移前已有分组启用四项。通用入口和 `/antigravity/*` 别名都按最终分组执行对应协议门禁；Gemini 模型列表 GET 不受生成协议开关影响。

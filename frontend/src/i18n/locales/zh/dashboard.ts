@@ -592,6 +592,7 @@ export default {
     subscriptionDays: '{days} 天',
     days: '天',
     codeRedeemSuccess: '兑换成功！',
+    historyLoadFailed: '加载兑换记录失败，请重试。',
     codeExpired: '该兑换码已过期',
     codeMaxUsed: '该兑换码已达到兑换上限',
     codeAlreadyUsed: '您已经兑换过该兑换码',

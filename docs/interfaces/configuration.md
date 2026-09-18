@@ -67,6 +67,8 @@ setup 使用 `DATA_DIR > 可写 /app/data > 当前目录` 选择 `config.yaml` �
 
 ## 数据库运行时设置
 
+可选 [Codex 292 票据](codex_ticket.md) 通过系统设置 → 网关服务 → OpenAI 的独立表单保存，缺省关闭。`codex_ticket_runtime` 不属于公开配置，采集代理经 `SecretEncryptor` 加密；保持多实例相同且固定的 `TOTP_ENCRYPTION_KEY`，共享 Redis。代理留空保留，清除必须明确勾选；关闭不会修改账号配置或调度。设置和采集的具体生效延迟、TTL、限制与失败放行见专题，不恢复历史 Metadata 补齐开关。
+
 `settings` 是 `key/value/updated_at` 表，删除键表示恢复该 getter 的默认语义。`SettingService` 负责类型解析、范围/组合校验、敏感值保留、批量原子写入和更新后的缓存通知；handler 只负责 HTTP binding、权限、审计和响应。
 
 运行时设置包括注册与邮件验证、第三方登录、SMTP、TOTP/session binding/step-up、登录协议、面板限流、部分冷却与流超时、支付展示以及各类功能开关。不同 getter 的回退可能来自代码常量或 `config.Config`，不能假设所有缺失键都等价于 `false`。

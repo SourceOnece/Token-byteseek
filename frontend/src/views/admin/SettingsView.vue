@@ -5421,6 +5421,7 @@
                 class="space-y-5"
                 data-testid="gateway-forwarding-openai"
               >
+                <CodexTicketSettings />
                 <!-- OpenAI Responses 首 token 统计口径 -->
                 <div>
                   <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -9033,6 +9034,7 @@ import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import PaymentProviderList from "@/components/payment/PaymentProviderList.vue";
 import PaymentProviderDialog from "@/components/payment/PaymentProviderDialog.vue";
 import Toggle from "@/components/common/Toggle.vue";
+import CodexTicketSettings from "@/components/admin/settings/CodexTicketSettings.vue";
 import ProxySelector from "@/components/common/ProxySelector.vue";
 import ImageUpload from "@/components/common/ImageUpload.vue";
 import BalanceIcon from "@/components/common/BalanceIcon.vue";

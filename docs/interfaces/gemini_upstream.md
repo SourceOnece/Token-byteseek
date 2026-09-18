@@ -41,6 +41,8 @@ Antigravity 专用 `/antigravity/v1beta/*` 强制选择 Antigravity 账号，其
 
 Gemini 原生 `/v1beta/models` 遵循分组自定义列表，保留配置顺序和原生能力元数据，再追加目标确实存在于该列表的 Key 精确别名。未配置时沿原流程；强制 Antigravity 和复合 Key 各自分支不被覆盖。
 
+未使用自定义列表时，原生模型目录追加可调度 Antigravity 账号的有效 Gemini 映射，混合路径额外要求 `mixed_scheduling=true`；不回显通配符或 Claude 模型。只有 Antigravity 时返回实际映射，原生 Google scope 降级仍合并默认 Gemini 元数据；正常上游返回按名称去重并保留未知元数据和分页信封。强制 Antigravity 不要求 mixed opt-in，改为实际映射目录而非固定常量；无可用映射时返回空列表。最终仍先投影 Key 别名、后应用分组硬白名单。单模型 GET 与复合 Key 原分支不变。
+
 可请求模型由分组、渠道和账号能力共同解析。客户端模型依次经过 Key 重定向、渠道映射和账号映射；Vertex 或 AI Studio 的最终模型标识与计费模型可以不同。模型列表不能仅回显默认常量，也不能展示没有可调度账号支持的目标。
 
 兼容层维护 thinking/推理字段、tool/schema、图片输入、usage、finish reason 和 Gemini thought signature。工具 schema 会递归移除 Gemini 不支持的字段；INTEGER 的整数 `exclusiveMinimum` 转换为加一后的包含式 `minimum`，且不覆盖更严格的既有下界，无法等价转换的独占下界只清理不伪造。需要跨轮次的 signature、session 和 cache 连续性时，粘性会话优先复用账号；切换账号必须重新评估可继续性，不能把另一个账号的内部状态当作通用上下文。

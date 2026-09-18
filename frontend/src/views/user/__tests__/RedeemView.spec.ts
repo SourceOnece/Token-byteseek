@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import RedeemView from '../RedeemView.vue'
+import Pagination from '@/components/common/Pagination.vue'
 
 const { redeem, getHistory, refreshUser, fetchActiveSubscriptions, showError, showWarning, showSuccess } = vi.hoisted(() => ({
   redeem: vi.fn(),
@@ -13,7 +14,10 @@ const { redeem, getHistory, refreshUser, fetchActiveSubscriptions, showError, sh
 }))
 
 vi.mock('@/api', () => ({
-  redeemAPI: { redeem, getHistory },
+  redeemAPI: { redeem, getHistoryPage: async (page: number, pageSize: number) => {
+    const items = await getHistory(page, pageSize)
+    return { items, total: items.length, page, page_size: pageSize, pages: 1 }
+  } },
   authAPI: { getPublicSettings: vi.fn().mockResolvedValue({}) },
 }))
 vi.mock('@/stores/auth', () => ({
@@ -92,6 +96,30 @@ describe('RedeemView refresh after redemption', () => {
     expect(showError).not.toHaveBeenCalled()
     expect(showSuccess).toHaveBeenCalledWith('redeem.codeRedeemSuccess')
     expect((wrapper.get('input#code').element as HTMLInputElement).value).toBe('')
+    wrapper.unmount()
+  })
+
+  it('分页失败保留当前页，乱序响应不能覆盖新页', async () => {
+    const wrapper = mount(RedeemView, { global: { stubs: { AppLayout: { template: '<div><slot /></div>' }, Icon: true } } })
+    await flushPromises()
+    const pagination = wrapper.getComponent(Pagination)
+    let resolveOld!: (items: unknown[]) => void
+    getHistory.mockImplementationOnce(() => new Promise(r => { resolveOld = r }))
+    pagination.vm.$emit('update:page', 2)
+    await flushPromises()
+    getHistory.mockResolvedValueOnce([{ id:3,code:'NEW-PAGE-CODE',type:'balance',value:1 }])
+    pagination.vm.$emit('update:page', 3)
+    await flushPromises()
+    resolveOld([{ id:2,code:'OLD-PAGE-CODE',type:'balance',value:1 }])
+    await flushPromises()
+    expect(pagination.props('page')).toBe(3)
+    expect(wrapper.text()).toContain('NEW-PAGE...')
+    expect(wrapper.text()).not.toContain('OLD-PAGE...')
+    getHistory.mockRejectedValueOnce(new Error('offline'))
+    pagination.vm.$emit('update:page', 4)
+    await flushPromises()
+    expect(pagination.props('page')).toBe(3)
+    expect(showError).toHaveBeenCalledWith('redeem.historyLoadFailed')
     wrapper.unmount()
   })
 

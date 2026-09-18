@@ -829,6 +829,7 @@ var ProviderSet = wire.NewSet(
 	NewQoderGatewayService,
 	ProvideOpenAIGatewayTLSFingerprintRouterServices,
 	NewOpenAIGatewayService,
+	ProvideCodexTicketService,
 	NewCodexInviteResetService,
 	ProvideOpenAIQuotaService,
 	ProvideBatchImageModelPricingResolver,

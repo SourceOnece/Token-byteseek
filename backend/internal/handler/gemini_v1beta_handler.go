@@ -63,24 +63,31 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 		return
 	}
 
-	// 强制 antigravity 模式：返回 antigravity 支持的模型列表
-	if forcePlatform == service.PlatformAntigravity {
-		writeGeminiModelsListWithAPIKeyAliases(c, antigravity.FallbackGeminiModelsList(), apiKey)
+	// Gemini 原生列表也遵循分组自定义列表，并沿用 Key 精确别名投影。
+	if models, ok := customGeminiModelsList(apiKey.Group); ok && forcePlatform != service.PlatformAntigravity {
+		writeGeminiModelsListWithAPIKeyAliases(c, models, apiKey)
 		return
 	}
-	// Gemini 原生列表也遵循分组自定义列表，并沿用 Key 精确别名投影。
-	if models, ok := customGeminiModelsList(apiKey.Group); ok {
-		writeGeminiModelsListWithAPIKeyAliases(c, models, apiKey)
+
+	// 按实际可调度账号补目录；混合路由额外要求账号已显式开启 mixed scheduling。
+	agModelIDs, err := h.geminiCompatService.AntigravityGeminiModelIDs(c.Request.Context(), apiKey.GroupID, forcePlatform != service.PlatformAntigravity)
+	if err != nil {
+		googleError(c, http.StatusServiceUnavailable, "Unable to list Antigravity models")
+		return
+	}
+	agModels := make([]gemini.Model, 0, len(agModelIDs))
+	for _, id := range agModelIDs {
+		agModels = append(agModels, gemini.FallbackModel(id))
+	}
+	if forcePlatform == service.PlatformAntigravity {
+		writeGeminiModelsListWithAPIKeyAliases(c, gemini.ModelsListResponse{Models: agModels}, apiKey)
 		return
 	}
 
 	account, err := h.geminiCompatService.SelectAccountForAIStudioEndpoints(c.Request.Context(), apiKey.GroupID)
 	if err != nil {
-		// 没有 gemini 账户，检查是否有 antigravity 账户可用
-		hasAntigravity, _ := h.geminiCompatService.HasAntigravityAccounts(c.Request.Context(), apiKey.GroupID)
-		if hasAntigravity {
-			// antigravity 账户使用静态模型列表
-			writeGeminiModelsListWithAPIKeyAliases(c, gemini.FallbackModelsList(), apiKey)
+		if len(agModels) > 0 {
+			writeGeminiModelsListWithAPIKeyAliases(c, gemini.ModelsListResponse{Models: agModels}, apiKey)
 			return
 		}
 		markOpsRoutingCapacityLimitedIfNoAvailable(c, err)
@@ -94,8 +101,17 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 		return
 	}
 	if shouldFallbackGeminiModels(res) {
-		writeGeminiModelsListWithAPIKeyAliases(c, gemini.FallbackModelsList(), apiKey)
+		fallback := gemini.FallbackModelsList()
+		if len(agModels) > 0 {
+			fallback.Models = mergeGeminiModelLists(fallback.Models, agModels)
+		}
+		writeGeminiModelsListWithAPIKeyAliases(c, fallback, apiKey)
 		return
+	}
+	if res.StatusCode == http.StatusOK && len(agModels) > 0 {
+		if merged, ok := appendUpstreamGeminiModels(res.Body, agModels); ok {
+			res.Body = merged
+		}
 	}
 	res.Body = appendAPIKeyAliasesToGeminiModelsJSON(res.Body, apiKey.ModelMapping)
 	if res.StatusCode == http.StatusOK {
@@ -106,6 +122,65 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 		}
 	}
 	writeUpstreamResponse(c, res)
+}
+
+// mergeGeminiModelLists 以原生顺序为主，按名称去重追加兼容账号实际映射。
+func mergeGeminiModelLists(native, extra []gemini.Model) []gemini.Model {
+	result := append([]gemini.Model(nil), native...)
+	seen := make(map[string]struct{}, len(native)+len(extra))
+	for _, model := range native {
+		seen[model.Name] = struct{}{}
+	}
+	for _, model := range extra {
+		if _, exists := seen[model.Name]; exists {
+			continue
+		}
+		result = append(result, model)
+		seen[model.Name] = struct{}{}
+	}
+	return result
+}
+
+// appendUpstreamGeminiModels 保留上游信封和模型元数据，仅追加缺失的兼容模型。
+func appendUpstreamGeminiModels(body []byte, extra []gemini.Model) ([]byte, bool) {
+	var envelope map[string]json.RawMessage
+	if json.Unmarshal(body, &envelope) != nil || envelope == nil {
+		return body, false
+	}
+	var models []json.RawMessage
+	raw, exists := envelope["models"]
+	if !exists || json.Unmarshal(raw, &models) != nil {
+		return body, false
+	}
+	seen := make(map[string]struct{}, len(models)+len(extra))
+	for _, item := range models {
+		var model struct {
+			Name string `json:"name"`
+		}
+		if json.Unmarshal(item, &model) != nil {
+			return body, false
+		}
+		seen[model.Name] = struct{}{}
+	}
+	changed := false
+	for _, model := range extra {
+		if _, exists := seen[model.Name]; exists {
+			continue
+		}
+		item, err := json.Marshal(model)
+		if err != nil {
+			return body, false
+		}
+		models = append(models, item)
+		seen[model.Name] = struct{}{}
+		changed = true
+	}
+	if !changed {
+		return body, true
+	}
+	envelope["models"], _ = json.Marshal(models)
+	merged, err := json.Marshal(envelope)
+	return merged, err == nil
 }
 
 // customGeminiModelsList 保留分组顺序和 Gemini 原生能力元数据。

@@ -54,7 +54,6 @@ func (r *tokenRefreshCandidateRepo) ListOAuthRefreshCandidatePage(_ context.Cont
 			(options.IncludeSetupToken && account.Type == AccountTypeSetupToken) ||
 			account.IsQoderCosy()
 		if (options.ActiveOnly && account.Status != StatusActive) ||
-			!account.Schedulable ||
 			!typeAllowed ||
 			!platformAllowed ||
 			(options.RequireRefreshToken && strings.TrimSpace(refreshToken) == "") ||
@@ -188,7 +187,7 @@ func TestTokenRefreshService_ProcessRefreshUsesOAuthRefreshCandidates(t *testing
 				Type:        AccountTypeOAuth,
 				Status:      StatusActive,
 				Schedulable: false,
-				Credentials: map[string]any{"refresh_token": "permanently-rejected-token"},
+				Credentials: map[string]any{"refresh_token": "paused-token"},
 			},
 		},
 	}
@@ -208,7 +207,8 @@ func TestTokenRefreshService_ProcessRefreshUsesOAuthRefreshCandidates(t *testing
 	svc.processRefresh()
 
 	require.Zero(t, repo.listActiveCalls, "TokenRefreshService should not use the broad active-account query")
-	require.ElementsMatch(t, []int64{1, 6, 7}, repo.updatedCredentialIDs)
+	require.ElementsMatch(t, []int64{1, 6, 7, 8}, repo.updatedCredentialIDs)
+	require.False(t, repo.accounts[7].Schedulable, "刷新不能重新开启已暂停账号")
 	require.Equal(t, 1, repo.clearTempCalls, "successful refresh should clear the OAuth 401 temp-unschedulable state")
 }
 

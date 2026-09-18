@@ -1,6 +1,16 @@
 export default {
 // Settings
     settings: {
+      codexTicket: {
+        title: '292 tickets (optional)',
+        description: 'Off by default. When enabled, collect Astra/Sol tickets for schedulable standalone OpenAI OAuth accounts. Disabled means no collection or injection; normal forwarding is retained.',
+        warning: 'Probes may consume upstream quota. Up to 4 workers, at least one minute between account/model probes, and up to one hour cache life. Only fills a missing turn-state header; missing tickets do not disable scheduling or guarantee model quality/overload recovery. Cross-instance settings normally apply within 2 seconds.',
+        proxy: 'Harvest proxy URL (collection only)',
+        configured: 'Configured; credentials are never returned. Leave blank to retain. Production requests keep the account proxy.',
+        notConfigured: 'Not configured. Provide an HTTP(S)/SOCKS5(h) proxy before enabling. Proxy credentials are encrypted at rest.',
+        clearProxy: 'Clear saved proxy (disable tickets or provide a replacement)',
+        save: 'Save ticket settings separately', saved: 'Ticket settings saved'
+      },
       title: 'System Settings',
       description: 'Manage registration, email verification, default values, and SMTP settings',
       tabs: {

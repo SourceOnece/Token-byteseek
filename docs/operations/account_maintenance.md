@@ -13,6 +13,8 @@
 <a id="account_credential_refresh"></a>
 ## 凭据刷新
 
+后台候选不再要求 `schedulable=true`：管理员暂停或质量检测降智停调的账号，仍可在原类型/状态/凭据及限流条件允许时刷新 OAuth，防止等待恢复期间令牌过期。刷新本身不会重新开启人工调度，也不会把失败质量结果改成满血；inactive/error 等原有候选规则保留。
+
 `TokenRefreshService` 分页读取需要维护的账号，按平台 refresher 判断资格，并对每个 provider 应用独立并发/QPS 门槛、单次 attempt 超时、周期总超时和有界退避。OAuth、Setup Token 和 Qoder COSY 的候选规则不同；API Key、Bedrock 和 Service Account 通常由各自请求路径或签名 provider 管理，不应统一假设有 refresh token。
 
 刷新成功后要原子更新凭据/过期时间，清理可恢复错误，并同步账号缓存与调度快照。OpenAI/Antigravity 还可在刷新后确保 privacy 状态。刷新失败按失败阈值记录，不立即把一次瞬时网络错误等同于永久禁用；凭据明确撤销或账号归属失效时才进入需要重新授权的状态。
