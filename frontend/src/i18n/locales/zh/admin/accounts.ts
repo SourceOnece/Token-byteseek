@@ -2,10 +2,13 @@ export default {
 // Accounts Management
     accounts: {
       tickets: {
-        title: '292 票据状态', notQuality: '仅表示票据状态，不代表满血；缺票不关闭调度。',
+        retryAfter: '采集退避至：{time}',
+        attempt: '采集代理：{proxy}；第 {count} 次尝试', noHeader: '无票据头', badPrefix: '前缀不符', completedNoTicket: '回复完成但票据不合格',
+        errorKind: { overloaded: '上游过载', rate_limit: '上游限流', quota: '额度不足', auth: '授权错误', invalid_request: '请求格式错误' },
+        title: '292 票据状态', notQuality: '仅表示票据状态，不代表满血；开启打票后，缺票暂不调度该模型，不修改账号总开关。', modelBlocked: '该模型暂停',
         checkedAt: '最近采集', pausedHint: '账号当前不可调度，暂停后台采集；并非因缺票停调。',
         state: { ready: '票据有效', pending: '待采集', collecting: '采集中', missing: '未获 292', expired: '票据已过期', failed: '采集失败', disabled: '打票未开启', unsupported: '模型不支持', unavailable: '状态读取失败', paused: '暂停采集', loading: '读取中' },
-        reason: { network: '网络或超时错误', upstream: '上游拒绝或返回非成功状态', invalid_ticket: '响应中没有合格的 292 票据', credential: '无法取得有效凭据', storage: '票据缓存保存失败', cancelled: '采集已取消或超时' },
+        reason: { network: '网络或超时错误', upstream: '上游拒绝或返回错误', invalid_ticket: '响应中没有合格的 292 票据', credential: '无法取得有效凭据', storage: '票据缓存保存失败', cancelled: '采集已取消或超时', proxy_config: '采集代理配置或解密失败' },
       },
       quality: {
         protocol: 'API 上游协议', actualProtocol: '实际检测协议', protocolDefault: '沿用账号配置',

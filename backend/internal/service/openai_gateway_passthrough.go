@@ -624,7 +624,9 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 	setOpenAICodexRoutingHintFromBody(req.Header, account, body)
 	logOpenAIRoutingDiagnosticsFromBody(ctx, account, "http_passthrough", req.Header, body, "not_applicable")
 	if tickets := s.codexTickets.Load(); tickets != nil {
-		tickets.Apply(ctx, account, gjson.GetBytes(body, "model").String(), req.Header)
+		if err := tickets.Apply(ctx, account, gjson.GetBytes(body, "model").String(), req.Header); err != nil {
+			return nil, err
+		}
 	}
 
 	return req, nil

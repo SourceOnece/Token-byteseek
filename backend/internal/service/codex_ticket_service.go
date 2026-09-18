@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -16,7 +15,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/openai"
 	"github.com/google/uuid"
 )
 
@@ -28,47 +26,71 @@ type CodexTicketCache interface {
 	GetMany(context.Context, []string) (map[string]string, error)
 	Set(context.Context, string, string, time.Duration) error
 	Claim(context.Context, string, time.Duration) (bool, error)
+	AcquireLease(context.Context, string, string, time.Duration) (bool, error)
+	ReleaseLease(context.Context, string, string) error
 }
 
 type codexTicketConfig struct {
-	Enabled     bool   `json:"enabled"`
-	ProxyCipher string `json:"proxy_cipher"`
-	Generation  string `json:"generation"`
-	loadedAt    time.Time
+	Enabled              bool               `json:"enabled"`
+	ProxyCipher          string             `json:"proxy_cipher"`
+	Generation           string             `json:"generation"`
+	Proxies              []codexTicketProxy `json:"proxies,omitempty"`
+	SelectionMode        string             `json:"selection_mode,omitempty"`
+	FixedProxyID         string             `json:"fixed_proxy_id,omitempty"`
+	ProbeIntervalSeconds int                `json:"probe_interval_seconds,omitempty"`
+	MaxAttempts          int                `json:"max_attempts,omitempty"`
+	RetryIntervalSeconds int                `json:"retry_interval_seconds,omitempty"`
+	loadedAt             time.Time
 }
 
 // 管理响应不返回代理密码或原始票据，只暴露配置是否存在。
 type CodexTicketSettings struct {
-	Enabled         bool `json:"enabled"`
-	ProxyConfigured bool `json:"proxy_configured"`
+	Enabled              bool                   `json:"enabled"`
+	ProxyConfigured      bool                   `json:"proxy_configured"`
+	Proxies              []CodexTicketProxyView `json:"proxies"`
+	SelectionMode        string                 `json:"selection_mode"`
+	FixedProxyID         string                 `json:"fixed_proxy_id"`
+	ProbeIntervalSeconds int                    `json:"probe_interval_seconds"`
+	MaxAttempts          int                    `json:"max_attempts"`
+	RetryIntervalSeconds int                    `json:"retry_interval_seconds"`
+	Revision             string                 `json:"revision"`
 }
 type CodexTicketSettingsUpdate struct {
-	Enabled         *bool   `json:"enabled"`
-	HarvestProxyURL *string `json:"harvest_proxy_url"`
-	ClearProxy      bool    `json:"clear_proxy"`
+	Enabled              *bool                     `json:"enabled"`
+	HarvestProxyURL      *string                   `json:"harvest_proxy_url"`
+	ClearProxy           bool                      `json:"clear_proxy"`
+	Proxies              *[]CodexTicketProxyUpdate `json:"proxies"`
+	SelectionMode        *string                   `json:"selection_mode"`
+	FixedProxyID         *string                   `json:"fixed_proxy_id"`
+	ProbeIntervalSeconds *int                      `json:"probe_interval_seconds"`
+	MaxAttempts          *int                      `json:"max_attempts"`
+	RetryIntervalSeconds *int                      `json:"retry_interval_seconds"`
+	Revision             *string                   `json:"revision"`
 }
 type codexTicketValue struct {
 	State     string    `json:"state"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
-// CodexTicketService 是默认关闭的合成票据补充器：不修改调度、不覆盖客户端回合状态。
+// CodexTicketService 默认关闭；开启后沿快照按账号/模型门控并覆盖回合状态，不改账号总开关。
 // @project-doc docs/interfaces/openai_upstream.md#codex_ticket_opt_in
 type CodexTicketService struct {
-	gateway     *OpenAIGatewayService
-	settings    SettingRepository
-	cache       CodexTicketCache
-	cipher      SecretEncryptor
-	config      atomic.Pointer[codexTicketConfig]
-	updateMu    sync.Mutex
-	lifecycleMu sync.Mutex
-	cancel      context.CancelFunc
-	done        chan struct{}
-	stopped     bool
-	roundCancel context.CancelFunc
-	roundID     string
-	roundWG     sync.WaitGroup
-	cursor      int64
+	gateway      *OpenAIGatewayService
+	settings     SettingRepository
+	cache        CodexTicketCache
+	cipher       SecretEncryptor
+	config       atomic.Pointer[codexTicketConfig]
+	updateMu     sync.Mutex
+	lifecycleMu  sync.Mutex
+	cancel       context.CancelFunc
+	done         chan struct{}
+	stopped      bool
+	roundCancel  context.CancelFunc
+	roundID      string
+	roundWG      sync.WaitGroup
+	cursor       int64
+	nextRound    time.Time
+	cacheRetryAt atomic.Int64
 }
 
 func ProvideCodexTicketService(gateway *OpenAIGatewayService, settings SettingRepository, cache CodexTicketCache, cipher SecretEncryptor) *CodexTicketService {
@@ -121,7 +143,7 @@ func (s *CodexTicketService) View(ctx context.Context) (CodexTicketSettings, err
 	if err != nil {
 		return CodexTicketSettings{}, err
 	}
-	return CodexTicketSettings{Enabled: cfg.Enabled, ProxyConfigured: cfg.ProxyCipher != ""}, nil
+	return codexTicketSettingsView(cfg), nil
 }
 
 func (s *CodexTicketService) Update(ctx context.Context, input CodexTicketSettingsUpdate) (CodexTicketSettings, error) {
@@ -134,21 +156,8 @@ func (s *CodexTicketService) Update(ctx context.Context, input CodexTicketSettin
 	if input.Enabled != nil {
 		cfg.Enabled = *input.Enabled
 	}
-	if input.ClearProxy {
-		cfg.ProxyCipher = ""
-	}
-	if input.HarvestProxyURL != nil && strings.TrimSpace(*input.HarvestProxyURL) != "" {
-		raw := strings.TrimSpace(*input.HarvestProxyURL)
-		if err = validateCodexHarvestProxy(raw); err != nil {
-			return CodexTicketSettings{}, err
-		}
-		if s.cipher == nil {
-			return CodexTicketSettings{}, errors.New("代理加密服务不可用")
-		}
-		cfg.ProxyCipher, err = s.cipher.Encrypt(raw)
-		if err != nil {
-			return CodexTicketSettings{}, errors.New("保存代理凭据失败")
-		}
+	if err = s.updateProxySettings(cfg, input); err != nil {
+		return CodexTicketSettings{}, err
 	}
 	if cfg.Enabled && (cfg.ProxyCipher == "" || s.cache == nil || s.cipher == nil) {
 		return CodexTicketSettings{}, errors.New("开启前请先配置采集代理及 Redis")
@@ -163,13 +172,14 @@ func (s *CodexTicketService) Update(ctx context.Context, input CodexTicketSettin
 		return CodexTicketSettings{}, errors.New("保存票据配置失败")
 	}
 	s.publishConfig(cfg)
-	return CodexTicketSettings{Enabled: cfg.Enabled, ProxyConfigured: cfg.ProxyCipher != ""}, nil
+	return codexTicketSettingsView(cfg), nil
 }
 
 func (s *CodexTicketService) publishConfig(cfg *codexTicketConfig) {
 	old := s.config.Swap(cfg)
 	if old == nil || old.Generation != cfg.Generation || !cfg.Enabled {
 		s.lifecycleMu.Lock()
+		s.nextRound = time.Time{}
 		if s.roundCancel != nil {
 			s.roundCancel()
 		}
@@ -202,40 +212,72 @@ func validCodexTicket(value codexTicketValue) bool {
 	return len(value.State) == 292 && strings.HasPrefix(value.State, "gAAAAA") && !strings.ContainsAny(value.State, "\r\n\x00") && time.Now().Before(value.ExpiresAt)
 }
 
-// Apply 只补空状态头：真实会话优先；没有票据或缓存故障不影响原调度与转发。
-func (s *CodexTicketService) Apply(ctx context.Context, account *Account, model string, headers http.Header) {
+// 缺票错误只用于当前模型的准入，不写账号状态或质量检测结果。
+var ErrCodexTicketUnavailable = errors.New("codex turn-state ticket unavailable")
+
+// Apply 沿快照覆盖回合头；缺票不现场采集，由后台续采后恢复。
+func (s *CodexTicketService) Apply(ctx context.Context, account *Account, model string, headers http.Header) error {
 	cfg := s.enabledConfig()
-	if cfg == nil || s.cache == nil || s.cipher == nil || headers == nil || !codexTicketAccount(account) || !codexTicketModel(model) || headers.Get(openAICodexTurnStateHeader) != "" {
-		return
-	}
-	for name := range headers {
-		if strings.EqualFold(name, openAICodexTurnStateHeader) {
-			return
-		}
+	if cfg == nil || headers == nil || !codexTicketAccount(account) || !codexTicketModel(model) {
+		return nil
 	}
 	token := strings.TrimPrefix(headers.Get("Authorization"), "Bearer ")
 	if token == "" || token == headers.Get("Authorization") {
-		return
+		return ErrCodexTicketUnavailable
+	}
+	value, ok := s.lookup(ctx, cfg, account, model, token)
+	latest := s.enabledConfig()
+	if latest == nil {
+		return nil
+	}
+	if latest.Generation != cfg.Generation || !ok {
+		return ErrCodexTicketUnavailable
+	}
+	// 清理大小写不同的旧键，避免覆盖后实际发出两个状态头。
+	for name := range headers {
+		if strings.EqualFold(name, openAICodexTurnStateHeader) {
+			delete(headers, name)
+		}
+	}
+	headers.Set(openAICodexTurnStateHeader, value.State)
+	return nil
+}
+
+func (s *CodexTicketService) lookup(ctx context.Context, cfg *codexTicketConfig, account *Account, model, token string) (codexTicketValue, bool) {
+	var value codexTicketValue
+	if s.cache == nil || s.cipher == nil || token == "" {
+		return value, false
+	}
+	// 缓存失联短暂退避，避免大号池逐号等待完整超时；缺票仍按开启时的门控处理。
+	if time.Now().UnixNano() < s.cacheRetryAt.Load() {
+		return value, false
 	}
 	readCtx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
 	defer cancel()
 	encoded, err := s.cache.Get(readCtx, codexTicketKey(cfg, account, model, token))
+	if err != nil && ctx.Err() == nil {
+		s.cacheRetryAt.Store(time.Now().Add(time.Second).UnixNano())
+	}
 	if err != nil || encoded == "" {
-		return
+		return value, false
 	}
 	raw, err := s.cipher.Decrypt(encoded)
 	if err != nil {
-		return
+		return value, false
 	}
-	var value codexTicketValue
-	if json.Unmarshal([]byte(raw), &value) != nil || !validCodexTicket(value) {
-		return
+	ok := json.Unmarshal([]byte(raw), &value) == nil && validCodexTicket(value)
+	return value, ok
+}
+
+// Blocks 只读票据，不刷新凭据、不触发采集，也不更新 schedulable。
+func (s *CodexTicketService) Blocks(ctx context.Context, account *Account, model string) bool {
+	cfg := s.enabledConfig()
+	if cfg == nil || !codexTicketAccount(account) || !codexTicketModel(model) {
+		return false
 	}
+	_, ok := s.lookup(ctx, cfg, account, model, account.GetOpenAIAccessToken())
 	latest := s.enabledConfig()
-	if latest == nil || latest.Generation != cfg.Generation {
-		return
-	}
-	headers.Set(openAICodexTurnStateHeader, value.State)
+	return latest != nil && (latest.Generation != cfg.Generation || !ok)
 }
 
 func (s *CodexTicketService) Start() {
@@ -251,7 +293,6 @@ func (s *CodexTicketService) Start() {
 		defer close(s.done)
 		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()
-		var nextRound time.Time
 		for {
 			readCtx, stop := context.WithTimeout(ctx, time.Second)
 			s.updateMu.Lock()
@@ -262,9 +303,8 @@ func (s *CodexTicketService) Start() {
 			}
 			s.publishConfig(cfg)
 			s.updateMu.Unlock()
-			if s.enabledConfig() != nil && time.Now().After(nextRound) {
+			if s.enabledConfig() != nil {
 				s.startRound(ctx)
-				nextRound = time.Now().Add(time.Minute)
 			}
 			select {
 			case <-ctx.Done():
@@ -298,11 +338,12 @@ func (s *CodexTicketService) Stop() {
 func (s *CodexTicketService) startRound(ctx context.Context) {
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
-	if s.roundCancel != nil || s.stopped {
+	if s.roundCancel != nil || s.stopped || time.Now().Before(s.nextRound) {
 		return
 	}
 	roundCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	id := uuid.NewString()
+	cfg := s.enabledConfig()
 	s.roundCancel = cancel
 	s.roundID = id
 	s.roundWG.Add(1)
@@ -313,6 +354,10 @@ func (s *CodexTicketService) startRound(ctx context.Context) {
 			s.lifecycleMu.Lock()
 			if s.roundID == id {
 				s.roundCancel = nil
+				latest := s.enabledConfig()
+				if latest != nil && cfg != nil && latest.Generation == cfg.Generation {
+					s.nextRound = time.Now().Add(latest.interval())
+				}
 			}
 			s.lifecycleMu.Unlock()
 		}()
@@ -325,15 +370,17 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 	if cfg == nil || s.gateway == nil || s.gateway.accountRepo == nil || s.gateway.httpUpstream == nil || s.cache == nil || s.cipher == nil {
 		return
 	}
-	// 集群每轮最多一个实例采集；失败保留租约至到期，避免多实例同时探测整个号池。
-	claimed, err := s.cache.Claim(ctx, "round:"+cfg.Generation, 45*time.Second)
+	// 集群每轮最多一个实例采集；正常结束按 owner 解锁，崩溃则由 TTL 释放。
+	leaseKey, owner := "round:"+cfg.Generation, uuid.NewString()
+	claimed, err := s.cache.AcquireLease(ctx, leaseKey, owner, 45*time.Second)
 	if err != nil || !claimed {
 		return
 	}
-	proxy, err := s.cipher.Decrypt(cfg.ProxyCipher)
-	if err != nil || validateCodexHarvestProxy(proxy) != nil {
-		return
-	}
+	defer func() {
+		releaseCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Second)
+		defer cancel()
+		_ = s.cache.ReleaseLease(releaseCtx, leaseKey, owner)
+	}()
 	accounts, err := s.gateway.accountRepo.ListByPlatform(ctx, PlatformOpenAI)
 	if err != nil {
 		return
@@ -354,7 +401,7 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 		go func() {
 			defer workers.Done()
 			for item := range jobs {
-				s.probe(ctx, cfg, &item.account, item.model, proxy)
+				s.probe(ctx, cfg, &item.account, item.model)
 			}
 		}()
 	}
@@ -378,12 +425,11 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 	}
 }
 
-func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, account *Account, model, proxy string) {
+func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, account *Account, model string) {
 	current := s.enabledConfig()
 	if current == nil || current.Generation != cfg.Generation || ctx.Err() != nil {
 		return
 	}
-	// 重新读取账号，避免已停调或已换凭据的排队任务继续使用老快照。
 	fresh, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
 	if err != nil || !codexTicketAccount(fresh) || !fresh.IsSchedulable() || !fresh.IsModelSupported(model) {
 		return
@@ -394,7 +440,11 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 		return
 	}
 	key := codexTicketKey(cfg, fresh, model, token)
-	if encrypted, err := s.cache.Get(ctx, key); err == nil && encrypted != "" {
+	cached, err := s.cache.GetMany(ctx, []string{key, "status:" + key})
+	if err != nil {
+		return
+	}
+	if encrypted := cached[key]; encrypted != "" {
 		if raw, err := s.cipher.Decrypt(encrypted); err == nil {
 			var value codexTicketValue
 			if json.Unmarshal([]byte(raw), &value) == nil && validCodexTicket(value) && time.Until(value.ExpiresAt) > 10*time.Minute {
@@ -402,90 +452,43 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 			}
 		}
 	}
-	// 账号/模型至少一分钟一次；不在请求热路径同步打票或换代理无限重试。
-	claimed, err := s.cache.Claim(ctx, "probe:"+key, time.Minute)
+	var previous codexTicketObservation
+	_ = json.Unmarshal([]byte(cached["status:"+key]), &previous)
+	if previous.Diagnostic != nil && previous.Diagnostic.RetryNotBefore != nil && time.Now().Before(*previous.Diagnostic.RetryNotBefore) {
+		return
+	}
+	claimed, err := s.cache.Claim(ctx, "probe:"+key, cfg.interval())
 	if err != nil || !claimed {
 		return
 	}
-	probeCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
+	previousID := ""
+	if previous.Diagnostic != nil {
+		previousID = previous.Diagnostic.ProxyID
+	}
+	failed := previous.State == "failed" || previous.State == "missing"
+	// 每轮最多三十秒；没票才切换重试，成功即停止，不重放任何用户业务请求。
+	cycleCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	if s.gateway.concurrencyService != nil {
-		slot, err := s.gateway.concurrencyService.AcquireAccountSlot(probeCtx, fresh.ID, fresh.Concurrency)
-		if err != nil || slot == nil || !slot.Acquired {
+	for attempt := 1; attempt <= cfg.attempts(); attempt++ {
+		current = s.enabledConfig()
+		if current == nil || current.Generation != cfg.Generation || cycleCtx.Err() != nil {
 			return
 		}
-		defer slot.ReleaseFunc()
-	}
-	body, _ := json.Marshal(map[string]any{"model": model, "store": false, "stream": true, "instructions": "Reply with exactly: pong", "input": []any{map[string]any{"role": "user", "content": "ping"}}})
-	probeCtx = WithHTTPUpstreamRedirectsDisabled(WithHTTPUpstreamProfile(probeCtx, HTTPUpstreamProfileOpenAIHarvest))
-	req, err := http.NewRequestWithContext(probeCtx, http.MethodPost, chatgptCodexURL, bytes.NewReader(body))
-	if err != nil {
-		return
-	}
-	req.Close = true
-	req.Host = "chatgpt.com"
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("session_id", uuid.NewString())
-	if resolveAndSetOpenAIChatGPTAccountHeaders(probeCtx, s.gateway.accountRepo, req.Header, fresh) != nil {
-		return
-	}
-	ensureCodexIdentityHeaders(req.Header)
-	enforceCodexIdentityHeaders(req.Header)
-	if model == "gpt-6-astra" && CompareVersions(req.Header.Get("version"), "0.153.4") < 0 {
-		// 仅合成探测对齐该模型的上游版本下限，不改正常业务客户端身份。
-		req.Header.Set("version", "0.153.4")
-		req.Header.Set("user-agent", openai.CodexDefaultOriginator+"/0.153.4 (Ubuntu 22.4.0; x86_64) xterm-256color")
-		req.Header.Set("originator", openai.CodexDefaultOriginator)
-	}
-	// 合成采集使用独立不复用连接，不更改正常业务的 TLS 指纹/代理或身份。
-	s.recordObservation(probeCtx, key, "collecting", "", nil)
-	state, reason := "failed", "network"
-	var expires *time.Time
-	defer func() {
-		if probeCtx.Err() != nil && state != "ready" {
-			reason = "cancelled"
+		proxy, ok := selectCodexTicketProxy(cfg, previousID, failed)
+		if !ok {
+			return
 		}
-		s.recordObservation(probeCtx, key, state, reason, expires)
-	}()
-	resp, err := s.gateway.httpUpstream.Do(req, proxy, fresh.ID, fresh.Concurrency)
-	if err != nil || resp == nil {
-		return
-	}
-	if resp.Body != nil {
-		defer resp.Body.Close()
-	}
-	value := codexTicketValue{State: extractOpenAICodexTurnState(resp.Header), ExpiresAt: time.Now().Add(time.Hour)}
-	if resp.StatusCode != http.StatusOK {
-		reason = "upstream"
-		return
-	}
-	if !validCodexTicket(value) {
-		state, reason = "missing", "invalid_ticket"
-		return
-	}
-	latest := s.enabledConfig()
-	if latest == nil || latest.Generation != cfg.Generation {
-		reason = "cancelled"
-		return
-	}
-	// 换凭据/删除账号后的在途探测不进入新账号的票据键。
-	reason = "cancelled"
-	final, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
-	if err != nil || !codexTicketAccount(final) || final.GetOpenAIAccessToken() != token || !final.IsSchedulable() || !final.IsModelSupported(model) {
-		return
-	}
-	if codexTicketKey(cfg, final, model, token) != key {
-		return
-	}
-	raw, _ := json.Marshal(value)
-	reason = "storage"
-	encrypted, err := s.cipher.Encrypt(string(raw))
-	if err != nil {
-		return
-	}
-	if s.cache.Set(ctx, key, encrypted, time.Hour) == nil {
-		state, reason, expires = "ready", "", &value.ExpiresAt
+		ready, retry := s.probeAttempt(cycleCtx, cfg, fresh, model, token, key, proxy, attempt)
+		if ready || !retry || attempt == cfg.attempts() {
+			return
+		}
+		previousID, failed = proxy.ID, true
+		timer := time.NewTimer(cfg.retryInterval())
+		select {
+		case <-cycleCtx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		}
 	}
 }

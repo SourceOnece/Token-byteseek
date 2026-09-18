@@ -2,10 +2,13 @@ export default {
 // Accounts
     accounts: {
       tickets: {
-        title: '292 ticket status', notQuality: 'Ticket availability is not a quality verdict. Missing tickets do not disable scheduling.',
+        retryAfter: 'Harvest backoff until: {time}',
+        attempt: 'Harvest proxy: {proxy}; attempt {count}', noHeader: 'No ticket header', badPrefix: 'Invalid prefix', completedNoTicket: 'Completed without eligible ticket',
+        errorKind: { overloaded: 'Upstream overloaded', rate_limit: 'Rate limited', quota: 'Quota exhausted', auth: 'Authorization error', invalid_request: 'Invalid request' },
+        title: '292 ticket status', notQuality: 'Ticket availability is not a quality verdict. When enabled, missing tickets block this model without changing the account switch.', modelBlocked: 'Model paused',
         checkedAt: 'Last attempt', pausedHint: 'Collection is paused because this account is not schedulable, not because a ticket is missing.',
         state: { ready: 'Ticket valid', pending: 'Pending', collecting: 'Collecting', missing: 'No 292 ticket', expired: 'Ticket expired', failed: 'Collection failed', disabled: 'Tickets disabled', unsupported: 'Unsupported model', unavailable: 'Status unavailable', paused: 'Collection paused', loading: 'Loading' },
-        reason: { network: 'Network error or timeout', upstream: 'Upstream rejected the probe', invalid_ticket: 'No eligible 292 ticket in response', credential: 'Valid credentials unavailable', storage: 'Failed to save ticket cache', cancelled: 'Probe cancelled or timed out' },
+        reason: { network: 'Network error or timeout', upstream: 'Upstream rejected the probe', invalid_ticket: 'No eligible 292 ticket in response', credential: 'Valid credentials unavailable', storage: 'Failed to save ticket cache', cancelled: 'Probe cancelled or timed out', proxy_config: 'Harvest proxy configuration or decryption failed' },
       },
       quality: {
         protocol: 'API upstream protocol', actualProtocol: 'Tested protocol', protocolDefault: 'Account setting',

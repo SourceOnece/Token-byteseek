@@ -1472,7 +1472,9 @@ func (s *OpenAIGatewayService) buildUpstreamRequest(ctx context.Context, c *gin.
 	setOpenAICodexRoutingHintFromBody(req.Header, account, body)
 	logOpenAIRoutingDiagnosticsFromBody(ctx, account, "http", req.Header, body, "not_applicable")
 	if tickets := s.codexTickets.Load(); tickets != nil {
-		tickets.Apply(ctx, account, gjson.GetBytes(body, "model").String(), req.Header)
+		if err := tickets.Apply(ctx, account, gjson.GetBytes(body, "model").String(), req.Header); err != nil {
+			return nil, err
+		}
 	}
 
 	return req, nil

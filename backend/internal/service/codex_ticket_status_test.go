@@ -32,8 +32,10 @@ func TestCodexTicketStatusIsolationAndReadOnly(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result.Items, 3)
 	require.Equal(t, "ready", result.Items[0].Models[0].State)
+	require.False(t, result.Items[0].Models[0].Blocked)
 	require.NotNil(t, result.Items[0].Models[0].ExpiresAt)
 	require.Equal(t, "missing", result.Items[0].Models[1].State)
+	require.True(t, result.Items[0].Models[1].Blocked)
 	require.Equal(t, "pending", result.Items[1].Models[0].State)
 	require.False(t, result.Items[2].Eligible)
 	require.Empty(t, result.Items[2].Models)
@@ -66,6 +68,7 @@ func TestCodexTicketStatusDisabledPausedAndCacheFailure(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, result.Enabled)
 	require.Equal(t, "disabled", result.Items[0].Models[0].State)
+	require.False(t, result.Items[0].Models[0].Blocked)
 	require.Zero(t, cache.gets)
 	enableTicketTest(t, s)
 	result, err = s.Status(context.Background(), []int64{1})
@@ -128,7 +131,7 @@ func TestCodexTicketProbeRecordsSafeStatus(t *testing.T) {
 			raw, _ := cache.Get(context.Background(), "status:"+key)
 			require.Contains(t, raw, `"collecting"`)
 		}
-		s.probe(context.Background(), s.config.Load(), &a, "gpt-6-astra", "http://proxy")
+		s.probe(context.Background(), s.config.Load(), &a, "gpt-6-astra")
 		raw, err := cache.Get(context.Background(), "status:"+key)
 		require.NoError(t, err)
 		var record codexTicketObservation

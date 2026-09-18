@@ -697,7 +697,7 @@ func (s *OpenAIGatewayService) ResolveOpenAIWSRoutingModelForAccount(
 	) {
 		return "", fmt.Errorf("model %s is not supported by the selected websocket account", requestedModel)
 	}
-	if s.isOpenAIAccountRequestRuntimeBlocked(account, routingModel) {
+	if s.isOpenAIAccountRequestBlocked(ctx, account, routingModel, false) {
 		return "", fmt.Errorf("model %s is temporarily unavailable on the selected websocket account", requestedModel)
 	}
 	if groupID != nil && s.needsUpstreamChannelRestrictionCheck(ctx, groupID) &&

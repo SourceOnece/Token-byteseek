@@ -590,6 +590,28 @@ func (s *OpenAIGatewayService) isOpenAIAccountRequestRuntimeBlocked(account *Acc
 	return s != nil && (s.isOpenAIAccountRuntimeBlocked(account) || s.isOpenAIAccountModelRuntimeBlocked(account, requestedModel))
 }
 
+// 票据门控必须按最终出站模型判断；compact 的覆盖规则与 Forward 保持同序。
+// @project-doc docs/interfaces/codex_ticket.md#ticket_contract
+func (s *OpenAIGatewayService) isOpenAIAccountRequestBlocked(ctx context.Context, account *Account, requestedModel string, requireCompact bool) bool {
+	if s == nil {
+		return false
+	}
+	if s.isOpenAIAccountRequestRuntimeBlocked(account, requestedModel) {
+		return true
+	}
+	tickets := s.codexTickets.Load()
+	if tickets == nil || tickets.enabledConfig() == nil || !codexTicketAccount(account) {
+		return false
+	}
+	_, model := resolveOpenAIForwardMappedModels(account, strings.TrimSpace(requestedModel), requireCompact)
+	if requireCompact {
+		if fallback := strings.TrimSpace(s.resolveOpenAICompactFallbackModel(account, requestedModel)); fallback != "" {
+			model = fallback
+		}
+	}
+	return tickets.Blocks(ctx, account, strings.TrimSpace(model))
+}
+
 func (s *OpenAIGatewayService) recordOpenAIOAuth429() {
 	if s == nil {
 		return

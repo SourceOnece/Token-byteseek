@@ -2,9 +2,19 @@ export default {
 // Settings
     settings: {
       codexTicket: {
+        mode: 'Failure retry strategy', rotate: 'Switch proxy after a miss', fixed: 'Retry a fixed proxy',
+        fixedProxy: 'Selected harvest proxy', addProxy: 'Add harvest proxy', proxyName: 'Proxy name', proxyLabel: 'PROXY {index}',
+        keepAddress: 'Leave blank to keep the saved address', removeTitle: 'Remove harvest proxy?',
+        removeHint: 'This removes the proxy from the draft. Save to apply. Account production proxies are not deleted.',
+        rotateHint: 'Switch to the next proxy only after this account/model fails to obtain a valid 292 ticket. Stop on success; collect again near expiry.',
+        fixedHint: 'Retry the selected proxy after a miss. Stop on success. Do not switch to another proxy.',
+        ipHint: 'Switching proxy entries does not guarantee a new exit IP. Rotation within one proxy depends on its provider. Production uses the account proxy.',
+        attempts: 'Attempts per cycle (1–10)', retryInterval: 'Retry delay (seconds)', interval: 'Wait after cycle (seconds)',
+        invalidForm: 'Provide proxy names and new addresses. Attempts: 1–10; retry delay: 1–30s; cycle delay: 6–3600s. Enabling requires a proxy.',
+        versionMismatch: 'Frontend/backend version mismatch. Update all instances and reload.',
         title: '292 tickets (optional)',
         description: 'Off by default. When enabled, collect Astra/Sol tickets for schedulable standalone OpenAI OAuth accounts. Disabled means no collection or injection; normal forwarding is retained.',
-        warning: 'Probes may consume upstream quota. Up to 4 workers, at least one minute between account/model probes, and up to one hour cache life. Only fills a missing turn-state header; missing tickets do not disable scheduling or guarantee model quality/overload recovery. Cross-instance settings normally apply within 2 seconds.',
+        warning: 'Snapshot behavior: valid 292 tickets replace turn state; missing tickets block the account for that model without changing its scheduling switch. Tickets last one hour and renew with ten minutes remaining. Business 312 responses do not trigger early renewal. Probes consume quota: up to 4 workers, 30 seconds per cycle and 25 seconds per attempt; rate limits may stop retries early. The default cycle delay is 6 seconds when unset. Quality and overload recovery are not guaranteed. Disabling restores normal forwarding; changes normally reach other instances within 2 seconds.',
         proxy: 'Harvest proxy URL (collection only)',
         configured: 'Configured; credentials are never returned. Leave blank to retain. Production requests keep the account proxy.',
         notConfigured: 'Not configured. Provide an HTTP(S)/SOCKS5(h) proxy before enabling. Proxy credentials are encrypted at rest.',

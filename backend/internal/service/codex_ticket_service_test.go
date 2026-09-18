@@ -26,6 +26,7 @@ type ticketCacheStub struct {
 	mu     sync.Mutex
 	values map[string]string
 	claims map[string]bool
+	owners map[string]string
 	gets   int
 	fail   bool
 	onGet  func()
@@ -66,6 +67,30 @@ func (c *ticketCacheStub) Claim(_ context.Context, key string, _ time.Duration) 
 }
 
 type ticketCipherStub struct{}
+
+func (c *ticketCacheStub) AcquireLease(_ context.Context, key, owner string, _ time.Duration) (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.fail {
+		return false, errors.New("offline")
+	}
+	if c.owners == nil {
+		c.owners = map[string]string{}
+	}
+	if c.owners[key] != "" {
+		return false, nil
+	}
+	c.owners[key] = owner
+	return true, nil
+}
+func (c *ticketCacheStub) ReleaseLease(_ context.Context, key, owner string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.owners[key] == owner {
+		delete(c.owners, key)
+	}
+	return nil
+}
 
 func (c *ticketCacheStub) GetMany(ctx context.Context, keys []string) (map[string]string, error) {
 	out := map[string]string{}
@@ -186,7 +211,7 @@ func seedTicket(t *testing.T, s *CodexTicketService, a *Account, model, token st
 	return ticket
 }
 
-// 三种出站构建器都只增加空缺票据，不更改会话隔离、鉴权、路由提示或请求正文。
+// 三种出站构建器共用票据注入，不更改会话隔离、鉴权、路由提示或请求正文。
 func TestCodexTicketGatewayBuildersPreserveLegacyHeaders(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	for _, path := range []string{"http", "passthrough", "ws"} {
@@ -316,8 +341,8 @@ func TestCodexTicketApplyOptInIsolationAndExistingState(t *testing.T) {
 	}
 	for _, key := range []string{"X-Codex-Turn-State", "x-codex-turn-state"} {
 		h := http.Header{"Authorization": {"Bearer fake-token"}, key: {"client-state"}}
-		s.Apply(ctx, &a, "gpt-6-astra", h)
-		require.Equal(t, "client-state", h[key][0])
+		require.NoError(t, s.Apply(ctx, &a, "gpt-6-astra", h))
+		require.Equal(t, ticket, h.Get(openAICodexTurnStateHeader))
 		require.Len(t, h, 2)
 	}
 	no := false
@@ -337,11 +362,12 @@ func TestCodexTicketReadFailureAndDisableDuringRead(t *testing.T) {
 	seedTicket(t, s, &a, "gpt-6-astra", "fake-token")
 	cache.fail = true
 	h := http.Header{"Authorization": {"Bearer fake-token"}}
-	s.Apply(context.Background(), &a, "gpt-6-astra", h)
+	require.ErrorIs(t, s.Apply(context.Background(), &a, "gpt-6-astra", h), ErrCodexTicketUnavailable)
 	require.Empty(t, h.Get(openAICodexTurnStateHeader))
 	cache.fail = false
+	s.cacheRetryAt.Store(0)
 	cache.onGet = func() { s.config.Store(&codexTicketConfig{loadedAt: time.Now()}) }
-	s.Apply(context.Background(), &a, "gpt-6-astra", h)
+	require.NoError(t, s.Apply(context.Background(), &a, "gpt-6-astra", h))
 	require.Empty(t, h.Get(openAICodexTurnStateHeader))
 }
 
@@ -385,7 +411,7 @@ func TestCodexTicketChangedCredentialsNotPersisted(t *testing.T) {
 		repo.mu.Unlock()
 	}}
 	s.gateway = &OpenAIGatewayService{accountRepo: repo, httpUpstream: up}
-	s.probe(context.Background(), s.config.Load(), &a, "gpt-6-astra", "http://proxy:80")
+	s.probe(context.Background(), s.config.Load(), &a, "gpt-6-astra")
 	for key := range cache.values {
 		require.True(t, strings.HasPrefix(key, "status:"), "换凭据后的旧结果不得保存可用票据")
 	}

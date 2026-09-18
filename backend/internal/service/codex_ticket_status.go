@@ -9,18 +9,21 @@ import (
 
 // 状态单独存储，不包含票据正文、响应正文、代理或凭据，也不加入账号调度投影。
 type codexTicketObservation struct {
-	State     string     `json:"state"`
-	Reason    string     `json:"reason,omitempty"`
-	CheckedAt time.Time  `json:"checked_at"`
-	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+	State      string                 `json:"state"`
+	Reason     string                 `json:"reason,omitempty"`
+	CheckedAt  time.Time              `json:"checked_at"`
+	ExpiresAt  *time.Time             `json:"expires_at,omitempty"`
+	Diagnostic *CodexTicketDiagnostic `json:"diagnostic,omitempty"`
 }
 
 type CodexTicketModelStatus struct {
-	Model     string     `json:"model"`
-	State     string     `json:"state"`
-	Reason    string     `json:"reason,omitempty"`
-	CheckedAt *time.Time `json:"checked_at,omitempty"`
-	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+	Model      string                 `json:"model"`
+	Blocked    bool                   `json:"blocked"`
+	State      string                 `json:"state"`
+	Reason     string                 `json:"reason,omitempty"`
+	CheckedAt  *time.Time             `json:"checked_at,omitempty"`
+	ExpiresAt  *time.Time             `json:"expires_at,omitempty"`
+	Diagnostic *CodexTicketDiagnostic `json:"diagnostic,omitempty"`
 }
 type CodexTicketAccountStatus struct {
 	AccountID        int64                    `json:"account_id"`
@@ -34,11 +37,15 @@ type CodexTicketStatusResponse struct {
 	Items      []CodexTicketAccountStatus `json:"items"`
 }
 
-func (s *CodexTicketService) recordObservation(ctx context.Context, key, state, reason string, expires *time.Time) {
+func (s *CodexTicketService) recordObservation(ctx context.Context, key, state, reason string, expires *time.Time, diagnostic ...*CodexTicketDiagnostic) {
 	if s.cache == nil || key == "" {
 		return
 	}
-	value, err := json.Marshal(codexTicketObservation{State: state, Reason: reason, CheckedAt: time.Now().UTC(), ExpiresAt: expires})
+	var detail *CodexTicketDiagnostic
+	if len(diagnostic) > 0 {
+		detail = diagnostic[0]
+	}
+	value, err := json.Marshal(codexTicketObservation{State: state, Reason: reason, CheckedAt: time.Now().UTC(), ExpiresAt: expires, Diagnostic: detail})
 	if err != nil {
 		return
 	}
@@ -124,10 +131,21 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 				default:
 					key := codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken())
 					status = s.ticketModelStatus(model, values[key], values["status:"+key], now)
+					if status.Diagnostic != nil {
+						status.Diagnostic.ProxyName = ""
+						for _, p := range cfg.proxies() {
+							if p.ID == status.Diagnostic.ProxyID {
+								status.Diagnostic.ProxyName = p.Name
+								break
+							}
+						}
+					}
 					if row.CollectionPaused && status.State == "pending" {
 						status.State = "paused"
 					}
 				}
+				// 模型门控独立于账号总开关和质量标签，状态不可读时也不伪装可用。
+				status.Blocked = cfg.Enabled && a.IsModelSupported(model) && status.State != "ready"
 				row.Models = append(row.Models, status)
 			}
 		}
@@ -141,6 +159,7 @@ func (s *CodexTicketService) ticketModelStatus(model, encrypted, observation str
 	var record codexTicketObservation
 	if observation != "" && json.Unmarshal([]byte(observation), &record) == nil && !record.CheckedAt.IsZero() {
 		status.CheckedAt = &record.CheckedAt
+		status.Diagnostic = safeCodexTicketDiagnostic(record.Diagnostic)
 		switch record.State {
 		case "collecting":
 			if now.Sub(record.CheckedAt) < time.Minute {
@@ -156,7 +175,7 @@ func (s *CodexTicketService) ticketModelStatus(model, encrypted, observation str
 		}
 		// 仅回传固定原因码，缓存中的任意文本不可进入管理界面。
 		switch record.Reason {
-		case "network", "upstream", "invalid_ticket", "credential", "storage", "cancelled":
+		case "network", "upstream", "invalid_ticket", "credential", "storage", "cancelled", "proxy_config":
 			status.Reason = record.Reason
 		}
 	}

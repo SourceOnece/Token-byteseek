@@ -333,7 +333,8 @@ const handleOptionMouseEnter = (option: any, index: number) => {
 const updateTriggerRect = () => {
   if (containerRef.value) {
     triggerRect.value = containerRef.value.getBoundingClientRect()
-    nextTick(updateDropdownLeft)
+    // 长表单滚动或移动端聚焦会移动触发器，方向也必须随坐标重算。
+    nextTick(() => { updateDropdownLeft(); updateDropdownDirection() })
   }
 }
 
@@ -345,24 +346,20 @@ const updateDropdownLeft = () => {
   dropdownLeft.value = clampDropdownLeft(triggerRect.value.left, dropdownWidth)
 }
 
-const calculateDropdownPosition = () => {
-  if (!containerRef.value) return
-  updateTriggerRect()
+const updateDropdownDirection = () => {
+  if (!dropdownRef.value || !triggerRect.value) return
+  const dropdownHeight = dropdownRef.value.offsetHeight || 240
+  const spaceBelow = window.innerHeight - triggerRect.value.bottom
+  const spaceAbove = triggerRect.value.top
 
-  nextTick(() => {
-    if (!dropdownRef.value || !triggerRect.value) return
-    updateDropdownLeft()
-    const dropdownHeight = dropdownRef.value.offsetHeight || 240
-    const spaceBelow = window.innerHeight - triggerRect.value.bottom
-    const spaceAbove = triggerRect.value.top
-
-    if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
-      dropdownPosition.value = 'top'
-    } else {
-      dropdownPosition.value = 'bottom'
-    }
-  })
+  if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+    dropdownPosition.value = 'top'
+  } else {
+    dropdownPosition.value = 'bottom'
+  }
 }
+
+const calculateDropdownPosition = () => { updateTriggerRect() }
 
 const toggle = () => {
   if (props.disabled) return

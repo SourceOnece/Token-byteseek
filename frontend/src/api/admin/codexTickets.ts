@@ -4,9 +4,15 @@ export type TicketState = 'ready' | 'pending' | 'collecting' | 'missing' | 'expi
 export interface TicketModelStatus {
   model: string
   state: TicketState
+  blocked?: boolean
   reason?: string
   checked_at?: string
   expires_at?: string
+  diagnostic?: {
+    proxy_id: string; proxy_name: string; attempt: number; http_status?: number
+    header_length: number; header_present: boolean; prefix_valid: boolean
+    response_kind?: string; error_kind?: string; completion_seen?: boolean; retry_not_before?: string
+  }
 }
 export interface TicketAccountStatus {
   account_id: number

@@ -50,3 +50,12 @@ func (c *codexTicketCache) GetMany(ctx context.Context, keys []string) (map[stri
 func (c *codexTicketCache) Claim(ctx context.Context, key string, ttl time.Duration) (bool, error) {
 	return c.client.SetNX(ctx, "private:codex-ticket-lease:v1:"+key, "1", ttl).Result()
 }
+
+// 短轮次使用唯一 owner 解锁，避免旧实例误删超时后已被别的实例取得的锁。
+func (c *codexTicketCache) AcquireLease(ctx context.Context, key, owner string, ttl time.Duration) (bool, error) {
+	// 沿用旧轮次的键空间，滚动升级时旧实例的值“1”也能阻止新实例同时采集。
+	return c.client.SetNX(ctx, "private:codex-ticket-lease:v1:"+key, owner, ttl).Result()
+}
+func (c *codexTicketCache) ReleaseLease(ctx context.Context, key, owner string) error {
+	return c.client.Eval(ctx, `if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end`, []string{"private:codex-ticket-lease:v1:" + key}, owner).Err()
+}

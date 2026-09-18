@@ -613,7 +613,7 @@ func (s *AdvancedSchedulerScoreDiagnosticService) diagnosticHardFilterReason(
 			return "model_unsupported"
 		}
 		if s != nil && s.openAIGateway != nil {
-			if s.openAIGateway.isOpenAIAccountRequestRuntimeBlocked(account, model) {
+			if s.openAIGateway.isOpenAIAccountRequestBlocked(ctx, account, model, false) {
 				return "runtime_blocked"
 			}
 			if s.openAIGateway.isOpenAIProxyStreamQuarantined(ctx, account) {

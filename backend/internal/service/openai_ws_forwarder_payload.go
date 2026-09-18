@@ -182,7 +182,9 @@ func (s *OpenAIGatewayService) buildOpenAIWSHeaders(
 	applyOpenAICodexBetaFeatures(c, account, headers)
 	setOpenAICodexRoutingHint(headers, account, routingModel, routingServiceTier)
 	if tickets := s.codexTickets.Load(); tickets != nil {
-		tickets.Apply(ctx, account, routingModel, headers)
+		if err := tickets.Apply(ctx, account, routingModel, headers); err != nil {
+			return nil, sessionResolution, err
+		}
 	}
 	logOpenAIRoutingDiagnostics(
 		ctx,

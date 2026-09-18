@@ -61,3 +61,31 @@ func TestCodexTicketCacheTTLAndClusterLease(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, value)
 }
+
+// 新 owner 已接管过期租约后，旧 owner 的迟到释放不得删除新锁。
+func TestCodexTicketLeaseOwnerRelease(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	c := NewCodexTicketCache(rdb)
+	ctx := context.Background()
+	ok, err := c.AcquireLease(ctx, "round", "a", time.Second)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.NoError(t, c.ReleaseLease(ctx, "round", "wrong"))
+	ok, err = c.AcquireLease(ctx, "round", "b", time.Second)
+	require.NoError(t, err)
+	require.False(t, ok)
+	mr.FastForward(2 * time.Second)
+	ok, err = c.AcquireLease(ctx, "round", "b", time.Second)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.NoError(t, c.ReleaseLease(ctx, "round", "a"))
+	owner, err := rdb.Get(ctx, "private:codex-ticket-lease:v1:round").Result()
+	require.NoError(t, err)
+	require.Equal(t, "b", owner)
+	require.NoError(t, c.ReleaseLease(ctx, "round", "b"))
+	ok, err = c.AcquireLease(ctx, "round", "c", time.Second)
+	require.NoError(t, err)
+	require.True(t, ok)
+}
