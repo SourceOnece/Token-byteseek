@@ -17,6 +17,7 @@ import (
 
 // 诊断只记录数值、固定枚举和管理员自定义名称，绝不包含响应正文/票据/代理地址。
 type CodexTicketDiagnostic struct {
+	DegradedSignal bool       `json:"degraded_signal,omitempty"`
 	ProxyID        string     `json:"proxy_id"`
 	ProxyName      string     `json:"proxy_name"`
 	Attempt        int        `json:"attempt"`
@@ -151,6 +152,8 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	diagnostic.HTTPStatus = resp.StatusCode
 	diagnostic.HeaderPresent = len(resp.Header.Values(openAICodexTurnStateHeader)) > 0
 	diagnostic.HeaderLength = len(ticket.State)
+	// 只记录管理员配置的长度信号，不改变合格票据判定、调度或质量检测结果。
+	diagnostic.DegradedSignal = cfg.DegradedSignalLength > 0 && len(ticket.State) == cfg.DegradedSignalLength
 	diagnostic.PrefixValid = strings.HasPrefix(ticket.State, "gAAAAA")
 	switch strings.ToLower(strings.TrimSpace(strings.Split(resp.Header.Get("Content-Type"), ";")[0])) {
 	case "text/event-stream":

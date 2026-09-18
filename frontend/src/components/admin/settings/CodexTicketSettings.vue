@@ -6,6 +6,11 @@
       <Toggle v-model="enabled" :disabled="locked" :aria-label="t('admin.settings.codexTicket.title')" data-testid="codex-ticket-toggle" />
     </div>
     <p class="border-l-4 border-bh-yellow pl-3 text-sm font-semibold text-yellow-800 dark:text-bh-yellow">{{ t('admin.settings.codexTicket.warning') }}</p>
+    <div>
+      <label for="ticket-models" class="input-label text-bh-blue dark:text-blue-300">{{ t('admin.settings.codexTicket.models') }}</label>
+      <textarea id="ticket-models" v-model="modelText" rows="3" class="input w-full font-mono" :disabled="locked" :aria-describedby="'ticket-models-hint'" />
+      <p id="ticket-models-hint" class="input-hint">{{ t('admin.settings.codexTicket.modelsHint') }}</p>
+    </div>
     <div class="grid gap-4 sm:grid-cols-2">
       <div><label for="ticket-mode" class="input-label">{{ t('admin.settings.codexTicket.mode') }}</label>
         <Select id="ticket-mode" :model-value="mode" :options="modeOptions" :disabled="locked" @update:model-value="setMode" /></div>
@@ -34,6 +39,9 @@
     <div class="grid gap-3 border-t-2 border-[color:var(--bh-ink)] pt-4 sm:grid-cols-2 lg:grid-cols-4">
       <div><label for="ticket-length" class="input-label">{{ t('admin.settings.codexTicket.targetLength') }}</label>
         <input id="ticket-length" v-model.number="targetLength" type="number" min="6" max="8192" step="1" class="input w-full font-bold text-bh-blue dark:text-blue-300" :disabled="locked" /></div>
+      <div><label for="ticket-signal" class="input-label">{{ t('admin.settings.codexTicket.signalLength') }}</label>
+        <input id="ticket-signal" v-model.number="signalLength" type="number" min="0" max="8192" step="1" class="input w-full font-bold text-bh-red dark:text-red-400" :disabled="locked" />
+        <p class="input-hint">{{ t('admin.settings.codexTicket.signalHint') }}</p></div>
       <div><label for="ticket-attempts" class="input-label">{{ t('admin.settings.codexTicket.attempts') }}</label>
         <input id="ticket-attempts" v-model.number="attempts" type="number" min="1" step="1" class="input w-full font-bold text-bh-blue dark:text-blue-300" :disabled="locked" /></div>
       <div><label for="ticket-retry" class="input-label">{{ t('admin.settings.codexTicket.retryInterval') }}</label>
@@ -62,6 +70,7 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 
 interface ProxyRow { id: string; name: string; configured: boolean; url: string }
 interface Settings {
+  models?: string[]; degraded_signal_length?: number
   enabled: boolean; proxy_configured: boolean; proxies: Omit<ProxyRow, 'url'>[]
   selection_mode: 'fixed' | 'rotate'; fixed_proxy_id: string; revision: string
   max_attempts: number; retry_interval_seconds: number; probe_interval_seconds: number; target_length?: number
@@ -72,6 +81,7 @@ const enabled = ref(false), proxies = ref<ProxyRow[]>([]), fixedID = ref(''), re
 const mode = ref<'fixed' | 'rotate'>('fixed')
 const attempts = ref(3), retryInterval = ref(1), interval = ref(6), removing = ref('')
 const targetLength = ref(292)
+const signalLength = ref(0), modelText = ref('gpt-6-astra\ngpt-5.6-sol')
 const loading = ref(true), saving = ref(false), error = ref(''), loadError = ref('')
 const locked = computed(() => loading.value || saving.value || !!loadError.value)
 const proxyOptions = computed(() => proxies.value.map((p, i) => ({ value: p.id, label: p.name || `Proxy ${i + 1}` })))
@@ -106,6 +116,8 @@ function apply(data: Settings) {
   proxies.value = data.proxies.map(p => ({ id: p.id, name: p.name, configured: p.configured, url: '' }))
   fixedID.value = data.fixed_proxy_id; attempts.value = data.max_attempts
   targetLength.value = data.target_length || 292
+  signalLength.value = data.degraded_signal_length || 0
+  modelText.value = (data.models?.length ? data.models : ['gpt-6-astra', 'gpt-5.6-sol']).join('\n')
   retryInterval.value = data.retry_interval_seconds; interval.value = data.probe_interval_seconds
   removing.value = ''
 }
@@ -118,6 +130,11 @@ async function load() {
 }
 async function save() {
   if (locked.value) return
+  const models = [...new Set(modelText.value.split(/\r?\n/).map(model => model.trim()).filter(Boolean))]
+  if (!models.length || models.length > 100 || models.some(model => new TextEncoder().encode(model).length > 256 || /[\s\p{Cc}]/u.test(model)) ||
+    !Number.isInteger(signalLength.value) || (signalLength.value !== 0 && (signalLength.value < 6 || signalLength.value > 8192))) {
+    error.value = t('admin.settings.codexTicket.invalidModelsSignal'); return
+  }
   const validNumber = (v: number, lo: number, hi: number) => Number.isInteger(v) && v >= lo && v <= hi
   if ((enabled.value && !proxies.value.length) || proxies.value.some(p => !p.name.trim() || (!p.configured && !p.url.trim())) ||
     !Number.isSafeInteger(attempts.value) || attempts.value < 1 || !validNumber(targetLength.value, 6, 8192) || !validNumber(retryInterval.value, 1, 30) || !validNumber(interval.value, 6, 3600)) {
@@ -126,7 +143,7 @@ async function save() {
   saving.value = true; error.value = ''
   try {
     const payload = { enabled: enabled.value, revision: revision.value, selection_mode: mode.value, fixed_proxy_id: fixedID.value,
-      max_attempts: attempts.value, target_length: targetLength.value, retry_interval_seconds: retryInterval.value, probe_interval_seconds: interval.value,
+      max_attempts: attempts.value, target_length: targetLength.value, models, degraded_signal_length: signalLength.value, retry_interval_seconds: retryInterval.value, probe_interval_seconds: interval.value,
       proxies: proxies.value.map(p => ({ id: p.id, name: p.name.trim(), harvest_proxy_url: p.url.trim() })) }
     apply((await apiClient.put<Settings>('/admin/settings/codex-ticket', payload)).data)
     app.showSuccess(t('admin.settings.codexTicket.saved'))

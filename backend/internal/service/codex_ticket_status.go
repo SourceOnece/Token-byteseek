@@ -17,15 +17,16 @@ type codexTicketObservation struct {
 }
 
 type CodexTicketModelStatus struct {
-	Latest       *CodexTicketLatest     `json:"latest,omitempty"`
-	Model        string                 `json:"model"`
-	TargetLength int                    `json:"target_length"`
-	Blocked      bool                   `json:"blocked"`
-	State        string                 `json:"state"`
-	Reason       string                 `json:"reason,omitempty"`
-	CheckedAt    *time.Time             `json:"checked_at,omitempty"`
-	ExpiresAt    *time.Time             `json:"expires_at,omitempty"`
-	Diagnostic   *CodexTicketDiagnostic `json:"diagnostic,omitempty"`
+	Latest               *CodexTicketLatest     `json:"latest,omitempty"`
+	Model                string                 `json:"model"`
+	TargetLength         int                    `json:"target_length"`
+	DegradedSignalLength int                    `json:"degraded_signal_length"`
+	Blocked              bool                   `json:"blocked"`
+	State                string                 `json:"state"`
+	Reason               string                 `json:"reason,omitempty"`
+	CheckedAt            *time.Time             `json:"checked_at,omitempty"`
+	ExpiresAt            *time.Time             `json:"expires_at,omitempty"`
+	Diagnostic           *CodexTicketDiagnostic `json:"diagnostic,omitempty"`
 }
 type CodexTicketAccountStatus struct {
 	AccountID        int64                    `json:"account_id"`
@@ -34,6 +35,7 @@ type CodexTicketAccountStatus struct {
 	Models           []CodexTicketModelStatus `json:"models"`
 }
 type CodexTicketStatusResponse struct {
+	Models     []string                   `json:"models"`
 	Enabled    bool                       `json:"enabled"`
 	ServerTime time.Time                  `json:"server_time"`
 	Items      []CodexTicketAccountStatus `json:"items"`
@@ -93,13 +95,13 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 			byID[a.ID] = a
 		}
 	}
-	keys := make([]string, 0, len(accounts)*4)
+	keys := make([]string, 0, len(accounts)*len(cfg.models())*3)
 	if cfg.Enabled {
 		for _, a := range accounts {
 			if !codexTicketAccount(a) {
 				continue
 			}
-			for _, model := range []string{"gpt-6-astra", "gpt-5.6-sol"} {
+			for _, model := range cfg.models() {
 				key := codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken())
 				keys = append(keys, key, "status:"+key, "latest:"+key)
 			}
@@ -113,6 +115,7 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 	}
 	now := time.Now().UTC()
 	response := &CodexTicketStatusResponse{Enabled: cfg.Enabled, ServerTime: now, Items: make([]CodexTicketAccountStatus, 0, len(unique))}
+	response.Models = append([]string(nil), cfg.models()...)
 	for _, id := range unique {
 		a := byID[id]
 		if a == nil {
@@ -121,7 +124,7 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 		row := CodexTicketAccountStatus{AccountID: id, Eligible: codexTicketAccount(a), Models: []CodexTicketModelStatus{}}
 		if row.Eligible {
 			row.CollectionPaused = !a.IsSchedulable()
-			for _, model := range []string{"gpt-6-astra", "gpt-5.6-sol"} {
+			for _, model := range cfg.models() {
 				status := CodexTicketModelStatus{Model: model, State: "pending"}
 				switch {
 				case !cfg.Enabled:
@@ -161,6 +164,7 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 				// 模型门控独立于账号总开关和质量标签，状态不可读时也不伪装可用。
 				status.Blocked = cfg.Enabled && a.IsModelSupported(model) && status.State != "ready"
 				status.TargetLength = cfg.targetLength()
+				status.DegradedSignalLength = cfg.DegradedSignalLength
 				row.Models = append(row.Models, status)
 			}
 		}

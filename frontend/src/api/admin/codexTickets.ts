@@ -7,12 +7,13 @@ export interface TicketModelStatus {
   state: TicketState
   blocked?: boolean
   target_length?: number
+  degraded_signal_length?: number
   latest?: TicketLatest
   reason?: string
   checked_at?: string
   expires_at?: string
   diagnostic?: {
-    proxy_id: string; proxy_name: string; attempt: number; http_status?: number
+    proxy_id: string; proxy_name: string; attempt: number; http_status?: number; degraded_signal?: boolean
     header_length: number; header_present: boolean; prefix_valid: boolean
     response_kind?: string; error_kind?: string; completion_seen?: boolean; retry_not_before?: string
   }
@@ -24,6 +25,7 @@ export interface TicketLatest {
 }
 
 export interface TicketSettings {
+  models?: string[]; degraded_signal_length?: number
   enabled: boolean; proxy_configured: boolean; target_length: number; revision: string
   selection_mode: 'fixed' | 'rotate'; fixed_proxy_id: string; max_attempts: number
   retry_interval_seconds: number; probe_interval_seconds: number
@@ -89,6 +91,7 @@ export interface TicketAccountStatus {
   models: TicketModelStatus[]
 }
 export interface TicketStatusResponse {
+  models?: string[]
   enabled: boolean
   server_time: string
   items: TicketAccountStatus[]

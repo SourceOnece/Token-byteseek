@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -60,6 +61,25 @@ func (c *codexTicketConfig) targetLength() int {
 	}
 	return 292
 }
+
+// 缺省模型保持旧配置兼容；实际模型支持仍由账号与上游判断，不根据名字猜测能力。
+func (c *codexTicketConfig) models() []string {
+	if len(c.Models) > 0 {
+		return c.Models
+	}
+	return []string{"gpt-6-astra", "gpt-5.6-sol"}
+}
+func (c *codexTicketConfig) hasModel(model string) bool {
+	for _, configured := range c.models() {
+		if model == configured {
+			return true
+		}
+	}
+	return false
+}
+func ValidCodexTicketModelID(model string) bool {
+	return model != "" && len(model) <= 256 && strings.IndexFunc(model, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) < 0
+}
 func (c *codexTicketConfig) retryInterval() time.Duration {
 	if c.RetryIntervalSeconds >= 1 && c.RetryIntervalSeconds <= 30 {
 		return time.Duration(c.RetryIntervalSeconds) * time.Second
@@ -69,6 +89,8 @@ func (c *codexTicketConfig) retryInterval() time.Duration {
 func codexTicketSettingsView(c *codexTicketConfig) CodexTicketSettings {
 	v := CodexTicketSettings{Enabled: c.Enabled, ProxyConfigured: len(c.proxies()) > 0, Proxies: []CodexTicketProxyView{}, SelectionMode: c.mode(), FixedProxyID: c.FixedProxyID, ProbeIntervalSeconds: int(c.interval() / time.Second), MaxAttempts: c.attempts(), RetryIntervalSeconds: int(c.retryInterval() / time.Second), Revision: c.Generation}
 	v.TargetLength = c.targetLength()
+	v.Models = append([]string(nil), c.models()...)
+	v.DegradedSignalLength = c.DegradedSignalLength
 	for _, p := range c.proxies() {
 		v.Proxies = append(v.Proxies, CodexTicketProxyView{p.ID, p.Name, p.Cipher != ""})
 	}
@@ -85,6 +107,30 @@ func codexTicketSettingsView(c *codexTicketConfig) CodexTicketSettings {
 func (s *CodexTicketService) updateProxySettings(c *codexTicketConfig, u CodexTicketSettingsUpdate) error {
 	if u.Revision != nil && *u.Revision != c.Generation {
 		return errors.New("票据配置已更新，请重新加载后再保存")
+	}
+	if u.Models != nil {
+		if len(*u.Models) < 1 || len(*u.Models) > 100 {
+			return errors.New("采集模型数量须为 1–100 个")
+		}
+		seen := map[string]bool{}
+		models := make([]string, 0, len(*u.Models))
+		for _, raw := range *u.Models {
+			model := strings.TrimSpace(raw)
+			if !ValidCodexTicketModelID(model) {
+				return errors.New("模型 ID 不能为空、包含空白/控制字符或超过 256 字节")
+			}
+			if !seen[model] {
+				seen[model] = true
+				models = append(models, model)
+			}
+		}
+		c.Models = models
+	}
+	if u.DegradedSignalLength != nil {
+		if *u.DegradedSignalLength != 0 && (*u.DegradedSignalLength < 6 || *u.DegradedSignalLength > 8192) {
+			return errors.New("降智信号长度须为 6–8192 字节，0 表示关闭提示")
+		}
+		c.DegradedSignalLength = *u.DegradedSignalLength
 	}
 	if u.Proxies != nil && (u.ClearProxy || (u.HarvestProxyURL != nil && strings.TrimSpace(*u.HarvestProxyURL) != "")) {
 		return errors.New("不能同时提交新代理列表与旧单代理字段")

@@ -5,6 +5,21 @@ import type { TicketAccountStatus } from '@/api/admin/codexTickets'
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 
 describe('CodexTicketStatus', () => {
+  it('实际/目标长度独立高亮，点击自定义模型打开详情并移除旧长提示', async () => {
+    const diagnostic = { proxy_id: 'legacy', proxy_name: 'A', attempt: 1, http_status: 200, header_length: 356, header_present: true, prefix_valid: true, degraded_signal: true }
+    const status: TicketAccountStatus = { account_id: 1, eligible: true, collection_paused: false, models: [{ model: 'custom-codex', target_length: 292, state: 'missing', diagnostic }] }
+    const w = mount(CodexTicketStatus, { props: { now: Date.now(), status }, global: { stubs: { BaseDialog: { template: '<div data-testid="dialog"><slot/><slot name="footer"/></div>' } } } })
+    expect(w.get('[data-testid="ticket-length-ratio"]').text()).toBe('356/292')
+    expect(w.get('[data-testid="ticket-length-ratio"]').classes()).toContain('text-yellow-700')
+    expect(w.get('[data-testid="ticket-degraded-signal"]').text()).toContain('degradedSignal')
+    expect(w.find('[data-testid="dialog"]').exists()).toBe(false)
+    await w.get('[data-testid="ticket-model-detail"]').trigger('click')
+    expect(w.get('[data-testid="dialog"]').text()).toContain('custom-codex')
+    expect(w.html()).not.toContain('notQuality')
+    await w.setProps({ status: { ...status, models: [{ ...status.models[0], diagnostic: { ...diagnostic, header_length: 292 } }] } })
+    expect(w.get('[data-testid="ticket-length-ratio"]').classes()).toContain('text-emerald-700')
+    await w.setProps({ status: { ...status, account_id: 2 } }); expect(w.find('[data-testid="dialog"]').exists()).toBe(false); w.unmount()
+  })
   it('最新手动失败与旧有效票分开显示，不用倒计时盖住最新结果', () => {
     const now = Date.now()
     const status: TicketAccountStatus = { account_id: 1, eligible: true, collection_paused: false, models: [{ model: 'gpt-6-astra', state: 'ready', expires_at: new Date(now + 600000).toISOString(), latest: { source: 'manual', state: 'failed', checked_at: new Date(now).toISOString(), ip_status: 'timeout' } }] }

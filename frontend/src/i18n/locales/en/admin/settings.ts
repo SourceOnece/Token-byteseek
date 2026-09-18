@@ -2,6 +2,9 @@ export default {
 // Settings
     settings: {
       codexTicket: {
+        models: 'Collection models', modelsHint: 'One exact upstream model ID per line, up to 100 models; duplicates are merged. Used for automatic/manual collection and existing missing-ticket checks. Accounts must support the model.',
+        signalLength: 'Degradation signal length (bytes)', signalHint: '0 disables the hint; for example 312. A match only displays a signal, without invalidating tickets or changing quality results.',
+        invalidModelsSignal: 'Enter 1–100 valid model IDs, one per line without whitespace. Signal length must be 0 or an integer from 6 to 8192.',
         mode: 'Failure retry strategy', rotate: 'Switch proxy after a miss', fixed: 'Retry a fixed proxy',
         fixedProxy: 'Selected harvest proxy', addProxy: 'Add harvest proxy', proxyName: 'Proxy name', proxyLabel: 'PROXY {index}',
         keepAddress: 'Leave blank to keep the saved address', removeTitle: 'Remove harvest proxy?',
@@ -13,7 +16,7 @@ export default {
         invalidForm: 'Provide proxy names and new addresses. Attempts must be a positive integer; length 6–8192 bytes; retry delay 1–30s; automatic cycle delay 6–3600s. Enabling requires a proxy.',
         versionMismatch: 'Frontend/backend version mismatch. Update all instances and reload.',
         title: 'Ticket collection (optional, default length 292)',
-        description: 'Off by default. When enabled, collect Astra/Sol tickets for schedulable standalone OpenAI OAuth accounts. Disabled means no collection or injection; normal forwarding is retained.',
+        description: 'Off by default. When enabled, collect tickets for configured models on standalone OpenAI OAuth accounts. Disabled means no collection or injection; normal forwarding is retained.',
         warning: 'Tickets must match the configured length and existing prefix checks; length is not a quality verdict. Valid tickets replace turn state; missing tickets block that model, not the account switch. One-hour cache, renew ten minutes early, no business 312 monitor. Up to 4 workers and 25s per attempt. Manual batches follow the configured count and stop on success; automatic cycles retain a 30s budget. Auth errors, rate limits or cancellation may stop early. Saving invalidates old tickets; disabling restores normal forwarding.',
         proxy: 'Harvest proxy URL (collection only)',
         configured: 'Configured; credentials are never returned. Leave blank to retain. Production requests keep the account proxy.',

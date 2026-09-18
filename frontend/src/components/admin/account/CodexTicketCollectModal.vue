@@ -8,7 +8,7 @@
       <template v-if="tab === 'collect'">
         <p class="border-l-4 border-bh-yellow p-3 text-sm text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketCollect.hint', { count: targets.length }) }}</p>
         <div v-if="settings" class="grid gap-3 border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-3 text-sm sm:grid-cols-2" style="box-shadow:var(--bh-shadow-sm)">
-          <span class="font-bold text-bh-blue dark:text-blue-300">Astra / Sol</span>
+          <span class="break-all font-bold text-bh-blue dark:text-blue-300">{{ (settings.models || ['gpt-6-astra', 'gpt-5.6-sol']).join(' / ') }}</span>
           <span class="font-bold text-bh-blue dark:text-blue-300">{{ t('admin.settings.codexTicket.targetLength') }}：{{ settings.target_length || 292 }}</span>
           <span>{{ t('admin.settings.codexTicket.attempts') }}：{{ settings.max_attempts }}</span>
           <span>{{ t(settings.selection_mode === 'rotate' ? 'admin.settings.codexTicket.rotate' : 'admin.settings.codexTicket.fixed') }}</span>
@@ -67,7 +67,8 @@
         <p class="break-words">{{ item.diagnostic?.proxy_name || '—' }} · {{ t('admin.accounts.ticketCollect.ip') }}：<span class="font-mono font-bold text-bh-blue dark:text-blue-300">{{ item.reference_ip || t('admin.accounts.ticketCollect.ipUnknown') }}</span></p>
         <p v-if="item.ip_status && item.ip_status !== 'reference'" class="text-xs text-yellow-800 dark:text-bh-yellow" data-testid="ticket-ip-error">{{ ipStatusLabel(item.ip_status) }}<span v-if="item.ip_http_status"> · HTTP {{ item.ip_http_status }}</span></p>
         <p v-if="item.ip_source" class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.ticketCollect.ipSource') }}：{{ ipSourceLabel(item.ip_source) }}<span v-if="item.ip_checked_at"> · {{ new Date(item.ip_checked_at).toLocaleString() }}</span></p>
-        <p v-if="item.diagnostic">HTTP {{ item.diagnostic.http_status || '—' }} · {{ item.diagnostic.header_length }}/{{ item.target_length }} · {{ item.diagnostic.response_kind || '—' }}<span v-if="item.diagnostic.error_kind"> · {{ errorKind(item.diagnostic.error_kind) }}</span></p>
+        <p v-if="item.diagnostic">HTTP {{ item.diagnostic.http_status || '—' }} · <strong :class="item.diagnostic.header_length === item.target_length ? 'text-emerald-700 dark:text-emerald-400' : 'text-yellow-700 dark:text-bh-yellow'">{{ item.diagnostic.header_length }}/{{ item.target_length }}</strong> · {{ item.diagnostic.response_kind || '—' }}<span v-if="item.diagnostic.error_kind"> · {{ errorKind(item.diagnostic.error_kind) }}</span></p>
+        <p v-if="item.diagnostic?.degraded_signal" class="font-bold text-bh-red dark:text-red-400">{{ t('admin.accounts.tickets.degradedSignal') }}</p>
         <p v-if="item.reason" class="text-xs">{{ reasonLabel(item.reason) }}</p>
         <p v-if="item.diagnostic?.retry_not_before" class="text-xs text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.tickets.retryAfter', { time: new Date(item.diagnostic.retry_not_before).toLocaleString() }) }}</p>
         <button v-if="detailKind === 'result' && item.attempt" class="btn btn-secondary btn-sm" @click="detailKind = 'attempt'; detailAccount = item.account_id; detailModel = item.model; detailStatus = ''; detailPage = 1; loadDetail()">{{ t('admin.accounts.ticketCollect.attempts') }}</button>

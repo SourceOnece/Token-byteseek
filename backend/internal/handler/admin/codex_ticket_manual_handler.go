@@ -132,7 +132,8 @@ func (h *SettingHandler) CodexTicketRunDetail(c *gin.Context) {
 		response.BadRequest(c, "日志类型无效")
 		return
 	}
-	if model != "" && model != "gpt-6-astra" && model != "gpt-5.6-sol" {
+	// 历史查询允许已从当前配置移除的模型，不能用当前列表限制历史事实。
+	if model != "" && !service.ValidCodexTicketModelID(model) {
 		response.BadRequest(c, "模型无效")
 		return
 	}

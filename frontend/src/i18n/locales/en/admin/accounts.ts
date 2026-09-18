@@ -8,7 +8,7 @@ export default {
         ipStatus: { unavailable: 'IP lookup unavailable (older records lack details)', timeout: 'IP lookup timed out', network: 'IP lookup network or proxy connection failed', tls: 'IP lookup certificate verification failed', http_error: 'IP lookup endpoint rejected access', invalid_response: 'No valid IP in lookup response', proxy_config: 'Invalid IP lookup proxy configuration', cancelled: 'IP lookup cancelled', not_attempted: 'IP lookup not attempted (no collection HTTP response)' },
         previous: 'Previous page', next: 'Next page',
         title: 'Batch ticket collection', collectTab: 'Manual collection', history: 'Collection history',
-        hint: '{count} selected accounts; collect Astra / Sol using saved OpenAI gateway settings. Manual collection permits scheduling-disabled accounts without enabling scheduling; other eligibility and rate-limit checks remain. Existing valid tickets are retained.',
+        hint: '{count} selected accounts; collect each saved model listed below using OpenAI gateway settings. Manual collection permits scheduling-disabled accounts without enabling scheduling; other eligibility and rate-limit checks remain. Existing valid tickets are retained.',
         disabled: 'Enable ticket collection and configure proxies in Gateway services → OpenAI first.',
         confirm: 'I confirm collection and reference IP queries consume upstream quota and proxy traffic, without changing account scheduling switches or quality labels.',
         ipHint: 'Reference IP comes from a separate query through the same proxy, not the collection response. Rotating proxies may use a different exit each time. IP lookup failure does not change the collection result.',
@@ -21,11 +21,12 @@ export default {
         reason: { ineligible: 'Account missing, unsupported type/model, disabled, expired or cooling down', account_changed: 'Account credentials or configuration changed', concurrency_busy: 'Account concurrency full; no upstream attempt', backoff: 'Upstream backoff remains in effect for manual collection' }
       },
       tickets: {
+        degradedSignal: 'Degradation signal', openDetails: 'View {model} collection details',
         source: { manual: 'Manual', auto: 'Automatic' }, latestAt: 'Latest collection completed', currentTicket: 'Current ticket',
         retryAfter: 'Harvest backoff until: {time}',
         attempt: 'Harvest proxy: {proxy}; attempt {count}', noHeader: 'No ticket header', badPrefix: 'Invalid prefix', completedNoTicket: 'Completed without eligible ticket',
         errorKind: { overloaded: 'Upstream overloaded', rate_limit: 'Rate limited', quota: 'Quota exhausted', auth: 'Authorization error', invalid_request: 'Invalid request' },
-        title: 'Ticket status', notQuality: 'Ticket availability is not a quality verdict. When enabled, missing tickets block this model without changing the account switch.', modelBlocked: 'Model paused',
+        title: 'Ticket status', modelBlocked: 'Model paused',
         checkedAt: 'Last attempt', pausedHint: 'Automatic collection is paused because this account is not schedulable. Manual collection can ignore its scheduling switch; other eligibility and rate-limit checks remain.',
         state: { ready: 'Ticket valid', pending: 'Pending', collecting: 'Collecting', missing: 'No eligible ticket', expired: 'Ticket expired', failed: 'Collection failed', disabled: 'Tickets disabled', unsupported: 'Unsupported model', unavailable: 'Status unavailable', paused: 'Collection paused', loading: 'Loading' },
         reason: { network: 'Network error or timeout', upstream: 'Upstream rejected the probe', invalid_ticket: 'Response state length or prefix does not match the acceptance rule', credential: 'Valid credentials unavailable', storage: 'Failed to save ticket cache', cancelled: 'Probe cancelled or timed out', proxy_config: 'Harvest proxy configuration or decryption failed' },

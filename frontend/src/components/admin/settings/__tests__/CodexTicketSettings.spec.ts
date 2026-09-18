@@ -14,6 +14,13 @@ const render = () => mount(CodexTicketSettings, { global: { stubs: {
 } } })
 
 describe('CodexTicketSettings', () => {
+  it('多模型逐行输入去重并保存信号，不限原有两模型', async () => {
+    get.mockResolvedValue({ data: existing() }); const w = render(); await flushPromises()
+    await w.get('#ticket-models').setValue('gpt-5.6-sol\ngpt-6-astra\ncustom-codex\ncustom-codex')
+    await w.get('#ticket-signal').setValue('356')
+    await w.get('[data-testid="codex-ticket-save"]').trigger('click'); await flushPromises()
+    expect(put.mock.calls[0][1]).toMatchObject({ models: ['gpt-5.6-sol', 'gpt-6-astra', 'custom-codex'], degraded_signal_length: 356 }); w.unmount()
+  })
   it('合格长度可自定义，尝试次数超过十仍原值提交', async () => {
     get.mockResolvedValue({ data: existing() }); const w = render(); await flushPromises()
     await w.get('#ticket-length').setValue('332'); await w.get('#ticket-attempts').setValue('200')

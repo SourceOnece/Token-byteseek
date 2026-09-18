@@ -9,7 +9,7 @@ export default {
         ipStatus: { unavailable: 'IP 查询不可用（旧记录无具体原因）', timeout: 'IP 查询超时', network: 'IP 查询网络或代理连接失败', tls: 'IP 查询证书验证失败', http_error: 'IP 查询端点拒绝访问', invalid_response: 'IP 查询响应中没有有效地址', proxy_config: 'IP 查询代理配置无效', cancelled: 'IP 查询已取消', not_attempted: '本次未执行 IP 查询（未取得采集 HTTP 响应）' },
         previous: '上一页', next: '下一页',
         title: '批量采集票据', collectTab: '手动采集', history: '采集历史',
-        hint: '本次选中 {count} 个账号，分别采集 Astra / Sol。手动允许关闭调度的账号参与，不会打开其调度；其余资格与限流仍保留。沿用网关服务 OpenAI 配置，不先删除有效旧票。',
+        hint: '本次选中 {count} 个账号，按下方已保存模型列表分别采集。手动允许关闭调度的账号参与，不会打开其调度；其余资格与限流仍保留。沿用网关服务 OpenAI 配置，不先删除有效旧票。',
         disabled: '请先在网关服务 → OpenAI 开启票据采集并配置代理。',
         confirm: '我确认发起采集及出口参考 IP 查询，会消耗上游额度和代理流量；不修改账号总调度开关或质量标签。',
         ipHint: '出口参考 IP 来自同条代理的独立查询，不是采票响应提供的证明。动态代理可能每次更换出口；未获取 IP 不影响采集结果。',
@@ -22,11 +22,12 @@ export default {
         reason: { ineligible: '账号不存在、类型不支持、已禁用/过期/冷却或不支持该模型', account_changed: '账号凭据或配置变化', concurrency_busy: '账号并发已满，本次未请求上游', backoff: '上游要求等待，手动采集不绕过退避' }
       },
       tickets: {
+        degradedSignal: '降智信号', openDetails: '查看 {model} 采集详情',
         source: { manual: '手动', auto: '自动' }, latestAt: '最新采集完成时间', currentTicket: '当前票据',
         retryAfter: '采集退避至：{time}',
         attempt: '采集代理：{proxy}；第 {count} 次尝试', noHeader: '无票据头', badPrefix: '前缀不符', completedNoTicket: '回复完成但票据不合格',
         errorKind: { overloaded: '上游过载', rate_limit: '上游限流', quota: '额度不足', auth: '授权错误', invalid_request: '请求格式错误' },
-        title: '票据状态', notQuality: '仅表示票据状态，不代表满血；开启打票后，缺票暂不调度该模型，不修改账号总开关。', modelBlocked: '该模型暂停',
+        title: '票据状态', modelBlocked: '该模型暂停',
         checkedAt: '最近采集', pausedHint: '账号当前不可调度，自动采集暂停；手动采集可忽略调度开关，但仍保留其他资格和限流检查。',
         state: { ready: '票据有效', pending: '待采集', collecting: '采集中', missing: '未获合格票', expired: '票据已过期', failed: '采集失败', disabled: '打票未开启', unsupported: '模型不支持', unavailable: '状态读取失败', paused: '暂停采集', loading: '读取中' },
         reason: { network: '网络或超时错误', upstream: '上游拒绝或返回错误', invalid_ticket: '响应头长度或前缀不符合当前接受规则', credential: '无法取得有效凭据', storage: '票据缓存保存失败', cancelled: '采集已取消或超时', proxy_config: '采集代理配置或解密失败' },

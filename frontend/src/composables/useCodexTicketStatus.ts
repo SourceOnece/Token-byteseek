@@ -27,18 +27,20 @@ export function useCodexTicketStatus(accounts: Ref<Account[]>) {
     try {
       const next: Record<number, TicketAccountStatus> = {}
       let serverTime = 0
+      let modelIDs: string[] = []
       // 大页分批读取，最多一个批次在途，避免每行请求或无界并发。
       for (let i = 0; i < ids.length; i += 100) {
         const data = await getCodexTicketStatus(ids.slice(i, i + 100), current.signal)
         if (current.signal.aborted || request !== version || destroyed) return
         serverTime = Date.parse(data.server_time)
         if (!Number.isFinite(serverTime) || !Array.isArray(data.items)) throw new Error('Invalid ticket status')
+        if (Array.isArray(data.models)) modelIDs = data.models
         for (const row of data.items) next[row.account_id] = row
       }
       // 已被删除或未返回的账号不能无限显示“读取中”，也不能沿用上页的有效票。
       for (const id of ids) if (!next[id]) next[id] = {
         account_id: id, eligible: true, collection_paused: false,
-        models: ['gpt-6-astra', 'gpt-5.6-sol'].map(model => ({ model, state: 'unavailable' }))
+        models: (modelIDs.length ? modelIDs : ['gpt-6-astra', 'gpt-5.6-sol']).map(model => ({ model, state: 'unavailable' }))
       }
       ticketStatus.value = next
       anchor = serverTime; anchorMono = performance.now(); lastRead = anchorMono

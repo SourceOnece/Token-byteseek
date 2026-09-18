@@ -42,6 +42,8 @@ type codexTicketConfig struct {
 	ProbeIntervalSeconds int                `json:"probe_interval_seconds,omitempty"`
 	MaxAttempts          int                `json:"max_attempts,omitempty"`
 	TargetLength         int                `json:"target_length,omitempty"`
+	DegradedSignalLength int                `json:"degraded_signal_length,omitempty"`
+	Models               []string           `json:"models,omitempty"`
 	RetryIntervalSeconds int                `json:"retry_interval_seconds,omitempty"`
 	loadedAt             time.Time
 }
@@ -56,6 +58,8 @@ type CodexTicketSettings struct {
 	ProbeIntervalSeconds int                    `json:"probe_interval_seconds"`
 	MaxAttempts          int                    `json:"max_attempts"`
 	TargetLength         int                    `json:"target_length"`
+	DegradedSignalLength int                    `json:"degraded_signal_length"`
+	Models               []string               `json:"models"`
 	RetryIntervalSeconds int                    `json:"retry_interval_seconds"`
 	Revision             string                 `json:"revision"`
 }
@@ -69,6 +73,8 @@ type CodexTicketSettingsUpdate struct {
 	ProbeIntervalSeconds *int                      `json:"probe_interval_seconds"`
 	MaxAttempts          *int                      `json:"max_attempts"`
 	TargetLength         *int                      `json:"target_length"`
+	DegradedSignalLength *int                      `json:"degraded_signal_length"`
+	Models               *[]string                 `json:"models"`
 	RetryIntervalSeconds *int                      `json:"retry_interval_seconds"`
 	Revision             *string                   `json:"revision"`
 }
@@ -213,7 +219,6 @@ func (s *CodexTicketService) enabledConfig() *codexTicketConfig {
 func codexTicketAccount(account *Account) bool {
 	return account != nil && account.ID > 0 && account.IsOpenAIOAuth() && !account.IsCredentialShadow() && !account.IsOpenAIAgentIdentity()
 }
-func codexTicketModel(model string) bool { return model == "gpt-6-astra" || model == "gpt-5.6-sol" }
 func codexTicketKey(cfg *codexTicketConfig, account *Account, model, token string) string {
 	// 上游凭据与工作区变动会换键；不在 Redis key 暴露 token 或客户端会话。
 	raw, _ := json.Marshal([]any{cfg.Generation, account.ID, model, token, account.GetCredential("chatgpt_account_id"), account.GetCredential("organization_id")})
@@ -234,7 +239,7 @@ var ErrCodexTicketUnavailable = errors.New("codex turn-state ticket unavailable"
 // Apply 沿快照覆盖回合头；缺票不现场采集，由后台续采后恢复。
 func (s *CodexTicketService) Apply(ctx context.Context, account *Account, model string, headers http.Header) error {
 	cfg := s.enabledConfig()
-	if cfg == nil || headers == nil || !codexTicketAccount(account) || !codexTicketModel(model) {
+	if cfg == nil || headers == nil || !codexTicketAccount(account) || !cfg.hasModel(model) {
 		return nil
 	}
 	token := strings.TrimPrefix(headers.Get("Authorization"), "Bearer ")
@@ -288,7 +293,7 @@ func (s *CodexTicketService) lookup(ctx context.Context, cfg *codexTicketConfig,
 // Blocks 只读票据，不刷新凭据、不触发采集，也不更新 schedulable。
 func (s *CodexTicketService) Blocks(ctx context.Context, account *Account, model string) bool {
 	cfg := s.enabledConfig()
-	if cfg == nil || !codexTicketAccount(account) || !codexTicketModel(model) {
+	if cfg == nil || !codexTicketAccount(account) || !cfg.hasModel(model) {
 		return false
 	}
 	_, ok := s.lookup(ctx, cfg, account, model, account.GetOpenAIAccessToken())
@@ -432,7 +437,7 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 			continue
 		}
 		s.cursor = account.ID
-		for _, model := range []string{"gpt-6-astra", "gpt-5.6-sol"} {
+		for _, model := range cfg.models() {
 			if !account.IsModelSupported(model) {
 				continue
 			}

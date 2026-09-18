@@ -146,7 +146,7 @@ func (s *CodexTicketService) PrepareManualCollection(ctx context.Context, req Co
 		return nil, errors.New("采集服务不可用")
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	m := &CodexTicketManualSession{s: s, cfg: cfg, repo: repo, ctx: ctx, cancel: cancel, ids: append([]int64(nil), req.AccountIDs...), Run: CodexTicketManualRun{ID: uuid.NewString(), Status: "running", Config: codexTicketSettingsView(cfg), Total: len(req.AccountIDs) * 2, StartedAt: time.Now().UTC(), Counts: map[string]int{}}}
+	m := &CodexTicketManualSession{s: s, cfg: cfg, repo: repo, ctx: ctx, cancel: cancel, ids: append([]int64(nil), req.AccountIDs...), Run: CodexTicketManualRun{ID: uuid.NewString(), Status: "running", Config: codexTicketSettingsView(cfg), Total: len(req.AccountIDs) * len(cfg.models()), StartedAt: time.Now().UTC(), Counts: map[string]int{}}}
 	s.lifecycleMu.Lock()
 	if s.stopped || s.manualCancel != nil {
 		s.lifecycleMu.Unlock()
@@ -257,7 +257,7 @@ func (m *CodexTicketManualSession) Execute(emit func(string, any) bool) {
 	go func() {
 		defer close(jobs)
 		for _, id := range m.ids {
-			for _, model := range []string{"gpt-6-astra", "gpt-5.6-sol"} {
+			for _, model := range m.cfg.models() {
 				jobs <- struct {
 					id    int64
 					model string
