@@ -6,6 +6,13 @@
       <Toggle v-model="enabled" :disabled="locked" :aria-label="t('admin.settings.codexTicket.title')" data-testid="codex-ticket-toggle" />
     </div>
     <p class="border-l-4 border-bh-yellow pl-3 text-sm font-semibold text-yellow-800 dark:text-bh-yellow">{{ t('admin.settings.codexTicket.warning') }}</p>
+    <!-- 固定运行参数用数字层级表达；详细限制按需展开，保存风险保持可见。 -->
+    <dl class="grid grid-cols-3 gap-3 text-sm" data-testid="ticket-rule-metrics">
+      <div class="border-l-4 border-bh-blue pl-3"><dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.cacheTime') }}</dt><dd class="font-mono text-xl font-bold text-bh-blue dark:text-blue-300">60 <small>min</small></dd></div>
+      <div class="border-l-4 border-bh-yellow pl-3"><dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.renewEarly') }}</dt><dd class="font-mono text-xl font-bold text-yellow-700 dark:text-bh-yellow">10 <small>min</small></dd></div>
+      <div class="border-l-4 border-bh-red pl-3"><dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.workers') }}</dt><dd class="font-mono text-xl font-bold text-bh-red dark:text-red-400">4</dd></div>
+    </dl>
+    <BauhausHelp :title="t('admin.accounts.quality.rules')"><p>{{ t('admin.settings.codexTicket.rules') }}</p><p>{{ t('admin.settings.codexTicket.limits') }}</p></BauhausHelp>
     <div>
       <label for="ticket-models" class="input-label text-bh-blue dark:text-blue-300">{{ t('admin.settings.codexTicket.models') }}</label>
       <textarea id="ticket-models" v-model="modelText" rows="3" class="input w-full font-mono" :disabled="locked" :aria-describedby="'ticket-models-hint'" />
@@ -64,6 +71,7 @@ import { useI18n } from 'vue-i18n'
 import Toggle from '@/components/common/Toggle.vue'
 import Select from '@/components/common/Select.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import BauhausHelp from '@/components/common/BauhausHelp.vue'
 import { apiClient } from '@/api/client'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'

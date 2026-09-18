@@ -67,4 +67,16 @@ describe('CodexTicketCollectModal', () => {
     await w.get('[data-testid="ticket-event-delete"]').trigger('click'); await flushPromises()
     expect(deleteEvent).toHaveBeenCalledWith('past', 8); expect(w.text()).toContain('Delete failed'); expect(w.findAll('article')).toHaveLength(1); w.unmount()
   })
+  it('历史比值复用左右重点色，无头不伪造零长度', async () => {
+    runs.mockResolvedValue([{ id: 'past', config, total: 2, counts: {}, started_at: '2026-09-18T00:00:00Z', status: 'completed' }])
+    const event = { id: 8, account_id: 1, model: 'gpt-6-astra', status: 'missing', target_length: 292, started_at: '2026-09-18T00:00:00Z', diagnostic: { http_status: 200, header_present: true, header_length: 356, degraded_signal: true } }
+    detail.mockResolvedValue({ run: { status: 'completed' }, total: 2, items: [event, { ...event, id: 9, diagnostic: { ...event.diagnostic, header_present: false, header_length: 0, degraded_signal: false } }] })
+    const w = render(true); await flushPromises()
+    await w.findAll('button').find(b => b.text().includes('332 bytes'))!.trigger('click'); await flushPromises()
+    expect(w.findAll('[data-testid="ticket-length-ratio"]')).toHaveLength(1)
+    expect(w.get('[data-testid="ticket-length-actual"]').classes()).toContain('text-bh-red')
+    expect(w.get('[data-testid="ticket-length-target"]').classes()).toContain('text-emerald-700')
+    expect(w.text()).toContain('tickets.noHeader')
+    w.unmount()
+  })
 })

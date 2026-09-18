@@ -3,10 +3,24 @@ import { describe, expect, it, vi } from 'vitest'
 import CodexQualityProgress from '../CodexQualityProgress.vue'
 import CodexQualityResult from '../CodexQualityResult.vue'
 import CodexQualitySummary from '../CodexQualitySummary.vue'
+import CodexQualityRules from '../CodexQualityRules.vue'
+import BauhausHelp from '@/components/common/BauhausHelp.vue'
 import { qualityStatusClass } from '../codexQualityPresentation'
 import type { CodexQualityResult as Result } from '@/api/admin/codexQuality'
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 describe('Quality presentation', () => {
+  it('规则用三元素和文字表达，辅助说明默认折叠', () => {
+    const w = mount(CodexQualityRules)
+    expect(w.findAll('[aria-hidden="true"].bg-current')).toHaveLength(3)
+    for (const status of ['full', 'degraded', 'failed']) {
+      expect(w.text()).toContain(`status.${status}`)
+      expect(w.text()).toContain(`rule.${status}`)
+    }
+    expect(w.findAll('button')).toHaveLength(0)
+    const help = mount(BauhausHelp, { props: { title: '规则' }, slots: { default: '辅助说明' } })
+    expect(help.get('details').attributes('open')).toBeUndefined()
+    expect(help.get('summary').text()).toBe('规则')
+  })
   it('只用蓝红黄文字，不填充状态背景', () => {
     expect(qualityStatusClass('full')).toContain('text-bh-blue')
     expect(qualityStatusClass('degraded')).toContain('text-bh-red')

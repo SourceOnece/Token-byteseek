@@ -1,11 +1,16 @@
 <template>
   <BaseDialog :show="show" :title="t('admin.accounts.quality.title')" width="extra-wide" :close-on-escape="category === null" @close="close">
     <div class="space-y-5">
-      <p class="border-l-4 border-bh-yellow bg-yellow-50 p-3 text-sm text-gray-900 dark:bg-yellow-950 dark:text-yellow-100">
+      <p class="border-l-4 border-bh-yellow pl-3 text-sm font-bold text-yellow-800 dark:text-bh-yellow">
         {{ t('admin.accounts.quality.warning', { count: targetIds.length, seconds: timeoutSeconds }) }}
       </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.disclaimer') }}</p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.rememberHint') }}</p>
+      <CodexQualityRules />
+      <BauhausHelp :title="t('admin.accounts.quality.rules')">
+        <p>{{ t('admin.accounts.quality.disclaimer') }}</p>
+        <p>{{ t('admin.accounts.quality.rememberHint') }}</p>
+        <p>{{ t('admin.accounts.quality.keywordHint') }}</p>
+        <p>{{ t('admin.accounts.quality.rateHint') }}</p>
+      </BauhausHelp>
       <div class="sm:max-w-sm"><label class="input-label text-bh-blue dark:text-blue-300" for="quality-protocol">{{ t('admin.accounts.quality.protocol') }}</label><Select id="quality-protocol" v-model="protocol" :options="protocols" :disabled="running" /></div>
       <div class="quality-fields grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
@@ -32,7 +37,7 @@
       <div>
         <label class="input-label" for="quality-keyword">{{ t('admin.accounts.quality.keyword') }}</label>
         <input id="quality-keyword" v-model="keyword" class="input w-full" maxlength="200" :disabled="running" />
-        <p class="input-hint">{{ t('admin.accounts.quality.keywordHint') }}</p>
+        <p class="input-hint">{{ t('admin.accounts.quality.keywordShort') }}</p>
       </div>
       <label class="flex items-start gap-2 text-sm font-semibold">
         <input v-model="confirmed" type="checkbox" class="mt-1" :disabled="running" data-testid="quality-confirm" />
@@ -44,7 +49,6 @@
         <span class="text-bh-blue dark:text-blue-300">{{ t('admin.accounts.quality.model') }}：{{ model }}</span>
         <span class="text-yellow-700 dark:text-bh-yellow">{{ t('admin.accounts.quality.effort') }}：{{ effort || t('admin.accounts.quality.effortDefault') }}</span>
       </div>
-      <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.rateHint') }}</p>
       <CodexQualityProgress v-if="running || results.length" :done="results.length" :total="targetIds.length" :label="t(running ? 'admin.accounts.quality.progress' : completed ? 'admin.accounts.quality.completed' : 'admin.accounts.quality.stopped', { done: results.length, total: targetIds.length })" />
     </div>
     <template #footer>
@@ -61,6 +65,8 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
+import BauhausHelp from '@/components/common/BauhausHelp.vue'
+import CodexQualityRules from './CodexQualityRules.vue'
 import { adminAPI } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { getModelsByPlatform } from '@/composables/useModelWhitelist'

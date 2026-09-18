@@ -17,7 +17,8 @@
         </div>
         <p v-if="settings && !settings.enabled" class="font-bold text-bh-red">{{ t('admin.accounts.ticketCollect.disabled') }}</p>
         <label class="flex items-start gap-2 text-sm font-semibold"><input v-model="confirmed" type="checkbox" class="mt-1" :disabled="running" data-testid="ticket-collect-confirm" />{{ t('admin.accounts.ticketCollect.confirm') }}</label>
-        <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.ticketCollect.ipHint') }}</p>
+        <p class="text-xs font-semibold text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketCollect.historyHint') }}</p>
+        <BauhausHelp :title="t('admin.accounts.quality.rules')"><p>{{ t('admin.accounts.ticketCollect.eligibilityHint') }}</p><p>{{ t('admin.accounts.ticketCollect.ipHint') }}</p></BauhausHelp>
         <div v-if="run" class="space-y-4">
           <CodexQualityProgress :done="processed" :total="run.total" :label="t('admin.accounts.ticketCollect.progress')" />
           <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -67,7 +68,7 @@
         <p class="break-words">{{ item.diagnostic?.proxy_name || '—' }} · {{ t('admin.accounts.ticketCollect.ip') }}：<span class="font-mono font-bold text-bh-blue dark:text-blue-300">{{ item.reference_ip || t('admin.accounts.ticketCollect.ipUnknown') }}</span></p>
         <p v-if="item.ip_status && item.ip_status !== 'reference'" class="text-xs text-yellow-800 dark:text-bh-yellow" data-testid="ticket-ip-error">{{ ipStatusLabel(item.ip_status) }}<span v-if="item.ip_http_status"> · HTTP {{ item.ip_http_status }}</span></p>
         <p v-if="item.ip_source" class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.ticketCollect.ipSource') }}：{{ ipSourceLabel(item.ip_source) }}<span v-if="item.ip_checked_at"> · {{ new Date(item.ip_checked_at).toLocaleString() }}</span></p>
-        <p v-if="item.diagnostic">HTTP {{ item.diagnostic.http_status || '—' }} · <strong :class="item.diagnostic.header_length === item.target_length ? 'text-emerald-700 dark:text-emerald-400' : 'text-yellow-700 dark:text-bh-yellow'">{{ item.diagnostic.header_length }}/{{ item.target_length }}</strong> · {{ item.diagnostic.response_kind || '—' }}<span v-if="item.diagnostic.error_kind"> · {{ errorKind(item.diagnostic.error_kind) }}</span></p>
+        <p v-if="item.diagnostic">HTTP {{ item.diagnostic.http_status || '—' }} · <CodexTicketLength v-if="item.diagnostic.header_present" :actual="item.diagnostic.header_length" :target="item.target_length" :signal="item.diagnostic.degraded_signal" /><span v-else>{{ t('admin.accounts.tickets.noHeader') }}</span> · {{ item.diagnostic.response_kind || '—' }}<span v-if="item.diagnostic.error_kind"> · {{ errorKind(item.diagnostic.error_kind) }}</span></p>
         <p v-if="item.diagnostic?.degraded_signal" class="font-bold text-bh-red dark:text-red-400">{{ t('admin.accounts.tickets.degradedSignal') }}</p>
         <p v-if="item.reason" class="text-xs">{{ reasonLabel(item.reason) }}</p>
         <p v-if="item.diagnostic?.retry_not_before" class="text-xs text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.tickets.retryAfter', { time: new Date(item.diagnostic.retry_not_before).toLocaleString() }) }}</p>
@@ -86,6 +87,8 @@ import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import CodexQualityProgress from './CodexQualityProgress.vue'
+import CodexTicketLength from './CodexTicketLength.vue'
+import BauhausHelp from '@/components/common/BauhausHelp.vue'
 import { runTicketCollection, ticketCollectionAPI, type TicketCollectionEvent, type TicketCollectionRun, type TicketSettings } from '@/api/admin/codexTickets'
 import { useAuthStore } from '@/stores/auth'
 const props = defineProps<{ show: boolean; accountIds: number[]; historyOnly?: boolean }>()

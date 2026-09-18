@@ -8,6 +8,9 @@
       <p v-if="error" role="alert" class="text-bh-red dark:text-red-400">{{ error }}</p>
       <form v-if="draft" class="quality-form space-y-5" @submit.prevent="save">
         <fieldset :disabled="saving || selecting" class="min-w-0 space-y-5">
+        <CodexQualityRules />
+        <p class="text-xs font-bold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.quality.schedule.description') }}</p>
+        <BauhausHelp :title="t('admin.accounts.quality.rules')"><p>{{ t('admin.accounts.quality.schedule.timingHint') }}</p><p>{{ t('admin.accounts.quality.disclaimer') }}</p><p>{{ t('admin.accounts.quality.keywordHint') }}</p></BauhausHelp>
         <div class="grid items-end gap-4 sm:grid-cols-3">
           <div><label class="input-label" for="quality-plan-name">{{ t('admin.accounts.quality.schedule.name') }}</label><input id="quality-plan-name" v-model="draft.name" class="input w-full" maxlength="100" required /></div>
           <div><label class="input-label" for="quality-plan-interval">{{ t('admin.accounts.quality.schedule.interval') }}</label><input id="quality-plan-interval" v-model.number="draft.interval_minutes" type="number" min="1" max="43200" class="input w-full font-bold text-bh-blue dark:text-blue-300" required /></div>
@@ -20,7 +23,7 @@
           <div><label class="input-label" for="quality-plan-timeout">{{ t('admin.accounts.quality.timeout') }}</label><input id="quality-plan-timeout" v-model.number="draft.config.timeout_seconds" type="number" min="10" max="3600" class="input w-full" required /></div>
         </div>
         <div><label class="input-label" for="quality-plan-prompt">{{ t('admin.accounts.quality.prompt') }}</label><textarea id="quality-plan-prompt" v-model="draft.config.prompt" class="input w-full" rows="3" maxlength="16000" required /></div>
-        <div><label class="input-label" for="quality-plan-keyword">{{ t('admin.accounts.quality.keyword') }}</label><input id="quality-plan-keyword" v-model="draft.config.keyword" class="input w-full" maxlength="200" required /></div>
+        <div><label class="input-label" for="quality-plan-keyword">{{ t('admin.accounts.quality.keyword') }}</label><input id="quality-plan-keyword" v-model="draft.config.keyword" class="input w-full" maxlength="200" required /><p class="input-hint">{{ t('admin.accounts.quality.keywordShort') }}</p></div>
         <div class="sm:max-w-sm"><label class="input-label text-bh-blue dark:text-blue-300" for="quality-plan-protocol">{{ t('admin.accounts.quality.protocol') }}</label><Select id="quality-plan-protocol" v-model="draft.config.api_protocol" :options="protocols" /></div>
         <div class="border-y-2 border-bh-ink py-4">
           <div class="flex flex-wrap items-center gap-2">
@@ -116,6 +119,8 @@ import CodexQualityResultCard from './CodexQualityResult.vue'
 import { getModelsByPlatform } from '@/composables/useModelWhitelist'
 import { adminAPI } from '@/api/admin'
 import { qualitySchedulesAPI, type QualitySchedule, type QualityRun, type CodexQualityResult } from '@/api/admin/codexQuality'
+import BauhausHelp from '@/components/common/BauhausHelp.vue'
+import CodexQualityRules from './CodexQualityRules.vue'
 import type { Account } from '@/types'
 import { isQualityTestable as eligible, qualityProtocolOptions, qualityProtocolLabel } from './codexQualityPresentation'
 

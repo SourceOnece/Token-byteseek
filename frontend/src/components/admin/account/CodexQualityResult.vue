@@ -27,7 +27,8 @@
       <pre class="max-h-72 overflow-auto whitespace-pre-wrap break-words bg-gray-50 p-3 font-sans text-sm dark:bg-dark-900">{{ result.response_text || t('admin.accounts.quality.noAnswer') }}</pre>
     </details>
     <p v-if="result.error" class="break-words text-sm font-semibold" :class="qualityStatusClass(result.status)">{{ result.error }}</p>
-    <p class="text-xs font-semibold">
+    <p class="flex items-center gap-2 text-xs font-semibold" :class="result.scheduling_applied ? result.schedulable ? 'text-bh-blue dark:text-blue-300' : 'text-bh-red dark:text-red-400' : 'text-gray-600 dark:text-gray-300'">
+      <span aria-hidden="true" class="h-2 w-2 shrink-0 bg-current" :class="{ 'rounded-full': !result.scheduling_applied }" />
       {{ result.scheduling_applied
         ? t(result.schedulable ? 'admin.accounts.quality.schedulingOn' : 'admin.accounts.quality.schedulingOff')
         : t('admin.accounts.quality.schedulingUnchanged') }}

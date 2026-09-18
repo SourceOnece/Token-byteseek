@@ -1,7 +1,7 @@
 <template>
   <section class="card p-4 space-y-3" data-testid="quality-dashboard">
     <div class="flex items-center justify-between gap-3"><h3 class="font-extrabold text-lg">{{ t('admin.accounts.quality.dashboard') }}</h3><button class="btn btn-secondary btn-sm" :disabled="loading" @click="load">{{ t('common.refresh') }}</button></div>
-    <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.dashboardHint') }}</p>
+    <BauhausHelp :title="t('admin.accounts.quality.statRules')"><p>{{ t('admin.accounts.quality.dashboardHint') }}</p><p>{{ t('admin.accounts.quality.rateHint') }}</p></BauhausHelp>
     <p v-if="error" role="alert" class="text-yellow-700 dark:text-bh-yellow">{{ t('admin.accounts.quality.loadFailed') }}</p>
     <template v-if="counts">
       <CodexQualitySummary :counts="counts" :rate-label="t('admin.accounts.quality.poolRate')" @select="openAccounts" />
@@ -15,6 +15,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { qualitySchedulesAPI } from '@/api/admin/codexQuality'
 import CodexQualitySummary from './CodexQualitySummary.vue'
+import BauhausHelp from '@/components/common/BauhausHelp.vue'
 const { t } = useI18n(), router = useRouter()
 const counts = ref<Record<string, number> | null>(null), loading = ref(false), error = ref(false)
 let active = true
