@@ -33,8 +33,18 @@ func (r *accountRepository) AppendTicketEvent(ctx context.Context, id string, e 
 	return rows.Scan(&e.ID)
 }
 func (r *accountRepository) HeartbeatTicketRun(ctx context.Context, id string) error {
-	_, err := r.sql.ExecContext(ctx, `UPDATE codex_ticket_manual_runs SET heartbeat_at=NOW() WHERE id=$1 AND status='running'`, id)
-	return err
+	result, err := r.sql.ExecContext(ctx, `UPDATE codex_ticket_manual_runs SET heartbeat_at=NOW() WHERE id=$1 AND status='running'`, id)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return service.ErrTicketHistoryNotFound
+	}
+	return nil
 }
 func (r *accountRepository) FinishTicketRun(ctx context.Context, id, status string, counts map[string]int) error {
 	raw, err := json.Marshal(counts)
@@ -135,4 +145,56 @@ func (r *accountRepository) ListTicketEvents(ctx context.Context, id, kind, stat
 		out = append(out, e)
 	}
 	return out, total, rows.Err()
+}
+
+// 父批次加行锁，删除与心跳/终态串行；仅已结束或超过60秒失联的历史可清理。
+// @project-doc docs/interfaces/codex_ticket.md#manual_collection
+func (r *accountRepository) DeleteTicketHistory(ctx context.Context, runID string, eventID int64) (int64, error) {
+	if runID == "" {
+		rows, err := r.sql.QueryContext(ctx, `WITH eligible AS MATERIALIZED (
+		 SELECT id FROM codex_ticket_manual_runs WHERE status<>'running' OR heartbeat_at<NOW()-INTERVAL '60 seconds' FOR UPDATE
+		), removed AS (DELETE FROM codex_ticket_manual_runs WHERE id IN(SELECT id FROM eligible) RETURNING id)
+		SELECT count(*) FROM removed`)
+		if err != nil {
+			return 0, err
+		}
+		defer rows.Close()
+		var n int64
+		if !rows.Next() {
+			return 0, rows.Err()
+		}
+		err = rows.Scan(&n)
+		return n, err
+	}
+	var query string
+	args := []any{runID}
+	guard := `WITH locked AS MATERIALIZED (SELECT id,(status='running' AND heartbeat_at>=NOW()-INTERVAL '60 seconds') AS active FROM codex_ticket_manual_runs WHERE id=$1 FOR UPDATE), removed AS (`
+	if eventID == 0 {
+		query = guard + `DELETE FROM codex_ticket_manual_runs WHERE id IN(SELECT id FROM locked WHERE NOT active) RETURNING id)
+		SELECT EXISTS(SELECT 1 FROM locked),COALESCE((SELECT active FROM locked),false),(SELECT count(*) FROM removed)`
+	} else {
+		query = guard + `DELETE FROM codex_ticket_manual_events WHERE run_id IN(SELECT id FROM locked WHERE NOT active) AND id=$2 RETURNING id)
+		SELECT EXISTS(SELECT 1 FROM locked),COALESCE((SELECT active FROM locked),false),(SELECT count(*) FROM removed)`
+		args = append(args, eventID)
+	}
+	rows, err := r.sql.QueryContext(ctx, query, args...)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	var exists, active bool
+	var n int64
+	if !rows.Next() {
+		return 0, errors.New("删除采集日志失败")
+	}
+	if err = rows.Scan(&exists, &active, &n); err != nil {
+		return 0, err
+	}
+	if active {
+		return 0, service.ErrTicketHistoryActive
+	}
+	if !exists || n == 0 {
+		return 0, service.ErrTicketHistoryNotFound
+	}
+	return n, nil
 }

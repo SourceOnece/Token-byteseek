@@ -25,3 +25,18 @@ func TestCodexTicketManualHandlerRejectsUnconfirmed(t *testing.T) {
 		require.Equal(t, 400, w.Code)
 	}
 }
+
+func TestCodexTicketHistoryDeleteRejectsAmbiguousTargets(t *testing.T) {
+	for _, params := range []gin.Params{
+		{{Key: "id", Value: "invalid"}},
+		{{Key: "id", Value: "11111111-1111-4111-8111-111111111111"}, {Key: "event_id", Value: "0"}},
+		{{Key: "id", Value: "11111111-1111-4111-8111-111111111111"}, {Key: "event_id", Value: "-1"}},
+	} {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodDelete, "/", nil)
+		c.Params = params
+		(&SettingHandler{}).DeleteCodexTicketHistory(c)
+		require.Equal(t, 400, w.Code)
+	}
+}

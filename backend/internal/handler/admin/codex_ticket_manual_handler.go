@@ -2,6 +2,7 @@ package admin
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -52,6 +53,40 @@ func (h *SettingHandler) BatchCodexTicketCollect(c *gin.Context) {
 		c.Writer.Flush()
 		return true
 	})
+}
+
+// 用户明确要求直接删除，不设额外确认参数；仅管理员 DELETE 路由可调用。
+func (h *SettingHandler) DeleteCodexTicketHistory(c *gin.Context) {
+	runID := c.Param("id")
+	if runID != "" {
+		if _, err := uuid.Parse(runID); err != nil {
+			response.BadRequest(c, "批次 ID 无效")
+			return
+		}
+	}
+	var eventID int64
+	if value := c.Param("event_id"); value != "" {
+		var err error
+		eventID, err = strconv.ParseInt(value, 10, 64)
+		if err != nil || eventID <= 0 {
+			response.BadRequest(c, "日志 ID 无效")
+			return
+		}
+	}
+	deleted, err := h.codexTickets.DeleteTicketHistory(c.Request.Context(), runID, eventID)
+	if errors.Is(err, service.ErrTicketHistoryActive) {
+		response.Error(c, 409, err.Error())
+		return
+	}
+	if errors.Is(err, service.ErrTicketHistoryNotFound) {
+		response.Error(c, 404, err.Error())
+		return
+	}
+	if err != nil {
+		response.InternalError(c, "删除采集历史失败")
+		return
+	}
+	response.Success(c, map[string]any{"deleted": deleted})
 }
 func (h *SettingHandler) ListCodexTicketRuns(c *gin.Context) {
 	r, err := h.codexTickets.TicketHistory()

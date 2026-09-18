@@ -57,6 +57,21 @@ type CodexTicketHistoryRepository interface {
 	ListTicketEvents(context.Context, string, string, string, int64, string, int) ([]CodexTicketAttempt, int, error)
 }
 
+// 手动只忽略账号调度开关，不改账号对象、不绕过禁用/过期/冷却等其他保护。
+type codexTicketManualContextKey struct{}
+
+func codexTicketCollectionAllowed(ctx context.Context, account *Account) bool {
+	if !codexTicketAccount(account) {
+		return false
+	}
+	if manual, _ := ctx.Value(codexTicketManualContextKey{}).(bool); manual {
+		copy := *account
+		copy.Schedulable = true
+		return copy.IsSchedulable()
+	}
+	return account.IsSchedulable()
+}
+
 func (r *CodexTicketManualRequest) Normalize() error {
 	if !r.Confirmed {
 		return errors.New("请先确认采集将消耗上游额度")
@@ -308,6 +323,7 @@ func (m *CodexTicketManualSession) Execute(emit func(string, any) bool) {
 }
 
 func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, model string, record func(CodexTicketAttempt)) {
+	ctx = context.WithValue(ctx, codexTicketManualContextKey{}, true)
 	started := time.Now().UTC()
 	latestKey := ""
 	result := CodexTicketAttempt{Kind: "result", AccountID: id, Model: model, TargetLength: m.cfg.targetLength(), Status: "skipped", Reason: "ineligible", StartedAt: started}
@@ -334,7 +350,7 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 	if result.Email == "" {
 		result.Email = firstStringValue(a.Extra, "email", "email_address")
 	}
-	if !codexTicketAccount(a) || !a.IsSchedulable() || !a.IsModelSupported(model) {
+	if !codexTicketCollectionAllowed(ctx, a) || !a.IsModelSupported(model) {
 		return
 	}
 	token, _, err := m.s.gateway.GetAccessToken(ctx, a)

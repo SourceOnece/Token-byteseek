@@ -39,6 +39,10 @@ export interface TicketCollectionRun {
   id: string; status: string; config: TicketSettings; total: number; started_at: string; finished_at?: string; counts: Record<string, number>
 }
 export const ticketCollectionAPI = {
+  // 仅在显式点击时发送 DELETE，不使用读取接口触发删除或自动重试。
+  async clearHistory() { return (await apiClient.delete<{ deleted: number }>('/admin/accounts/codex-ticket-runs')).data },
+  async deleteRun(id: string) { return (await apiClient.delete<{ deleted: number }>(`/admin/accounts/codex-ticket-runs/${id}`)).data },
+  async deleteEvent(id: string, eventID: number) { return (await apiClient.delete<{ deleted: number }>(`/admin/accounts/codex-ticket-runs/${id}/events/${eventID}`)).data },
   async settings() { return (await apiClient.get<TicketSettings>('/admin/settings/codex-ticket')).data },
   async runs(page = 1) { return (await apiClient.get<TicketCollectionRun[]>('/admin/accounts/codex-ticket-runs', { params: { page } })).data },
   async detail(id: string, params: { page?: number; kind?: string; status?: string; account_id?: number; model?: string } = {}) {

@@ -125,6 +125,44 @@ func TestCodexTicketManualLogsBothModelsAndCustomLength(t *testing.T) {
 	require.Empty(t, cache.owners)
 	require.Nil(t, s.manualCancel)
 }
+
+// 停调号只在显式手动采集中允许，初检/探测/提交都通过，不打开真实账号调度。
+func TestCodexTicketManualSchedulingDisabledStillCollects(t *testing.T) {
+	s, r, u := setupTicketManualTest(t, 292)
+	r.accounts[0].Schedulable = false
+	a := r.accounts[0]
+	s.probe(context.Background(), s.config.Load(), &a, "gpt-6-astra")
+	require.Zero(t, u.calls.Load(), "自动采集仍跳过停调账号")
+	m, err := s.PrepareManualCollection(context.Background(), manualRequest(s))
+	require.NoError(t, err)
+	m.Execute(func(string, any) bool { return true })
+	require.Equal(t, int32(2), u.calls.Load())
+	require.Equal(t, 2, r.run.Counts["ready"])
+	require.False(t, r.accounts[0].Schedulable)
+	require.False(t, r.accounts[0].IsSchedulable())
+	require.Empty(t, r.accounts[0].Extra)
+	status, err := s.Status(context.Background(), []int64{1})
+	require.NoError(t, err)
+	require.Equal(t, "ready", status.Items[0].Models[0].State)
+	require.Equal(t, "manual", status.Items[0].Models[0].Latest.Source)
+}
+func TestCodexTicketManualDoesNotIgnoreOtherEligibility(t *testing.T) {
+	ctx := context.WithValue(context.Background(), codexTicketManualContextKey{}, true)
+	a := ticketAccount()
+	a.Schedulable = false
+	require.True(t, codexTicketCollectionAllowed(ctx, &a))
+	deadline := time.Now().Add(time.Hour)
+	for _, mutate := range []func(*Account){
+		func(a *Account) { a.Status = "inactive" },
+		func(a *Account) { a.RateLimitResetAt = &deadline },
+		func(a *Account) { a.Type = AccountTypeAPIKey },
+	} {
+		copy := a
+		mutate(&copy)
+		require.False(t, codexTicketCollectionAllowed(ctx, &copy))
+	}
+	require.False(t, codexTicketCollectionAllowed(context.Background(), &a))
+}
 func TestCodexTicketManualCancellationAndStorageFailure(t *testing.T) {
 	for _, mode := range []string{"disconnect", "storage", "disable"} {
 		t.Run(mode, func(t *testing.T) {

@@ -87,9 +87,9 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		s.recordObservation(ctx, key, "failed", "proxy_config", nil, diagnostic)
 		return false, cfg.mode() == "rotate"
 	}
-	// 重试前重读凭据与资格；不得在配置变更/停调后继续拿旧快照请求。
+	// 重试前重读凭据与资格；手动仅忽略调度开关，自动仍在停调后停止。
 	fresh, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
-	if err != nil || !codexTicketAccount(fresh) || !fresh.IsSchedulable() || !fresh.IsModelSupported(model) || fresh.GetOpenAIAccessToken() != token || codexTicketKey(cfg, fresh, model, token) != key {
+	if err != nil || !codexTicketCollectionAllowed(ctx, fresh) || !fresh.IsModelSupported(model) || fresh.GetOpenAIAccessToken() != token || codexTicketKey(cfg, fresh, model, token) != key {
 		return false, false
 	}
 	probeCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
@@ -187,7 +187,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		return false, false
 	}
 	final, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
-	if err != nil || !codexTicketAccount(final) || !final.IsSchedulable() || !final.IsModelSupported(model) || final.GetOpenAIAccessToken() != token || codexTicketKey(cfg, final, model, token) != key {
+	if err != nil || !codexTicketCollectionAllowed(ctx, final) || !final.IsModelSupported(model) || final.GetOpenAIAccessToken() != token || codexTicketKey(cfg, final, model, token) != key {
 		return false, false
 	}
 	raw, _ := json.Marshal(ticket)

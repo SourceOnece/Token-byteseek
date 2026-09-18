@@ -35,13 +35,19 @@
       </template>
       <template v-else>
         <p class="text-xs text-gray-500">{{ t('admin.accounts.ticketCollect.historyHint') }}</p>
-        <button v-for="item in history" :key="item.id" class="block w-full border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-3 text-left active:translate-x-0.5 active:translate-y-0.5" style="box-shadow:var(--bh-shadow-sm)" @click="openResults(item.id)">
-          <span class="block font-bold text-bh-blue dark:text-blue-300">{{ new Date(item.started_at).toLocaleString() }} · {{ item.config.target_length || 292 }} bytes</span>
-          <span class="text-sm">{{ runLabel(item.status) }} · {{ totalDone(item) }} / {{ item.total }}</span>
-        </button>
+        <p class="text-xs text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketCollect.deleteHint') }}</p>
+        <button class="btn btn-danger btn-sm" :disabled="deleting || busy || running || !history.length" data-testid="ticket-history-clear" @click="deleteHistory()">{{ t('admin.accounts.ticketCollect.clearHistory') }}</button>
+        <div v-for="item in history" :key="item.id" class="flex items-center gap-3 border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-3" style="box-shadow:var(--bh-shadow-sm)">
+          <button class="min-w-0 flex-1 text-left focus-visible:outline focus-visible:outline-2" @click="openResults(item.id)">
+            <span class="block break-words font-bold text-bh-blue dark:text-blue-300">{{ new Date(item.started_at).toLocaleString() }} · {{ item.config.target_length || 292 }} bytes</span>
+            <span class="text-sm">{{ runLabel(item.status) }} · {{ totalDone(item) }} / {{ item.total }}</span>
+          </button>
+          <button class="btn btn-danger btn-sm shrink-0" :disabled="deleting || item.status === 'running'" :title="item.status === 'running' ? t('admin.accounts.ticketCollect.deleteActive') : t('common.delete')" data-testid="ticket-history-delete" @click="deleteHistory(item.id)">{{ t('common.delete') }}</button>
+        </div>
         <div class="flex justify-end gap-2"><button class="btn btn-secondary btn-sm" :disabled="historyPage <= 1 || busy" @click="historyPage--; loadHistory()">{{ t('admin.accounts.ticketCollect.previous') }}</button><span>{{ historyPage }}</span><button class="btn btn-secondary btn-sm" :disabled="history.length < 20 || busy" @click="historyPage++; loadHistory()">{{ t('admin.accounts.ticketCollect.next') }}</button></div>
       </template>
       <p v-if="error" role="alert" class="break-words text-sm text-bh-red dark:text-red-400">{{ error }}</p>
+      <p v-if="notice" role="status" class="text-sm font-bold text-bh-blue dark:text-blue-300">{{ notice }}</p>
     </div>
     <template #footer>
       <button v-if="running" class="btn btn-danger" @click="controller?.abort()">{{ t('admin.accounts.ticketCollect.stop') }}</button>
@@ -65,6 +71,7 @@
         <p v-if="item.reason" class="text-xs">{{ reasonLabel(item.reason) }}</p>
         <p v-if="item.diagnostic?.retry_not_before" class="text-xs text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.tickets.retryAfter', { time: new Date(item.diagnostic.retry_not_before).toLocaleString() }) }}</p>
         <button v-if="detailKind === 'result' && item.attempt" class="btn btn-secondary btn-sm" @click="detailKind = 'attempt'; detailAccount = item.account_id; detailModel = item.model; detailStatus = ''; detailPage = 1; loadDetail()">{{ t('admin.accounts.ticketCollect.attempts') }}</button>
+        <button class="btn btn-danger btn-sm" :disabled="deleting || detailRunStatus === 'running' || !item.id" :title="t('admin.accounts.ticketCollect.deleteHint')" data-testid="ticket-event-delete" @click="deleteEvent(item)">{{ t('common.delete') }}</button>
       </article>
       <p v-if="!details.length && !detailBusy" class="text-sm text-gray-500">{{ t('admin.accounts.ticketCollect.empty') }}</p>
       <Pagination :page="detailPage" :page-size="50" :total="detailTotal" :show-page-size-selector="false" @update:page="detailPage = $event; loadDetail()" />
@@ -85,10 +92,11 @@ const emit = defineEmits<{ close: []; finished: []; result: [] }>()
 const { t } = useI18n(), auth = useAuthStore()
 const targets = ref<number[]>([]), settings = ref<TicketSettings>(), confirmed = ref(false), running = ref(false), busy = ref(false), error = ref('')
 const tab = ref('collect'), run = ref<TicketCollectionRun>(), live = ref<TicketCollectionEvent[]>([]), history = ref<TicketCollectionRun[]>([]), historyPage = ref(1)
+const deleting = ref(false), notice = ref(''), detailRunStatus = ref('running')
 const detailID = ref(''), detailKind = ref('result'), detailStatus = ref(''), detailAccount = ref(0), detailModel = ref(''), detailPage = ref(1), detailTotal = ref(0), details = ref<TicketCollectionEvent[]>([]), detailError = ref(''), detailBusy = ref(false)
 const statuses = ['ready', 'missing', 'failed', 'skipped', 'cancelled']
 let controller: AbortController | null = null, generation = 0, detailGeneration = 0, historyGeneration = 0
-const canStart = computed(() => !busy.value && !running.value && confirmed.value && settings.value?.enabled && targets.value.length > 0 && targets.value.length <= 500)
+const canStart = computed(() => !busy.value && !deleting.value && !running.value && confirmed.value && settings.value?.enabled && targets.value.length > 0 && targets.value.length <= 500)
 const totalDone = (r: TicketCollectionRun) => Object.values(r.counts).reduce((a, b) => a + b, 0)
 const processed = computed(() => run.value ? totalDone(run.value) : 0)
 const statusLabel = (s: string) => t('admin.accounts.ticketCollect.status.' + (statuses.includes(s) ? s : 'skipped'))
@@ -104,7 +112,7 @@ watch([() => props.show, () => auth.user?.id], async ([show]) => {
   const version = ++generation; controller?.abort(); detailGeneration++; historyGeneration++; running.value = false; detailID.value = ''
   if (!show) return
   targets.value = [...new Set(props.accountIds)]; tab.value = props.historyOnly ? 'history' : 'collect'
-  settings.value = undefined; confirmed.value = false; run.value = undefined; live.value = []; error.value = ''; historyPage.value = 1; busy.value = true
+  settings.value = undefined; confirmed.value = false; run.value = undefined; live.value = []; error.value = ''; notice.value = ''; historyPage.value = 1; busy.value = true
   try { const data = await ticketCollectionAPI.settings(); if (version === generation) settings.value = data }
   catch (e) { if (version === generation) error.value = e instanceof Error ? e.message : t('common.error') }
   finally { if (version === generation) busy.value = false }
@@ -112,18 +120,55 @@ watch([() => props.show, () => auth.user?.id], async ([show]) => {
 }, { immediate: true })
 async function loadHistory() {
   const version = ++historyGeneration, current = generation; busy.value = true
-  try { const data = await ticketCollectionAPI.runs(historyPage.value); if (version === historyGeneration && current === generation) history.value = data }
+  try {
+    const data = await ticketCollectionAPI.runs(historyPage.value)
+    if (version === historyGeneration && current === generation) {
+      history.value = data
+      if (!data.length && historyPage.value > 1) { historyPage.value--; void loadHistory() }
+    }
+  }
   catch (e) { if (current === generation) error.value = e instanceof Error ? e.message : t('common.error') }
   finally { if (version === historyGeneration && current === generation) busy.value = false }
 }
-function openResults(id: string, status = '') { details.value = []; detailTotal.value = 0; detailID.value = id; detailKind.value = 'result'; detailStatus.value = status; detailAccount.value = 0; detailModel.value = ''; detailPage.value = 1; void loadDetail() }
+function openResults(id: string, status = '') { details.value = []; detailTotal.value = 0; detailRunStatus.value = 'running'; detailID.value = id; detailKind.value = 'result'; detailStatus.value = status; detailAccount.value = 0; detailModel.value = ''; detailPage.value = 1; void loadDetail() }
 async function loadDetail() {
   const version = ++detailGeneration, current = generation; detailBusy.value = true; detailError.value = ''
   try {
     const data = await ticketCollectionAPI.detail(detailID.value, { page: detailPage.value, kind: detailKind.value, status: detailStatus.value, account_id: detailAccount.value, model: detailModel.value })
-    if (version === detailGeneration && current === generation) { details.value = data.items; detailTotal.value = data.total }
+    if (version === detailGeneration && current === generation) {
+      details.value = data.items; detailTotal.value = data.total; detailRunStatus.value = data.run.status
+      if (run.value?.id === data.run.id && !running.value) run.value = data.run
+      if (!data.items.length && detailPage.value > 1) { detailPage.value--; void loadDetail() }
+    }
   } catch (e) { if (version === detailGeneration && current === generation) detailError.value = e instanceof Error ? e.message : t('common.error') }
   finally { if (version === detailGeneration && current === generation) detailBusy.value = false }
+}
+// 按用户要求直接执行，不弹第二次确认；请求失败不预先移除记录。
+async function deleteHistory(id?: string) {
+  if (deleting.value || running.value) return
+  const current = generation; deleting.value = true; error.value = ''; notice.value = ''; historyGeneration++; detailGeneration++
+  try {
+    const data = id ? await ticketCollectionAPI.deleteRun(id) : await ticketCollectionAPI.clearHistory()
+    if (current !== generation) return
+    notice.value = t('admin.accounts.ticketCollect.deleted', { count: data.deleted })
+    if (!id || detailID.value === id) { detailID.value = ''; details.value = [] }
+    if (!id || run.value?.id === id) { run.value = undefined; live.value = [] }
+    if (!id) historyPage.value = 1
+    await loadHistory()
+  } catch (e) { if (current === generation) error.value = e instanceof Error ? e.message : t('common.error') }
+  finally { deleting.value = false }
+}
+async function deleteEvent(item: TicketCollectionEvent) {
+  if (deleting.value || !item.id || detailRunStatus.value === 'running') return
+  const current = generation, id = detailID.value; deleting.value = true; detailError.value = ''; detailGeneration++
+  try {
+    await ticketCollectionAPI.deleteEvent(id, item.id)
+    if (current !== generation || id !== detailID.value) return
+    live.value = live.value.filter(e => e.id !== item.id)
+    await loadDetail()
+    if (tab.value === 'history') await loadHistory()
+  } catch (e) { if (current === generation && id === detailID.value) detailError.value = e instanceof Error ? e.message : t('common.error') }
+  finally { deleting.value = false }
 }
 async function start() {
   if (!canStart.value || !settings.value) return
