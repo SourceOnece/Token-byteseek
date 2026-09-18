@@ -5,6 +5,15 @@ import type { TicketAccountStatus } from '@/api/admin/codexTickets'
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 
 describe('CodexTicketStatus', () => {
+  it('最新手动失败与旧有效票分开显示，不用倒计时盖住最新结果', () => {
+    const now = Date.now()
+    const status: TicketAccountStatus = { account_id: 1, eligible: true, collection_paused: false, models: [{ model: 'gpt-6-astra', state: 'ready', expires_at: new Date(now + 600000).toISOString(), latest: { source: 'manual', state: 'failed', checked_at: new Date(now).toISOString(), ip_status: 'timeout' } }] }
+    const w = mount(CodexTicketStatus, { props: { status, now } })
+    expect(w.get('[data-testid="ticket-latest"]').text()).toContain('source.manual')
+    expect(w.get('[data-testid="ticket-latest"]').text()).toContain('status.failed')
+    expect(w.get('[data-testid="ticket-current"]').text()).toContain('10m00s')
+    expect(w.html()).toContain('ipStatus.timeout'); w.unmount()
+  })
   it('模型门控显示暂停，不把它当作质量检测降智', () => {
     const status: TicketAccountStatus = { account_id: 1, eligible: true, collection_paused: false, models: [{ model: 'gpt-6-astra', state: 'missing', blocked: true }] }
     const w = mount(CodexTicketStatus, { props: { now: Date.now(), status } })

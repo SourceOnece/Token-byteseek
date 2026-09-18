@@ -68,6 +68,21 @@ func (c *ticketCacheStub) Claim(_ context.Context, key string, _ time.Duration) 
 
 type ticketCipherStub struct{}
 
+func (c *ticketCacheStub) SetLatest(_ context.Context, key, value string, finishedUS int64, _ time.Duration) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.fail {
+		return errors.New("offline")
+	}
+	var previous CodexTicketLatest
+	_ = json.Unmarshal([]byte(c.values["latest:"+key]), &previous)
+	if previous.FinishedUS > finishedUS {
+		return nil
+	}
+	c.values["latest:"+key] = value
+	return nil
+}
+
 func (c *ticketCacheStub) AcquireLease(_ context.Context, key, owner string, _ time.Duration) (bool, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -397,7 +412,7 @@ func TestCodexTicketHarvestIsBoundedAndPausedAccountsSkipped(t *testing.T) {
 	s.gateway = &OpenAIGatewayService{accountRepo: repo, httpUpstream: up}
 	s.harvest(context.Background())
 	require.Equal(t, int32(2), up.calls.Load())
-	require.Len(t, cache.values, 4)
+	require.Len(t, cache.values, 6)
 	s.harvest(context.Background())
 	require.Equal(t, int32(2), up.calls.Load(), "共享租约阻止重复整轮")
 	require.False(t, repo.accounts[1].Schedulable)
@@ -422,7 +437,7 @@ func TestCodexTicketChangedCredentialsNotPersisted(t *testing.T) {
 	s.gateway = &OpenAIGatewayService{accountRepo: repo, httpUpstream: up}
 	s.probe(context.Background(), s.config.Load(), &a, "gpt-6-astra")
 	for key := range cache.values {
-		require.True(t, strings.HasPrefix(key, "status:"), "换凭据后的旧结果不得保存可用票据")
+		require.True(t, strings.HasPrefix(key, "status:") || strings.HasPrefix(key, "latest:"), "换凭据后的旧结果只能记录隔离诊断，不得保存可用票据")
 	}
 }
 

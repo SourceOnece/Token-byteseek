@@ -29,6 +29,7 @@ describe('CodexTicketCollectModal', () => {
     expect(start.mock.calls[0][0]).toEqual([1, 2]); expect(start.mock.calls[0][1]).toBe('r1')
     expect(w.get('details').attributes('open')).toBeUndefined(); expect(detail).not.toHaveBeenCalled()
     expect(w.get('[role="progressbar"]').attributes('aria-valuenow')).toBe('4')
+    expect(w.emitted('result')).toHaveLength(1)
     const category = w.findAll('button').find(b => b.text().includes('ticketCollect.status.ready'))!
     await category.trigger('click'); await flushPromises(); expect(detail).toHaveBeenCalledWith('run1', expect.objectContaining({ status: 'ready', kind: 'result' }))
     w.unmount()

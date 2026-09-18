@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/netip"
 	"sync"
 	"time"
 
@@ -31,6 +30,8 @@ type CodexTicketAttempt struct {
 	ReferenceIP  string                 `json:"reference_ip,omitempty"`
 	IPCheckedAt  *time.Time             `json:"ip_checked_at,omitempty"`
 	IPStatus     string                 `json:"ip_status,omitempty"`
+	IPSource     string                 `json:"ip_source,omitempty"`
+	IPHTTPStatus int                    `json:"ip_http_status,omitempty"`
 }
 type CodexTicketManualRun struct {
 	ID         string              `json:"id"`
@@ -308,10 +309,12 @@ func (m *CodexTicketManualSession) Execute(emit func(string, any) bool) {
 
 func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, model string, record func(CodexTicketAttempt)) {
 	started := time.Now().UTC()
+	latestKey := ""
 	result := CodexTicketAttempt{Kind: "result", AccountID: id, Model: model, TargetLength: m.cfg.targetLength(), Status: "skipped", Reason: "ineligible", StartedAt: started}
 	defer func() {
 		result.FinishedAt = time.Now().UTC()
 		result.DurationMS = time.Since(started).Milliseconds()
+		m.s.recordLatest(ctx, m.cfg, latestKey, "manual", result)
 		record(result)
 	}()
 	if ctx.Err() != nil {
@@ -322,6 +325,9 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 	a, err := m.s.gateway.accountRepo.GetByID(ctx, id)
 	if err != nil || a == nil {
 		return
+	}
+	if codexTicketAccount(a) {
+		latestKey = codexTicketKey(m.cfg, a, model, a.GetOpenAIAccessToken())
 	}
 	result.AccountName = a.Name
 	result.Email = firstStringValue(a.Credentials, "email")
@@ -338,6 +344,7 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		return
 	}
 	key := codexTicketKey(m.cfg, a, model, token)
+	latestKey = key
 	previousRaw, err := m.s.cache.Get(ctx, "status:"+key)
 	if err != nil {
 		result.Status = "failed"
@@ -381,24 +388,7 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		if event.Diagnostic != nil {
 			event.Diagnostic.ProxyName = proxy.Name
 		}
-		if event.Diagnostic != nil && event.Diagnostic.HTTPStatus > 0 && ctx.Err() == nil {
-			event.IPStatus = "unavailable"
-			if m.s.ipProber != nil {
-				if raw, e := m.s.cipher.Decrypt(proxy.Cipher); e == nil {
-					ipCtx, stop := context.WithTimeout(ctx, 4*time.Second)
-					info, _, e := m.s.ipProber.ProbeProxy(ipCtx, raw)
-					stop()
-					if e == nil && info != nil {
-						if ip, e := netip.ParseAddr(info.IP); e == nil {
-							event.ReferenceIP = ip.String()
-							event.IPStatus = "reference"
-							now := time.Now().UTC()
-							event.IPCheckedAt = &now
-						}
-					}
-				}
-			}
-		}
+		m.s.collectReferenceIP(ctx, proxy, &event)
 		record(event)
 		result.Status = event.Status
 		result.Reason = event.Reason
@@ -408,6 +398,8 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		result.ReferenceIP = event.ReferenceIP
 		result.IPStatus = event.IPStatus
 		result.IPCheckedAt = event.IPCheckedAt
+		result.IPSource = event.IPSource
+		result.IPHTTPStatus = event.IPHTTPStatus
 		if ready || !retry || attempt == m.cfg.attempts() {
 			return
 		}

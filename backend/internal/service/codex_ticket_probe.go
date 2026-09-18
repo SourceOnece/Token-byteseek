@@ -74,6 +74,9 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		if ctx.Err() != nil && !ready {
 			state, reason = "cancelled", "cancelled"
 		}
+		if len(observers) == 0 {
+			s.recordLatest(ctx, cfg, key, "auto", CodexTicketAttempt{Status: state, Reason: reason, FinishedAt: time.Now().UTC(), Diagnostic: diagnostic})
+		}
 		for _, observer := range observers {
 			observer(CodexTicketAttempt{Status: state, Reason: reason, Attempt: attempt, StartedAt: started, FinishedAt: time.Now().UTC(), DurationMS: time.Since(started).Milliseconds(), Diagnostic: safeCodexTicketDiagnostic(diagnostic), ExpiresAt: expires})
 		}

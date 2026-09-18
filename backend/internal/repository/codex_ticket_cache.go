@@ -64,3 +64,15 @@ func (c *codexTicketCache) ReleaseLease(ctx context.Context, key, owner string) 
 func (c *codexTicketCache) RenewLease(ctx context.Context, key, owner string, ttl time.Duration) (bool, error) {
 	return c.client.Eval(ctx, `if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('PEXPIRE', KEYS[1], ARGV[2]) else return 0 end`, []string{"private:codex-ticket-lease:v1:" + key}, owner, ttl.Milliseconds()).Bool()
 }
+
+// 最新展示按完成时间原子比较，迟到旧请求不得覆盖更新的采集结果；不参与调度判断。
+func (c *codexTicketCache) SetLatest(ctx context.Context, key, value string, finishedUS int64, ttl time.Duration) error {
+	return c.client.Eval(ctx, `
+local old=redis.call('GET',KEYS[1])
+if old then
+ local ok, data=pcall(cjson.decode,old)
+ if ok and type(data)=='table' and tonumber(data.finished_us or 0)>tonumber(ARGV[2]) then return 0 end
+end
+redis.call('SET',KEYS[1],ARGV[1],'PX',ARGV[3])
+return 1`, []string{"private:codex-ticket:v1:latest:" + key}, value, finishedUS, ttl.Milliseconds()).Err()
+}

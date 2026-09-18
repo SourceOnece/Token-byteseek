@@ -467,7 +467,7 @@
     <ReAuthAccountModal :show="showReAuth" :account="reAuthAcc" @close="closeReAuthModal" @reauthorized="handleAccountUpdated" />
     <AccountTestModal :show="showTest" :account="testingAcc" @close="closeTestModal" />
     <CodexQualityTestModal :show="showQualityTest" :account-ids="selIds" @close="showQualityTest = false" @result="handleQualityResult" @finished="refreshQualityAccounts" />
-    <CodexTicketCollectModal :show="showTicketCollect" :account-ids="selIds" :history-only="ticketHistoryOnly" @close="showTicketCollect = false" @finished="refreshTicketStatus()" />
+    <CodexTicketCollectModal :show="showTicketCollect" :account-ids="selIds" :history-only="ticketHistoryOnly" @close="showTicketCollect = false" @result="refreshTicketStatus()" @finished="refreshTicketStatus()" />
     <CodexQualitySchedulesModal :show="showQualitySchedules" :account-ids="selIds" @close="showQualitySchedules = false; refreshQualityAccounts()" />
     <BaseDialog :show="!!qualityDetail" :title="t('admin.accounts.quality.details')" width="wide" @close="qualityDetail = null">
       <CodexQualityResultCard v-if="qualityDetail" :result="qualityDetail" />

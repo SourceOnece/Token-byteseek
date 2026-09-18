@@ -7,6 +7,7 @@ export interface TicketModelStatus {
   state: TicketState
   blocked?: boolean
   target_length?: number
+  latest?: TicketLatest
   reason?: string
   checked_at?: string
   expires_at?: string
@@ -15,6 +16,11 @@ export interface TicketModelStatus {
     header_length: number; header_present: boolean; prefix_valid: boolean
     response_kind?: string; error_kind?: string; completion_seen?: boolean; retry_not_before?: string
   }
+}
+
+export interface TicketLatest {
+  source: 'manual' | 'auto'; state: string; reason?: string; checked_at: string
+  diagnostic?: TicketModelStatus['diagnostic']; reference_ip?: string; ip_status?: string; ip_source?: string; ip_http_status?: number
 }
 
 export interface TicketSettings {
@@ -27,7 +33,7 @@ export interface TicketCollectionEvent {
   id?: number; kind: 'attempt' | 'result'; account_id: number; account_name: string; email: string
   model: string; target_length: number; status: string; reason?: string; attempt: number
   started_at: string; finished_at: string; duration_ms: number; expires_at?: string
-  diagnostic?: TicketModelStatus['diagnostic']; reference_ip?: string; ip_checked_at?: string; ip_status?: string
+  diagnostic?: TicketModelStatus['diagnostic']; reference_ip?: string; ip_checked_at?: string; ip_status?: string; ip_source?: string; ip_http_status?: number
 }
 export interface TicketCollectionRun {
   id: string; status: string; config: TicketSettings; total: number; started_at: string; finished_at?: string; counts: Record<string, number>

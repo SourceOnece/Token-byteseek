@@ -13,6 +13,16 @@ const accounts = ref<Account[]>([])
 const mountHost = () => mount(defineComponent({ setup() { handles = useCodexTicketStatus(accounts); return () => null } }))
 
 describe('useCodexTicketStatus', () => {
+  it('手动完成遇到在途轮询时合并补读，旧响应不成为最终结果', async () => {
+    let resolveOld!: (value: unknown) => void
+    get.mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve }))
+    const w = mountHost(); await flushPromises()
+    await handles.refreshTicketStatus(); await handles.refreshTicketStatus()
+    expect(get).toHaveBeenCalledTimes(1)
+    const latest = response(1); latest.server_time = '2026-09-18T00:02:00Z'; get.mockResolvedValueOnce(latest)
+    resolveOld(response(1)); await flushPromises()
+    expect(get).toHaveBeenCalledTimes(2); expect(handles.ticketNow.value).toBe(Date.parse(latest.server_time)); w.unmount()
+  })
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()

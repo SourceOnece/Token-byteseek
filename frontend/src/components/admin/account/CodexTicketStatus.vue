@@ -3,9 +3,10 @@
     <div v-for="row in rows" :key="row.model" class="text-xs" :title="description(row)">
       <div class="grid grid-cols-[3rem_minmax(0,1fr)] items-baseline gap-2">
         <span class="font-bold text-bh-blue dark:text-blue-300">{{ row.model === 'gpt-6-astra' ? 'Astra' : 'Sol' }}</span>
-        <span class="break-words font-semibold tabular-nums" :class="color(row)">{{ label(row) }}</span>
+        <span class="break-words font-semibold tabular-nums" :class="row.latest && !failed ? latestColor(row) : color(row)" :data-testid="row.latest && !failed ? 'ticket-latest' : undefined">{{ row.latest && !failed ? latestLabel(row) : label(row) }}</span>
       </div>
-      <p v-if="!failed && row.diagnostic?.http_status && state(row) !== 'ready'" class="mt-0.5 break-words text-[10px] text-gray-500 dark:text-gray-400" data-testid="ticket-diagnostic">{{ diagnosticSummary(row) }}</p>
+      <p v-if="row.latest && !failed" class="mt-0.5 break-words text-[10px] tabular-nums" :class="color(row)" data-testid="ticket-current">{{ t('admin.accounts.tickets.currentTicket') }}：{{ label(row) }}</p>
+      <p v-if="!failed && displayDiagnostic(row)?.http_status && (row.latest || state(row) !== 'ready')" class="mt-0.5 break-words text-[10px] text-gray-500 dark:text-gray-400" data-testid="ticket-diagnostic">{{ diagnosticSummary(row) }}</p>
     </div>
   </div>
 </template>
@@ -41,22 +42,48 @@ function color(row: TicketModelStatus) {
   if (current === 'collecting') return 'text-bh-blue dark:text-blue-300'
   return 'text-gray-500 dark:text-gray-400'
 }
+function latestLabel(row: TicketModelStatus) {
+  const latest = row.latest!
+  const source = latest.source === 'manual' ? 'manual' : 'auto'
+  const status = ['ready', 'missing', 'failed', 'cancelled', 'skipped'].includes(latest.state) ? latest.state : 'skipped'
+  return `${t('admin.accounts.tickets.source.' + source)} · ${t('admin.accounts.ticketCollect.status.' + status)}`
+}
+function latestColor(row: TicketModelStatus) {
+  const state = row.latest?.state
+  if (state === 'ready') return 'text-emerald-700 dark:text-emerald-400'
+  if (state === 'failed') return 'text-bh-red dark:text-red-400'
+  if (state === 'missing') return 'text-yellow-700 dark:text-bh-yellow'
+  return 'text-gray-500 dark:text-gray-400'
+}
+function displayDiagnostic(row: TicketModelStatus) { return row.latest ? row.latest.diagnostic : row.diagnostic }
 // 票据状态与质量测试分开，使用固定文案，不把不透明上游错误或票据正文放入 DOM。
 function description(row: TicketModelStatus) {
   const info = [row.model, t('admin.accounts.tickets.notQuality')]
-  if (row.checked_at && !props.failed) info.push(`${t('admin.accounts.tickets.checkedAt')}: ${new Date(row.checked_at).toLocaleString()}`)
+  if (row.latest && !props.failed) {
+    info.push(latestLabel(row), `${t('admin.accounts.tickets.latestAt')}: ${new Date(row.latest.checked_at).toLocaleString()}`)
+    if (row.latest.reference_ip) info.push(`${t('admin.accounts.ticketCollect.ip')}: ${row.latest.reference_ip}`)
+    else if (row.latest.ip_status) {
+      const status = ['unavailable', 'timeout', 'network', 'tls', 'http_error', 'invalid_response', 'proxy_config', 'cancelled', 'not_attempted'].includes(row.latest.ip_status) ? row.latest.ip_status : 'unavailable'
+      info.push(t('admin.accounts.ticketCollect.ipStatus.' + status))
+      if (row.latest.ip_http_status) info.push('IP HTTP ' + row.latest.ip_http_status)
+    }
+  }
+  if (!row.latest && row.checked_at && !props.failed) info.push(`${t('admin.accounts.tickets.checkedAt')}: ${new Date(row.checked_at).toLocaleString()}`)
   const reasons = ['network', 'upstream', 'invalid_ticket', 'credential', 'storage', 'cancelled', 'proxy_config']
-  if (row.reason && reasons.includes(row.reason) && !props.failed) info.push(t(`admin.accounts.tickets.reason.${row.reason}`))
+  const reason = row.latest ? row.latest.reason : row.reason
+  if (reason && reasons.includes(reason) && !props.failed) info.push(t(`admin.accounts.tickets.reason.${reason}`))
+  else if (reason && ['ineligible', 'account_changed', 'concurrency_busy', 'backoff'].includes(reason) && !props.failed) info.push(t(`admin.accounts.ticketCollect.reason.${reason}`))
   if (props.status?.collection_paused) info.push(t('admin.accounts.tickets.pausedHint'))
-  if (row.diagnostic && !props.failed) {
-    info.push(t('admin.accounts.tickets.attempt', { proxy: row.diagnostic.proxy_name || '—', count: row.diagnostic.attempt }))
-    if (row.diagnostic.http_status) info.push(diagnosticSummary(row))
-    if (row.diagnostic.retry_not_before) info.push(t('admin.accounts.tickets.retryAfter', { time: new Date(row.diagnostic.retry_not_before).toLocaleString() }))
+  const diagnostic = displayDiagnostic(row)
+  if (diagnostic && !props.failed) {
+    info.push(t('admin.accounts.tickets.attempt', { proxy: diagnostic.proxy_name || '—', count: diagnostic.attempt }))
+    if (diagnostic.http_status) info.push(diagnosticSummary(row))
+    if (diagnostic.retry_not_before) info.push(t('admin.accounts.tickets.retryAfter', { time: new Date(diagnostic.retry_not_before).toLocaleString() }))
   }
   return info.join('\n')
 }
 function diagnosticSummary(row: TicketModelStatus) {
-  const d = row.diagnostic
+  const d = displayDiagnostic(row)
   if (!d?.http_status) return ''
   const parts = ['HTTP ' + d.http_status, d.header_present ? d.header_length + '/' + (row.target_length || 292) : t('admin.accounts.tickets.noHeader')]
   if (d.header_present && !d.prefix_valid) parts.push(t('admin.accounts.tickets.badPrefix'))

@@ -17,6 +17,7 @@ type codexTicketObservation struct {
 }
 
 type CodexTicketModelStatus struct {
+	Latest       *CodexTicketLatest     `json:"latest,omitempty"`
 	Model        string                 `json:"model"`
 	TargetLength int                    `json:"target_length"`
 	Blocked      bool                   `json:"blocked"`
@@ -100,7 +101,7 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 			}
 			for _, model := range []string{"gpt-6-astra", "gpt-5.6-sol"} {
 				key := codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken())
-				keys = append(keys, key, "status:"+key)
+				keys = append(keys, key, "status:"+key, "latest:"+key)
 			}
 		}
 	}
@@ -132,6 +133,18 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 				default:
 					key := codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken())
 					status = s.ticketModelStatus(model, values[key], values["status:"+key], now, cfg.targetLength())
+					var latest CodexTicketLatest
+					if json.Unmarshal([]byte(values["latest:"+key]), &latest) == nil {
+						status.Latest = safeTicketLatest(latest)
+					}
+					if status.Latest != nil && status.Latest.Diagnostic != nil {
+						for _, p := range cfg.proxies() {
+							if p.ID == status.Latest.Diagnostic.ProxyID {
+								status.Latest.Diagnostic.ProxyName = p.Name
+								break
+							}
+						}
+					}
 					if status.Diagnostic != nil {
 						status.Diagnostic.ProxyName = ""
 						for _, p := range cfg.proxies() {

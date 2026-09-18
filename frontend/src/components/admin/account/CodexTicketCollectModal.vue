@@ -59,6 +59,8 @@
         <p class="font-bold text-bh-blue dark:text-blue-300">{{ item.model }} · {{ t('admin.accounts.ticketCollect.target') }} {{ item.target_length }} · #{{ item.attempt }}</p>
         <p>{{ new Date(item.started_at).toLocaleString() }} · {{ item.duration_ms }} ms</p>
         <p class="break-words">{{ item.diagnostic?.proxy_name || '—' }} · {{ t('admin.accounts.ticketCollect.ip') }}：<span class="font-mono font-bold text-bh-blue dark:text-blue-300">{{ item.reference_ip || t('admin.accounts.ticketCollect.ipUnknown') }}</span></p>
+        <p v-if="item.ip_status && item.ip_status !== 'reference'" class="text-xs text-yellow-800 dark:text-bh-yellow" data-testid="ticket-ip-error">{{ ipStatusLabel(item.ip_status) }}<span v-if="item.ip_http_status"> · HTTP {{ item.ip_http_status }}</span></p>
+        <p v-if="item.ip_source" class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.ticketCollect.ipSource') }}：{{ ipSourceLabel(item.ip_source) }}<span v-if="item.ip_checked_at"> · {{ new Date(item.ip_checked_at).toLocaleString() }}</span></p>
         <p v-if="item.diagnostic">HTTP {{ item.diagnostic.http_status || '—' }} · {{ item.diagnostic.header_length }}/{{ item.target_length }} · {{ item.diagnostic.response_kind || '—' }}<span v-if="item.diagnostic.error_kind"> · {{ errorKind(item.diagnostic.error_kind) }}</span></p>
         <p v-if="item.reason" class="text-xs">{{ reasonLabel(item.reason) }}</p>
         <p v-if="item.diagnostic?.retry_not_before" class="text-xs text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.tickets.retryAfter', { time: new Date(item.diagnostic.retry_not_before).toLocaleString() }) }}</p>
@@ -79,7 +81,7 @@ import CodexQualityProgress from './CodexQualityProgress.vue'
 import { runTicketCollection, ticketCollectionAPI, type TicketCollectionEvent, type TicketCollectionRun, type TicketSettings } from '@/api/admin/codexTickets'
 import { useAuthStore } from '@/stores/auth'
 const props = defineProps<{ show: boolean; accountIds: number[]; historyOnly?: boolean }>()
-const emit = defineEmits<{ close: []; finished: [] }>()
+const emit = defineEmits<{ close: []; finished: []; result: [] }>()
 const { t } = useI18n(), auth = useAuthStore()
 const targets = ref<number[]>([]), settings = ref<TicketSettings>(), confirmed = ref(false), running = ref(false), busy = ref(false), error = ref('')
 const tab = ref('collect'), run = ref<TicketCollectionRun>(), live = ref<TicketCollectionEvent[]>([]), history = ref<TicketCollectionRun[]>([]), historyPage = ref(1)
@@ -94,6 +96,8 @@ const runLabel = (s: string) => t('admin.accounts.ticketCollect.run.' + (['runni
 const color = (s: string) => s === 'ready' ? 'text-emerald-700 dark:text-emerald-400' : s === 'failed' ? 'text-bh-red dark:text-red-400' : s === 'missing' ? 'text-yellow-800 dark:text-bh-yellow' : 'text-gray-500 dark:text-gray-400'
 const reasonLabel = (s: string) => ['network', 'upstream', 'invalid_ticket', 'credential', 'storage', 'cancelled', 'proxy_config'].includes(s) ? t('admin.accounts.tickets.reason.' + s) : t('admin.accounts.ticketCollect.reason.' + (['ineligible', 'account_changed', 'concurrency_busy', 'backoff'].includes(s) ? s : 'account_changed'))
 const errorKind = (s: string) => ['overloaded', 'rate_limit', 'quota', 'auth', 'invalid_request'].includes(s) ? t('admin.accounts.tickets.errorKind.' + s) : '—'
+const ipStatusLabel = (s: string) => t('admin.accounts.ticketCollect.ipStatus.' + (['unavailable', 'timeout', 'network', 'tls', 'http_error', 'invalid_response', 'proxy_config', 'cancelled', 'not_attempted'].includes(s) ? s : 'unavailable'))
+const ipSourceLabel = (s: string) => s === 'chatgpt_trace' ? 'ChatGPT trace' : s === 'ipify' ? 'ipify (HTTPS)' : t('admin.accounts.ticketCollect.configuredSource')
 
 // 冻结选中集合，换管理员/关闭时取消，避免旧异步结果写进新弹窗。
 watch([() => props.show, () => auth.user?.id], async ([show]) => {
@@ -128,7 +132,7 @@ async function start() {
     await runTicketCollection(targets.value, settings.value.revision, current.signal, (kind, data) => {
       if (version !== generation) return
       if (kind === 'start' || kind === 'complete') run.value = data as TicketCollectionRun
-      else if (kind === 'result' && run.value) { const e = data as TicketCollectionEvent; run.value.counts[e.status] = (run.value.counts[e.status] || 0) + 1 }
+      else if (kind === 'result' && run.value) { const e = data as TicketCollectionEvent; run.value.counts[e.status] = (run.value.counts[e.status] || 0) + 1; emit('result') }
       else if (kind === 'attempt') live.value = [data as TicketCollectionEvent, ...live.value].slice(0, 50)
     })
   } catch (e) { if (version === generation && !current.signal.aborted) error.value = e instanceof Error ? e.message : t('common.error') }

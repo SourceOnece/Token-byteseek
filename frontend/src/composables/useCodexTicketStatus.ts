@@ -16,6 +16,7 @@ export function useCodexTicketStatus(accounts: Ref<Account[]>) {
   let timer: ReturnType<typeof setInterval> | undefined
   let anchor = Date.now(), anchorMono = performance.now(), lastRead = 0
   let destroyed = false
+  let refreshQueued = false
 
   async function refresh() {
     if (controller || destroyed || document.hidden) return
@@ -45,12 +46,23 @@ export function useCodexTicketStatus(accounts: Ref<Account[]>) {
       ticketLoadFailed.value = false
     } catch {
       if (!current.signal.aborted && request === version && !destroyed) ticketLoadFailed.value = true
-    } finally { if (request === version) controller = null }
+    } finally {
+      if (request === version) {
+        controller = null
+        if (refreshQueued && !destroyed) { refreshQueued = false; void refresh() }
+      }
+    }
+  }
+  // 手动单号完成时合并刷新；在途旧轮询结束后补读一次，不丢请求也不反复取消整个大页。
+  async function requestRefresh() {
+    if (destroyed) return
+    if (controller) { refreshQueued = true; return }
+    await refresh()
   }
   const visible = () => { if (!document.hidden) { if (lastRead && performance.now() - lastRead > 45000) ticketLoadFailed.value = true; void refresh() } }
   onMounted(() => {
     stopWatch = watch(() => accounts.value.map(a => `${a.id}:${a.updated_at}:${a.schedulable}`).join(','), () => {
-      version++; controller?.abort(); controller = null
+      version++; controller?.abort(); controller = null; refreshQueued = false
       ticketStatus.value = {}; ticketLoadFailed.value = false; lastRead = 0
       void refresh()
     }, { immediate: true })
@@ -63,8 +75,8 @@ export function useCodexTicketStatus(accounts: Ref<Account[]>) {
     document.addEventListener('visibilitychange', visible)
   })
   onBeforeUnmount(() => {
-    destroyed = true; version++; controller?.abort(); stopWatch?.()
+    destroyed = true; refreshQueued = false; version++; controller?.abort(); stopWatch?.()
     clearInterval(timer); document.removeEventListener('visibilitychange', visible)
   })
-  return { ticketStatus, ticketLoadFailed, ticketNow, refreshTicketStatus: refresh }
+  return { ticketStatus, ticketLoadFailed, ticketNow, refreshTicketStatus: requestRefresh }
 }

@@ -2,6 +2,8 @@ export default {
 // Accounts
     accounts: {
       ticketCollect: {
+        ipSource: 'IP lookup source', configuredSource: 'Admin-configured endpoint',
+        ipStatus: { unavailable: 'IP lookup unavailable (older records lack details)', timeout: 'IP lookup timed out', network: 'IP lookup network or proxy connection failed', tls: 'IP lookup certificate verification failed', http_error: 'IP lookup endpoint rejected access', invalid_response: 'No valid IP in lookup response', proxy_config: 'Invalid IP lookup proxy configuration', cancelled: 'IP lookup cancelled', not_attempted: 'IP lookup not attempted (no collection HTTP response)' },
         previous: 'Previous page', next: 'Next page',
         title: 'Batch ticket collection', collectTab: 'Manual collection', history: 'Collection history',
         hint: '{count} selected accounts; collect Astra / Sol using saved OpenAI gateway settings. Manual attempts do not delete existing valid tickets first.',
@@ -17,6 +19,7 @@ export default {
         reason: { ineligible: 'Account missing, unschedulable, or model unsupported', account_changed: 'Account credentials or configuration changed', concurrency_busy: 'Account concurrency full; no upstream attempt', backoff: 'Upstream backoff remains in effect for manual collection' }
       },
       tickets: {
+        source: { manual: 'Manual', auto: 'Automatic' }, latestAt: 'Latest collection completed', currentTicket: 'Current ticket',
         retryAfter: 'Harvest backoff until: {time}',
         attempt: 'Harvest proxy: {proxy}; attempt {count}', noHeader: 'No ticket header', badPrefix: 'Invalid prefix', completedNoTicket: 'Completed without eligible ticket',
         errorKind: { overloaded: 'Upstream overloaded', rate_limit: 'Rate limited', quota: 'Quota exhausted', auth: 'Authorization error', invalid_request: 'Invalid request' },

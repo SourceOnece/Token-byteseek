@@ -3,6 +3,8 @@ export default {
 // Accounts Management
     accounts: {
       ticketCollect: {
+        ipSource: 'IP 查询来源', configuredSource: '管理员配置端点',
+        ipStatus: { unavailable: 'IP 查询不可用（旧记录无具体原因）', timeout: 'IP 查询超时', network: 'IP 查询网络或代理连接失败', tls: 'IP 查询证书验证失败', http_error: 'IP 查询端点拒绝访问', invalid_response: 'IP 查询响应中没有有效地址', proxy_config: 'IP 查询代理配置无效', cancelled: 'IP 查询已取消', not_attempted: '本次未执行 IP 查询（未取得采集 HTTP 响应）' },
         previous: '上一页', next: '下一页',
         title: '批量采集票据', collectTab: '手动采集', history: '采集历史',
         hint: '本次选中 {count} 个账号，分别采集 Astra / Sol。沿用网关服务 OpenAI 的已保存配置；手动重新尝试不会先删除有效旧票。',
@@ -18,6 +20,7 @@ export default {
         reason: { ineligible: '账号不存在、不可调度或不支持该模型', account_changed: '账号凭据或配置变化', concurrency_busy: '账号并发已满，本次未请求上游', backoff: '上游要求等待，手动采集不绕过退避' }
       },
       tickets: {
+        source: { manual: '手动', auto: '自动' }, latestAt: '最新采集完成时间', currentTicket: '当前票据',
         retryAfter: '采集退避至：{time}',
         attempt: '采集代理：{proxy}；第 {count} 次尝试', noHeader: '无票据头', badPrefix: '前缀不符', completedNoTicket: '回复完成但票据不合格',
         errorKind: { overloaded: '上游过载', rate_limit: '上游限流', quota: '额度不足', auth: '授权错误', invalid_request: '请求格式错误' },

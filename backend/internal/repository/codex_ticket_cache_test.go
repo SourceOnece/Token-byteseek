@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/service"
 	"github.com/alicebob/miniredis/v2"
@@ -10,6 +11,25 @@ import (
 	"testing"
 	"time"
 )
+
+func TestCodexTicketLatestRejectsLateOlderWrite(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	c := NewCodexTicketCache(rdb)
+	ctx := context.Background()
+	require.NoError(t, c.SetLatest(ctx, "test", `{"finished_us":200,"source":"manual"}`, 200, time.Hour))
+	require.NoError(t, c.SetLatest(ctx, "test", `{"finished_us":100,"source":"auto"}`, 100, time.Hour))
+	raw, err := c.Get(ctx, "latest:test")
+	require.NoError(t, err)
+	var latest map[string]any
+	require.NoError(t, json.Unmarshal([]byte(raw), &latest))
+	require.Equal(t, "manual", latest["source"])
+	require.NoError(t, c.SetLatest(ctx, "test", `{"finished_us":300,"source":"auto"}`, 300, time.Hour))
+	raw, err = c.Get(ctx, "latest:test")
+	require.NoError(t, err)
+	require.Contains(t, raw, `"auto"`)
+}
 
 // 合成采集使用独立 H1 短连接；默认业务传输仍允许连接复用。
 func TestCodexTicketHarvestTransportProfileIsolation(t *testing.T) {

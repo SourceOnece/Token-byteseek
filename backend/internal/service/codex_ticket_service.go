@@ -29,6 +29,7 @@ type CodexTicketCache interface {
 	AcquireLease(context.Context, string, string, time.Duration) (bool, error)
 	ReleaseLease(context.Context, string, string) error
 	RenewLease(context.Context, string, string, time.Duration) (bool, error)
+	SetLatest(context.Context, string, string, int64, time.Duration) error
 }
 
 type codexTicketConfig struct {
@@ -455,7 +456,9 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 	}
 	token, _, err := s.gateway.GetAccessToken(ctx, fresh)
 	if err != nil || token == "" {
-		s.recordObservation(ctx, codexTicketKey(cfg, fresh, model, fresh.GetOpenAIAccessToken()), "failed", "credential", nil)
+		key := codexTicketKey(cfg, fresh, model, fresh.GetOpenAIAccessToken())
+		s.recordObservation(ctx, key, "failed", "credential", nil)
+		s.recordLatest(ctx, cfg, key, "auto", CodexTicketAttempt{Status: "failed", Reason: "credential", FinishedAt: time.Now().UTC()})
 		return
 	}
 	key := codexTicketKey(cfg, fresh, model, token)
