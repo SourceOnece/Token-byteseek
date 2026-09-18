@@ -14,6 +14,13 @@ const render = () => mount(CodexTicketSettings, { global: { stubs: {
 } } })
 
 describe('CodexTicketSettings', () => {
+  it('合格长度可自定义，尝试次数超过十仍原值提交', async () => {
+    get.mockResolvedValue({ data: existing() }); const w = render(); await flushPromises()
+    await w.get('#ticket-length').setValue('332'); await w.get('#ticket-attempts').setValue('200')
+    expect(w.get('#ticket-attempts').attributes('max')).toBeUndefined()
+    await w.get('[data-testid="codex-ticket-save"]').trigger('click'); await flushPromises()
+    expect(put.mock.calls[0][1]).toMatchObject({ target_length: 332, max_attempts: 200 }); w.unmount()
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     get.mockResolvedValue({ data: fresh() })
@@ -98,7 +105,7 @@ describe('CodexTicketSettings', () => {
     await w.get('[data-testid="codex-ticket-save"]').trigger('click')
     expect(put).not.toHaveBeenCalled()
     await w.get('button[role="switch"]').trigger('click')
-    await w.get('#ticket-attempts').setValue('11')
+    await w.get('#ticket-attempts').setValue('0')
     await w.get('[data-testid="codex-ticket-save"]').trigger('click')
     expect(put).not.toHaveBeenCalled()
     w.unmount()

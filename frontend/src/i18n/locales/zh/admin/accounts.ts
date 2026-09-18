@@ -1,14 +1,30 @@
 export default {
+  // 手动采集仅展示票据，不与质量测试标签混用。
 // Accounts Management
     accounts: {
+      ticketCollect: {
+        previous: '上一页', next: '下一页',
+        title: '批量采集票据', collectTab: '手动采集', history: '采集历史',
+        hint: '本次选中 {count} 个账号，分别采集 Astra / Sol。沿用网关服务 OpenAI 的已保存配置；手动重新尝试不会先删除有效旧票。',
+        disabled: '请先在网关服务 → OpenAI 开启票据采集并配置代理。',
+        confirm: '我确认发起采集及出口参考 IP 查询，会消耗上游额度和代理流量；不修改账号总调度开关或质量标签。',
+        ipHint: '出口参考 IP 来自同条代理的独立查询，不是采票响应提供的证明。动态代理可能每次更换出口；未获取 IP 不影响采集结果。',
+        progress: '账号 / 模型处理进度', live: '展开最近 50 次尝试（完整日志在结果明细）', runStatus: '批次状态',
+        historyHint: '服务端保存每批与每次尝试，分页查看。关闭弹窗或断连会取消剩余采集，已经取得的票和日志保留。',
+        start: '开始采集', stop: '停止剩余采集', results: '采集结果', attempts: '逐次尝试日志', target: '目标长度',
+        ip: '出口参考 IP', ipUnknown: '未获取', empty: '暂无记录',
+        status: { ready: '获票成功', missing: '未获合格票', failed: '采集失败', skipped: '已跳过', cancelled: '已取消' },
+        run: { running: '采集中', completed: '已完成', cancelled: '已取消', failed: '执行失败', interrupted: '已中断' },
+        reason: { ineligible: '账号不存在、不可调度或不支持该模型', account_changed: '账号凭据或配置变化', concurrency_busy: '账号并发已满，本次未请求上游', backoff: '上游要求等待，手动采集不绕过退避' }
+      },
       tickets: {
         retryAfter: '采集退避至：{time}',
         attempt: '采集代理：{proxy}；第 {count} 次尝试', noHeader: '无票据头', badPrefix: '前缀不符', completedNoTicket: '回复完成但票据不合格',
         errorKind: { overloaded: '上游过载', rate_limit: '上游限流', quota: '额度不足', auth: '授权错误', invalid_request: '请求格式错误' },
-        title: '292 票据状态', notQuality: '仅表示票据状态，不代表满血；开启打票后，缺票暂不调度该模型，不修改账号总开关。', modelBlocked: '该模型暂停',
+        title: '票据状态', notQuality: '仅表示票据状态，不代表满血；开启打票后，缺票暂不调度该模型，不修改账号总开关。', modelBlocked: '该模型暂停',
         checkedAt: '最近采集', pausedHint: '账号当前不可调度，暂停后台采集；并非因缺票停调。',
-        state: { ready: '票据有效', pending: '待采集', collecting: '采集中', missing: '未获 292', expired: '票据已过期', failed: '采集失败', disabled: '打票未开启', unsupported: '模型不支持', unavailable: '状态读取失败', paused: '暂停采集', loading: '读取中' },
-        reason: { network: '网络或超时错误', upstream: '上游拒绝或返回错误', invalid_ticket: '响应中没有合格的 292 票据', credential: '无法取得有效凭据', storage: '票据缓存保存失败', cancelled: '采集已取消或超时', proxy_config: '采集代理配置或解密失败' },
+        state: { ready: '票据有效', pending: '待采集', collecting: '采集中', missing: '未获合格票', expired: '票据已过期', failed: '采集失败', disabled: '打票未开启', unsupported: '模型不支持', unavailable: '状态读取失败', paused: '暂停采集', loading: '读取中' },
+        reason: { network: '网络或超时错误', upstream: '上游拒绝或返回错误', invalid_ticket: '响应头长度或前缀不符合当前接受规则', credential: '无法取得有效凭据', storage: '票据缓存保存失败', cancelled: '采集已取消或超时', proxy_config: '采集代理配置或解密失败' },
       },
       quality: {
         protocol: 'API 上游协议', actualProtocol: '实际检测协议', protocolDefault: '沿用账号配置',

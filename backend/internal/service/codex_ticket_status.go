@@ -17,13 +17,14 @@ type codexTicketObservation struct {
 }
 
 type CodexTicketModelStatus struct {
-	Model      string                 `json:"model"`
-	Blocked    bool                   `json:"blocked"`
-	State      string                 `json:"state"`
-	Reason     string                 `json:"reason,omitempty"`
-	CheckedAt  *time.Time             `json:"checked_at,omitempty"`
-	ExpiresAt  *time.Time             `json:"expires_at,omitempty"`
-	Diagnostic *CodexTicketDiagnostic `json:"diagnostic,omitempty"`
+	Model        string                 `json:"model"`
+	TargetLength int                    `json:"target_length"`
+	Blocked      bool                   `json:"blocked"`
+	State        string                 `json:"state"`
+	Reason       string                 `json:"reason,omitempty"`
+	CheckedAt    *time.Time             `json:"checked_at,omitempty"`
+	ExpiresAt    *time.Time             `json:"expires_at,omitempty"`
+	Diagnostic   *CodexTicketDiagnostic `json:"diagnostic,omitempty"`
 }
 type CodexTicketAccountStatus struct {
 	AccountID        int64                    `json:"account_id"`
@@ -130,7 +131,7 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 					status.State = "unavailable"
 				default:
 					key := codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken())
-					status = s.ticketModelStatus(model, values[key], values["status:"+key], now)
+					status = s.ticketModelStatus(model, values[key], values["status:"+key], now, cfg.targetLength())
 					if status.Diagnostic != nil {
 						status.Diagnostic.ProxyName = ""
 						for _, p := range cfg.proxies() {
@@ -146,6 +147,7 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 				}
 				// 模型门控独立于账号总开关和质量标签，状态不可读时也不伪装可用。
 				status.Blocked = cfg.Enabled && a.IsModelSupported(model) && status.State != "ready"
+				status.TargetLength = cfg.targetLength()
 				row.Models = append(row.Models, status)
 			}
 		}
@@ -154,7 +156,7 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 	return response, nil
 }
 
-func (s *CodexTicketService) ticketModelStatus(model, encrypted, observation string, now time.Time) CodexTicketModelStatus {
+func (s *CodexTicketService) ticketModelStatus(model, encrypted, observation string, now time.Time, lengths ...int) CodexTicketModelStatus {
 	status := CodexTicketModelStatus{Model: model, State: "pending"}
 	var record codexTicketObservation
 	if observation != "" && json.Unmarshal([]byte(observation), &record) == nil && !record.CheckedAt.IsZero() {
@@ -190,7 +192,7 @@ func (s *CodexTicketService) ticketModelStatus(model, encrypted, observation str
 			status.State = "unavailable"
 			return status
 		}
-		if validCodexTicket(ticket) {
+		if validCodexTicket(ticket, lengths...) {
 			status.State = "ready"
 			status.ExpiresAt = &ticket.ExpiresAt
 		} else if !now.Before(ticket.ExpiresAt) {

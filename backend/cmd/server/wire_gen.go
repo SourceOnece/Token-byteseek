@@ -250,7 +250,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	v2 := service.ProvideCreativeRunOutboxRepositories(creativeRunOutboxRepository)
 	creativePublicService := service.NewCreativePublicService(creativeRunRepository, creativeManagedKeyRepository, creativeUserRepository, creativeAccountRepository, creativeGroupRepository, creativeUserGroupRateRepository, creativeRunQueue, creativeTransientStore, usageBillingRepository, usageLogRepository, billingService, modelPricingResolver, contentModerationService, apiKeyAuthCacheInvalidator, settingService, configConfig, v2...)
 	codexTicketCache := repository.NewCodexTicketCache(redisClient)
-	codexTicketService := service.ProvideCodexTicketService(openAIGatewayService, settingRepository, codexTicketCache, secretEncryptor)
+	codexTicketService := service.ProvideCodexTicketService(openAIGatewayService, settingRepository, codexTicketCache, secretEncryptor, proxyExitInfoProber)
 	settingHandler := handler.ProvideAdminSettingHandler(settingService, emailService, turnstileService, aliyunCaptchaService, opsService, paymentConfigService, paymentService, userAttributeService, notificationEmailService, totpService, userService, preAggregationSettingsService, dashboardAggregationService, opsAggregationService, creativePublicService, codexTicketService)
 	opsHandler := admin.NewOpsHandler(opsService)
 	updateCache := repository.NewUpdateCache(redisClient)

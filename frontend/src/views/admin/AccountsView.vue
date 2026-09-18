@@ -21,6 +21,7 @@
           >
             <template #after>
               <button class="btn btn-primary" data-testid="quality-schedules-action" @click="showQualitySchedules = true">{{ t('admin.accounts.quality.schedule.title') }}</button>
+              <button class="btn btn-secondary" data-testid="ticket-history-action" @click="ticketHistoryOnly = true; showTicketCollect = true">{{ t('admin.accounts.ticketCollect.history') }}</button>
               <!-- Auto Refresh Dropdown -->
               <div class="relative" ref="autoRefreshDropdownRef">
                 <button
@@ -190,6 +191,7 @@
           @query-usage="handleBulkQueryUsage"
           @query-upstream-usage="handleBulkQueryUpstreamUsage"
           @quality-test="showQualityTest = true"
+          @ticket-collect="ticketHistoryOnly = false; showTicketCollect = true"
           @edit-selected="openBulkEditSelected"
           @edit-filtered="openBulkEditFiltered"
           @clear="clearSelection"
@@ -465,6 +467,7 @@
     <ReAuthAccountModal :show="showReAuth" :account="reAuthAcc" @close="closeReAuthModal" @reauthorized="handleAccountUpdated" />
     <AccountTestModal :show="showTest" :account="testingAcc" @close="closeTestModal" />
     <CodexQualityTestModal :show="showQualityTest" :account-ids="selIds" @close="showQualityTest = false" @result="handleQualityResult" @finished="refreshQualityAccounts" />
+    <CodexTicketCollectModal :show="showTicketCollect" :account-ids="selIds" :history-only="ticketHistoryOnly" @close="showTicketCollect = false" @finished="refreshTicketStatus()" />
     <CodexQualitySchedulesModal :show="showQualitySchedules" :account-ids="selIds" @close="showQualitySchedules = false; refreshQualityAccounts()" />
     <BaseDialog :show="!!qualityDetail" :title="t('admin.accounts.quality.details')" width="wide" @close="qualityDetail = null">
       <CodexQualityResultCard v-if="qualityDetail" :result="qualityDetail" />
@@ -530,6 +533,7 @@ import ImportDataModal from '@/components/admin/account/ImportDataModal.vue'
 import ReAuthAccountModal from '@/components/admin/account/ReAuthAccountModal.vue'
 import AccountTestModal from '@/components/admin/account/AccountTestModal.vue'
 import CodexQualityTestModal from '@/components/admin/account/CodexQualityTestModal.vue'
+import CodexTicketCollectModal from '@/components/admin/account/CodexTicketCollectModal.vue'
 import CodexQualitySchedulesModal from '@/components/admin/account/CodexQualitySchedulesModal.vue'
 import CodexQualityResultCard from '@/components/admin/account/CodexQualityResult.vue'
 import CodexTicketStatus from '@/components/admin/account/CodexTicketStatus.vue'
@@ -639,6 +643,8 @@ const showCreateShadowDialog = ref(false)
 const showReAuth = ref(false)
 const showTest = ref(false)
 const showQualityTest = ref(false)
+const showTicketCollect = ref(false)
+const ticketHistoryOnly = ref(false)
 const showQualitySchedules = ref(false)
 const qualityDetail = ref<CodexQualityResult | null>(null)
 const qualityResults = ref<Record<number, CodexQualityResult>>({})
@@ -1816,7 +1822,7 @@ const isAnyModalOpen = computed(() => {
     showDeleteDialog.value ||
     showReAuth.value ||
     showTest.value ||
-    showQualityTest.value || !!qualityDetail.value ||
+    showQualityTest.value || showTicketCollect.value || !!qualityDetail.value ||
     showQualitySchedules.value ||
     showStats.value ||
     showInviteReset.value ||

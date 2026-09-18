@@ -47,10 +47,18 @@ func (c *codexTicketConfig) interval() time.Duration {
 	return 6 * time.Second
 }
 func (c *codexTicketConfig) attempts() int {
-	if c.MaxAttempts >= 1 && c.MaxAttempts <= 10 {
+	if c.MaxAttempts >= 1 {
 		return c.MaxAttempts
 	}
 	return 1
+}
+
+// 默认兼容旧配置；长度上限仅限制可注入 HTTP 头的大小，不按经验猜测票据意义。
+func (c *codexTicketConfig) targetLength() int {
+	if c.TargetLength >= 6 && c.TargetLength <= 8192 {
+		return c.TargetLength
+	}
+	return 292
 }
 func (c *codexTicketConfig) retryInterval() time.Duration {
 	if c.RetryIntervalSeconds >= 1 && c.RetryIntervalSeconds <= 30 {
@@ -60,6 +68,7 @@ func (c *codexTicketConfig) retryInterval() time.Duration {
 }
 func codexTicketSettingsView(c *codexTicketConfig) CodexTicketSettings {
 	v := CodexTicketSettings{Enabled: c.Enabled, ProxyConfigured: len(c.proxies()) > 0, Proxies: []CodexTicketProxyView{}, SelectionMode: c.mode(), FixedProxyID: c.FixedProxyID, ProbeIntervalSeconds: int(c.interval() / time.Second), MaxAttempts: c.attempts(), RetryIntervalSeconds: int(c.retryInterval() / time.Second), Revision: c.Generation}
+	v.TargetLength = c.targetLength()
 	for _, p := range c.proxies() {
 		v.Proxies = append(v.Proxies, CodexTicketProxyView{p.ID, p.Name, p.Cipher != ""})
 	}
@@ -153,13 +162,20 @@ func (s *CodexTicketService) updateProxySettings(c *codexTicketConfig, u CodexTi
 		input     *int
 		target    *int
 		low, high int
-	}{{u.ProbeIntervalSeconds, &c.ProbeIntervalSeconds, 6, 3600}, {u.MaxAttempts, &c.MaxAttempts, 1, 10}, {u.RetryIntervalSeconds, &c.RetryIntervalSeconds, 1, 30}} {
+	}{{u.ProbeIntervalSeconds, &c.ProbeIntervalSeconds, 6, 3600}, {u.TargetLength, &c.TargetLength, 6, 8192}, {u.RetryIntervalSeconds, &c.RetryIntervalSeconds, 1, 30}} {
 		if field.input != nil {
 			if *field.input < field.low || *field.input > field.high {
-				return errors.New("探测间隔须为 6–3600 秒，尝试次数 1–10，重试间隔 1–30 秒")
+				return errors.New("探测间隔须为 6–3600 秒，合格长度 6–8192 字节，重试间隔 1–30 秒")
 			}
 			*field.target = *field.input
 		}
+	}
+	if u.MaxAttempts != nil {
+		// 不设置业务次数上限，仅排除非正数及浏览器无法精确表示的整数。
+		if *u.MaxAttempts < 1 || int64(*u.MaxAttempts) > 9007199254740991 {
+			return errors.New("最多尝试次数必须为可精确表示的正整数")
+		}
+		c.MaxAttempts = *u.MaxAttempts
 	}
 	if len(list) == 0 {
 		c.FixedProxyID = ""

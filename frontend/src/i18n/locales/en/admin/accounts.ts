@@ -1,14 +1,29 @@
 export default {
 // Accounts
     accounts: {
+      ticketCollect: {
+        previous: 'Previous page', next: 'Next page',
+        title: 'Batch ticket collection', collectTab: 'Manual collection', history: 'Collection history',
+        hint: '{count} selected accounts; collect Astra / Sol using saved OpenAI gateway settings. Manual attempts do not delete existing valid tickets first.',
+        disabled: 'Enable ticket collection and configure proxies in Gateway services → OpenAI first.',
+        confirm: 'I confirm collection and reference IP queries consume upstream quota and proxy traffic, without changing account scheduling switches or quality labels.',
+        ipHint: 'Reference IP comes from a separate query through the same proxy, not the collection response. Rotating proxies may use a different exit each time. IP lookup failure does not change the collection result.',
+        progress: 'Account / model progress', live: 'Expand latest 50 attempts (all logs in result details)', runStatus: 'Batch status',
+        historyHint: 'Batches and attempts are stored server-side with pagination. Closing or disconnecting cancels remaining work; acquired tickets and saved logs are retained.',
+        start: 'Start collection', stop: 'Stop remaining work', results: 'Collection results', attempts: 'Attempt logs', target: 'Target length',
+        ip: 'Reference exit IP', ipUnknown: 'Unavailable', empty: 'No records',
+        status: { ready: 'Acquired', missing: 'No eligible ticket', failed: 'Failed', skipped: 'Skipped', cancelled: 'Cancelled' },
+        run: { running: 'Collecting', completed: 'Completed', cancelled: 'Cancelled', failed: 'Failed', interrupted: 'Interrupted' },
+        reason: { ineligible: 'Account missing, unschedulable, or model unsupported', account_changed: 'Account credentials or configuration changed', concurrency_busy: 'Account concurrency full; no upstream attempt', backoff: 'Upstream backoff remains in effect for manual collection' }
+      },
       tickets: {
         retryAfter: 'Harvest backoff until: {time}',
         attempt: 'Harvest proxy: {proxy}; attempt {count}', noHeader: 'No ticket header', badPrefix: 'Invalid prefix', completedNoTicket: 'Completed without eligible ticket',
         errorKind: { overloaded: 'Upstream overloaded', rate_limit: 'Rate limited', quota: 'Quota exhausted', auth: 'Authorization error', invalid_request: 'Invalid request' },
-        title: '292 ticket status', notQuality: 'Ticket availability is not a quality verdict. When enabled, missing tickets block this model without changing the account switch.', modelBlocked: 'Model paused',
+        title: 'Ticket status', notQuality: 'Ticket availability is not a quality verdict. When enabled, missing tickets block this model without changing the account switch.', modelBlocked: 'Model paused',
         checkedAt: 'Last attempt', pausedHint: 'Collection is paused because this account is not schedulable, not because a ticket is missing.',
-        state: { ready: 'Ticket valid', pending: 'Pending', collecting: 'Collecting', missing: 'No 292 ticket', expired: 'Ticket expired', failed: 'Collection failed', disabled: 'Tickets disabled', unsupported: 'Unsupported model', unavailable: 'Status unavailable', paused: 'Collection paused', loading: 'Loading' },
-        reason: { network: 'Network error or timeout', upstream: 'Upstream rejected the probe', invalid_ticket: 'No eligible 292 ticket in response', credential: 'Valid credentials unavailable', storage: 'Failed to save ticket cache', cancelled: 'Probe cancelled or timed out', proxy_config: 'Harvest proxy configuration or decryption failed' },
+        state: { ready: 'Ticket valid', pending: 'Pending', collecting: 'Collecting', missing: 'No eligible ticket', expired: 'Ticket expired', failed: 'Collection failed', disabled: 'Tickets disabled', unsupported: 'Unsupported model', unavailable: 'Status unavailable', paused: 'Collection paused', loading: 'Loading' },
+        reason: { network: 'Network error or timeout', upstream: 'Upstream rejected the probe', invalid_ticket: 'Response state length or prefix does not match the acceptance rule', credential: 'Valid credentials unavailable', storage: 'Failed to save ticket cache', cancelled: 'Probe cancelled or timed out', proxy_config: 'Harvest proxy configuration or decryption failed' },
       },
       quality: {
         protocol: 'API upstream protocol', actualProtocol: 'Tested protocol', protocolDefault: 'Account setting',

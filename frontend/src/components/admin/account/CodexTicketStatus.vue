@@ -58,7 +58,7 @@ function description(row: TicketModelStatus) {
 function diagnosticSummary(row: TicketModelStatus) {
   const d = row.diagnostic
   if (!d?.http_status) return ''
-  const parts = ['HTTP ' + d.http_status, d.header_present ? d.header_length + '/292' : t('admin.accounts.tickets.noHeader')]
+  const parts = ['HTTP ' + d.http_status, d.header_present ? d.header_length + '/' + (row.target_length || 292) : t('admin.accounts.tickets.noHeader')]
   if (d.header_present && !d.prefix_valid) parts.push(t('admin.accounts.tickets.badPrefix'))
   if (d.response_kind === 'html') parts.push('HTML')
   if (d.error_kind && ['overloaded', 'rate_limit', 'quota', 'auth', 'invalid_request'].includes(d.error_kind)) parts.push(t('admin.accounts.tickets.errorKind.' + d.error_kind))

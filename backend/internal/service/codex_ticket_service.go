@@ -28,6 +28,7 @@ type CodexTicketCache interface {
 	Claim(context.Context, string, time.Duration) (bool, error)
 	AcquireLease(context.Context, string, string, time.Duration) (bool, error)
 	ReleaseLease(context.Context, string, string) error
+	RenewLease(context.Context, string, string, time.Duration) (bool, error)
 }
 
 type codexTicketConfig struct {
@@ -39,6 +40,7 @@ type codexTicketConfig struct {
 	FixedProxyID         string             `json:"fixed_proxy_id,omitempty"`
 	ProbeIntervalSeconds int                `json:"probe_interval_seconds,omitempty"`
 	MaxAttempts          int                `json:"max_attempts,omitempty"`
+	TargetLength         int                `json:"target_length,omitempty"`
 	RetryIntervalSeconds int                `json:"retry_interval_seconds,omitempty"`
 	loadedAt             time.Time
 }
@@ -52,6 +54,7 @@ type CodexTicketSettings struct {
 	FixedProxyID         string                 `json:"fixed_proxy_id"`
 	ProbeIntervalSeconds int                    `json:"probe_interval_seconds"`
 	MaxAttempts          int                    `json:"max_attempts"`
+	TargetLength         int                    `json:"target_length"`
 	RetryIntervalSeconds int                    `json:"retry_interval_seconds"`
 	Revision             string                 `json:"revision"`
 }
@@ -64,6 +67,7 @@ type CodexTicketSettingsUpdate struct {
 	FixedProxyID         *string                   `json:"fixed_proxy_id"`
 	ProbeIntervalSeconds *int                      `json:"probe_interval_seconds"`
 	MaxAttempts          *int                      `json:"max_attempts"`
+	TargetLength         *int                      `json:"target_length"`
 	RetryIntervalSeconds *int                      `json:"retry_interval_seconds"`
 	Revision             *string                   `json:"revision"`
 }
@@ -91,10 +95,14 @@ type CodexTicketService struct {
 	cursor       int64
 	nextRound    time.Time
 	cacheRetryAt atomic.Int64
+	manualCancel context.CancelFunc
+	manualID     string
+	manualWG     sync.WaitGroup
+	ipProber     ProxyExitInfoProber
 }
 
-func ProvideCodexTicketService(gateway *OpenAIGatewayService, settings SettingRepository, cache CodexTicketCache, cipher SecretEncryptor) *CodexTicketService {
-	s := &CodexTicketService{gateway: gateway, settings: settings, cache: cache, cipher: cipher}
+func ProvideCodexTicketService(gateway *OpenAIGatewayService, settings SettingRepository, cache CodexTicketCache, cipher SecretEncryptor, ipProber ProxyExitInfoProber) *CodexTicketService {
+	s := &CodexTicketService{gateway: gateway, settings: settings, cache: cache, cipher: cipher, ipProber: ipProber}
 	gateway.codexTickets.Store(s)
 	s.Start()
 	return s
@@ -183,6 +191,9 @@ func (s *CodexTicketService) publishConfig(cfg *codexTicketConfig) {
 		if s.roundCancel != nil {
 			s.roundCancel()
 		}
+		if s.manualCancel != nil {
+			s.manualCancel()
+		}
 		s.lifecycleMu.Unlock()
 	}
 }
@@ -208,8 +219,12 @@ func codexTicketKey(cfg *codexTicketConfig, account *Account, model, token strin
 	h := sha256.Sum256(raw)
 	return hex.EncodeToString(h[:])
 }
-func validCodexTicket(value codexTicketValue) bool {
-	return len(value.State) == 292 && strings.HasPrefix(value.State, "gAAAAA") && !strings.ContainsAny(value.State, "\r\n\x00") && time.Now().Before(value.ExpiresAt)
+func validCodexTicket(value codexTicketValue, lengths ...int) bool {
+	target := 292
+	if len(lengths) > 0 {
+		target = lengths[0]
+	}
+	return len(value.State) == target && strings.HasPrefix(value.State, "gAAAAA") && !strings.ContainsAny(value.State, "\r\n\x00") && time.Now().Before(value.ExpiresAt)
 }
 
 // 缺票错误只用于当前模型的准入，不写账号状态或质量检测结果。
@@ -265,7 +280,7 @@ func (s *CodexTicketService) lookup(ctx context.Context, cfg *codexTicketConfig,
 	if err != nil {
 		return value, false
 	}
-	ok := json.Unmarshal([]byte(raw), &value) == nil && validCodexTicket(value)
+	ok := json.Unmarshal([]byte(raw), &value) == nil && validCodexTicket(value, cfg.targetLength())
 	return value, ok
 }
 
@@ -326,6 +341,9 @@ func (s *CodexTicketService) Stop() {
 	if s.roundCancel != nil {
 		s.roundCancel()
 	}
+	if s.manualCancel != nil {
+		s.manualCancel()
+	}
 	done := s.done
 	s.lifecycleMu.Unlock()
 	if done != nil {
@@ -333,12 +351,13 @@ func (s *CodexTicketService) Stop() {
 	}
 	// 轮次最长 30 秒且与生命周期共用取消；等待后台释放并发槽和临时连接。
 	s.roundWG.Wait()
+	s.manualWG.Wait()
 }
 
 func (s *CodexTicketService) startRound(ctx context.Context) {
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
-	if s.roundCancel != nil || s.stopped || time.Now().Before(s.nextRound) {
+	if s.roundCancel != nil || s.manualCancel != nil || s.stopped || time.Now().Before(s.nextRound) {
 		return
 	}
 	roundCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -447,7 +466,7 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 	if encrypted := cached[key]; encrypted != "" {
 		if raw, err := s.cipher.Decrypt(encrypted); err == nil {
 			var value codexTicketValue
-			if json.Unmarshal([]byte(raw), &value) == nil && validCodexTicket(value) && time.Until(value.ExpiresAt) > 10*time.Minute {
+			if json.Unmarshal([]byte(raw), &value) == nil && validCodexTicket(value, cfg.targetLength()) && time.Until(value.ExpiresAt) > 10*time.Minute {
 				return
 			}
 		}

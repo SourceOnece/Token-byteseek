@@ -42,7 +42,7 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 			d.ProxyID = ""
 		}
 	}
-	if d.Attempt < 1 || d.Attempt > 10 {
+	if d.Attempt < 1 {
 		d.Attempt = 0
 	}
 	if d.HTTPStatus < 100 || d.HTTPStatus > 599 {
@@ -64,10 +64,23 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 	return &d
 }
 
-func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketConfig, account *Account, model, token, key string, proxy codexTicketProxy, attempt int) (ready, retry bool) {
+func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketConfig, account *Account, model, token, key string, proxy codexTicketProxy, attempt int, observers ...func(CodexTicketAttempt)) (ready, retry bool) {
 	diagnostic := &CodexTicketDiagnostic{ProxyID: proxy.ID, ProxyName: proxy.Name, Attempt: attempt}
+	started := time.Now().UTC()
+	state, reason := "skipped", "account_changed"
+	var expires *time.Time
+	// 手动日志在统一出口收集，自动采集不增加历史/IP 请求。
+	defer func() {
+		if ctx.Err() != nil && !ready {
+			state, reason = "cancelled", "cancelled"
+		}
+		for _, observer := range observers {
+			observer(CodexTicketAttempt{Status: state, Reason: reason, Attempt: attempt, StartedAt: started, FinishedAt: time.Now().UTC(), DurationMS: time.Since(started).Milliseconds(), Diagnostic: safeCodexTicketDiagnostic(diagnostic), ExpiresAt: expires})
+		}
+	}()
 	proxyURL, err := s.cipher.Decrypt(proxy.Cipher)
 	if err != nil || validateCodexHarvestProxy(proxyURL) != nil {
+		state, reason = "failed", "proxy_config"
 		s.recordObservation(ctx, key, "failed", "proxy_config", nil, diagnostic)
 		return false, cfg.mode() == "rotate"
 	}
@@ -81,6 +94,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	if s.gateway.concurrencyService != nil {
 		slot, err := s.gateway.concurrencyService.AcquireAccountSlot(probeCtx, fresh.ID, fresh.Concurrency)
 		if err != nil || slot == nil || !slot.Acquired {
+			reason = "concurrency_busy"
 			return false, false
 		}
 		defer slot.ReleaseFunc()
@@ -99,6 +113,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("session_id", uuid.NewString())
 	if resolveAndSetOpenAIChatGPTAccountHeaders(probeCtx, s.gateway.accountRepo, req.Header, fresh) != nil {
+		state, reason = "failed", "credential"
 		s.recordObservation(ctx, key, "failed", "credential", nil, diagnostic)
 		return false, false
 	}
@@ -115,8 +130,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		req.Header.Set("originator", openai.CodexDefaultOriginator)
 	}
 	s.recordObservation(ctx, key, "collecting", "", nil, diagnostic)
-	state, reason := "failed", "network"
-	var expires *time.Time
+	state, reason = "failed", "network"
 	defer func() {
 		if ctx.Err() != nil && reason == "network" {
 			reason = "cancelled"
@@ -145,7 +159,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	default:
 		diagnostic.ResponseKind = "other"
 	}
-	if resp.StatusCode != http.StatusOK || !validCodexTicket(ticket) {
+	if resp.StatusCode != http.StatusOK || !validCodexTicket(ticket, cfg.targetLength()) {
 		reason = "upstream"
 		if resp.StatusCode == http.StatusOK {
 			state, reason = "missing", "invalid_ticket"

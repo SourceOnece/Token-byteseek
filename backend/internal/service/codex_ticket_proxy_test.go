@@ -109,7 +109,7 @@ func TestCodexTicketProxyValidationAndSelection(t *testing.T) {
 	p, _ = selectCodexTicketProxy(&copy, list[0].ID, true)
 	require.Equal(t, list[1].ID, p.ID)
 	for _, bad := range []CodexTicketSettingsUpdate{
-		{MaxAttempts: ticketInt(0)}, {MaxAttempts: ticketInt(11)}, {ProbeIntervalSeconds: ticketInt(5)}, {RetryIntervalSeconds: ticketInt(0)},
+		{MaxAttempts: ticketInt(0)}, {TargetLength: ticketInt(5)}, {ProbeIntervalSeconds: ticketInt(5)}, {RetryIntervalSeconds: ticketInt(0)},
 		{Proxies: &[]CodexTicketProxyUpdate{{ID: "missing", Name: "X"}}}, {Proxies: &[]CodexTicketProxyUpdate{{ID: "legacy", Name: "A"}, {ID: "legacy", Name: "A"}}},
 		{Proxies: &[]CodexTicketProxyUpdate{{Name: "", URL: "http://proxy"}}}, {Proxies: &[]CodexTicketProxyUpdate{}},
 	} {

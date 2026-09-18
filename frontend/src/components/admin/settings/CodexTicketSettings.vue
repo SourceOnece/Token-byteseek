@@ -31,9 +31,11 @@
       </div>
       <button type="button" class="btn btn-primary" :disabled="locked || proxies.length >= 20" data-testid="ticket-add" @click="addProxy">{{ t('admin.settings.codexTicket.addProxy') }}</button>
     </div>
-    <div class="grid gap-3 border-t-2 border-[color:var(--bh-ink)] pt-4 sm:grid-cols-3">
+    <div class="grid gap-3 border-t-2 border-[color:var(--bh-ink)] pt-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div><label for="ticket-length" class="input-label">{{ t('admin.settings.codexTicket.targetLength') }}</label>
+        <input id="ticket-length" v-model.number="targetLength" type="number" min="6" max="8192" step="1" class="input w-full font-bold text-bh-blue dark:text-blue-300" :disabled="locked" /></div>
       <div><label for="ticket-attempts" class="input-label">{{ t('admin.settings.codexTicket.attempts') }}</label>
-        <input id="ticket-attempts" v-model.number="attempts" type="number" min="1" max="10" step="1" class="input w-full font-bold text-bh-blue" :disabled="locked" /></div>
+        <input id="ticket-attempts" v-model.number="attempts" type="number" min="1" step="1" class="input w-full font-bold text-bh-blue dark:text-blue-300" :disabled="locked" /></div>
       <div><label for="ticket-retry" class="input-label">{{ t('admin.settings.codexTicket.retryInterval') }}</label>
         <input id="ticket-retry" v-model.number="retryInterval" type="number" min="1" max="30" step="1" class="input w-full" :disabled="locked" /></div>
       <div><label for="ticket-interval" class="input-label">{{ t('admin.settings.codexTicket.interval') }}</label>
@@ -62,13 +64,14 @@ interface ProxyRow { id: string; name: string; configured: boolean; url: string 
 interface Settings {
   enabled: boolean; proxy_configured: boolean; proxies: Omit<ProxyRow, 'url'>[]
   selection_mode: 'fixed' | 'rotate'; fixed_proxy_id: string; revision: string
-  max_attempts: number; retry_interval_seconds: number; probe_interval_seconds: number
+  max_attempts: number; retry_interval_seconds: number; probe_interval_seconds: number; target_length?: number
 }
 const { t } = useI18n()
 const app = useAppStore()
 const enabled = ref(false), proxies = ref<ProxyRow[]>([]), fixedID = ref(''), revision = ref('')
 const mode = ref<'fixed' | 'rotate'>('fixed')
 const attempts = ref(3), retryInterval = ref(1), interval = ref(6), removing = ref('')
+const targetLength = ref(292)
 const loading = ref(true), saving = ref(false), error = ref(''), loadError = ref('')
 const locked = computed(() => loading.value || saving.value || !!loadError.value)
 const proxyOptions = computed(() => proxies.value.map((p, i) => ({ value: p.id, label: p.name || `Proxy ${i + 1}` })))
@@ -102,6 +105,7 @@ function apply(data: Settings) {
   enabled.value = data.enabled; mode.value = data.selection_mode; revision.value = data.revision
   proxies.value = data.proxies.map(p => ({ id: p.id, name: p.name, configured: p.configured, url: '' }))
   fixedID.value = data.fixed_proxy_id; attempts.value = data.max_attempts
+  targetLength.value = data.target_length || 292
   retryInterval.value = data.retry_interval_seconds; interval.value = data.probe_interval_seconds
   removing.value = ''
 }
@@ -116,13 +120,13 @@ async function save() {
   if (locked.value) return
   const validNumber = (v: number, lo: number, hi: number) => Number.isInteger(v) && v >= lo && v <= hi
   if ((enabled.value && !proxies.value.length) || proxies.value.some(p => !p.name.trim() || (!p.configured && !p.url.trim())) ||
-    !validNumber(attempts.value, 1, 10) || !validNumber(retryInterval.value, 1, 30) || !validNumber(interval.value, 6, 3600)) {
+    !Number.isSafeInteger(attempts.value) || attempts.value < 1 || !validNumber(targetLength.value, 6, 8192) || !validNumber(retryInterval.value, 1, 30) || !validNumber(interval.value, 6, 3600)) {
     error.value = t('admin.settings.codexTicket.invalidForm'); return
   }
   saving.value = true; error.value = ''
   try {
     const payload = { enabled: enabled.value, revision: revision.value, selection_mode: mode.value, fixed_proxy_id: fixedID.value,
-      max_attempts: attempts.value, retry_interval_seconds: retryInterval.value, probe_interval_seconds: interval.value,
+      max_attempts: attempts.value, target_length: targetLength.value, retry_interval_seconds: retryInterval.value, probe_interval_seconds: interval.value,
       proxies: proxies.value.map(p => ({ id: p.id, name: p.name.trim(), harvest_proxy_url: p.url.trim() })) }
     apply((await apiClient.put<Settings>('/admin/settings/codex-ticket', payload)).data)
     app.showSuccess(t('admin.settings.codexTicket.saved'))

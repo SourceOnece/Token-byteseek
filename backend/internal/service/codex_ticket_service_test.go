@@ -92,6 +92,15 @@ func (c *ticketCacheStub) ReleaseLease(_ context.Context, key, owner string) err
 	return nil
 }
 
+func (c *ticketCacheStub) RenewLease(_ context.Context, key, owner string, _ time.Duration) (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.fail {
+		return false, errors.New("offline")
+	}
+	return c.owners[key] == owner, nil
+}
+
 func (c *ticketCacheStub) GetMany(ctx context.Context, keys []string) (map[string]string, error) {
 	out := map[string]string{}
 	for _, key := range keys {

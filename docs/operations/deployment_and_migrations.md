@@ -84,6 +84,8 @@ bh.030 新增 `271_channel_max_reasoning_effort_multiplier.sql`（TokenRouter 26
 
 ### Codex 题目测试结果表
 
+迁移 `275_codex_ticket_manual_runs.sql` 为 bh.036 fork 手动票据采集新增独立 runs/events 历史表，仅新增表/索引、不修改 accounts、原质量检测或票据缓存。旧镜像可忽略新表，回退前取消在途手动批次并完成停止；不删除迁移记录。日志保存管理员可见的账号邮箱/参考出口 IP，未保存票据/凭据/代理密码，历史目前不自动清理，部署应规划容量与备份权限。
+
 `269_add_usage_log_upstream_request_id.sql` 和 `270_add_usage_log_upstream_request_id_index_notx.sql` 为 bh.026 从 TokenRouter 原 266/267 重编号迁入：新增 nullable `usage_logs.upstream_request_id VARCHAR(128)` 和仅非空行的并发索引。旧用量行保持 NULL，不回填；不修改本 fork 266–268 质量测试表。旧二进制可忽略新增列/索引，回滚代码时应保留迁移记录。升级前仍须备份；大用量表创建索引有 I/O 成本。
 
 迁移 `267_codex_quality_schedules.sql` 在 266 之后新增定时计划、独立轮次和逐账号历史表，保留原最近结果表。没有历史计划回填或自动启用，不修改已部署账号调度开关。应用启动后原定时 runner 内的独立循环处理管理员创建的计划；回退旧镜像前先暂停全部新定时计划并等待在途结束，旧应用忽略新表，不会自动撤销已完成测试的调度变更。新旧实例不应共同执行同账号质量测试，因为 bh.016 不知道计划租约与历史提交保护。历史默认保留 30 轮、上限 100，容量需按账号数和回答长度规划。

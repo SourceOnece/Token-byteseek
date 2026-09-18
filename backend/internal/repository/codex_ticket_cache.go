@@ -59,3 +59,8 @@ func (c *codexTicketCache) AcquireLease(ctx context.Context, key, owner string, 
 func (c *codexTicketCache) ReleaseLease(ctx context.Context, key, owner string) error {
 	return c.client.Eval(ctx, `if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end`, []string{"private:codex-ticket-lease:v1:" + key}, owner).Err()
 }
+
+// 手动批次可能很长，续租只能延长自己持有的锁，丢锁立即停止后续采集。
+func (c *codexTicketCache) RenewLease(ctx context.Context, key, owner string, ttl time.Duration) (bool, error) {
+	return c.client.Eval(ctx, `if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('PEXPIRE', KEYS[1], ARGV[2]) else return 0 end`, []string{"private:codex-ticket-lease:v1:" + key}, owner, ttl.Milliseconds()).Bool()
+}
