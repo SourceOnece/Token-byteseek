@@ -1,30 +1,32 @@
 <template>
   <BaseDialog :show="show" :title="t('admin.accounts.quality.schedule.title')" width="extra-wide" :close-on-escape="!historyPlan && !detailRun && !deletePlan" @close="close">
-    <div class="space-y-5">
+    <div class="space-y-6 sm:space-y-8">
       <div v-if="!draft" class="flex flex-wrap items-center justify-between gap-3">
         <button class="btn btn-primary gap-2" data-testid="quality-plan-new" @click="newPlan"><Icon name="plus" size="sm" />{{ t('admin.accounts.quality.schedule.create') }}</button>
         <button class="btn btn-secondary quality-icon" :title="t('common.refresh')" :aria-label="t('common.refresh')" @click="load"><Icon name="refresh" size="sm" /></button>
       </div>
       <p v-if="error" role="alert" class="text-bh-red dark:text-red-400">{{ error }}</p>
-      <form v-if="draft" class="quality-form space-y-5" @submit.prevent="save">
-        <fieldset :disabled="saving || selecting" class="min-w-0 space-y-5">
+      <form v-if="draft" class="quality-form space-y-6 sm:space-y-8" @submit.prevent="save">
+        <fieldset :disabled="saving || selecting" class="min-w-0 space-y-6 sm:space-y-8">
         <CodexQualityRules />
-        <p class="text-xs font-bold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.quality.schedule.description') }}</p>
+        <p class="text-sm font-semibold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.quality.schedule.description') }}</p>
         <BauhausHelp :title="t('admin.accounts.quality.rules')"><p>{{ t('admin.accounts.quality.schedule.timingHint') }}</p><p>{{ t('admin.accounts.quality.disclaimer') }}</p><p>{{ t('admin.accounts.quality.keywordHint') }}</p></BauhausHelp>
         <div class="grid items-end gap-4 sm:grid-cols-3">
           <div><label class="input-label" for="quality-plan-name">{{ t('admin.accounts.quality.schedule.name') }}</label><input id="quality-plan-name" v-model="draft.name" class="input w-full" maxlength="100" required /></div>
           <div><label class="input-label" for="quality-plan-interval">{{ t('admin.accounts.quality.schedule.interval') }}</label><input id="quality-plan-interval" v-model.number="draft.interval_minutes" type="number" min="1" max="43200" class="input w-full font-bold text-bh-blue dark:text-blue-300" required /></div>
           <div><label class="input-label" for="quality-plan-keep">{{ t('admin.accounts.quality.schedule.keep') }}</label><input id="quality-plan-keep" v-model.number="draft.keep_runs" type="number" min="1" max="100" class="input w-full" required /></div>
         </div>
-        <div class="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="grid items-end gap-5 sm:grid-cols-2">
           <div><label class="input-label text-bh-blue dark:text-blue-300" for="quality-plan-model">{{ t('admin.accounts.quality.model') }}</label><Select id="quality-plan-model" v-model="draft.config.model" :options="models" creatable searchable /></div>
           <div><label class="input-label text-yellow-700 dark:text-bh-yellow" for="quality-plan-effort">{{ t('admin.accounts.quality.effort') }}</label><Select id="quality-plan-effort" v-model="draft.config.reasoning_effort" :options="efforts" /></div>
+        </div>
+        <div class="grid items-end gap-5 sm:grid-cols-3">
+          <div><label class="input-label" for="quality-plan-protocol">{{ t('admin.accounts.quality.protocol') }}</label><Select id="quality-plan-protocol" v-model="draft.config.api_protocol" :options="protocols" /></div>
           <div><label class="input-label" for="quality-plan-concurrency">{{ t('admin.accounts.quality.concurrency') }}</label><Select id="quality-plan-concurrency" v-model="draft.config.concurrency" :options="concurrencyOptions" /></div>
           <div><label class="input-label" for="quality-plan-timeout">{{ t('admin.accounts.quality.timeout') }}</label><input id="quality-plan-timeout" v-model.number="draft.config.timeout_seconds" type="number" min="10" max="3600" class="input w-full" required /></div>
         </div>
         <div><label class="input-label" for="quality-plan-prompt">{{ t('admin.accounts.quality.prompt') }}</label><textarea id="quality-plan-prompt" v-model="draft.config.prompt" class="input w-full" rows="3" maxlength="16000" required /></div>
         <div><label class="input-label" for="quality-plan-keyword">{{ t('admin.accounts.quality.keyword') }}</label><input id="quality-plan-keyword" v-model="draft.config.keyword" class="input w-full" maxlength="200" required /><p class="input-hint">{{ t('admin.accounts.quality.keywordShort') }}</p></div>
-        <div class="sm:max-w-sm"><label class="input-label text-bh-blue dark:text-blue-300" for="quality-plan-protocol">{{ t('admin.accounts.quality.protocol') }}</label><Select id="quality-plan-protocol" v-model="draft.config.api_protocol" :options="protocols" /></div>
         <div class="border-y-2 border-bh-ink py-4">
           <div class="flex flex-wrap items-center gap-2">
             <strong class="text-bh-blue dark:text-blue-300">{{ t('admin.accounts.quality.schedule.selected', { count: draft.config.account_ids.length }) }}</strong>
@@ -44,20 +46,20 @@
           <Pagination v-if="accountTotal > 50" :page="accountPage" :page-size="50" :total="accountTotal" :show-page-size-selector="false" @update:page="loadAccounts" />
         </div>
         <div class="flex items-center justify-between gap-3 py-2"><span class="text-sm font-bold">{{ t('admin.accounts.quality.schedule.periodic') }}</span><Toggle v-model="draft.enabled" class="quality-enabled" :aria-label="t('admin.accounts.quality.schedule.periodic')" /></div>
-        <label class="flex items-start gap-2 text-sm font-bold"><input v-model="draft.config.confirm_scheduling" type="checkbox" class="mt-1" data-testid="quality-plan-confirm" /><span>{{ t('admin.accounts.quality.schedule.confirm') }}</span></label>
+        <label class="flex items-start gap-3 border-y-2 border-[color:var(--bh-ink)] py-4 text-sm font-semibold leading-relaxed"><input v-model="draft.config.confirm_scheduling" type="checkbox" class="mt-1 h-4 w-4 shrink-0" data-testid="quality-plan-confirm" /><span>{{ t('admin.accounts.quality.schedule.confirm') }}</span></label>
         <div class="flex gap-2"><button type="submit" class="btn btn-primary" :disabled="saving || selecting || !draft.config.confirm_scheduling || !draft.config.account_ids.length" data-testid="quality-plan-save">{{ t('common.save') }}</button><button type="button" class="btn btn-secondary" @click="draft = null">{{ t('common.cancel') }}</button></div>
         </fieldset>
       </form>
       <p v-if="!plans.length && !draft" class="text-sm text-gray-500">{{ t('admin.accounts.quality.schedule.empty') }}</p>
       <div v-if="!draft" class="space-y-5">
-      <article v-for="plan in plans" :key="plan.id" class="quality-panel space-y-4 p-4 sm:p-5" :data-testid="`quality-plan-${plan.id}`">
+      <article v-for="plan in plans" :key="plan.id" class="quality-panel space-y-5 p-5 sm:p-6" :data-testid="`quality-plan-${plan.id}`">
         <div class="flex flex-wrap items-center justify-between gap-4 border-b-2 border-bh-ink pb-4">
-          <h4 class="min-w-0 flex-1 break-words text-lg font-bold">{{ plan.name }}</h4>
+          <h4 class="min-w-0 flex-1 break-words text-xl font-extrabold">{{ plan.name }}</h4>
           <div class="flex shrink-0 items-center gap-3"><span class="text-xs font-bold" :class="plan.enabled ? 'text-green-700 dark:text-green-400' : 'text-gray-500'">{{ t(plan.enabled ? 'admin.accounts.quality.schedule.enabled' : 'admin.accounts.quality.schedule.paused') }}</span><Toggle :model-value="plan.enabled" class="quality-enabled" :disabled="busyPlan !== null" :aria-label="`${t('admin.accounts.quality.schedule.periodic')} · ${plan.name}`" @update:model-value="toggleEnabled(plan)" /></div>
         </div>
         <div class="grid min-w-0 gap-4 sm:grid-cols-2">
-          <div class="min-w-0 border-l-4 border-bh-blue pl-3"><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.model') }}</p><strong class="break-all text-bh-blue dark:text-blue-300">{{ plan.config.model }}</strong></div>
-          <div class="min-w-0 border-l-4 border-bh-yellow pl-3"><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.effort') }}</p><strong class="text-yellow-700 dark:text-bh-yellow">{{ plan.config.reasoning_effort || t('admin.accounts.quality.effortDefault') }}</strong></div>
+          <div class="min-w-0 border-l-4 border-bh-blue pl-4"><p class="mb-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.model') }}</p><strong class="break-all text-lg text-bh-blue dark:text-blue-300">{{ plan.config.model }}</strong></div>
+          <div class="min-w-0 border-l-4 border-bh-yellow pl-4"><p class="mb-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.effort') }}</p><strong class="text-lg text-yellow-700 dark:text-bh-yellow">{{ plan.config.reasoning_effort || t('admin.accounts.quality.effortDefault') }}</strong></div>
         </div>
         <p class="text-sm">{{ t('admin.accounts.quality.schedule.intervalValue', { minutes: plan.interval_minutes, count: plan.config.account_ids.length }) }}</p>
         <p class="text-sm font-bold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.quality.protocol') }}：{{ qualityProtocolLabel(plan.config.api_protocol) || t('admin.accounts.quality.protocolDefault') }}</p>
@@ -229,6 +231,6 @@ onBeforeUnmount(() => { generation++; accountRequest++; detailRequest++; if (tim
 .quality-panel { border: 2px solid var(--bh-ink); background: var(--bh-surface); box-shadow: var(--bh-shadow-sm); }
 .quality-enabled.toggle-active { background-color: theme('colors.green.600'); }
 .quality-icon { width: 36px; height: 36px; min-height: 36px; padding: 0; flex-shrink: 0; }
-.quality-form :deep(.input-label) { min-height: 2.5rem; display: flex; align-items: flex-end; }
+.quality-form :deep(.input-label) { min-height: 1.5rem; display: flex; align-items: flex-end; font-size: .875rem; }
 .quality-form :deep(.input), .quality-form :deep(.select-trigger) { min-height: 42px; }
 </style>

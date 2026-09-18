@@ -1,16 +1,16 @@
 <template>
-  <section class="space-y-4 border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-4" style="box-shadow: var(--bh-shadow-sm)" data-testid="codex-ticket-settings">
+  <section class="ticket-settings space-y-6 border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-5 sm:space-y-8 sm:p-6" style="box-shadow: var(--bh-shadow-sm)" data-testid="codex-ticket-settings">
     <div class="flex items-start justify-between gap-4">
-      <div><h3 class="font-bold text-bh-blue dark:text-blue-300">{{ t('admin.settings.codexTicket.title') }}</h3>
+      <div><h3 class="text-xl font-extrabold text-bh-blue dark:text-blue-300">{{ t('admin.settings.codexTicket.title') }}</h3>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ t('admin.settings.codexTicket.description') }}</p></div>
       <Toggle v-model="enabled" :disabled="locked" :aria-label="t('admin.settings.codexTicket.title')" data-testid="codex-ticket-toggle" />
     </div>
     <p class="border-l-4 border-bh-yellow pl-3 text-sm font-semibold text-yellow-800 dark:text-bh-yellow">{{ t('admin.settings.codexTicket.warning') }}</p>
     <!-- 固定运行参数用数字层级表达；详细限制按需展开，保存风险保持可见。 -->
-    <dl class="grid grid-cols-3 gap-3 text-sm" data-testid="ticket-rule-metrics">
-      <div class="border-l-4 border-bh-blue pl-3"><dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.cacheTime') }}</dt><dd class="font-mono text-xl font-bold text-bh-blue dark:text-blue-300">60 <small>min</small></dd></div>
-      <div class="border-l-4 border-bh-yellow pl-3"><dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.renewEarly') }}</dt><dd class="font-mono text-xl font-bold text-yellow-700 dark:text-bh-yellow">10 <small>min</small></dd></div>
-      <div class="border-l-4 border-bh-red pl-3"><dt class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.workers') }}</dt><dd class="font-mono text-xl font-bold text-bh-red dark:text-red-400">4</dd></div>
+    <dl class="grid grid-cols-3 gap-3 border-y-2 border-[color:var(--bh-ink)] py-5 sm:gap-6" data-testid="ticket-rule-metrics">
+      <div class="min-w-0"><dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.cacheTime') }}</dt><dd class="mt-2 text-3xl font-extrabold tabular-nums text-bh-blue dark:text-blue-300 sm:text-4xl">60 <small class="text-sm font-medium">min</small></dd></div>
+      <div class="min-w-0"><dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.renewEarly') }}</dt><dd class="mt-2 text-3xl font-extrabold tabular-nums text-yellow-700 dark:text-bh-yellow sm:text-4xl">10 <small class="text-sm font-medium">min</small></dd></div>
+      <div class="min-w-0"><dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.workers') }}</dt><dd class="mt-2 text-3xl font-extrabold tabular-nums text-bh-red dark:text-red-400 sm:text-4xl">4</dd></div>
     </dl>
     <BauhausHelp :title="t('admin.accounts.quality.rules')"><p>{{ t('admin.settings.codexTicket.rules') }}</p><p>{{ t('admin.settings.codexTicket.limits') }}</p></BauhausHelp>
     <div>
@@ -26,8 +26,8 @@
     </div>
     <p class="input-hint">{{ t(mode === 'rotate' ? 'admin.settings.codexTicket.rotateHint' : 'admin.settings.codexTicket.fixedHint') }}</p>
     <p class="input-hint">{{ t('admin.settings.codexTicket.ipHint') }}</p>
-    <div class="space-y-3">
-      <div v-for="(proxy, index) in proxies" :key="proxy.id" class="border-2 border-[color:var(--bh-ink)] p-3" data-testid="ticket-proxy-row">
+    <div class="space-y-4">
+      <div v-for="(proxy, index) in proxies" :key="proxy.id" class="border-2 border-[color:var(--bh-ink)] p-4 sm:p-5" data-testid="ticket-proxy-row">
         <div class="mb-3 flex items-center justify-between gap-3">
           <span class="font-mono text-sm font-bold text-bh-blue dark:text-blue-300">{{ t('admin.settings.codexTicket.proxyLabel', { index: String(index + 1).padStart(2, '0') }) }}</span>
           <button type="button" class="btn btn-danger btn-sm" :disabled="locked" data-testid="ticket-remove" @click="removing = proxy.id">{{ t('common.delete') }}</button>
@@ -43,7 +43,7 @@
       </div>
       <button type="button" class="btn btn-primary" :disabled="locked || proxies.length >= 20" data-testid="ticket-add" @click="addProxy">{{ t('admin.settings.codexTicket.addProxy') }}</button>
     </div>
-    <div class="grid gap-3 border-t-2 border-[color:var(--bh-ink)] pt-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="grid items-start gap-5 border-t-2 border-[color:var(--bh-ink)] pt-6 sm:grid-cols-2 lg:grid-cols-3">
       <div><label for="ticket-length" class="input-label">{{ t('admin.settings.codexTicket.targetLength') }}</label>
         <input id="ticket-length" v-model.number="targetLength" type="number" min="6" max="8192" step="1" class="input w-full font-bold text-bh-blue dark:text-blue-300" :disabled="locked" /></div>
       <div><label for="ticket-signal" class="input-label">{{ t('admin.settings.codexTicket.signalLength') }}</label>
@@ -160,3 +160,9 @@ async function save() {
 }
 onMounted(load)
 </script>
+
+<style scoped>
+/* 网格标签共享基线，说明与输入留白一致；不修改字段或选择器行为。 */
+.ticket-settings .input-label { min-height: 2.5rem; display: flex; align-items: flex-end; font-size: .875rem; }
+.ticket-settings .input-hint { font-size: .875rem; line-height: 1.6; }
+</style>

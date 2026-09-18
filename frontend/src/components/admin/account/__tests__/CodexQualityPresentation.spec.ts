@@ -17,9 +17,13 @@ describe('Quality presentation', () => {
       expect(w.text()).toContain(`rule.${status}`)
     }
     expect(w.findAll('button')).toHaveLength(0)
+    expect(w.get('[data-testid="quality-rules"]').classes()).toContain('quality-rules')
+    expect(w.get('[data-testid="quality-rule-status"]').classes()).toContain('text-lg')
+    expect(w.get('[data-testid="quality-rule-action"]').classes()).toContain('text-sm')
     const help = mount(BauhausHelp, { props: { title: '规则' }, slots: { default: '辅助说明' } })
     expect(help.get('details').attributes('open')).toBeUndefined()
     expect(help.get('summary').text()).toBe('规则')
+    expect(help.get('details').classes()).toContain('text-sm')
   })
   it('只用蓝红黄文字，不填充状态背景', () => {
     expect(qualityStatusClass('full')).toContain('text-bh-blue')

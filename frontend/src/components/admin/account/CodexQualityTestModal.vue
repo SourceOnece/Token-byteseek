@@ -1,6 +1,6 @@
 <template>
   <BaseDialog :show="show" :title="t('admin.accounts.quality.title')" width="extra-wide" :close-on-escape="category === null" @close="close">
-    <div class="space-y-5">
+    <div class="space-y-6 sm:space-y-8">
       <p class="border-l-4 border-bh-yellow pl-3 text-sm font-bold text-yellow-800 dark:text-bh-yellow">
         {{ t('admin.accounts.quality.warning', { count: targetIds.length, seconds: timeoutSeconds }) }}
       </p>
@@ -11,8 +11,7 @@
         <p>{{ t('admin.accounts.quality.keywordHint') }}</p>
         <p>{{ t('admin.accounts.quality.rateHint') }}</p>
       </BauhausHelp>
-      <div class="sm:max-w-sm"><label class="input-label text-bh-blue dark:text-blue-300" for="quality-protocol">{{ t('admin.accounts.quality.protocol') }}</label><Select id="quality-protocol" v-model="protocol" :options="protocols" :disabled="running" /></div>
-      <div class="quality-fields grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="quality-fields grid items-end gap-5 sm:grid-cols-2">
         <div>
           <label class="input-label text-bh-blue dark:text-blue-300" for="quality-model">{{ t('admin.accounts.quality.model') }}</label>
           <Select id="quality-model" v-model="model" :options="models" :creatable="true" :searchable="true" :disabled="running" />
@@ -21,6 +20,9 @@
           <label class="input-label text-yellow-700 dark:text-bh-yellow" for="quality-effort">{{ t('admin.accounts.quality.effort') }}</label>
           <Select id="quality-effort" v-model="effort" :options="efforts" :disabled="running" />
         </div>
+      </div>
+      <div class="quality-fields grid items-end gap-5 sm:grid-cols-3">
+        <div><label class="input-label" for="quality-protocol">{{ t('admin.accounts.quality.protocol') }}</label><Select id="quality-protocol" v-model="protocol" :options="protocols" :disabled="running" /></div>
         <div>
           <label class="input-label" for="quality-concurrency">{{ t('admin.accounts.quality.concurrency') }}</label>
           <Select id="quality-concurrency" v-model="concurrency" :options="concurrencyOptions" :disabled="running" />
@@ -39,8 +41,8 @@
         <input id="quality-keyword" v-model="keyword" class="input w-full" maxlength="200" :disabled="running" />
         <p class="input-hint">{{ t('admin.accounts.quality.keywordShort') }}</p>
       </div>
-      <label class="flex items-start gap-2 text-sm font-semibold">
-        <input v-model="confirmed" type="checkbox" class="mt-1" :disabled="running" data-testid="quality-confirm" />
+      <label class="flex items-start gap-3 border-y-2 border-[color:var(--bh-ink)] py-4 text-sm font-semibold leading-relaxed">
+        <input v-model="confirmed" type="checkbox" class="mt-1 h-4 w-4 shrink-0" :disabled="running" data-testid="quality-confirm" />
         <span>{{ t('admin.accounts.quality.confirm') }}</span>
       </label>
       <p v-if="error" role="alert" class="break-words text-sm text-red-600 dark:text-red-400">{{ error }}</p>
@@ -171,6 +173,6 @@ onBeforeUnmount(() => { generation++; stop() })
 </script>
 
 <style scoped>
-.quality-fields :deep(.input-label) { min-height: 2.5rem; display: flex; align-items: flex-end; }
+.quality-fields :deep(.input-label) { min-height: 1.5rem; display: flex; align-items: flex-end; font-size: .875rem; }
 .quality-fields :deep(.input), .quality-fields :deep(.select-trigger) { min-height: 42px; }
 </style>

@@ -1,29 +1,33 @@
 <template>
   <BaseDialog :show="show" :title="t('admin.accounts.ticketCollect.title')" width="extra-wide" :close-on-escape="!detailID" @close="close">
-    <div class="space-y-5">
+    <div class="space-y-6 sm:space-y-8">
       <div class="flex flex-wrap gap-2">
         <button class="btn btn-primary btn-sm" :disabled="running" @click="tab = 'collect'">{{ t('admin.accounts.ticketCollect.collectTab') }}</button>
         <button class="btn btn-secondary btn-sm" :disabled="running" @click="tab = 'history'; loadHistory()">{{ t('admin.accounts.ticketCollect.history') }}</button>
       </div>
       <template v-if="tab === 'collect'">
-        <p class="border-l-4 border-bh-yellow p-3 text-sm text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketCollect.hint', { count: targets.length }) }}</p>
-        <div v-if="settings" class="grid gap-3 border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-3 text-sm sm:grid-cols-2" style="box-shadow:var(--bh-shadow-sm)">
-          <span class="break-all font-bold text-bh-blue dark:text-blue-300">{{ (settings.models || ['gpt-6-astra', 'gpt-5.6-sol']).join(' / ') }}</span>
-          <span class="font-bold text-bh-blue dark:text-blue-300">{{ t('admin.settings.codexTicket.targetLength') }}：{{ settings.target_length || 292 }}</span>
-          <span>{{ t('admin.settings.codexTicket.attempts') }}：{{ settings.max_attempts }}</span>
-          <span>{{ t(settings.selection_mode === 'rotate' ? 'admin.settings.codexTicket.rotate' : 'admin.settings.codexTicket.fixed') }}</span>
-          <span>{{ t('admin.settings.codexTicket.retryInterval') }}：{{ settings.retry_interval_seconds }}</span>
-          <span>{{ t('admin.settings.codexTicket.interval') }}：{{ settings.probe_interval_seconds }}</span>
+        <p class="border-l-4 border-bh-yellow pl-3 text-base font-semibold text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketCollect.hint', { count: targets.length }) }}</p>
+        <div v-if="settings" class="border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-5 sm:p-6" style="box-shadow:var(--bh-shadow-sm)">
+          <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.models') }}</p>
+          <p class="break-all text-lg font-bold leading-relaxed text-bh-blue dark:text-blue-300">{{ (settings.models || ['gpt-6-astra', 'gpt-5.6-sol']).join(' / ') }}</p>
+          <!-- 设置摘要统一成标签/值网格，数据继续使用本次读取的网关配置。 -->
+          <dl class="mt-5 grid grid-cols-2 gap-x-6 gap-y-5 border-t-2 border-[color:var(--bh-ink)] pt-5 text-sm sm:grid-cols-3">
+            <div><dt class="text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.targetLength') }}</dt><dd class="mt-2 text-2xl font-extrabold tabular-nums text-bh-blue dark:text-blue-300">{{ settings.target_length || 292 }}</dd></div>
+            <div><dt class="text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.attempts') }}</dt><dd class="mt-2 text-2xl font-extrabold tabular-nums">{{ settings.max_attempts }}</dd></div>
+            <div class="col-span-2 sm:col-span-1"><dt class="text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.mode') }}</dt><dd class="mt-2 text-base font-bold">{{ t(settings.selection_mode === 'rotate' ? 'admin.settings.codexTicket.rotate' : 'admin.settings.codexTicket.fixed') }}</dd></div>
+            <div><dt class="text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.retryInterval') }}</dt><dd class="mt-2 text-2xl font-extrabold tabular-nums">{{ settings.retry_interval_seconds }}</dd></div>
+            <div><dt class="text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.interval') }}</dt><dd class="mt-2 text-2xl font-extrabold tabular-nums">{{ settings.probe_interval_seconds }}</dd></div>
+          </dl>
         </div>
         <p v-if="settings && !settings.enabled" class="font-bold text-bh-red">{{ t('admin.accounts.ticketCollect.disabled') }}</p>
-        <label class="flex items-start gap-2 text-sm font-semibold"><input v-model="confirmed" type="checkbox" class="mt-1" :disabled="running" data-testid="ticket-collect-confirm" />{{ t('admin.accounts.ticketCollect.confirm') }}</label>
-        <p class="text-xs font-semibold text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketCollect.historyHint') }}</p>
+        <label class="flex items-start gap-3 text-sm font-semibold leading-relaxed"><input v-model="confirmed" type="checkbox" class="mt-1 h-4 w-4 shrink-0" :disabled="running" data-testid="ticket-collect-confirm" />{{ t('admin.accounts.ticketCollect.confirm') }}</label>
+        <p class="text-sm font-medium leading-relaxed text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketCollect.historyHint') }}</p>
         <BauhausHelp :title="t('admin.accounts.quality.rules')"><p>{{ t('admin.accounts.ticketCollect.eligibilityHint') }}</p><p>{{ t('admin.accounts.ticketCollect.ipHint') }}</p></BauhausHelp>
         <div v-if="run" class="space-y-4">
           <CodexQualityProgress :done="processed" :total="run.total" :label="t('admin.accounts.ticketCollect.progress')" />
-          <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            <button v-for="status in statuses" :key="status" class="border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-3 text-left active:translate-x-0.5 active:translate-y-0.5" style="box-shadow:var(--bh-shadow-sm)" :class="color(status)" @click="openResults(run.id, status)">
-              <span class="block text-xs font-bold">{{ statusLabel(status) }}</span><span class="text-2xl font-black tabular-nums">{{ run.counts[status] || 0 }}</span>
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            <button v-for="status in statuses" :key="status" class="ticket-stat border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" :class="color(status)" @click="openResults(run.id, status)">
+              <span class="block text-sm font-bold">{{ statusLabel(status) }}</span><span class="mt-3 block text-3xl font-extrabold tabular-nums">{{ run.counts[status] || 0 }}</span>
             </button>
           </div>
           <details class="border-2 border-[color:var(--bh-ink)] p-3"><summary class="cursor-pointer font-bold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.ticketCollect.live') }}</summary>
@@ -35,8 +39,8 @@
         </div>
       </template>
       <template v-else>
-        <p class="text-xs text-gray-500">{{ t('admin.accounts.ticketCollect.historyHint') }}</p>
-        <p class="text-xs text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketCollect.deleteHint') }}</p>
+        <p class="text-sm leading-relaxed text-gray-500 dark:text-gray-400">{{ t('admin.accounts.ticketCollect.historyHint') }}</p>
+        <p class="text-sm leading-relaxed text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketCollect.deleteHint') }}</p>
         <button class="btn btn-danger btn-sm" :disabled="deleting || busy || running || !history.length" data-testid="ticket-history-clear" @click="deleteHistory()">{{ t('admin.accounts.ticketCollect.clearHistory') }}</button>
         <div v-for="item in history" :key="item.id" class="flex items-center gap-3 border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-3" style="box-shadow:var(--bh-shadow-sm)">
           <button class="min-w-0 flex-1 text-left focus-visible:outline focus-visible:outline-2" @click="openResults(item.id)">
@@ -57,13 +61,13 @@
     </template>
   </BaseDialog>
   <BaseDialog :show="show && !!detailID" :title="t('admin.accounts.ticketCollect.results')" width="extra-wide" :z-index="70" @close="detailID = ''">
-    <div class="space-y-4">
-      <p class="text-xs text-gray-500">{{ t('admin.accounts.ticketCollect.ipHint') }}</p>
+    <div class="space-y-5">
+      <p class="text-sm leading-relaxed text-gray-500 dark:text-gray-400">{{ t('admin.accounts.ticketCollect.ipHint') }}</p>
       <div class="flex flex-wrap gap-2"><button class="btn btn-secondary btn-sm" @click="detailKind = 'result'; detailAccount = 0; detailModel = ''; detailPage = 1; loadDetail()">{{ t('admin.accounts.ticketCollect.results') }}</button><button class="btn btn-secondary btn-sm" @click="detailKind = 'attempt'; detailPage = 1; loadDetail()">{{ t('admin.accounts.ticketCollect.attempts') }}</button><button class="btn btn-secondary btn-sm" @click="loadDetail()">{{ t('common.refresh') }}</button></div>
       <p v-if="detailError" role="alert" class="text-sm text-bh-red">{{ detailError }}</p>
-      <article v-for="item in details" :key="item.id" class="space-y-2 border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-3 text-sm" style="box-shadow:var(--bh-shadow-sm)">
-        <div class="flex flex-wrap justify-between gap-2"><strong class="break-all">{{ item.email || item.account_name || item.account_id }}</strong><strong :class="color(item.status)">{{ statusLabel(item.status) }}</strong></div>
-        <p class="font-bold text-bh-blue dark:text-blue-300">{{ item.model }} · {{ t('admin.accounts.ticketCollect.target') }} {{ item.target_length }} · #{{ item.attempt }}</p>
+      <article v-for="item in details" :key="item.id" class="space-y-4 border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-5 text-sm sm:p-6" style="box-shadow:var(--bh-shadow-sm)">
+        <div class="flex flex-wrap justify-between gap-3 border-b-2 border-[color:var(--bh-ink)] pb-4"><strong class="break-all text-lg">{{ item.email || item.account_name || item.account_id }}</strong><strong :class="color(item.status)">{{ statusLabel(item.status) }}</strong></div>
+        <p class="break-words text-lg font-bold text-bh-blue dark:text-blue-300">{{ item.model }} · {{ t('admin.accounts.ticketCollect.target') }} {{ item.target_length }} · #{{ item.attempt }}</p>
         <p>{{ new Date(item.started_at).toLocaleString() }} · {{ item.duration_ms }} ms</p>
         <p class="break-words">{{ item.diagnostic?.proxy_name || '—' }} · {{ t('admin.accounts.ticketCollect.ip') }}：<span class="font-mono font-bold text-bh-blue dark:text-blue-300">{{ item.reference_ip || t('admin.accounts.ticketCollect.ipUnknown') }}</span></p>
         <p v-if="item.ip_status && item.ip_status !== 'reference'" class="text-xs text-yellow-800 dark:text-bh-yellow" data-testid="ticket-ip-error">{{ ipStatusLabel(item.ip_status) }}<span v-if="item.ip_http_status"> · HTTP {{ item.ip_http_status }}</span></p>
@@ -194,3 +198,9 @@ async function start() {
 function close() { controller?.abort(); emit('close') }
 onBeforeUnmount(() => { generation++; controller?.abort() })
 </script>
+
+<style scoped>
+/* 分类卡片复用同源硬阴影，按压收短而非跟随卡片一起漂移。 */
+.ticket-stat { min-width: 0; box-shadow: var(--bh-shadow-sm); overflow-wrap: anywhere; }
+.ticket-stat:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--bh-shadow-ink); }
+</style>

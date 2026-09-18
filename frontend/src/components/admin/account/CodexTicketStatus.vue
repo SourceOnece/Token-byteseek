@@ -16,12 +16,12 @@
     </div>
   </div>
   <BaseDialog v-if="selectedRow" :show="true" :title="selectedRow.model" width="normal" @close="selectedModel = ''">
-    <div class="space-y-3" data-testid="ticket-detail-content">
-      <p class="font-bold" :class="selectedRow.latest && !failed ? latestColor(selectedRow) : color(selectedRow)">{{ selectedRow.latest && !failed ? latestLabel(selectedRow) : label(selectedRow) }}</p>
+    <div class="ticket-detail space-y-5" data-testid="ticket-detail-content">
+      <p class="text-xl font-extrabold" :class="selectedRow.latest && !failed ? latestColor(selectedRow) : color(selectedRow)">{{ selectedRow.latest && !failed ? latestLabel(selectedRow) : label(selectedRow) }}</p>
       <p :class="color(selectedRow)">{{ t('admin.accounts.tickets.currentTicket') }}：{{ label(selectedRow) }}</p>
       <p v-if="!failed && displayDiagnostic(selectedRow)?.header_present"><CodexTicketLength :actual="displayDiagnostic(selectedRow)!.header_length" :target="selectedRow.target_length || 292" :signal="displayDiagnostic(selectedRow)?.degraded_signal" /></p>
       <p v-if="!failed && displayDiagnostic(selectedRow)?.degraded_signal" class="font-bold text-bh-red dark:text-red-400">{{ t('admin.accounts.tickets.degradedSignal') }}</p>
-      <p class="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-700 dark:text-gray-200">{{ description(selectedRow, true) }}</p>
+      <p class="whitespace-pre-wrap break-words border-t-2 border-[color:var(--bh-ink)] pt-4 text-sm leading-7 text-gray-700 dark:text-gray-200">{{ description(selectedRow, true) }}</p>
     </div>
     <template #footer><button type="button" class="btn btn-secondary" @click="selectedModel = ''">{{ t('common.close') }}</button></template>
   </BaseDialog>
@@ -128,3 +128,8 @@ function diagnosticExtra(row: TicketModelStatus) {
   return parts.join(' · ')
 }
 </script>
+
+<style scoped>
+/* 详情里放大关键数值，账号表格仍沿用紧凑比值，不增加外框。 */
+.ticket-detail :deep([data-testid='ticket-length-ratio']) { font-size: 1.75rem; line-height: 1.25; }
+</style>
