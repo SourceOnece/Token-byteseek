@@ -67,6 +67,18 @@ func (c *ticketCacheStub) Claim(_ context.Context, key string, _ time.Duration) 
 
 type ticketCipherStub struct{}
 
+func (c *ticketCacheStub) GetMany(ctx context.Context, keys []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, key := range keys {
+		value, err := c.Get(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+		out[key] = value
+	}
+	return out, nil
+}
+
 func (ticketCipherStub) Encrypt(value string) (string, error) {
 	return base64.StdEncoding.EncodeToString([]byte(value)), nil
 }
@@ -104,6 +116,16 @@ func (r *ticketAccountStub) ListByPlatform(context.Context, string) ([]Account, 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return append([]Account(nil), r.accounts...), nil
+}
+func (r *ticketAccountStub) GetByIDs(ctx context.Context, ids []int64) ([]*Account, error) {
+	out := []*Account{}
+	for _, id := range ids {
+		a, err := r.GetByID(ctx, id)
+		if err == nil {
+			out = append(out, a)
+		}
+	}
+	return out, nil
 }
 func (r *ticketAccountStub) GetByID(_ context.Context, id int64) (*Account, error) {
 	r.mu.Lock()
@@ -340,7 +362,7 @@ func TestCodexTicketHarvestIsBoundedAndPausedAccountsSkipped(t *testing.T) {
 	s.gateway = &OpenAIGatewayService{accountRepo: repo, httpUpstream: up}
 	s.harvest(context.Background())
 	require.Equal(t, int32(2), up.calls.Load())
-	require.Len(t, cache.values, 2)
+	require.Len(t, cache.values, 4)
 	s.harvest(context.Background())
 	require.Equal(t, int32(2), up.calls.Load(), "共享租约阻止重复整轮")
 	require.False(t, repo.accounts[1].Schedulable)
@@ -364,7 +386,9 @@ func TestCodexTicketChangedCredentialsNotPersisted(t *testing.T) {
 	}}
 	s.gateway = &OpenAIGatewayService{accountRepo: repo, httpUpstream: up}
 	s.probe(context.Background(), s.config.Load(), &a, "gpt-6-astra", "http://proxy:80")
-	require.Empty(t, cache.values)
+	for key := range cache.values {
+		require.True(t, strings.HasPrefix(key, "status:"), "换凭据后的旧结果不得保存可用票据")
+	}
 }
 
 func TestCodexTicketStopCancelsProbeAndWaits(t *testing.T) {

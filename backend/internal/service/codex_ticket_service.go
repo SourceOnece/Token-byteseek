@@ -25,6 +25,7 @@ const codexTicketSettingsKey = "codex_ticket_runtime"
 // CodexTicketCache 与账号 extra/调度缓存完全隔离，票据和探测租约均自动过期。
 type CodexTicketCache interface {
 	Get(context.Context, string) (string, error)
+	GetMany(context.Context, []string) (map[string]string, error)
 	Set(context.Context, string, string, time.Duration) error
 	Claim(context.Context, string, time.Duration) (bool, error)
 }
@@ -389,6 +390,7 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 	}
 	token, _, err := s.gateway.GetAccessToken(ctx, fresh)
 	if err != nil || token == "" {
+		s.recordObservation(ctx, codexTicketKey(cfg, fresh, model, fresh.GetOpenAIAccessToken()), "failed", "credential", nil)
 		return
 	}
 	key := codexTicketKey(cfg, fresh, model, token)
@@ -438,6 +440,15 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 		req.Header.Set("originator", openai.CodexDefaultOriginator)
 	}
 	// 合成采集使用独立不复用连接，不更改正常业务的 TLS 指纹/代理或身份。
+	s.recordObservation(probeCtx, key, "collecting", "", nil)
+	state, reason := "failed", "network"
+	var expires *time.Time
+	defer func() {
+		if probeCtx.Err() != nil && state != "ready" {
+			reason = "cancelled"
+		}
+		s.recordObservation(probeCtx, key, state, reason, expires)
+	}()
 	resp, err := s.gateway.httpUpstream.Do(req, proxy, fresh.ID, fresh.Concurrency)
 	if err != nil || resp == nil {
 		return
@@ -446,14 +457,21 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 		defer resp.Body.Close()
 	}
 	value := codexTicketValue{State: extractOpenAICodexTurnState(resp.Header), ExpiresAt: time.Now().Add(time.Hour)}
-	if resp.StatusCode != http.StatusOK || !validCodexTicket(value) {
+	if resp.StatusCode != http.StatusOK {
+		reason = "upstream"
+		return
+	}
+	if !validCodexTicket(value) {
+		state, reason = "missing", "invalid_ticket"
 		return
 	}
 	latest := s.enabledConfig()
 	if latest == nil || latest.Generation != cfg.Generation {
+		reason = "cancelled"
 		return
 	}
 	// 换凭据/删除账号后的在途探测不进入新账号的票据键。
+	reason = "cancelled"
 	final, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
 	if err != nil || !codexTicketAccount(final) || final.GetOpenAIAccessToken() != token || !final.IsSchedulable() || !final.IsModelSupported(model) {
 		return
@@ -462,9 +480,12 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 		return
 	}
 	raw, _ := json.Marshal(value)
+	reason = "storage"
 	encrypted, err := s.cipher.Encrypt(string(raw))
 	if err != nil {
 		return
 	}
-	_ = s.cache.Set(ctx, key, encrypted, time.Hour)
+	if s.cache.Set(ctx, key, encrypted, time.Hour) == nil {
+		state, reason, expires = "ready", "", &value.ExpiresAt
+	}
 }

@@ -1,6 +1,12 @@
 export default {
 // Accounts
     accounts: {
+      tickets: {
+        title: '292 ticket status', notQuality: 'Ticket availability is not a quality verdict. Missing tickets do not disable scheduling.',
+        checkedAt: 'Last attempt', pausedHint: 'Collection is paused because this account is not schedulable, not because a ticket is missing.',
+        state: { ready: 'Ticket valid', pending: 'Pending', collecting: 'Collecting', missing: 'No 292 ticket', expired: 'Ticket expired', failed: 'Collection failed', disabled: 'Tickets disabled', unsupported: 'Unsupported model', unavailable: 'Status unavailable', paused: 'Collection paused', loading: 'Loading' },
+        reason: { network: 'Network error or timeout', upstream: 'Upstream rejected the probe', invalid_ticket: 'No eligible 292 ticket in response', credential: 'Valid credentials unavailable', storage: 'Failed to save ticket cache', cancelled: 'Probe cancelled or timed out' },
+      },
       quality: {
         protocol: 'API upstream protocol', actualProtocol: 'Tested protocol', protocolDefault: 'Account setting',
         poolRate: 'Pool full rate',

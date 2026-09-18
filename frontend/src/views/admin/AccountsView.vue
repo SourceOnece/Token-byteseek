@@ -232,10 +232,13 @@
             <span class="block max-w-[260px] break-all text-sm font-bold text-bh-blue dark:text-blue-300" :title="accountDisplayEmail(row)">{{ accountDisplayEmail(row) || t('admin.accounts.quality.emailUnavailable') }}</span>
           </template>
           <template #cell-quality="{ row }">
-            <button v-if="qualityResults[row.id]" class="border-2 border-current px-2 py-1 text-xs font-bold shadow-[var(--bh-shadow-sm)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline focus-visible:outline-2" :class="qualityStatusClass(qualityResults[row.id].status)" @click="openQualityDetail(row.id)">
-              {{ t(`admin.accounts.quality.status.${qualityResults[row.id].status}`) }}
-            </button>
-            <span v-else class="text-xs text-gray-500 dark:text-gray-400">{{ isQualityTestable(row) ? t(qualityLoadFailed ? 'admin.accounts.quality.loadFailed' : 'admin.accounts.quality.untested') : '—' }}</span>
+            <div class="min-w-[150px] max-w-[220px]">
+              <button v-if="qualityResults[row.id]" class="border-2 border-current px-2 py-1 text-xs font-bold [box-shadow:var(--bh-shadow-sm)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline focus-visible:outline-2" :class="qualityStatusClass(qualityResults[row.id].status)" @click="openQualityDetail(row.id)">
+                {{ t(`admin.accounts.quality.status.${qualityResults[row.id].status}`) }}
+              </button>
+              <span v-else class="text-xs text-gray-500 dark:text-gray-400">{{ isQualityTestable(row) ? t(qualityLoadFailed ? 'admin.accounts.quality.loadFailed' : 'admin.accounts.quality.untested') : '—' }}</span>
+              <CodexTicketStatus v-if="supportsCodexTickets(row) && ticketStatus[row.id]?.eligible !== false" :status="ticketStatus[row.id]" :now="ticketNow" :failed="ticketLoadFailed" />
+            </div>
           </template>
           <template #cell-name="{ row, value }">
             <div class="flex flex-col">
@@ -529,6 +532,8 @@ import AccountTestModal from '@/components/admin/account/AccountTestModal.vue'
 import CodexQualityTestModal from '@/components/admin/account/CodexQualityTestModal.vue'
 import CodexQualitySchedulesModal from '@/components/admin/account/CodexQualitySchedulesModal.vue'
 import CodexQualityResultCard from '@/components/admin/account/CodexQualityResult.vue'
+import CodexTicketStatus from '@/components/admin/account/CodexTicketStatus.vue'
+import { supportsCodexTickets, useCodexTicketStatus } from '@/composables/useCodexTicketStatus'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { listCodexQualityResults, type CodexQualityResult } from '@/api/admin/codexQuality'
 import { qualityStatusClass, isQualityTestable } from '@/components/admin/account/codexQualityPresentation'
@@ -638,6 +643,7 @@ const showQualitySchedules = ref(false)
 const qualityDetail = ref<CodexQualityResult | null>(null)
 const qualityResults = ref<Record<number, CodexQualityResult>>({})
 const qualityLoadFailed = ref(false)
+const { ticketStatus, ticketLoadFailed, ticketNow, refreshTicketStatus } = useCodexTicketStatus(computed(() => accounts.value))
 const qualityRefreshVersion = ref(0)
 let qualityLoadVersion = 0
 let qualityLoadController: AbortController | null = null
@@ -1950,6 +1956,8 @@ const handleManualRefresh = async () => {
   await load()
   // Force usage cells to refetch /usage on explicit user refresh.
   usageManualRefreshToken.value += 1
+  // 票据只读状态跟随原刷新按钮，不新增手动采集或调度操作。
+  await refreshTicketStatus()
 }
 
 const closeAccountToolsDropdown = () => {

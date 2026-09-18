@@ -561,6 +561,7 @@ func registerSettingsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		adminSettings.GET("", h.Admin.Setting.GetSettings)
 		adminSettings.PUT("", h.Admin.Setting.UpdateSettings)
 		adminSettings.GET("/codex-ticket", h.Admin.Setting.GetCodexTicketSettings)
+		adminSettings.GET("/codex-ticket/status", h.Admin.Setting.GetCodexTicketStatus)
 		adminSettings.PUT("/codex-ticket", h.Admin.Setting.UpdateCodexTicketSettings)
 		adminSettings.GET("/creative-model-candidates", h.Admin.Setting.ListCreativeModelCandidates)
 		adminSettings.GET("/creative-worker-status", h.Admin.Setting.GetCreativeWorkerStatus)

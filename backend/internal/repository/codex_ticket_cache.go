@@ -25,6 +25,28 @@ func (c *codexTicketCache) Get(ctx context.Context, key string) (string, error) 
 func (c *codexTicketCache) Set(ctx context.Context, key, value string, ttl time.Duration) error {
 	return c.client.Set(ctx, "private:codex-ticket:v1:"+key, value, ttl).Err()
 }
+
+// 当前页统一读取，避免每个账号、每个模型各走一次 Redis 网络往返。
+func (c *codexTicketCache) GetMany(ctx context.Context, keys []string) (map[string]string, error) {
+	out := make(map[string]string, len(keys))
+	if len(keys) == 0 {
+		return out, nil
+	}
+	full := make([]string, len(keys))
+	for i, key := range keys {
+		full[i] = "private:codex-ticket:v1:" + key
+	}
+	values, err := c.client.MGet(ctx, full...).Result()
+	if err != nil {
+		return nil, err
+	}
+	for i, value := range values {
+		if text, ok := value.(string); ok {
+			out[keys[i]] = text
+		}
+	}
+	return out, nil
+}
 func (c *codexTicketCache) Claim(ctx context.Context, key string, ttl time.Duration) (bool, error) {
 	return c.client.SetNX(ctx, "private:codex-ticket-lease:v1:"+key, "1", ttl).Result()
 }
