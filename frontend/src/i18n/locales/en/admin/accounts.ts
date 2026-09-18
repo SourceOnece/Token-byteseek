@@ -4,7 +4,7 @@ export default {
       ticketCollect: {
         clearHistory: 'Clear finished logs', deleteActive: 'Active collection cannot be deleted', deleted: '{count} records deleted. No undo.',
         deleteHint: 'Immediate and irreversible. Clear includes all finished/stale batches; active batches, accounts, tickets and quality results are kept.',
-        ipSource: 'IP lookup source', configuredSource: 'Admin-configured endpoint',
+        ipSource: 'IP lookup source', configuredSource: 'Admin-configured endpoint', source: { chatgptTrace: 'ChatGPT exit lookup (via collection proxy)', ipify: 'ipify public lookup (via collection proxy)' },
         ipStatus: { unavailable: 'IP lookup unavailable (older records lack details)', timeout: 'IP lookup timed out', network: 'IP lookup network or proxy connection failed', tls: 'IP lookup certificate verification failed', http_error: 'IP lookup endpoint rejected access', invalid_response: 'No valid IP in lookup response', proxy_config: 'Invalid IP lookup proxy configuration', cancelled: 'IP lookup cancelled', not_attempted: 'IP lookup not attempted (no collection HTTP response)' },
         previous: 'Previous page', next: 'Next page',
         title: 'Batch ticket collection', collectTab: 'Manual collection', history: 'Collection history',

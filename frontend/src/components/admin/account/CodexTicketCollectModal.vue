@@ -71,8 +71,8 @@
         <p>{{ new Date(item.started_at).toLocaleString() }} · {{ item.duration_ms }} ms</p>
         <p class="break-words">{{ item.diagnostic?.proxy_name || '—' }} · {{ t('admin.accounts.ticketCollect.ip') }}：<span class="font-mono font-bold text-bh-blue dark:text-blue-300">{{ item.reference_ip || t('admin.accounts.ticketCollect.ipUnknown') }}</span></p>
         <p v-if="item.ip_status && item.ip_status !== 'reference'" class="text-xs text-yellow-800 dark:text-bh-yellow" data-testid="ticket-ip-error">{{ ipStatusLabel(item.ip_status) }}<span v-if="item.ip_http_status"> · HTTP {{ item.ip_http_status }}</span></p>
-        <p v-if="item.ip_source" class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.ticketCollect.ipSource') }}：{{ ipSourceLabel(item.ip_source) }}<span v-if="item.ip_checked_at"> · {{ new Date(item.ip_checked_at).toLocaleString() }}</span></p>
-        <p v-if="item.diagnostic">HTTP {{ item.diagnostic.http_status || '—' }} · <CodexTicketLength v-if="item.diagnostic.header_present" :actual="item.diagnostic.header_length" :target="item.target_length" :signal="item.diagnostic.degraded_signal" /><span v-else>{{ t('admin.accounts.tickets.noHeader') }}</span> · {{ item.diagnostic.response_kind || '—' }}<span v-if="item.diagnostic.error_kind"> · {{ errorKind(item.diagnostic.error_kind) }}</span></p>
+        <p v-if="item.ip_source" class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.ticketCollect.ipSource') }}：{{ ipSourceLabel(item.ip_source) }}<span v-if="geoCountry(item.reference_ip)" class="ml-2 font-mono font-extrabold text-bh-blue dark:text-blue-300">[{{ geoCountry(item.reference_ip) }}]</span><span v-if="item.ip_checked_at"> · {{ new Date(item.ip_checked_at).toLocaleString() }}</span></p>
+        <p v-if="item.diagnostic">HTTP {{ item.diagnostic.http_status || '—' }} · <CodexTicketLength v-if="item.diagnostic.header_present" :actual="item.diagnostic.header_length" :target="item.target_length" :signal="item.diagnostic.degraded_signal" /><span v-else>{{ t('admin.accounts.tickets.noHeader') }}</span><span v-if="responseKindLabel(item.diagnostic.response_kind)"> · {{ responseKindLabel(item.diagnostic.response_kind) }}</span><span v-if="item.diagnostic.error_kind"> · {{ errorKind(item.diagnostic.error_kind) }}</span></p>
         <p v-if="item.diagnostic?.degraded_signal" class="font-bold text-bh-red dark:text-red-400">{{ t('admin.accounts.tickets.degradedSignal') }}</p>
         <p v-if="item.reason" class="text-xs">{{ reasonLabel(item.reason) }}</p>
         <p v-if="item.diagnostic?.retry_not_before" class="text-xs text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.tickets.retryAfter', { time: new Date(item.diagnostic.retry_not_before).toLocaleString() }) }}</p>
@@ -95,6 +95,7 @@ import CodexTicketLength from './CodexTicketLength.vue'
 import BauhausHelp from '@/components/common/BauhausHelp.vue'
 import { runTicketCollection, ticketCollectionAPI, type TicketCollectionEvent, type TicketCollectionRun, type TicketSettings } from '@/api/admin/codexTickets'
 import { useAuthStore } from '@/stores/auth'
+import { fetchOne, getEntry } from '@/utils/ipGeoLookup'
 const props = defineProps<{ show: boolean; accountIds: number[]; historyOnly?: boolean }>()
 const emit = defineEmits<{ close: []; finished: []; result: [] }>()
 const { t } = useI18n(), auth = useAuthStore()
@@ -113,7 +114,15 @@ const color = (s: string) => s === 'ready' ? 'text-emerald-700 dark:text-emerald
 const reasonLabel = (s: string) => ['network', 'upstream', 'invalid_ticket', 'credential', 'storage', 'cancelled', 'proxy_config'].includes(s) ? t('admin.accounts.tickets.reason.' + s) : t('admin.accounts.ticketCollect.reason.' + (['ineligible', 'account_changed', 'concurrency_busy', 'backoff'].includes(s) ? s : 'account_changed'))
 const errorKind = (s: string) => ['overloaded', 'rate_limit', 'quota', 'auth', 'invalid_request'].includes(s) ? t('admin.accounts.tickets.errorKind.' + s) : '—'
 const ipStatusLabel = (s: string) => t('admin.accounts.ticketCollect.ipStatus.' + (['unavailable', 'timeout', 'network', 'tls', 'http_error', 'invalid_response', 'proxy_config', 'cancelled', 'not_attempted'].includes(s) ? s : 'unavailable'))
-const ipSourceLabel = (s: string) => s === 'chatgpt_trace' ? 'ChatGPT trace' : s === 'ipify' ? 'ipify (HTTPS)' : t('admin.accounts.ticketCollect.configuredSource')
+const ipSourceLabel = (s: string) => s === 'chatgpt_trace' ? t('admin.accounts.ticketCollect.source.chatgptTrace') : s === 'ipify' ? t('admin.accounts.ticketCollect.source.ipify') : t('admin.accounts.ticketCollect.configuredSource')
+// 未知响应类型只用于服务端诊断，不在用户日志中显示无意义的“other”。
+const responseKindLabel = (s?: string) => s === 'sse' ? 'SSE' : s === 'json' ? 'JSON' : s === 'html' ? 'HTML' : ''
+// 复用 IP 管理的 GeoJS 缓存，只查询已展示的参考 IP，不改票据采集请求。
+const geoCountry = (ip?: string) => ip ? getEntry(ip).detail?.countryCode?.toUpperCase() || '' : ''
+async function loadReferenceGeo(items: TicketCollectionEvent[]) {
+  const ips = [...new Set(items.map(item => item.reference_ip).filter((ip): ip is string => Boolean(ip)))]
+  await Promise.all(ips.map(ip => fetchOne(ip)))
+}
 
 // 冻结选中集合，换管理员/关闭时取消，避免旧异步结果写进新弹窗。
 watch([() => props.show, () => auth.user?.id], async ([show]) => {
@@ -145,6 +154,7 @@ async function loadDetail() {
     const data = await ticketCollectionAPI.detail(detailID.value, { page: detailPage.value, kind: detailKind.value, status: detailStatus.value, account_id: detailAccount.value, model: detailModel.value })
     if (version === detailGeneration && current === generation) {
       details.value = data.items; detailTotal.value = data.total; detailRunStatus.value = data.run.status
+      void loadReferenceGeo(data.items)
       if (run.value?.id === data.run.id && !running.value) run.value = data.run
       if (!data.items.length && detailPage.value > 1) { detailPage.value--; void loadDetail() }
     }

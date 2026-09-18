@@ -5,7 +5,7 @@ export default {
       ticketCollect: {
         clearHistory: '清空已结束日志', deleteActive: '采集中，暂不可删', deleted: '已删除 {count} 条，不可撤销',
         deleteHint: '直接删除，不可撤销。清空含全部已结束/失联批次；保留采集中批次、账号、票据及检测结果。',
-        ipSource: 'IP 查询来源', configuredSource: '管理员配置端点',
+        ipSource: 'IP 查询来源', configuredSource: '管理员配置端点', source: { chatgptTrace: 'ChatGPT 出口查询（经当前采集代理）', ipify: 'ipify 公共查询（经当前采集代理）' },
         ipStatus: { unavailable: 'IP 不可用 · 原因未记录', timeout: 'IP 查询超时', network: 'IP 网络/代理异常', tls: 'IP 证书异常', http_error: 'IP 查询被拒绝', invalid_response: 'IP 响应无效', proxy_config: 'IP 代理配置无效', cancelled: 'IP 查询已取消', not_attempted: '未查 IP · 无采集响应' },
         previous: '上一页', next: '下一页',
         title: '批量采集票据', collectTab: '手动采集', history: '采集历史',

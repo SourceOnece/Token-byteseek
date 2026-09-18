@@ -8,6 +8,7 @@ const admin = reactive({ user: { id: 1 } })
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => admin }))
 vi.mock('@/api/admin/codexTickets', () => ({ ticketCollectionAPI: { settings, runs, detail, clearHistory, deleteRun, deleteEvent }, runTicketCollection: start }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (s: string) => s }) }))
+vi.mock('@/utils/ipGeoLookup', () => ({ fetchOne: vi.fn().mockResolvedValue(undefined), getEntry: vi.fn(() => ({ status: 'success', detail: { countryCode: 'US' } })) }))
 const config = { enabled: true, target_length: 332, revision: 'r1', max_attempts: 123, selection_mode: 'rotate', retry_interval_seconds: 1, probe_interval_seconds: 6, proxies: [] }
 const render = (historyOnly = false) => mount(CodexTicketCollectModal, { props: { show: true, accountIds: [1, 2, 1], historyOnly }, global: { stubs: {
   BaseDialog: { props: ['show'], template: '<div v-if="show"><slot/><slot name="footer"/></div>' }, Pagination: true
@@ -77,6 +78,17 @@ describe('CodexTicketCollectModal', () => {
     expect(w.get('[data-testid="ticket-length-actual"]').classes()).toContain('text-bh-red')
     expect(w.get('[data-testid="ticket-length-target"]').classes()).toContain('text-emerald-700')
     expect(w.text()).toContain('tickets.noHeader')
+    w.unmount()
+  })
+  it('未知响应类型不显示 other，并说明参考 IP 查询来源', async () => {
+    runs.mockResolvedValue([{ id: 'past', config, total: 1, counts: {}, started_at: '2026-09-18T00:00:00Z', status: 'completed' }])
+    detail.mockResolvedValue({ run: { status: 'completed' }, total: 1, items: [{ id: 8, account_id: 1, model: 'gpt-6-astra', status: 'missing', target_length: 292, started_at: '2026-09-18T00:00:00Z', diagnostic: { http_status: 200, header_present: true, header_length: 356, response_kind: 'other' }, ip_source: 'chatgpt_trace', reference_ip: '203.0.113.8' }] })
+    const w = render(true); await flushPromises()
+    await w.findAll('button').find(b => b.text().includes('332 bytes'))!.trigger('click'); await flushPromises()
+    expect(w.text()).not.toContain(' · other')
+    expect(w.text()).toContain('ipSource')
+    expect(w.text()).toContain('source.chatgptTrace')
+    expect(w.text()).toContain('[US]')
     w.unmount()
   })
 })
