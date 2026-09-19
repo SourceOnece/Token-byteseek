@@ -499,6 +499,21 @@ describe('admin UsageTable tooltip', () => {
   })
 
   it.each([
+    { response: 'gpt-6-astra', route: undefined, mismatch: false, routes: 0 },
+    { response: 'gpt-5.6-luna', route: undefined, mismatch: true, routes: 0 },
+    { response: 'gpt-5.6-sol', route: 'gpt-5.6-sol', mismatch: false, routes: 1 },
+    { response: 'gpt-5.6-luna', route: 'gpt-5.6-sol', mismatch: true, routes: 1 },
+    { response: undefined, route: undefined, mismatch: false, routes: 0 },
+  ])('只在路由或响应发生差异时补行：$response / $route', ({ response, route, mismatch, routes }) => {
+    const wrapper = mount(UsageTable, { props: { data: [{ ...baseImageRow, model: 'gpt-6-astra', upstream_model: route, response_model: response }], loading: false, columns: [] }, global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true, Teleport: true } } })
+    expect(wrapper.findAll('[data-testid="usage-route-model"]')).toHaveLength(routes)
+    expect(wrapper.find('[data-testid="usage-response-model"]').exists()).toBe(mismatch)
+    expect(wrapper.find('[data-testid="usage-model-mismatch"]').exists()).toBe(mismatch)
+    expect(wrapper.get('[data-testid="usage-model-cell"]').text()).toContain('gpt-6-astra')
+    wrapper.unmount()
+  })
+
+  it.each([
     {
       name: 'defaulted row',
       row: {

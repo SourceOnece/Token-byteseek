@@ -129,6 +129,20 @@ func (_c *UsageLogCreate) SetNillableChannelID(v *int64) *UsageLogCreate {
 	return _c
 }
 
+// SetResponseModel sets the "response_model" field.
+func (_c *UsageLogCreate) SetResponseModel(v string) *UsageLogCreate {
+	_c.mutation.SetResponseModel(v)
+	return _c
+}
+
+// SetNillableResponseModel sets the "response_model" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableResponseModel(v *string) *UsageLogCreate {
+	if v != nil {
+		_c.SetResponseModel(*v)
+	}
+	return _c
+}
+
 // SetModelMappingChain sets the "model_mapping_chain" field.
 func (_c *UsageLogCreate) SetModelMappingChain(v string) *UsageLogCreate {
 	_c.mutation.SetModelMappingChain(v)
@@ -865,6 +879,11 @@ func (_c *UsageLogCreate) check() error {
 			return &ValidationError{Name: "upstream_model", err: fmt.Errorf(`ent: validator failed for field "UsageLog.upstream_model": %w`, err)}
 		}
 	}
+	if v, ok := _c.mutation.ResponseModel(); ok {
+		if err := usagelog.ResponseModelValidator(v); err != nil {
+			return &ValidationError{Name: "response_model", err: fmt.Errorf(`ent: validator failed for field "UsageLog.response_model": %w`, err)}
+		}
+	}
 	if v, ok := _c.mutation.ModelMappingChain(); ok {
 		if err := usagelog.ModelMappingChainValidator(v); err != nil {
 			return &ValidationError{Name: "model_mapping_chain", err: fmt.Errorf(`ent: validator failed for field "UsageLog.model_mapping_chain": %w`, err)}
@@ -1040,6 +1059,10 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ChannelID(); ok {
 		_spec.SetField(usagelog.FieldChannelID, field.TypeInt64, value)
 		_node.ChannelID = &value
+	}
+	if value, ok := _c.mutation.ResponseModel(); ok {
+		_spec.SetField(usagelog.FieldResponseModel, field.TypeString, value)
+		_node.ResponseModel = &value
 	}
 	if value, ok := _c.mutation.ModelMappingChain(); ok {
 		_spec.SetField(usagelog.FieldModelMappingChain, field.TypeString, value)
@@ -1506,6 +1529,24 @@ func (u *UsageLogUpsert) AddChannelID(v int64) *UsageLogUpsert {
 // ClearChannelID clears the value of the "channel_id" field.
 func (u *UsageLogUpsert) ClearChannelID() *UsageLogUpsert {
 	u.SetNull(usagelog.FieldChannelID)
+	return u
+}
+
+// SetResponseModel sets the "response_model" field.
+func (u *UsageLogUpsert) SetResponseModel(v string) *UsageLogUpsert {
+	u.Set(usagelog.FieldResponseModel, v)
+	return u
+}
+
+// UpdateResponseModel sets the "response_model" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateResponseModel() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldResponseModel)
+	return u
+}
+
+// ClearResponseModel clears the value of the "response_model" field.
+func (u *UsageLogUpsert) ClearResponseModel() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldResponseModel)
 	return u
 }
 
@@ -2448,6 +2489,27 @@ func (u *UsageLogUpsertOne) UpdateChannelID() *UsageLogUpsertOne {
 func (u *UsageLogUpsertOne) ClearChannelID() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearChannelID()
+	})
+}
+
+// SetResponseModel sets the "response_model" field.
+func (u *UsageLogUpsertOne) SetResponseModel(v string) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetResponseModel(v)
+	})
+}
+
+// UpdateResponseModel sets the "response_model" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateResponseModel() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateResponseModel()
+	})
+}
+
+// ClearResponseModel clears the value of the "response_model" field.
+func (u *UsageLogUpsertOne) ClearResponseModel() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearResponseModel()
 	})
 }
 
@@ -3674,6 +3736,27 @@ func (u *UsageLogUpsertBulk) UpdateChannelID() *UsageLogUpsertBulk {
 func (u *UsageLogUpsertBulk) ClearChannelID() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearChannelID()
+	})
+}
+
+// SetResponseModel sets the "response_model" field.
+func (u *UsageLogUpsertBulk) SetResponseModel(v string) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetResponseModel(v)
+	})
+}
+
+// UpdateResponseModel sets the "response_model" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateResponseModel() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateResponseModel()
+	})
+}
+
+// ClearResponseModel clears the value of the "response_model" field.
+func (u *UsageLogUpsertBulk) ClearResponseModel() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearResponseModel()
 	})
 }
 

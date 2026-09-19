@@ -514,6 +514,7 @@ export default {
     },
 // Usage Records
     usage: {
+      routeModel: '路由', responseModel: '响应', modelMismatch: '模型不一致',
       title: '使用记录',
       description: '查看和管理所有用户的使用记录',
       userFilter: '用户',

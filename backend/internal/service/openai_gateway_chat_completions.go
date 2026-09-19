@@ -621,6 +621,7 @@ func (s *OpenAIGatewayService) handleChatBufferedStreamingResponse(
 		BillingModel:                billingModel,
 		UpstreamModel:               upstreamModel,
 		UpstreamResponseServiceTier: observedUpstreamResponseServiceTier(c),
+		UpstreamResponseModel:       observedUpstreamResponseModel(c),
 		Stream:                      false,
 		Duration:                    time.Since(startTime),
 	}, nil
@@ -729,6 +730,7 @@ func (s *OpenAIGatewayService) handleChatStreamingResponse(
 			BillingModel:                billingModel,
 			UpstreamModel:               upstreamModel,
 			UpstreamResponseServiceTier: observedUpstreamResponseServiceTier(c),
+			UpstreamResponseModel:       observedUpstreamResponseModel(c),
 			Stream:                      true,
 			Duration:                    time.Since(startTime),
 			FirstTokenMs:                firstTokenMs,

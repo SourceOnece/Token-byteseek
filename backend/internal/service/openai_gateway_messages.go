@@ -701,6 +701,7 @@ func (s *OpenAIGatewayService) handleAnthropicBufferedStreamingResponse(
 		BillingModel:                billingModel,
 		UpstreamModel:               upstreamModel,
 		UpstreamResponseServiceTier: observedUpstreamResponseServiceTier(c),
+		UpstreamResponseModel:       observedUpstreamResponseModel(c),
 		Stream:                      false,
 		Duration:                    time.Since(startTime),
 	}, nil
@@ -994,6 +995,7 @@ func (s *OpenAIGatewayService) handleAnthropicStreamingResponse(
 			BillingModel:                billingModel,
 			UpstreamModel:               upstreamModel,
 			UpstreamResponseServiceTier: observedUpstreamResponseServiceTier(c),
+			UpstreamResponseModel:       observedUpstreamResponseModel(c),
 			Stream:                      true,
 			Duration:                    time.Since(startTime),
 			FirstTokenMs:                firstTokenMs,

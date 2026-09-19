@@ -18,19 +18,20 @@ import (
 
 // 诊断只记录数值、固定枚举和管理员自定义名称，绝不包含响应正文/票据/代理地址。
 type CodexTicketDiagnostic struct {
-	Scheduling     string     `json:"scheduling,omitempty"`
-	DegradedSignal bool       `json:"degraded_signal,omitempty"`
-	ProxyID        string     `json:"proxy_id"`
-	ProxyName      string     `json:"proxy_name"`
-	Attempt        int        `json:"attempt"`
-	HTTPStatus     int        `json:"http_status,omitempty"`
-	HeaderLength   int        `json:"header_length"`
-	HeaderPresent  bool       `json:"header_present"`
-	PrefixValid    bool       `json:"prefix_valid"`
-	ResponseKind   string     `json:"response_kind,omitempty"`
-	ErrorKind      string     `json:"error_kind,omitempty"`
-	CompletionSeen bool       `json:"completion_seen,omitempty"`
-	RetryNotBefore *time.Time `json:"retry_not_before,omitempty"`
+	Stages         []CodexTicketValidationStage `json:"stages,omitempty"`
+	Scheduling     string                       `json:"scheduling,omitempty"`
+	DegradedSignal bool                         `json:"degraded_signal,omitempty"`
+	ProxyID        string                       `json:"proxy_id"`
+	ProxyName      string                       `json:"proxy_name"`
+	Attempt        int                          `json:"attempt"`
+	HTTPStatus     int                          `json:"http_status,omitempty"`
+	HeaderLength   int                          `json:"header_length"`
+	HeaderPresent  bool                         `json:"header_present"`
+	PrefixValid    bool                         `json:"prefix_valid"`
+	ResponseKind   string                       `json:"response_kind,omitempty"`
+	ErrorKind      string                       `json:"error_kind,omitempty"`
+	CompletionSeen bool                         `json:"completion_seen,omitempty"`
+	RetryNotBefore *time.Time                   `json:"retry_not_before,omitempty"`
 }
 
 // 状态接口再次收口枚举与范围，代理名称只从本次配置取，不信任缓存中的任意文案。
@@ -39,6 +40,25 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 		return nil
 	}
 	d := *source
+	d.Stages = nil
+	for i, stage := range source.Stages {
+		if i >= 2 {
+			break
+		}
+		if stage.Name != "harvest" && stage.Name != "verify" {
+			continue
+		}
+		stage.RequestModel = safeTicketResponseModel(stage.RequestModel)
+		stage.ResponseModel = safeTicketResponseModel(stage.ResponseModel)
+		if stage.HTTPStatus < 100 || stage.HTTPStatus > 599 {
+			stage.HTTPStatus = 0
+		}
+		if stage.StateLength < 0 || stage.StateLength > 8192 {
+			stage.StateLength = 0
+		}
+		stage.Reason = safeTicketValidationReason(stage.Reason)
+		d.Stages = append(d.Stages, stage)
+	}
 	switch d.Scheduling {
 	case "enabled", "disabled", "already_on", "already_off", "stale", "failed":
 	default:
@@ -116,6 +136,10 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	fresh, err := s.gateway.accountRepo.GetByID(readCtx, account.ID)
 	readCancel()
 	if err != nil || !s.ticketConfigCurrent(cfg) || !codexTicketCollectionAllowed(ctx, fresh) || !fresh.IsModelSupported(model) || fresh.GetOpenAIAccessToken() != token || codexTicketKey(cfg, fresh, model, token) != key {
+		return false, false
+	}
+	if cfg.VerifiedFlow && ticketBusinessFingerprint(fresh) == "" {
+		state, reason = "failed", "business_proxy"
 		return false, false
 	}
 	probeCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
@@ -204,7 +228,25 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	if resp.Body != nil {
 		defer resp.Body.Close()
 	}
+	if cfg.VerifiedFlow {
+		ok, canRetry, why := s.validateTicketChain(probeCtx, cancel, cfg, fresh, model, req, body, resp, diagnostic)
+		if !ok {
+			state, reason = "failed", why
+			// 明确异常长度继续沿bh.046关闭调度，模型不符/普通失败不直接改总调度。
+			if diagnostic.DegradedSignal {
+				final, e := s.gateway.accountRepo.GetByID(ctx, account.ID)
+				if e == nil && codexTicketCollectionAllowed(ctx, final) && final.GetOpenAIAccessToken() == token && codexTicketKey(cfg, final, model, token) == key {
+					diagnostic.Scheduling = s.applyTicketScheduling(ctx, cfg, final, false)
+				}
+			}
+			return false, canRetry
+		}
+	}
 	ticket := codexTicketValue{Attempts: attempt, State: extractOpenAICodexTurnState(resp.Header), ExpiresAt: time.Now().Add(cfg.ticketTTL())}
+	if cfg.VerifiedFlow {
+		ticket.Verified = true
+		ticket.BusinessFingerprint = ticketBusinessFingerprint(fresh)
+	}
 	diagnostic.HTTPStatus = resp.StatusCode
 	diagnostic.HeaderPresent = len(resp.Header.Values(openAICodexTurnStateHeader)) > 0
 	diagnostic.HeaderLength = len(ticket.State)

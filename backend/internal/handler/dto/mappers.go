@@ -874,6 +874,7 @@ func UsageLogFromServiceAdmin(l *service.UsageLog) *AdminUsageLog {
 	return &AdminUsageLog{
 		UsageLog:              usageLog,
 		UpstreamModel:         l.UpstreamModel,
+		ResponseModel:         l.ResponseModel,
 		UpstreamRequestID:     l.UpstreamRequestID,
 		ChannelID:             l.ChannelID,
 		ModelMappingChain:     l.ModelMappingChain,

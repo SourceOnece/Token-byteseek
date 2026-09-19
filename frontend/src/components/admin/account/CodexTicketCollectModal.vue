@@ -66,6 +66,7 @@
         <p v-if="item.ip_source" class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.ticketCollect.ipSource') }}：{{ ipSourceLabel(item.ip_source) }}<span v-if="geoCountry(item.reference_ip)" class="ml-2 font-mono font-extrabold text-bh-blue dark:text-blue-300">[{{ geoCountry(item.reference_ip) }}]</span><span v-if="item.ip_checked_at"> · {{ new Date(item.ip_checked_at).toLocaleString() }}</span></p>
         <p v-if="item.diagnostic">HTTP {{ item.diagnostic.http_status || '—' }} · <CodexTicketLength v-if="item.diagnostic.header_present" :actual="item.diagnostic.header_length" :target="item.target_length" :signal="item.diagnostic.degraded_signal" /><span v-else>{{ t('admin.accounts.tickets.noHeader') }}</span><span v-if="responseKindLabel(item.diagnostic.response_kind)"> · {{ responseKindLabel(item.diagnostic.response_kind) }}</span><span v-if="item.diagnostic.error_kind"> · {{ errorKind(item.diagnostic.error_kind) }}</span></p>
         <p v-if="item.diagnostic?.degraded_signal" class="font-bold text-bh-red dark:text-red-400">{{ t('admin.accounts.tickets.degradedSignal') }}</p>
+        <CodexTicketValidationStages :stages="item.diagnostic?.stages" />
         <p v-if="item.diagnostic?.scheduling" class="font-bold" :class="['enabled', 'already_on'].includes(item.diagnostic.scheduling) ? 'text-emerald-700 dark:text-emerald-400' : ['disabled', 'already_off'].includes(item.diagnostic.scheduling) ? 'text-bh-red dark:text-red-400' : 'text-yellow-800 dark:text-bh-yellow'">{{ t('admin.accounts.ticketWorkbench.scheduling.' + item.diagnostic.scheduling) }}</p>
         <p v-if="item.reason" class="text-xs">{{ reasonLabel(item.reason) }}</p>
         <p v-if="item.diagnostic?.retry_not_before" class="text-xs text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.tickets.retryAfter', { time: new Date(item.diagnostic.retry_not_before).toLocaleString() }) }}</p>
@@ -80,6 +81,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import CodexTicketValidationStages from './CodexTicketValidationStages.vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Pagination from '@/components/common/Pagination.vue'
@@ -104,7 +106,7 @@ const processed = computed(() => run.value ? totalDone(run.value) : 0)
 const statusLabel = (s: string) => t('admin.accounts.ticketCollect.status.' + (statuses.includes(s) ? s : 'skipped'))
 const runLabel = (s: string) => t('admin.accounts.ticketCollect.run.' + (['running', 'completed', 'cancelled', 'failed', 'interrupted'].includes(s) ? s : 'interrupted'))
 const color = (s: string) => s === 'ready' ? 'text-emerald-700 dark:text-emerald-400' : s === 'failed' ? 'text-bh-red dark:text-red-400' : s === 'missing' ? 'text-yellow-800 dark:text-bh-yellow' : 'text-gray-500 dark:text-gray-400'
-const reasonLabel = (s: string) => ['network', 'upstream', 'invalid_ticket', 'credential', 'storage', 'cancelled', 'proxy_config'].includes(s) ? t('admin.accounts.tickets.reason.' + s) : t('admin.accounts.ticketCollect.reason.' + (['ineligible', 'account_changed', 'concurrency_busy', 'backoff'].includes(s) ? s : 'account_changed'))
+const reasonLabel = (s: string) => ['business_proxy', 'incomplete_response', 'model_mismatch', 'length_signal'].includes(s) ? t('admin.accounts.ticketWorkbench.validationReason.' + s) : ['network', 'upstream', 'invalid_ticket', 'credential', 'storage', 'cancelled', 'proxy_config'].includes(s) ? t('admin.accounts.tickets.reason.' + s) : t('admin.accounts.ticketCollect.reason.' + (['ineligible', 'account_changed', 'concurrency_busy', 'backoff'].includes(s) ? s : 'account_changed'))
 const errorKind = (s: string) => ['overloaded', 'rate_limit', 'quota', 'auth', 'invalid_request'].includes(s) ? t('admin.accounts.tickets.errorKind.' + s) : '—'
 const ipStatusLabel = (s: string) => t('admin.accounts.ticketCollect.ipStatus.' + (['unavailable', 'timeout', 'network', 'tls', 'http_error', 'invalid_response', 'proxy_config', 'cancelled', 'not_attempted'].includes(s) ? s : 'unavailable'))
 const ipSourceLabel = (s: string) => s === 'chatgpt_trace' ? t('admin.accounts.ticketCollect.source.chatgptTrace') : s === 'ipify' ? t('admin.accounts.ticketCollect.source.ipify') : t('admin.accounts.ticketCollect.configuredSource')

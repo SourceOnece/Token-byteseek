@@ -24,6 +24,7 @@
       <p v-if="!failed && displayDiagnostic(selectedRow)?.header_present"><CodexTicketLength :actual="displayDiagnostic(selectedRow)!.header_length" :target="selectedRow.target_length || 292" :signal="displayDiagnostic(selectedRow)?.degraded_signal" /></p>
       <p v-if="!failed && displayDiagnostic(selectedRow)?.degraded_signal" class="font-bold text-bh-red dark:text-red-400">{{ t('admin.accounts.tickets.degradedSignal') }}</p>
       <p class="whitespace-pre-wrap break-words border-t-2 border-[color:var(--bh-ink)] pt-4 text-sm leading-7 text-gray-700 dark:text-gray-200">{{ description(selectedRow, true) }}</p>
+      <CodexTicketValidationStages v-if="!failed" :stages="displayDiagnostic(selectedRow)?.stages" />
       <section v-if="!failed && selectedRow.watchdog" class="space-y-3 border-t-2 border-[color:var(--bh-ink)] pt-4" data-testid="ticket-watchdog-detail">
         <h3 class="text-lg font-extrabold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.ticketPolicy.watchdog') }}</h3>
         <p class="font-bold">{{ t('admin.accounts.ticketPolicy.guards.' + selectedRow.watchdog.mode) }}</p>
@@ -44,6 +45,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import CodexTicketValidationStages from './CodexTicketValidationStages.vue'
 import CodexTicketLength from './CodexTicketLength.vue'
 import type { TicketAccountStatus, TicketModelStatus, TicketState } from '@/api/admin/codexTickets'
 
@@ -112,6 +114,7 @@ function description(row: TicketModelStatus, compact = false) {
   if (!row.latest && row.checked_at && !props.failed) info.push(`${t('admin.accounts.tickets.checkedAt')}: ${new Date(row.checked_at).toLocaleString()}`)
   const reasons = ['network', 'upstream', 'invalid_ticket', 'credential', 'storage', 'cancelled', 'proxy_config', 'proxy_provider', 'cooldown']
   const reason = row.latest ? row.latest.reason : row.reason
+  if (reason && ['business_proxy', 'incomplete_response', 'model_mismatch', 'length_signal'].includes(reason) && !props.failed) info.push(t('admin.accounts.ticketWorkbench.validationReason.' + reason))
   if (reason && reasons.includes(reason) && !props.failed) info.push(t(`admin.accounts.tickets.reason.${reason}`))
   else if (reason && ['ineligible', 'account_changed', 'concurrency_busy', 'backoff'].includes(reason) && !props.failed) info.push(t(`admin.accounts.ticketCollect.reason.${reason}`))
   if (props.status?.collection_paused) info.push(t('admin.accounts.tickets.pausedHint'))

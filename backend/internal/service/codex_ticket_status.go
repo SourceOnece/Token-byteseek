@@ -148,10 +148,10 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 					status.State = "unavailable"
 				default:
 					key := codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken())
-					status = s.ticketModelStatus(model, values[key], values["status:"+key], now, cfg.targetLength())
+					status = s.ticketModelStatusForAccount(model, values[key], values["status:"+key], now, cfg, a, cfg.targetLength())
 					status.Watchdog = safeTicketWatchdog(values["watchdog:"+key], cfg.WatchdogMode)
 					status.Collection = ticketCollectionState(values["collection:"+key])
-					if status.Collection.CooldownUntil != nil {
+					if status.Collection.CooldownUntil != nil && !(cfg.VerifiedFlow && status.State == "ready") {
 						status.State = "cooldown"
 					}
 					if status.State != "ready" {
@@ -201,6 +201,10 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 }
 
 func (s *CodexTicketService) ticketModelStatus(model, encrypted, observation string, now time.Time, lengths ...int) CodexTicketModelStatus {
+	return s.ticketModelStatusForAccount(model, encrypted, observation, now, nil, nil, lengths...)
+}
+
+func (s *CodexTicketService) ticketModelStatusForAccount(model, encrypted, observation string, now time.Time, cfg *codexTicketConfig, account *Account, lengths ...int) CodexTicketModelStatus {
 	status := CodexTicketModelStatus{Model: model, State: "pending"}
 	var record codexTicketObservation
 	if observation != "" && json.Unmarshal([]byte(observation), &record) == nil && !record.CheckedAt.IsZero() {
@@ -224,7 +228,7 @@ func (s *CodexTicketService) ticketModelStatus(model, encrypted, observation str
 		}
 		// 仅回传固定原因码，缓存中的任意文本不可进入管理界面。
 		switch record.Reason {
-		case "network", "upstream", "invalid_ticket", "credential", "storage", "cancelled", "proxy_config", "proxy_provider", "cooldown":
+		case "network", "upstream", "invalid_ticket", "credential", "storage", "cancelled", "proxy_config", "proxy_provider", "cooldown", "business_proxy", "incomplete_response", "model_mismatch", "length_signal", "account_changed":
 			status.Reason = record.Reason
 		}
 	}
@@ -239,7 +243,11 @@ func (s *CodexTicketService) ticketModelStatus(model, encrypted, observation str
 			status.State = "unavailable"
 			return status
 		}
-		if validCodexTicket(ticket, lengths...) {
+		valid := validCodexTicket(ticket, lengths...)
+		if cfg != nil {
+			valid = validTicketForAccount(ticket, cfg, account)
+		}
+		if valid {
 			status.Attempts = ticket.Attempts
 			status.State = "ready"
 			status.ExpiresAt = &ticket.ExpiresAt

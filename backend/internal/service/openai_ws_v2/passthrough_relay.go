@@ -32,7 +32,9 @@ type Usage struct {
 }
 
 type RelayResult struct {
-	RequestModel string
+	// ResponseModel 仅传回管理员审计，按各回合终态保存，不参与路由或计费。
+	ResponseModel string
+	RequestModel  string
 	// ResponseServiceTier 是终止响应声明的上游实际服务档位。
 	ResponseServiceTier     string
 	Usage                   Usage
@@ -46,6 +48,7 @@ type RelayResult struct {
 }
 
 type RelayTurnResult struct {
+	ResponseModel       string
 	RequestModel        string
 	ResponseServiceTier string
 	Usage               Usage
@@ -103,6 +106,7 @@ type relayState struct {
 	pendingTurnStart        atomic.Pointer[time.Time]
 	lastResponseID          string
 	lastResponseServiceTier string
+	lastResponseModel       string
 	terminalEventType       string
 	firstTokenMs            *int
 	turnTimingByID          map[string]*relayTurnTiming
@@ -122,6 +126,7 @@ type observedUpstreamEvent struct {
 	eventType           string
 	responseID          string
 	responseServiceTier string
+	responseModel       string
 	usage               Usage
 	startedAt           time.Time
 	duration            time.Duration
@@ -132,6 +137,7 @@ type relayTurnTiming struct {
 	startAt                     time.Time
 	firstTokenMs                *int
 	terminalResponseServiceTier string
+	responseModel               string
 }
 
 func Relay(
@@ -805,6 +811,13 @@ func observeUpstreamMessage(
 			turnTiming = state.activeTurn
 		}
 		observeRelayTurnResponseServiceTier(turnTiming, firstRelayResponseServiceTier(message))
+		// 绑定response.id的终态模型，不从连接前一回合回填。
+		if turnTiming != nil && gjson.ValidBytes(message) {
+			model := strings.TrimSpace(gjson.GetBytes(message, "response.model").String())
+			if len([]rune(model)) <= 200 {
+				turnTiming.responseModel = model
+			}
+		}
 	}
 	if !isTerminalEvent(eventType) {
 		return observed
@@ -867,6 +880,7 @@ func finalizeObservedRelayTerminal(state *relayState, observed observedUpstreamE
 		if turnTiming, ok := openAIWSRelayDeleteTurnTiming(state, responseID); ok {
 			observed.responseServiceTier = turnTiming.terminalResponseServiceTier
 			state.lastResponseServiceTier = observed.responseServiceTier
+			observed.responseModel = turnTiming.responseModel
 			observed.startedAt = turnTiming.startAt
 			duration := now.Sub(turnTiming.startAt)
 			if duration < 0 {
@@ -879,6 +893,8 @@ func finalizeObservedRelayTerminal(state *relayState, observed observedUpstreamE
 		state.consumePendingTurnStartedAt()
 		openAIWSRelayDiscardActiveTurnTiming(state)
 	}
+	// 无模型/无回合ID也覆盖为空，避免连接级结果借用上一回合的模型。
+	state.lastResponseModel = observed.responseModel
 	return observed
 }
 
@@ -899,6 +915,7 @@ func emitTurnComplete(
 		requestModel = state.requestModel
 	}
 	onTurnComplete(RelayTurnResult{
+		ResponseModel:       observed.responseModel,
 		RequestModel:        requestModel,
 		ResponseServiceTier: observed.responseServiceTier,
 		Usage:               observed.usage,
@@ -1180,6 +1197,7 @@ func enrichResult(result *RelayResult, state *relayState, duration time.Duration
 	}
 	result.RequestModel = state.requestModel
 	result.ResponseServiceTier = state.lastResponseServiceTier
+	result.ResponseModel = state.lastResponseModel
 	result.Usage = state.usage
 	result.RequestID = state.lastResponseID
 	result.TerminalEventType = state.terminalEventType

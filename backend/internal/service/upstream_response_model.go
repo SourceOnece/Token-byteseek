@@ -191,6 +191,15 @@ func upstreamResponseModelObserverFromContext(c *gin.Context) *upstreamResponseM
 	return observer
 }
 
+// 本次转发的原始响应声明，仅供管理员日志；缺失不回填请求模型。
+func observedUpstreamResponseModel(c *gin.Context) string {
+	observer := upstreamResponseModelObserverFromContext(c)
+	if observer == nil {
+		return ""
+	}
+	return safeTicketResponseModel(observer.Model())
+}
+
 func observedUpstreamResponseServiceTier(c *gin.Context) string {
 	return upstreamResponseModelObserverFromContext(c).ServiceTier()
 }
@@ -209,7 +218,7 @@ func resolvedOpenAIUpstreamServiceTier(c *gin.Context, outboundBodyTier *string)
 }
 
 // observeOpenAIServiceTierInContext 将原始 OpenAI 响应事件写入当前请求的
-// observer；模型审计字段仍保持 fork 既有关闭状态。
+// observer；bh.047仅将原始模型声明写入管理员审计，不改变用户响应或计费模型。
 func observeOpenAIServiceTierInContext(c *gin.Context, payload []byte, eventType string) {
 	if c == nil || len(payload) == 0 {
 		return

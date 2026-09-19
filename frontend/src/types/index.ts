@@ -2008,6 +2008,8 @@ export interface UsageLogAccountSummary {
 }
 
 export interface AdminUsageLog extends UsageLog {
+  // 响应声明只在管理员接口中提供，用户模型字段不变。
+  response_model?: string | null
   detailed_timing?: UsageLogTiming | null
   upstream_model?: string | null
   model_mapping_chain?: string | null

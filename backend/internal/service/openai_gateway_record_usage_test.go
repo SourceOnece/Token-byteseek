@@ -1560,6 +1560,7 @@ func TestOpenAIGatewayServiceRecordUsage_UsesRequestedModelAndUpstreamModelMetad
 	err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
 		Result: &OpenAIForwardResult{
 			RequestID:                "resp_billing_model_override",
+			UpstreamResponseModel:    "gpt-5.6-luna",
 			BillingModel:             "gpt-5.1-codex",
 			Model:                    "gpt-5.1",
 			UpstreamModel:            "gpt-5.1-codex",
@@ -1583,6 +1584,8 @@ func TestOpenAIGatewayServiceRecordUsage_UsesRequestedModelAndUpstreamModelMetad
 	require.NoError(t, err)
 	require.NotNil(t, usageRepo.lastLog)
 	require.Equal(t, "gpt-5.1", usageRepo.lastLog.Model)
+	require.NotNil(t, usageRepo.lastLog.ResponseModel)
+	require.Equal(t, "gpt-5.6-luna", *usageRepo.lastLog.ResponseModel)
 	require.Equal(t, "gpt-5.1", usageRepo.lastLog.RequestedModel)
 	require.NotNil(t, usageRepo.lastLog.UpstreamModel)
 	require.Equal(t, "gpt-5.1-codex", *usageRepo.lastLog.UpstreamModel)

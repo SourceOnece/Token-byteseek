@@ -60,7 +60,7 @@ func safeTicketLatest(value CodexTicketLatest) *CodexTicketLatest {
 		return nil
 	}
 	switch value.Reason {
-	case "network", "upstream", "invalid_ticket", "credential", "storage", "cancelled", "proxy_config", "proxy_provider", "cooldown", "ineligible", "account_changed", "concurrency_busy", "backoff":
+	case "network", "upstream", "invalid_ticket", "credential", "storage", "cancelled", "proxy_config", "proxy_provider", "cooldown", "ineligible", "account_changed", "concurrency_busy", "backoff", "business_proxy", "incomplete_response", "model_mismatch", "length_signal":
 	default:
 		value.Reason = ""
 	}

@@ -105,6 +105,11 @@ func ChannelID(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldChannelID, v))
 }
 
+// ResponseModel applies equality check predicate on the "response_model" field. It's identical to ResponseModelEQ.
+func ResponseModel(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldResponseModel, v))
+}
+
 // ModelMappingChain applies equality check predicate on the "model_mapping_chain" field. It's identical to ModelMappingChainEQ.
 func ModelMappingChain(v string) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldModelMappingChain, v))
@@ -763,6 +768,81 @@ func ChannelIDIsNil() predicate.UsageLog {
 // ChannelIDNotNil applies the NotNil predicate on the "channel_id" field.
 func ChannelIDNotNil() predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotNull(FieldChannelID))
+}
+
+// ResponseModelEQ applies the EQ predicate on the "response_model" field.
+func ResponseModelEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldResponseModel, v))
+}
+
+// ResponseModelNEQ applies the NEQ predicate on the "response_model" field.
+func ResponseModelNEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldResponseModel, v))
+}
+
+// ResponseModelIn applies the In predicate on the "response_model" field.
+func ResponseModelIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldResponseModel, vs...))
+}
+
+// ResponseModelNotIn applies the NotIn predicate on the "response_model" field.
+func ResponseModelNotIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldResponseModel, vs...))
+}
+
+// ResponseModelGT applies the GT predicate on the "response_model" field.
+func ResponseModelGT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldResponseModel, v))
+}
+
+// ResponseModelGTE applies the GTE predicate on the "response_model" field.
+func ResponseModelGTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldResponseModel, v))
+}
+
+// ResponseModelLT applies the LT predicate on the "response_model" field.
+func ResponseModelLT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldResponseModel, v))
+}
+
+// ResponseModelLTE applies the LTE predicate on the "response_model" field.
+func ResponseModelLTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldResponseModel, v))
+}
+
+// ResponseModelContains applies the Contains predicate on the "response_model" field.
+func ResponseModelContains(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContains(FieldResponseModel, v))
+}
+
+// ResponseModelHasPrefix applies the HasPrefix predicate on the "response_model" field.
+func ResponseModelHasPrefix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasPrefix(FieldResponseModel, v))
+}
+
+// ResponseModelHasSuffix applies the HasSuffix predicate on the "response_model" field.
+func ResponseModelHasSuffix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasSuffix(FieldResponseModel, v))
+}
+
+// ResponseModelIsNil applies the IsNil predicate on the "response_model" field.
+func ResponseModelIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldResponseModel))
+}
+
+// ResponseModelNotNil applies the NotNil predicate on the "response_model" field.
+func ResponseModelNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldResponseModel))
+}
+
+// ResponseModelEqualFold applies the EqualFold predicate on the "response_model" field.
+func ResponseModelEqualFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEqualFold(FieldResponseModel, v))
+}
+
+// ResponseModelContainsFold applies the ContainsFold predicate on the "response_model" field.
+func ResponseModelContainsFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContainsFold(FieldResponseModel, v))
 }
 
 // ModelMappingChainEQ applies the EQ predicate on the "model_mapping_chain" field.

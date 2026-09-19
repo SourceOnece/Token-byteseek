@@ -16,6 +16,7 @@ import (
 // 账号覆盖仅保存在私有票据设置中；代理密文不得进入账号extra、导出或调度摘要。
 // @project-doc docs/interfaces/codex_ticket.md#account_overrides_watchdog
 type codexTicketAccountConfig struct {
+	VerifiedFlow bool                    `json:"verified_flow,omitempty"`
 	Rules        *CodexTicketRules       `json:"rules,omitempty"`
 	ProxyPolicy  *codexTicketProxyPolicy `json:"proxy_policy,omitempty"`
 	Mode         string                  `json:"mode"`
@@ -25,6 +26,7 @@ type codexTicketAccountConfig struct {
 }
 
 type CodexTicketAccountSettings struct {
+	VerifiedFlow          bool                       `json:"verified_flow"`
 	GlobalEnabled         bool                       `json:"global_enabled"`
 	Rules                 CodexTicketRules           `json:"rules"`
 	ProxyPolicy           CodexTicketProxyPolicyView `json:"proxy_policy"`
@@ -40,6 +42,7 @@ type CodexTicketAccountSettings struct {
 
 // 指针缺省意味着不修改；代理空串恢复继承，未提供意味着保留原密文。
 type CodexTicketAccountPatch struct {
+	VerifiedFlow    *bool                         `json:"verified_flow"`
 	Rules           *CodexTicketRulesPatch        `json:"rules"`
 	ProxyPolicy     *CodexTicketProxyPolicyUpdate `json:"proxy_policy"`
 	Mode            *string                       `json:"mode"`
@@ -91,6 +94,7 @@ func ticketConfigForAccount(cfg *codexTicketConfig, id int64) *codexTicketConfig
 	if override.Rules != nil {
 		copy.applyRules(*override.Rules)
 	}
+	copy.VerifiedFlow = override.VerifiedFlow
 	if override.ProxyCipher != "" {
 		copy.ProxyPolicy = nil
 		copy.Proxies = []codexTicketProxy{{ID: "account", Name: "Account", Cipher: override.ProxyCipher}}
@@ -103,6 +107,10 @@ func ticketConfigForAccount(cfg *codexTicketConfig, id int64) *codexTicketConfig
 	}
 	if override.WatchdogMode != "" && override.WatchdogMode != "inherit" {
 		copy.WatchdogMode = override.WatchdogMode
+	}
+	// 双链路模式包含异常自动废票重采，关闭后恢复原先保存的守护选择。
+	if copy.VerifiedFlow {
+		copy.WatchdogMode = "recover"
 	}
 	return &copy
 }
@@ -143,6 +151,7 @@ func ticketAccountSettingsView(cfg *codexTicketConfig, id int64) CodexTicketAcco
 		source = "account"
 	}
 	return CodexTicketAccountSettings{AccountID: id, Mode: mode, EffectiveEnabled: effective.Enabled,
+		VerifiedFlow:  effective.VerifiedFlow,
 		GlobalEnabled: cfg.Enabled,
 		Rules:         ticketRulesFromConfig(effective), ProxyPolicy: ticketProxyPolicyView(effective),
 		ProxyConfigured: source == "account", ProxySource: source, WatchdogMode: guard,
@@ -195,7 +204,7 @@ func (s *CodexTicketService) UpdateAccountSettings(ctx context.Context, input Co
 		return nil, errors.New("每批选择1–500个账号")
 	}
 	p := input.Patch
-	if p.Mode == nil && p.HarvestProxyURL == nil && p.WatchdogMode == nil && p.Rules == nil && p.ProxyPolicy == nil {
+	if p.Mode == nil && p.HarvestProxyURL == nil && p.WatchdogMode == nil && p.Rules == nil && p.ProxyPolicy == nil && p.VerifiedFlow == nil {
 		return nil, errors.New("请勾选要修改的项目")
 	}
 	if p.Mode != nil && *p.Mode != "inherit" && *p.Mode != "on" && *p.Mode != "off" {
@@ -261,6 +270,9 @@ func (s *CodexTicketService) UpdateAccountSettings(ctx context.Context, input Co
 			return nil, errors.New("账号票据配置已变化，请重新加载")
 		}
 		before := a
+		if p.VerifiedFlow != nil {
+			a.VerifiedFlow = *p.VerifiedFlow
+		}
 		rules, e := applyTicketRulesPatch(ticketRulesFromConfig(ticketConfigForAccount(cfg, id)), p.Rules)
 		if e != nil {
 			return nil, e

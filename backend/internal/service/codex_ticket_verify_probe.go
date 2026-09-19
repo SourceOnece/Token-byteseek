@@ -1,0 +1,116 @@
+package service
+
+import (
+	"bytes"
+	"context"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+)
+
+// 管理日志仅记录两阶段安全摘要；不保存STATE、令牌、代理URL或响应正文。
+type CodexTicketValidationStage struct {
+	Name          string `json:"name"`
+	RequestModel  string `json:"request_model"`
+	ResponseModel string `json:"response_model,omitempty"`
+	HTTPStatus    int    `json:"http_status,omitempty"`
+	StateLength   int    `json:"state_length"`
+	Complete      bool   `json:"complete"`
+	Reason        string `json:"reason,omitempty"`
+}
+
+func safeTicketValidationReason(reason string) string {
+	switch reason {
+	case "business_proxy", "network", "upstream", "invalid_ticket", "incomplete_response", "model_mismatch", "length_signal", "account_changed":
+		return reason
+	}
+	return ""
+}
+
+// 候选与业务出口复验共用本次25秒/并发预算；两者完整成功才允许调用方发布原候选票。
+// @project-doc docs/interfaces/codex_ticket.md#verified_flow
+func (s *CodexTicketService) validateTicketChain(ctx context.Context, cancel context.CancelFunc, cfg *codexTicketConfig, a *Account, model string, original *http.Request, body []byte, candidate *http.Response, diagnostic *CodexTicketDiagnostic) (bool, bool, string) {
+	check := func(name string, resp *http.Response) (bool, bool, string) {
+		stage := CodexTicketValidationStage{Name: name, RequestModel: model}
+		defer func() { diagnostic.Stages = append(diagnostic.Stages, stage) }()
+		if resp == nil {
+			diagnostic.HTTPStatus, diagnostic.HeaderLength = 0, 0
+			diagnostic.HeaderPresent, diagnostic.PrefixValid = false, false
+			stage.Reason = "network"
+			return false, true, stage.Reason
+		}
+		stage.HTTPStatus = resp.StatusCode
+		state := extractOpenAICodexTurnState(resp.Header)
+		stage.StateLength = len(state)
+		diagnostic.HTTPStatus = resp.StatusCode
+		diagnostic.HeaderLength = len(state)
+		diagnostic.HeaderPresent = len(resp.Header.Values(openAICodexTurnStateHeader)) > 0
+		diagnostic.PrefixValid = strings.HasPrefix(state, "gAAAAA")
+		if resp.StatusCode != http.StatusOK {
+			stage.Reason = "upstream"
+			diagnostic.HTTPStatus = resp.StatusCode
+			readTicketFailureDiagnostic(resp.Body, diagnostic, cancel)
+			diagnostic.RetryNotBefore = codexTicketRetryNotBefore(resp.Header.Get("Retry-After"), resp.StatusCode, diagnostic.ErrorKind)
+			if diagnostic.RetryNotBefore == nil && (resp.StatusCode == 401 || resp.StatusCode == 403) {
+				at := time.Now().Add(5 * time.Minute)
+				diagnostic.RetryNotBefore = &at
+			}
+			retry := diagnostic.RetryNotBefore == nil && resp.StatusCode != 401 && resp.StatusCode != 403 && resp.StatusCode != 429 && diagnostic.ErrorKind != "auth" && diagnostic.ErrorKind != "quota" && diagnostic.ErrorKind != "rate_limit" && diagnostic.ErrorKind != "invalid_request"
+			return false, retry, stage.Reason
+		}
+		completion := parseTicketCompletion(resp.Body, model)
+		stage.ResponseModel, stage.Complete = completion.Model, completion.Complete
+		ticket := codexTicketValue{State: state, ExpiresAt: time.Now().Add(time.Minute)}
+		if cfg.DegradedSignalLength > 0 && validCodexTicket(ticket, cfg.DegradedSignalLength) {
+			diagnostic.DegradedSignal = true
+			stage.Reason = "length_signal"
+			return false, true, stage.Reason
+		}
+		if name == "harvest" && !validCodexTicket(ticket, cfg.targetLength()) {
+			stage.Reason = "invalid_ticket"
+			return false, true, stage.Reason
+		}
+		if !completion.Complete || completion.Reason != "" {
+			stage.Reason = completion.Reason
+			if stage.Reason == "" {
+				stage.Reason = "incomplete_response"
+			}
+			return false, true, stage.Reason
+		}
+		return true, false, ""
+	}
+	if ok, retry, reason := check("harvest", candidate); !ok {
+		return false, retry, reason
+	}
+	// 完成事件后立即关闭候选连接，再发验证请求，不在此重新取动态代理。
+	if candidate.Body != nil {
+		_ = candidate.Body.Close()
+	}
+	if ctx.Err() != nil || !s.ticketConfigCurrent(cfg) {
+		return false, false, "account_changed"
+	}
+	live, err := s.gateway.accountRepo.GetByID(ctx, a.ID)
+	if err != nil || !codexTicketCollectionAllowed(ctx, live) || !live.IsModelSupported(model) || live.GetOpenAIAccessToken() != a.GetOpenAIAccessToken() || codexTicketKey(cfg, live, model, live.GetOpenAIAccessToken()) != codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken()) {
+		return false, false, "account_changed"
+	}
+	proxy, valid := ticketBusinessRoute(live)
+	if !valid {
+		return false, false, "business_proxy"
+	}
+	req := original.Clone(ctx)
+	req.Body = io.NopCloser(bytes.NewReader(body))
+	req.Header.Set(openAICodexTurnStateHeader, extractOpenAICodexTurnState(candidate.Header))
+	// 仅复验请求使用账号业务代理和TLS模板，不改业务流的代理、并发或返回内容。
+	response, err := s.gateway.httpUpstream.DoWithTLS(req, proxy, live.ID, live.Concurrency, s.gateway.resolveOpenAITLSProfile(live))
+	if err != nil {
+		diagnostic.HTTPStatus, diagnostic.HeaderLength = 0, 0
+		diagnostic.HeaderPresent, diagnostic.PrefixValid = false, false
+		diagnostic.Stages = append(diagnostic.Stages, CodexTicketValidationStage{Name: "verify", RequestModel: model, Reason: "network"})
+		return false, ctx.Err() == nil, "network"
+	}
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
+	return check("verify", response)
+}

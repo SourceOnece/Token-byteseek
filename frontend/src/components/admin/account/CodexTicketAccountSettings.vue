@@ -3,9 +3,14 @@
     <div class="flex flex-wrap items-baseline justify-between gap-2"><h3 class="text-xl font-extrabold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.ticketWorkbench.title') }}</h3><span class="text-sm font-bold">{{ bulk ? t('admin.accounts.ticketPolicy.selected', { count: ids.length }) : t('admin.accounts.ticketPolicy.source.' + source) }}</span></div>
     <p class="text-sm text-gray-600 dark:text-gray-300">{{ t('admin.accounts.ticketWorkbench.accountHint') }}</p>
     <p v-if="!bulk && !globalEnabled" class="border-l-4 border-bh-yellow pl-3 text-sm font-bold text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketWorkbench.masterOff') }}</p>
+    <div class="space-y-3 border-y-2 border-[color:var(--bh-ink)] py-4">
+      <div class="flex items-center justify-between gap-4"><label :for="uid + '-verified-flow'" class="flex items-center gap-2 text-lg font-extrabold"><input v-if="bulk" v-model="fields.flow" type="checkbox" :disabled="locked" data-testid="ticket-edit-flow" />{{ t('admin.accounts.ticketWorkbench.verifiedFlow') }}</label><Toggle :id="uid + '-verified-flow'" v-model="verifiedFlow" :disabled="locked || !fields.flow" :aria-label="t('admin.accounts.ticketWorkbench.verifiedFlow')" data-testid="ticket-verified-flow" /></div>
+      <p class="text-sm text-gray-600 dark:text-gray-300">{{ t('admin.accounts.ticketWorkbench.verifiedHint') }}</p>
+      <p v-if="dualFlowInForm" class="border-l-4 border-bh-yellow pl-3 text-sm text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketWorkbench.verifiedRisk') }}</p>
+    </div>
     <div class="grid gap-5 sm:grid-cols-2">
       <div><label :for="uid + '-mode'" class="mb-2 flex items-center gap-2 font-bold"><input v-if="bulk" v-model="fields.mode" type="checkbox" :disabled="locked" data-testid="ticket-edit-mode" />{{ t('admin.accounts.ticketPolicy.mode') }}</label><Select :id="uid + '-mode'" v-model="mode" :options="modeOptions" :disabled="locked || !fields.mode" /></div>
-      <div><label :for="uid + '-guard'" class="mb-2 flex items-center gap-2 font-bold"><input v-if="bulk" v-model="fields.guard" type="checkbox" :disabled="locked" data-testid="ticket-edit-guard" />{{ t('admin.accounts.ticketPolicy.guard') }}</label><Select :id="uid + '-guard'" v-model="guard" :options="guardOptions" :disabled="locked || !fields.guard" /></div>
+      <div><label :for="uid + '-guard'" class="mb-2 flex items-center gap-2 font-bold"><input v-if="bulk" v-model="fields.guard" type="checkbox" :disabled="locked || dualFlowInForm" data-testid="ticket-edit-guard" />{{ t('admin.accounts.ticketPolicy.guard') }}</label><Select :id="uid + '-guard'" v-model="displayGuard" :options="guardOptions" :disabled="locked || !fields.guard || dualFlowInForm" /></div>
     </div>
     <div class="grid grid-cols-3 gap-3 border-y-2 border-[color:var(--bh-ink)] py-4 text-center">
       <div><p class="text-xs sm:text-sm">{{ t('admin.accounts.ticketWorkbench.target') }}</p><strong class="mt-1 block text-2xl text-emerald-700 dark:text-emerald-400">{{ rules.target_length }}</strong></div>
@@ -42,6 +47,7 @@
 import { computed, onBeforeUnmount, reactive, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Select from '@/components/common/Select.vue'
+import Toggle from '@/components/common/Toggle.vue'
 import CodexTicketProxyEditor from './CodexTicketProxyEditor.vue'
 import { ticketAccountAPI, type TicketAccountPatch, type TicketAccountSettings, type TicketRules, type TicketProxyPolicy } from '@/api/admin/codexTickets'
 import { extractApiErrorMessage } from '@/utils/apiError'
@@ -58,8 +64,12 @@ const groups: { name: string; fields: { key: NumberRule; min: number; max?: numb
 ]
 const rules = reactive<TicketRules>(defaults()), modelText = ref(defaults().models.join('\n'))
 const ruleFields = reactive(Object.fromEntries(Object.keys(defaults()).map(k => [k, !props.bulk])) as Record<keyof TicketRules, boolean>)
-const fields = reactive({ mode: !props.bulk, guard: !props.bulk, proxy: false })
+const fields = reactive({ mode: !props.bulk, guard: !props.bulk, proxy: false, flow: !props.bulk })
+const verifiedFlow = ref(false)
 const mode = ref<TicketAccountSettings['mode']>('inherit'), guard = ref<TicketAccountSettings['watchdog_mode']>('observe')
+const dualFlowInForm = computed(() => verifiedFlow.value && (!props.bulk || fields.flow))
+// 显示新模式的有效守护，但不覆盖关闭开关后要恢复的旧选择。
+const displayGuard = computed({ get: () => dualFlowInForm.value ? 'recover' : guard.value, set: (value: string) => { if (!dualFlowInForm.value) guard.value = value as TicketAccountSettings['watchdog_mode'] } })
 const revision = ref(''), source = ref('gateway'), policy = ref<TicketProxyPolicy>()
 const globalEnabled = ref(true)
 const proxyEditor = ref<InstanceType<typeof CodexTicketProxyEditor>>()
@@ -71,16 +81,17 @@ const guardOptions = computed(() => ['off', 'observe', 'recover_length', 'recove
 let controller: AbortController | undefined, sequence = 0
 async function load() {
   controller?.abort(); controller = new AbortController(); const current = ++sequence
-  fields.mode = !props.bulk; fields.guard = !props.bulk; fields.proxy = false
+  fields.mode = !props.bulk; fields.guard = !props.bulk; fields.proxy = false; fields.flow = !props.bulk; verifiedFlow.value = false
   for (const key of Object.keys(ruleFields) as (keyof TicketRules)[]) ruleFields[key] = !props.bulk
   Object.assign(rules, defaults()); modelText.value = rules.models.join('\n'); mode.value = 'on'; guard.value = 'observe'
   revision.value = ''; source.value = 'gateway'; policy.value = undefined; saved.value = false; loadFailed.value = false; error.value = ''; loading.value = !props.bulk
   if (props.bulk) return
   try {
     const data = await ticketAccountAPI.get(props.ids[0], controller.signal); if (current !== sequence) return
-    if (!data.rules || !Array.isArray(data.rules.models) || !data.proxy_policy) throw new Error(t('admin.settings.codexTicket.versionMismatch'))
+    if (!data.rules || !Array.isArray(data.rules.models) || !data.proxy_policy || typeof data.verified_flow !== 'boolean') throw new Error(t('admin.settings.codexTicket.versionMismatch'))
+    verifiedFlow.value = data.verified_flow
     globalEnabled.value = data.global_enabled !== false
-    mode.value = data.mode === 'off' ? 'off' : 'on'; guard.value = data.effective_watchdog_mode || 'observe'; revision.value = data.revision; source.value = data.proxy_source
+    mode.value = data.mode === 'off' ? 'off' : 'on'; guard.value = verifiedFlow.value ? (data.watchdog_mode === 'inherit' ? 'observe' : data.watchdog_mode) : data.effective_watchdog_mode || 'observe'; revision.value = data.revision; source.value = data.proxy_source
     Object.assign(rules, data.rules || defaults()); modelText.value = rules.models.join('\n'); policy.value = data.proxy_policy
   } catch (err) { if (current === sequence && !controller.signal.aborted) { error.value = extractApiErrorMessage(err, t('common.error')); loadFailed.value = true } }
   finally { if (current === sequence) loading.value = false }
@@ -89,7 +100,8 @@ async function save() {
   if (locked.value || !hasChanges.value) return
   const patch: TicketAccountPatch = {}, rulePatch: Partial<TicketRules> = {}
   if (fields.mode) patch.mode = mode.value
-  if (fields.guard) patch.watchdog_mode = guard.value
+  if (fields.guard && !dualFlowInForm.value) patch.watchdog_mode = guard.value
+  if (fields.flow) patch.verified_flow = verifiedFlow.value
   for (const key of Object.keys(ruleFields) as (keyof TicketRules)[]) {
     if (!ruleFields[key]) continue
     if (key === 'models') rulePatch.models = [...new Set(modelText.value.split(/\r?\n/).map(v => v.trim()).filter(Boolean))]
@@ -101,7 +113,7 @@ async function save() {
   try {
     const result = await ticketAccountAPI.update([...props.ids], patch, props.bulk ? undefined : revision.value); if (current !== sequence) return
     fields.proxy = false
-    if (props.bulk) { fields.mode = false; fields.guard = false; for (const key of Object.keys(ruleFields) as (keyof TicketRules)[]) ruleFields[key] = false }
+    if (props.bulk) { fields.mode = false; fields.guard = false; fields.flow = false; for (const key of Object.keys(ruleFields) as (keyof TicketRules)[]) ruleFields[key] = false }
     if (result[0]) { revision.value = result[0].revision; source.value = result[0].proxy_source; policy.value = result[0].proxy_policy }
     saved.value = true; emit('saved')
   } catch (err) { if (current === sequence) error.value = extractApiErrorMessage(err, t('common.error')) }

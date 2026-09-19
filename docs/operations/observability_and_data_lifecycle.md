@@ -38,6 +38,8 @@
 
 ## 关联与脱敏
 
+bh.047的`usage_logs.response_model`独立记录OpenAI转发观察到的上游模型声明，不参与请求路由、模型还原、计费公式或聚合维度；未声明保持NULL，不猜测为请求模型。Responses/Chat/Messages兼容链与WS逐回合记录原始声明，用户UsageLog DTO保持请求模型且不包含response_model，管理员AdminUsageLog才附加该字段。管理表格在原模型列仅显示差异：主行请求、有映射补路由、响应不同于最终出站模型再补响应和“模型不一致”；缺失不判不一致。图片/Embeddings等未接入路径不伪造观测，本版不改变原CSV列或API响应内容。
+
 网关为每次请求生成内部 client request ID，并把归一化 endpoint、platform、requested/upstream model、用户、API Key、账号和团队等维度带入允许的用量/Ops 记录。入站 `X-Client-Request-ID` 仅作为受限的 `parent_client_request_id` 保存，用于跨 TokenRouter/Sub2API 链路排障，不参与权限、路由或结算幂等；服务生成的内部 ID 通过 `X-Sub2API-Request-ID` 暴露给下游诊断。客户端提供的 session ID 只作为显式关联字段，不从 prompt 或缓存键推导。
 
 网关入口只接受字符受限的 `X-Client-Request-ID` 作为父级关联值；缺失或不安全时，响应回退使用服务生成的内部 ID，服务不会把生成的关联 ID加入上游请求。内部 ID 通过 `X-Sub2API-Request-ID` 响应头标识，调用方 ID 与内部 ID 均会进入访问日志，但只有内部 ID 能作为结算幂等来源。流式网关的 `http.access` 记录还会尽力写入 `request_content_length`、`account_slot_acquired_ms`、`upstream_get_conn_ms`、`upstream_got_conn_ms`、`upstream_wrote_request_ms`、`upstream_first_response_byte_ms`、`upstream_first_sse_data_ms`、`first_visible_output_ms` 和 `first_downstream_flush_ms`；`upstream_attempt_count`、各阶段计数、连接复用和写入错误字段用于识别连接池等待、重试与传输异常。阶段字段只包含时间、计数和连接复用状态，不包含请求体或凭据。

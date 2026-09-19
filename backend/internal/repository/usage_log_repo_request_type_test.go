@@ -106,6 +106,7 @@ func TestUsageLogRepositoryCreateSyncRequestTypeAndLegacyFields(t *testing.T) {
 			createdAt,
 			sqlmock.AnyArg(), // requested_reasoning_effort
 			false,            // native_compaction_v2
+			sql.NullString{}, // response_model
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(int64(99), createdAt))
 
@@ -204,6 +205,7 @@ func TestUsageLogRepositoryCreate_PersistsServiceTier(t *testing.T) {
 			createdAt,
 			sqlmock.AnyArg(), // requested_reasoning_effort
 			false,            // native_compaction_v2
+			sql.NullString{}, // response_model
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(int64(100), createdAt))
 
@@ -1020,6 +1022,7 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			now,
 			sql.NullString{}, // requested_reasoning_effort
 			false,            // native_compaction_v2
+			sql.NullString{}, // response_model
 		}})
 		require.NoError(t, err)
 		require.Equal(t, 2, log.ImageCount)
@@ -1103,6 +1106,7 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			now,
 			sql.NullString{}, // requested_reasoning_effort
 			false,            // native_compaction_v2
+			sql.NullString{}, // response_model
 		}})
 		require.NoError(t, err)
 		require.NotNil(t, log.ServiceTier)
@@ -1167,6 +1171,7 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			now,
 			sql.NullString{}, // requested_reasoning_effort
 			false,            // native_compaction_v2
+			sql.NullString{}, // response_model
 		}})
 		require.NoError(t, err)
 		require.NotNil(t, log.ServiceTier)
@@ -1231,6 +1236,7 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			now,
 			sql.NullString{}, // requested_reasoning_effort
 			false,            // native_compaction_v2
+			sql.NullString{}, // response_model
 		}})
 		require.NoError(t, err)
 		require.NotNil(t, log.ServiceTier)

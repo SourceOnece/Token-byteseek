@@ -107,7 +107,8 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 	}
 
 	wsDecision := s.getOpenAIWSProtocolResolver().Resolve(account)
-	forceHTTPBridge := account.Platform == PlatformGrok
+	verifiedTicketBridge := s.shouldBridgeVerifiedTicketAccount(account, wsDecision)
+	forceHTTPBridge := account.Platform == PlatformGrok || verifiedTicketBridge
 	modeRouterV2Enabled := s != nil && s.cfg != nil && s.cfg.Gateway.OpenAIWS.ModeRouterV2Enabled
 	ingressMode := OpenAIWSIngressModeCtxPool
 	if modeRouterV2Enabled && !forceHTTPBridge {
@@ -164,6 +165,9 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 	wsPath := "-"
 	if forceHTTPBridge {
 		wsHost = "xai-http-bridge"
+		if verifiedTicketBridge {
+			wsHost = "codex-ticket-http-bridge"
+		}
 		wsPath = "/v1/responses"
 	} else {
 		var err error
@@ -979,6 +983,8 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 	}
 
 	sendAndRelay := func(turn int, lease *openAIWSConnLease, payload []byte, payloadBytes int, originalModel string, routingModel string, imageBillingModel string, imageSizeTier string, imageInputSize string, requestedReasoningEffort *string) (*OpenAIForwardResult, error) {
+		// 每轮审计单独建对象，保持旧计费档位观察不变。
+		responseAudit := &upstreamResponseModelObserver{}
 		responseModelObserver := upstreamResponseModelObserverFromContext(c)
 		if responseModelObserver == nil {
 			responseModelObserver = beginUpstreamResponseModelObservation(c)
@@ -1051,6 +1057,7 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 
 			eventType, eventResponseID, _ := parseOpenAIWSEventEnvelope(upstreamMessage)
 			responseModelObserver.ObserveOpenAI(upstreamMessage, eventType)
+			responseAudit.ObserveOpenAI(upstreamMessage, eventType)
 			if responseID == "" && eventResponseID != "" {
 				responseID = eventResponseID
 			}
@@ -1296,6 +1303,7 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 					Model:                       originalModel,
 					UpstreamModel:               mappedModel,
 					UpstreamResponseServiceTier: responseModelObserver.ServiceTier(),
+					UpstreamResponseModel:       safeTicketResponseModel(responseAudit.Model()),
 					ServiceTier:                 resolvedOpenAIUpstreamServiceTierFromObserver(responseModelObserver, extractOpenAIServiceTierFromBody(payload)),
 					ReasoningEffort:             ApplyThinkingEnabledFallback(extractOpenAIReasoningEffortFromBody(payload, mappedModel, originalModel), payload, mappedModel),
 					RequestedReasoningEffort:    requestedReasoningEffort,

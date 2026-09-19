@@ -7,16 +7,26 @@ const { get, update, testProxy } = vi.hoisted(() => ({ get: vi.fn(), update: vi.
 vi.mock('@/api/admin/codexTickets', () => ({ ticketAccountAPI: { get, update }, testTicketProxy: testProxy }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 const rules = () => ({ models: ['gpt-6-astra', 'gpt-5.6-sol'], target_length: 332, degraded_signal_length: 312, max_attempts: 3, concurrency: 4, cache_minutes: 60, refresh_before_minutes: 10, retry_interval_seconds: 1, probe_interval_seconds: 6, failure_threshold: 0, cooldown_seconds: 300 })
-const account = () => ({ rules: rules(), proxy_policy: { mode: 'fixed', dynamic_source: 'template', proxy_protocol: 'http', extraction_configured: false, fixed_proxy_id: 'account', proxies: [{ id: 'account', name: 'A', configured: true }] }, account_id: 1, mode: 'inherit', watchdog_mode: 'inherit', effective_watchdog_mode: 'observe', effective_enabled: true, proxy_source: 'account', proxy_configured: true, revision: 'r1' })
+const account = () => ({ verified_flow: false, rules: rules(), proxy_policy: { mode: 'fixed', dynamic_source: 'template', proxy_protocol: 'http', extraction_configured: false, fixed_proxy_id: 'account', proxies: [{ id: 'account', name: 'A', configured: true }] }, account_id: 1, mode: 'inherit', watchdog_mode: 'inherit', effective_watchdog_mode: 'observe', effective_enabled: true, proxy_source: 'account', proxy_configured: true, revision: 'r1' })
 
 describe('CodexTicketAccountSettings', () => {
   beforeEach(() => { vi.clearAllMocks(); get.mockResolvedValue(account()); update.mockResolvedValue([{ ...account(), revision: 'r2' }]) })
+  it('双链路默认关闭；批量必须勾选才提交，且不覆盖旧守护选择', async () => {
+    const w = mount(CodexTicketAccountSettings, { props: { ids: [1, 2], bulk: true } }); await flushPromises()
+    expect(w.get('[data-testid="ticket-verified-flow"]').attributes('aria-checked')).toBe('false')
+    expect(w.get('[data-testid="ticket-verified-flow"]').attributes('disabled')).toBeDefined()
+    await w.get('[data-testid="ticket-edit-flow"]').setValue(true)
+    await w.get('[data-testid="ticket-verified-flow"]').trigger('click')
+    await w.get('[data-testid="ticket-account-save"]').trigger('click'); await flushPromises()
+    expect(update).toHaveBeenCalledWith([1, 2], { verified_flow: true }, undefined)
+    expect(w.get('[data-testid="ticket-account-save"]').attributes('disabled')).toBeDefined(); w.unmount()
+  })
   it('单号读取脱敏配置，不自动保存或清空已有代理', async () => {
     const w = mount(CodexTicketAccountSettings, { props: { ids: [1] } }); await flushPromises()
     expect(get).toHaveBeenCalledWith(1, expect.any(AbortSignal)); expect(update).not.toHaveBeenCalled()
     expect(w.find('select').exists()).toBe(false)
     await w.get('[data-testid="ticket-account-save"]').trigger('click'); await flushPromises()
-    expect(update).toHaveBeenCalledWith([1], { mode: 'on', watchdog_mode: 'observe', rules: rules() }, 'r1')
+    expect(update).toHaveBeenCalledWith([1], { mode: 'on', watchdog_mode: 'observe', rules: rules(), verified_flow: false }, 'r1')
     expect(w.emitted('saved')).toHaveLength(1); w.unmount()
   })
   it('批量全部默认未勾选，只提交选中项，保存后取消勾选', async () => {

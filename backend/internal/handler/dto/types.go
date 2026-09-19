@@ -648,6 +648,8 @@ type UsageLog struct {
 // AdminUsageLog 是管理员接口使用的 usage log DTO（包含管理员字段）。
 type AdminUsageLog struct {
 	UsageLog
+	// 仅管理员看到实际响应模型，普通用户DTO不包含此字段。
+	ResponseModel *string `json:"response_model,omitempty"`
 
 	// DetailedTiming 是从 http.access 系统日志关联出的单请求阶段耗时，仅管理员使用记录可见。
 	DetailedTiming *UsageLogTiming `json:"detailed_timing,omitempty"`

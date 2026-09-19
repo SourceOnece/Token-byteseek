@@ -219,6 +219,26 @@ func (_u *UsageLogUpdate) ClearChannelID() *UsageLogUpdate {
 	return _u
 }
 
+// SetResponseModel sets the "response_model" field.
+func (_u *UsageLogUpdate) SetResponseModel(v string) *UsageLogUpdate {
+	_u.mutation.SetResponseModel(v)
+	return _u
+}
+
+// SetNillableResponseModel sets the "response_model" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableResponseModel(v *string) *UsageLogUpdate {
+	if v != nil {
+		_u.SetResponseModel(*v)
+	}
+	return _u
+}
+
+// ClearResponseModel clears the value of the "response_model" field.
+func (_u *UsageLogUpdate) ClearResponseModel() *UsageLogUpdate {
+	_u.mutation.ClearResponseModel()
+	return _u
+}
+
 // SetModelMappingChain sets the "model_mapping_chain" field.
 func (_u *UsageLogUpdate) SetModelMappingChain(v string) *UsageLogUpdate {
 	_u.mutation.SetModelMappingChain(v)
@@ -1137,6 +1157,11 @@ func (_u *UsageLogUpdate) check() error {
 			return &ValidationError{Name: "upstream_model", err: fmt.Errorf(`ent: validator failed for field "UsageLog.upstream_model": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.ResponseModel(); ok {
+		if err := usagelog.ResponseModelValidator(v); err != nil {
+			return &ValidationError{Name: "response_model", err: fmt.Errorf(`ent: validator failed for field "UsageLog.response_model": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.ModelMappingChain(); ok {
 		if err := usagelog.ModelMappingChainValidator(v); err != nil {
 			return &ValidationError{Name: "model_mapping_chain", err: fmt.Errorf(`ent: validator failed for field "UsageLog.model_mapping_chain": %w`, err)}
@@ -1246,6 +1271,12 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ChannelIDCleared() {
 		_spec.ClearField(usagelog.FieldChannelID, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.ResponseModel(); ok {
+		_spec.SetField(usagelog.FieldResponseModel, field.TypeString, value)
+	}
+	if _u.mutation.ResponseModelCleared() {
+		_spec.ClearField(usagelog.FieldResponseModel, field.TypeString)
 	}
 	if value, ok := _u.mutation.ModelMappingChain(); ok {
 		_spec.SetField(usagelog.FieldModelMappingChain, field.TypeString, value)
@@ -1852,6 +1883,26 @@ func (_u *UsageLogUpdateOne) AddChannelID(v int64) *UsageLogUpdateOne {
 // ClearChannelID clears the value of the "channel_id" field.
 func (_u *UsageLogUpdateOne) ClearChannelID() *UsageLogUpdateOne {
 	_u.mutation.ClearChannelID()
+	return _u
+}
+
+// SetResponseModel sets the "response_model" field.
+func (_u *UsageLogUpdateOne) SetResponseModel(v string) *UsageLogUpdateOne {
+	_u.mutation.SetResponseModel(v)
+	return _u
+}
+
+// SetNillableResponseModel sets the "response_model" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableResponseModel(v *string) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetResponseModel(*v)
+	}
+	return _u
+}
+
+// ClearResponseModel clears the value of the "response_model" field.
+func (_u *UsageLogUpdateOne) ClearResponseModel() *UsageLogUpdateOne {
+	_u.mutation.ClearResponseModel()
 	return _u
 }
 
@@ -2786,6 +2837,11 @@ func (_u *UsageLogUpdateOne) check() error {
 			return &ValidationError{Name: "upstream_model", err: fmt.Errorf(`ent: validator failed for field "UsageLog.upstream_model": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.ResponseModel(); ok {
+		if err := usagelog.ResponseModelValidator(v); err != nil {
+			return &ValidationError{Name: "response_model", err: fmt.Errorf(`ent: validator failed for field "UsageLog.response_model": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.ModelMappingChain(); ok {
 		if err := usagelog.ModelMappingChainValidator(v); err != nil {
 			return &ValidationError{Name: "model_mapping_chain", err: fmt.Errorf(`ent: validator failed for field "UsageLog.model_mapping_chain": %w`, err)}
@@ -2912,6 +2968,12 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if _u.mutation.ChannelIDCleared() {
 		_spec.ClearField(usagelog.FieldChannelID, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.ResponseModel(); ok {
+		_spec.SetField(usagelog.FieldResponseModel, field.TypeString, value)
+	}
+	if _u.mutation.ResponseModelCleared() {
+		_spec.ClearField(usagelog.FieldResponseModel, field.TypeString)
 	}
 	if value, ok := _u.mutation.ModelMappingChain(); ok {
 		_spec.SetField(usagelog.FieldModelMappingChain, field.TypeString, value)

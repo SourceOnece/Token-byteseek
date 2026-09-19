@@ -45,6 +45,8 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 	if responseModelObserver == nil {
 		responseModelObserver = beginUpstreamResponseModelObservation(c)
 	}
+	// 故障重试同样不能把上一attempt的模型声明作为本次审计结果。
+	responseAudit := &upstreamResponseModelObserver{}
 
 	wsURL, err := s.buildOpenAIResponsesWSURL(account)
 	if err != nil {
@@ -445,6 +447,7 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 			Model:                       originalModel,
 			UpstreamModel:               mappedModel,
 			UpstreamResponseServiceTier: responseModelObserver.ServiceTier(),
+			UpstreamResponseModel:       safeTicketResponseModel(responseAudit.Model()),
 			ImageCount:                  imageCounter.Count(),
 			ImageOutputSizes:            imageCounter.Sizes(),
 			ServiceTier:                 resolvedOpenAIUpstreamServiceTierFromObserver(responseModelObserver, extractOpenAIServiceTier(reqBody)),
@@ -640,6 +643,7 @@ readLoop:
 			continue
 		}
 		responseModelObserver.ObserveOpenAI(message, eventType)
+		responseAudit.ObserveOpenAI(message, eventType)
 		eventCount++
 		if firstEventType == "" {
 			firstEventType = eventType

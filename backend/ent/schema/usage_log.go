@@ -59,6 +59,8 @@ func (UsageLog) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 		field.Int64("channel_id").Optional().Nillable().Comment("渠道 ID"),
+		// 仅管理员日志读取，不参与用户DTO、筛选计费或请求模型还原。
+		field.String("response_model").MaxLen(200).Optional().Nillable(),
 		field.String("model_mapping_chain").MaxLen(500).Optional().Nillable().Comment("模型映射链"),
 		field.String("billing_tier").MaxLen(50).Optional().Nillable().Comment("计费层级标签"),
 		field.String("billing_mode").MaxLen(20).Optional().Nillable().Comment("计费模式：token/per_request/image"),

@@ -733,10 +733,12 @@ func TestObserveUpstreamMessage_ResponseServiceTierOnlyFromTerminalEvents(t *tes
 	)
 	require.True(t, completed.terminal)
 	require.Equal(t, "default", completed.responseServiceTier, "终止事件档位应覆盖早期回显的 priority")
+	require.Equal(t, "gpt-5.6-sol", completed.responseModel)
 
 	var turn RelayTurnResult
 	emitTurnComplete(func(result RelayTurnResult) { turn = result }, state, completed)
 	require.Equal(t, "default", turn.ResponseServiceTier)
+	require.Equal(t, "gpt-5.6-sol", turn.ResponseModel)
 
 	var result RelayResult
 	enrichResult(&result, state, now.Sub(startAt))

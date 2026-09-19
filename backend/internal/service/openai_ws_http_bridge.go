@@ -447,6 +447,8 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 	if responseModelObserver == nil {
 		responseModelObserver = beginUpstreamResponseModelObservation(c)
 	}
+	// 审计必须每回合独立，不能从复用的计费观察对象借用前一回合模型。
+	responseAudit := &upstreamResponseModelObserver{}
 	var routingModel, imageBillingModel, imageSizeTier, imageInputSize, grokCacheIdentity string
 	var turn int
 	var writeClientMessage func([]byte) error
@@ -630,6 +632,12 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 			return nil, fmt.Errorf("upstream http bridge request failed: %s", safeErr)
 		}
 		if resp.StatusCode < 400 {
+			// 新模式逐轮绑定本次注入票据的响应守护；旧模式桥接行为保持不变。
+			if tickets := s.codexTickets.Load(); tickets != nil {
+				if cfg := tickets.enabledAccountConfig(account.ID); cfg != nil && cfg.VerifiedFlow {
+					tickets.ObserveResponse(upstreamReq, resp)
+				}
+			}
 			break
 		}
 
@@ -735,6 +743,7 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 			BillingModel:                billingModel,
 			UpstreamModel:               mappedModel,
 			UpstreamResponseServiceTier: responseModelObserver.ServiceTier(),
+			UpstreamResponseModel:       safeTicketResponseModel(responseAudit.Model()),
 			ServiceTier:                 resolvedOpenAIUpstreamServiceTierFromObserver(responseModelObserver, extractOpenAIServiceTierFromBody(body)),
 			ReasoningEffort:             ApplyThinkingEnabledFallback(extractOpenAIReasoningEffortFromBody(body, mappedModel, originalModel), body, mappedModel),
 			RequestedReasoningEffort:    CanonicalRequestedReasoningEffort(body, originalModel, mappedModel),
@@ -834,6 +843,7 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 		}
 		eventType, eventResponseID, _ := parseOpenAIWSEventEnvelope(upstreamMessage)
 		responseModelObserver.ObserveOpenAI(upstreamMessage, eventType)
+		responseAudit.ObserveOpenAI(upstreamMessage, eventType)
 		if responseID == "" && eventResponseID != "" {
 			responseID = eventResponseID
 		}

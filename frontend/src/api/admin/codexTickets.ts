@@ -2,6 +2,7 @@ import { apiClient, buildApiUrl } from '../client'
 import { ADMIN_UI_REQUEST_HEADER } from '../adminUIRequest'
 
 export type TicketState = 'ready' | 'pending' | 'collecting' | 'missing' | 'expired' | 'failed' | 'disabled' | 'unsupported' | 'unavailable' | 'paused' | 'cooldown'
+export interface TicketValidationStage { name: 'harvest' | 'verify'; request_model: string; response_model?: string; http_status?: number; state_length: number; complete: boolean; reason?: string }
 export interface TicketModelStatus {
 	collection?: { consecutive_failures: number; cooldown_until?: string }
 	attempts?: number; max_attempts?: number
@@ -16,6 +17,7 @@ export interface TicketModelStatus {
   checked_at?: string
   expires_at?: string
   diagnostic?: {
+    stages?: TicketValidationStage[]
     scheduling?: 'enabled' | 'disabled' | 'already_on' | 'already_off' | 'stale' | 'failed'
     proxy_id: string; proxy_name: string; attempt: number; http_status?: number; degraded_signal?: boolean
     header_length: number; header_present: boolean; prefix_valid: boolean
@@ -102,6 +104,7 @@ export interface TicketAccountStatus {
 
 export type TicketWatchdogMode = 'off' | 'observe' | 'recover_length' | 'recover_model' | 'recover'
 export interface TicketAccountSettings {
+  verified_flow?: boolean
 	global_enabled?: boolean
 	rules: TicketRules; proxy_policy: TicketProxyPolicy
   account_id: number; mode: 'inherit' | 'on' | 'off'; effective_enabled: boolean
@@ -109,6 +112,7 @@ export interface TicketAccountSettings {
   watchdog_mode: TicketWatchdogMode | 'inherit'; effective_watchdog_mode: TicketWatchdogMode; revision: string
 }
 export interface TicketAccountPatch {
+  verified_flow?: boolean
 	rules?: Partial<TicketRules>; proxy_policy?: TicketProxyPatch
   mode?: TicketAccountSettings['mode']; harvest_proxy_url?: string; watchdog_mode?: TicketAccountSettings['watchdog_mode']
 }

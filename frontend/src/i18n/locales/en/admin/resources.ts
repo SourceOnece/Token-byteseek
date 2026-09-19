@@ -518,6 +518,7 @@ export default {
     },
 // Usage Records
     usage: {
+      routeModel: 'Route', responseModel: 'Response', modelMismatch: 'Model mismatch',
       title: 'Usage Records',
       description: 'View and manage all user usage records',
       userFilter: 'User',

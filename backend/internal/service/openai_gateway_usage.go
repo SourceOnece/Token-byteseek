@@ -379,6 +379,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		Model:             result.Model,
 		RequestedModel:    requestedModel,
 		UpstreamModel:     optionalTrimmedStringPtr(result.UpstreamModel),
+		ResponseModel:     optionalTrimmedStringPtr(safeTicketResponseModel(result.UpstreamResponseModel)),
 		ServiceTier:       result.ServiceTier,
 		ReasoningEffort:   result.ReasoningEffort,
 		RequestedReasoningEffort: coalesceRequestedReasoningEffort(

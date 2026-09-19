@@ -69,23 +69,16 @@
         </template>
 
         <template #cell-model="{ row }">
-          <div v-if="row.model_mapping_chain && row.model_mapping_chain.includes('→')" class="space-y-0.5 text-xs">
-            <div v-for="(step, i) in row.model_mapping_chain.split('→')" :key="i"
-                 class="break-all"
-                 :class="i === 0 ? 'font-medium text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'"
-                 :style="i > 0 ? `padding-left: ${i * 0.75}rem` : ''">
-              <span v-if="i > 0" class="mr-0.5">↳</span>{{ step }}
+          <div class="space-y-1" data-testid="usage-model-cell">
+            <div class="break-all font-semibold text-gray-900 dark:text-white">{{ row.model }}</div>
+            <div v-for="(step, i) in usageRoutingSteps(row)" :key="i" class="break-all text-xs font-medium text-bh-blue dark:text-blue-300" data-testid="usage-route-model">
+              <span aria-hidden="true">↳ </span>{{ t('admin.usage.routeModel') }}：{{ step }}
+            </div>
+            <div v-if="usageResponseMismatch(row)" class="space-y-1 text-xs font-semibold text-bh-red dark:text-red-400" data-testid="usage-response-model">
+              <div class="break-all"><span aria-hidden="true">↳ </span>{{ t('admin.usage.responseModel') }}：{{ row.response_model }}</div>
+              <span class="inline-flex items-center gap-1" data-testid="usage-model-mismatch"><span aria-hidden="true">▲</span>{{ t('admin.usage.modelMismatch') }}</span>
             </div>
           </div>
-          <div v-else-if="row.upstream_model && row.upstream_model !== row.model" class="space-y-0.5 text-xs">
-            <div class="break-all font-medium text-gray-900 dark:text-white">
-              {{ row.model }}
-            </div>
-            <div class="break-all text-gray-500 dark:text-gray-400">
-              <span class="mr-0.5">↳</span>{{ row.upstream_model }}
-            </div>
-          </div>
-          <span v-else class="font-medium text-gray-900 dark:text-white">{{ row.model }}</span>
         </template>
 
         <template #cell-reasoning_effort="{ row }">
@@ -727,6 +720,24 @@ const emit = defineEmits<{
   ipGeoBatchFailed: []
 }>()
 const { t } = useI18n()
+// 请求始终可见；路由去掉连续重复项，响应只与最终出站模型比较，正常映射不冒充异常。
+function usageRoutingSteps(row: AdminUsageLog): string[] {
+  const steps: string[] = []
+  let previous = (row.model || '').trim()
+  for (const part of (row.model_mapping_chain || '').split('→')) {
+    const model = part.trim()
+    if (model && model !== previous) { steps.push(model); previous = model }
+  }
+  const upstream = row.upstream_model?.trim()
+  if (upstream && upstream !== previous) steps.push(upstream)
+  return steps
+}
+function usageResponseMismatch(row: AdminUsageLog): boolean {
+  const response = row.response_model?.trim()
+  const steps = usageRoutingSteps(row)
+  const outbound = row.upstream_model?.trim() || steps[steps.length - 1] || (row.model || '').trim()
+  return !!response && response !== outbound
+}
 const { balanceUnitSymbol, usdUnitSymbol, formatBalanceAmount, formatUsdAmount } = useBalanceDisplay()
 const { copyToClipboard } = useClipboard()
 const copiedRequestId = ref<string | null>(null)

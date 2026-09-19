@@ -437,6 +437,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 		Model:                       reqModel,
 		UpstreamModel:               upstreamPassthroughModel,
 		UpstreamResponseServiceTier: observedUpstreamResponseServiceTier(c),
+		UpstreamResponseModel:       observedUpstreamResponseModel(c),
 		ServiceTier:                 resolvedOpenAIUpstreamServiceTier(c, serviceTier),
 		ReasoningEffort:             reasoningEffort,
 		Stream:                      reqStream,

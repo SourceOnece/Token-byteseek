@@ -67,6 +67,23 @@ func (s *UsageLogRepoSuite) createUsageLog(user *service.User, apiKey *service.A
 
 // --- Create / GetByID ---
 
+// 管理员响应模型单独落库，不覆盖原请求/计费模型，历史缺失保持NULL。
+func (s *UsageLogRepoSuite) TestResponseModelPersistence() {
+	user := mustCreateUser(s.T(), s.client, &service.User{Email: "response-model@example.invalid"})
+	key := mustCreateApiKey(s.T(), s.client, &service.APIKey{UserID: user.ID, Key: "synthetic-response-model", Name: "test"})
+	account := mustCreateAccount(s.T(), s.client, &service.Account{Name: "response-model"})
+	response := "gpt-5.6-luna"
+	log := &service.UsageLog{UserID: user.ID, APIKeyID: key.ID, AccountID: account.ID, RequestID: uuid.NewString(), Model: "gpt-6-astra", RequestedModel: "gpt-6-astra", ResponseModel: &response, InputTokens: 10, ActualCost: 0.01, TotalCost: 0.01, CreatedAt: time.Now().UTC()}
+	_, err := s.repo.Create(s.ctx, log)
+	s.Require().NoError(err)
+	got, err := s.repo.GetByID(s.ctx, log.ID)
+	s.Require().NoError(err)
+	s.Require().Equal("gpt-6-astra", got.Model)
+	s.Require().NotNil(got.ResponseModel)
+	s.Require().Equal(response, *got.ResponseModel)
+	s.Require().InDelta(0.01, got.ActualCost, 0.000001)
+}
+
 func (s *UsageLogRepoSuite) TestCreate() {
 	user := mustCreateUser(s.T(), s.client, &service.User{Email: "create@test.com"})
 	apiKey := mustCreateApiKey(s.T(), s.client, &service.APIKey{UserID: user.ID, Key: "sk-create", Name: "k"})

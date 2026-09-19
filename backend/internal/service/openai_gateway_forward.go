@@ -1279,6 +1279,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			BillingModel:                billingModel,
 			UpstreamModel:               upstreamModel,
 			UpstreamResponseServiceTier: observedUpstreamResponseServiceTier(c),
+			UpstreamResponseModel:       observedUpstreamResponseModel(c),
 			ServiceTier:                 resolvedOpenAIUpstreamServiceTier(c, serviceTier),
 			ReasoningEffort:             reasoningEffort,
 			Stream:                      reqStream,

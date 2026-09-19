@@ -33,6 +33,7 @@ type CodexTicketCache interface {
 }
 
 type codexTicketConfig struct {
+	VerifiedFlow          bool                    `json:"-"`
 	FailureThreshold      int                     `json:"failure_threshold,omitempty"`
 	CooldownSeconds       int                     `json:"cooldown_seconds,omitempty"`
 	CollectionConcurrency int                     `json:"collection_concurrency,omitempty"`
@@ -96,10 +97,12 @@ type CodexTicketSettingsUpdate struct {
 	Revision             *string                       `json:"revision"`
 }
 type codexTicketValue struct {
-	Attempts  int `json:"attempts,omitempty"`
-	encoded   string
-	State     string    `json:"state"`
-	ExpiresAt time.Time `json:"expires_at"`
+	Verified            bool   `json:"verified,omitempty"`
+	BusinessFingerprint string `json:"business_fingerprint,omitempty"`
+	Attempts            int    `json:"attempts,omitempty"`
+	encoded             string
+	State               string    `json:"state"`
+	ExpiresAt           time.Time `json:"expires_at"`
 }
 
 // CodexTicketService 默认关闭；按账号/模型门控并覆盖回合状态，明确长度结论按独立联动更新总调度。
@@ -266,7 +269,12 @@ func codexTicketAccount(account *Account) bool {
 }
 func codexTicketKey(cfg *codexTicketConfig, account *Account, model, token string) string {
 	// 上游凭据与工作区变动会换键；不在 Redis key 暴露 token 或客户端会话。
-	raw, _ := json.Marshal([]any{cfg.Generation, account.ID, model, token, account.GetCredential("chatgpt_account_id"), account.GetCredential("organization_id")})
+	parts := []any{cfg.Generation, account.ID, model, token, account.GetCredential("chatgpt_account_id"), account.GetCredential("organization_id")}
+	// 新模式单独绑定业务出口；旧模式的键完全不变，不让未验证票混入双链路。
+	if cfg.VerifiedFlow {
+		parts = append(parts, "verified-flow-v1", ticketBusinessFingerprint(account))
+	}
+	raw, _ := json.Marshal(parts)
 	h := sha256.Sum256(raw)
 	return hex.EncodeToString(h[:])
 }
@@ -313,6 +321,18 @@ func (s *CodexTicketService) applyWithReceipt(ctx context.Context, account *Acco
 	if token == "" || token == headers.Get("Authorization") {
 		return nil, newCodexTicketUnavailableError()
 	}
+	// 新模式在注入前复核当前账号/业务出口，长会话或陈旧快照不能沿旧代理继续用票。
+	if cfg.VerifiedFlow {
+		if s.gateway == nil || s.gateway.accountRepo == nil {
+			return nil, newCodexTicketUnavailableError()
+		}
+		read, stop := context.WithTimeout(ctx, 200*time.Millisecond)
+		live, err := s.gateway.accountRepo.GetByID(read, account.ID)
+		stop()
+		if err != nil || !codexTicketAccount(live) || !live.IsSchedulable() || !live.IsModelSupported(model) || live.GetOpenAIAccessToken() != token || ticketBusinessFingerprint(live) == "" || codexTicketKey(cfg, live, model, token) != codexTicketKey(cfg, account, model, token) {
+			return nil, newCodexTicketUnavailableError()
+		}
+	}
 	value, ok := s.lookup(ctx, cfg, account, model, token)
 	latest := s.enabledAccountConfig(account.ID)
 	if latest == nil {
@@ -332,7 +352,7 @@ func (s *CodexTicketService) applyWithReceipt(ctx context.Context, account *Acco
 		return nil, nil
 	}
 	// 长连接只保留本次资格版本，不持有整份号池配置/代理映射。
-	receiptConfig := &codexTicketConfig{Generation: cfg.Generation, accountID: account.ID, WatchdogMode: cfg.WatchdogMode, TargetLength: cfg.targetLength(), DegradedSignalLength: cfg.DegradedSignalLength}
+	receiptConfig := &codexTicketConfig{Generation: cfg.Generation, accountID: account.ID, VerifiedFlow: cfg.VerifiedFlow, WatchdogMode: cfg.WatchdogMode, TargetLength: cfg.targetLength(), DegradedSignalLength: cfg.DegradedSignalLength}
 	return &codexTicketReceipt{s: s, cfg: receiptConfig, key: codexTicketKey(cfg, account, model, token), encoded: value.encoded, model: model, stateHash: sha256.Sum256([]byte(value.State))}, nil
 }
 
@@ -349,7 +369,8 @@ func (s *CodexTicketService) lookup(ctx context.Context, cfg *codexTicketConfig,
 	defer cancel()
 	key := codexTicketKey(cfg, account, model, token)
 	encoded, err := s.cache.Get(readCtx, key)
-	if err == nil && cfg.FailureThreshold > 0 {
+	// 双链路续期冷却只暂停维护；仍有效且未被守护废弃的旧验证票继续供业务使用。
+	if err == nil && cfg.FailureThreshold > 0 && !cfg.VerifiedFlow {
 		raw, e := s.cache.Get(readCtx, "collection:"+key)
 		err = e
 		if err == nil && ticketCollectionState(raw).CooldownUntil != nil {
@@ -366,7 +387,7 @@ func (s *CodexTicketService) lookup(ctx context.Context, cfg *codexTicketConfig,
 	if err != nil {
 		return value, false
 	}
-	ok := json.Unmarshal([]byte(raw), &value) == nil && validCodexTicket(value, cfg.targetLength())
+	ok := json.Unmarshal([]byte(raw), &value) == nil && validTicketForAccount(value, cfg, account)
 	value.encoded = encoded
 	return value, ok
 }
@@ -383,7 +404,7 @@ func (s *CodexTicketService) Blocks(ctx context.Context, account *Account, model
 	// 调度初筛使用不含令牌/工作区的 sched:meta；不能把摘要缺字段误判为账号缺票。
 	// 只补取同 ID 的完整账号，不回填共享摘要，也不降低原票据的身份隔离要求。
 	lookupAccount := account
-	if account.GetOpenAIAccessToken() == "" {
+	if account.GetOpenAIAccessToken() == "" || (cfg.VerifiedFlow && account.ProxyID != nil && account.Proxy == nil) {
 		lookupAccount = s.resolveTicketLookupAccount(ctx, account.ID)
 	}
 	// 旧摘要可能缺auth_mode；同ID完整账号确认是特殊授权后，恢复其原有票据豁免。
@@ -629,7 +650,7 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 	if encrypted := cached[key]; encrypted != "" {
 		if raw, err := s.cipher.Decrypt(encrypted); err == nil {
 			var value codexTicketValue
-			if json.Unmarshal([]byte(raw), &value) == nil && validCodexTicket(value, cfg.targetLength()) && time.Until(value.ExpiresAt) > cfg.refreshBefore() {
+			if json.Unmarshal([]byte(raw), &value) == nil && validTicketForAccount(value, cfg, fresh) && time.Until(value.ExpiresAt) > cfg.refreshBefore() {
 				return
 			}
 		}

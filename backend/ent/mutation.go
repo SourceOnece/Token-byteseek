@@ -53314,6 +53314,7 @@ type UsageLogMutation struct {
 	upstream_model               *string
 	channel_id                   *int64
 	addchannel_id                *int64
+	response_model               *string
 	model_mapping_chain          *string
 	billing_tier                 *string
 	billing_mode                 *string
@@ -53956,6 +53957,55 @@ func (m *UsageLogMutation) ResetChannelID() {
 	m.channel_id = nil
 	m.addchannel_id = nil
 	delete(m.clearedFields, usagelog.FieldChannelID)
+}
+
+// SetResponseModel sets the "response_model" field.
+func (m *UsageLogMutation) SetResponseModel(s string) {
+	m.response_model = &s
+}
+
+// ResponseModel returns the value of the "response_model" field in the mutation.
+func (m *UsageLogMutation) ResponseModel() (r string, exists bool) {
+	v := m.response_model
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldResponseModel returns the old "response_model" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldResponseModel(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldResponseModel is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldResponseModel requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldResponseModel: %w", err)
+	}
+	return oldValue.ResponseModel, nil
+}
+
+// ClearResponseModel clears the value of the "response_model" field.
+func (m *UsageLogMutation) ClearResponseModel() {
+	m.response_model = nil
+	m.clearedFields[usagelog.FieldResponseModel] = struct{}{}
+}
+
+// ResponseModelCleared returns if the "response_model" field was cleared in this mutation.
+func (m *UsageLogMutation) ResponseModelCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldResponseModel]
+	return ok
+}
+
+// ResetResponseModel resets all changes to the "response_model" field.
+func (m *UsageLogMutation) ResetResponseModel() {
+	m.response_model = nil
+	delete(m.clearedFields, usagelog.FieldResponseModel)
 }
 
 // SetModelMappingChain sets the "model_mapping_chain" field.
@@ -56288,7 +56338,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 50)
+	fields := make([]string, 0, 51)
 	if m.user != nil {
 		fields = append(fields, usagelog.FieldUserID)
 	}
@@ -56318,6 +56368,9 @@ func (m *UsageLogMutation) Fields() []string {
 	}
 	if m.channel_id != nil {
 		fields = append(fields, usagelog.FieldChannelID)
+	}
+	if m.response_model != nil {
+		fields = append(fields, usagelog.FieldResponseModel)
 	}
 	if m.model_mapping_chain != nil {
 		fields = append(fields, usagelog.FieldModelMappingChain)
@@ -56467,6 +56520,8 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.UpstreamModel()
 	case usagelog.FieldChannelID:
 		return m.ChannelID()
+	case usagelog.FieldResponseModel:
+		return m.ResponseModel()
 	case usagelog.FieldModelMappingChain:
 		return m.ModelMappingChain()
 	case usagelog.FieldBillingTier:
@@ -56576,6 +56631,8 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldUpstreamModel(ctx)
 	case usagelog.FieldChannelID:
 		return m.OldChannelID(ctx)
+	case usagelog.FieldResponseModel:
+		return m.OldResponseModel(ctx)
 	case usagelog.FieldModelMappingChain:
 		return m.OldModelMappingChain(ctx)
 	case usagelog.FieldBillingTier:
@@ -56734,6 +56791,13 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetChannelID(v)
+		return nil
+	case usagelog.FieldResponseModel:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetResponseModel(v)
 		return nil
 	case usagelog.FieldModelMappingChain:
 		v, ok := value.(string)
@@ -57351,6 +57415,9 @@ func (m *UsageLogMutation) ClearedFields() []string {
 	if m.FieldCleared(usagelog.FieldChannelID) {
 		fields = append(fields, usagelog.FieldChannelID)
 	}
+	if m.FieldCleared(usagelog.FieldResponseModel) {
+		fields = append(fields, usagelog.FieldResponseModel)
+	}
 	if m.FieldCleared(usagelog.FieldModelMappingChain) {
 		fields = append(fields, usagelog.FieldModelMappingChain)
 	}
@@ -57433,6 +57500,9 @@ func (m *UsageLogMutation) ClearField(name string) error {
 		return nil
 	case usagelog.FieldChannelID:
 		m.ClearChannelID()
+		return nil
+	case usagelog.FieldResponseModel:
+		m.ClearResponseModel()
 		return nil
 	case usagelog.FieldModelMappingChain:
 		m.ClearModelMappingChain()
@@ -57525,6 +57595,9 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldChannelID:
 		m.ResetChannelID()
+		return nil
+	case usagelog.FieldResponseModel:
+		m.ResetResponseModel()
 		return nil
 	case usagelog.FieldModelMappingChain:
 		m.ResetModelMappingChain()
