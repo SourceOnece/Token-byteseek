@@ -51,16 +51,15 @@ func (s *CodexTicketService) validateTicketChain(ctx context.Context, cancel con
 			stage.Reason = "upstream"
 			diagnostic.HTTPStatus = resp.StatusCode
 			readTicketFailureDiagnostic(resp.Body, diagnostic, cancel)
-			diagnostic.RetryNotBefore = codexTicketRetryNotBefore(resp.Header.Get("Retry-After"), resp.StatusCode, diagnostic.ErrorKind)
-			if diagnostic.RetryNotBefore == nil && (resp.StatusCode == 401 || resp.StatusCode == 403) {
-				at := time.Now().Add(5 * time.Minute)
-				diagnostic.RetryNotBefore = &at
-			}
-			retry := diagnostic.RetryNotBefore == nil && resp.StatusCode != 401 && resp.StatusCode != 403 && resp.StatusCode != 429 && diagnostic.ErrorKind != "auth" && diagnostic.ErrorKind != "quota" && diagnostic.ErrorKind != "rate_limit" && diagnostic.ErrorKind != "invalid_request"
-			return false, retry, stage.Reason
+			return false, ticketFailureCanRetry(resp, diagnostic), stage.Reason
 		}
 		completion := parseTicketCompletion(resp.Body, model)
 		stage.ResponseModel, stage.Complete = completion.Model, completion.Complete
+		if completion.ErrorKind != "" {
+			diagnostic.ErrorKind = completion.ErrorKind
+			stage.Reason = "upstream"
+			return false, ticketFailureCanRetry(resp, diagnostic), stage.Reason
+		}
 		ticket := codexTicketValue{State: state, ExpiresAt: time.Now().Add(time.Minute)}
 		if cfg.DegradedSignalLength > 0 && validCodexTicket(ticket, cfg.DegradedSignalLength) {
 			diagnostic.DegradedSignal = true

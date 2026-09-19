@@ -84,6 +84,20 @@ func (c *codexTicketCache) RenewLease(ctx context.Context, key, owner string, tt
 	return c.client.Eval(ctx, `if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('PEXPIRE', KEYS[1], ARGV[2]) else return 0 end`, []string{"private:codex-ticket-lease:v1:" + key}, owner, ttl.Milliseconds()).Bool()
 }
 
+// 手动批次租约携带待处理账号ID；自动轮次只跳过这些账号，不读取业务凭据。
+func (c *codexTicketCache) LeaseValue(ctx context.Context, key string) (string, error) {
+	value, err := c.client.Get(ctx, "private:codex-ticket-lease:v1:"+key).Result()
+	if errors.Is(err, redis.Nil) {
+		return "", nil
+	}
+	return value, err
+}
+
+// 删除已完成账号与续租在同一CAS中完成；失去所有权后不能覆盖新批次的保留范围。
+func (c *codexTicketCache) ReplaceLease(ctx context.Context, key, owner, replacement string, ttl time.Duration) (bool, error) {
+	return c.client.Eval(ctx, `if redis.call('GET',KEYS[1])~=ARGV[1] then return 0 end;redis.call('SET',KEYS[1],ARGV[2],'PX',ARGV[3]);return 1`, []string{"private:codex-ticket-lease:v1:" + key}, owner, replacement, ttl.Milliseconds()).Bool()
+}
+
 // 最新展示按完成时间原子比较，迟到旧请求不得覆盖更新的采集结果；不参与调度判断。
 func (c *codexTicketCache) SetLatest(ctx context.Context, key, value string, finishedUS int64, ttl time.Duration) error {
 	return c.client.Eval(ctx, `

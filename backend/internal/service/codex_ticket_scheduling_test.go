@@ -20,11 +20,11 @@ type ticketSchedulingRepo struct {
 	fail   bool
 }
 
-func (r *ticketSchedulingRepo) ApplyCodexTicketScheduling(_ context.Context, expected *Account, enabled bool) (bool, error) {
+func (r *ticketSchedulingRepo) ApplyCodexTicketScheduling(_ context.Context, expected *Account, enabled bool) (time.Time, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.fail {
-		return false, errors.New("synthetic database failure")
+		return time.Time{}, errors.New("synthetic database failure")
 	}
 	for i := range r.accounts {
 		a := &r.accounts[i]
@@ -32,10 +32,10 @@ func (r *ticketSchedulingRepo) ApplyCodexTicketScheduling(_ context.Context, exp
 			a.Schedulable = enabled
 			a.UpdatedAt = time.Now()
 			r.writes++
-			return true, nil
+			return a.UpdatedAt, nil
 		}
 	}
-	return false, nil
+	return time.Time{}, nil
 }
 
 func TestCodexTicketSchedulingLengthMatrixManualAndAutomatic(t *testing.T) {

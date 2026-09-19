@@ -47,7 +47,7 @@ export default {
         previous: 'Previous page', next: 'Next page',
         title: 'Batch ticket collection', collectTab: 'Manual collection', history: 'Collection history',
         hint: '{count} selected · Account settings first, otherwise gateway defaults',
-        eligibilityHint: 'Scheduling-disabled accounts can collect; other eligibility and rate limits apply. Scheduling and quality labels stay unchanged; failures keep valid old tickets.',
+        eligibilityHint: 'Paused accounts can collect. Qualified tickets enable scheduling; degradation lengths disable it; otherwise unchanged. Quality labels stay. Dual-route tickets require verification.',
         disabled: 'Enable ticket collection and configure proxies in Gateway services → OpenAI first.',
         confirm: 'I accept quota and proxy traffic costs for collection and IP queries',
         ipHint: 'IP is a separate same-proxy sample; dynamic exits may differ. Lookup failure does not affect collection.',

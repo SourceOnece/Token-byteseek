@@ -48,7 +48,7 @@ export default {
         previous: '上一页', next: '下一页',
         title: '批量采集票据', collectTab: '手动采集', history: '采集历史',
         hint: '已选 {count} 个账号 · 账号配置优先，未设置继承网关',
-        eligibilityHint: '停调可测，其他资格与限流仍生效。不改账号开关和质量标签；失败保留有效旧票。',
+        eligibilityHint: '停调可采集。合格开调度，降智长度关调度，其他保持；质量标签不变。双链路须复验通过。',
         disabled: '请先在网关服务 → OpenAI 开启票据采集并配置代理。',
         confirm: '确认采集及 IP 查询会消耗上游额度与代理流量',
         ipHint: 'IP 为同代理独立查询的参考值，动态出口可能不同；查询失败不影响采集。',

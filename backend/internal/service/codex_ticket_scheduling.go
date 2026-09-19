@@ -9,37 +9,43 @@ import (
 // 仅明确长度结论调用；仓储用账号版本条件更新调度及outbox，不修改质量检测结果。
 // @project-doc docs/interfaces/codex_ticket.md#length_scheduling
 type CodexTicketSchedulingRepository interface {
-	ApplyCodexTicketScheduling(context.Context, *Account, bool) (bool, error)
+	ApplyCodexTicketScheduling(context.Context, *Account, bool) (time.Time, error)
 }
 
 // 手动和自动共用长度结论；旧配置/取消/并发账号修改不能被迟到结果覆盖。
 func (s *CodexTicketService) applyTicketScheduling(ctx context.Context, cfg *codexTicketConfig, account *Account, enabled bool) string {
+	state, _ := s.applyTicketSchedulingVersion(ctx, cfg, account, enabled)
+	return state
+}
+
+// 返回本次SQL实际写入的版本；零值代表未更新，不能通过二次读取猜测自己的写入版本。
+func (s *CodexTicketService) applyTicketSchedulingVersion(ctx context.Context, cfg *codexTicketConfig, account *Account, enabled bool) (string, time.Time) {
 	if ctx.Err() != nil || !s.ticketConfigCurrent(cfg) || !codexTicketCollectionAllowed(ctx, account) {
-		return "stale"
+		return "stale", time.Time{}
 	}
 	if account.Schedulable == enabled {
 		if enabled {
-			return "already_on"
+			return "already_on", time.Time{}
 		}
-		return "already_off"
+		return "already_off", time.Time{}
 	}
 	repo, ok := s.gateway.accountRepo.(CodexTicketSchedulingRepository)
 	if !ok {
-		return "failed"
+		return "failed", time.Time{}
 	}
 	write, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	changed, err := repo.ApplyCodexTicketScheduling(write, account, enabled)
+	version, err := repo.ApplyCodexTicketScheduling(write, account, enabled)
 	if err != nil {
-		return "failed"
+		return "failed", time.Time{}
 	}
-	if !changed {
-		return "stale"
+	if version.IsZero() {
+		return "stale", time.Time{}
 	}
 	if enabled {
-		return "enabled"
+		return "enabled", version
 	}
-	return "disabled"
+	return "disabled", version
 }
 
 // 每账号仅保留最新长度信号，最多256个待处理账号；无响应正文或明文凭据。
@@ -47,6 +53,8 @@ type ticketSchedulingSignal struct {
 	receipt codexTicketReceipt
 	enabled bool
 	seenAt  time.Time
+	// 只允许越过同一worker刚完成的精确版本；人工编辑或其它来源更新仍使旧信号失效。
+	previousWrite time.Time
 }
 
 func (s *CodexTicketService) queueTicketScheduling(r *codexTicketReceipt, enabled bool) {
@@ -114,7 +122,7 @@ func (s *CodexTicketService) applyTicketSchedulingSignal(ctx context.Context, si
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	a, err := s.gateway.accountRepo.GetByID(ctx, r.cfg.accountID)
-	if err != nil || !codexTicketCollectionAllowed(ctx, a) || a.UpdatedAt.After(signal.seenAt) || !a.IsModelSupported(r.model) || codexTicketKey(r.cfg, a, r.model, a.GetOpenAIAccessToken()) != r.key {
+	if err != nil || !codexTicketCollectionAllowed(ctx, a) || (a.UpdatedAt.After(signal.seenAt) && !a.UpdatedAt.Equal(signal.previousWrite)) || !a.IsModelSupported(r.model) || codexTicketKey(r.cfg, a, r.model, a.GetOpenAIAccessToken()) != r.key {
 		return
 	}
 	current, err := s.cache.Get(ctx, r.key)
@@ -122,7 +130,17 @@ func (s *CodexTicketService) applyTicketSchedulingSignal(ctx context.Context, si
 	if err != nil || (current != "" && current != r.encoded) || (signal.enabled && current != r.encoded) {
 		return
 	}
-	state := s.applyTicketScheduling(ctx, r.cfg, a, signal.enabled)
+	state, version := s.applyTicketSchedulingVersion(ctx, r.cfg, a, signal.enabled)
+	if !version.IsZero() {
+		// 较新信号可能在旧信号出队至写库之间到达。仅传递数据库返回的确切版本，
+		// 不放宽seenAt，也不容许覆盖其后发生的人工修改或质量检测写入。
+		s.schedulingMu.Lock()
+		if pending, ok := s.schedulingPending[a.ID]; ok && pending.seenAt.After(signal.seenAt) {
+			pending.previousWrite = version
+			s.schedulingPending[a.ID] = pending
+		}
+		s.schedulingMu.Unlock()
+	}
 	if state == "failed" {
 		slog.Warn("票据守护调度更新失败，保持原调度", "account_id", a.ID)
 	}

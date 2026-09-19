@@ -29,6 +29,8 @@ type CodexTicketCache interface {
 	AcquireLease(context.Context, string, string, time.Duration) (bool, error)
 	ReleaseLease(context.Context, string, string) error
 	RenewLease(context.Context, string, string, time.Duration) (bool, error)
+	LeaseValue(context.Context, string) (string, error)
+	ReplaceLease(context.Context, string, string, string, time.Duration) (bool, error)
 	SetLatest(context.Context, string, string, int64, time.Duration) error
 }
 
@@ -119,6 +121,7 @@ type CodexTicketService struct {
 	cache               CodexTicketCache
 	cipher              SecretEncryptor
 	config              atomic.Pointer[codexTicketConfig]
+	configUnavailable   atomic.Bool
 	updateMu            sync.Mutex
 	lifecycleMu         sync.Mutex
 	cancel              context.CancelFunc
@@ -240,6 +243,7 @@ func (s *CodexTicketService) Update(ctx context.Context, input CodexTicketSettin
 
 func (s *CodexTicketService) publishConfig(cfg *codexTicketConfig) {
 	old := s.config.Swap(cfg)
+	s.configUnavailable.Store(false)
 	if old == nil || old.Generation != cfg.Generation || !cfg.Enabled {
 		s.lifecycleMu.Lock()
 		s.nextRound = time.Time{}
@@ -257,11 +261,40 @@ func (s *CodexTicketService) enabledConfig() *codexTicketConfig {
 		return nil
 	}
 	cfg := s.config.Load()
-	// 设置轮询失联时宁可不采集/不注入，不能无限沿用曾开启的快照。
-	if cfg == nil || !cfg.Enabled || cfg.Generation == "" || time.Since(cfg.loadedAt) > 10*time.Second {
+	// 设置失联停止维护；业务另走routingConfig，不能把失联解释为管理员关闭。
+	if cfg == nil || !cfg.Enabled || cfg.Generation == "" || s.configUnavailable.Load() || time.Since(cfg.loadedAt) > 10*time.Second {
 		return nil
 	}
 	return cfg
+}
+
+// 保留最后确认的作用域，但配置失联时拒绝注入或绕过票据；已确认关闭和范围外模型保持旧流程。
+func (s *CodexTicketService) routingConfig(accountID int64) (*codexTicketConfig, bool) {
+	if s == nil {
+		return nil, false
+	}
+	global := s.config.Load()
+	if global == nil {
+		return nil, true
+	}
+	cfg := ticketConfigForAccount(global, accountID)
+	if !cfg.Enabled {
+		return nil, false
+	}
+	return cfg, s.configUnavailable.Load() || cfg.Generation == "" || time.Since(global.loadedAt) > 10*time.Second
+}
+
+// 不发布伪造的关闭配置；保留上次已确认配置供业务门控，并取消在途维护。
+func (s *CodexTicketService) markConfigUnavailable() {
+	s.configUnavailable.Store(true)
+	s.lifecycleMu.Lock()
+	defer s.lifecycleMu.Unlock()
+	if s.roundCancel != nil {
+		s.roundCancel()
+	}
+	if s.manualCancel != nil {
+		s.manualCancel()
+	}
 }
 
 func codexTicketAccount(account *Account) bool {
@@ -310,11 +343,17 @@ func (s *CodexTicketService) Apply(ctx context.Context, account *Account, model 
 
 // 收据绑定真正写入请求的票据密文，不用客户端传入的头作为守护凭据。
 func (s *CodexTicketService) applyWithReceipt(ctx context.Context, account *Account, model string, headers http.Header) (*codexTicketReceipt, error) {
-	if account == nil {
+	if !codexTicketAccount(account) || headers == nil {
 		return nil, nil
 	}
-	cfg := s.enabledAccountConfig(account.ID)
-	if cfg == nil || headers == nil || !codexTicketAccount(account) || !cfg.hasModel(model) {
+	cfg, unavailable := s.routingConfig(account.ID)
+	if cfg != nil && !cfg.hasModel(model) {
+		return nil, nil
+	}
+	if unavailable {
+		return nil, newCodexTicketUnavailableError()
+	}
+	if cfg == nil {
 		return nil, nil
 	}
 	token := strings.TrimPrefix(headers.Get("Authorization"), "Bearer ")
@@ -334,7 +373,10 @@ func (s *CodexTicketService) applyWithReceipt(ctx context.Context, account *Acco
 		}
 	}
 	value, ok := s.lookup(ctx, cfg, account, model, token)
-	latest := s.enabledAccountConfig(account.ID)
+	latest, unavailable := s.routingConfig(account.ID)
+	if unavailable {
+		return nil, newCodexTicketUnavailableError()
+	}
 	if latest == nil {
 		return nil, nil
 	}
@@ -394,11 +436,17 @@ func (s *CodexTicketService) lookup(ctx context.Context, cfg *codexTicketConfig,
 
 // Blocks 只读票据，不刷新凭据、不触发采集，也不更新 schedulable。
 func (s *CodexTicketService) Blocks(ctx context.Context, account *Account, model string) bool {
-	if account == nil {
+	if !codexTicketAccount(account) {
 		return false
 	}
-	cfg := s.enabledAccountConfig(account.ID)
-	if cfg == nil || !codexTicketAccount(account) || !cfg.hasModel(model) {
+	cfg, unavailable := s.routingConfig(account.ID)
+	if cfg != nil && !cfg.hasModel(model) {
+		return false
+	}
+	if unavailable {
+		return true
+	}
+	if cfg == nil {
 		return false
 	}
 	// 调度初筛使用不含令牌/工作区的 sched:meta；不能把摘要缺字段误判为账号缺票。
@@ -415,8 +463,8 @@ func (s *CodexTicketService) Blocks(ctx context.Context, account *Account, model
 	if codexTicketAccount(lookupAccount) && lookupAccount.ID == account.ID {
 		_, ok = s.lookup(ctx, cfg, lookupAccount, model, lookupAccount.GetOpenAIAccessToken())
 	}
-	latest := s.enabledAccountConfig(account.ID)
-	return latest != nil && (latest.Generation != cfg.Generation || !ok)
+	latest, unavailable := s.routingConfig(account.ID)
+	return unavailable || latest != nil && (latest.Generation != cfg.Generation || !ok)
 }
 
 // 完整账号优先沿用调度缓存，缺失时走其已有受限数据库回退；不调用带状态更新的资格方法。
@@ -461,9 +509,10 @@ func (s *CodexTicketService) Start() {
 			cfg, err := s.readConfig(readCtx)
 			stop()
 			if err != nil {
-				cfg = &codexTicketConfig{loadedAt: time.Now()}
+				s.markConfigUnavailable()
+			} else {
+				s.publishConfig(cfg)
 			}
-			s.publishConfig(cfg)
 			s.updateMu.Unlock()
 			if s.enabledConfig() != nil {
 				s.startRound(ctx)
@@ -505,10 +554,10 @@ func (s *CodexTicketService) Stop() {
 func (s *CodexTicketService) startRound(ctx context.Context) {
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
-	if s.roundCancel != nil || s.manualCancel != nil || s.stopped {
+	if s.roundCancel != nil || s.stopped {
 		return
 	}
-	// 守护唤醒不能被在途轮次的结束时间覆盖，手动批次/集群锁仍保持优先。
+	// 手动只保留所选账号，其他账号的自动续期和守护唤醒不再等待整批结束。
 	if s.watchdogWake.Swap(false) {
 		s.nextRound = time.Time{}
 	}
@@ -624,6 +673,9 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 }
 
 func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, account *Account, model string) {
+	if s.manualAccountReserved(ctx, account.ID) {
+		return
+	}
 	cfg = ticketConfigForAccount(cfg, account.ID)
 	if !cfg.Enabled || !s.ticketConfigCurrent(cfg) || ctx.Err() != nil {
 		return
@@ -681,7 +733,7 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 		limit = 1
 	} // 无限采集每轮让出worker，下轮从累计次数继续，防止饿死其它账号。
 	for localAttempt := 1; localAttempt <= limit; localAttempt++ {
-		if !s.ticketConfigCurrent(cfg) || cycleCtx.Err() != nil {
+		if !s.ticketConfigCurrent(cfg) || cycleCtx.Err() != nil || s.manualAccountReserved(cycleCtx, account.ID) {
 			return
 		}
 		proxy, ok := selectCodexTicketProxy(cfg, previousID, failed)

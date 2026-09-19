@@ -77,7 +77,7 @@ const loading = ref(false), saving = ref(false), loadFailed = ref(false), error 
 const locked = computed(() => loading.value || saving.value || loadFailed.value)
 const hasChanges = computed(() => Object.values(fields).some(Boolean) || Object.values(ruleFields).some(Boolean))
 const modeOptions = computed(() => ['on', 'off'].map(value => ({ value, label: t('admin.accounts.ticketPolicy.modes.' + value) })))
-const guardOptions = computed(() => ['off', 'observe', 'recover_length', 'recover_model', 'recover'].map(value => ({ value, label: t('admin.accounts.ticketPolicy.guards.' + value) })))
+const guardOptions = computed(() => ['inherit', 'off', 'observe', 'recover_length', 'recover_model', 'recover'].map(value => ({ value, label: t('admin.accounts.ticketPolicy.guards.' + value) })))
 let controller: AbortController | undefined, sequence = 0
 async function load() {
   controller?.abort(); controller = new AbortController(); const current = ++sequence
@@ -91,7 +91,8 @@ async function load() {
     if (!data.rules || !Array.isArray(data.rules.models) || !data.proxy_policy || typeof data.verified_flow !== 'boolean') throw new Error(t('admin.settings.codexTicket.versionMismatch'))
     verifiedFlow.value = data.verified_flow
     globalEnabled.value = data.global_enabled !== false
-    mode.value = data.mode === 'off' ? 'off' : 'on'; guard.value = verifiedFlow.value ? (data.watchdog_mode === 'inherit' ? 'observe' : data.watchdog_mode) : data.effective_watchdog_mode || 'observe'; revision.value = data.revision; source.value = data.proxy_source
+    // 保存原选择，双链路强制守护只用于显示；关闭开关不能把继承关系写成observe。
+    mode.value = data.mode === 'off' ? 'off' : 'on'; guard.value = data.watchdog_mode || 'inherit'; revision.value = data.revision; source.value = data.proxy_source
     Object.assign(rules, data.rules || defaults()); modelText.value = rules.models.join('\n'); policy.value = data.proxy_policy
   } catch (err) { if (current === sequence && !controller.signal.aborted) { error.value = extractApiErrorMessage(err, t('common.error')); loadFailed.value = true } }
   finally { if (current === sequence) loading.value = false }

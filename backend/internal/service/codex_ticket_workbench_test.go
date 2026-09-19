@@ -172,6 +172,11 @@ func TestCodexTicketUnlimitedManualCanCancel(t *testing.T) {
 	batch.Execute(func(string, any) bool { return true })
 	require.Equal(t, "cancelled", repo.run.Status)
 	require.Equal(t, 1, repo.run.Counts["cancelled"])
+	final := repo.events[len(repo.events)-1]
+	require.Equal(t, "result", final.Kind)
+	require.Equal(t, 1, final.Attempt, "取消不能丢掉已发生的真实尝试")
+	require.NotNil(t, final.Diagnostic)
+	require.Equal(t, 312, final.Diagnostic.HeaderLength)
 	require.Nil(t, s.manualCancel)
 	require.Empty(t, s.cache.(*ticketCacheStub).owners)
 }

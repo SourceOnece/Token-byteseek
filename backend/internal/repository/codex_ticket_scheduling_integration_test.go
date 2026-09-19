@@ -28,14 +28,15 @@ func TestCodexTicketSchedulingRealDatabase(t *testing.T) {
 		n := count()
 		changed, err := repo.ApplyCodexTicketScheduling(ctx, before, enabled)
 		require.NoError(t, err)
-		require.True(t, changed)
+		require.False(t, changed.IsZero())
 		require.Equal(t, n+1, count())
 		after, err := repo.GetByID(ctx, a.ID)
 		require.NoError(t, err)
 		require.Equal(t, enabled, after.Schedulable)
+		require.True(t, changed.Equal(after.UpdatedAt), "返回精确数据库版本，不能用进程时间代替")
 		changed, err = repo.ApplyCodexTicketScheduling(ctx, after, enabled)
 		require.NoError(t, err)
-		require.False(t, changed)
+		require.True(t, changed.IsZero())
 		require.Equal(t, n+1, count())
 	}
 	// 保存之后出现的手工修改使旧版本失效，不允许迟到结果覆盖。
@@ -46,7 +47,7 @@ func TestCodexTicketSchedulingRealDatabase(t *testing.T) {
 	n := count()
 	changed, err := repo.ApplyCodexTicketScheduling(ctx, before, false)
 	require.NoError(t, err)
-	require.False(t, changed)
+	require.True(t, changed.IsZero())
 	require.Equal(t, n, count())
 	// 即使调用者传入最新版，当前上游限流也不能被票据结论清除。
 	_, err = client.Account.UpdateOneID(a.ID).SetSchedulable(false).SetRateLimitResetAt(time.Now().Add(time.Hour)).Save(ctx)
@@ -55,7 +56,7 @@ func TestCodexTicketSchedulingRealDatabase(t *testing.T) {
 	require.NoError(t, err)
 	changed, err = repo.ApplyCodexTicketScheduling(ctx, before, true)
 	require.NoError(t, err)
-	require.False(t, changed)
+	require.True(t, changed.IsZero())
 	require.Equal(t, n, count())
 	_, err = client.Account.UpdateOneID(a.ID).ClearRateLimitResetAt().Save(ctx)
 	require.NoError(t, err)
@@ -64,6 +65,6 @@ func TestCodexTicketSchedulingRealDatabase(t *testing.T) {
 	before.Credentials = map[string]any{"access_token": "old-synthetic"}
 	changed, err = repo.ApplyCodexTicketScheduling(ctx, before, true)
 	require.NoError(t, err)
-	require.False(t, changed)
+	require.True(t, changed.IsZero())
 	require.Equal(t, n, count())
 }

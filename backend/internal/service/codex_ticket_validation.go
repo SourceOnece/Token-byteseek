@@ -15,9 +15,10 @@ import (
 )
 
 type ticketCompletion struct {
-	Model    string
-	Complete bool
-	Reason   string
+	Model     string
+	Complete  bool
+	Reason    string
+	ErrorKind string
 }
 
 // 诊断模型仅限短文本，不记录任意响应正文或控制字符。
@@ -106,6 +107,12 @@ func inspectTicketCompletion(raw []byte, event, expected string, jsonBody bool) 
 		return ticketCompletion{Reason: "incomplete_response"}
 	}
 	root := gjson.ParseBytes(raw)
+	// HTTP 200并不代表SSE成功；复用原分类，保留额度/认证/限流拒绝的语义。
+	diagnostic := &CodexTicketDiagnostic{}
+	classifyTicketFailureJSON(raw, diagnostic)
+	if diagnostic.ErrorKind != "" {
+		return ticketCompletion{Reason: "upstream", ErrorKind: diagnostic.ErrorKind}
+	}
 	typ := root.Get("type").String()
 	if typ == "" {
 		typ = event
@@ -176,6 +183,6 @@ func (s *OpenAIGatewayService) shouldBridgeVerifiedTicketAccount(account *Accoun
 	if tickets == nil {
 		return false
 	}
-	cfg := tickets.enabledAccountConfig(account.ID)
+	cfg, _ := tickets.routingConfig(account.ID)
 	return cfg != nil && cfg.VerifiedFlow
 }

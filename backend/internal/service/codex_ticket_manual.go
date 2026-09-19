@@ -104,15 +104,18 @@ func (s *CodexTicketService) TicketHistory() (CodexTicketHistoryRepository, erro
 }
 
 type CodexTicketManualSession struct {
-	s         *CodexTicketService
-	cfg       *codexTicketConfig
-	repo      CodexTicketHistoryRepository
-	ctx       context.Context
-	cancel    context.CancelFunc
-	ids       []int64
-	Run       CodexTicketManualRun
-	locked    bool
-	closeOnce sync.Once
+	s          *CodexTicketService
+	cfg        *codexTicketConfig
+	repo       CodexTicketHistoryRepository
+	ctx        context.Context
+	cancel     context.CancelFunc
+	ids        []int64
+	Run        CodexTicketManualRun
+	locked     bool
+	closeOnce  sync.Once
+	leaseMu    sync.Mutex
+	leaseOwner string
+	remaining  map[int64]int
 }
 
 // 手动无限采集按一轮一次尝试轮转，失败任务不会长期占据worker阻塞后面的账号。
@@ -123,6 +126,8 @@ type codexTicketManualTask struct {
 	attempt   int
 	done      bool
 	due       time.Time
+	last      CodexTicketAttempt
+	latestKey string
 }
 
 // @project-doc docs/interfaces/codex_ticket.md#manual_collection
@@ -161,9 +166,11 @@ func (s *CodexTicketService) PrepareManualCollection(ctx context.Context, req Co
 	m := &CodexTicketManualSession{s: s, cfg: cfg, repo: repo, ctx: ctx, cancel: cancel, ids: append([]int64(nil), req.AccountIDs...), Run: CodexTicketManualRun{ID: uuid.NewString(), Status: "running", Config: codexTicketSettingsView(cfg), Total: total, StartedAt: time.Now().UTC(), Counts: map[string]int{}}}
 	// 历史保存当次有效账号规则与模型并集，不能用网关旧字段冒充所有账号配置。
 	m.Run.Config.Models = []string{}
+	m.remaining = make(map[int64]int, len(req.AccountIDs))
 	seenModels := map[string]bool{}
 	for _, id := range req.AccountIDs {
 		settings := ticketAccountSettingsView(cfg, id)
+		m.remaining[id] = len(settings.Rules.Models)
 		m.Run.Config.AccountRules = append(m.Run.Config.AccountRules, settings)
 		for _, model := range settings.Rules.Models {
 			if !seenModels[model] {
@@ -172,6 +179,7 @@ func (s *CodexTicketService) PrepareManualCollection(ctx context.Context, req Co
 			}
 		}
 	}
+	m.leaseOwner = m.leaseValueLocked()
 	s.lifecycleMu.Lock()
 	if s.stopped || s.manualCancel != nil {
 		s.lifecycleMu.Unlock()
@@ -182,11 +190,11 @@ func (s *CodexTicketService) PrepareManualCollection(ctx context.Context, req Co
 	s.manualID = m.Run.ID
 	s.manualWG.Add(1)
 	s.lifecycleMu.Unlock()
-	// 等待已在途自动轮次自然结束，不打断现有采集；等待本身不发上游请求。
+	// 手动批次独立持锁；账号/模型请求仍由共同的短租约与全局采集槽串行保护。
 	waitCtx, stop := context.WithTimeout(ctx, 35*time.Second)
 	defer stop()
 	for {
-		ok, e := s.cache.AcquireLease(waitCtx, "round:"+cfg.Generation, m.Run.ID, 45*time.Second)
+		ok, e := s.cache.AcquireLease(waitCtx, "manual:"+cfg.Generation, m.leaseOwner, 45*time.Second)
 		if e != nil {
 			m.Close()
 			return nil, errors.New("采集锁不可用")
@@ -217,7 +225,9 @@ func (m *CodexTicketManualSession) Close() {
 		m.cancel()
 		if m.locked {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			_ = m.s.cache.ReleaseLease(ctx, "round:"+m.cfg.Generation, m.Run.ID)
+			m.leaseMu.Lock()
+			_ = m.s.cache.ReleaseLease(ctx, "manual:"+m.cfg.Generation, m.leaseOwner)
+			m.leaseMu.Unlock()
 			cancel()
 		}
 		m.s.lifecycleMu.Lock()
@@ -246,7 +256,7 @@ func (m *CodexTicketManualSession) Execute(emit func(string, any) bool) {
 				return
 			case <-ticker.C:
 				leaseCtx, stop := context.WithTimeout(ctx, 3*time.Second)
-				ok, err := m.s.cache.RenewLease(leaseCtx, "round:"+m.cfg.Generation, m.Run.ID, 45*time.Second)
+				ok, err := m.renewSelection(leaseCtx, 0)
 				if err == nil && ok {
 					err = m.repo.HeartbeatTicketRun(leaseCtx, m.Run.ID)
 				}
@@ -340,6 +350,13 @@ func (m *CodexTicketManualSession) Execute(emit func(string, any) bool) {
 			} else {
 				if e.Kind == "result" {
 					m.Run.Counts[e.Status]++
+					// 某账号全部模型完成后立即恢复它的自动维护，不等待其它无限任务结束。
+					leaseCtx, release := context.WithTimeout(ctx, 3*time.Second)
+					ok, leaseErr := m.renewSelection(leaseCtx, e.AccountID)
+					release()
+					if leaseErr != nil || !ok {
+						cancel()
+					}
 				}
 				if !disconnected && !emit(e.Kind, e) {
 					disconnected = true
@@ -377,6 +394,12 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 	var task *codexTicketManualTask
 	if len(steps) > 0 {
 		task = steps[0]
+		if task.last.AccountID != 0 {
+			result = task.last
+			result.Kind = "result"
+			result.Status, result.Reason = "skipped", "ineligible"
+			latestKey = task.latestKey
+		}
 		if task.startedAt.IsZero() {
 			task.startedAt = started
 		} else {
@@ -425,6 +448,9 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 	}
 	key := codexTicketKey(cfg, a, model, token)
 	latestKey = key
+	if task != nil {
+		task.latestKey = key
+	}
 	if task != nil && task.attempt == 0 {
 		m.s.resetTicketAttempts(ctx, key)
 	}
@@ -484,6 +510,16 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		}
 		var event CodexTicketAttempt
 		ready, retry := m.s.probeAttempt(ctx, cfg, a, model, token, key, proxy, attempt, func(e CodexTicketAttempt) { event = e })
+		if event.Attempt == 0 {
+			// 等待槽位期间可能新出现冷却/退避；未发请求不消耗次数，任务稍后重新读取状态。
+			if task != nil && (event.Reason == "cooldown" || event.Reason == "concurrency_busy" || event.Reason == "backoff" && cfg.attempts() == 0) && ctx.Err() == nil {
+				task.due = time.Now().Add(cfg.retryInterval())
+				yielded = true
+				return
+			}
+			result.Status, result.Reason = event.Status, event.Reason
+			return
+		}
 		event.Kind = "attempt"
 		event.AccountID = id
 		event.AccountName = result.AccountName
@@ -497,6 +533,7 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		record(event)
 		if task != nil {
 			task.attempt = attempt
+			task.last = event
 		}
 		result.Status = event.Status
 		result.Reason = event.Reason

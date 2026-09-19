@@ -93,7 +93,8 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 }
 
 func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketConfig, account *Account, model, token, key string, proxy codexTicketProxy, attempt int, observers ...func(CodexTicketAttempt)) (ready, retry bool) {
-	diagnostic := &CodexTicketDiagnostic{ProxyID: proxy.ID, ProxyName: proxy.Name, Attempt: attempt}
+	diagnostic := &CodexTicketDiagnostic{ProxyID: proxy.ID, ProxyName: proxy.Name}
+	counted := false
 	started := time.Now().UTC()
 	state, reason := "skipped", "account_changed"
 	var expires *time.Time
@@ -105,11 +106,15 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		if state == "failed" || state == "missing" || ready {
 			s.recordTicketCollection(ctx, cfg, key, ready, reason)
 		}
-		if len(observers) == 0 {
+		if len(observers) == 0 && reason != "cooldown" && reason != "concurrency_busy" && reason != "backoff" {
 			s.recordLatest(ctx, cfg, key, "auto", CodexTicketAttempt{Status: state, Reason: reason, FinishedAt: time.Now().UTC(), Diagnostic: diagnostic})
 		}
 		for _, observer := range observers {
-			observer(CodexTicketAttempt{usedProxy: proxy, Status: state, Reason: reason, Attempt: attempt, StartedAt: started, FinishedAt: time.Now().UTC(), DurationMS: time.Since(started).Milliseconds(), Diagnostic: safeCodexTicketDiagnostic(diagnostic), ExpiresAt: expires})
+			actualAttempt := 0
+			if counted {
+				actualAttempt = attempt
+			}
+			observer(CodexTicketAttempt{usedProxy: proxy, Status: state, Reason: reason, Attempt: actualAttempt, StartedAt: started, FinishedAt: time.Now().UTC(), DurationMS: time.Since(started).Milliseconds(), Diagnostic: safeCodexTicketDiagnostic(diagnostic), ExpiresAt: expires})
 		}
 	}()
 	if !s.ticketConfigCurrent(cfg) {
@@ -122,15 +127,40 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	}
 	if ticketCollectionState(policyRaw).CooldownUntil != nil {
 		state, reason = "skipped", "cooldown"
-		return false, true
+		// 冷却检查不算采集，不覆盖上次真实响应，也不占着worker重复检查。
+		diagnostic.Attempt = 0
+		return false, false
 	}
 	// 账号级采集槽在取号前获得；45秒租约覆盖8秒取号及25秒请求，不与业务并发槽混用。
-	release, err := s.acquireTicketCollectionSlot(ctx, cfg, account.ID)
+	release, err := s.acquireTicketCollectionSlot(ctx, cfg, account.ID, key)
 	if err != nil {
 		state, reason = "failed", "storage"
 		return false, false
 	}
 	defer release()
+	if len(observers) == 0 && s.manualAccountReserved(ctx, account.ID) {
+		state, reason = "skipped", "concurrency_busy"
+		return false, false
+	}
+	// 手动等待在途自动请求结束后重新读退避/冷却，不能使用等待前的旧状态再发请求。
+	guardCtx, guardCancel := context.WithTimeout(ctx, time.Second)
+	guard, err := s.cache.GetMany(guardCtx, []string{"collection:" + key, "status:" + key})
+	guardCancel()
+	if err != nil {
+		state, reason = "failed", "storage"
+		return false, false
+	}
+	if ticketCollectionState(guard["collection:"+key]).CooldownUntil != nil {
+		state, reason = "skipped", "cooldown"
+		return false, false
+	}
+	var previous codexTicketObservation
+	_ = json.Unmarshal([]byte(guard["status:"+key]), &previous)
+	if previous.Diagnostic != nil && previous.Diagnostic.RetryNotBefore != nil && time.Now().Before(*previous.Diagnostic.RetryNotBefore) {
+		state, reason = "skipped", "backoff"
+		diagnostic.RetryNotBefore = previous.Diagnostic.RetryNotBefore
+		return false, false
+	}
 	// 先复核凭据与并发，再请求取号服务；排队/停调不会白白消耗代理额度和尝试计数。
 	readCtx, readCancel := context.WithTimeout(ctx, 2*time.Second)
 	fresh, err := s.gateway.accountRepo.GetByID(readCtx, account.ID)
@@ -162,8 +192,9 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 			state, reason = "skipped", "attempt_limit"
 			return false, false
 		}
-		diagnostic.Attempt = attempt
 	}
+	counted = true
+	diagnostic.Attempt = attempt
 	proxy, err = s.resolveTicketAttemptProxy(probeCtx, cfg, proxy)
 	if err != nil {
 		state, reason = "failed", "proxy_provider"
@@ -234,7 +265,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 			state, reason = "failed", why
 			// 明确异常长度继续沿bh.046关闭调度，模型不符/普通失败不直接改总调度。
 			if diagnostic.DegradedSignal {
-				final, e := s.gateway.accountRepo.GetByID(ctx, account.ID)
+				final, e := s.readTicketAccount(ctx, account.ID)
 				if e == nil && codexTicketCollectionAllowed(ctx, final) && final.GetOpenAIAccessToken() == token && codexTicketKey(cfg, final, model, token) == key {
 					diagnostic.Scheduling = s.applyTicketScheduling(ctx, cfg, final, false)
 				}
@@ -264,7 +295,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		diagnostic.ResponseKind = "other"
 	}
 	if diagnostic.DegradedSignal {
-		final, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
+		final, err := s.readTicketAccount(ctx, account.ID)
 		if err == nil && codexTicketCollectionAllowed(ctx, final) && final.IsModelSupported(model) && final.GetOpenAIAccessToken() == token && codexTicketKey(cfg, final, model, token) == key {
 			diagnostic.Scheduling = s.applyTicketScheduling(ctx, cfg, final, false)
 		} else {
@@ -281,25 +312,13 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		if diagnostic.ErrorKind != "" {
 			state, reason = "failed", "upstream"
 		}
-		diagnostic.RetryNotBefore = codexTicketRetryNotBefore(resp.Header.Get("Retry-After"), resp.StatusCode, diagnostic.ErrorKind)
-		if diagnostic.RetryNotBefore == nil && (resp.StatusCode == 401 || resp.StatusCode == 403 || diagnostic.ErrorKind == "auth" || diagnostic.ErrorKind == "quota") {
-			at := time.Now().Add(5 * time.Minute)
-			diagnostic.RetryNotBefore = &at
-		}
-		if diagnostic.RetryNotBefore != nil {
-			return false, false
-		}
-		// 授权/额度/明确限流不是通过切换 IP 无限重试可解决的问题。
-		if resp.StatusCode == 401 || resp.StatusCode == 403 || resp.StatusCode == 429 || diagnostic.ErrorKind == "auth" || diagnostic.ErrorKind == "quota" || diagnostic.ErrorKind == "rate_limit" || diagnostic.ErrorKind == "invalid_request" {
-			return false, false
-		}
-		return false, ctx.Err() == nil
+		return false, ticketFailureCanRetry(resp, diagnostic) && ctx.Err() == nil
 	}
 	reason = "cancelled"
 	if !s.ticketConfigCurrent(cfg) {
 		return false, false
 	}
-	final, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
+	final, err := s.readTicketAccount(ctx, account.ID)
 	if err != nil || !codexTicketCollectionAllowed(ctx, final) || !final.IsModelSupported(model) || final.GetOpenAIAccessToken() != token || codexTicketKey(cfg, final, model, token) != key {
 		return false, false
 	}
@@ -309,13 +328,33 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	if err != nil {
 		return false, false
 	}
-	if s.cache.Set(ctx, key, encrypted, cfg.ticketTTL()) != nil {
+	writeCtx, writeCancel := context.WithTimeout(ctx, time.Second)
+	err = s.cache.Set(writeCtx, key, encrypted, cfg.ticketTTL())
+	writeCancel()
+	if err != nil {
 		return false, false
 	}
 	// 手动/自动成功都开调度，必须先存票；调度写失败不谎称成功，也不删除已保存票据。
 	diagnostic.Scheduling = s.applyTicketScheduling(ctx, cfg, final, true)
 	state, reason, expires = "ready", "", &ticket.ExpiresAt
 	return true, false
+}
+
+// 采集后的资格复核也要有界，避免数据库故障让已拿到的45秒并发租约先行到期。
+func (s *CodexTicketService) readTicketAccount(ctx context.Context, id int64) (*Account, error) {
+	read, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	return s.gateway.accountRepo.GetByID(read, id)
+}
+
+// 普通采集与双链路、HTTP错误与流内错误共用停止/退避判断，不通过换代理绕过明确拒绝。
+func ticketFailureCanRetry(resp *http.Response, diagnostic *CodexTicketDiagnostic) bool {
+	diagnostic.RetryNotBefore = codexTicketRetryNotBefore(resp.Header.Get("Retry-After"), resp.StatusCode, diagnostic.ErrorKind)
+	if diagnostic.RetryNotBefore == nil && (resp.StatusCode == 401 || resp.StatusCode == 403 || diagnostic.ErrorKind == "auth" || diagnostic.ErrorKind == "quota") {
+		at := time.Now().Add(5 * time.Minute)
+		diagnostic.RetryNotBefore = &at
+	}
+	return diagnostic.RetryNotBefore == nil && resp.StatusCode != 401 && resp.StatusCode != 403 && resp.StatusCode != 429 && diagnostic.ErrorKind != "auth" && diagnostic.ErrorKind != "quota" && diagnostic.ErrorKind != "rate_limit" && diagnostic.ErrorKind != "invalid_request"
 }
 
 // 仅给后台采集退避，不修改账号调度；尊重服务端 Retry-After，避免换代理绕过明确限流。
@@ -376,7 +415,7 @@ func classifyTicketFailureJSON(line []byte, d *CodexTicketDiagnostic) {
 		d.CompletionSeen = true
 		return
 	}
-	for _, path := range []string{"error.code", "error.type", "response.error.code", "code"} {
+	for _, path := range []string{"error.code", "error.type", "response.error.code", "response.error.type", "code"} {
 		switch gjson.GetBytes(line, path).String() {
 		case "server_is_overloaded", "server_overloaded":
 			d.ErrorKind = "overloaded"

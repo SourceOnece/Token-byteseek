@@ -116,6 +116,28 @@ func (c *ticketCacheStub) RenewLease(_ context.Context, key, owner string, _ tim
 	return c.owners[key] == owner, nil
 }
 
+func (c *ticketCacheStub) LeaseValue(_ context.Context, key string) (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.fail {
+		return "", errors.New("offline")
+	}
+	return c.owners[key], nil
+}
+
+func (c *ticketCacheStub) ReplaceLease(_ context.Context, key, owner, replacement string, _ time.Duration) (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.fail {
+		return false, errors.New("offline")
+	}
+	if c.owners[key] != owner {
+		return false, nil
+	}
+	c.owners[key] = replacement
+	return true, nil
+}
+
 func (c *ticketCacheStub) GetMany(ctx context.Context, keys []string) (map[string]string, error) {
 	out := map[string]string{}
 	for _, key := range keys {
