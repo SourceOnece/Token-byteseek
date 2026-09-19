@@ -296,9 +296,38 @@ func (s *CodexTicketService) Blocks(ctx context.Context, account *Account, model
 	if cfg == nil || !codexTicketAccount(account) || !cfg.hasModel(model) {
 		return false
 	}
-	_, ok := s.lookup(ctx, cfg, account, model, account.GetOpenAIAccessToken())
+	// 调度初筛使用不含令牌/工作区的 sched:meta；不能把摘要缺字段误判为账号缺票。
+	// 只补取同 ID 的完整账号，不回填共享摘要，也不降低原票据的身份隔离要求。
+	lookupAccount := account
+	if account.GetOpenAIAccessToken() == "" {
+		lookupAccount = s.resolveTicketLookupAccount(ctx, account.ID)
+	}
+	ok := false
+	if codexTicketAccount(lookupAccount) && lookupAccount.ID == account.ID {
+		_, ok = s.lookup(ctx, cfg, lookupAccount, model, lookupAccount.GetOpenAIAccessToken())
+	}
 	latest := s.enabledConfig()
 	return latest != nil && (latest.Generation != cfg.Generation || !ok)
+}
+
+// 完整账号优先沿用调度缓存，缺失时走其已有受限数据库回退；不调用带状态更新的资格方法。
+func (s *CodexTicketService) resolveTicketLookupAccount(ctx context.Context, accountID int64) *Account {
+	if s.gateway == nil {
+		return nil
+	}
+	readCtx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	defer cancel()
+	var account *Account
+	var err error
+	if s.gateway.schedulerSnapshot != nil {
+		account, err = s.gateway.schedulerSnapshot.GetAccount(readCtx, accountID)
+	} else if s.gateway.accountRepo != nil {
+		account, err = s.gateway.accountRepo.GetByID(readCtx, accountID)
+	}
+	if err != nil || readCtx.Err() != nil {
+		return nil
+	}
+	return account
 }
 
 func (s *CodexTicketService) Start() {
