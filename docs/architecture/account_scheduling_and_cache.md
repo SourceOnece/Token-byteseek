@@ -68,6 +68,8 @@ Codex 额度余量优先读取规范 `codex_5h_*` / `codex_7d_*`，历史 primar
 
 ## 候选筛选与评分
 
+bh.045票据门控先解析账号覆盖：总闸关闭或账号off时不进入票据过滤，未配置账号继承原全局行为。账号覆盖来自私有运行时设置，不扩充sched:meta；账号变更只更新该号票据代次，数据库CAS防多实例保存覆盖。可选守护仅删除实际使用且仍为当前的票据，交给原初筛/选后复核及bh.044有界换号处理，不写账号总开关或质量标签。规则、轮询传播和旧版本回滚边界见[账号覆盖与守护](../interfaces/codex_ticket.md#account_overrides_watchdog)。
+
 bh.044 内部Redis摘要增加 `_scheduler_meta_version=1`，保留授权模式、隐私、账号阈值、旧Compact/原生V2能力、Anthropic/Grok窗口及OpenAI阈值所需的凭据/观测身份标识；OAuth access/refresh token与Agent私钥仍不入摘要，历史API Key字段保持。旧摘要批量读取同ID完整缓存后重新裁剪用于本次返回，不回写覆盖并发更新；完整缓存缺失/错误沿原受限回退。新版本摘要不额外读取完整缓存。版本标识不进入DTO/数据库/完整账号缓存；旧实例仍运行时可能持续触发重投影，应完成全实例升级。
 
 bh.035 的可选 Codex 292 票据开启时，独立 OpenAI OAuth 的 Astra/Sol 按最终出站模型追加缺票门控，适用于基础/高级/粘性与选后复查；旧版 compact 依照当前 compact 映射及兜底模型判断。它只读私有 Redis，不修改账号 schedulable 或快照/outbox，采集得到有效票后自动恢复候选；开关关闭不进入此门控。与下面的题目质量检测是独立功能，具体缓存故障和注入规则见 [票据契约](../interfaces/codex_ticket.md#ticket_contract)。

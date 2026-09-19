@@ -1,6 +1,21 @@
 export default {
 // Accounts
     accounts: {
+      ticketPolicy: {
+        title: 'Account tickets', selected: '{count} selected', hint: 'Account overrides first · Otherwise inherit gateway · Master switch applies',
+        mode: 'Tickets', guard: 'Watchdog', proxy: 'Change collection proxy', proxyRequired: 'Enter a proxy or choose gateway inheritance.',
+        proxyHint: 'Collection only; business proxy stays unchanged. Credential placeholders: {sid} / {random}.',
+        saveHint: 'Saved separately. Changed accounts need new tickets; other accounts stay unchanged. Bulk edits only apply checked fields.',
+        save: 'Save ticket settings', saved: 'Ticket settings saved', guardRisk: 'Recovery revokes the observed ticket. This model may be unavailable until renewed. Answers are never replayed.',
+        source: { account: 'Account proxy', gateway: 'Gateway proxy' },
+        modes: { inherit: 'Inherit gateway', on: 'On', off: 'Off' },
+        proxyActions: { custom: 'Set account proxy', inherit: 'Use gateway proxy' },
+        guards: { inherit: 'Inherit gateway', off: 'Observation off', observe: 'Observe only', recover_length: 'Length signal → Recollect', recover_model: 'Model mismatch → Recollect', recover: 'Either signal → Recollect' },
+        watchdog: 'Watchdog', count: 'Signals', latest: 'Latest signal', noSignal: 'No recorded signals',
+        reasons: { length_signal: 'Length signal', model_mismatch: 'Response model mismatch' },
+        actions: { observed: 'Recorded', revoked: 'That ticket was revoked' },
+        precision: 'Observes successful responses with injected tickets. Uses the signal length below; 0 disables length signals. Model IDs are compared against the final outbound model, not evaluated for capability.'
+      },
       ticketCollect: {
         clearHistory: 'Clear finished logs', deleteActive: 'Active collection cannot be deleted', deleted: '{count} records deleted. No undo.',
         deleteHint: 'Immediate and irreversible. Clear includes all finished/stale batches; active batches, accounts, tickets and quality results are kept.',
@@ -8,7 +23,7 @@ export default {
         ipStatus: { unavailable: 'IP lookup unavailable (older records lack details)', timeout: 'IP lookup timed out', network: 'IP lookup network or proxy connection failed', tls: 'IP lookup certificate verification failed', http_error: 'IP lookup endpoint rejected access', invalid_response: 'No valid IP in lookup response', proxy_config: 'Invalid IP lookup proxy configuration', cancelled: 'IP lookup cancelled', not_attempted: 'IP lookup not attempted (no collection HTTP response)' },
         previous: 'Previous page', next: 'Next page',
         title: 'Batch ticket collection', collectTab: 'Manual collection', history: 'Collection history',
-        hint: '{count} selected · Gateway settings',
+        hint: '{count} selected · Account settings first, otherwise gateway defaults',
         eligibilityHint: 'Scheduling-disabled accounts can collect; other eligibility and rate limits apply. Scheduling and quality labels stay unchanged; failures keep valid old tickets.',
         disabled: 'Enable ticket collection and configure proxies in Gateway services → OpenAI first.',
         confirm: 'I accept quota and proxy traffic costs for collection and IP queries',

@@ -5,6 +5,14 @@ import type { TicketAccountStatus } from '@/api/admin/codexTickets'
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 
 describe('CodexTicketStatus', () => {
+  it('点击模型查看守护次数及原因，读取失败不继续展示旧异常', async () => {
+    const status: TicketAccountStatus = { account_id: 1, eligible: true, collection_paused: false, models: [{ model: 'gpt-6-astra', state: 'missing', watchdog: { mode: 'observe', count: 3, reason: 'model_mismatch', action: 'observed', checked_at: new Date().toISOString() } }] }
+    const w = mount(CodexTicketStatus, { props: { now: Date.now(), status }, global: { stubs: { BaseDialog: { template: '<div><slot/></div>' } } } })
+    expect(w.get('[data-testid="ticket-watchdog-signal"]').text()).toContain('3')
+    await w.get('[data-testid="ticket-model-detail"]').trigger('click')
+    expect(w.get('[data-testid="ticket-watchdog-detail"]').text()).toContain('guards.observe')
+    await w.setProps({ failed: true }); expect(w.find('[data-testid="ticket-watchdog-signal"]').exists()).toBe(false); expect(w.find('[data-testid="ticket-watchdog-detail"]').exists()).toBe(false); w.unmount()
+  })
   it('实际/目标长度独立高亮，点击自定义模型打开详情并移除旧长提示', async () => {
     const diagnostic = { proxy_id: 'legacy', proxy_name: 'A', attempt: 1, http_status: 200, header_length: 356, header_present: true, prefix_valid: true, degraded_signal: true }
     const status: TicketAccountStatus = { account_id: 1, eligible: true, collection_paused: false, models: [{ model: 'custom-codex', target_length: 292, state: 'missing', diagnostic }] }

@@ -13,6 +13,7 @@
         <span v-if="diagnosticExtra(row)"> · {{ diagnosticExtra(row) }}</span>
       </p>
       <p v-if="!failed && displayDiagnostic(row)?.degraded_signal" class="mt-1 text-xs font-bold text-bh-red dark:text-red-400" data-testid="ticket-degraded-signal">{{ t('admin.accounts.tickets.degradedSignal') }}</p>
+      <p v-if="!failed && row.watchdog?.reason" class="mt-1 text-xs font-bold text-bh-red dark:text-red-400" data-testid="ticket-watchdog-signal">{{ t('admin.accounts.ticketPolicy.reasons.' + row.watchdog.reason) }} · {{ row.watchdog.count }}</p>
     </div>
   </div>
   <BaseDialog v-if="selectedRow" :show="true" :title="selectedRow.model" width="normal" @close="selectedModel = ''">
@@ -22,6 +23,17 @@
       <p v-if="!failed && displayDiagnostic(selectedRow)?.header_present"><CodexTicketLength :actual="displayDiagnostic(selectedRow)!.header_length" :target="selectedRow.target_length || 292" :signal="displayDiagnostic(selectedRow)?.degraded_signal" /></p>
       <p v-if="!failed && displayDiagnostic(selectedRow)?.degraded_signal" class="font-bold text-bh-red dark:text-red-400">{{ t('admin.accounts.tickets.degradedSignal') }}</p>
       <p class="whitespace-pre-wrap break-words border-t-2 border-[color:var(--bh-ink)] pt-4 text-sm leading-7 text-gray-700 dark:text-gray-200">{{ description(selectedRow, true) }}</p>
+      <section v-if="!failed && selectedRow.watchdog" class="space-y-3 border-t-2 border-[color:var(--bh-ink)] pt-4" data-testid="ticket-watchdog-detail">
+        <h3 class="text-lg font-extrabold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.ticketPolicy.watchdog') }}</h3>
+        <p class="font-bold">{{ t('admin.accounts.ticketPolicy.guards.' + selectedRow.watchdog.mode) }}</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div><p class="text-sm">{{ t('admin.accounts.ticketPolicy.count') }}</p><p class="mt-1 text-3xl font-extrabold text-bh-red dark:text-red-400">{{ selectedRow.watchdog.count }}</p></div>
+          <div class="min-w-0"><p class="text-sm">{{ t('admin.accounts.ticketPolicy.latest') }}</p><p class="mt-1 break-words font-semibold">{{ selectedRow.watchdog.checked_at && selectedRow.watchdog.count ? new Date(selectedRow.watchdog.checked_at).toLocaleString() : t('admin.accounts.ticketPolicy.noSignal') }}</p></div>
+        </div>
+        <p v-if="selectedRow.watchdog.reason" class="font-bold text-bh-red dark:text-red-400">{{ t('admin.accounts.ticketPolicy.reasons.' + selectedRow.watchdog.reason) }}</p>
+        <p v-if="selectedRow.watchdog.action">{{ t('admin.accounts.ticketPolicy.actions.' + selectedRow.watchdog.action) }}</p>
+        <p v-if="status?.settings" class="text-sm">{{ t('admin.accounts.ticketPolicy.source.' + status.settings.proxy_source) }}</p>
+      </section>
     </div>
     <template #footer><button type="button" class="btn btn-secondary" @click="selectedModel = ''">{{ t('common.close') }}</button></template>
   </BaseDialog>

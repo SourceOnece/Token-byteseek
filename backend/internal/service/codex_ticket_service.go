@@ -33,6 +33,10 @@ type CodexTicketCache interface {
 }
 
 type codexTicketConfig struct {
+	stored               *string
+	Accounts             map[string]codexTicketAccountConfig `json:"accounts,omitempty"`
+	WatchdogMode         string                              `json:"watchdog_mode,omitempty"`
+	accountID            int64
 	Enabled              bool               `json:"enabled"`
 	ProxyCipher          string             `json:"proxy_cipher"`
 	Generation           string             `json:"generation"`
@@ -50,20 +54,23 @@ type codexTicketConfig struct {
 
 // 管理响应不返回代理密码或原始票据，只暴露配置是否存在。
 type CodexTicketSettings struct {
-	Enabled              bool                   `json:"enabled"`
-	ProxyConfigured      bool                   `json:"proxy_configured"`
-	Proxies              []CodexTicketProxyView `json:"proxies"`
-	SelectionMode        string                 `json:"selection_mode"`
-	FixedProxyID         string                 `json:"fixed_proxy_id"`
-	ProbeIntervalSeconds int                    `json:"probe_interval_seconds"`
-	MaxAttempts          int                    `json:"max_attempts"`
-	TargetLength         int                    `json:"target_length"`
-	DegradedSignalLength int                    `json:"degraded_signal_length"`
-	Models               []string               `json:"models"`
-	RetryIntervalSeconds int                    `json:"retry_interval_seconds"`
-	Revision             string                 `json:"revision"`
+	AccountProxyConfigured bool                   `json:"account_proxy_configured"`
+	WatchdogMode           string                 `json:"watchdog_mode"`
+	Enabled                bool                   `json:"enabled"`
+	ProxyConfigured        bool                   `json:"proxy_configured"`
+	Proxies                []CodexTicketProxyView `json:"proxies"`
+	SelectionMode          string                 `json:"selection_mode"`
+	FixedProxyID           string                 `json:"fixed_proxy_id"`
+	ProbeIntervalSeconds   int                    `json:"probe_interval_seconds"`
+	MaxAttempts            int                    `json:"max_attempts"`
+	TargetLength           int                    `json:"target_length"`
+	DegradedSignalLength   int                    `json:"degraded_signal_length"`
+	Models                 []string               `json:"models"`
+	RetryIntervalSeconds   int                    `json:"retry_interval_seconds"`
+	Revision               string                 `json:"revision"`
 }
 type CodexTicketSettingsUpdate struct {
+	WatchdogMode         *string                   `json:"watchdog_mode"`
 	Enabled              *bool                     `json:"enabled"`
 	HarvestProxyURL      *string                   `json:"harvest_proxy_url"`
 	ClearProxy           bool                      `json:"clear_proxy"`
@@ -79,6 +86,7 @@ type CodexTicketSettingsUpdate struct {
 	Revision             *string                   `json:"revision"`
 }
 type codexTicketValue struct {
+	encoded   string
 	State     string    `json:"state"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
@@ -103,6 +111,7 @@ type CodexTicketService struct {
 	cursorModel  string
 	nextRound    time.Time
 	cacheRetryAt atomic.Int64
+	watchdogWake atomic.Bool
 	manualCancel context.CancelFunc
 	manualID     string
 	manualWG     sync.WaitGroup
@@ -151,6 +160,7 @@ func (s *CodexTicketService) readConfig(ctx context.Context) (*codexTicketConfig
 		return nil, errors.New("票据配置格式无效")
 	}
 	cfg.loadedAt = time.Now()
+	cfg.stored = &raw
 	return cfg, nil
 }
 
@@ -172,10 +182,16 @@ func (s *CodexTicketService) Update(ctx context.Context, input CodexTicketSettin
 	if input.Enabled != nil {
 		cfg.Enabled = *input.Enabled
 	}
+	if input.WatchdogMode != nil {
+		if !validTicketWatchdogMode(*input.WatchdogMode, false) {
+			return CodexTicketSettings{}, errors.New("无效的守护模式")
+		}
+		cfg.WatchdogMode = *input.WatchdogMode
+	}
 	if err = s.updateProxySettings(cfg, input); err != nil {
 		return CodexTicketSettings{}, err
 	}
-	if cfg.Enabled && (cfg.ProxyCipher == "" || s.cache == nil || s.cipher == nil) {
+	if cfg.Enabled && (!cfg.hasCollectionProxy() || s.cache == nil || s.cipher == nil) {
 		return CodexTicketSettings{}, errors.New("开启前请先配置采集代理及 Redis")
 	}
 	// 每次保存换代；禁用再启用、换代理都不能复用旧一代票据或在途探测结果。
@@ -184,8 +200,8 @@ func (s *CodexTicketService) Update(ctx context.Context, input CodexTicketSettin
 	if err != nil {
 		return CodexTicketSettings{}, err
 	}
-	if err = s.settings.Set(ctx, codexTicketSettingsKey, string(encoded)); err != nil {
-		return CodexTicketSettings{}, errors.New("保存票据配置失败")
+	if err = s.persistTicketConfig(ctx, cfg, string(encoded)); err != nil {
+		return CodexTicketSettings{}, err
 	}
 	s.publishConfig(cfg)
 	return codexTicketSettingsView(cfg), nil
@@ -252,21 +268,30 @@ func newCodexTicketUnavailableError() error {
 
 // Apply 沿快照覆盖回合头；缺票不现场采集，由后台续采后恢复。
 func (s *CodexTicketService) Apply(ctx context.Context, account *Account, model string, headers http.Header) error {
-	cfg := s.enabledConfig()
+	_, err := s.applyWithReceipt(ctx, account, model, headers)
+	return err
+}
+
+// 收据绑定真正写入请求的票据密文，不用客户端传入的头作为守护凭据。
+func (s *CodexTicketService) applyWithReceipt(ctx context.Context, account *Account, model string, headers http.Header) (*codexTicketReceipt, error) {
+	if account == nil {
+		return nil, nil
+	}
+	cfg := s.enabledAccountConfig(account.ID)
 	if cfg == nil || headers == nil || !codexTicketAccount(account) || !cfg.hasModel(model) {
-		return nil
+		return nil, nil
 	}
 	token := strings.TrimPrefix(headers.Get("Authorization"), "Bearer ")
 	if token == "" || token == headers.Get("Authorization") {
-		return newCodexTicketUnavailableError()
+		return nil, newCodexTicketUnavailableError()
 	}
 	value, ok := s.lookup(ctx, cfg, account, model, token)
-	latest := s.enabledConfig()
+	latest := s.enabledAccountConfig(account.ID)
 	if latest == nil {
-		return nil
+		return nil, nil
 	}
 	if latest.Generation != cfg.Generation || !ok {
-		return newCodexTicketUnavailableError()
+		return nil, newCodexTicketUnavailableError()
 	}
 	// 清理大小写不同的旧键，避免覆盖后实际发出两个状态头。
 	for name := range headers {
@@ -275,7 +300,12 @@ func (s *CodexTicketService) Apply(ctx context.Context, account *Account, model 
 		}
 	}
 	headers.Set(openAICodexTurnStateHeader, value.State)
-	return nil
+	if ticketWatchdogMode(cfg.WatchdogMode) == "off" {
+		return nil, nil
+	}
+	// 长连接只保留本次资格版本，不持有整份号池配置/代理映射。
+	receiptConfig := &codexTicketConfig{Generation: cfg.Generation, accountID: account.ID, WatchdogMode: cfg.WatchdogMode, DegradedSignalLength: cfg.DegradedSignalLength}
+	return &codexTicketReceipt{s: s, cfg: receiptConfig, key: codexTicketKey(cfg, account, model, token), encoded: value.encoded, model: model, stateHash: sha256.Sum256([]byte(value.State))}, nil
 }
 
 func (s *CodexTicketService) lookup(ctx context.Context, cfg *codexTicketConfig, account *Account, model, token string) (codexTicketValue, bool) {
@@ -301,12 +331,16 @@ func (s *CodexTicketService) lookup(ctx context.Context, cfg *codexTicketConfig,
 		return value, false
 	}
 	ok := json.Unmarshal([]byte(raw), &value) == nil && validCodexTicket(value, cfg.targetLength())
+	value.encoded = encoded
 	return value, ok
 }
 
 // Blocks 只读票据，不刷新凭据、不触发采集，也不更新 schedulable。
 func (s *CodexTicketService) Blocks(ctx context.Context, account *Account, model string) bool {
-	cfg := s.enabledConfig()
+	if account == nil {
+		return false
+	}
+	cfg := s.enabledAccountConfig(account.ID)
 	if cfg == nil || !codexTicketAccount(account) || !cfg.hasModel(model) {
 		return false
 	}
@@ -324,7 +358,7 @@ func (s *CodexTicketService) Blocks(ctx context.Context, account *Account, model
 	if codexTicketAccount(lookupAccount) && lookupAccount.ID == account.ID {
 		_, ok = s.lookup(ctx, cfg, lookupAccount, model, lookupAccount.GetOpenAIAccessToken())
 	}
-	latest := s.enabledConfig()
+	latest := s.enabledAccountConfig(account.ID)
 	return latest != nil && (latest.Generation != cfg.Generation || !ok)
 }
 
@@ -410,7 +444,14 @@ func (s *CodexTicketService) Stop() {
 func (s *CodexTicketService) startRound(ctx context.Context) {
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
-	if s.roundCancel != nil || s.manualCancel != nil || s.stopped || time.Now().Before(s.nextRound) {
+	if s.roundCancel != nil || s.manualCancel != nil || s.stopped {
+		return
+	}
+	// 守护唤醒不能被在途轮次的结束时间覆盖，手动批次/集群锁仍保持优先。
+	if s.watchdogWake.Swap(false) {
+		s.nextRound = time.Time{}
+	}
+	if time.Now().Before(s.nextRound) {
 		return
 	}
 	roundCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -514,8 +555,8 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 }
 
 func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, account *Account, model string) {
-	current := s.enabledConfig()
-	if current == nil || current.Generation != cfg.Generation || ctx.Err() != nil {
+	cfg = ticketConfigForAccount(cfg, account.ID)
+	if !cfg.Enabled || !s.ticketConfigCurrent(cfg) || ctx.Err() != nil {
 		return
 	}
 	fresh, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
@@ -560,8 +601,7 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 	cycleCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	for attempt := 1; attempt <= cfg.attempts(); attempt++ {
-		current = s.enabledConfig()
-		if current == nil || current.Generation != cfg.Generation || cycleCtx.Err() != nil {
+		if !s.ticketConfigCurrent(cfg) || cycleCtx.Err() != nil {
 			return
 		}
 		proxy, ok := selectCodexTicketProxy(cfg, previousID, failed)

@@ -35,6 +35,18 @@ func (c *codexTicketConfig) proxies() []codexTicketProxy {
 	}
 	return nil
 }
+
+func (c *codexTicketConfig) hasCollectionProxy() bool {
+	if len(c.proxies()) > 0 {
+		return true
+	}
+	for _, account := range c.Accounts {
+		if account.Mode != "off" && account.ProxyCipher != "" {
+			return true
+		}
+	}
+	return false
+}
 func (c *codexTicketConfig) mode() string {
 	if c.SelectionMode == "rotate" {
 		return "rotate"
@@ -89,6 +101,13 @@ func (c *codexTicketConfig) retryInterval() time.Duration {
 func codexTicketSettingsView(c *codexTicketConfig) CodexTicketSettings {
 	v := CodexTicketSettings{Enabled: c.Enabled, ProxyConfigured: len(c.proxies()) > 0, Proxies: []CodexTicketProxyView{}, SelectionMode: c.mode(), FixedProxyID: c.FixedProxyID, ProbeIntervalSeconds: int(c.interval() / time.Second), MaxAttempts: c.attempts(), RetryIntervalSeconds: int(c.retryInterval() / time.Second), Revision: c.Generation}
 	v.TargetLength = c.targetLength()
+	v.WatchdogMode = ticketWatchdogMode(c.WatchdogMode)
+	for _, account := range c.Accounts {
+		if account.Mode != "off" && account.ProxyCipher != "" {
+			v.AccountProxyConfigured = true
+			break
+		}
+	}
 	v.Models = append([]string(nil), c.models()...)
 	v.DegradedSignalLength = c.DegradedSignalLength
 	for _, p := range c.proxies() {
@@ -250,7 +269,7 @@ func (s *CodexTicketService) updateProxySettings(c *codexTicketConfig, u CodexTi
 	return nil
 }
 func (s *CodexTicketService) encryptHarvestProxy(raw string) (string, error) {
-	if err := validateCodexHarvestProxy(raw); err != nil {
+	if err := validateCodexHarvestProxy(expandTicketProxySession(raw)); err != nil {
 		return "", err
 	}
 	if s.cipher == nil {

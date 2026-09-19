@@ -293,6 +293,9 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 			// 未收到 HTTP 响应时交给外层切换账号，持久故障仍由统一处理器临时摘除。
 			return nil, s.handleOpenAIUpstreamTransportError(ctx, c, account, err, true)
 		}
+		if tickets := s.codexTickets.Load(); tickets != nil {
+			tickets.ObserveResponse(upstreamReq, resp)
+		}
 		if resp.StatusCode >= 400 {
 			// Peek only to identify an invalid task. Restore the body so the existing
 			// passthrough error handling sees the same response after recovery fails.
@@ -624,7 +627,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 	setOpenAICodexRoutingHintFromBody(req.Header, account, body)
 	logOpenAIRoutingDiagnosticsFromBody(ctx, account, "http_passthrough", req.Header, body, "not_applicable")
 	if tickets := s.codexTickets.Load(); tickets != nil {
-		if err := tickets.Apply(ctx, account, gjson.GetBytes(body, "model").String(), req.Header); err != nil {
+		if err := tickets.ApplyRequest(ctx, account, gjson.GetBytes(body, "model").String(), req); err != nil {
 			return nil, err
 		}
 	}

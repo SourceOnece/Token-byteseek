@@ -53,6 +53,20 @@ func (r *settingRepository) Set(ctx context.Context, key, value string) error {
 		Exec(ctx)
 }
 
+// 票据全局与账号覆盖共享一个设置对象，原子比较旧值后写入，避免多实例丢更新。
+func (r *settingRepository) CompareAndSwapTicketSettings(ctx context.Context, expected *string, value string) (bool, error) {
+	const key = "codex_ticket_runtime"
+	if expected == nil {
+		_, err := r.client.Setting.Create().SetKey(key).SetValue(value).SetUpdatedAt(time.Now()).Save(ctx)
+		if ent.IsConstraintError(err) {
+			return false, nil
+		}
+		return err == nil, err
+	}
+	n, err := r.client.Setting.Update().Where(setting.KeyEQ(key), setting.ValueEQ(*expected)).SetValue(value).SetUpdatedAt(time.Now()).Save(ctx)
+	return n == 1, err
+}
+
 func (r *settingRepository) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
 	if len(keys) == 0 {
 		return map[string]string{}, nil

@@ -69,9 +69,10 @@ func (e *openAIWSDialError) Unwrap() error {
 }
 
 type openAIWSAcquireRequest struct {
-	Account *Account
-	WSURL   string
-	Headers http.Header
+	ticketReceipt *codexTicketReceipt
+	Account       *Account
+	WSURL         string
+	Headers       http.Header
 	// HeadersFactory 在实际拨号前生成认证头，避免缓存或预热复用 Agent Assertion。
 	HeadersFactory  func(context.Context, http.Header) (http.Header, error)
 	ProxyURL        string
@@ -283,8 +284,10 @@ func (l *openAIWSConnLease) Release() {
 }
 
 type openAIWSConn struct {
-	id string
-	ws openAIWSClientConn
+	// 收据属于物理握手，复用连接不能借用新Acquire请求的票据身份。
+	ticketReceipt *codexTicketReceipt
+	id            string
+	ws            openAIWSClientConn
 
 	handshakeHeaders       http.Header
 	handshakeCompatibility openAIWSHandshakeCompatibilityKey
@@ -2230,6 +2233,8 @@ func (p *openAIWSConnPool) dialConn(ctx context.Context, req openAIWSAcquireRequ
 	}
 	id := p.nextConnID(req.Account.ID)
 	pooledConn := newOpenAIWSConn(id, req.Account.ID, conn, handshakeHeaders, req.TLSProfile, req.TLSProfileKey)
+	pooledConn.ticketReceipt = req.ticketReceipt.forHeaders(headers)
+	pooledConn.ticketReceipt.observeHeader(handshakeHeaders)
 	accountID := req.Account.ID
 	evict := func() { p.evictConn(accountID, id) }
 	pooledConn.onPeerClosed.Store(&evict)

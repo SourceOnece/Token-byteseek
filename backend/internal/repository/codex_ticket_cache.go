@@ -76,3 +76,19 @@ end
 redis.call('SET',KEYS[1],ARGV[1],'PX',ARGV[3])
 return 1`, []string{"private:codex-ticket:v1:latest:" + key}, value, finishedUS, ttl.Milliseconds()).Err()
 }
+
+// 同一Lua中比较本次使用的密文、去重信号和可选废票；迟到旧响应不能删掉新票。
+func (c *codexTicketCache) ObserveTicket(ctx context.Context, key, expected, reason string, revoke bool, at time.Time) (bool, error) {
+	return c.client.Eval(ctx, `
+if redis.call('GET',KEYS[1])~=ARGV[1] then return 0 end
+local previous=redis.call('GET',KEYS[2])
+local state={count=0}
+if previous then local ok,v=pcall(cjson.decode,previous); if ok and type(v)=='table' then state=v end end
+local signature=redis.sha1hex(ARGV[1])..':'..ARGV[2]
+if state.signature==signature then return 0 end
+state.count=tonumber(state.count or 0)+1
+state.reason=ARGV[2]; state.checked_at=ARGV[4]; state.signature=signature; state.action='observed'
+if ARGV[3]=='1' then redis.call('DEL',KEYS[1]); redis.call('DEL',KEYS[3]); state.action='revoked' end
+redis.call('SET',KEYS[2],cjson.encode(state),'EX',86400)
+return 1`, []string{"private:codex-ticket:v1:" + key, "private:codex-ticket:v1:watchdog:" + key, "private:codex-ticket-lease:v1:probe:" + key}, expected, reason, map[bool]string{false: "0", true: "1"}[revoke], at.Format(time.RFC3339Nano)).Bool()
+}

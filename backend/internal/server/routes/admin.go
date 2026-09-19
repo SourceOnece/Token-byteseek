@@ -371,6 +371,8 @@ func registerAccountRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAu
 		accounts.POST("/:id/test", h.Admin.Account.Test)
 		accounts.POST("/codex-quality-test", h.Admin.Account.BatchCodexQualityTest)
 		accounts.POST("/codex-ticket-collect", h.Admin.Setting.BatchCodexTicketCollect)
+		accounts.GET("/:id/codex-ticket-settings", h.Admin.Setting.GetCodexTicketAccountSettings)
+		accounts.PUT("/codex-ticket-settings", h.Admin.Setting.UpdateCodexTicketAccountSettings)
 		accounts.GET("/codex-ticket-runs", h.Admin.Setting.ListCodexTicketRuns)
 		accounts.GET("/codex-ticket-runs/:id", h.Admin.Setting.CodexTicketRunDetail)
 		accounts.DELETE("/codex-ticket-runs", h.Admin.Setting.DeleteCodexTicketHistory)

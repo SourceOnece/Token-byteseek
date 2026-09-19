@@ -25,8 +25,7 @@ func (s *CodexTicketService) recordLatest(ctx context.Context, cfg *codexTicketC
 	if s.cache == nil || key == "" || cfg == nil {
 		return
 	}
-	current := s.enabledConfig()
-	if current == nil || current.Generation != cfg.Generation {
+	if !s.ticketConfigCurrent(cfg) {
 		return
 	}
 	checked := e.FinishedAt

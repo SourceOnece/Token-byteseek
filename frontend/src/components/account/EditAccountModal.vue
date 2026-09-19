@@ -2806,6 +2806,7 @@
         data-tour="account-form-groups"
       />
 
+      <CodexTicketAccountSettings v-if="show && account?.platform === 'openai' && account?.type === 'oauth' && !isSparkShadow && account.credentials?.auth_mode !== 'agentIdentity'" :ids="[account.id]" @saved="emit('updated', account)" />
     </form>
 
     <template #footer>
@@ -2860,6 +2861,7 @@
 </template>
 
 <script setup lang="ts">
+import CodexTicketAccountSettings from '@/components/admin/account/CodexTicketAccountSettings.vue'
 import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

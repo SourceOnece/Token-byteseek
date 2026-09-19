@@ -82,6 +82,16 @@ func TestRedactAuditBody_CodexHarvestProxyList(t *testing.T) {
 	}
 }
 
+// 账号批量编辑的嵌套patch同样整字段脱敏，不留下动态代理用户名/地址。
+func TestRedactAuditBody_CodexAccountProxyPatch(t *testing.T) {
+	out := RedactAuditBody([]byte(`{"account_ids":[1,2],"patch":{"harvest_proxy_url":"socks5h://private-user:secret-canary@proxy.invalid:1080","mode":"on"}}`), "application/json")
+	for _, v := range []string{"private-user", "secret-canary", "proxy.invalid"} {
+		if strings.Contains(out, v) {
+			t.Fatalf("账号代理未脱敏")
+		}
+	}
+}
+
 // 裸键 "session"（Ollama Cloud 会话保存的请求体字段）值整体就是浏览器 Cookie 明文，
 // 必须命中键级脱敏；session_id 等运行态标识不受影响，保留以便追责。
 func TestRedactAuditBody_BareSessionKeyRedacted(t *testing.T) {

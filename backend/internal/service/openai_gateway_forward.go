@@ -1061,6 +1061,9 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		if headerGuard != nil {
 			resp.Body = &openAIRequestContextReadCloser{ReadCloser: resp.Body, cleanup: headerGuard.close}
 		}
+		if tickets := s.codexTickets.Load(); tickets != nil {
+			tickets.ObserveResponse(upstreamReq, resp)
+		}
 
 		if resp.StatusCode >= 400 {
 			respBody := s.readUpstreamErrorBody(resp)
@@ -1472,7 +1475,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequest(ctx context.Context, c *gin.
 	setOpenAICodexRoutingHintFromBody(req.Header, account, body)
 	logOpenAIRoutingDiagnosticsFromBody(ctx, account, "http", req.Header, body, "not_applicable")
 	if tickets := s.codexTickets.Load(); tickets != nil {
-		if err := tickets.Apply(ctx, account, gjson.GetBytes(body, "model").String(), req.Header); err != nil {
+		if err := tickets.ApplyRequest(ctx, account, gjson.GetBytes(body, "model").String(), req); err != nil {
 			return nil, err
 		}
 	}

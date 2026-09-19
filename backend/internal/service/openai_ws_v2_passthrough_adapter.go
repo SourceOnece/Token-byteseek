@@ -959,7 +959,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 		turnState = strings.TrimSpace(c.GetHeader(openAIWSTurnStateHeader))
 		turnMetadata = strings.TrimSpace(c.GetHeader(openAIWSTurnMetadataHeader))
 	}
-	headers, _, buildHdrErr := s.buildOpenAIWSHeaders(
+	headers, ticketSession, buildHdrErr := s.buildOpenAIWSHeaders(
 		ctx,
 		c,
 		account,
@@ -998,6 +998,10 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 		dialCtx, cancelDial := context.WithTimeout(ctx, s.openAIWSDialTimeout())
 		upstreamConn, statusCode, handshakeHeaders, err = dialer.Dial(dialCtx, wsURL, headers, proxyURL, s.resolveOpenAITLSProfile(account, tlsRouterMatch))
 		cancelDial()
+		if err == nil {
+			ticketSession.ticketReceipt = ticketSession.ticketReceipt.forHeaders(headers)
+			ticketSession.ticketReceipt.observeHeader(handshakeHeaders)
+		}
 		if err == nil {
 			break
 		}
@@ -1093,6 +1097,7 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 		interTurnIdleTimeout: s.openAIWSIngressInterTurnIdleTimeout(),
 		interTurnStarted:     make(chan struct{}, 1),
 		restoreResponseModel: func(payload []byte) []byte {
+			ticketSession.ticketReceipt.observeJSON(payload, "", loadCapturedModel(&capturedSessionUpstreamModel))
 			eventType := strings.TrimSpace(gjson.GetBytes(payload, "type").String())
 			if !openAIWSEventMayContainModel(eventType) {
 				return payload

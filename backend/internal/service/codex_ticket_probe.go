@@ -38,7 +38,7 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 	}
 	d := *source
 	d.ProxyName = ""
-	if d.ProxyID != "legacy" {
+	if d.ProxyID != "legacy" && d.ProxyID != "account" {
 		if _, err := uuid.Parse(d.ProxyID); err != nil {
 			d.ProxyID = ""
 		}
@@ -83,6 +83,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		}
 	}()
 	proxyURL, err := s.cipher.Decrypt(proxy.Cipher)
+	proxyURL = expandTicketProxySession(proxyURL)
 	if err != nil || validateCodexHarvestProxy(proxyURL) != nil {
 		state, reason = "failed", "proxy_config"
 		s.recordObservation(ctx, key, "failed", "proxy_config", nil, diagnostic)
@@ -90,7 +91,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	}
 	// 重试前重读凭据与资格；手动仅忽略调度开关，自动仍在停调后停止。
 	fresh, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
-	if err != nil || !codexTicketCollectionAllowed(ctx, fresh) || !fresh.IsModelSupported(model) || fresh.GetOpenAIAccessToken() != token || codexTicketKey(cfg, fresh, model, token) != key {
+	if err != nil || !s.ticketConfigCurrent(cfg) || !codexTicketCollectionAllowed(ctx, fresh) || !fresh.IsModelSupported(model) || fresh.GetOpenAIAccessToken() != token || codexTicketKey(cfg, fresh, model, token) != key {
 		return false, false
 	}
 	probeCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
@@ -184,9 +185,8 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		}
 		return false, ctx.Err() == nil
 	}
-	latest := s.enabledConfig()
 	reason = "cancelled"
-	if latest == nil || latest.Generation != cfg.Generation {
+	if !s.ticketConfigCurrent(cfg) {
 		return false, false
 	}
 	final, err := s.gateway.accountRepo.GetByID(ctx, account.ID)

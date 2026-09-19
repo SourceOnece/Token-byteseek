@@ -2,6 +2,21 @@ export default {
   // 手动采集仅展示票据，不与质量测试标签混用。
 // Accounts Management
     accounts: {
+      ticketPolicy: {
+        title: '账号票据', selected: '已选 {count} 个账号', hint: '账号优先 · 未设置继承网关 · 总开关仍生效',
+        mode: '票据开关', guard: '异常守护', proxy: '修改采集代理', proxyRequired: '请填写代理，或选择恢复网关代理。',
+        proxyHint: '仅用于采集，不改业务代理。认证信息支持 {sid} / {random} 会话占位符。',
+        saveHint: '独立保存。修改后仅这些账号的旧票失效；其他账号不变。批量仅修改勾选项。',
+        save: '保存票据配置', saved: '票据配置已保存', guardRisk: '自动重采会废弃本次异常票据，恢复前该模型可能暂不可用；不重放回答。',
+        source: { account: '账号代理', gateway: '网关代理' },
+        modes: { inherit: '继承网关', on: '开启', off: '关闭' },
+        proxyActions: { custom: '设置账号代理', inherit: '恢复网关代理' },
+        guards: { inherit: '继承网关', off: '关闭观察', observe: '仅观察记录', recover_length: '长度信号 → 重采', recover_model: '模型不符 → 重采', recover: '任一异常 → 重采' },
+        watchdog: '守护状态', count: '异常次数', latest: '最近异常', noSignal: '暂无异常记录',
+        reasons: { length_signal: '命中长度信号', model_mismatch: '响应模型不符' },
+        actions: { observed: '已记录', revoked: '已废弃当次票据' },
+        precision: '仅观察已注入票据的成功响应；长度信号沿用下方配置，0 为关闭。模型名称按最终出站值比较，不代表能力评测。'
+      },
       ticketCollect: {
         clearHistory: '清空已结束日志', deleteActive: '采集中，暂不可删', deleted: '已删除 {count} 条，不可撤销',
         deleteHint: '直接删除，不可撤销。清空含全部已结束/失联批次；保留采集中批次、账号、票据及检测结果。',
@@ -9,7 +24,7 @@ export default {
         ipStatus: { unavailable: 'IP 不可用 · 原因未记录', timeout: 'IP 查询超时', network: 'IP 网络/代理异常', tls: 'IP 证书异常', http_error: 'IP 查询被拒绝', invalid_response: 'IP 响应无效', proxy_config: 'IP 代理配置无效', cancelled: 'IP 查询已取消', not_attempted: '未查 IP · 无采集响应' },
         previous: '上一页', next: '下一页',
         title: '批量采集票据', collectTab: '手动采集', history: '采集历史',
-        hint: '已选 {count} 个账号 · 沿用网关配置',
+        hint: '已选 {count} 个账号 · 账号配置优先，未设置继承网关',
         eligibilityHint: '停调可测，其他资格与限流仍生效。不改账号开关和质量标签；失败保留有效旧票。',
         disabled: '请先在网关服务 → OpenAI 开启票据采集并配置代理。',
         confirm: '确认采集及 IP 查询会消耗上游额度与代理流量',

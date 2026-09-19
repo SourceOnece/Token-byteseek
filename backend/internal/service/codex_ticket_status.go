@@ -17,22 +17,24 @@ type codexTicketObservation struct {
 }
 
 type CodexTicketModelStatus struct {
-	Latest               *CodexTicketLatest     `json:"latest,omitempty"`
-	Model                string                 `json:"model"`
-	TargetLength         int                    `json:"target_length"`
-	DegradedSignalLength int                    `json:"degraded_signal_length"`
-	Blocked              bool                   `json:"blocked"`
-	State                string                 `json:"state"`
-	Reason               string                 `json:"reason,omitempty"`
-	CheckedAt            *time.Time             `json:"checked_at,omitempty"`
-	ExpiresAt            *time.Time             `json:"expires_at,omitempty"`
-	Diagnostic           *CodexTicketDiagnostic `json:"diagnostic,omitempty"`
+	Watchdog             *CodexTicketWatchdogStatus `json:"watchdog,omitempty"`
+	Latest               *CodexTicketLatest         `json:"latest,omitempty"`
+	Model                string                     `json:"model"`
+	TargetLength         int                        `json:"target_length"`
+	DegradedSignalLength int                        `json:"degraded_signal_length"`
+	Blocked              bool                       `json:"blocked"`
+	State                string                     `json:"state"`
+	Reason               string                     `json:"reason,omitempty"`
+	CheckedAt            *time.Time                 `json:"checked_at,omitempty"`
+	ExpiresAt            *time.Time                 `json:"expires_at,omitempty"`
+	Diagnostic           *CodexTicketDiagnostic     `json:"diagnostic,omitempty"`
 }
 type CodexTicketAccountStatus struct {
-	AccountID        int64                    `json:"account_id"`
-	Eligible         bool                     `json:"eligible"`
-	CollectionPaused bool                     `json:"collection_paused"`
-	Models           []CodexTicketModelStatus `json:"models"`
+	Settings         *CodexTicketAccountSettings `json:"settings,omitempty"`
+	AccountID        int64                       `json:"account_id"`
+	Eligible         bool                        `json:"eligible"`
+	CollectionPaused bool                        `json:"collection_paused"`
+	Models           []CodexTicketModelStatus    `json:"models"`
 }
 type CodexTicketStatusResponse struct {
 	Models     []string                   `json:"models"`
@@ -101,9 +103,13 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 			if !codexTicketAccount(a) {
 				continue
 			}
+			cfg := ticketConfigForAccount(cfg, a.ID)
+			if !cfg.Enabled {
+				continue
+			}
 			for _, model := range cfg.models() {
 				key := codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken())
-				keys = append(keys, key, "status:"+key, "latest:"+key)
+				keys = append(keys, key, "status:"+key, "latest:"+key, "watchdog:"+key)
 			}
 		}
 	}
@@ -123,6 +129,9 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 		}
 		row := CodexTicketAccountStatus{AccountID: id, Eligible: codexTicketAccount(a), Models: []CodexTicketModelStatus{}}
 		if row.Eligible {
+			settings := ticketAccountSettingsView(cfg, id)
+			row.Settings = &settings
+			cfg := ticketConfigForAccount(cfg, id)
 			row.CollectionPaused = !a.IsSchedulable()
 			for _, model := range cfg.models() {
 				status := CodexTicketModelStatus{Model: model, State: "pending"}
@@ -136,6 +145,7 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 				default:
 					key := codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken())
 					status = s.ticketModelStatus(model, values[key], values["status:"+key], now, cfg.targetLength())
+					status.Watchdog = safeTicketWatchdog(values["watchdog:"+key], cfg.WatchdogMode)
 					var latest CodexTicketLatest
 					if json.Unmarshal([]byte(values["latest:"+key]), &latest) == nil {
 						status.Latest = safeTicketLatest(latest)

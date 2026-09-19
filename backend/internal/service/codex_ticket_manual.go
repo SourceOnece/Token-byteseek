@@ -136,7 +136,7 @@ func (s *CodexTicketService) PrepareManualCollection(ctx context.Context, req Co
 	if err != nil {
 		return nil, err
 	}
-	if !cfg.Enabled || len(cfg.proxies()) == 0 {
+	if !cfg.Enabled || !cfg.hasCollectionProxy() {
 		return nil, errors.New("请先在网关服务 OpenAI 中开启票据采集并配置代理")
 	}
 	if req.Revision == "" || req.Revision != cfg.Generation {
@@ -326,11 +326,12 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 	ctx = context.WithValue(ctx, codexTicketManualContextKey{}, true)
 	started := time.Now().UTC()
 	latestKey := ""
-	result := CodexTicketAttempt{Kind: "result", AccountID: id, Model: model, TargetLength: m.cfg.targetLength(), Status: "skipped", Reason: "ineligible", StartedAt: started}
+	cfg := ticketConfigForAccount(m.cfg, id)
+	result := CodexTicketAttempt{Kind: "result", AccountID: id, Model: model, TargetLength: cfg.targetLength(), Status: "skipped", Reason: "ineligible", StartedAt: started}
 	defer func() {
 		result.FinishedAt = time.Now().UTC()
 		result.DurationMS = time.Since(started).Milliseconds()
-		m.s.recordLatest(ctx, m.cfg, latestKey, "manual", result)
+		m.s.recordLatest(ctx, cfg, latestKey, "manual", result)
 		record(result)
 	}()
 	if ctx.Err() != nil {
@@ -343,14 +344,14 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		return
 	}
 	if codexTicketAccount(a) {
-		latestKey = codexTicketKey(m.cfg, a, model, a.GetOpenAIAccessToken())
+		latestKey = codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken())
 	}
 	result.AccountName = a.Name
 	result.Email = firstStringValue(a.Credentials, "email")
 	if result.Email == "" {
 		result.Email = firstStringValue(a.Extra, "email", "email_address")
 	}
-	if !codexTicketCollectionAllowed(ctx, a) || !a.IsModelSupported(model) {
+	if !cfg.Enabled || !m.s.ticketConfigCurrent(cfg) || !codexTicketCollectionAllowed(ctx, a) || !a.IsModelSupported(model) {
 		return
 	}
 	token, _, err := m.s.gateway.GetAccessToken(ctx, a)
@@ -359,7 +360,7 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		result.Reason = "credential"
 		return
 	}
-	key := codexTicketKey(m.cfg, a, model, token)
+	key := codexTicketKey(cfg, a, model, token)
 	latestKey = key
 	previousRaw, err := m.s.cache.Get(ctx, "status:"+key)
 	if err != nil {
@@ -380,27 +381,31 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		previousID = previous.Diagnostic.ProxyID
 	}
 	failed := previous.State == "failed" || previous.State == "missing"
-	for attempt := 1; attempt <= m.cfg.attempts(); attempt++ {
-		latest := m.s.enabledConfig()
-		if ctx.Err() != nil || latest == nil || latest.Generation != m.cfg.Generation {
+	for attempt := 1; attempt <= cfg.attempts(); attempt++ {
+		if ctx.Err() != nil || !m.s.ticketConfigCurrent(cfg) {
 			result.Status = "cancelled"
 			result.Reason = "cancelled"
 			return
 		}
-		proxy, ok := selectCodexTicketProxy(m.cfg, previousID, failed)
+		proxy, ok := selectCodexTicketProxy(cfg, previousID, failed)
 		if !ok {
 			result.Status = "failed"
 			result.Reason = "proxy_config"
 			return
 		}
+		proxy, err = m.s.ticketAttemptProxy(proxy)
+		if err != nil {
+			result.Status, result.Reason = "failed", "proxy_config"
+			return
+		}
 		var event CodexTicketAttempt
-		ready, retry := m.s.probeAttempt(ctx, m.cfg, a, model, token, key, proxy, attempt, func(e CodexTicketAttempt) { event = e })
+		ready, retry := m.s.probeAttempt(ctx, cfg, a, model, token, key, proxy, attempt, func(e CodexTicketAttempt) { event = e })
 		event.Kind = "attempt"
 		event.AccountID = id
 		event.AccountName = result.AccountName
 		event.Email = result.Email
 		event.Model = model
-		event.TargetLength = m.cfg.targetLength()
+		event.TargetLength = cfg.targetLength()
 		if event.Diagnostic != nil {
 			event.Diagnostic.ProxyName = proxy.Name
 		}
@@ -416,11 +421,11 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		result.IPCheckedAt = event.IPCheckedAt
 		result.IPSource = event.IPSource
 		result.IPHTTPStatus = event.IPHTTPStatus
-		if ready || !retry || attempt == m.cfg.attempts() {
+		if ready || !retry || attempt == cfg.attempts() {
 			return
 		}
 		previousID, failed = proxy.ID, true
-		timer := time.NewTimer(m.cfg.retryInterval())
+		timer := time.NewTimer(cfg.retryInterval())
 		select {
 		case <-ctx.Done():
 			timer.Stop()

@@ -1649,6 +1649,8 @@
           />
         </div>
       </div>
+      <!-- 票据独立保存后保持弹窗，避免丢失其他尚未提交的批量编辑草稿。 -->
+      <CodexTicketAccountSettings v-if="show && targetMode === 'selected' && targetSelectedPlatforms.length === 1 && targetSelectedPlatforms[0] === 'openai' && targetSelectedTypes.length === 1 && targetSelectedTypes[0] === 'oauth'" :ids="accountIds" bulk />
     </form>
 
     <template #footer>
@@ -1703,6 +1705,7 @@
 </template>
 
 <script setup lang="ts">
+import CodexTicketAccountSettings from '@/components/admin/account/CodexTicketAccountSettings.vue'
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

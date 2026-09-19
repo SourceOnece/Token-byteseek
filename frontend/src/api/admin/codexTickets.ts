@@ -3,6 +3,7 @@ import { ADMIN_UI_REQUEST_HEADER } from '../adminUIRequest'
 
 export type TicketState = 'ready' | 'pending' | 'collecting' | 'missing' | 'expired' | 'failed' | 'disabled' | 'unsupported' | 'unavailable' | 'paused'
 export interface TicketModelStatus {
+	watchdog?: { mode: TicketWatchdogMode; count: number; reason?: 'length_signal' | 'model_mismatch'; action?: 'observed' | 'revoked'; checked_at?: string }
   model: string
   state: TicketState
   blocked?: boolean
@@ -25,6 +26,8 @@ export interface TicketLatest {
 }
 
 export interface TicketSettings {
+	account_proxy_configured?: boolean
+	watchdog_mode?: TicketWatchdogMode
   models?: string[]; degraded_signal_length?: number
   enabled: boolean; proxy_configured: boolean; target_length: number; revision: string
   selection_mode: 'fixed' | 'rotate'; fixed_proxy_id: string; max_attempts: number
@@ -85,10 +88,27 @@ export async function runTicketCollection(ids: number[], revision: string, signa
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock() }
 }
 export interface TicketAccountStatus {
+	settings?: TicketAccountSettings
   account_id: number
   eligible: boolean
   collection_paused: boolean
   models: TicketModelStatus[]
+}
+
+export type TicketWatchdogMode = 'off' | 'observe' | 'recover_length' | 'recover_model' | 'recover'
+export interface TicketAccountSettings {
+  account_id: number; mode: 'inherit' | 'on' | 'off'; effective_enabled: boolean
+  proxy_configured: boolean; proxy_source: 'account' | 'gateway'
+  watchdog_mode: TicketWatchdogMode | 'inherit'; effective_watchdog_mode: TicketWatchdogMode; revision: string
+}
+export interface TicketAccountPatch {
+  mode?: TicketAccountSettings['mode']; harvest_proxy_url?: string; watchdog_mode?: TicketAccountSettings['watchdog_mode']
+}
+export const ticketAccountAPI = {
+  async get(id: number, signal?: AbortSignal) { return (await apiClient.get<TicketAccountSettings>(`/admin/accounts/${id}/codex-ticket-settings`, { signal })).data },
+  async update(ids: number[], patch: TicketAccountPatch, revision?: string) {
+    return (await apiClient.put<TicketAccountSettings[]>('/admin/accounts/codex-ticket-settings', { account_ids: ids, patch, revision })).data
+  }
 }
 export interface TicketStatusResponse {
   models?: string[]

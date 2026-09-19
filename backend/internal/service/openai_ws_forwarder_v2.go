@@ -211,9 +211,10 @@ func (s *OpenAIGatewayService) forwardOpenAIWSV2(
 	tlsProfile, tlsProfileKey := s.resolveOpenAIWSTLSProfile(account, tlsRouterMatch)
 
 	lease, err := s.getOpenAIWSConnPool().Acquire(acquireCtx, openAIWSAcquireRequest{
-		Account: account,
-		WSURL:   wsURL,
-		Headers: wsHeaders,
+		ticketReceipt: sessionResolution.ticketReceipt,
+		Account:       account,
+		WSURL:         wsURL,
+		Headers:       wsHeaders,
 		HeadersFactory: func(factoryCtx context.Context, headers http.Header) (http.Header, error) {
 			return s.refreshOpenAIAgentIdentityHeaders(factoryCtx, account, headers)
 		},
@@ -576,6 +577,9 @@ readLoop:
 		}
 		markClientRequestCanceled()
 		// 拼接文档修复后仍不是完整 JSON 的事件不得进入解析或下游输出链路。
+		if readErr == nil && lease.conn != nil {
+			lease.conn.ticketReceipt.observeJSON(message, "", mappedModel)
+		}
 		if readErr == nil && !json.Valid(message) {
 			eventType, _, _ := parseOpenAIWSEventEnvelope(message)
 			if eventType == "" {

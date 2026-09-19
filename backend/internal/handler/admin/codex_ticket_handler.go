@@ -38,6 +38,42 @@ func (h *SettingHandler) GetCodexTicketStatus(c *gin.Context) {
 
 // 独立管理员设置入口，不扩散到公开设置或整页设置响应，代理只写不回显。
 func (h *SettingHandler) SetCodexTicketService(s *service.CodexTicketService) { h.codexTickets = s }
+
+// 独立接口避免动态代理混入通用账号编辑、导出与鉴权凭据。
+func (h *SettingHandler) GetCodexTicketAccountSettings(c *gin.Context) {
+	if h.codexTickets == nil {
+		response.InternalError(c, "票据服务不可用")
+		return
+	}
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "账号ID无效")
+		return
+	}
+	value, err := h.codexTickets.AccountSettings(c.Request.Context(), id)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.Success(c, value)
+}
+func (h *SettingHandler) UpdateCodexTicketAccountSettings(c *gin.Context) {
+	if h.codexTickets == nil {
+		response.InternalError(c, "票据服务不可用")
+		return
+	}
+	var input service.CodexTicketAccountsUpdate
+	if c.ShouldBindJSON(&input) != nil {
+		response.BadRequest(c, "无效的账号票据配置")
+		return
+	}
+	value, err := h.codexTickets.UpdateAccountSettings(c.Request.Context(), input)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.Success(c, value)
+}
 func (h *SettingHandler) GetCodexTicketSettings(c *gin.Context) {
 	if h.codexTickets == nil {
 		response.InternalError(c, "票据服务不可用")

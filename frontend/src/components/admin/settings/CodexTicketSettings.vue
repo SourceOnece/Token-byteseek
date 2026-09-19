@@ -26,6 +26,13 @@
     </div>
     <p class="input-hint">{{ t(mode === 'rotate' ? 'admin.settings.codexTicket.rotateHint' : 'admin.settings.codexTicket.fixedHint') }}</p>
     <p class="input-hint">{{ t('admin.settings.codexTicket.ipHint') }}</p>
+    <p class="input-hint">{{ t('admin.accounts.ticketPolicy.proxyHint', { sid: '{sid}', random: '{random}' }) }}</p>
+    <div class="space-y-3 border-y-2 border-[color:var(--bh-ink)] py-5">
+      <label for="ticket-watchdog" class="input-label font-bold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.ticketPolicy.guard') }}</label>
+      <Select id="ticket-watchdog" v-model="watchdogMode" :options="guardOptions" :disabled="locked" />
+      <p class="input-hint">{{ t('admin.accounts.ticketPolicy.precision') }}</p>
+      <p v-if="watchdogMode.startsWith('recover')" class="border-l-4 border-bh-yellow pl-3 text-sm font-semibold text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketPolicy.guardRisk') }}</p>
+    </div>
     <div class="space-y-4">
       <div v-for="(proxy, index) in proxies" :key="proxy.id" class="border-2 border-[color:var(--bh-ink)] p-4 sm:p-5" data-testid="ticket-proxy-row">
         <div class="mb-3 flex items-center justify-between gap-3">
@@ -78,6 +85,8 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 
 interface ProxyRow { id: string; name: string; configured: boolean; url: string }
 interface Settings {
+	account_proxy_configured?: boolean
+	watchdog_mode?: string
   models?: string[]; degraded_signal_length?: number
   enabled: boolean; proxy_configured: boolean; proxies: Omit<ProxyRow, 'url'>[]
   selection_mode: 'fixed' | 'rotate'; fixed_proxy_id: string; revision: string
@@ -87,6 +96,9 @@ const { t } = useI18n()
 const app = useAppStore()
 const enabled = ref(false), proxies = ref<ProxyRow[]>([]), fixedID = ref(''), revision = ref('')
 const mode = ref<'fixed' | 'rotate'>('fixed')
+const watchdogMode = ref('observe')
+const accountProxyConfigured = ref(false)
+const guardOptions = computed(() => ['off', 'observe', 'recover_length', 'recover_model', 'recover'].map(value => ({ value, label: t(`admin.accounts.ticketPolicy.guards.${value}`) })))
 const attempts = ref(3), retryInterval = ref(1), interval = ref(6), removing = ref('')
 const targetLength = ref(292)
 const signalLength = ref(0), modelText = ref('gpt-6-astra\ngpt-5.6-sol')
@@ -119,6 +131,8 @@ function removeProxy() {
   removing.value = ''
 }
 function apply(data: Settings) {
+	accountProxyConfigured.value = !!data.account_proxy_configured
+	watchdogMode.value = data.watchdog_mode || 'observe'
   if (!Array.isArray(data.proxies) || !['fixed', 'rotate'].includes(data.selection_mode)) throw new Error(t('admin.settings.codexTicket.versionMismatch'))
   enabled.value = data.enabled; mode.value = data.selection_mode; revision.value = data.revision
   proxies.value = data.proxies.map(p => ({ id: p.id, name: p.name, configured: p.configured, url: '' }))
@@ -144,13 +158,13 @@ async function save() {
     error.value = t('admin.settings.codexTicket.invalidModelsSignal'); return
   }
   const validNumber = (v: number, lo: number, hi: number) => Number.isInteger(v) && v >= lo && v <= hi
-  if ((enabled.value && !proxies.value.length) || proxies.value.some(p => !p.name.trim() || (!p.configured && !p.url.trim())) ||
+  if ((enabled.value && !proxies.value.length && !accountProxyConfigured.value) || proxies.value.some(p => !p.name.trim() || (!p.configured && !p.url.trim())) ||
     !Number.isSafeInteger(attempts.value) || attempts.value < 1 || !validNumber(targetLength.value, 6, 8192) || !validNumber(retryInterval.value, 1, 30) || !validNumber(interval.value, 6, 3600)) {
     error.value = t('admin.settings.codexTicket.invalidForm'); return
   }
   saving.value = true; error.value = ''
   try {
-    const payload = { enabled: enabled.value, revision: revision.value, selection_mode: mode.value, fixed_proxy_id: fixedID.value,
+    const payload = { enabled: enabled.value, watchdog_mode: watchdogMode.value, revision: revision.value, selection_mode: mode.value, fixed_proxy_id: fixedID.value,
       max_attempts: attempts.value, target_length: targetLength.value, models, degraded_signal_length: signalLength.value, retry_interval_seconds: retryInterval.value, probe_interval_seconds: interval.value,
       proxies: proxies.value.map(p => ({ id: p.id, name: p.name.trim(), harvest_proxy_url: p.url.trim() })) }
     apply((await apiClient.put<Settings>('/admin/settings/codex-ticket', payload)).data)
