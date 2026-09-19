@@ -18,6 +18,7 @@ import (
 
 // 诊断只记录数值、固定枚举和管理员自定义名称，绝不包含响应正文/票据/代理地址。
 type CodexTicketDiagnostic struct {
+	Scheduling     string     `json:"scheduling,omitempty"`
 	DegradedSignal bool       `json:"degraded_signal,omitempty"`
 	ProxyID        string     `json:"proxy_id"`
 	ProxyName      string     `json:"proxy_name"`
@@ -38,6 +39,11 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 		return nil
 	}
 	d := *source
+	switch d.Scheduling {
+	case "enabled", "disabled", "already_on", "already_off", "stale", "failed":
+	default:
+		d.Scheduling = ""
+	}
 	d.ProxyName = ""
 	if d.ProxyID != "legacy" && d.ProxyID != "account" && d.ProxyID != "provider" {
 		if _, err := uuid.Parse(d.ProxyID); err != nil {
@@ -202,8 +208,8 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	diagnostic.HTTPStatus = resp.StatusCode
 	diagnostic.HeaderPresent = len(resp.Header.Values(openAICodexTurnStateHeader)) > 0
 	diagnostic.HeaderLength = len(ticket.State)
-	// 只记录管理员配置的长度信号，不改变合格票据判定、调度或质量检测结果。
-	diagnostic.DegradedSignal = cfg.DegradedSignalLength > 0 && len(ticket.State) == cfg.DegradedSignalLength
+	// 只接受原有安全格式的STATE；其它长度、HTTP错误或损坏头不产生调度结论。
+	diagnostic.DegradedSignal = resp.StatusCode == http.StatusOK && cfg.DegradedSignalLength > 0 && validCodexTicket(ticket, cfg.DegradedSignalLength)
 	diagnostic.PrefixValid = strings.HasPrefix(ticket.State, "gAAAAA")
 	switch strings.ToLower(strings.TrimSpace(strings.Split(resp.Header.Get("Content-Type"), ";")[0])) {
 	case "text/event-stream":
@@ -215,7 +221,16 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	default:
 		diagnostic.ResponseKind = "other"
 	}
-	if resp.StatusCode != http.StatusOK || !validCodexTicket(ticket, cfg.targetLength()) {
+	if diagnostic.DegradedSignal {
+		final, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
+		if err == nil && codexTicketCollectionAllowed(ctx, final) && final.IsModelSupported(model) && final.GetOpenAIAccessToken() == token && codexTicketKey(cfg, final, model, token) == key {
+			diagnostic.Scheduling = s.applyTicketScheduling(ctx, cfg, final, false)
+		} else {
+			diagnostic.Scheduling = "stale"
+		}
+	}
+	// 历史配置两长度相同时，明确异常优先，不能同轮先关再开。
+	if resp.StatusCode != http.StatusOK || diagnostic.DegradedSignal || !validCodexTicket(ticket, cfg.targetLength()) {
 		reason = "upstream"
 		if resp.StatusCode == http.StatusOK {
 			state, reason = "missing", "invalid_ticket"
@@ -255,6 +270,8 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	if s.cache.Set(ctx, key, encrypted, cfg.ticketTTL()) != nil {
 		return false, false
 	}
+	// 手动/自动成功都开调度，必须先存票；调度写失败不谎称成功，也不删除已保存票据。
+	diagnostic.Scheduling = s.applyTicketScheduling(ctx, cfg, final, true)
 	state, reason, expires = "ready", "", &ticket.ExpiresAt
 	return true, false
 }

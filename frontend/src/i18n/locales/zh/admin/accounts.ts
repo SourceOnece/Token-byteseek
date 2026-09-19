@@ -5,7 +5,8 @@ export default {
       ticketWorkbench: {
         perAccount: '按账号规则',
         masterOff: '网关总开关已关闭：可保存配置，但暂不采集或注入票据。',
-        title: '票据采集工作台', accountHint: '规则全部按账号保存。关闭总调度仍可采集；不会自动打开总调度。',
+        title: '票据采集工作台', accountHint: '手动/自动：合格获票 → 开调度；降智长度 → 关调度；其他不变。需保持停用，请关闭本账号采集。',
+        scheduling: { enabled: '合格获票 → 调度已开', disabled: '降智长度 → 调度已关', already_on: '调度保持开启', already_off: '调度保持关闭', stale: '账号已变化 · 调度未改', failed: '调度更新失败' },
         gatewayHint: '这里只管理总开关与默认采集代理；其他规则在账号工作台配置。',
         defaultProxy: '修改默认采集代理', target: '合格长度', attempts: '最多尝试', cache: '缓存时间',
         groups: { validation: '① 目标与尝试', renewal: '② 并发与续采', cooldown: '③ 异常冷却' },
@@ -30,11 +31,11 @@ export default {
         source: { account: '账号代理', gateway: '网关代理' },
         modes: { inherit: '继承网关', on: '开启', off: '关闭' },
         proxyActions: { custom: '设置账号代理', inherit: '恢复网关代理' },
-        guards: { inherit: '继承网关', off: '关闭观察', observe: '仅观察记录', recover_length: '长度信号 → 重采', recover_model: '模型不符 → 重采', recover: '任一异常 → 重采' },
+        guards: { inherit: '继承网关', off: '关闭业务守护', observe: '长度调度 · 不自动重采', recover_length: '长度信号 → 重采', recover_model: '模型不符 → 重采', recover: '任一异常 → 重采' },
         watchdog: '守护状态', count: '异常次数', latest: '最近异常', noSignal: '暂无异常记录',
         reasons: { length_signal: '命中长度信号', model_mismatch: '响应模型不符' },
         actions: { observed: '已记录', revoked: '已废弃当次票据' },
-        precision: '仅观察已注入票据的成功响应；长度信号沿用下方配置，0 为关闭。模型名称按最终出站值比较，不代表能力评测。'
+        precision: '业务成功响应：合格长度开调度，降智长度关调度，其他不变。自动废票重采单独选择；模型不符不直接关闭调度。'
       },
       ticketCollect: {
         clearHistory: '清空已结束日志', deleteActive: '采集中，暂不可删', deleted: '已删除 {count} 条，不可撤销',

@@ -16,6 +16,7 @@ export interface TicketModelStatus {
   checked_at?: string
   expires_at?: string
   diagnostic?: {
+    scheduling?: 'enabled' | 'disabled' | 'already_on' | 'already_off' | 'stale' | 'failed'
     proxy_id: string; proxy_name: string; attempt: number; http_status?: number; degraded_signal?: boolean
     header_length: number; header_present: boolean; prefix_valid: boolean
     response_kind?: string; error_kind?: string; completion_seen?: boolean; retry_not_before?: string

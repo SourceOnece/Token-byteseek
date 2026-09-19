@@ -137,6 +137,9 @@ func applyTicketRulesPatch(r CodexTicketRules, p *CodexTicketRulesPatch) (CodexT
 	if r.DegradedSignalLength > 0 && r.DegradedSignalLength < 6 {
 		return r, errors.New("长度信号为0或6–8192")
 	}
+	if r.DegradedSignalLength > 0 && r.DegradedSignalLength == r.TargetLength {
+		return r, errors.New("降智长度不能与合格长度相同")
+	}
 	if r.RefreshBeforeMinutes >= r.CacheMinutes {
 		return r, errors.New("提前续采必须小于缓存时间")
 	}

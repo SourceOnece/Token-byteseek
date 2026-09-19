@@ -117,6 +117,7 @@ function description(row: TicketModelStatus, compact = false) {
   if (props.status?.collection_paused) info.push(t('admin.accounts.tickets.pausedHint'))
   const diagnostic = displayDiagnostic(row)
   if (diagnostic && !props.failed) {
+    if (diagnostic.scheduling) info.push(t('admin.accounts.ticketWorkbench.scheduling.' + diagnostic.scheduling))
     info.push(t('admin.accounts.tickets.attempt', { proxy: diagnostic.proxy_name || '—', count: diagnostic.attempt }))
     if (diagnostic.http_status) info.push(compact ? ['HTTP ' + diagnostic.http_status, !diagnostic.header_present ? t('admin.accounts.tickets.noHeader') : '', diagnosticExtra(row)].filter(Boolean).join(' · ') : diagnosticSummary(row))
     if (diagnostic.retry_not_before) info.push(t('admin.accounts.tickets.retryAfter', { time: new Date(diagnostic.retry_not_before).toLocaleString() }))

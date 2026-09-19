@@ -102,9 +102,14 @@ type codexTicketValue struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
-// CodexTicketService 默认关闭；开启后沿快照按账号/模型门控并覆盖回合状态，不改账号总开关。
+// CodexTicketService 默认关闭；按账号/模型门控并覆盖回合状态，明确长度结论按独立联动更新总调度。
 // @project-doc docs/interfaces/openai_upstream.md#codex_ticket_opt_in
 type CodexTicketService struct {
+	schedulingMu        sync.Mutex
+	schedulingPending   map[int64]ticketSchedulingSignal
+	schedulingWake      chan struct{}
+	schedulingWG        sync.WaitGroup
+	schedulingDropped   atomic.Uint64
 	proxyProviderClient *http.Client
 	gateway             *OpenAIGatewayService
 	settings            SettingRepository
@@ -327,7 +332,7 @@ func (s *CodexTicketService) applyWithReceipt(ctx context.Context, account *Acco
 		return nil, nil
 	}
 	// 长连接只保留本次资格版本，不持有整份号池配置/代理映射。
-	receiptConfig := &codexTicketConfig{Generation: cfg.Generation, accountID: account.ID, WatchdogMode: cfg.WatchdogMode, DegradedSignalLength: cfg.DegradedSignalLength}
+	receiptConfig := &codexTicketConfig{Generation: cfg.Generation, accountID: account.ID, WatchdogMode: cfg.WatchdogMode, TargetLength: cfg.targetLength(), DegradedSignalLength: cfg.DegradedSignalLength}
 	return &codexTicketReceipt{s: s, cfg: receiptConfig, key: codexTicketKey(cfg, account, model, token), encoded: value.encoded, model: model, stateHash: sha256.Sum256([]byte(value.State))}, nil
 }
 
@@ -422,6 +427,9 @@ func (s *CodexTicketService) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.done = make(chan struct{})
+	s.schedulingWake = make(chan struct{}, 1)
+	s.schedulingWG.Add(1)
+	go func() { defer s.schedulingWG.Done(); s.runTicketScheduling(ctx) }()
 	go func() {
 		defer close(s.done)
 		ticker := time.NewTicker(2 * time.Second)
@@ -470,6 +478,7 @@ func (s *CodexTicketService) Stop() {
 	// 轮次最长 30 秒且与生命周期共用取消；等待后台释放并发槽和临时连接。
 	s.roundWG.Wait()
 	s.manualWG.Wait()
+	s.schedulingWG.Wait()
 }
 
 func (s *CodexTicketService) startRound(ctx context.Context) {

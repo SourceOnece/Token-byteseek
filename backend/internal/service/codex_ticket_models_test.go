@@ -85,11 +85,12 @@ func TestCodexTicketConfiguredModelsAutomaticHarvest(t *testing.T) {
 	require.True(t, r.accounts[0].Schedulable)
 }
 
-// 即使信号长度与合格长度相同也只标记提示，不能新增废票/停调副作用。
-func TestCodexTicketDegradedSignalIsDiagnosticOnly(t *testing.T) {
+// 新规则明确命中降智长度就关调度，历史长度冲突也优先按异常，不同轮先关再开。
+func TestCodexTicketDegradedSignalClosesScheduling(t *testing.T) {
 	for _, length := range []int{292, 312, 356} {
 		t.Run(strconv.Itoa(length), func(t *testing.T) {
 			s, r, u := setupTicketManualTest(t, 292)
+			s.gateway.accountRepo = &ticketSchedulingRepo{ticketHistoryStub: r}
 			signal := length
 			_, err := s.Update(context.Background(), CodexTicketSettingsUpdate{DegradedSignalLength: &signal})
 			require.NoError(t, err)
@@ -99,13 +100,9 @@ func TestCodexTicketDegradedSignalIsDiagnosticOnly(t *testing.T) {
 			m.Execute(func(string, any) bool { return true })
 			for _, event := range r.events {
 				require.True(t, event.Diagnostic.DegradedSignal)
-				if length == 292 {
-					require.Equal(t, "ready", event.Status)
-				} else {
-					require.Equal(t, "missing", event.Status)
-				}
+				require.Equal(t, "missing", event.Status)
 			}
-			require.True(t, r.accounts[0].Schedulable)
+			require.False(t, r.accounts[0].Schedulable)
 		})
 	}
 }

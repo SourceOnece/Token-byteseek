@@ -4,7 +4,8 @@ export default {
       ticketWorkbench: {
         perAccount: 'Per-account rules',
         masterOff: 'Gateway master switch is off. Settings can be saved, but collection and injection remain disabled.',
-        title: 'Ticket collection workspace', accountHint: 'Rules belong to each account. Scheduling-off accounts can collect; collection never turns scheduling on.',
+        title: 'Ticket collection workspace', accountHint: 'Manual/automatic: qualified ticket → on; configured degradation length → off; otherwise unchanged. Disable collection to keep the account paused.',
+        scheduling: { enabled: 'Qualified ticket → scheduling on', disabled: 'Degradation length → scheduling off', already_on: 'Scheduling stays on', already_off: 'Scheduling stays off', stale: 'Account changed · scheduling unchanged', failed: 'Scheduling update failed' },
         gatewayHint: 'Master switch and default collection proxy only. Other rules are configured per account.',
         defaultProxy: 'Change default collection proxy', target: 'Target bytes', attempts: 'Attempt limit', cache: 'Cache time',
         groups: { validation: '① Target & attempts', renewal: '② Concurrency & renewal', cooldown: '③ Failure cooldown' },
@@ -29,11 +30,11 @@ export default {
         source: { account: 'Account proxy', gateway: 'Gateway proxy' },
         modes: { inherit: 'Inherit gateway', on: 'On', off: 'Off' },
         proxyActions: { custom: 'Set account proxy', inherit: 'Use gateway proxy' },
-        guards: { inherit: 'Inherit gateway', off: 'Observation off', observe: 'Observe only', recover_length: 'Length signal → Recollect', recover_model: 'Model mismatch → Recollect', recover: 'Either signal → Recollect' },
+        guards: { inherit: 'Inherit gateway', off: 'Business watchdog off', observe: 'Length scheduling · No auto recollect', recover_length: 'Length signal → Recollect', recover_model: 'Model mismatch → Recollect', recover: 'Either signal → Recollect' },
         watchdog: 'Watchdog', count: 'Signals', latest: 'Latest signal', noSignal: 'No recorded signals',
         reasons: { length_signal: 'Length signal', model_mismatch: 'Response model mismatch' },
         actions: { observed: 'Recorded', revoked: 'That ticket was revoked' },
-        precision: 'Observes successful responses with injected tickets. Uses the signal length below; 0 disables length signals. Model IDs are compared against the final outbound model, not evaluated for capability.'
+        precision: 'Successful business responses: qualified length turns scheduling on; degradation length turns it off; otherwise unchanged. Recollection is separate. Model mismatch alone does not turn scheduling off.'
       },
       ticketCollect: {
         clearHistory: 'Clear finished logs', deleteActive: 'Active collection cannot be deleted', deleted: '{count} records deleted. No undo.',

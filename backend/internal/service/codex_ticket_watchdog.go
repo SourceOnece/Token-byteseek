@@ -69,12 +69,18 @@ func (s *CodexTicketService) ObserveResponse(req *http.Request, resp *http.Respo
 }
 
 func (r *codexTicketReceipt) observeHeader(header http.Header) {
-	if r == nil || r.cfg.DegradedSignalLength == 0 {
+	if r == nil || ticketWatchdogMode(r.cfg.WatchdogMode) == "off" {
 		return
 	}
 	value := extractOpenAICodexTurnState(header)
-	if len(value) == r.cfg.DegradedSignalLength && strings.HasPrefix(value, "gAAAAA") && !strings.ContainsAny(value, "\r\n\x00") {
+	if !strings.HasPrefix(value, "gAAAAA") || strings.ContainsAny(value, "\r\n\x00") {
+		return
+	}
+	if r.cfg.DegradedSignalLength > 0 && len(value) == r.cfg.DegradedSignalLength {
+		r.s.queueTicketScheduling(r, false)
 		r.signal("length_signal")
+	} else if len(value) == r.cfg.targetLength() {
+		r.s.queueTicketScheduling(r, true)
 	}
 }
 func (r *codexTicketReceipt) observeJSON(raw []byte, eventName string, model string) {
