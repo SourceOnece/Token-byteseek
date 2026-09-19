@@ -276,7 +276,10 @@ func TestForwardResponsesChatFallbackRestoresEncryptedReasoningFromCache(t *test
 		Header:     http.Header{"Content-Type": []string{"application/json"}},
 		Body:       io.NopCloser(strings.NewReader(`{"id":"chatcmpl_restore","object":"chat.completion","model":"deepseek-reasoner","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}}`)),
 	}}
-	cache := &reasoningCacheStub{getResp: map[string]string{"item_enc": "cached thinking"}}
+	c.Set("api_key", &APIKey{ID: 8, UserID: 9})
+	account := forceChatResponsesFallbackAccount()
+	scope := responsesReasoningScope(c, account)
+	cache := &reasoningCacheStub{getResp: map[string]string{scopedResponsesReasoningKey(scope, "item_enc"): "cached thinking"}}
 	svc := &OpenAIGatewayService{cfg: rawChatCompletionsTestConfig(), httpUpstream: upstream, cache: cache}
 
 	result, err := svc.Forward(context.Background(), c, forceChatResponsesFallbackAccount(), body)
@@ -284,5 +287,5 @@ func TestForwardResponsesChatFallbackRestoresEncryptedReasoningFromCache(t *test
 	require.NotNil(t, result)
 	require.Equal(t, "plain thinking", gjson.GetBytes(upstream.lastBody, "messages.0.reasoning_content").String())
 	require.Equal(t, "cached thinking", gjson.GetBytes(upstream.lastBody, "messages.2.reasoning_content").String())
-	require.Equal(t, "plain thinking", cache.sets["item_plain"])
+	require.Equal(t, "plain thinking", cache.sets[scopedResponsesReasoningKey(scope, "item_plain")])
 }

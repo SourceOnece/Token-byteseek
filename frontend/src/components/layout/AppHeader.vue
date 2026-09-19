@@ -1,9 +1,9 @@
 <template>
   <header class="bh-header fixed inset-x-0 top-0 z-50">
     <div class="bh-stripe absolute inset-x-0 top-0 !h-1" aria-hidden="true"><i></i><i></i><i></i></div>
-    <div class="flex h-14 items-center justify-between gap-3 px-3 pt-1 sm:px-5 md:px-7">
+    <div class="flex h-14 items-center justify-between gap-3 px-3 pt-1 max-[359px]:gap-1 max-[359px]:px-2 sm:px-5 md:px-7">
       <!-- 品牌固定在全局顶栏，避免与侧栏和页面标题争夺层级。 -->
-      <div class="flex min-w-0 shrink-0 items-center gap-2 sm:gap-4">
+      <div class="flex min-w-0 shrink-0 items-center gap-2 max-[359px]:gap-1 sm:gap-4">
         <button
           @click="handlePrimaryNavigation"
           :class="['btn-ghost btn-icon', !isCreativeStudio && 'lg:hidden']"
@@ -35,6 +35,17 @@
       <!-- 右侧状态项保持紧凑，作为全局账户工具区。 -->
       <div class="header-status-actions">
         <div class="header-status-icon-group">
+          <!-- 手机也保留模型广场入口，复用本站路由、硬阴影和按压样式。 -->
+          <router-link
+            v-if="user"
+            to="/models"
+            class="header-status-icon-button"
+            data-testid="header-model-marketplace"
+            :aria-label="t('nav.modelMarketplace')"
+            :title="t('nav.modelMarketplace')"
+          >
+            <Icon name="grid" size="md" />
+          </router-link>
           <div v-if="user" class="hidden sm:block">
             <AnnouncementBell variant="status" />
           </div>
@@ -401,6 +412,16 @@ onBeforeUnmount(() => {
 
 .header-brand {
   max-width: min(18rem, 42vw);
+}
+
+/* 极窄屏压缩品牌与工具间距，保留可点击尺寸和全部入口。 */
+@media (max-width: 359px) {
+  .header-brand {
+    padding-inline: 0;
+  }
+  .header-status-actions {
+    gap: 2px;
+  }
 }
 
 .header-status-icon-group {

@@ -176,20 +176,8 @@ func (s *RateLimitService) applyCNProviderReactive429(
 	}
 	// 2) Coding Plan 窗口耗尽：冷却到快照中最早的窗口重置点（见
 	// cnProviderQuotaSnapshotReset：429 多由 5h 窗口触发，取较早点避免过度停调）。
-	if account.IsCodingPlan() {
-		if until := cnProviderQuotaSnapshotReset(account, time.Now()); until != nil {
-			s.notifyAccountSchedulingBlocked(account, *until, "429")
-			if err := s.accountRepo.SetRateLimited(ctx, account.ID, *until); err != nil {
-				slog.Warn("rate_limit_set_failed", "account_id", account.ID, "error", err)
-				return true
-			}
-			slog.Info("cn_coding_plan_rate_limited",
-				"account_id", account.ID,
-				"platform", account.Platform,
-				"reset_at", *until,
-			)
-			return true
-		}
+	if account.IsCodingPlan() && s.cooldownCNProviderToQuotaSnapshotReset(ctx, account, "429", "cn_coding_plan_rate_limited") != nil {
+		return true
 	}
 	return false
 }

@@ -108,6 +108,8 @@ API Key 上游用量由独立的 `UpstreamUsageService` 提供，和 OAuth/Setup
 
 CN 周期监控默认关闭；启用后只把统一快照写入 `extra.cn_usage_monitor_snapshot`，用身份 hash 和账号 `updated_at` CAS 防止旧探测覆盖新凭据。失败保留最近成功结果，余额低于阈值只写带同一身份 hash 的临时不可调度原因，恢复也只清理由该身份创建的状态。多实例同轮由 leader lock 串行化，自定义中继必须命中启用的 URL allowlist。详细字段、适配器和超时语义见[API Key 上游用量查询](../interfaces/upstream_usage.md)。
 
+bh.050把Kimi等CN Coding Plan明确窗口耗尽的403（access_terminated_error或usage limit/quota will reset文案）作为可恢复冷却：使用本地身份匹配的统一快照中最近未来重置点，无快照或持久化失败则退回原403时长临时停调，不写status=error。精确并发403仍走原并发路径，非Coding Plan及其它权限403保持原分类；OpenAI/Codex票据、题目调度不受此规则影响。窗口恢复资格不等于强行打开人工关闭的schedulable。
+
 ## 运维诊断
 
 - 观察每 provider 的候选数、刷新成功/失败、节流、超时和最长积压，而不只看总成功率。

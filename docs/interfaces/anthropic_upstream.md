@@ -39,6 +39,8 @@ API Key 和 OAuth/Setup Token 使用 Anthropic HTTP 路径；Bedrock 走独立�
 
 Responses 请求转换为 Anthropic Messages 时，只发送 Anthropic 入站协议可识别的内容块。OpenAI `reasoning`、`reasoning_text`、未知专有分片、空内容消息和纯空白文本块会被过滤；空白文本与合法图片并存时仅删除坏文本，保留图片。`function_call` / `function_call_output` 仍按调用 ID 转为相邻的 `tool_use` / `tool_result`，过滤过程不能破坏工具配对、角色交替或历史顺序。
 
+bh.050兼容Codex工具根级oneOf/anyOf/allOf：转为Anthropic可接受的object根，合并对象属性；择一分支的required取交集、allOf取并集，根级及不同联合组要求同时保留。同名allOf属性仍用嵌套allOf，不能放宽成anyOf；已有嵌套联合不移除。此转换是供应商受限工具schema的兼容表达，非对象分支和根级oneOf互斥不能完全等价保留，工具实际执行方仍须校验参数；不改工具调用顺序、名称回程或原生Anthropic请求。
+
 ## 模型与请求策略
 
 `SUB2API_CLAUDE_CLI_VERSION` 在进程启动时解析一次，未配置使用内置版本；只接受不低于内置基线的三段纯数字 semver，无效值告警回退。默认 User-Agent、账号默认指纹和计费归因模板使用相同解析值，修改需要重启。它是协议兼容项，不保证上游资格或降低风控。

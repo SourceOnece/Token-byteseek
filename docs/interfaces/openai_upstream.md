@@ -35,6 +35,15 @@ OpenAI 兼容请求的显式粘性会话头按 `session-id`、`session_id`、`co
 
 严格的原生 Chat 目标（DeepSeek/Kimi/Zhipu 账号，或精确命中受支持的官方主机）将不被支持的 `developer` 角色改为 `system`；其它 OpenAI 兼容主机保持原样，正文其它字段和大整数不丢失。DeepSeek 原生 Responses 还将工具结果图片移到后续 user 图片消息，并把并行工具输出保持连续；只修改该平台当次出站副本，不改变 Kimi/MiniMax 或下一次故障转移的原始输入。
 
+bh.050补入DeepSeek Chat历史推理兼容：仅DeepSeek平台或base URL精确指向官方api.deepseek.com的账号，在共用Chat出站处为缺失/空reasoning_content的assistant历史补一个空格，不覆盖已有明文，不改Codex OAuth/其它上游正文。该值是协议占位，不代表恢复了加密推理内容。
+
+<a id="responses_reasoning_cache_scope"></a>
+### Responses桥接推理缓存隔离
+
+Responses→Chat桥接对加密only历史的推理明文回查，按已认证的User/API Key/Team/实际Group和上游账号ID/平台/类型/凭据哈希隔离，再组合条目ID生成scoped-v2键。缺少认证身份不读写；HTTP普通转换、Responses形状的Chat入口以及流式/非流式输出使用同一请求内作用域，不在共享GatewayService上保存当前账号身份。
+
+旧版只按条目ID的缓存不回读、不迁移，继续按原TTL自然过期。升级后旧历史首次可能缓存未命中；携带明文的历史可在新作用域回填，DeepSeek可用上述占位继续协议兼容，不保证找回原推理。换Key、组、账号或凭据不会借用旧域明文；不改变STATE票据缓存、原生WS会话、prompt_cache_key、计费缓存或账本。模型输出推理仍是私有缓存，不进入普通管理员测试日志。
+
 OpenAI 平台拥有以下正式协议族：
 
 | 协议 | 处理边界 |

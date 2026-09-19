@@ -187,6 +187,8 @@ func (s *OpenAIGatewayService) sendCCUpstreamRequest(
 	grokCacheIdentity string,
 	tlsRouterMatch ...TLSFingerprintRouterMatchResult,
 ) (*http.Response, error) {
+	// 仅DeepSeek目标补缺失的历史推理字段，真实明文和其它上游原始正文保持不变。
+	body = ensureDeepSeekChatReasoningPlaceholders(account, body)
 	upstreamCtx, releaseUpstreamCtx := detachUpstreamContext(ctx)
 	upstreamReq, err := http.NewRequestWithContext(upstreamCtx, http.MethodPost, targetURL, bytes.NewReader(body))
 	releaseUpstreamCtx()

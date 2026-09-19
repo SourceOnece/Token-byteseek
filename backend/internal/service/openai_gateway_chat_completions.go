@@ -136,7 +136,7 @@ func (s *OpenAIGatewayService) forwardAsChatCompletions(
 				if err := json.Unmarshal(body, &responsesReq); err != nil {
 					return nil, fmt.Errorf("parse OpenCode responses request: %w", err)
 				}
-				chatReq, err := apicompat.ResponsesToChatCompletionsRequestWithOptions(&responsesReq, &apicompat.ResponsesToChatOptions{ReasoningContentByID: s.reasoningContentByID})
+				chatReq, err := apicompat.ResponsesToChatCompletionsRequestWithOptions(&responsesReq, &apicompat.ResponsesToChatOptions{ReasoningContentByID: s.reasoningResolver(responsesReasoningScope(c, account))})
 				if err != nil {
 					return nil, fmt.Errorf("convert OpenCode responses request: %w", err)
 				}
@@ -166,7 +166,7 @@ func (s *OpenAIGatewayService) forwardAsChatCompletions(
 			}
 			chatReq, err := apicompat.ResponsesToChatCompletionsRequestWithOptions(
 				&responsesReq,
-				&apicompat.ResponsesToChatOptions{ReasoningContentByID: s.reasoningContentByID},
+				&apicompat.ResponsesToChatOptions{ReasoningContentByID: s.reasoningResolver(responsesReasoningScope(c, account))},
 			)
 			if err != nil {
 				return nil, fmt.Errorf("convert responses-shaped chat completions request: %w", err)

@@ -80,6 +80,10 @@ Antigravity 账号 `extra.mixed_scheduling` 为布尔 `true` 时，可以作为 
 
 ## 模型与额度
 
+bh.050原生Gemini入口对裸gemini模型名结合generationConfig.thinkingConfig选择账号已有的low/medium/high/tiered变体；thinkingLevel优先，budget≤1024选low、≤8192选medium、负值/更大/缺省选high，目标档不存在按high→medium→low→tiered寻找已映射项。管理员显式裸名映射和显式直通优先；不绕过原选组/账号/模型白名单，不给没有对应映射的未知模型捏造支持。
+
+同批对User-Agent或X-Goog-Api-Client中识别的google-genai-sdk + gl-go/gl-python客户端，Antigravity Gemini原生流停发不兼容的SSE注释心跳。其它客户端和Claude流维持原心跳；SDK空闲时依赖上游数据与反向代理超时配置，不保证无限空闲连接。
+
 Antigravity 同时提供 Claude 与 Gemini 模型族。Gemini 3.6 Flash 的基础、high、low、medium 与 tiered 五种模型 ID 均进入默认模型目录和身份映射；账号存在自定义映射时，只要没有覆盖它们的通配符，这些精确直通映射仍会自动保留。可见模型来自默认映射、分组/渠道限制、账号资格和当前可请求解析；API Key 精确别名可投影到列表，目标不可请求时不展示。模型能力不能只由名称前缀推断，thinking/image 等能力由适配器与账号详情共同约束。
 
 额度查询按账号和模型 scope 保存上游 reset/remaining 状态，并可包含 AI Credits。429/503 分类区分模型限流、credits 耗尽和共享容量不足；请求结算的 `QuotaPlatform` 必须保留 Antigravity，即使客户端从 Anthropic/OpenAI 兼容入口进入。账号成本和用户扣费仍遵守渠道计价与分组倍率边界。
