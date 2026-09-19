@@ -138,21 +138,22 @@ func NewAccountHandler(
 
 // CreateAccountRequest represents create account request
 type CreateAccountRequest struct {
-	Name                    string         `json:"name" binding:"required"`
-	Notes                   *string        `json:"notes"`
-	Platform                string         `json:"platform" binding:"required"`
-	Type                    string         `json:"type" binding:"required,oneof=oauth setup-token apikey upstream bedrock service_account cosy"`
-	Credentials             map[string]any `json:"credentials" binding:"required"`
-	Extra                   map[string]any `json:"extra"`
-	ProxyID                 *int64         `json:"proxy_id"`
-	Concurrency             int            `json:"concurrency"`
-	Priority                int            `json:"priority"`
-	RateMultiplier          *float64       `json:"rate_multiplier"`
-	LoadFactor              *int           `json:"load_factor"`
-	GroupIDs                []int64        `json:"group_ids"`
-	ExpiresAt               *int64         `json:"expires_at"`
-	AutoPauseOnExpired      *bool          `json:"auto_pause_on_expired"`
-	ConfirmMixedChannelRisk *bool          `json:"confirm_mixed_channel_risk"` // 用户确认混合渠道风险
+	CodexTicket             *service.CodexTicketAccountPatch `json:"codex_ticket,omitempty"`
+	Name                    string                           `json:"name" binding:"required"`
+	Notes                   *string                          `json:"notes"`
+	Platform                string                           `json:"platform" binding:"required"`
+	Type                    string                           `json:"type" binding:"required,oneof=oauth setup-token apikey upstream bedrock service_account cosy"`
+	Credentials             map[string]any                   `json:"credentials" binding:"required"`
+	Extra                   map[string]any                   `json:"extra"`
+	ProxyID                 *int64                           `json:"proxy_id"`
+	Concurrency             int                              `json:"concurrency"`
+	Priority                int                              `json:"priority"`
+	RateMultiplier          *float64                         `json:"rate_multiplier"`
+	LoadFactor              *int                             `json:"load_factor"`
+	GroupIDs                []int64                          `json:"group_ids"`
+	ExpiresAt               *int64                           `json:"expires_at"`
+	AutoPauseOnExpired      *bool                            `json:"auto_pause_on_expired"`
+	ConfirmMixedChannelRisk *bool                            `json:"confirm_mixed_channel_risk"` // 用户确认混合渠道风险
 }
 
 // UpdateAccountRequest represents update account request
@@ -177,6 +178,9 @@ type UpdateAccountRequest struct {
 
 // BulkUpdateAccountsRequest represents the payload for bulk editing accounts
 type BulkUpdateAccountsRequest struct {
+	Notes                   *string                   `json:"notes"`
+	ExpiresAt               *int64                    `json:"expires_at"`
+	AutoPauseOnExpired      *bool                     `json:"auto_pause_on_expired"`
 	AccountIDs              []int64                   `json:"account_ids"`
 	Filters                 *BulkUpdateAccountFilters `json:"filters"`
 	Name                    string                    `json:"name"`
@@ -884,6 +888,7 @@ func (h *AccountHandler) Create(c *gin.Context) {
 
 	result, err := executeAdminIdempotent(c, "admin.accounts.create", req, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
 		account, execErr := h.adminService.CreateAccount(ctx, &service.CreateAccountInput{
+			CodexTicket:           req.CodexTicket,
 			Name:                  req.Name,
 			Notes:                 req.Notes,
 			Platform:              req.Platform,
@@ -1976,6 +1981,7 @@ func (h *AccountHandler) BatchCreate(c *gin.Context) {
 			skipCheck := item.ConfirmMixedChannelRisk != nil && *item.ConfirmMixedChannelRisk
 
 			account, err := h.adminService.CreateAccount(ctx, &service.CreateAccountInput{
+				CodexTicket:           item.CodexTicket,
 				Name:                  item.Name,
 				Notes:                 item.Notes,
 				Platform:              item.Platform,
@@ -2176,6 +2182,7 @@ func (h *AccountHandler) BulkUpdate(c *gin.Context) {
 	skipCheck := req.ConfirmMixedChannelRisk != nil && *req.ConfirmMixedChannelRisk
 
 	hasUpdates := req.Name != "" ||
+		req.Notes != nil || req.ExpiresAt != nil || req.AutoPauseOnExpired != nil ||
 		req.ProxyID != nil ||
 		req.Concurrency != nil ||
 		req.Priority != nil ||
@@ -2194,6 +2201,7 @@ func (h *AccountHandler) BulkUpdate(c *gin.Context) {
 	service.DiscardDeprecatedAccountExtra(req.Extra)
 
 	result, err := h.adminService.BulkUpdateAccounts(c.Request.Context(), &service.BulkUpdateAccountsInput{
+		Notes: req.Notes, ExpiresAt: req.ExpiresAt, AutoPauseOnExpired: req.AutoPauseOnExpired,
 		AccountIDs:            req.AccountIDs,
 		Filters:               toServiceBulkUpdateAccountFilters(req.Filters),
 		Name:                  req.Name,

@@ -388,6 +388,7 @@ type UpdateGroupInput struct {
 }
 
 type CreateAccountInput struct {
+	CodexTicket        *CodexTicketAccountPatch
 	Name               string
 	Notes              *string
 	Platform           string
@@ -438,19 +439,22 @@ type UpdateAccountInput struct {
 
 // BulkUpdateAccountsInput describes the payload for bulk updating accounts.
 type BulkUpdateAccountsInput struct {
-	AccountIDs     []int64
-	Filters        *BulkUpdateAccountFilters
-	Name           string
-	ProxyID        *int64
-	Concurrency    *int
-	Priority       *int
-	RateMultiplier *float64 // 账号计费倍率（>=0，允许 0）
-	LoadFactor     *int
-	Status         string
-	Schedulable    *bool
-	GroupIDs       *[]int64
-	Credentials    map[string]any
-	Extra          map[string]any
+	Notes              *string
+	ExpiresAt          *int64
+	AutoPauseOnExpired *bool
+	AccountIDs         []int64
+	Filters            *BulkUpdateAccountFilters
+	Name               string
+	ProxyID            *int64
+	Concurrency        *int
+	Priority           *int
+	RateMultiplier     *float64 // 账号计费倍率（>=0，允许 0）
+	LoadFactor         *int
+	Status             string
+	Schedulable        *bool
+	GroupIDs           *[]int64
+	Credentials        map[string]any
+	Extra              map[string]any
 	// SkipMixedChannelCheck skips the mixed channel risk check when binding groups.
 	// This should only be set when the caller has explicitly confirmed the risk.
 	SkipMixedChannelCheck bool

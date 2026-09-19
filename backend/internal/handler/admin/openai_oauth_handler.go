@@ -164,21 +164,22 @@ type OpenAIRefreshTokenRequest struct {
 }
 
 type OpenAICodexPATCreateRequest struct {
-	AccessToken             string         `json:"access_token" binding:"required"`
-	Name                    string         `json:"name"`
-	Notes                   *string        `json:"notes"`
-	GroupIDs                []int64        `json:"group_ids"`
-	ProxyID                 *int64         `json:"proxy_id"`
-	Concurrency             *int           `json:"concurrency"`
-	Priority                *int           `json:"priority"`
-	RateMultiplier          *float64       `json:"rate_multiplier"`
-	LoadFactor              *int           `json:"load_factor"`
-	ExpiresAt               *int64         `json:"expires_at"`
-	AutoPauseOnExpired      *bool          `json:"auto_pause_on_expired"`
-	CredentialExtras        map[string]any `json:"credential_extras"`
-	Extra                   map[string]any `json:"extra"`
-	SkipDefaultGroupBind    *bool          `json:"skip_default_group_bind"`
-	ConfirmMixedChannelRisk *bool          `json:"confirm_mixed_channel_risk"`
+	CodexTicket             *service.CodexTicketAccountPatch `json:"codex_ticket,omitempty"`
+	AccessToken             string                           `json:"access_token" binding:"required"`
+	Name                    string                           `json:"name"`
+	Notes                   *string                          `json:"notes"`
+	GroupIDs                []int64                          `json:"group_ids"`
+	ProxyID                 *int64                           `json:"proxy_id"`
+	Concurrency             *int                             `json:"concurrency"`
+	Priority                *int                             `json:"priority"`
+	RateMultiplier          *float64                         `json:"rate_multiplier"`
+	LoadFactor              *int                             `json:"load_factor"`
+	ExpiresAt               *int64                           `json:"expires_at"`
+	AutoPauseOnExpired      *bool                            `json:"auto_pause_on_expired"`
+	CredentialExtras        map[string]any                   `json:"credential_extras"`
+	Extra                   map[string]any                   `json:"extra"`
+	SkipDefaultGroupBind    *bool                            `json:"skip_default_group_bind"`
+	ConfirmMixedChannelRisk *bool                            `json:"confirm_mixed_channel_risk"`
 }
 
 // RefreshToken refreshes an OpenAI OAuth token
@@ -432,6 +433,7 @@ func (h *OpenAIOAuthHandler) CreateAccountFromCodexPAT(c *gin.Context) {
 
 	account, err := h.adminService.CreateAccount(c.Request.Context(), &service.CreateAccountInput{
 		Name:                  buildOpenAICodexPATAccountName(req.Name, tokenInfo),
+		CodexTicket:           req.CodexTicket,
 		Notes:                 req.Notes,
 		Platform:              service.PlatformOpenAI,
 		Type:                  service.AccountTypeOAuth,

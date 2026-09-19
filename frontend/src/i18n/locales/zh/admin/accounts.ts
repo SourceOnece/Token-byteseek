@@ -3,6 +3,8 @@ export default {
 // Accounts Management
     accounts: {
       ticketWorkbench: {
+        createHint: '随新账号创建保存；已有账号重导入不覆盖。',
+        templateHint: '单独保存默认模板，仅用于之后新增的 OpenAI OAuth 账号。',
         verifiedFlow: '双链路验证', verifiedHint: '采集 → 账号业务代理复验 → 缓存；默认关闭，支持批量修改。', verifiedRisk: '需先绑定业务代理。开启后自动废票重采，每次最多两次模型请求；WS重连后使用HTTP桥接逐轮换票，只有两阶段通过才发布新票。',
         stage: { harvest: '候选采集', verify: '业务代理复验' }, requestModel: '请求', responseModel: '响应', responseMissing: '未获取',
         validationReason: { business_proxy: '未绑定可用业务代理', network: '连接失败', upstream: '上游拒绝', invalid_ticket: '长度或格式不符', incomplete_response: '响应未完整结束', model_mismatch: '模型不一致', length_signal: '命中降智长度', account_changed: '账号配置已变化' },

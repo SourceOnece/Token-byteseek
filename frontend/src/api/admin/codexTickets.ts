@@ -124,19 +124,21 @@ export interface TicketRules {
 }
 export interface TicketProxyPolicy {
   mode: 'fixed' | 'rotate' | 'dynamic'; dynamic_source: 'template' | 'api'; extraction_configured: boolean
-  proxy_protocol: 'http' | 'socks5h'; fixed_proxy_id: string; proxies: { id: string; name: string; configured: boolean }[]
+  proxy_protocol: 'http' | 'socks5h'; fixed_proxy_id: string; proxies: { id: string; name: string; configured: boolean; managed_proxy_id?: number }[]
 }
 export interface TicketProxyPatch {
   mode: 'inherit' | TicketProxyPolicy['mode']; dynamic_source?: 'template' | 'api'; extraction_url?: string
-  proxy_protocol?: 'http' | 'socks5h'; fixed_proxy_id?: string; proxies?: { id: string; name: string; harvest_proxy_url: string }[]
+  proxy_protocol?: 'http' | 'socks5h'; fixed_proxy_id?: string; proxies?: { id: string; name: string; harvest_proxy_url: string; managed_proxy_id?: number }[]
 }
 export interface TicketProxyTestResult {
   ip?: string; status: string; source?: string; country_code?: string; country?: string; region?: string; city?: string; duration_ms: number
 }
-export async function testTicketProxy(account_id: number | undefined, policy: TicketProxyPatch | undefined) {
-  return (await apiClient.post<TicketProxyTestResult>('/admin/settings/codex-ticket/proxy-test', { account_id, policy, confirmed: true }, { timeout: 25000 })).data
+export async function testTicketProxy(account_id: number | undefined, policy: TicketProxyPatch | undefined, template = false) {
+  return (await apiClient.post<TicketProxyTestResult>('/admin/settings/codex-ticket/proxy-test', { account_id, policy, confirmed: true, ...(template ? { template:true } : {}) }, { timeout: 25000 })).data
 }
 export const ticketAccountAPI = {
+	async defaults(signal?: AbortSignal) { return (await apiClient.get<TicketAccountSettings>('/admin/accounts/codex-ticket-import-defaults', { signal })).data },
+	async updateDefaults(patch: TicketAccountPatch, revision?: string) { return (await apiClient.put<TicketAccountSettings>('/admin/accounts/codex-ticket-import-defaults', { patch, revision })).data },
   async get(id: number, signal?: AbortSignal) { return (await apiClient.get<TicketAccountSettings>(`/admin/accounts/${id}/codex-ticket-settings`, { signal })).data },
   async update(ids: number[], patch: TicketAccountPatch, revision?: string) {
     return (await apiClient.put<TicketAccountSettings[]>('/admin/accounts/codex-ticket-settings', { account_ids: ids, patch, revision })).data

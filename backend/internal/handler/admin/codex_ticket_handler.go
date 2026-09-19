@@ -40,6 +40,41 @@ func (h *SettingHandler) GetCodexTicketStatus(c *gin.Context) {
 func (h *SettingHandler) SetCodexTicketService(s *service.CodexTicketService) { h.codexTickets = s }
 
 // 独立接口避免动态代理混入通用账号编辑、导出与鉴权凭据。
+// 模板独立保存，仅影响今后新增账号，不回写已有号池。
+func (h *SettingHandler) GetCodexTicketImportDefaults(c *gin.Context) {
+	if h.codexTickets == nil {
+		response.BadRequest(c, "票据服务不可用")
+		return
+	}
+	view, err := h.codexTickets.ImportDefaults(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, view)
+}
+
+func (h *SettingHandler) UpdateCodexTicketImportDefaults(c *gin.Context) {
+	var req struct {
+		Patch    service.CodexTicketAccountPatch `json:"patch"`
+		Revision *string                         `json:"revision"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "票据默认值无效")
+		return
+	}
+	if h.codexTickets == nil {
+		response.BadRequest(c, "票据服务不可用")
+		return
+	}
+	view, err := h.codexTickets.UpdateImportDefaults(c.Request.Context(), req.Patch, req.Revision)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.Success(c, view)
+}
+
 func (h *SettingHandler) GetCodexTicketAccountSettings(c *gin.Context) {
 	if h.codexTickets == nil {
 		response.InternalError(c, "票据服务不可用")

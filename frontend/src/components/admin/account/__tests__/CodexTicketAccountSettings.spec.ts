@@ -2,21 +2,75 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CodexTicketAccountSettings from '../CodexTicketAccountSettings.vue'
 import Select from '@/components/common/Select.vue'
+import ProxyEditor from '../CodexTicketProxyEditor.vue'
 
-const { get, update, testProxy } = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn(), testProxy: vi.fn() }))
-vi.mock('@/api/admin/codexTickets', () => ({ ticketAccountAPI: { get, update }, testTicketProxy: testProxy }))
+const { get, update, defaults, updateDefaults, testProxy } = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn(), defaults:vi.fn(),updateDefaults:vi.fn(),testProxy: vi.fn() }))
+vi.mock('@/api/admin/codexTickets', () => ({ ticketAccountAPI: { get, update, defaults, updateDefaults }, testTicketProxy: testProxy }))
+vi.mock('@/api/admin/proxies',()=>({getAll:vi.fn().mockResolvedValue([])}))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 const rules = () => ({ models: ['gpt-6-astra', 'gpt-5.6-sol'], target_length: 332, degraded_signal_length: 312, max_attempts: 3, concurrency: 4, cache_minutes: 60, refresh_before_minutes: 10, retry_interval_seconds: 1, probe_interval_seconds: 6, failure_threshold: 0, cooldown_seconds: 300 })
 const account = () => ({ verified_flow: false, rules: rules(), proxy_policy: { mode: 'fixed', dynamic_source: 'template', proxy_protocol: 'http', extraction_configured: false, fixed_proxy_id: 'account', proxies: [{ id: 'account', name: 'A', configured: true }] }, account_id: 1, mode: 'inherit', watchdog_mode: 'inherit', effective_watchdog_mode: 'observe', effective_enabled: true, proxy_source: 'account', proxy_configured: true, revision: 'r1' })
 
 describe('CodexTicketAccountSettings', () => {
-  beforeEach(() => { vi.clearAllMocks(); get.mockResolvedValue(account()); update.mockResolvedValue([{ ...account(), revision: 'r2' }]) })
+  beforeEach(() => { vi.clearAllMocks(); get.mockResolvedValue(account()); defaults.mockResolvedValue(account()); updateDefaults.mockResolvedValue(account());update.mockResolvedValue([{ ...account(), revision: 'r2' }]) })
+  it('新号等待模板加载，加载失败不能提交内置值', async () => {
+    let finish!: (value: ReturnType<typeof account>) => void
+    defaults.mockReturnValue(new Promise(resolve => { finish = resolve }))
+    const w = mount(CodexTicketAccountSettings, { props: { draft: true } })
+    const vm = w.vm as unknown as { patch: () => unknown; ensureReady: () => Promise<void> }
+    expect(() => vm.patch()).toThrow()
+    let ready = false
+    const waiting = vm.ensureReady().then(() => { ready = true })
+    await flushPromises()
+    expect(ready).toBe(false)
+    finish(account())
+    await waiting
+    expect(vm.patch()).toMatchObject({ rules: { target_length: 332 } })
+    w.unmount()
+    defaults.mockRejectedValue(new Error('offline'))
+    const failed = mount(CodexTicketAccountSettings, { props: { draft: true } })
+    await flushPromises()
+    expect(() => (failed.vm as unknown as { patch: () => unknown }).patch()).toThrow()
+    failed.unmount()
+  })
+  it('空模板新增手填代理使用当前草稿，不被自动继承覆盖', async () => {
+    defaults.mockResolvedValue({ ...account(), proxy_source: 'gateway', proxy_policy: { ...account().proxy_policy, proxies: [], fixed_proxy_id: '' } })
+    const w = mount(CodexTicketAccountSettings, { props: { draft: true } })
+    await flushPromises()
+    await w.get('[data-testid="ticket-edit-proxy"]').setValue(true)
+    const editor = w.findComponent(ProxyEditor)
+    editor.findAllComponents(Select)[0].vm.$emit('update:modelValue', 'fixed')
+    await flushPromises()
+    await editor.findAll('button').find(b => b.text() === 'admin.settings.codexTicket.addProxy')!.trigger('click')
+    await editor.get('[data-testid="ticket-proxy-url"]').setValue('http://user:synthetic@proxy.invalid:8080')
+    expect((w.vm as unknown as { patch: () => unknown }).patch()).toMatchObject({ proxy_policy: { mode: 'fixed', proxies: [{ harvest_proxy_url: 'http://user:synthetic@proxy.invalid:8080' }] } })
+    w.unmount()
+  })
+  it('批量读取相同332，差异字段留空且未勾选不提交', async()=>{
+    get.mockImplementation(async(id:number)=>({...account(),account_id:id,rules:{...rules(),max_attempts:id===1?0:3}}))
+    const w=mount(CodexTicketAccountSettings,{props:{ids:[1,2],bulk:true}});await flushPromises()
+    expect((w.get('[data-testid="ticket-rule-target_length"]').element as HTMLInputElement).value).toBe('332')
+    expect((w.get('[data-testid="ticket-rule-max_attempts"]').element as HTMLInputElement).value).toBe('')
+    await w.get('[data-testid="ticket-edit-mode"]').setValue(true)
+    await w.get('[data-testid="ticket-account-save"]').trigger('click');await flushPromises()
+    expect(update.mock.calls[0][1]).toEqual({mode:'on'});w.unmount()
+  })
+  it('默认模板和新增草稿读取同一配置，草稿不直接写账号', async()=>{
+    const w=mount(CodexTicketAccountSettings,{props:{draft:true}});await flushPromises()
+    expect(defaults).toHaveBeenCalled();expect(get).not.toHaveBeenCalled()
+    expect(w.find('[data-testid="ticket-account-save"]').exists()).toBe(false)
+    expect((w.vm as unknown as {patch:()=>{rules:{target_length:number}}}).patch().rules.target_length).toBe(332)
+    expect(update).not.toHaveBeenCalled();w.unmount()
+    const template=mount(CodexTicketAccountSettings,{props:{templateMode:true}});await flushPromises()
+    await template.get('[data-testid="ticket-account-save"]').trigger('click');await flushPromises()
+    expect(updateDefaults).toHaveBeenCalledWith(expect.objectContaining({rules:expect.objectContaining({target_length:332})}),'r1');template.unmount()
+  })
   it('双链路默认关闭；批量必须勾选才提交，且不覆盖旧守护选择', async () => {
     const w = mount(CodexTicketAccountSettings, { props: { ids: [1, 2], bulk: true } }); await flushPromises()
-    expect(w.get('[data-testid="ticket-verified-flow"]').attributes('aria-checked')).toBe('false')
-    expect(w.get('[data-testid="ticket-verified-flow"]').attributes('disabled')).toBeDefined()
+    expect(w.findAllComponents(Select)[0].props('modelValue')).toBe('false')
+    expect(w.findAllComponents(Select)[0].props('disabled')).toBe(true)
     await w.get('[data-testid="ticket-edit-flow"]').setValue(true)
-    await w.get('[data-testid="ticket-verified-flow"]').trigger('click')
+    w.findAllComponents(Select)[0].vm.$emit('update:modelValue','true');await flushPromises()
     await w.get('[data-testid="ticket-account-save"]').trigger('click'); await flushPromises()
     expect(update).toHaveBeenCalledWith([1, 2], { verified_flow: true }, undefined)
     expect(w.get('[data-testid="ticket-account-save"]').attributes('disabled')).toBeDefined(); w.unmount()
@@ -42,15 +96,16 @@ describe('CodexTicketAccountSettings', () => {
   it('只勾选关闭批量双链路时不提交守护配置', async () => {
     const w = mount(CodexTicketAccountSettings, { props: { ids: [1, 2], bulk: true } }); await flushPromises()
     await w.get('[data-testid="ticket-edit-flow"]').setValue(true)
+    w.findAllComponents(Select)[0].vm.$emit('update:modelValue','false');await flushPromises()
     await w.get('[data-testid="ticket-account-save"]').trigger('click'); await flushPromises()
     expect(update).toHaveBeenCalledWith([1, 2], { verified_flow: false }, undefined)
     w.unmount()
   })
   it('批量全部默认未勾选，只提交选中项，保存后取消勾选', async () => {
     const w = mount(CodexTicketAccountSettings, { props: { ids: [1, 2], bulk: true } }); await flushPromises()
-    expect(get).not.toHaveBeenCalled(); expect(w.get('[data-testid="ticket-account-save"]').attributes('disabled')).toBeDefined()
+    expect(get).toHaveBeenCalledTimes(2); expect(w.get('[data-testid="ticket-account-save"]').attributes('disabled')).toBeDefined()
     await w.get('[data-testid="ticket-edit-mode"]').setValue(true)
-    w.findAllComponents(Select)[0].vm.$emit('update:modelValue', 'off'); await flushPromises()
+    w.findAllComponents(Select)[1].vm.$emit('update:modelValue', 'off'); await flushPromises()
     await w.get('[data-testid="ticket-account-save"]').trigger('click'); await flushPromises()
     expect(update).toHaveBeenCalledWith([1, 2], { mode: 'off' }, undefined)
     expect(w.get('[data-testid="ticket-account-save"]').attributes('disabled')).toBeDefined(); w.unmount()
@@ -58,9 +113,10 @@ describe('CodexTicketAccountSettings', () => {
   it('恢复继承必须明确选中，不把密码空白当作清除', async () => {
     const w = mount(CodexTicketAccountSettings, { props: { ids: [1, 2], bulk: true } }); await flushPromises()
     await w.get('[data-testid="ticket-edit-proxy"]').setValue(true)
-    w.findAllComponents(Select)[2].vm.$emit('update:modelValue', 'fixed'); await flushPromises()
+    w.findAllComponents(Select)[3].vm.$emit('update:modelValue', 'dynamic'); await flushPromises()
+    w.findAllComponents(Select)[4].vm.$emit('update:modelValue', 'api'); await flushPromises()
     await w.get('[data-testid="ticket-account-save"]').trigger('click'); await flushPromises(); expect(update).not.toHaveBeenCalled()
-    w.findAllComponents(Select)[2].vm.$emit('update:modelValue', 'inherit'); await flushPromises()
+    w.findAllComponents(Select)[3].vm.$emit('update:modelValue', 'inherit'); await flushPromises()
     await w.get('[data-testid="ticket-account-save"]').trigger('click'); await flushPromises()
     expect(update).toHaveBeenCalledWith([1, 2], { proxy_policy: { mode: 'inherit' } }, undefined); w.unmount()
   })

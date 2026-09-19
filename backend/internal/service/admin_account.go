@@ -650,12 +650,27 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 	if err := validateQoderCosyCredentials(ctx, account, s.httpUpstream, s.tlsFPProfileService); err != nil {
 		return nil, err
 	}
-	if err := s.accountRepo.Create(ctx, account); err != nil {
-		return nil, err
+	createdWithTicket := false
+	if account.IsOpenAIOAuth() && !account.IsOpenAIAgentIdentity() {
+		if provider, ok := s.runtimeBlocker.(interface{ CodexTicketConfiguration() *CodexTicketService }); ok && provider.CodexTicketConfiguration() != nil {
+			createdWithTicket, err = provider.CodexTicketConfiguration().CreateAccountWithDefaults(ctx, account, groupIDs, input.CodexTicket)
+			if err != nil {
+				return nil, err
+			}
+		} else if input.CodexTicket != nil {
+			return nil, errors.New("票据配置服务不可用")
+		}
+	} else if input.CodexTicket != nil && !account.IsOpenAIAgentIdentity() {
+		return nil, errors.New("票据配置仅支持OpenAI OAuth账号")
+	}
+	if !createdWithTicket {
+		if err := s.accountRepo.Create(ctx, account); err != nil {
+			return nil, err
+		}
 	}
 
 	// 绑定分组
-	if len(groupIDs) > 0 {
+	if len(groupIDs) > 0 && !createdWithTicket {
 		if err := s.accountRepo.BindGroups(ctx, account.ID, groupIDs); err != nil {
 			return nil, err
 		}
@@ -1168,12 +1183,24 @@ func (s *adminServiceImpl) BulkUpdateAccounts(ctx context.Context, input *BulkUp
 
 	// Prepare bulk updates for columns and JSONB fields.
 	repoUpdates := AccountBulkUpdate{
+		Notes: input.Notes, AutoPauseOnExpired: input.AutoPauseOnExpired,
 		Credentials:                input.Credentials,
 		Extra:                      input.Extra,
 		EnsureCodexFingerprintSeed: ShouldEnsureCodexFingerprintSeedForExtraUpdates(input.Extra),
 	}
 	if input.Name != "" {
 		repoUpdates.Name = &input.Name
+	}
+	if input.ExpiresAt != nil {
+		if *input.ExpiresAt < 0 {
+			return nil, errors.New("expires_at must be >= 0")
+		}
+		if *input.ExpiresAt == 0 {
+			repoUpdates.ClearExpiresAt = true
+		} else {
+			at := time.Unix(*input.ExpiresAt, 0)
+			repoUpdates.ExpiresAt = &at
+		}
 	}
 	if input.ProxyID != nil {
 		repoUpdates.ProxyID = input.ProxyID
@@ -1189,7 +1216,9 @@ func (s *adminServiceImpl) BulkUpdateAccounts(ctx context.Context, input *BulkUp
 	}
 	if input.LoadFactor != nil {
 		if *input.LoadFactor <= 0 {
-			repoUpdates.LoadFactor = nil // 0 或负数表示清除
+			// 显式零值必须继续传给仓储；nil表示不修改，不能表达清除。
+			zero := 0
+			repoUpdates.LoadFactor = &zero
 		} else if *input.LoadFactor > 10000 {
 			return nil, errors.New("load_factor must be <= 10000")
 		} else {

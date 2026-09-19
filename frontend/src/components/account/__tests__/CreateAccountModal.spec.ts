@@ -2,6 +2,10 @@ import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+// 新号工作台真实挂载，模板请求使用合成配置；创建payload必须携带该配置。
+vi.mock('@/api/admin/codexTickets',()=>({ticketAccountAPI:{defaults:vi.fn().mockResolvedValue({verified_flow:false,mode:'on',watchdog_mode:'inherit',global_enabled:true,proxy_source:'gateway',revision:'template-1',rules:{models:['gpt-6-astra'],target_length:332,degraded_signal_length:312,max_attempts:0,concurrency:2,cache_minutes:60,refresh_before_minutes:10,retry_interval_seconds:1,probe_interval_seconds:6,failure_threshold:0,cooldown_seconds:300},proxy_policy:{mode:'fixed',dynamic_source:'template',proxy_protocol:'http',proxies:[],fixed_proxy_id:'',extraction_configured:false}})},testTicketProxy:vi.fn()}))
+vi.mock('@/api/admin/proxies',()=>({getAll:vi.fn().mockResolvedValue([])}))
+
 const {
   createAccountMock,
   importCodexSessionMock,

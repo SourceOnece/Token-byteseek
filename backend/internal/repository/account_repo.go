@@ -2701,6 +2701,24 @@ func (r *accountRepository) BulkUpdate(ctx context.Context, ids []int64, updates
 
 	idx := 1
 	ollamaProxyIdentityChanged := ""
+	// 批量未提供保持；显式空备注和零到期分别清空，避免null丢失清除意图。
+	if updates.Notes != nil {
+		setClauses = append(setClauses, "notes = $"+itoa(idx))
+		args = append(args, *updates.Notes)
+		idx++
+	}
+	if updates.ClearExpiresAt {
+		setClauses = append(setClauses, "expires_at = NULL")
+	} else if updates.ExpiresAt != nil {
+		setClauses = append(setClauses, "expires_at = $"+itoa(idx))
+		args = append(args, *updates.ExpiresAt)
+		idx++
+	}
+	if updates.AutoPauseOnExpired != nil {
+		setClauses = append(setClauses, "auto_pause_on_expired = $"+itoa(idx))
+		args = append(args, *updates.AutoPauseOnExpired)
+		idx++
+	}
 	if updates.Name != nil {
 		setClauses = append(setClauses, "name = $"+itoa(idx))
 		args = append(args, *updates.Name)

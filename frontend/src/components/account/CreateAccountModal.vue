@@ -3896,6 +3896,8 @@
 
     </div>
 
+    <CodexTicketAccountSettings v-if="show && isOpenAIOAuthImportDefaultsTarget" ref="ticketDraft" draft class="mt-5" />
+
     <template #footer>
       <div v-if="step === 1" class="flex justify-end gap-3">
         <button @click="handleClose" type="button" class="btn btn-secondary">
@@ -4261,6 +4263,7 @@ import type {
   UpstreamUsageAdapter
 } from '@/types'
 import type { OpenAIOAuthImportDefaults } from '@/api/admin/settings'
+import CodexTicketAccountSettings from '@/components/admin/account/CodexTicketAccountSettings.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Select from '@/components/common/Select.vue'
@@ -5024,6 +5027,14 @@ const isOpenAIModelRestrictionDisabled = computed(() =>
 )
 
 const openAIOAuthImportDefaults = ref<OpenAIOAuthImportDefaults | null>(null)
+const ticketDraft = ref<InstanceType<typeof CodexTicketAccountSettings>>()
+const ticketCreationPatch = async () => {
+  const draft = ticketDraft.value
+  if (!draft) throw new Error(t('common.loading'))
+  await draft.ensureReady()
+  if (!props.show || ticketDraft.value !== draft) throw new Error(t('common.loading'))
+  return draft.patch()
+}
 const openAIOAuthImportDefaultsLoaded = ref(false)
 const openAIOAuthImportDefaultsApplied = ref(false)
 const isOpenAIOAuthImportDefaultsTarget = computed(
@@ -6273,6 +6284,7 @@ const doCreateAccount = async (
   payload: CreateAccountRequest,
   isCurrent: AccountCreateGuard = () => true
 ): Promise<boolean> => {
+  if (payload.platform === 'openai' && payload.type === 'oauth') payload.codex_ticket = await ticketCreationPatch()
   let confirmedResult = false
   const canContinue = await ensureAntigravityMixedChannelConfirmed(async () => {
     if (!isCurrent()) return
@@ -7113,7 +7125,7 @@ const createOpenAIOAuthAccountFromToken = async (
   if (!payload) {
     return false
   }
-  await adminAPI.accounts.create(payload)
+  await adminAPI.accounts.create({ ...payload, codex_ticket: await ticketCreationPatch() })
   return true
 }
 
@@ -7486,6 +7498,7 @@ const handleOpenAIImportCodexSession = async (content: string) => {
     }
     const extra = buildOpenAIExtra()
     const result = await adminAPI.accounts.importCodexSession({
+      codex_ticket: await ticketCreationPatch(),
       content: trimmed,
       name: form.name,
       notes: form.notes || null,
@@ -7565,6 +7578,7 @@ const handleOpenAIImportCodexPAT = async (accessToken: string) => {
     }
     const extra = buildOpenAIExtra()
     await adminAPI.accounts.createOpenAICodexPAT({
+      codex_ticket: await ticketCreationPatch(),
       access_token: trimmed,
       name: form.name,
       notes: form.notes || null,
@@ -8183,7 +8197,11 @@ const handleCookieAuth = async (sessionKey: string) => {
           credentials.temp_unschedulable_rules = tempUnschedPayload
         }
 
+        const codexTicket = form.platform === 'openai' && addMethod.value === 'oauth'
+          ? await ticketCreationPatch()
+          : undefined
         await adminAPI.accounts.create({
+          ...(codexTicket ? { codex_ticket: codexTicket } : {}),
           name: accountName,
           notes: form.notes,
           platform: form.platform,

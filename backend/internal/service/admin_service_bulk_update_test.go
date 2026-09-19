@@ -54,6 +54,23 @@ func (s *accountRepoStubForBulkUpdate) BulkUpdate(_ context.Context, ids []int64
 	return int64(len(ids)), nil
 }
 
+// 清空到期/负载与显式关闭必须传到仓储，未选字段继续保持nil。
+func TestAdminServiceBulkUpdateAccountOptionalFields(t *testing.T) {
+	repo := &accountRepoStubForBulkUpdate{}
+	svc := &adminServiceImpl{accountRepo: repo}
+	zero, expiry, no, notes := 0, int64(0), false, ""
+	_, err := svc.BulkUpdateAccounts(context.Background(), &BulkUpdateAccountsInput{
+		AccountIDs: []int64{1}, LoadFactor: &zero, ExpiresAt: &expiry, AutoPauseOnExpired: &no, Notes: &notes,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, repo.lastBulkUpdate.LoadFactor)
+	require.Zero(t, *repo.lastBulkUpdate.LoadFactor)
+	require.True(t, repo.lastBulkUpdate.ClearExpiresAt)
+	require.Equal(t, &no, repo.lastBulkUpdate.AutoPauseOnExpired)
+	require.Equal(t, &notes, repo.lastBulkUpdate.Notes)
+	require.Nil(t, repo.lastBulkUpdate.Concurrency)
+}
+
 func TestAdminServiceBulkUpdateAccountsNormalizesLegacyOpenAIConfiguration(t *testing.T) {
 	repo := &accountRepoStubForBulkUpdate{
 		getByIDsAccounts: []*Account{{

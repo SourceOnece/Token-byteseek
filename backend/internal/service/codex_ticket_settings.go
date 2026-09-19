@@ -11,19 +11,22 @@ import (
 
 // 代理列表只保存密文；名称与 ID 用于只读诊断，地址永不回显。
 type codexTicketProxy struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Cipher string `json:"cipher"`
+	ManagedID int64  `json:"managed_proxy_id,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Cipher    string `json:"cipher"`
 }
 type CodexTicketProxyView struct {
+	ManagedID  int64  `json:"managed_proxy_id,omitempty"`
 	ID         string `json:"id"`
 	Name       string `json:"name"`
 	Configured bool   `json:"configured"`
 }
 type CodexTicketProxyUpdate struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	URL  string `json:"harvest_proxy_url"`
+	ManagedID int64  `json:"managed_proxy_id,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	URL       string `json:"harvest_proxy_url"`
 }
 
 func (c *codexTicketConfig) proxies() []codexTicketProxy {
@@ -127,7 +130,7 @@ func codexTicketSettingsView(c *codexTicketConfig) CodexTicketSettings {
 	v.Models = append([]string(nil), c.models()...)
 	v.DegradedSignalLength = c.DegradedSignalLength
 	for _, p := range c.proxies() {
-		v.Proxies = append(v.Proxies, CodexTicketProxyView{p.ID, p.Name, p.Cipher != ""})
+		v.Proxies = append(v.Proxies, CodexTicketProxyView{ID: p.ID, Name: p.Name, Configured: p.Cipher != "" || p.ManagedID > 0, ManagedID: p.ManagedID})
 	}
 	if v.FixedProxyID == "" && len(v.Proxies) > 0 {
 		v.FixedProxyID = v.Proxies[0].ID
@@ -191,15 +194,20 @@ func (s *CodexTicketService) updateProxySettings(c *codexTicketConfig, u CodexTi
 			if name == "" || utf8.RuneCountInString(name) > 64 || strings.ContainsAny(name, "\r\n\x00") {
 				return errors.New("代理名称不能为空且最多 64 字")
 			}
-			entry := codexTicketProxy{ID: p.ID, Name: name}
+			if p.ManagedID < 0 || p.ManagedID > 0 && strings.TrimSpace(p.URL) != "" {
+				return errors.New("每条采集代理只能选择管理代理或填写地址")
+			}
+			entry := codexTicketProxy{ID: p.ID, Name: name, ManagedID: p.ManagedID}
 			if p.ID != "" {
 				previous, ok := byID[p.ID]
 				if seen[p.ID] {
 					return errors.New("代理 ID 重复")
 				}
 				if ok {
-					entry.Cipher = previous.Cipher
-				} else if _, err := uuid.Parse(p.ID); err != nil || strings.TrimSpace(p.URL) == "" {
+					if p.ManagedID == 0 {
+						entry.Cipher = previous.Cipher
+					}
+				} else if _, err := uuid.Parse(p.ID); err != nil || strings.TrimSpace(p.URL) == "" && p.ManagedID == 0 {
 					return errors.New("代理 ID 无效，请重新加载")
 				}
 			} else {
@@ -213,7 +221,7 @@ func (s *CodexTicketService) updateProxySettings(c *codexTicketConfig, u CodexTi
 				}
 				entry.Cipher = encrypted
 			}
-			if entry.Cipher == "" {
+			if entry.Cipher == "" && entry.ManagedID == 0 {
 				return errors.New("新增代理必须填写地址")
 			}
 			list = append(list, entry)

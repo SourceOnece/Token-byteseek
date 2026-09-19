@@ -6,6 +6,7 @@
     @close="handleClose"
   >
     <form id="bulk-edit-account-form" class="space-y-5" @submit.prevent="() => handleSubmit()">
+      <fieldset :disabled="prefillLoading || prefillFailed || submitting" class="min-w-0 space-y-5">
       <!-- Info -->
       <div class="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
         <p class="text-sm text-blue-700 dark:text-blue-400">
@@ -63,7 +64,8 @@
           role="group"
           aria-labelledby="bulk-edit-openai-passthrough-label"
         >
-          <button
+          <Select v-if="isBlank(openaiPassthroughEnabled)" :model-value="''" :options="bulkBooleanOptions" :placeholder="' '" class="w-36" @update:model-value="openaiPassthroughEnabled = $event === 'true'" />
+          <button v-else
             id="bulk-edit-openai-passthrough-toggle"
             type="button"
             :class="[
@@ -114,7 +116,8 @@
           role="group"
           aria-labelledby="bulk-edit-openai-flatten-namespaces-label"
         >
-          <button
+          <Select v-if="isBlank(openaiFlattenNamespacesEnabled)" :model-value="''" :options="bulkBooleanOptions" :placeholder="' '" class="w-36" @update:model-value="openaiFlattenNamespacesEnabled = $event === 'true'" />
+          <button v-else
             id="bulk-edit-openai-flatten-namespaces-toggle"
             type="button"
             :aria-pressed="openaiFlattenNamespacesEnabled"
@@ -285,7 +288,8 @@
           role="group"
           aria-labelledby="bulk-edit-openai-continuation-supported-label"
         >
-          <Toggle
+          <Select v-if="isBlank(openAIResponsesContinuationSupported)" v-model="openAIResponsesContinuationSupported" :options="[{value:true,label:t('common.enabled')},{value:false,label:t('common.disabled')}]" :placeholder="' '" :disabled="!enableOpenAIResponsesContinuationSupported" />
+          <Toggle v-else
             v-model="openAIResponsesContinuationSupported"
             :disabled="!enableOpenAIResponsesContinuationSupported"
             data-testid="bulk-edit-openai-continuation-supported"
@@ -688,7 +692,8 @@
           />
         </div>
         <div v-if="enableInterceptWarmup" id="bulk-edit-intercept-warmup-body" class="mt-3">
-          <button
+          <Select v-if="isBlank(interceptWarmupRequests)" :model-value="''" :options="bulkBooleanOptions" :placeholder="' '" class="w-36" @update:model-value="interceptWarmupRequests = $event === 'true'" />
+          <button v-else
             type="button"
             :class="[
               'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
@@ -730,7 +735,8 @@
           />
         </div>
         <div v-if="enableHeaderOverride" id="bulk-edit-header-override-body" class="mt-3 space-y-3">
-          <button
+          <Select v-if="isBlank(headerOverrideEnabled)" :model-value="''" :options="bulkBooleanOptions" :placeholder="' '" class="w-36" @update:model-value="headerOverrideEnabled = $event === 'true'" />
+          <button v-else
             type="button"
             :class="[
               'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
@@ -1044,7 +1050,8 @@
           <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
             {{ t('admin.accounts.openai.codexCLIOnlyAllowClaudeCodeDesc') }}
           </p>
-          <button
+          <Select v-if="isBlank(codexCLIOnlyAllowClaudeCodeEnabled)" :model-value="''" :options="bulkBooleanOptions" :placeholder="' '" class="w-36" @update:model-value="codexCLIOnlyAllowClaudeCodeEnabled = $event === 'true'" />
+          <button v-else
             id="bulk-edit-openai-codex-allow-claude-code-toggle"
             type="button"
             :class="[
@@ -1124,7 +1131,8 @@
               id="bulk-edit-openai-auto-pause-5h-disabled"
               :class="!enableAutoPause5hDisabled && 'pointer-events-none opacity-50'"
             >
-              <button
+              <Select v-if="isBlank(autoPause5hDisabled)" :model-value="''" :options="bulkBooleanOptions" :placeholder="' '" class="w-36" @update:model-value="autoPause5hDisabled = $event === 'true'" />
+          <button v-else
                 id="bulk-edit-openai-auto-pause-5h-disabled-toggle"
                 type="button"
                 :class="[
@@ -1199,7 +1207,8 @@
               id="bulk-edit-openai-auto-pause-7d-disabled"
               :class="!enableAutoPause7dDisabled && 'pointer-events-none opacity-50'"
             >
-              <button
+              <Select v-if="isBlank(autoPause7dDisabled)" :model-value="''" :options="bulkBooleanOptions" :placeholder="' '" class="w-36" @update:model-value="autoPause7dDisabled = $event === 'true'" />
+          <button v-else
                 id="bulk-edit-openai-auto-pause-7d-disabled-toggle"
                 type="button"
                 :class="[
@@ -1459,7 +1468,8 @@
         >
           <div class="mb-3 flex items-center justify-between">
             <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('admin.accounts.quotaControl.rpmLimit.hint') }}</span>
-            <button
+            <Select v-if="isBlank(rpmLimitEnabled)" :model-value="''" :options="bulkBooleanOptions" :placeholder="' '" class="w-36" @update:model-value="rpmLimitEnabled = $event === 'true'" />
+          <button v-else
               type="button"
               @click="rpmLimitEnabled = !rpmLimitEnabled"
               :class="[
@@ -1539,13 +1549,13 @@
 
         <!-- 用户消息限速模式（独立于 RPM 开关，始终可见） -->
         <div class="mt-4">
-          <label class="input-label">{{ t('admin.accounts.quotaControl.rpmLimit.userMsgQueue') }}</label>
+          <label class="input-label flex items-center gap-2"><input v-model="enableUserMsgQueue" type="checkbox" />{{ t('admin.accounts.quotaControl.rpmLimit.userMsgQueue') }}</label>
           <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
             {{ t('admin.accounts.quotaControl.rpmLimit.userMsgQueueHint') }}
           </p>
           <div class="flex space-x-2">
             <button type="button" v-for="opt in umqModeOptions" :key="opt.value"
-              @click="userMsgQueueMode = userMsgQueueMode === opt.value ? null : opt.value"
+              :disabled="!enableUserMsgQueue" @click="userMsgQueueMode = opt.value"
               :class="[
                 'px-3 py-1.5 text-sm rounded-md border transition-colors',
                 userMsgQueueMode === opt.value
@@ -1586,7 +1596,8 @@
             <span class="text-sm text-gray-700 dark:text-gray-300">
               {{ t('admin.accounts.quotaControl.tlsFingerprint.hint') }}
             </span>
-            <button
+            <Select v-if="isBlank(tlsFingerprintEnabled)" :model-value="''" :options="bulkBooleanOptions" :placeholder="' '" class="w-36" @update:model-value="tlsFingerprintEnabled = $event === 'true'" />
+          <button v-else
               id="bulk-edit-tls-fingerprint-toggle"
               type="button"
               :class="[
@@ -1650,7 +1661,9 @@
         </div>
       </div>
       <!-- 票据独立保存后保持弹窗，避免丢失其他尚未提交的批量编辑草稿。 -->
+      <AccountBulkAdditionalSettings v-if="targetMode === 'selected'" ref="additionalSettings" :accounts="selectedAccounts" :platforms="targetSelectedPlatforms" :types="targetSelectedTypes" :locked="submitting || prefillLoading || prefillFailed" />
       <CodexTicketAccountSettings v-if="show && targetMode === 'selected' && targetSelectedPlatforms.length === 1 && targetSelectedPlatforms[0] === 'openai' && targetSelectedTypes.length === 1 && targetSelectedTypes[0] === 'oauth'" :ids="accountIds" bulk />
+      </fieldset>
     </form>
 
     <template #footer>
@@ -1661,7 +1674,7 @@
         <button
           type="submit"
           form="bulk-edit-account-form"
-          :disabled="submitting"
+          :disabled="submitting || prefillLoading || prefillFailed"
           class="btn btn-primary"
         >
           <svg
@@ -1706,6 +1719,9 @@
 
 <script setup lang="ts">
 import CodexTicketAccountSettings from '@/components/admin/account/CodexTicketAccountSettings.vue'
+import AccountBulkAdditionalSettings from './AccountBulkAdditionalSettings.vue'
+import { commonAccountValue } from './bulkAdditionalFields'
+import { readCodexImageToolMode } from '@/utils/codexImageToolMode'
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -1786,6 +1802,11 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const appStore = useAppStore()
+const isBlank=(v:unknown)=>v===''||v===null||v===undefined
+const bulkBooleanOptions=computed(()=>[{value:'true',label:t('common.enabled')},{value:'false',label:t('common.disabled')}])
+const additionalSettings=ref<InstanceType<typeof AccountBulkAdditionalSettings>>()
+const selectedAccounts=ref<Account[]>([])
+const prefillLoading=ref(false),prefillFailed=ref(false)
 
 // Platform awareness
 const targetMode = computed(() => props.target?.mode ?? 'selected')
@@ -1994,6 +2015,7 @@ const bulkBaseRpm = ref<number | null>(null)
 const bulkRpmStrategy = ref<'tiered' | 'sticky_exempt'>('tiered')
 const bulkRpmStickyBuffer = ref<number | null>(null)
 const userMsgQueueMode = ref<string | null>(null)
+const enableUserMsgQueue=ref(false)
 const tlsFingerprintEnabled = ref(false)
 const tlsFingerprintProfileId = ref(0)
 const tlsFingerprintProfiles = ref<{ id: number; name: string }[]>([])
@@ -2252,13 +2274,10 @@ const loadSelectedAccountDefaults = async () => {
   if (!props.show || props.accountIds.length === 0) {
     return
   }
-  if (props.selectedPlatforms.length !== 1) {
-    resetModelRestrictionDraft()
-    return
-  }
-
+  prefillLoading.value=true;prefillFailed.value=false
   try {
-    const accounts = await Promise.all(props.accountIds.map((id) => adminAPI.accounts.getById(id)))
+    const accounts: Account[]=[]
+    for(let i=0;i<props.accountIds.length;i+=6) accounts.push(...await Promise.all(props.accountIds.slice(i,i+6).map(id=>adminAPI.accounts.getById(id))))
     if (requestSeq !== modelRestrictionPrefillSeq.value || !props.show) {
       return
     }
@@ -2266,6 +2285,33 @@ const loadSelectedAccountDefaults = async () => {
       return
     }
     hydrateModelRestrictionDraftFromAccounts(accounts)
+    selectedAccounts.value=accounts
+    // 展示共同实际值；不同值置空。未勾选的字段永远不随展示回填而提交。
+    const shared=(section:'account'|'credentials'|'extra',key:string)=>{
+      const value=commonAccountValue(accounts,section,key)
+      const missing=accounts.every(a=>section==='account'?(a as unknown as Record<string,unknown>)[key]==null:a[section]?.[key]==null)
+      if(!missing)return value
+      const defaults:Record<string,unknown>={proxy_id:null,load_factor:null,openai_passthrough:false,openai_responses_flatten_namespaces:false,openai_text_route_mode:'preserve_client_protocol',openai_responses_continuation_supported:false,openai_oauth_responses_websockets_v2_mode:'off',openai_apikey_responses_websockets_v2_mode:'off',openai_oauth_client_policy:'any',codex_fingerprint_mode:'off',openai_compact_mode:'auto',openai_native_compaction_v2_mode:'auto',enable_tls_fingerprint:false,tls_fingerprint_profile_id:0,tls_fingerprint_router_id:null,auto_pause_5h_disabled:false,auto_pause_7d_disabled:false,intercept_warmup_requests:false,header_override_enabled:false,user_msg_queue_mode:null,base_rpm:null,rpm_strategy:'tiered'}
+      return key in defaults?defaults[key]:value
+    }
+    const enabledByRef=new Map<unknown,{value:boolean}>([[baseUrl,enableBaseUrl],[concurrency,enableConcurrency],[priority,enablePriority],[rateMultiplier,enableRateMultiplier],[status,enableStatus],[proxyId,enableProxy],[openaiPassthroughEnabled,enableOpenAIPassthrough],[openAIOAuthClientPolicy,enableCodexCLIOnly],[codexCLIOnlyAllowClaudeCodeEnabled,enableCodexCLIOnlyAllowClaudeCode],[headerOverrideEnabled,enableHeaderOverride],[tlsFingerprintEnabled,enableTLSFingerprint]])
+    const assign=(target:{value:unknown},value:unknown)=>{if(!enabledByRef.get(target)?.value)target.value=value}
+    for(const [target,section,key] of [
+      [baseUrl,'credentials','base_url'],[proxyId,'account','proxy_id'],[concurrency,'account','concurrency'],[loadFactor,'account','load_factor'],[priority,'account','priority'],[rateMultiplier,'account','rate_multiplier'],[status,'account','status'],[groupIds,'account','group_ids'],
+      [openaiPassthroughEnabled,'extra','openai_passthrough'],[openaiFlattenNamespacesEnabled,'extra','openai_responses_flatten_namespaces'],[openAITextRouteMode,'extra','openai_text_route_mode'],[openAIResponsesContinuationSupported,'extra','openai_responses_continuation_supported'],
+      [openaiOAuthResponsesWebSocketV2Mode,'extra','openai_oauth_responses_websockets_v2_mode'],[openaiAPIKeyResponsesWebSocketV2Mode,'extra','openai_apikey_responses_websockets_v2_mode'],[openAIOAuthClientPolicy,'extra','openai_oauth_client_policy'],[codexFingerprintMode,'extra','codex_fingerprint_mode'],[openAICompactMode,'extra','openai_compact_mode'],[openAINativeCompactionV2Mode,'extra','openai_native_compaction_v2_mode'],
+      [tlsFingerprintEnabled,'extra','enable_tls_fingerprint'],[tlsFingerprintProfileId,'extra','tls_fingerprint_profile_id'],[tlsFingerprintRouterId,'extra','tls_fingerprint_router_id'],[autoPause5hDisabled,'extra','auto_pause_5h_disabled'],[autoPause7dDisabled,'extra','auto_pause_7d_disabled'],[interceptWarmupRequests,'credentials','intercept_warmup_requests'],[headerOverrideEnabled,'credentials','header_override_enabled'],
+      [bulkBaseRpm,'extra','base_rpm'],[bulkRpmStrategy,'extra','rpm_strategy'],[bulkRpmStickyBuffer,'extra','rpm_sticky_buffer'],[userMsgQueueMode,'extra','user_msg_queue_mode']
+    ] as [{value:unknown},'account'|'credentials'|'extra',string][]) assign(target,shared(section,key))
+    if(!Array.isArray(groupIds.value))groupIds.value=[]
+    const caps=shared('credentials','openai_workload_capabilities');if(!enableOpenAIWorkloadCapabilities.value)openAIWorkloadCapabilities.value=Array.isArray(caps)?caps as OpenAIWorkloadCapability[]:accounts.every(a=>a.credentials?.openai_workload_capabilities==null)?['text_generation','embeddings']:[]
+    const codes=shared('credentials','custom_error_codes');selectedErrorCodes.value=Array.isArray(codes)?codes as number[]:[]
+    for(const [target,key] of [[autoPause5hThreshold,'auto_pause_5h_threshold'],[autoPause7dThreshold,'auto_pause_7d_threshold']] as const){const v=shared('extra',key);target.value=typeof v==='number'?v*100:''}
+    const headerRows=shared('credentials','header_overrides');headerOverrideRows.value=headerRows && typeof headerRows==='object' ? Object.entries(headerRows).map(([name,value])=>({name,value:String(value)})) : []
+    const compact=shared('credentials','compact_model_mapping');openAICompactModelMappings.value=compact&&typeof compact==='object'?Object.entries(compact).map(([from,to])=>({from,to:String(to)})):[]
+    const clients=shared('extra','codex_cli_only_allowed_clients');assign(codexCLIOnlyAllowClaudeCodeEnabled,Array.isArray(clients)?clients.includes('claude_code'):accounts.every(a=>a.extra?.codex_cli_only_allowed_clients==null)?false:'')
+    if(!enableRpmLimit.value) assign(rpmLimitEnabled,shared('extra','base_rpm')===''?'':Number(shared('extra','base_rpm'))>0)
+    const modes=accounts.map(a=>readCodexImageToolMode(a.extra));assign(codexImageToolMode,modes.every(v=>v===modes[0])?modes[0]:'')
   } catch (error) {
     if (requestSeq !== modelRestrictionPrefillSeq.value) {
       return
@@ -2274,8 +2320,9 @@ const loadSelectedAccountDefaults = async () => {
       return
     }
     resetModelRestrictionDraft()
+    prefillFailed.value=true
     console.error('Failed to load bulk edit account defaults:', error)
-  }
+  } finally {if(requestSeq===modelRestrictionPrefillSeq.value)prefillLoading.value=false}
 }
 
 // Model mapping helpers
@@ -2378,6 +2425,8 @@ const buildAutoPauseThresholdRatio = (value: OptionalNumberInputValue): number =
 }
 
 const buildUpdatePayload = (): Record<string, unknown> | null => {
+  const pairs = [[enableConcurrency,concurrency],[enablePriority,priority],[enableRateMultiplier,rateMultiplier],[enableStatus,status],[enableOpenAIPassthrough,openaiPassthroughEnabled],[enableOpenAIFlattenNamespaces,openaiFlattenNamespacesEnabled],[enableOpenAITextRouteMode,openAITextRouteMode],[enableOpenAIWSMode,openaiOAuthResponsesWebSocketV2Mode],[enableOpenAIAPIKeyWSMode,openaiAPIKeyResponsesWebSocketV2Mode],[enableCodexCLIOnly,openAIOAuthClientPolicy],[enableTLSFingerprint,tlsFingerprintEnabled],[enableCodexFingerprintMode,codexFingerprintMode],[enableOpenAICompactMode,openAICompactMode],[enableOpenAINativeCompactionV2Mode,openAINativeCompactionV2Mode],[enableAutoPause5hDisabled,autoPause5hDisabled],[enableAutoPause7dDisabled,autoPause7dDisabled],[enableHeaderOverride,headerOverrideEnabled],[enableInterceptWarmup,interceptWarmupRequests],[enableCodexImageToolMode,codexImageToolMode]]
+  if(pairs.some(([enabled,value])=>enabled.value&&isBlank(value.value))) throw new Error(t('admin.settings.codexTicket.invalidForm'))
   const updates: Record<string, unknown> = {}
   const credentials: Record<string, unknown> = {}
   let credentialsChanged = false
@@ -2389,11 +2438,13 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
   }
 
   if (enableProxy.value) {
+    if (isBlank(proxyId.value) && proxyId.value !== null) throw new Error(t('admin.settings.codexTicket.invalidForm'))
     // 后端期望 proxy_id: 0 表示清除代理，而不是 null
     updates.proxy_id = proxyId.value === null ? 0 : proxyId.value
   }
 
   if (enableConcurrency.value) {
+    if(!Number.isFinite(Number(concurrency.value)) || Number(concurrency.value)<0)throw new Error(t('admin.settings.codexTicket.invalidForm'))
     updates.concurrency = concurrency.value
   }
 
@@ -2618,7 +2669,7 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
   }
 
   // UMQ mode（独立于 RPM 保存）
-  if (userMsgQueueMode.value !== null) {
+  if (enableUserMsgQueue.value && userMsgQueueMode.value !== null) {
     const umqExtra = ensureExtra()
     umqExtra.user_msg_queue_mode = userMsgQueueMode.value  // '' = 清除账号级覆盖
     umqExtra.user_msg_queue_enabled = false  // 清理旧字段（JSONB merge）
@@ -2672,13 +2723,14 @@ const preCheckMixedChannelRisk = async (built: Record<string, unknown>): Promise
 }
 
 const handleSubmit = async () => {
+  if(prefillLoading.value||prefillFailed.value){appStore.showError(t('common.error'));return}
   if (targetMode.value === 'selected' && props.accountIds.length === 0) {
     appStore.showError(t('admin.accounts.bulkEdit.noSelection'))
     return
   }
 
   const hasAnyFieldEnabled =
-    enableBaseUrl.value ||
+    additionalSettings.value?.hasChanges === true || enableBaseUrl.value ||
     enableOpenAIPassthrough.value ||
     enableOpenAIFlattenNamespaces.value ||
     enableCodexImageToolMode.value ||
@@ -2710,7 +2762,7 @@ const handleSubmit = async () => {
     enableOpenAINativeCompactionV2Mode.value ||
     enableOpenAICompactModelMapping.value ||
     enableRpmLimit.value ||
-    userMsgQueueMode.value !== null
+    enableUserMsgQueue.value
 
   if (!hasAnyFieldEnabled) {
     appStore.showError(t('admin.accounts.bulkEdit.noFieldsSelected'))
@@ -2747,8 +2799,14 @@ const handleSubmit = async () => {
     }
   }
 
-  const built = buildUpdatePayload()
-  if (!built) {
+  let built: Record<string,unknown> | null
+  try {
+    const extraPatch=additionalSettings.value?.patch()||{}
+    built=buildUpdatePayload()||{}
+    const creds={...(built.credentials as Record<string,unknown>||{}),...(extraPatch.credentials as Record<string,unknown>||{})},extras={...(built.extra as Record<string,unknown>||{}),...(extraPatch.extra as Record<string,unknown>||{})}
+    built={...built,...extraPatch,...(Object.keys(creds).length?{credentials:creds}:{}),...(Object.keys(extras).length?{extra:extras}:{})}
+  }catch(err){appStore.showError(err instanceof Error?err.message:t('common.error'));return}
+  if (!built || Object.keys(built).length === 0) {
     appStore.showError(t('admin.accounts.bulkEdit.noFieldsSelected'))
     return
   }
@@ -2819,6 +2877,8 @@ const handleMixedChannelCancel = () => {
 }
 
 const resetBulkEditFormState = () => {
+  enableUserMsgQueue.value=false
+  selectedAccounts.value=[];prefillFailed.value=false;prefillLoading.value=false
   enableBaseUrl.value = false
   enableModelRestriction.value = false
   enableCustomErrorCodes.value = false

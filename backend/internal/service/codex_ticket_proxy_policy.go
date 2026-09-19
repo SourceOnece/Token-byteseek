@@ -81,7 +81,7 @@ func ticketProxyPolicyView(c *codexTicketConfig) CodexTicketProxyPolicyView {
 		v.ProxyProtocol = "http"
 	}
 	for _, item := range p.Proxies {
-		v.Proxies = append(v.Proxies, CodexTicketProxyView{ID: item.ID, Name: item.Name, Configured: item.Cipher != ""})
+		v.Proxies = append(v.Proxies, CodexTicketProxyView{ID: item.ID, Name: item.Name, Configured: item.Cipher != "" || item.ManagedID > 0, ManagedID: item.ManagedID})
 	}
 	return v
 }
@@ -222,6 +222,25 @@ func parseTicketProviderResponse(body []byte, protocol string) (string, error) {
 	return text, nil
 }
 func (s *CodexTicketService) resolveTicketAttemptProxy(ctx context.Context, c *codexTicketConfig, p codexTicketProxy) (codexTicketProxy, error) {
+	// 管理代理按ID引用，逐次读取最新地址和状态；删除/停用/过期即停止，不能回退直连。
+	if p.ManagedID > 0 {
+		if s.proxyRepo == nil || s.cipher == nil {
+			return p, errors.New("管理代理服务不可用")
+		}
+		read, stop := context.WithTimeout(ctx, 2*time.Second)
+		proxy, err := s.proxyRepo.GetByID(read, p.ManagedID)
+		stop()
+		if err != nil || proxy == nil || !proxy.IsActive() || proxy.IsExpired(time.Now()) {
+			return p, errors.New("所选管理代理不可用")
+		}
+		if validateCodexHarvestProxy(expandTicketProxySession(proxy.URL())) != nil {
+			return p, errors.New("管理代理协议无效")
+		}
+		p.Cipher, err = s.cipher.Encrypt(proxy.URL())
+		if err != nil {
+			return p, errors.New("代理配置不可读")
+		}
+	}
 	if c.ProxyPolicy == nil || c.ProxyPolicy.Mode != "dynamic" || c.ProxyPolicy.DynamicSource != "api" {
 		return s.ticketAttemptProxy(p)
 	}

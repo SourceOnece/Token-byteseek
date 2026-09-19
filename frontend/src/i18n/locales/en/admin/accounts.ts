@@ -2,6 +2,8 @@ export default {
 // Accounts
     accounts: {
       ticketWorkbench: {
+        createHint: 'Saved with new accounts. Reimporting an existing account preserves its ticket settings.',
+        templateHint: 'Save this template separately. It applies only to future OpenAI OAuth accounts.',
         verifiedFlow: 'Dual-route verification', verifiedHint: 'Harvest → verify via account business proxy → cache. Off by default; bulk-editable.', verifiedRisk: 'Bind a business proxy first. Enables recollection and up to two model calls per attempt. Reconnect WS to use the per-turn HTTP bridge. Both stages must pass before publishing.',
         stage: { harvest: 'Candidate harvest', verify: 'Business proxy verification' }, requestModel: 'Request', responseModel: 'Response', responseMissing: 'Not observed',
         validationReason: { business_proxy: 'No usable business proxy', network: 'Connection failed', upstream: 'Upstream rejected', invalid_ticket: 'Invalid length or format', incomplete_response: 'Response did not complete', model_mismatch: 'Model mismatch', length_signal: 'Degradation length detected', account_changed: 'Account configuration changed' },

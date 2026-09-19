@@ -7,6 +7,7 @@ import (
 )
 
 type CodexTicketProxyTestRequest struct {
+	Template  bool                          `json:"template"`
 	AccountID int64                         `json:"account_id"`
 	Policy    *CodexTicketProxyPolicyUpdate `json:"policy"`
 	ProxyID   string                        `json:"proxy_id"`
@@ -34,6 +35,9 @@ func (s *CodexTicketService) TestTicketProxy(ctx context.Context, input CodexTic
 			return CodexTicketProxyTestResult{}, err
 		}
 		cfg = ticketConfigForAccount(cfg, input.AccountID)
+	}
+	if input.Template && input.AccountID == 0 {
+		cfg = ticketConfigForAccount(ticketTemplateConfig(cfg), 0)
 	}
 	if input.Policy != nil && input.Policy.Mode != "inherit" {
 		p, e := s.updateTicketProxyPolicy(cfg, input.Policy)

@@ -35,13 +35,14 @@ type CodexTicketCache interface {
 }
 
 type codexTicketConfig struct {
-	VerifiedFlow          bool                    `json:"-"`
-	FailureThreshold      int                     `json:"failure_threshold,omitempty"`
-	CooldownSeconds       int                     `json:"cooldown_seconds,omitempty"`
-	CollectionConcurrency int                     `json:"collection_concurrency,omitempty"`
-	CacheMinutes          int                     `json:"cache_minutes,omitempty"`
-	RefreshBeforeMinutes  *int                    `json:"refresh_before_minutes,omitempty"`
-	ProxyPolicy           *codexTicketProxyPolicy `json:"proxy_policy,omitempty"`
+	ImportDefaults        *codexTicketAccountConfig `json:"import_defaults,omitempty"`
+	VerifiedFlow          bool                      `json:"-"`
+	FailureThreshold      int                       `json:"failure_threshold,omitempty"`
+	CooldownSeconds       int                       `json:"cooldown_seconds,omitempty"`
+	CollectionConcurrency int                       `json:"collection_concurrency,omitempty"`
+	CacheMinutes          int                       `json:"cache_minutes,omitempty"`
+	RefreshBeforeMinutes  *int                      `json:"refresh_before_minutes,omitempty"`
+	ProxyPolicy           *codexTicketProxyPolicy   `json:"proxy_policy,omitempty"`
 	unlimitedAttempts     bool
 	stored                *string
 	Accounts              map[string]codexTicketAccountConfig `json:"accounts,omitempty"`
@@ -116,6 +117,7 @@ type CodexTicketService struct {
 	schedulingWG        sync.WaitGroup
 	schedulingDropped   atomic.Uint64
 	proxyProviderClient *http.Client
+	proxyRepo           ProxyRepository
 	gateway             *OpenAIGatewayService
 	settings            SettingRepository
 	cache               CodexTicketCache
@@ -141,8 +143,8 @@ type CodexTicketService struct {
 	ipProber            ProxyExitInfoProber
 }
 
-func ProvideCodexTicketService(gateway *OpenAIGatewayService, settings SettingRepository, cache CodexTicketCache, cipher SecretEncryptor, ipProber ProxyExitInfoProber) *CodexTicketService {
-	s := &CodexTicketService{gateway: gateway, settings: settings, cache: cache, cipher: cipher, ipProber: ipProber}
+func ProvideCodexTicketService(gateway *OpenAIGatewayService, settings SettingRepository, cache CodexTicketCache, cipher SecretEncryptor, ipProber ProxyExitInfoProber, proxies ProxyRepository) *CodexTicketService {
+	s := &CodexTicketService{gateway: gateway, settings: settings, cache: cache, cipher: cipher, ipProber: ipProber, proxyRepo: proxies}
 	gateway.codexTickets.Store(s)
 	s.Start()
 	return s

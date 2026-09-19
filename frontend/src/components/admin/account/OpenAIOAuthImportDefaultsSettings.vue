@@ -321,6 +321,7 @@
           </div>
         </section>
 
+        <CodexTicketAccountSettings template-mode />
         <div class="flex justify-end">
           <button type="button" class="btn btn-primary" :disabled="saving" @click="save">
             {{ saving ? t('common.saving') : t('common.save') }}
@@ -333,6 +334,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import CodexTicketAccountSettings from './CodexTicketAccountSettings.vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api'
 import type { OpenAIOAuthImportDefaults } from '@/api/admin/settings'

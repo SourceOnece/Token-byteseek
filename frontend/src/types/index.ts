@@ -1719,6 +1719,7 @@ export interface OpenAITextProtocolState {
 }
 
 export interface CreateAccountRequest {
+  codex_ticket?: import('@/api/admin/codexTickets').TicketAccountPatch
   name: string
   notes?: string | null
   platform: AccountPlatform
@@ -1855,6 +1856,7 @@ export interface AdminDataImportResult {
 }
 
 export interface CodexSessionImportRequest {
+  codex_ticket?: import('@/api/admin/codexTickets').TicketAccountPatch
   content?: string
   contents?: string[]
   name?: string
@@ -1875,6 +1877,7 @@ export interface CodexSessionImportRequest {
 }
 
 export interface OpenAICodexPATCreateRequest {
+  codex_ticket?: import('@/api/admin/codexTickets').TicketAccountPatch
   access_token: string
   name?: string
   notes?: string | null
