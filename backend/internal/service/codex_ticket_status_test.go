@@ -73,8 +73,8 @@ func TestCodexTicketStatusDisabledPausedAndCacheFailure(t *testing.T) {
 	enableTicketTest(t, s)
 	result, err = s.Status(context.Background(), []int64{1})
 	require.NoError(t, err)
-	require.True(t, result.Items[0].CollectionPaused)
-	require.Equal(t, "paused", result.Items[0].Models[0].State)
+	require.False(t, result.Items[0].CollectionPaused)
+	require.Equal(t, "pending", result.Items[0].Models[0].State)
 	cache.fail = true
 	result, err = s.Status(context.Background(), []int64{1})
 	require.NoError(t, err)

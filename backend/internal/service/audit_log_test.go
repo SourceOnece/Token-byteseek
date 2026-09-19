@@ -92,6 +92,13 @@ func TestRedactAuditBody_CodexAccountProxyPatch(t *testing.T) {
 	}
 }
 
+func TestRedactAuditBody_CodexProxyExtractionURL(t *testing.T) {
+	out := RedactAuditBody([]byte(`{"policy":{"extraction_url":"https://provider.invalid/gen?user=private&pass=private-canary"}}`), "application/json")
+	if strings.Contains(out, "private-canary") || strings.Contains(out, "provider.invalid") {
+		t.Fatal("取号URL不得泄漏到审计")
+	}
+}
+
 // 裸键 "session"（Ollama Cloud 会话保存的请求体字段）值整体就是浏览器 Cookie 明文，
 // 必须命中键级脱敏；session_id 等运行态标识不受影响，保留以便追责。
 func TestRedactAuditBody_BareSessionKeyRedacted(t *testing.T) {

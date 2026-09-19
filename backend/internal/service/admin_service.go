@@ -457,6 +457,7 @@ type BulkUpdateAccountsInput struct {
 }
 
 type BulkUpdateAccountFilters struct {
+	TicketFilter  string
 	QualityStatus string
 	Platform      string
 	Type          string

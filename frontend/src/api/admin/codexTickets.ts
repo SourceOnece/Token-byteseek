@@ -1,8 +1,10 @@
 import { apiClient, buildApiUrl } from '../client'
 import { ADMIN_UI_REQUEST_HEADER } from '../adminUIRequest'
 
-export type TicketState = 'ready' | 'pending' | 'collecting' | 'missing' | 'expired' | 'failed' | 'disabled' | 'unsupported' | 'unavailable' | 'paused'
+export type TicketState = 'ready' | 'pending' | 'collecting' | 'missing' | 'expired' | 'failed' | 'disabled' | 'unsupported' | 'unavailable' | 'paused' | 'cooldown'
 export interface TicketModelStatus {
+	collection?: { consecutive_failures: number; cooldown_until?: string }
+	attempts?: number; max_attempts?: number
 	watchdog?: { mode: TicketWatchdogMode; count: number; reason?: 'length_signal' | 'model_mismatch'; action?: 'observed' | 'revoked'; checked_at?: string }
   model: string
   state: TicketState
@@ -26,6 +28,8 @@ export interface TicketLatest {
 }
 
 export interface TicketSettings {
+	account_rules?: TicketAccountSettings[]
+	proxy_policy?: TicketProxyPolicy
 	account_proxy_configured?: boolean
 	watchdog_mode?: TicketWatchdogMode
   models?: string[]; degraded_signal_length?: number
@@ -97,12 +101,35 @@ export interface TicketAccountStatus {
 
 export type TicketWatchdogMode = 'off' | 'observe' | 'recover_length' | 'recover_model' | 'recover'
 export interface TicketAccountSettings {
+	global_enabled?: boolean
+	rules: TicketRules; proxy_policy: TicketProxyPolicy
   account_id: number; mode: 'inherit' | 'on' | 'off'; effective_enabled: boolean
   proxy_configured: boolean; proxy_source: 'account' | 'gateway'
   watchdog_mode: TicketWatchdogMode | 'inherit'; effective_watchdog_mode: TicketWatchdogMode; revision: string
 }
 export interface TicketAccountPatch {
+	rules?: Partial<TicketRules>; proxy_policy?: TicketProxyPatch
   mode?: TicketAccountSettings['mode']; harvest_proxy_url?: string; watchdog_mode?: TicketAccountSettings['watchdog_mode']
+}
+
+export interface TicketRules {
+  models: string[]; target_length: number; degraded_signal_length: number; max_attempts: number
+  concurrency: number; cache_minutes: number; refresh_before_minutes: number
+  retry_interval_seconds: number; probe_interval_seconds: number; failure_threshold: number; cooldown_seconds: number
+}
+export interface TicketProxyPolicy {
+  mode: 'fixed' | 'rotate' | 'dynamic'; dynamic_source: 'template' | 'api'; extraction_configured: boolean
+  proxy_protocol: 'http' | 'socks5h'; fixed_proxy_id: string; proxies: { id: string; name: string; configured: boolean }[]
+}
+export interface TicketProxyPatch {
+  mode: 'inherit' | TicketProxyPolicy['mode']; dynamic_source?: 'template' | 'api'; extraction_url?: string
+  proxy_protocol?: 'http' | 'socks5h'; fixed_proxy_id?: string; proxies?: { id: string; name: string; harvest_proxy_url: string }[]
+}
+export interface TicketProxyTestResult {
+  ip?: string; status: string; source?: string; country_code?: string; country?: string; region?: string; city?: string; duration_ms: number
+}
+export async function testTicketProxy(account_id: number | undefined, policy: TicketProxyPatch | undefined) {
+  return (await apiClient.post<TicketProxyTestResult>('/admin/settings/codex-ticket/proxy-test', { account_id, policy, confirmed: true }, { timeout: 25000 })).data
 }
 export const ticketAccountAPI = {
   async get(id: number, signal?: AbortSignal) { return (await apiClient.get<TicketAccountSettings>(`/admin/accounts/${id}/codex-ticket-settings`, { signal })).data },

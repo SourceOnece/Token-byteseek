@@ -66,7 +66,7 @@ describe('AccountTableFilters', () => {
     expect(wrapper.text()).toContain('admin.accounts.quality.status.failed')
     const reset = wrapper.findAll('button').find(button => button.text() === 'common.reset')!
     await reset.trigger('click')
-    expect(wrapper.emitted('update:filters')?.[0]).toEqual([{ platform: '', type: '', status: '', privacy_mode: '', group: '', quality_status: '' }])
+    expect(wrapper.emitted('update:filters')?.[0]).toEqual([{ platform: '', type: '', status: '', privacy_mode: '', group: '', quality_status: '', ticket_filter: '' }])
   })
   it('keeps inactive groups visible in the group filter', async () => {
     const wrapper = mount(AccountTableFilters, {
@@ -95,7 +95,7 @@ describe('AccountTableFilters', () => {
     await wrapper.get('[data-testid="account-filters-toggle"]').trigger('click')
 
     const selectComponents = wrapper.findAllComponents(SelectStub)
-    const groupOptions = selectComponents.at(-1)?.props('options') as Array<{ value: string; label: string }>
+    const groupOptions = selectComponents.find(select => select.props('options').some((item: { value: string }) => item.value === '10'))?.props('options') as Array<{ value: string; label: string }>
 
     expect(groupOptions).toEqual(expect.arrayContaining([
       { value: '10', label: 'Active Pool' },

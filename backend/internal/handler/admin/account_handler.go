@@ -194,6 +194,7 @@ type BulkUpdateAccountsRequest struct {
 }
 
 type BulkUpdateAccountFilters struct {
+	TicketFilter  string `json:"ticket_filter"`
 	QualityStatus string `json:"quality_status"`
 	Platform      string `json:"platform"`
 	Type          string `json:"type"`
@@ -534,6 +535,12 @@ func (h *AccountHandler) List(c *gin.Context) {
 	search := c.Query("search")
 	privacyMode := strings.TrimSpace(c.Query("privacy_mode"))
 	qualityStatus := strings.TrimSpace(c.Query("quality_status"))
+	ticketFilter := strings.TrimSpace(c.Query("ticket_filter"))
+	if !service.ValidCodexTicketFilter(ticketFilter) {
+		response.BadRequest(c, "无效的票据筛选")
+		return
+	}
+	c.Request = c.Request.WithContext(service.WithCodexTicketFilter(c.Request.Context(), ticketFilter))
 	if !service.ValidCodexQualityFilter(qualityStatus) {
 		response.BadRequest(c, "无效的检测结果筛选")
 		return
@@ -2234,6 +2241,7 @@ func toServiceBulkUpdateAccountFilters(filters *BulkUpdateAccountFilters) *servi
 	}
 	return &service.BulkUpdateAccountFilters{
 		QualityStatus: filters.QualityStatus,
+		TicketFilter:  filters.TicketFilter,
 		Platform:      filters.Platform,
 		Type:          filters.Type,
 		Status:        filters.Status,

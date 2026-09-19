@@ -603,6 +603,7 @@ type AccountBulkEditTarget =
         search?: string
         privacy_mode?: string
         quality_status?: string
+    ticket_filter?: string
         sort_by?: string
         sort_order?: AccountSortOrder
       }
@@ -1660,6 +1661,7 @@ const {
     type: ['oauth', 'apikey'].includes(initialQualityQuery.get('type') || '') ? (initialQualityQuery.get('type') as string) : '',
     status: '',
     privacy_mode: '',
+    ticket_filter: '',
     quality_status: ['full', 'degraded', 'failed', 'untested', 'cancelled', 'stale', 'skipped'].includes(initialQualityStatus) ? initialQualityStatus : '',
     group: '',
     search: '',
@@ -2616,6 +2618,7 @@ const buildBulkEditFilterSnapshot = (): AccountBulkEditFilterSnapshot => {
     group: typeof rawParams.group === 'string' ? rawParams.group : '',
     search: typeof rawParams.search === 'string' ? rawParams.search : '',
     privacy_mode: typeof rawParams.privacy_mode === 'string' ? rawParams.privacy_mode : '',
+    ticket_filter: typeof rawParams.ticket_filter === 'string' ? rawParams.ticket_filter : '',
     quality_status: typeof rawParams.quality_status === 'string' ? rawParams.quality_status : '',
     sort_by: typeof rawParams.sort_by === 'string' ? rawParams.sort_by : '',
     sort_order: sortOrder
@@ -2723,6 +2726,7 @@ const buildAccountQueryFilters = () => ({
   group: params.group || '',
   privacy_mode: params.privacy_mode || '',
   quality_status: params.quality_status || '',
+  ticket_filter: params.ticket_filter || '',
   search: params.search || '',
   sort_by: sortState.sort_by,
   sort_order: sortState.sort_order
@@ -2798,6 +2802,8 @@ const syncPaginationAfterLocalRemoval = () => {
 }
 
 const patchAccountInList = (updatedAccount: Account) => {
+  // 票据设置存储在独立配置，实时账号对象没有这些字段；筛选中等待服务端刷新，避免本地误移除。
+  if (params.ticket_filter) { hasPendingListSync.value = true; return }
   const index = accounts.value.findIndex(account => account.id === updatedAccount.id)
   if (index === -1) return
   const mergedAccount = mergeRuntimeFields(accounts.value[index], updatedAccount)

@@ -27,6 +27,9 @@ type CodexTicketProxyUpdate struct {
 }
 
 func (c *codexTicketConfig) proxies() []codexTicketProxy {
+	if c.ProxyPolicy != nil && c.ProxyPolicy.Mode == "dynamic" && c.ProxyPolicy.DynamicSource == "api" {
+		return []codexTicketProxy{{ID: "provider", Name: "API"}}
+	}
 	if len(c.Proxies) > 0 {
 		return c.Proxies
 	}
@@ -37,17 +40,26 @@ func (c *codexTicketConfig) proxies() []codexTicketProxy {
 }
 
 func (c *codexTicketConfig) hasCollectionProxy() bool {
+	if c.ProxyPolicy != nil && c.ProxyPolicy.configured() {
+		return true
+	}
 	if len(c.proxies()) > 0 {
 		return true
 	}
 	for _, account := range c.Accounts {
-		if account.Mode != "off" && account.ProxyCipher != "" {
+		if account.Mode != "off" && account.ProxyPolicy != nil && account.ProxyPolicy.configured() {
+			return true
+		}
+		if account.Mode != "off" && (account.ProxyCipher != "" || account.ProxyPolicy != nil && account.ProxyPolicy.configured()) {
 			return true
 		}
 	}
 	return false
 }
 func (c *codexTicketConfig) mode() string {
+	if c.SelectionMode == "dynamic" {
+		return "dynamic"
+	}
 	if c.SelectionMode == "rotate" {
 		return "rotate"
 	}
@@ -60,6 +72,9 @@ func (c *codexTicketConfig) interval() time.Duration {
 	return 6 * time.Second
 }
 func (c *codexTicketConfig) attempts() int {
+	if c.unlimitedAttempts {
+		return 0
+	}
 	if c.MaxAttempts >= 1 {
 		return c.MaxAttempts
 	}
@@ -101,9 +116,10 @@ func (c *codexTicketConfig) retryInterval() time.Duration {
 func codexTicketSettingsView(c *codexTicketConfig) CodexTicketSettings {
 	v := CodexTicketSettings{Enabled: c.Enabled, ProxyConfigured: len(c.proxies()) > 0, Proxies: []CodexTicketProxyView{}, SelectionMode: c.mode(), FixedProxyID: c.FixedProxyID, ProbeIntervalSeconds: int(c.interval() / time.Second), MaxAttempts: c.attempts(), RetryIntervalSeconds: int(c.retryInterval() / time.Second), Revision: c.Generation}
 	v.TargetLength = c.targetLength()
+	v.ProxyPolicy = ticketProxyPolicyView(c)
 	v.WatchdogMode = ticketWatchdogMode(c.WatchdogMode)
 	for _, account := range c.Accounts {
-		if account.Mode != "off" && account.ProxyCipher != "" {
+		if account.Mode != "off" && (account.ProxyCipher != "" || account.ProxyPolicy != nil && account.ProxyPolicy.configured()) {
 			v.AccountProxyConfigured = true
 			break
 		}
@@ -155,6 +171,10 @@ func (s *CodexTicketService) updateProxySettings(c *codexTicketConfig, u CodexTi
 		return errors.New("不能同时提交新代理列表与旧单代理字段")
 	}
 	old := c.proxies()
+	// API取号provider是运行时占位，不是固定代理行，不能妨碍关闭总闸。
+	if c.ProxyPolicy != nil {
+		old = c.ProxyPolicy.Proxies
+	}
 	list := append([]codexTicketProxy(nil), old...)
 	if u.Proxies != nil {
 		if len(*u.Proxies) > 20 {

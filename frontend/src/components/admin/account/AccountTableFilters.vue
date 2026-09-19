@@ -73,6 +73,11 @@
             <label class="input-label">{{ t('admin.accounts.columns.groups') }}</label>
             <Select :model-value="filters.group" class="w-full" :options="gOpts" searchable @update:model-value="updateGroup" @change="$emit('change')" />
           </div>
+          <div class="sm:col-span-2 space-y-2">
+            <label class="input-label">{{ t('admin.accounts.ticketWorkbench.filter') }}</label>
+            <Select :model-value="filters.ticket_filter || ''" :options="ticketOptions" data-testid="ticket-type-filter" @update:model-value="value => emit('update:filters', { ...filters, ticket_filter: value })" @change="$emit('change')" />
+            <input type="number" min="6" max="8192" class="input w-full" :placeholder="t('admin.accounts.ticketWorkbench.filterLength')" :aria-label="t('admin.accounts.ticketWorkbench.filterLength')" :value="String(filters.ticket_filter || '').startsWith('length:') ? String(filters.ticket_filter).slice(7) : ''" @change="setTicketLength" />
+          </div>
         </div>
       </div>
     </div>
@@ -94,7 +99,9 @@ const { t } = useI18n()
 
 const showFilters = ref(false)
 const filterPanelRef = ref<HTMLElement | null>(null)
-const filterKeys = ['platform', 'type', 'status', 'privacy_mode', 'group', 'quality_status'] as const
+const filterKeys = ['platform', 'type', 'status', 'privacy_mode', 'group', 'quality_status', 'ticket_filter'] as const
+const ticketOptions = computed(() => ['', 'on', 'off', 'configured', 'proxy_account', 'proxy_gateway', 'fixed', 'rotate', 'dynamic', 'length:292', 'length:332', 'length:356'].map(value => ({ value, label: value.startsWith('length:') ? t('admin.accounts.ticketWorkbench.lengthLabel', { length: value.slice(7) }) : t('admin.accounts.ticketWorkbench.filters.' + (value || 'all')) })))
+function setTicketLength(event: Event) { const value = Number((event.target as HTMLInputElement).value); if (Number.isInteger(value) && value >= 6 && value <= 8192) { emit('update:filters', { ...props.filters, ticket_filter: 'length:' + value }); emit('change') } }
 const qualityOptions = computed(() => [
   { value: '', label: t('admin.accounts.quality.allResults') },
   ...['full', 'degraded', 'failed', 'untested', 'cancelled', 'stale'].map(value => ({ value, label: value === 'untested' ? t('admin.accounts.quality.untested') : t(`admin.accounts.quality.status.${value}`) }))

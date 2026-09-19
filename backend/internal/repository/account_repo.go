@@ -926,6 +926,7 @@ func (r *accountRepository) accountListFilteredQuery(platform, accountType, stat
 func (r *accountRepository) ListWithFilters(ctx context.Context, params pagination.PaginationParams, platform, accountType, status, search string, groupID int64, privacyMode string) ([]service.Account, *pagination.PaginationResult, error) {
 	q := r.accountListFilteredQuery(platform, accountType, status, search, groupID, privacyMode)
 	applyCodexQualityFilter(q, service.CodexQualityFilter(ctx))
+	applyCodexTicketFilter(q, service.CodexTicketFilter(ctx))
 	// Count 前先 Clone，避免 SoftDeleteMixin 等拦截器把谓词追加到共享 builder，
 	// 进而污染后续列表查询，导致 total 与当前页 items 使用不同条件。
 	total, err := q.Clone().Count(ctx)
@@ -956,6 +957,7 @@ func (r *accountRepository) ListWithFilters(ctx context.Context, params paginati
 func (r *accountRepository) ListAllWithFilters(ctx context.Context, platform, accountType, status, search string, groupID int64, privacyMode string) ([]service.Account, error) {
 	query := r.accountListFilteredQuery(platform, accountType, status, search, groupID, privacyMode)
 	applyCodexQualityFilter(query, service.CodexQualityFilter(ctx))
+	applyCodexTicketFilter(query, service.CodexTicketFilter(ctx))
 	accounts, err := query.All(ctx)
 	if err != nil {
 		return nil, err

@@ -1253,6 +1253,10 @@ func (s *adminServiceImpl) resolveBulkUpdateTargetIDs(ctx context.Context, filte
 		return nil, fmt.Errorf("invalid quality status filter")
 	}
 	ctx = WithCodexQualityFilter(ctx, filters.QualityStatus)
+	if !ValidCodexTicketFilter(filters.TicketFilter) {
+		return nil, fmt.Errorf("invalid ticket filter")
+	}
+	ctx = WithCodexTicketFilter(ctx, filters.TicketFilter)
 
 	groupID := int64(0)
 	switch strings.TrimSpace(filters.Group) {

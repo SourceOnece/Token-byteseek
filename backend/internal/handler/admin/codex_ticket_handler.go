@@ -74,6 +74,24 @@ func (h *SettingHandler) UpdateCodexTicketAccountSettings(c *gin.Context) {
 	}
 	response.Success(c, value)
 }
+
+func (h *SettingHandler) TestCodexTicketProxy(c *gin.Context) {
+	if h.codexTickets == nil {
+		response.InternalError(c, "票据服务不可用")
+		return
+	}
+	var input service.CodexTicketProxyTestRequest
+	if c.ShouldBindJSON(&input) != nil {
+		response.BadRequest(c, "无效代理测试请求")
+		return
+	}
+	result, err := h.codexTickets.TestTicketProxy(c.Request.Context(), input)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.Success(c, result)
+}
 func (h *SettingHandler) GetCodexTicketSettings(c *gin.Context) {
 	if h.codexTickets == nil {
 		response.InternalError(c, "票据服务不可用")

@@ -6,6 +6,7 @@
         <span class="break-words font-semibold tabular-nums" :class="row.latest && !failed ? latestColor(row) : color(row)" :data-testid="row.latest && !failed ? 'ticket-latest' : undefined">{{ row.latest && !failed ? latestLabel(row) : label(row) }}</span>
       </div>
       <p v-if="row.latest && !failed" class="mt-0.5 break-words text-[10px] tabular-nums" :class="color(row)" data-testid="ticket-current">{{ t('admin.accounts.tickets.currentTicket') }}：{{ label(row) }}</p>
+      <p v-if="!failed && (row.attempts || row.latest?.diagnostic?.attempt)" class="mt-1 font-bold text-bh-blue dark:text-blue-300" data-testid="ticket-attempt-count">{{ t((row.latest ? row.latest.state : row.state) === 'ready' ? 'admin.accounts.ticketWorkbench.successRound' : 'admin.accounts.ticketWorkbench.currentRound', { count: row.latest?.diagnostic?.attempt || row.attempts }) }}<span v-if="row.max_attempts === 0"> · ∞</span></p>
       <p v-if="!failed && displayDiagnostic(row)?.http_status" class="mt-1 break-words text-[10px] text-gray-500 dark:text-gray-400" data-testid="ticket-diagnostic">
         HTTP {{ displayDiagnostic(row)?.http_status }} ·
         <CodexTicketLength v-if="displayDiagnostic(row)?.header_present" :actual="displayDiagnostic(row)!.header_length" :target="row.target_length || 292" :signal="displayDiagnostic(row)?.degraded_signal" />
@@ -63,6 +64,7 @@ function state(row: TicketModelStatus): TicketState | 'loading' {
   return row.state
 }
 function label(row: TicketModelStatus) {
+  if (state(row) === 'cooldown' && row.collection?.cooldown_until) { const seconds = Math.max(0, Math.ceil((Date.parse(row.collection.cooldown_until) - props.now) / 1000)); return t('admin.accounts.ticketWorkbench.cooling', { seconds }) }
   if (state(row) !== 'ready') {
     const text = t(`admin.accounts.tickets.state.${state(row)}`)
     return row.blocked && !props.failed ? `${text} · ${t('admin.accounts.tickets.modelBlocked')}` : text
@@ -74,7 +76,7 @@ function color(row: TicketModelStatus) {
   const current = state(row)
   if (current === 'ready') return 'text-emerald-700 dark:text-emerald-400'
   if (current === 'failed') return 'text-bh-red dark:text-red-400'
-  if (current === 'missing' || current === 'expired') return 'text-yellow-700 dark:text-bh-yellow'
+  if (current === 'missing' || current === 'expired' || current === 'cooldown') return 'text-yellow-700 dark:text-bh-yellow'
   if (current === 'collecting') return 'text-bh-blue dark:text-blue-300'
   return 'text-gray-500 dark:text-gray-400'
 }
@@ -108,7 +110,7 @@ function description(row: TicketModelStatus, compact = false) {
     }
   }
   if (!row.latest && row.checked_at && !props.failed) info.push(`${t('admin.accounts.tickets.checkedAt')}: ${new Date(row.checked_at).toLocaleString()}`)
-  const reasons = ['network', 'upstream', 'invalid_ticket', 'credential', 'storage', 'cancelled', 'proxy_config']
+  const reasons = ['network', 'upstream', 'invalid_ticket', 'credential', 'storage', 'cancelled', 'proxy_config', 'proxy_provider', 'cooldown']
   const reason = row.latest ? row.latest.reason : row.reason
   if (reason && reasons.includes(reason) && !props.failed) info.push(t(`admin.accounts.tickets.reason.${reason}`))
   else if (reason && ['ineligible', 'account_changed', 'concurrency_busy', 'backoff'].includes(reason) && !props.failed) info.push(t(`admin.accounts.ticketCollect.reason.${reason}`))

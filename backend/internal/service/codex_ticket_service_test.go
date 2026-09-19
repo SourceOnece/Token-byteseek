@@ -395,7 +395,7 @@ func TestCodexTicketReadFailureAndDisableDuringRead(t *testing.T) {
 	require.Empty(t, h.Get(openAICodexTurnStateHeader))
 }
 
-func TestCodexTicketHarvestIsBoundedAndPausedAccountsSkipped(t *testing.T) {
+func TestCodexTicketHarvestIsBoundedAndSchedulingDisabledAccountsIncluded(t *testing.T) {
 	s, cache, _ := newTicketTestService()
 	enableTicketTest(t, s)
 	active, paused := ticketAccount(), ticketAccount()
@@ -411,17 +411,17 @@ func TestCodexTicketHarvestIsBoundedAndPausedAccountsSkipped(t *testing.T) {
 	}
 	s.gateway = &OpenAIGatewayService{accountRepo: repo, httpUpstream: up}
 	s.harvest(context.Background())
-	require.Equal(t, int32(2), up.calls.Load())
-	require.Len(t, cache.values, 6)
+	require.Equal(t, int32(4), up.calls.Load())
+	require.Len(t, cache.values, 12)
 	s.harvest(context.Background())
-	require.Equal(t, int32(2), up.calls.Load(), "共享租约阻止重复整轮")
+	require.Equal(t, int32(4), up.calls.Load(), "已有有效票不重复采集")
 	require.False(t, repo.accounts[1].Schedulable)
 	require.Empty(t, repo.accounts[0].Extra)
 	no := false
 	_, err := s.Update(context.Background(), CodexTicketSettingsUpdate{Enabled: &no})
 	require.NoError(t, err)
 	s.harvest(context.Background())
-	require.Equal(t, int32(2), up.calls.Load())
+	require.Equal(t, int32(4), up.calls.Load())
 }
 
 func TestCodexTicketChangedCredentialsNotPersisted(t *testing.T) {

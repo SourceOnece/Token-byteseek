@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 )
 
@@ -17,6 +18,9 @@ type codexTicketObservation struct {
 }
 
 type CodexTicketModelStatus struct {
+	Collection           CodexTicketCollectionState `json:"collection"`
+	Attempts             int                        `json:"attempts"`
+	MaxAttempts          int                        `json:"max_attempts"`
 	Watchdog             *CodexTicketWatchdogStatus `json:"watchdog,omitempty"`
 	Latest               *CodexTicketLatest         `json:"latest,omitempty"`
 	Model                string                     `json:"model"`
@@ -109,7 +113,7 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 			}
 			for _, model := range cfg.models() {
 				key := codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken())
-				keys = append(keys, key, "status:"+key, "latest:"+key, "watchdog:"+key)
+				keys = append(keys, key, "status:"+key, "latest:"+key, "watchdog:"+key, "collection:"+key, "attempts:"+key)
 			}
 		}
 	}
@@ -132,7 +136,7 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 			settings := ticketAccountSettingsView(cfg, id)
 			row.Settings = &settings
 			cfg := ticketConfigForAccount(cfg, id)
-			row.CollectionPaused = !a.IsSchedulable()
+			row.CollectionPaused = !codexTicketCollectionAllowed(readCtx, a) || !cfg.Enabled
 			for _, model := range cfg.models() {
 				status := CodexTicketModelStatus{Model: model, State: "pending"}
 				switch {
@@ -146,6 +150,15 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 					key := codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken())
 					status = s.ticketModelStatus(model, values[key], values["status:"+key], now, cfg.targetLength())
 					status.Watchdog = safeTicketWatchdog(values["watchdog:"+key], cfg.WatchdogMode)
+					status.Collection = ticketCollectionState(values["collection:"+key])
+					if status.Collection.CooldownUntil != nil {
+						status.State = "cooldown"
+					}
+					if status.State != "ready" {
+						if n, e := strconv.Atoi(values["attempts:"+key]); e == nil && n > status.Attempts {
+							status.Attempts = n
+						}
+					}
 					var latest CodexTicketLatest
 					if json.Unmarshal([]byte(values["latest:"+key]), &latest) == nil {
 						status.Latest = safeTicketLatest(latest)
@@ -174,6 +187,10 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 				// 模型门控独立于账号总开关和质量标签，状态不可读时也不伪装可用。
 				status.Blocked = cfg.Enabled && a.IsModelSupported(model) && status.State != "ready"
 				status.TargetLength = cfg.targetLength()
+				status.MaxAttempts = cfg.attempts()
+				if status.Latest != nil && status.Latest.Diagnostic != nil && status.State != "ready" && status.Latest.Diagnostic.Attempt > status.Attempts {
+					status.Attempts = status.Latest.Diagnostic.Attempt
+				}
 				status.DegradedSignalLength = cfg.DegradedSignalLength
 				row.Models = append(row.Models, status)
 			}
@@ -188,6 +205,9 @@ func (s *CodexTicketService) ticketModelStatus(model, encrypted, observation str
 	var record codexTicketObservation
 	if observation != "" && json.Unmarshal([]byte(observation), &record) == nil && !record.CheckedAt.IsZero() {
 		status.CheckedAt = &record.CheckedAt
+		if record.Diagnostic != nil {
+			status.Attempts = record.Diagnostic.Attempt
+		}
 		status.Diagnostic = safeCodexTicketDiagnostic(record.Diagnostic)
 		switch record.State {
 		case "collecting":
@@ -204,7 +224,7 @@ func (s *CodexTicketService) ticketModelStatus(model, encrypted, observation str
 		}
 		// 仅回传固定原因码，缓存中的任意文本不可进入管理界面。
 		switch record.Reason {
-		case "network", "upstream", "invalid_ticket", "credential", "storage", "cancelled", "proxy_config":
+		case "network", "upstream", "invalid_ticket", "credential", "storage", "cancelled", "proxy_config", "proxy_provider", "cooldown":
 			status.Reason = record.Reason
 		}
 	}
@@ -220,6 +240,7 @@ func (s *CodexTicketService) ticketModelStatus(model, encrypted, observation str
 			return status
 		}
 		if validCodexTicket(ticket, lengths...) {
+			status.Attempts = ticket.Attempts
 			status.State = "ready"
 			status.ExpiresAt = &ticket.ExpiresAt
 		} else if !now.Before(ticket.ExpiresAt) {

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/openai"
 	"github.com/google/uuid"
 	"github.com/tidwall/gjson"
@@ -38,7 +39,7 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 	}
 	d := *source
 	d.ProxyName = ""
-	if d.ProxyID != "legacy" && d.ProxyID != "account" {
+	if d.ProxyID != "legacy" && d.ProxyID != "account" && d.ProxyID != "provider" {
 		if _, err := uuid.Parse(d.ProxyID); err != nil {
 			d.ProxyID = ""
 		}
@@ -75,22 +76,39 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		if ctx.Err() != nil && !ready {
 			state, reason = "cancelled", "cancelled"
 		}
+		if state == "failed" || state == "missing" || ready {
+			s.recordTicketCollection(ctx, cfg, key, ready, reason)
+		}
 		if len(observers) == 0 {
 			s.recordLatest(ctx, cfg, key, "auto", CodexTicketAttempt{Status: state, Reason: reason, FinishedAt: time.Now().UTC(), Diagnostic: diagnostic})
 		}
 		for _, observer := range observers {
-			observer(CodexTicketAttempt{Status: state, Reason: reason, Attempt: attempt, StartedAt: started, FinishedAt: time.Now().UTC(), DurationMS: time.Since(started).Milliseconds(), Diagnostic: safeCodexTicketDiagnostic(diagnostic), ExpiresAt: expires})
+			observer(CodexTicketAttempt{usedProxy: proxy, Status: state, Reason: reason, Attempt: attempt, StartedAt: started, FinishedAt: time.Now().UTC(), DurationMS: time.Since(started).Milliseconds(), Diagnostic: safeCodexTicketDiagnostic(diagnostic), ExpiresAt: expires})
 		}
 	}()
-	proxyURL, err := s.cipher.Decrypt(proxy.Cipher)
-	proxyURL = expandTicketProxySession(proxyURL)
-	if err != nil || validateCodexHarvestProxy(proxyURL) != nil {
-		state, reason = "failed", "proxy_config"
-		s.recordObservation(ctx, key, "failed", "proxy_config", nil, diagnostic)
-		return false, cfg.mode() == "rotate"
+	if !s.ticketConfigCurrent(cfg) {
+		return false, false
 	}
-	// 重试前重读凭据与资格；手动仅忽略调度开关，自动仍在停调后停止。
-	fresh, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
+	policyRaw, e := s.cache.Get(ctx, "collection:"+key)
+	if e != nil {
+		state, reason = "failed", "storage"
+		return false, false
+	}
+	if ticketCollectionState(policyRaw).CooldownUntil != nil {
+		state, reason = "skipped", "cooldown"
+		return false, true
+	}
+	// 账号级采集槽在取号前获得；45秒租约覆盖8秒取号及25秒请求，不与业务并发槽混用。
+	release, err := s.acquireTicketCollectionSlot(ctx, cfg, account.ID)
+	if err != nil {
+		state, reason = "failed", "storage"
+		return false, false
+	}
+	defer release()
+	// 先复核凭据与并发，再请求取号服务；排队/停调不会白白消耗代理额度和尝试计数。
+	readCtx, readCancel := context.WithTimeout(ctx, 2*time.Second)
+	fresh, err := s.gateway.accountRepo.GetByID(readCtx, account.ID)
+	readCancel()
 	if err != nil || !s.ticketConfigCurrent(cfg) || !codexTicketCollectionAllowed(ctx, fresh) || !fresh.IsModelSupported(model) || fresh.GetOpenAIAccessToken() != token || codexTicketKey(cfg, fresh, model, token) != key {
 		return false, false
 	}
@@ -103,6 +121,37 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 			return false, false
 		}
 		defer slot.ReleaseFunc()
+	}
+	if len(observers) == 0 {
+		attempt, err = s.nextTicketAttempt(ctx, key, cfg.attempts(), attempt)
+		if err != nil {
+			state, reason = "failed", "storage"
+			return false, false
+		}
+		if attempt == 0 {
+			state, reason = "skipped", "attempt_limit"
+			return false, false
+		}
+		diagnostic.Attempt = attempt
+	}
+	proxy, err = s.resolveTicketAttemptProxy(probeCtx, cfg, proxy)
+	if err != nil {
+		state, reason = "failed", "proxy_provider"
+		var rejected *ticketProviderRejection
+		if errors.As(err, &rejected) {
+			diagnostic.RetryNotBefore = rejected.retryAt
+		}
+		s.recordObservation(ctx, key, state, reason, nil, diagnostic)
+		if rejected != nil && (rejected.status == 401 || rejected.status == 403 || rejected.status == 429) {
+			return false, false
+		}
+		return false, ctx.Err() == nil
+	}
+	proxyURL, err := s.cipher.Decrypt(proxy.Cipher)
+	if err != nil || validateCodexHarvestProxy(proxyURL) != nil {
+		state, reason = "failed", "proxy_config"
+		s.recordObservation(ctx, key, "failed", "proxy_config", nil, diagnostic)
+		return false, cfg.mode() == "rotate"
 	}
 	// 与回退前快照使用相同 input_text 数组，不再依赖字符串内容的宽松兼容。
 	body, _ := json.Marshal(map[string]any{"model": model, "store": false, "stream": true, "instructions": "Reply with exactly: pong", "input": []any{map[string]any{"role": "user", "content": []any{map[string]any{"type": "input_text", "text": "ping"}}}}})
@@ -149,7 +198,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	if resp.Body != nil {
 		defer resp.Body.Close()
 	}
-	ticket := codexTicketValue{State: extractOpenAICodexTurnState(resp.Header), ExpiresAt: time.Now().Add(time.Hour)}
+	ticket := codexTicketValue{Attempts: attempt, State: extractOpenAICodexTurnState(resp.Header), ExpiresAt: time.Now().Add(cfg.ticketTTL())}
 	diagnostic.HTTPStatus = resp.StatusCode
 	diagnostic.HeaderPresent = len(resp.Header.Values(openAICodexTurnStateHeader)) > 0
 	diagnostic.HeaderLength = len(ticket.State)
@@ -176,6 +225,10 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 			state, reason = "failed", "upstream"
 		}
 		diagnostic.RetryNotBefore = codexTicketRetryNotBefore(resp.Header.Get("Retry-After"), resp.StatusCode, diagnostic.ErrorKind)
+		if diagnostic.RetryNotBefore == nil && (resp.StatusCode == 401 || resp.StatusCode == 403 || diagnostic.ErrorKind == "auth" || diagnostic.ErrorKind == "quota") {
+			at := time.Now().Add(5 * time.Minute)
+			diagnostic.RetryNotBefore = &at
+		}
 		if diagnostic.RetryNotBefore != nil {
 			return false, false
 		}
@@ -199,7 +252,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	if err != nil {
 		return false, false
 	}
-	if s.cache.Set(ctx, key, encrypted, time.Hour) != nil {
+	if s.cache.Set(ctx, key, encrypted, cfg.ticketTTL()) != nil {
 		return false, false
 	}
 	state, reason, expires = "ready", "", &ticket.ExpiresAt

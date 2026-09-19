@@ -1,6 +1,6 @@
 <template>
   <div class="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-live="polite">
-    <button type="button" class="quality-stat" @click="$emit('select', '')"><span class="flex items-center justify-between gap-2 text-sm font-semibold"><span>{{ rateLabel || t('admin.accounts.quality.rate') }}</span><span aria-hidden="true">↗</span></span><strong class="mt-3 block text-3xl font-extrabold tabular-nums tracking-tight text-bh-blue dark:text-blue-300 sm:text-4xl">{{ stats.rate === null ? '—' : `${stats.rate}%` }}</strong></button>
+    <button type="button" class="quality-stat" @click="$emit('select', '')"><span class="flex items-center justify-between gap-2 text-sm font-semibold"><span>{{ rateLabel || t('admin.accounts.quality.rate') }}</span><span aria-hidden="true">↗</span></span><strong class="mt-3 block text-3xl font-extrabold tabular-nums tracking-tight text-emerald-700 dark:text-emerald-400 sm:text-4xl">{{ stats.rate === null ? '—' : `${stats.rate}%` }}</strong></button>
     <button v-for="status in statuses" :key="status" type="button" class="quality-stat" :data-testid="`quality-summary-${status}`" @click="$emit('select', status)">
       <span class="flex items-center justify-between gap-2 text-sm font-bold" :class="qualityStatusClass(status)"><span>{{ t(`admin.accounts.quality.status.${status}`) }}</span><span aria-hidden="true">↗</span></span>
       <strong class="mt-3 block text-3xl font-extrabold tabular-nums tracking-tight sm:text-4xl" :class="qualityStatusClass(status)">{{ counts[status] || 0 }}</strong>

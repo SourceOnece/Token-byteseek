@@ -12,6 +12,7 @@ import (
 
 // 历史仅保存脱敏结果，不保存票据、令牌、代理 URL 或原始错误正文。
 type CodexTicketAttempt struct {
+	usedProxy    codexTicketProxy
 	ID           int64                  `json:"id,omitempty"`
 	Kind         string                 `json:"kind"`
 	AccountID    int64                  `json:"account_id"`
@@ -57,19 +58,16 @@ type CodexTicketHistoryRepository interface {
 	ListTicketEvents(context.Context, string, string, string, int64, string, int) ([]CodexTicketAttempt, int, error)
 }
 
-// 手动只忽略账号调度开关，不改账号对象、不绕过禁用/过期/冷却等其他保护。
+// 采集统一忽略账号总调度开关，不改账号对象、不绕过禁用/过期/上游冷却等其他保护。
 type codexTicketManualContextKey struct{}
 
 func codexTicketCollectionAllowed(ctx context.Context, account *Account) bool {
 	if !codexTicketAccount(account) {
 		return false
 	}
-	if manual, _ := ctx.Value(codexTicketManualContextKey{}).(bool); manual {
-		copy := *account
-		copy.Schedulable = true
-		return copy.IsSchedulable()
-	}
-	return account.IsSchedulable()
+	copy := *account
+	copy.Schedulable = true
+	return copy.IsSchedulable()
 }
 
 func (r *CodexTicketManualRequest) Normalize() error {
@@ -117,6 +115,16 @@ type CodexTicketManualSession struct {
 	closeOnce sync.Once
 }
 
+// 手动无限采集按一轮一次尝试轮转，失败任务不会长期占据worker阻塞后面的账号。
+type codexTicketManualTask struct {
+	startedAt time.Time
+	id        int64
+	model     string
+	attempt   int
+	done      bool
+	due       time.Time
+}
+
 // @project-doc docs/interfaces/codex_ticket.md#manual_collection
 // 手动入口不绕过总开关；冻结账号与配置，保存设置/停机/断连后停止余下尝试。
 func (s *CodexTicketService) PrepareManualCollection(ctx context.Context, req CodexTicketManualRequest) (*CodexTicketManualSession, error) {
@@ -146,7 +154,24 @@ func (s *CodexTicketService) PrepareManualCollection(ctx context.Context, req Co
 		return nil, errors.New("采集服务不可用")
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	m := &CodexTicketManualSession{s: s, cfg: cfg, repo: repo, ctx: ctx, cancel: cancel, ids: append([]int64(nil), req.AccountIDs...), Run: CodexTicketManualRun{ID: uuid.NewString(), Status: "running", Config: codexTicketSettingsView(cfg), Total: len(req.AccountIDs) * len(cfg.models()), StartedAt: time.Now().UTC(), Counts: map[string]int{}}}
+	total := 0
+	for _, id := range req.AccountIDs {
+		total += len(ticketConfigForAccount(cfg, id).models())
+	}
+	m := &CodexTicketManualSession{s: s, cfg: cfg, repo: repo, ctx: ctx, cancel: cancel, ids: append([]int64(nil), req.AccountIDs...), Run: CodexTicketManualRun{ID: uuid.NewString(), Status: "running", Config: codexTicketSettingsView(cfg), Total: total, StartedAt: time.Now().UTC(), Counts: map[string]int{}}}
+	// 历史保存当次有效账号规则与模型并集，不能用网关旧字段冒充所有账号配置。
+	m.Run.Config.Models = []string{}
+	seenModels := map[string]bool{}
+	for _, id := range req.AccountIDs {
+		settings := ticketAccountSettingsView(cfg, id)
+		m.Run.Config.AccountRules = append(m.Run.Config.AccountRules, settings)
+		for _, model := range settings.Rules.Models {
+			if !seenModels[model] {
+				seenModels[model] = true
+				m.Run.Config.Models = append(m.Run.Config.Models, model)
+			}
+		}
+	}
 	s.lifecycleMu.Lock()
 	if s.stopped || s.manualCancel != nil {
 		s.lifecycleMu.Unlock()
@@ -240,28 +265,49 @@ func (m *CodexTicketManualSession) Execute(emit func(string, any) bool) {
 		cancel()
 	}
 	events := make(chan CodexTicketAttempt, 8)
-	jobs := make(chan struct {
-		id    int64
-		model string
-	})
+	jobs := make(chan *codexTicketManualTask)
+	var stepWG sync.WaitGroup
 	var wg sync.WaitGroup
 	for i := 0; i < 4; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				m.collectModel(ctx, job.id, job.model, func(e CodexTicketAttempt) { events <- e })
+				m.collectModel(ctx, job.id, job.model, func(e CodexTicketAttempt) { events <- e }, job)
+				stepWG.Done()
 			}
 		}()
 	}
 	go func() {
 		defer close(jobs)
+		tasks := []*codexTicketManualTask{}
 		for _, id := range m.ids {
-			for _, model := range m.cfg.models() {
-				jobs <- struct {
-					id    int64
-					model string
-				}{id, model}
+			for _, model := range ticketConfigForAccount(m.cfg, id).models() {
+				tasks = append(tasks, &codexTicketManualTask{id: id, model: model})
+			}
+		}
+		for {
+			remaining := false
+			for _, task := range tasks {
+				if task.done {
+					continue
+				}
+				remaining = true
+				if ctx.Err() == nil && time.Now().Before(task.due) {
+					continue
+				}
+				stepWG.Add(1)
+				jobs <- task
+			}
+			stepWG.Wait()
+			if !remaining {
+				return
+			}
+			if ctx.Err() == nil {
+				select {
+				case <-ctx.Done():
+				case <-time.After(100 * time.Millisecond):
+				}
 			}
 		}
 	}()
@@ -322,13 +368,30 @@ func (m *CodexTicketManualSession) Execute(emit func(string, any) bool) {
 	}
 }
 
-func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, model string, record func(CodexTicketAttempt)) {
+func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, model string, record func(CodexTicketAttempt), steps ...*codexTicketManualTask) {
 	ctx = context.WithValue(ctx, codexTicketManualContextKey{}, true)
 	started := time.Now().UTC()
 	latestKey := ""
 	cfg := ticketConfigForAccount(m.cfg, id)
 	result := CodexTicketAttempt{Kind: "result", AccountID: id, Model: model, TargetLength: cfg.targetLength(), Status: "skipped", Reason: "ineligible", StartedAt: started}
+	var task *codexTicketManualTask
+	if len(steps) > 0 {
+		task = steps[0]
+		if task.startedAt.IsZero() {
+			task.startedAt = started
+		} else {
+			started = task.startedAt
+			result.StartedAt = started
+		}
+	}
+	yielded := false
 	defer func() {
+		if yielded {
+			return
+		}
+		if task != nil {
+			task.done = true
+		}
 		result.FinishedAt = time.Now().UTC()
 		result.DurationMS = time.Since(started).Milliseconds()
 		m.s.recordLatest(ctx, cfg, latestKey, "manual", result)
@@ -362,6 +425,23 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 	}
 	key := codexTicketKey(cfg, a, model, token)
 	latestKey = key
+	if task != nil && task.attempt == 0 {
+		m.s.resetTicketAttempts(ctx, key)
+	}
+	policyRaw, err := m.s.cache.Get(ctx, "collection:"+key)
+	if err != nil {
+		result.Status, result.Reason = "failed", "storage"
+		return
+	}
+	if until := ticketCollectionState(policyRaw).CooldownUntil; until != nil {
+		if task != nil {
+			task.due = *until
+			yielded = true
+			return
+		}
+		result.Reason = "cooldown"
+		return
+	}
 	previousRaw, err := m.s.cache.Get(ctx, "status:"+key)
 	if err != nil {
 		result.Status = "failed"
@@ -371,6 +451,11 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 	var previous codexTicketObservation
 	_ = json.Unmarshal([]byte(previousRaw), &previous)
 	if previous.Diagnostic != nil && previous.Diagnostic.RetryNotBefore != nil && time.Now().Before(*previous.Diagnostic.RetryNotBefore) {
+		if task != nil && cfg.attempts() == 0 {
+			task.due = *previous.Diagnostic.RetryNotBefore
+			yielded = true
+			return
+		}
 		result.Reason = "backoff"
 		result.Diagnostic = safeCodexTicketDiagnostic(previous.Diagnostic)
 		return
@@ -381,7 +466,11 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		previousID = previous.Diagnostic.ProxyID
 	}
 	failed := previous.State == "failed" || previous.State == "missing"
-	for attempt := 1; attempt <= cfg.attempts(); attempt++ {
+	startAttempt := 1
+	if task != nil {
+		startAttempt = task.attempt + 1
+	}
+	for attempt := startAttempt; cfg.attempts() == 0 || attempt <= cfg.attempts(); attempt++ {
 		if ctx.Err() != nil || !m.s.ticketConfigCurrent(cfg) {
 			result.Status = "cancelled"
 			result.Reason = "cancelled"
@@ -391,11 +480,6 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		if !ok {
 			result.Status = "failed"
 			result.Reason = "proxy_config"
-			return
-		}
-		proxy, err = m.s.ticketAttemptProxy(proxy)
-		if err != nil {
-			result.Status, result.Reason = "failed", "proxy_config"
 			return
 		}
 		var event CodexTicketAttempt
@@ -409,8 +493,11 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		if event.Diagnostic != nil {
 			event.Diagnostic.ProxyName = proxy.Name
 		}
-		m.s.collectReferenceIP(ctx, proxy, &event)
+		m.s.collectReferenceIP(ctx, event.usedProxy, &event)
 		record(event)
+		if task != nil {
+			task.attempt = attempt
+		}
 		result.Status = event.Status
 		result.Reason = event.Reason
 		result.Attempt = attempt
@@ -421,7 +508,15 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		result.IPCheckedAt = event.IPCheckedAt
 		result.IPSource = event.IPSource
 		result.IPHTTPStatus = event.IPHTTPStatus
-		if ready || !retry || attempt == cfg.attempts() {
+		if ready {
+			m.s.resetTicketAttempts(ctx, key)
+		}
+		if ready || !retry || (cfg.attempts() > 0 && attempt == cfg.attempts()) {
+			return
+		}
+		if task != nil {
+			task.due = time.Now().Add(cfg.retryInterval())
+			yielded = true
 			return
 		}
 		previousID, failed = proxy.ID, true

@@ -121,6 +121,10 @@ func (s *proxyProbeService) probeTicketReferenceTarget(ctx context.Context, clie
 		return result
 	}
 	result.IP = ip.String()
+	code := strings.ToUpper(strings.TrimSpace(info.CountryCode))
+	if len(code) == 2 && code[0] >= 'A' && code[0] <= 'Z' && code[1] >= 'A' && code[1] <= 'Z' {
+		result.CountryCode = code
+	}
 	result.Status = "reference"
 	return result
 }

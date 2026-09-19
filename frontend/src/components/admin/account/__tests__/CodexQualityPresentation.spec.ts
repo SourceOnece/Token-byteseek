@@ -25,8 +25,8 @@ describe('Quality presentation', () => {
     expect(help.get('summary').text()).toBe('规则')
     expect(help.get('details').classes()).toContain('text-sm')
   })
-  it('只用蓝红黄文字，不填充状态背景', () => {
-    expect(qualityStatusClass('full')).toContain('text-bh-blue')
+  it('满血统一绿，降智红失败黄，不填充状态背景', () => {
+    expect(qualityStatusClass('full')).toContain('text-emerald-700')
     expect(qualityStatusClass('degraded')).toContain('text-bh-red')
     expect(qualityStatusClass('failed')).toContain('text-yellow')
     expect(qualityStatusClass('full')).not.toContain('bg-')

@@ -2,6 +2,25 @@ export default {
   // 手动采集仅展示票据，不与质量测试标签混用。
 // Accounts Management
     accounts: {
+      ticketWorkbench: {
+        perAccount: '按账号规则',
+        masterOff: '网关总开关已关闭：可保存配置，但暂不采集或注入票据。',
+        title: '票据采集工作台', accountHint: '规则全部按账号保存。关闭总调度仍可采集；不会自动打开总调度。',
+        gatewayHint: '这里只管理总开关与默认采集代理；其他规则在账号工作台配置。',
+        defaultProxy: '修改默认采集代理', target: '合格长度', attempts: '最多尝试', cache: '缓存时间',
+        groups: { validation: '① 目标与尝试', renewal: '② 并发与续采', cooldown: '③ 异常冷却' },
+        fields: { target_length: '合格长度（字节）', degraded_signal_length: '异常长度信号（0关闭）', max_attempts: '最多尝试（0不限）', concurrency: '该账号采集并发（1–4）', cache_minutes: '缓存时间（分钟）', refresh_before_minutes: '提前续采（分钟）', retry_interval_seconds: '失败重试间隔（秒）', probe_interval_seconds: '自动检查间隔（秒）', failure_threshold: '连续采集异常（0关闭冷却）', cooldown_seconds: '冷却后重采（秒）' },
+        unlimitedRisk: '0不限次数，会持续消耗额度与代理流量。随时可停止；关闭、认证拒绝和上游限流仍会暂停。',
+        proxyMode: '采集代理模式', dynamicSource: '动态来源', proxyProtocol: '返回代理协议', extractionURL: '取号接口（HTTPS）', extractionRequired: '请填写取号接口地址。',
+        proxyModes: { inherit: '继承网关代理', fixed: '固定代理', rotate: '轮换代理', dynamic: '动态代理' },
+        sources: { api: '接口取号 · 每次新取', template: '地址模板 · 随机会话' },
+        proxyHints: { inherit: '使用网关默认代理，不复制或回显密码。', fixed: '始终使用选定地址。服务商出口是否固定由服务商决定。', rotate: '未获合格票时，按列表切换下一条。', dynamic: '每次采集重新请求取号接口，或生成新的代理会话标识。' },
+        apiHint: '支持 Mooproxy 的 proxies 数组（主机:端口:用户名:密码）。URL仅加密保存；每次尝试取一条，不保证实际IP一定不同。',
+        testProxy: '测试代理', testing: '测试中…', testHint: '仅查询出口IP，会使用代理流量；不保存草稿、不调用模型。', connected: '代理连接成功', connectionFailed: '代理测试未通过', region: '地区',
+        filter: '票据筛选', filterLength: '自定义合格长度（6–8192）', lengthLabel: '合格长度 {length}',
+        filters: { all: '全部票据配置', on: '账号票据开启', off: '账号票据关闭', configured: '有独立配置', proxy_account: '账号专用代理', proxy_gateway: '继承网关代理', fixed: '固定代理模式', rotate: '轮换代理模式', dynamic: '动态代理模式' },
+        currentRound: '已尝试 {count} 轮', successRound: '第 {count} 轮获票', cooling: '冷却中 · {seconds}s', accountRules: '按每个账号自己的模型、长度、并发和重试规则执行',
+      },
       ticketPolicy: {
         title: '账号票据', selected: '已选 {count} 个账号', hint: '账号优先 · 未设置继承网关 · 总开关仍生效',
         mode: '票据开关', guard: '异常守护', proxy: '修改采集代理', proxyRequired: '请填写代理，或选择恢复网关代理。',
@@ -45,9 +64,9 @@ export default {
         attempt: '{proxy} · 第 {count} 次', noHeader: '无票据头', badPrefix: '前缀不符', completedNoTicket: '回复完成 · 未获合格票',
         errorKind: { overloaded: '上游过载', rate_limit: '上游限流', quota: '额度不足', auth: '授权错误', invalid_request: '请求格式错误' },
         title: '票据状态', modelBlocked: '该模型暂停',
-        checkedAt: '最近采集', pausedHint: '自动采集暂停；手动可测，资格与限流仍生效。',
-        state: { ready: '票据有效', pending: '待采集', collecting: '采集中', missing: '未获合格票', expired: '票据已过期', failed: '采集失败', disabled: '打票未开启', unsupported: '模型不支持', unavailable: '状态读取失败', paused: '暂停采集', loading: '读取中' },
-        reason: { network: '网络或超时错误', upstream: '上游拒绝或返回错误', invalid_ticket: '响应头长度或前缀不符合当前接受规则', credential: '无法取得有效凭据', storage: '票据缓存保存失败', cancelled: '采集已取消或超时', proxy_config: '采集代理配置或解密失败' },
+        checkedAt: '最近采集', pausedHint: '采集资格暂不可用；关闭总调度不影响采集。',
+        state: { cooldown: '冷却中', ready: '票据有效', pending: '待采集', collecting: '采集中', missing: '未获合格票', expired: '票据已过期', failed: '采集失败', disabled: '打票未开启', unsupported: '模型不支持', unavailable: '状态读取失败', paused: '暂停采集', loading: '读取中' },
+        reason: { proxy_provider: '取号接口失败或返回代理无效', cooldown: '连续异常，等待冷却结束', network: '网络或超时错误', upstream: '上游拒绝或返回错误', invalid_ticket: '响应头长度或前缀不符合当前接受规则', credential: '无法取得有效凭据', storage: '票据缓存保存失败', cancelled: '采集已取消或超时', proxy_config: '采集代理配置或解密失败' },
       },
       quality: {
         rules: '规则与说明', statRules: '统计口径', keywordShort: '命中 → 满血；未命中 → 降智',

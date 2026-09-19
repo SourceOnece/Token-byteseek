@@ -8,16 +8,8 @@
       <template v-if="tab === 'collect'">
         <p class="border-l-4 border-bh-yellow pl-3 text-base font-semibold text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketCollect.hint', { count: targets.length }) }}</p>
         <div v-if="settings" class="border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-5 sm:p-6" style="box-shadow:var(--bh-shadow-sm)">
-          <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.models') }}</p>
-          <p class="break-all text-lg font-bold leading-relaxed text-bh-blue dark:text-blue-300">{{ (settings.models || ['gpt-6-astra', 'gpt-5.6-sol']).join(' / ') }}</p>
-          <!-- 设置摘要统一成标签/值网格，数据继续使用本次读取的网关配置。 -->
-          <dl class="mt-5 grid grid-cols-2 gap-x-6 gap-y-5 border-t-2 border-[color:var(--bh-ink)] pt-5 text-sm sm:grid-cols-3">
-            <div><dt class="text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.targetLength') }}</dt><dd class="mt-2 text-2xl font-extrabold tabular-nums text-bh-blue dark:text-blue-300">{{ settings.target_length || 292 }}</dd></div>
-            <div><dt class="text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.attempts') }}</dt><dd class="mt-2 text-2xl font-extrabold tabular-nums">{{ settings.max_attempts }}</dd></div>
-            <div class="col-span-2 sm:col-span-1"><dt class="text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.mode') }}</dt><dd class="mt-2 text-base font-bold">{{ t(settings.selection_mode === 'rotate' ? 'admin.settings.codexTicket.rotate' : 'admin.settings.codexTicket.fixed') }}</dd></div>
-            <div><dt class="text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.retryInterval') }}</dt><dd class="mt-2 text-2xl font-extrabold tabular-nums">{{ settings.retry_interval_seconds }}</dd></div>
-            <div><dt class="text-gray-500 dark:text-gray-400">{{ t('admin.settings.codexTicket.interval') }}</dt><dd class="mt-2 text-2xl font-extrabold tabular-nums">{{ settings.probe_interval_seconds }}</dd></div>
-          </dl>
+          <p class="text-lg font-extrabold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.ticketWorkbench.accountRules') }}</p>
+          <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">{{ t('admin.accounts.ticketWorkbench.unlimitedRisk') }}</p>
         </div>
         <p v-if="settings && !settings.enabled" class="font-bold text-bh-red">{{ t('admin.accounts.ticketCollect.disabled') }}</p>
         <label class="flex items-start gap-3 text-sm font-semibold leading-relaxed"><input v-model="confirmed" type="checkbox" class="mt-1 h-4 w-4 shrink-0" :disabled="running" data-testid="ticket-collect-confirm" />{{ t('admin.accounts.ticketCollect.confirm') }}</label>
@@ -44,7 +36,7 @@
         <button class="btn btn-danger btn-sm" :disabled="deleting || busy || running || !history.length" data-testid="ticket-history-clear" @click="deleteHistory()">{{ t('admin.accounts.ticketCollect.clearHistory') }}</button>
         <div v-for="item in history" :key="item.id" class="flex items-center gap-3 border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-3" style="box-shadow:var(--bh-shadow-sm)">
           <button class="min-w-0 flex-1 text-left focus-visible:outline focus-visible:outline-2" @click="openResults(item.id)">
-            <span class="block break-words font-bold text-bh-blue dark:text-blue-300">{{ new Date(item.started_at).toLocaleString() }} · {{ item.config.target_length || 292 }} bytes</span>
+            <span class="block break-words font-bold text-bh-blue dark:text-blue-300">{{ new Date(item.started_at).toLocaleString() }} · {{ item.config.account_rules?.length ? t('admin.accounts.ticketWorkbench.perAccount') : (item.config.target_length || 292) + ' bytes' }}</span>
             <span class="text-sm">{{ runLabel(item.status) }} · {{ totalDone(item) }} / {{ item.total }}</span>
           </button>
           <button class="btn btn-danger btn-sm shrink-0" :disabled="deleting || item.status === 'running'" :title="item.status === 'running' ? t('admin.accounts.ticketCollect.deleteActive') : t('common.delete')" data-testid="ticket-history-delete" @click="deleteHistory(item.id)">{{ t('common.delete') }}</button>

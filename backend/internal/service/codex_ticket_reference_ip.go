@@ -9,10 +9,14 @@ import (
 
 // 只给手动采票使用的结构化诊断；来源是固定枚举，不返回 URL/原始网络错误。
 type CodexTicketReferenceIP struct {
-	IP         string `json:"ip,omitempty"`
-	Status     string `json:"status"`
-	Source     string `json:"source,omitempty"`
-	HTTPStatus int    `json:"http_status,omitempty"`
+	CountryCode string `json:"country_code,omitempty"`
+	Country     string `json:"country,omitempty"`
+	Region      string `json:"region,omitempty"`
+	City        string `json:"city,omitempty"`
+	IP          string `json:"ip,omitempty"`
+	Status      string `json:"status"`
+	Source      string `json:"source,omitempty"`
+	HTTPStatus  int    `json:"http_status,omitempty"`
 }
 type CodexTicketReferenceIPProber interface {
 	ProbeTicketReferenceIP(context.Context, string) CodexTicketReferenceIP

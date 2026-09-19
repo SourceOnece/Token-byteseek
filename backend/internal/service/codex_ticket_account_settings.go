@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -15,28 +16,35 @@ import (
 // 账号覆盖仅保存在私有票据设置中；代理密文不得进入账号extra、导出或调度摘要。
 // @project-doc docs/interfaces/codex_ticket.md#account_overrides_watchdog
 type codexTicketAccountConfig struct {
-	Mode         string `json:"mode"`
-	ProxyCipher  string `json:"proxy_cipher,omitempty"`
-	WatchdogMode string `json:"watchdog_mode,omitempty"`
-	Revision     string `json:"revision"`
+	Rules        *CodexTicketRules       `json:"rules,omitempty"`
+	ProxyPolicy  *codexTicketProxyPolicy `json:"proxy_policy,omitempty"`
+	Mode         string                  `json:"mode"`
+	ProxyCipher  string                  `json:"proxy_cipher,omitempty"`
+	WatchdogMode string                  `json:"watchdog_mode,omitempty"`
+	Revision     string                  `json:"revision"`
 }
 
 type CodexTicketAccountSettings struct {
-	AccountID             int64  `json:"account_id"`
-	Mode                  string `json:"mode"`
-	EffectiveEnabled      bool   `json:"effective_enabled"`
-	ProxyConfigured       bool   `json:"proxy_configured"`
-	ProxySource           string `json:"proxy_source"`
-	WatchdogMode          string `json:"watchdog_mode"`
-	EffectiveWatchdogMode string `json:"effective_watchdog_mode"`
-	Revision              string `json:"revision"`
+	GlobalEnabled         bool                       `json:"global_enabled"`
+	Rules                 CodexTicketRules           `json:"rules"`
+	ProxyPolicy           CodexTicketProxyPolicyView `json:"proxy_policy"`
+	AccountID             int64                      `json:"account_id"`
+	Mode                  string                     `json:"mode"`
+	EffectiveEnabled      bool                       `json:"effective_enabled"`
+	ProxyConfigured       bool                       `json:"proxy_configured"`
+	ProxySource           string                     `json:"proxy_source"`
+	WatchdogMode          string                     `json:"watchdog_mode"`
+	EffectiveWatchdogMode string                     `json:"effective_watchdog_mode"`
+	Revision              string                     `json:"revision"`
 }
 
 // 指针缺省意味着不修改；代理空串恢复继承，未提供意味着保留原密文。
 type CodexTicketAccountPatch struct {
-	Mode            *string `json:"mode"`
-	HarvestProxyURL *string `json:"harvest_proxy_url"`
-	WatchdogMode    *string `json:"watchdog_mode"`
+	Rules           *CodexTicketRulesPatch        `json:"rules"`
+	ProxyPolicy     *CodexTicketProxyPolicyUpdate `json:"proxy_policy"`
+	Mode            *string                       `json:"mode"`
+	HarvestProxyURL *string                       `json:"harvest_proxy_url"`
+	WatchdogMode    *string                       `json:"watchdog_mode"`
 }
 
 type CodexTicketAccountsUpdate struct {
@@ -80,9 +88,18 @@ func ticketConfigForAccount(cfg *codexTicketConfig, id int64) *codexTicketConfig
 	if override.Revision != "" {
 		copy.Generation += ":" + override.Revision
 	}
+	if override.Rules != nil {
+		copy.applyRules(*override.Rules)
+	}
 	if override.ProxyCipher != "" {
+		copy.ProxyPolicy = nil
 		copy.Proxies = []codexTicketProxy{{ID: "account", Name: "Account", Cipher: override.ProxyCipher}}
 		copy.ProxyCipher, copy.FixedProxyID, copy.SelectionMode = override.ProxyCipher, "account", "fixed"
+	}
+	if override.ProxyPolicy != nil {
+		copy.applyProxyPolicy(override.ProxyPolicy)
+	} else if override.ProxyCipher == "" && cfg.ProxyPolicy != nil {
+		copy.applyProxyPolicy(cfg.ProxyPolicy)
 	}
 	if override.WatchdogMode != "" && override.WatchdogMode != "inherit" {
 		copy.WatchdogMode = override.WatchdogMode
@@ -122,8 +139,13 @@ func ticketAccountSettingsView(cfg *codexTicketConfig, id int64) CodexTicketAcco
 	if a.ProxyCipher != "" {
 		source = "account"
 	}
+	if a.ProxyPolicy != nil {
+		source = "account"
+	}
 	return CodexTicketAccountSettings{AccountID: id, Mode: mode, EffectiveEnabled: effective.Enabled,
-		ProxyConfigured: a.ProxyCipher != "", ProxySource: source, WatchdogMode: guard,
+		GlobalEnabled: cfg.Enabled,
+		Rules:         ticketRulesFromConfig(effective), ProxyPolicy: ticketProxyPolicyView(effective),
+		ProxyConfigured: source == "account", ProxySource: source, WatchdogMode: guard,
 		EffectiveWatchdogMode: ticketWatchdogMode(effective.WatchdogMode), Revision: a.Revision}
 }
 
@@ -173,7 +195,7 @@ func (s *CodexTicketService) UpdateAccountSettings(ctx context.Context, input Co
 		return nil, errors.New("每批选择1–500个账号")
 	}
 	p := input.Patch
-	if p.Mode == nil && p.HarvestProxyURL == nil && p.WatchdogMode == nil {
+	if p.Mode == nil && p.HarvestProxyURL == nil && p.WatchdogMode == nil && p.Rules == nil && p.ProxyPolicy == nil {
 		return nil, errors.New("请勾选要修改的项目")
 	}
 	if p.Mode != nil && *p.Mode != "inherit" && *p.Mode != "on" && *p.Mode != "off" {
@@ -239,6 +261,27 @@ func (s *CodexTicketService) UpdateAccountSettings(ctx context.Context, input Co
 			return nil, errors.New("账号票据配置已变化，请重新加载")
 		}
 		before := a
+		rules, e := applyTicketRulesPatch(ticketRulesFromConfig(ticketConfigForAccount(cfg, id)), p.Rules)
+		if e != nil {
+			return nil, e
+		}
+		a.Rules = &rules
+		if p.ProxyPolicy != nil {
+			if p.HarvestProxyURL != nil {
+				return nil, errors.New("不能同时提交旧代理地址与新代理配置")
+			}
+			if p.ProxyPolicy.Mode == "inherit" {
+				a.ProxyPolicy = nil
+				a.ProxyCipher = ""
+			} else {
+				policy, e := s.updateTicketProxyPolicy(ticketConfigForAccount(cfg, id), p.ProxyPolicy)
+				if e != nil {
+					return nil, e
+				}
+				a.ProxyPolicy = policy
+				a.ProxyCipher = ""
+			}
+		}
 		if p.Mode != nil {
 			a.Mode = *p.Mode
 		}
@@ -247,8 +290,9 @@ func (s *CodexTicketService) UpdateAccountSettings(ctx context.Context, input Co
 		}
 		if p.HarvestProxyURL != nil {
 			a.ProxyCipher = proxyCipher
+			a.ProxyPolicy = nil
 		}
-		if a != before {
+		if !reflect.DeepEqual(a, before) {
 			a.Revision = uuid.NewString()
 		}
 		cfg.Accounts[key] = a

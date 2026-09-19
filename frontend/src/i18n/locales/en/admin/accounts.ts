@@ -1,6 +1,25 @@
 export default {
 // Accounts
     accounts: {
+      ticketWorkbench: {
+        perAccount: 'Per-account rules',
+        masterOff: 'Gateway master switch is off. Settings can be saved, but collection and injection remain disabled.',
+        title: 'Ticket collection workspace', accountHint: 'Rules belong to each account. Scheduling-off accounts can collect; collection never turns scheduling on.',
+        gatewayHint: 'Master switch and default collection proxy only. Other rules are configured per account.',
+        defaultProxy: 'Change default collection proxy', target: 'Target bytes', attempts: 'Attempt limit', cache: 'Cache time',
+        groups: { validation: '① Target & attempts', renewal: '② Concurrency & renewal', cooldown: '③ Failure cooldown' },
+        fields: { target_length: 'Eligible length (bytes)', degraded_signal_length: 'Length signal (0 = off)', max_attempts: 'Attempt limit (0 = unlimited)', concurrency: 'Account collection concurrency (1–4)', cache_minutes: 'Cache lifetime (minutes)', refresh_before_minutes: 'Renew early (minutes)', retry_interval_seconds: 'Retry interval (seconds)', probe_interval_seconds: 'Automatic check interval (seconds)', failure_threshold: 'Consecutive failures (0 = no cooldown)', cooldown_seconds: 'Retry after cooldown (seconds)' },
+        unlimitedRisk: 'Unlimited attempts consume quota and proxy traffic until stopped. Disabling, authentication rejection and upstream limits still pause collection.',
+        proxyMode: 'Collection proxy mode', dynamicSource: 'Dynamic source', proxyProtocol: 'Returned proxy protocol', extractionURL: 'Extraction API (HTTPS)', extractionRequired: 'Enter the extraction API URL.',
+        proxyModes: { inherit: 'Inherit gateway proxy', fixed: 'Fixed proxy', rotate: 'Rotate proxies', dynamic: 'Dynamic proxy' },
+        sources: { api: 'API · Fetch each attempt', template: 'Template · Random session' },
+        proxyHints: { inherit: 'Use gateway defaults without copying or exposing credentials.', fixed: 'Always use the selected address. The provider controls the actual exit IP.', rotate: 'Move to the next proxy when no eligible ticket is obtained.', dynamic: 'Fetch a proxy or generate a session ID before each attempt.' },
+        apiHint: 'Supports Mooproxy proxies arrays (host:port:user:password). URLs are encrypted. Each attempt fetches one proxy; different IPs are not guaranteed.',
+        testProxy: 'Test proxy', testing: 'Testing…', testHint: 'IP lookup consumes proxy traffic. Does not save drafts or call models.', connected: 'Proxy connection succeeded', connectionFailed: 'Proxy test failed', region: 'Region',
+        filter: 'Ticket filters', filterLength: 'Custom target length (6–8192)', lengthLabel: 'Target length {length}',
+        filters: { all: 'All ticket settings', on: 'Account tickets on', off: 'Account tickets off', configured: 'Account overrides configured', proxy_account: 'Account proxy', proxy_gateway: 'Gateway proxy', fixed: 'Fixed proxy mode', rotate: 'Rotating proxy mode', dynamic: 'Dynamic proxy mode' },
+        currentRound: '{count} attempts', successRound: 'Acquired on attempt {count}', cooling: 'Cooling down · {seconds}s', accountRules: 'Uses each account’s models, length, concurrency and retry rules',
+      },
       ticketPolicy: {
         title: 'Account tickets', selected: '{count} selected', hint: 'Account overrides first · Otherwise inherit gateway · Master switch applies',
         mode: 'Tickets', guard: 'Watchdog', proxy: 'Change collection proxy', proxyRequired: 'Enter a proxy or choose gateway inheritance.',
@@ -45,8 +64,8 @@ export default {
         errorKind: { overloaded: 'Upstream overloaded', rate_limit: 'Rate limited', quota: 'Quota exhausted', auth: 'Authorization error', invalid_request: 'Invalid request' },
         title: 'Ticket status', modelBlocked: 'Model paused',
         checkedAt: 'Last attempt', pausedHint: 'Auto collection paused. Manual collection retains eligibility and rate-limit checks.',
-        state: { ready: 'Ticket valid', pending: 'Pending', collecting: 'Collecting', missing: 'No eligible ticket', expired: 'Ticket expired', failed: 'Collection failed', disabled: 'Tickets disabled', unsupported: 'Unsupported model', unavailable: 'Status unavailable', paused: 'Collection paused', loading: 'Loading' },
-        reason: { network: 'Network error or timeout', upstream: 'Upstream rejected the probe', invalid_ticket: 'Response state length or prefix does not match the acceptance rule', credential: 'Valid credentials unavailable', storage: 'Failed to save ticket cache', cancelled: 'Probe cancelled or timed out', proxy_config: 'Harvest proxy configuration or decryption failed' },
+        state: { cooldown: 'Cooling down', ready: 'Ticket valid', pending: 'Pending', collecting: 'Collecting', missing: 'No eligible ticket', expired: 'Ticket expired', failed: 'Collection failed', disabled: 'Tickets disabled', unsupported: 'Unsupported model', unavailable: 'Status unavailable', paused: 'Collection paused', loading: 'Loading' },
+        reason: { proxy_provider: 'Proxy extraction failed or returned an invalid proxy', cooldown: 'Consecutive failures; waiting for cooldown', network: 'Network error or timeout', upstream: 'Upstream rejected the probe', invalid_ticket: 'Response state length or prefix does not match the acceptance rule', credential: 'Valid credentials unavailable', storage: 'Failed to save ticket cache', cancelled: 'Probe cancelled or timed out', proxy_config: 'Harvest proxy configuration or decryption failed' },
       },
       quality: {
         rules: 'Rules & details', statRules: 'Statistics', keywordShort: 'Match → Full; no match → Degraded',

@@ -140,6 +140,12 @@ func intValue(value *int) int {
 }
 
 func (h *AccountHandler) ExportData(c *gin.Context) {
+	ticketFilter := strings.TrimSpace(c.Query("ticket_filter"))
+	if !service.ValidCodexTicketFilter(ticketFilter) {
+		response.BadRequest(c, "无效的票据筛选")
+		return
+	}
+	c.Request = c.Request.WithContext(service.WithCodexTicketFilter(c.Request.Context(), ticketFilter))
 	qualityStatus := strings.TrimSpace(c.Query("quality_status"))
 	if !service.ValidCodexQualityFilter(qualityStatus) {
 		response.BadRequest(c, "无效的检测结果筛选")

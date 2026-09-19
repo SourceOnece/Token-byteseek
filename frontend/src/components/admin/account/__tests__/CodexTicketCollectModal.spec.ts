@@ -24,7 +24,7 @@ describe('CodexTicketCollectModal', () => {
     })
     const w = render(); await flushPromises()
     expect(start).not.toHaveBeenCalled(); expect(w.get('[data-testid="ticket-collect-start"]').attributes('disabled')).toBeDefined()
-    expect(w.text()).toContain('332'); expect(w.text()).toContain('123'); expect(w.find('select').exists()).toBe(false)
+    expect(w.text()).toContain('ticketWorkbench.accountRules'); expect(w.find('select').exists()).toBe(false)
     await w.setProps({ accountIds: [99] }); await w.get('[data-testid="ticket-collect-confirm"]').setValue(true)
     await w.get('[data-testid="ticket-collect-start"]').trigger('click'); await flushPromises()
     expect(start.mock.calls[0][0]).toEqual([1, 2]); expect(start.mock.calls[0][1]).toBe('r1')

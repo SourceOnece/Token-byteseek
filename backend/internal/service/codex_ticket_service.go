@@ -33,59 +33,70 @@ type CodexTicketCache interface {
 }
 
 type codexTicketConfig struct {
-	stored               *string
-	Accounts             map[string]codexTicketAccountConfig `json:"accounts,omitempty"`
-	WatchdogMode         string                              `json:"watchdog_mode,omitempty"`
-	accountID            int64
-	Enabled              bool               `json:"enabled"`
-	ProxyCipher          string             `json:"proxy_cipher"`
-	Generation           string             `json:"generation"`
-	Proxies              []codexTicketProxy `json:"proxies,omitempty"`
-	SelectionMode        string             `json:"selection_mode,omitempty"`
-	FixedProxyID         string             `json:"fixed_proxy_id,omitempty"`
-	ProbeIntervalSeconds int                `json:"probe_interval_seconds,omitempty"`
-	MaxAttempts          int                `json:"max_attempts,omitempty"`
-	TargetLength         int                `json:"target_length,omitempty"`
-	DegradedSignalLength int                `json:"degraded_signal_length,omitempty"`
-	Models               []string           `json:"models,omitempty"`
-	RetryIntervalSeconds int                `json:"retry_interval_seconds,omitempty"`
-	loadedAt             time.Time
+	FailureThreshold      int                     `json:"failure_threshold,omitempty"`
+	CooldownSeconds       int                     `json:"cooldown_seconds,omitempty"`
+	CollectionConcurrency int                     `json:"collection_concurrency,omitempty"`
+	CacheMinutes          int                     `json:"cache_minutes,omitempty"`
+	RefreshBeforeMinutes  *int                    `json:"refresh_before_minutes,omitempty"`
+	ProxyPolicy           *codexTicketProxyPolicy `json:"proxy_policy,omitempty"`
+	unlimitedAttempts     bool
+	stored                *string
+	Accounts              map[string]codexTicketAccountConfig `json:"accounts,omitempty"`
+	WatchdogMode          string                              `json:"watchdog_mode,omitempty"`
+	accountID             int64
+	Enabled               bool               `json:"enabled"`
+	ProxyCipher           string             `json:"proxy_cipher"`
+	Generation            string             `json:"generation"`
+	Proxies               []codexTicketProxy `json:"proxies,omitempty"`
+	SelectionMode         string             `json:"selection_mode,omitempty"`
+	FixedProxyID          string             `json:"fixed_proxy_id,omitempty"`
+	ProbeIntervalSeconds  int                `json:"probe_interval_seconds,omitempty"`
+	MaxAttempts           int                `json:"max_attempts,omitempty"`
+	TargetLength          int                `json:"target_length,omitempty"`
+	DegradedSignalLength  int                `json:"degraded_signal_length,omitempty"`
+	Models                []string           `json:"models,omitempty"`
+	RetryIntervalSeconds  int                `json:"retry_interval_seconds,omitempty"`
+	loadedAt              time.Time
 }
 
 // 管理响应不返回代理密码或原始票据，只暴露配置是否存在。
 type CodexTicketSettings struct {
-	AccountProxyConfigured bool                   `json:"account_proxy_configured"`
-	WatchdogMode           string                 `json:"watchdog_mode"`
-	Enabled                bool                   `json:"enabled"`
-	ProxyConfigured        bool                   `json:"proxy_configured"`
-	Proxies                []CodexTicketProxyView `json:"proxies"`
-	SelectionMode          string                 `json:"selection_mode"`
-	FixedProxyID           string                 `json:"fixed_proxy_id"`
-	ProbeIntervalSeconds   int                    `json:"probe_interval_seconds"`
-	MaxAttempts            int                    `json:"max_attempts"`
-	TargetLength           int                    `json:"target_length"`
-	DegradedSignalLength   int                    `json:"degraded_signal_length"`
-	Models                 []string               `json:"models"`
-	RetryIntervalSeconds   int                    `json:"retry_interval_seconds"`
-	Revision               string                 `json:"revision"`
+	AccountRules           []CodexTicketAccountSettings `json:"account_rules,omitempty"`
+	ProxyPolicy            CodexTicketProxyPolicyView   `json:"proxy_policy"`
+	AccountProxyConfigured bool                         `json:"account_proxy_configured"`
+	WatchdogMode           string                       `json:"watchdog_mode"`
+	Enabled                bool                         `json:"enabled"`
+	ProxyConfigured        bool                         `json:"proxy_configured"`
+	Proxies                []CodexTicketProxyView       `json:"proxies"`
+	SelectionMode          string                       `json:"selection_mode"`
+	FixedProxyID           string                       `json:"fixed_proxy_id"`
+	ProbeIntervalSeconds   int                          `json:"probe_interval_seconds"`
+	MaxAttempts            int                          `json:"max_attempts"`
+	TargetLength           int                          `json:"target_length"`
+	DegradedSignalLength   int                          `json:"degraded_signal_length"`
+	Models                 []string                     `json:"models"`
+	RetryIntervalSeconds   int                          `json:"retry_interval_seconds"`
+	Revision               string                       `json:"revision"`
 }
 type CodexTicketSettingsUpdate struct {
-	WatchdogMode         *string                   `json:"watchdog_mode"`
-	Enabled              *bool                     `json:"enabled"`
-	HarvestProxyURL      *string                   `json:"harvest_proxy_url"`
-	ClearProxy           bool                      `json:"clear_proxy"`
-	Proxies              *[]CodexTicketProxyUpdate `json:"proxies"`
-	SelectionMode        *string                   `json:"selection_mode"`
-	FixedProxyID         *string                   `json:"fixed_proxy_id"`
-	ProbeIntervalSeconds *int                      `json:"probe_interval_seconds"`
-	MaxAttempts          *int                      `json:"max_attempts"`
-	TargetLength         *int                      `json:"target_length"`
-	DegradedSignalLength *int                      `json:"degraded_signal_length"`
-	Models               *[]string                 `json:"models"`
-	RetryIntervalSeconds *int                      `json:"retry_interval_seconds"`
-	Revision             *string                   `json:"revision"`
+	ProxyPolicy          *CodexTicketProxyPolicyUpdate `json:"proxy_policy"`
+	WatchdogMode         *string                       `json:"watchdog_mode"`
+	Enabled              *bool                         `json:"enabled"`
+	HarvestProxyURL      *string                       `json:"harvest_proxy_url"`
+	ClearProxy           bool                          `json:"clear_proxy"`
+	Proxies              *[]CodexTicketProxyUpdate     `json:"proxies"`
+	SelectionMode        *string                       `json:"selection_mode"`
+	FixedProxyID         *string                       `json:"fixed_proxy_id"`
+	ProbeIntervalSeconds *int                          `json:"probe_interval_seconds"`
+	MaxAttempts          *int                          `json:"max_attempts"`
+	TargetLength         *int                          `json:"target_length"`
+	DegradedSignalLength *int                          `json:"degraded_signal_length"`
+	Models               *[]string                     `json:"models"`
+	RetryIntervalSeconds *int                          `json:"retry_interval_seconds"`
+	Revision             *string                       `json:"revision"`
 }
 type codexTicketValue struct {
+	Attempts  int `json:"attempts,omitempty"`
 	encoded   string
 	State     string    `json:"state"`
 	ExpiresAt time.Time `json:"expires_at"`
@@ -94,28 +105,29 @@ type codexTicketValue struct {
 // CodexTicketService 默认关闭；开启后沿快照按账号/模型门控并覆盖回合状态，不改账号总开关。
 // @project-doc docs/interfaces/openai_upstream.md#codex_ticket_opt_in
 type CodexTicketService struct {
-	gateway      *OpenAIGatewayService
-	settings     SettingRepository
-	cache        CodexTicketCache
-	cipher       SecretEncryptor
-	config       atomic.Pointer[codexTicketConfig]
-	updateMu     sync.Mutex
-	lifecycleMu  sync.Mutex
-	cancel       context.CancelFunc
-	done         chan struct{}
-	stopped      bool
-	roundCancel  context.CancelFunc
-	roundID      string
-	roundWG      sync.WaitGroup
-	cursor       int64
-	cursorModel  string
-	nextRound    time.Time
-	cacheRetryAt atomic.Int64
-	watchdogWake atomic.Bool
-	manualCancel context.CancelFunc
-	manualID     string
-	manualWG     sync.WaitGroup
-	ipProber     ProxyExitInfoProber
+	proxyProviderClient *http.Client
+	gateway             *OpenAIGatewayService
+	settings            SettingRepository
+	cache               CodexTicketCache
+	cipher              SecretEncryptor
+	config              atomic.Pointer[codexTicketConfig]
+	updateMu            sync.Mutex
+	lifecycleMu         sync.Mutex
+	cancel              context.CancelFunc
+	done                chan struct{}
+	stopped             bool
+	roundCancel         context.CancelFunc
+	roundID             string
+	roundWG             sync.WaitGroup
+	cursor              int64
+	cursorModel         string
+	nextRound           time.Time
+	cacheRetryAt        atomic.Int64
+	watchdogWake        atomic.Bool
+	manualCancel        context.CancelFunc
+	manualID            string
+	manualWG            sync.WaitGroup
+	ipProber            ProxyExitInfoProber
 }
 
 func ProvideCodexTicketService(gateway *OpenAIGatewayService, settings SettingRepository, cache CodexTicketCache, cipher SecretEncryptor, ipProber ProxyExitInfoProber) *CodexTicketService {
@@ -188,8 +200,19 @@ func (s *CodexTicketService) Update(ctx context.Context, input CodexTicketSettin
 		}
 		cfg.WatchdogMode = *input.WatchdogMode
 	}
-	if err = s.updateProxySettings(cfg, input); err != nil {
-		return CodexTicketSettings{}, err
+	if input.ProxyPolicy == nil {
+		if err = s.updateProxySettings(cfg, input); err != nil {
+			return CodexTicketSettings{}, err
+		}
+	} else if input.Revision != nil && *input.Revision != cfg.Generation {
+		return CodexTicketSettings{}, errors.New("票据配置已更新，请重新加载")
+	}
+	if input.ProxyPolicy != nil {
+		policy, e := s.updateTicketProxyPolicy(cfg, input.ProxyPolicy)
+		if e != nil {
+			return CodexTicketSettings{}, e
+		}
+		cfg.applyProxyPolicy(policy)
 	}
 	if cfg.Enabled && (!cfg.hasCollectionProxy() || s.cache == nil || s.cipher == nil) {
 		return CodexTicketSettings{}, errors.New("开启前请先配置采集代理及 Redis")
@@ -319,7 +342,15 @@ func (s *CodexTicketService) lookup(ctx context.Context, cfg *codexTicketConfig,
 	}
 	readCtx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
 	defer cancel()
-	encoded, err := s.cache.Get(readCtx, codexTicketKey(cfg, account, model, token))
+	key := codexTicketKey(cfg, account, model, token)
+	encoded, err := s.cache.Get(readCtx, key)
+	if err == nil && cfg.FailureThreshold > 0 {
+		raw, e := s.cache.Get(readCtx, "collection:"+key)
+		err = e
+		if err == nil && ticketCollectionState(raw).CooldownUntil != nil {
+			return value, false
+		}
+	}
 	if err != nil && ctx.Err() == nil {
 		s.cacheRetryAt.Store(time.Now().Add(time.Second).UnixNano())
 	}
@@ -469,7 +500,7 @@ func (s *CodexTicketService) startRound(ctx context.Context) {
 				s.roundCancel = nil
 				latest := s.enabledConfig()
 				if latest != nil && cfg != nil && latest.Generation == cfg.Generation {
-					s.nextRound = time.Now().Add(latest.interval())
+					s.nextRound = time.Now().Add(latest.scanInterval())
 				}
 			}
 			s.lifecycleMu.Unlock()
@@ -499,26 +530,35 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 		return
 	}
 	sort.Slice(accounts, func(i, j int) bool { return accounts[i].ID < accounts[j].ID })
-	models := cfg.models()
-	if len(accounts) == 0 || len(models) == 0 {
-		return
-	}
-	// 游标同时记录账号与模型：预算耗尽后从下一对继续，不让同账号后部模型长期饿死。
-	accountStart := sort.Search(len(accounts), func(i int) bool { return accounts[i].ID >= s.cursor })
-	start := accountStart * len(models)
-	if accountStart < len(accounts) && accounts[accountStart].ID == s.cursor {
-		for i, model := range models {
-			if model == s.cursorModel {
-				start += i + 1
-				break
-			}
-		}
-	}
-	total := len(accounts) * len(models)
-	start %= total
 	type job struct {
 		account Account
 		model   string
+	}
+	// 不再用全局模型矩阵，按每个账号的完整规则建立公平轮转任务。
+	tasks := []job{}
+	for _, account := range accounts {
+		if !codexTicketCollectionAllowed(ctx, &account) {
+			continue
+		}
+		ac := ticketConfigForAccount(cfg, account.ID)
+		if !ac.Enabled {
+			continue
+		}
+		for _, model := range ac.models() {
+			if account.IsModelSupported(model) {
+				tasks = append(tasks, job{account, model})
+			}
+		}
+	}
+	if len(tasks) == 0 {
+		return
+	}
+	start := 0
+	for i, item := range tasks {
+		if item.account.ID == s.cursor && item.model == s.cursorModel {
+			start = (i + 1) % len(tasks)
+			break
+		}
 	}
 	jobs := make(chan job)
 	var workers sync.WaitGroup
@@ -532,14 +572,13 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 		}()
 	}
 	defer func() { close(jobs); workers.Wait() }()
-	for offset := 0; offset < total; offset++ {
+	for offset := 0; offset < len(tasks); offset++ {
 		if ctx.Err() != nil {
 			return
 		}
-		position := (start + offset) % total
-		account := accounts[position/len(models)]
-		model := models[position%len(models)]
-		if !codexTicketAccount(&account) || !account.IsSchedulable() {
+		item := tasks[(start+offset)%len(tasks)]
+		account, model := item.account, item.model
+		if !codexTicketCollectionAllowed(ctx, &account) {
 			continue
 		}
 		if !account.IsModelSupported(model) {
@@ -560,7 +599,7 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 		return
 	}
 	fresh, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
-	if err != nil || !codexTicketAccount(fresh) || !fresh.IsSchedulable() || !fresh.IsModelSupported(model) {
+	if err != nil || !codexTicketCollectionAllowed(ctx, fresh) || !fresh.IsModelSupported(model) {
 		return
 	}
 	token, _, err := s.gateway.GetAccessToken(ctx, fresh)
@@ -571,14 +610,17 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 		return
 	}
 	key := codexTicketKey(cfg, fresh, model, token)
-	cached, err := s.cache.GetMany(ctx, []string{key, "status:" + key})
+	cached, err := s.cache.GetMany(ctx, []string{key, "status:" + key, "collection:" + key})
 	if err != nil {
+		return
+	}
+	if ticketCollectionState(cached["collection:"+key]).CooldownUntil != nil {
 		return
 	}
 	if encrypted := cached[key]; encrypted != "" {
 		if raw, err := s.cipher.Decrypt(encrypted); err == nil {
 			var value codexTicketValue
-			if json.Unmarshal([]byte(raw), &value) == nil && validCodexTicket(value, cfg.targetLength()) && time.Until(value.ExpiresAt) > 10*time.Minute {
+			if json.Unmarshal([]byte(raw), &value) == nil && validCodexTicket(value, cfg.targetLength()) && time.Until(value.ExpiresAt) > cfg.refreshBefore() {
 				return
 			}
 		}
@@ -592,6 +634,10 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 	if err != nil || !claimed {
 		return
 	}
+	// 正上限仍约束当前自动轮次，保留历史周期重试；0的计数跨短轮次延续直到成功。
+	if cfg.attempts() > 0 {
+		s.resetTicketAttempts(ctx, key)
+	}
 	previousID := ""
 	if previous.Diagnostic != nil {
 		previousID = previous.Diagnostic.ProxyID
@@ -600,7 +646,11 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 	// 每轮最多三十秒；没票才切换重试，成功即停止，不重放任何用户业务请求。
 	cycleCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	for attempt := 1; attempt <= cfg.attempts(); attempt++ {
+	limit := cfg.attempts()
+	if limit == 0 {
+		limit = 1
+	} // 无限采集每轮让出worker，下轮从累计次数继续，防止饿死其它账号。
+	for localAttempt := 1; localAttempt <= limit; localAttempt++ {
 		if !s.ticketConfigCurrent(cfg) || cycleCtx.Err() != nil {
 			return
 		}
@@ -608,8 +658,11 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 		if !ok {
 			return
 		}
-		ready, retry := s.probeAttempt(cycleCtx, cfg, fresh, model, token, key, proxy, attempt)
-		if ready || !retry || attempt == cfg.attempts() {
+		ready, retry := s.probeAttempt(cycleCtx, cfg, fresh, model, token, key, proxy, localAttempt)
+		if ready {
+			s.resetTicketAttempts(cycleCtx, key)
+		}
+		if ready || !retry || localAttempt == limit {
 			return
 		}
 		previousID, failed = proxy.ID, true

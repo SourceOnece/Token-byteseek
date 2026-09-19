@@ -12,6 +12,25 @@ import (
 // 私有加密票据仅存 Redis，独立前缀与 TTL，不进入账号导出、调度投影或数据库备份。
 type codexTicketCache struct{ client *redis.Client }
 
+// 原子分配尝试序号，正上限耗尽不再递增；0不限，24小时无活动后清理孤儿计数。
+func (c *codexTicketCache) NextTicketAttempt(ctx context.Context, key string, max int) (int, error) {
+	return c.client.Eval(ctx, `local n=tonumber(redis.call('GET',KEYS[1]) or '0');local limit=tonumber(ARGV[1]);if limit>0 and n>=limit then return 0 end;n=n+1;redis.call('SET',KEYS[1],n,'EX',86400);return n`, []string{"private:codex-ticket:v1:attempts:" + key}, max).Int()
+}
+func (c *codexTicketCache) ResetTicketAttempts(ctx context.Context, key string) error {
+	return c.client.Del(ctx, "private:codex-ticket:v1:attempts:"+key).Err()
+}
+
+// 冷却独立于账号schedulable和质量检测。不限次数保留累计轮数，有限上限在冷却后允许新周期。
+func (c *codexTicketCache) RecordTicketCollection(ctx context.Context, key string, success bool, threshold, seconds, max int, now time.Time) error {
+	return c.client.Eval(ctx, `
+if ARGV[1]=='1' then redis.call('DEL',KEYS[1]);return 1 end
+local state={failures=0,['until']=0};local raw=redis.call('GET',KEYS[1]);if raw then local ok,v=pcall(cjson.decode,raw);if ok and type(v)=='table' then state=v end end
+local now=tonumber(ARGV[4]);if tonumber(state['until'] or 0)>0 and tonumber(state['until'])<=now then state.failures=0;state['until']=0 end
+state.failures=tonumber(state.failures or 0)+1
+if tonumber(ARGV[2])>0 and state.failures>=tonumber(ARGV[2]) then state['until']=now+tonumber(ARGV[3])*1000;if tonumber(ARGV[5])>0 then redis.call('DEL',KEYS[2]) end end
+redis.call('SET',KEYS[1],cjson.encode(state),'EX',86400);return 1`, []string{"private:codex-ticket:v1:collection:" + key, "private:codex-ticket:v1:attempts:" + key}, map[bool]string{false: "0", true: "1"}[success], threshold, seconds, now.UnixMilli(), max).Err()
+}
+
 func NewCodexTicketCache(client *redis.Client) service.CodexTicketCache {
 	return &codexTicketCache{client: client}
 }
