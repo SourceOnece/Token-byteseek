@@ -627,8 +627,9 @@ type ForwardResult struct {
 type GatewayFailureStage string
 
 const (
-	GatewayFailureStageInference   GatewayFailureStage = "inference"
-	GatewayFailureStageAccountAuth GatewayFailureStage = "account_auth"
+	GatewayFailureStageInference        GatewayFailureStage = "inference"
+	GatewayFailureStageAccountAuth      GatewayFailureStage = "account_auth"
+	GatewayFailureStageAccountSelection GatewayFailureStage = "account_selection"
 )
 
 // GatewayFailureScope 标识切换账号是否可能解决当前失败。
@@ -692,6 +693,9 @@ func (e *UpstreamFailoverError) IsCredentialFailure() bool {
 // 旧版错误和推理错误继续保持原有的调度健康上报行为。
 func (e *UpstreamFailoverError) ShouldReportAccountScheduleFailure() bool {
 	if e == nil {
+		return false
+	}
+	if e.Reason == CodexTicketUnavailableReason {
 		return false
 	}
 	return !e.IsCredentialFailure() || e.Scope == GatewayFailureScopeAccount

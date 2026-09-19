@@ -221,7 +221,9 @@ func (s *FailoverState) HandleSelectionExhausted(ctx context.Context) FailoverAc
 		return FailoverCanceled
 	}
 
+	// 本地缺票不是上游容量恢复；不能清空排除列表后反复选回同一批账号。
 	if s.LastFailoverErr != nil &&
+		s.LastFailoverErr.Reason != service.CodexTicketUnavailableReason &&
 		s.LastFailoverErr.StatusCode == http.StatusServiceUnavailable &&
 		s.SwitchCount <= s.MaxSwitches {
 

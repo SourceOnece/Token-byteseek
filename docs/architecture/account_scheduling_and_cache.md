@@ -68,9 +68,11 @@ Codex 额度余量优先读取规范 `codex_5h_*` / `codex_7d_*`，历史 primar
 
 ## 候选筛选与评分
 
+bh.044 内部Redis摘要增加 `_scheduler_meta_version=1`，保留授权模式、隐私、账号阈值、旧Compact/原生V2能力、Anthropic/Grok窗口及OpenAI阈值所需的凭据/观测身份标识；OAuth access/refresh token与Agent私钥仍不入摘要，历史API Key字段保持。旧摘要批量读取同ID完整缓存后重新裁剪用于本次返回，不回写覆盖并发更新；完整缓存缺失/错误沿原受限回退。新版本摘要不额外读取完整缓存。版本标识不进入DTO/数据库/完整账号缓存；旧实例仍运行时可能持续触发重投影，应完成全实例升级。
+
 bh.035 的可选 Codex 292 票据开启时，独立 OpenAI OAuth 的 Astra/Sol 按最终出站模型追加缺票门控，适用于基础/高级/粘性与选后复查；旧版 compact 依照当前 compact 映射及兜底模型判断。它只读私有 Redis，不修改账号 schedulable 或快照/outbox，采集得到有效票后自动恢复候选；开关关闭不进入此门控。与下面的题目质量检测是独立功能，具体缓存故障和注入规则见 [票据契约](../interfaces/codex_ticket.md#ticket_contract)。
 
-bh.043 明确初筛快照来自sched:meta，不包含OAuth令牌、工作区或组织，不能直接据这些字段缺失判为缺票。目标OAuth的票据检查须先按同ID读取完整账号，仅在局部使用其凭据索引原加密票据；摘要过滤白名单不扩大，常规选后补全/资格复查仍保留。此前完整账号单测遗漏这一真实初筛路径，基础（含负载批量）/高级调度均须覆盖“摘要无Token但当前票有效”的回归。关闭开关及非目标路径不做额外读取；细节与边界由票据契约拥有。
+bh.043修复初筛摘要缺OAuth令牌时误判缺票。bh.044补上述非令牌资格字段后，目标OAuth票据检查仍按同ID读取完整账号，仅在局部使用真实凭据索引原加密票据；旧摘要补全确认同ID为Agent Identity时恢复原豁免，其它不支持类型不借票放行。常规选后补全/资格复查保留。基础（含负载批量）/高级调度均须覆盖“摘要无Token但当前票有效”，并验证生产Redis投影资格一致性。关闭票据开关及非目标路径不因票据功能额外读取；细节与边界由票据契约拥有。
 
 管理员 Codex 题目测试可按完整回答的关键词结果直接更新所选账号 schedulable：full 开启，只有 degraded 关闭；failed 保留原调度状态，仅写最近结果/定时历史，不更新账号时间或发送 scheduler outbox。有效的 full/degraded 写入仍和最近结果、scheduler outbox 原子提交，并同步账号快照。该规则共用于手动和定时检测，不改变以下筛选顺序或评分算法，不清除 inactive/error、过期、限额，也不为未测账号增加新门禁。旧失败结果和旧调度状态不自动回写。关键词标签不是持续健康承诺，管理员仍可手动修改调度；详情见[账号维护](../operations/account_maintenance.md#codex_quality_testing)。
 

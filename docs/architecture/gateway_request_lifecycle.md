@@ -128,6 +128,8 @@ client_model
 
 ## 转发与流式边界
 
+Codex可选票据在选后发送前失效时，用 `account_selection/codex_ticket_unavailable` 本地资格错误复用有界换号，不计账号健康失败或现场重采。耗尽归为路由容量不足503，不进入通用上游503的清空排除列表重试。HTTP/透传/WS构建器不先写通用502；已输出回答及WS上下文不可迁移限制不变。详见[票据契约](../interfaces/codex_ticket.md#ticket_contract)。
+
 每次 attempt 都以原始/规范化请求和本次账号重新构造供应商请求，注入凭据、代理、TLS 指纹、客户端标识、Thinking/工具配置及上游模型。平台适配器负责协议转换、上游响应限制和供应商错误解析，handler 负责在客户端协议中返回最终结果。
 
 流式响应有不可逆边界：在调用上游前记录 `ResponseWriter` 已写字节数；如果 attempt 已向客户端写出真实业务输出，就不能再选择账号，否则会把两个上游响应拼接为损坏的单流。旧版 Compact 桥接心跳、Responses 的 `response.created` / `response.in_progress` 前导事件，以及等待终态判定的可重试 `error` 帧不算业务输出，可以留在 attempt 缓冲中为 pre-output failover 保留空间；不可重试错误仍按事件边界及时转发。真实输出开始后，错误只能按当前协议追加允许的流错误事件或结束连接。非流式且尚未写响应时，才可以安全地进入下一次 failover。

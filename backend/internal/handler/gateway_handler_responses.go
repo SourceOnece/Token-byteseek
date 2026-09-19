@@ -373,7 +373,10 @@ func (h *GatewayHandler) handleResponsesFailoverExhausted(c *gin.Context, lastEr
 		statusCode = lastErr.StatusCode
 	}
 	status, code, message := statusCode, "server_error", "All available accounts exhausted"
-	if lastErr != nil && lastErr.IsCredentialFailure() {
+	if lastErr != nil && lastErr.Reason == service.CodexTicketUnavailableReason {
+		markOpsRoutingCapacityLimited(c)
+		status, code, message = http.StatusServiceUnavailable, "api_error", "Service temporarily unavailable"
+	} else if lastErr != nil && lastErr.IsCredentialFailure() {
 		status, message = credentialFailoverClientResponse(lastErr)
 	} else if lastErr != nil && lastErr.IsOpenAICapacityShed() && strings.TrimSpace(lastErr.ClientMessage) != "" {
 		status = lastErr.ClientStatusCode

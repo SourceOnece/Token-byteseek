@@ -4,6 +4,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +12,42 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/service"
 	"github.com/stretchr/testify/require"
 )
+
+// 真实Redis验证旧版摘要在升级后能恢复资格信息且不改写缓存。
+func TestSchedulerCacheLegacyEligibilityRealRedis(t *testing.T) {
+	ctx := context.Background()
+	rdb := testRedis(t)
+	cache := NewSchedulerCache(rdb)
+	bucket := service.SchedulerBucket{GroupID: 91, Platform: service.PlatformOpenAI, Mode: service.SchedulerModeSingle}
+	account := service.Account{ID: 9101, Platform: service.PlatformOpenAI, Type: service.AccountTypeOAuth,
+		Credentials: map[string]any{"auth_mode": service.OpenAIAuthModeAgentIdentity, "access_token": "synthetic-secret", "account_scheduling_threshold": 100},
+		Extra:       map[string]any{"privacy_mode": service.PrivacyModeTrainingOff, "openai_compact_mode": "force_off"}}
+	token, err := cache.CaptureBucketWriteToken(ctx, bucket)
+	require.NoError(t, err)
+	require.NoError(t, cache.SetSnapshot(ctx, bucket, token, []service.Account{account}))
+	for _, legacy := range []bool{false, true} {
+		if legacy {
+			old := account
+			old.Credentials, old.Extra = nil, nil
+			payload, err := json.Marshal(old)
+			require.NoError(t, err)
+			require.NoError(t, rdb.Set(ctx, schedulerAccountMetaKey("9101"), payload, 0).Err())
+		}
+		before, err := rdb.Get(ctx, schedulerAccountMetaKey("9101")).Result()
+		require.NoError(t, err)
+		accounts, hit, err := cache.GetSnapshot(ctx, bucket)
+		require.NoError(t, err)
+		require.True(t, hit)
+		require.Len(t, accounts, 1)
+		require.True(t, accounts[0].IsOpenAIAgentIdentity())
+		require.True(t, accounts[0].IsPrivacySet())
+		require.False(t, accounts[0].AllowsOpenAICompact())
+		require.NotContains(t, accounts[0].Credentials, "access_token")
+		after, err := rdb.Get(ctx, schedulerAccountMetaKey("9101")).Result()
+		require.NoError(t, err)
+		require.Equal(t, before, after)
+	}
+}
 
 func TestSchedulerCacheSnapshotUsesSlimMetadataButKeepsFullAccount(t *testing.T) {
 	ctx := context.Background()

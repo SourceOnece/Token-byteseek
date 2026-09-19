@@ -124,7 +124,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	ensureCodexIdentityHeaders(req.Header)
 	enforceCodexIdentityHeaders(req.Header)
 	minimum := "0.146.0"
-	if model == "gpt-6-astra" {
+	if strings.Contains(strings.ToLower(model), "gpt-6") || strings.Contains(strings.ToLower(model), "astra") {
 		minimum = "0.153.4"
 	}
 	if CompareVersions(req.Header.Get("version"), minimum) < 0 {

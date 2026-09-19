@@ -100,6 +100,7 @@ type CodexTicketService struct {
 	roundID      string
 	roundWG      sync.WaitGroup
 	cursor       int64
+	cursorModel  string
 	nextRound    time.Time
 	cacheRetryAt atomic.Int64
 	manualCancel context.CancelFunc
@@ -236,6 +237,19 @@ func validCodexTicket(value codexTicketValue, lengths ...int) bool {
 // 缺票错误只用于当前模型的准入，不写账号状态或质量检测结果。
 var ErrCodexTicketUnavailable = errors.New("codex turn-state ticket unavailable")
 
+const CodexTicketUnavailableReason GatewayFailureReason = "codex_ticket_unavailable"
+
+// 选后票据失效属于本地资格变化：允许未输出请求在原预算内换号，不惩罚上游健康。
+func newCodexTicketUnavailableError() error {
+	return errors.Join(ErrCodexTicketUnavailable, &UpstreamFailoverError{
+		StatusCode:        http.StatusServiceUnavailable,
+		Stage:             GatewayFailureStageAccountSelection,
+		Scope:             GatewayFailureScopeAccount,
+		Reason:            CodexTicketUnavailableReason,
+		NextAccountAction: NextAccountRetry,
+	})
+}
+
 // Apply 沿快照覆盖回合头；缺票不现场采集，由后台续采后恢复。
 func (s *CodexTicketService) Apply(ctx context.Context, account *Account, model string, headers http.Header) error {
 	cfg := s.enabledConfig()
@@ -244,7 +258,7 @@ func (s *CodexTicketService) Apply(ctx context.Context, account *Account, model 
 	}
 	token := strings.TrimPrefix(headers.Get("Authorization"), "Bearer ")
 	if token == "" || token == headers.Get("Authorization") {
-		return ErrCodexTicketUnavailable
+		return newCodexTicketUnavailableError()
 	}
 	value, ok := s.lookup(ctx, cfg, account, model, token)
 	latest := s.enabledConfig()
@@ -252,7 +266,7 @@ func (s *CodexTicketService) Apply(ctx context.Context, account *Account, model 
 		return nil
 	}
 	if latest.Generation != cfg.Generation || !ok {
-		return ErrCodexTicketUnavailable
+		return newCodexTicketUnavailableError()
 	}
 	// 清理大小写不同的旧键，避免覆盖后实际发出两个状态头。
 	for name := range headers {
@@ -301,6 +315,10 @@ func (s *CodexTicketService) Blocks(ctx context.Context, account *Account, model
 	lookupAccount := account
 	if account.GetOpenAIAccessToken() == "" {
 		lookupAccount = s.resolveTicketLookupAccount(ctx, account.ID)
+	}
+	// 旧摘要可能缺auth_mode；同ID完整账号确认是特殊授权后，恢复其原有票据豁免。
+	if lookupAccount != nil && lookupAccount.ID == account.ID && lookupAccount.IsOpenAIAgentIdentity() {
+		return false
 	}
 	ok := false
 	if codexTicketAccount(lookupAccount) && lookupAccount.ID == account.ID {
@@ -440,10 +458,23 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 		return
 	}
 	sort.Slice(accounts, func(i, j int) bool { return accounts[i].ID < accounts[j].ID })
-	start := sort.Search(len(accounts), func(i int) bool { return accounts[i].ID > s.cursor })
-	if start == len(accounts) {
-		start = 0
+	models := cfg.models()
+	if len(accounts) == 0 || len(models) == 0 {
+		return
 	}
+	// 游标同时记录账号与模型：预算耗尽后从下一对继续，不让同账号后部模型长期饿死。
+	accountStart := sort.Search(len(accounts), func(i int) bool { return accounts[i].ID >= s.cursor })
+	start := accountStart * len(models)
+	if accountStart < len(accounts) && accounts[accountStart].ID == s.cursor {
+		for i, model := range models {
+			if model == s.cursorModel {
+				start += i + 1
+				break
+			}
+		}
+	}
+	total := len(accounts) * len(models)
+	start %= total
 	type job struct {
 		account Account
 		model   string
@@ -460,21 +491,24 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 		}()
 	}
 	defer func() { close(jobs); workers.Wait() }()
-	for offset := 0; offset < len(accounts); offset++ {
-		account := accounts[(start+offset)%len(accounts)]
+	for offset := 0; offset < total; offset++ {
+		if ctx.Err() != nil {
+			return
+		}
+		position := (start + offset) % total
+		account := accounts[position/len(models)]
+		model := models[position%len(models)]
 		if !codexTicketAccount(&account) || !account.IsSchedulable() {
 			continue
 		}
-		s.cursor = account.ID
-		for _, model := range cfg.models() {
-			if !account.IsModelSupported(model) {
-				continue
-			}
-			select {
-			case <-ctx.Done():
-				return
-			case jobs <- job{account: account, model: model}:
-			}
+		if !account.IsModelSupported(model) {
+			continue
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case jobs <- job{account: account, model: model}:
+			s.cursor, s.cursorModel = account.ID, model
 		}
 	}
 }

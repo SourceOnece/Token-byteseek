@@ -57,7 +57,7 @@ func newOpenAIWSLocalRoutingRejectedError(model string, err error) error {
 
 // shouldReportOpenAIWSProxyAccountFailure 排除明确的本地模型路由拒绝，其余代理错误维持现有上报行为。
 func shouldReportOpenAIWSProxyAccountFailure(err error) bool {
-	if err == nil || errors.Is(err, errOpenAIWSLocalRoutingRejected) || service.IsOpenAIWSSessionPreemptedError(err) {
+	if err == nil || errors.Is(err, service.ErrCodexTicketUnavailable) || errors.Is(err, errOpenAIWSLocalRoutingRejected) || service.IsOpenAIWSSessionPreemptedError(err) {
 		return false
 	}
 	// 分组推理策略在发送上游前拒绝请求，不应污染账号健康状态。
@@ -1609,6 +1609,11 @@ func (h *OpenAIGatewayHandler) anthropicStreamingAwareError(c *gin.Context, stat
 
 // handleAnthropicFailoverExhausted 将上游切号错误转换为 Anthropic 格式。
 func (h *OpenAIGatewayHandler) handleAnthropicFailoverExhausted(c *gin.Context, failoverErr *service.UpstreamFailoverError, streamStarted bool) {
+	if failoverErr != nil && failoverErr.Reason == service.CodexTicketUnavailableReason {
+		markOpsRoutingCapacityLimited(c)
+		h.anthropicStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "Service temporarily unavailable", streamStarted)
+		return
+	}
 	if failoverErr != nil && failoverErr.IsOpenAIRequestBodyTooLarge() {
 		service.SetOpsUpstreamError(c, http.StatusRequestEntityTooLarge, service.OpenAIRequestBodyTooLargeClientMessage, "")
 		h.anthropicStreamingAwareError(
@@ -3205,6 +3210,11 @@ func (h *OpenAIGatewayHandler) handleFailoverExhausted(c *gin.Context, failoverE
 		h.handleFailoverExhaustedSimple(c, http.StatusBadGateway, streamStarted)
 		return
 	}
+	if failoverErr.Reason == service.CodexTicketUnavailableReason {
+		markOpsRoutingCapacityLimited(c)
+		h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "Service temporarily unavailable", streamStarted)
+		return
+	}
 	if failoverErr.IsOpenAIRequestBodyTooLarge() {
 		service.SetOpsUpstreamError(c, http.StatusRequestEntityTooLarge, service.OpenAIRequestBodyTooLargeClientMessage, "")
 		h.handleStreamingAwareError(
@@ -4006,7 +4016,14 @@ func closeOpenAIWSFailoverExhausted(c *gin.Context, conn *coderws.Conn, failover
 		if reason := strings.TrimSpace(string(failoverErr.Reason)); reason != "" {
 			errorCode = reason
 		}
-		if failoverErr.Stage == service.GatewayFailureStageAccountAuth {
+		if failoverErr.Reason == service.CodexTicketUnavailableReason {
+			// 本地票据资格不足不是上游故障，WS也沿用503容量分类。
+			markOpsRoutingCapacityLimited(c)
+			intendedStatus = http.StatusServiceUnavailable
+			errorType = "api_error"
+			message = "Service temporarily unavailable"
+			closeStatus = coderws.StatusTryAgainLater
+		} else if failoverErr.Stage == service.GatewayFailureStageAccountAuth {
 			intendedStatus = http.StatusServiceUnavailable
 			errorType = "api_error"
 			message = service.GrokCredentialUnavailableClientMessage

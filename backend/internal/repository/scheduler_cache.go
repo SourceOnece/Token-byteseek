@@ -31,6 +31,8 @@ const (
 	defaultSchedulerSnapshotMGetChunkSize  = 128
 	defaultSchedulerSnapshotWriteChunkSize = 256
 	schedulerLastUsedUpdateChunkSize       = 256
+	// 摘要资格字段升级时，旧缓存不能被当成完整的新投影使用。
+	schedulerMetadataVersion = 1
 
 	// snapshotGraceTTLSeconds 旧快照过期的宽限期（秒）。
 	// 替代立即 DEL，让正在读取旧版本的 reader 有足够时间完成 ZRANGE。
@@ -292,6 +294,8 @@ func (c *schedulerCache) GetSnapshot(ctx context.Context, bucket service.Schedul
 	}
 
 	accounts := make([]*service.Account, 0, len(values))
+	legacyIndexes := make([]int, 0)
+	legacyKeys := make([]string, 0)
 	for i, val := range values {
 		if val == nil {
 			return nil, false, nil
@@ -300,10 +304,42 @@ func (c *schedulerCache) GetSnapshot(ctx context.Context, bucket service.Schedul
 		if err != nil {
 			return nil, false, err
 		}
+		version, err := schedulerCachedMetadataVersion(val)
+		if err != nil {
+			return nil, false, err
+		}
+		if version != schedulerMetadataVersion {
+			legacyIndexes = append(legacyIndexes, i)
+			legacyKeys = append(legacyKeys, schedulerAccountKey(ids[i]))
+		}
+		accounts = append(accounts, account)
+	}
+	// 旧摘要批量从完整缓存重投影，避免升级期间逐账号串行回源；不写回覆盖并发更新。
+	if len(legacyKeys) > 0 {
+		fullValues, err := c.mgetChunked(ctx, legacyKeys)
+		if err != nil {
+			return nil, false, err
+		}
+		for index, value := range fullValues {
+			if value == nil {
+				return nil, false, nil
+			}
+			full, err := decodeCachedAccount(value)
+			if err != nil {
+				return nil, false, err
+			}
+			i := legacyIndexes[index]
+			if full == nil || full.ID != accounts[i].ID {
+				return nil, false, nil
+			}
+			metadata := buildSchedulerMetadataAccount(*full)
+			accounts[i] = &metadata
+		}
+	}
+	for i, account := range accounts {
 		if err := applySchedulerLastUsed(account, lastUsedValues[i]); err != nil {
 			return nil, false, err
 		}
-		accounts = append(accounts, account)
 	}
 
 	return accounts, true, nil
@@ -830,11 +866,32 @@ func marshalSchedulerCacheAccount(account service.Account) ([]byte, []byte, erro
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal account: %w", err)
 	}
-	metaPayload, err := json.Marshal(buildSchedulerMetadataAccount(account))
+	metaPayload, err := json.Marshal(struct {
+		service.Account
+		Version int `json:"_scheduler_meta_version"`
+	}{buildSchedulerMetadataAccount(account), schedulerMetadataVersion})
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal account metadata: %w", err)
 	}
 	return fullPayload, metaPayload, nil
+}
+
+// 只用于内部Redis摘要，不添加到账号DTO或完整凭据缓存。
+func schedulerCachedMetadataVersion(value any) (int, error) {
+	var raw []byte
+	switch v := value.(type) {
+	case string:
+		raw = []byte(v)
+	case []byte:
+		raw = v
+	default:
+		return 0, fmt.Errorf("unexpected scheduler metadata type: %T", value)
+	}
+	var version struct {
+		Value int `json:"_scheduler_meta_version"`
+	}
+	err := json.Unmarshal(raw, &version)
+	return version.Value, err
 }
 
 func (c *schedulerCache) mgetChunked(ctx context.Context, keys []string) ([]any, error) {
@@ -952,7 +1009,10 @@ func filterSchedulerCredentials(credentials map[string]any) map[string]any {
 	if len(credentials) == 0 {
 		return nil
 	}
-	keys := []string{"model_mapping", "compact_model_mapping", "model_whitelist", "openai_workload_capabilities", "api_key", "project_id", "oauth_type", "plan_type"}
+	// 只保留调度语义字段；access/refresh token与Agent私钥继续不进入摘要。
+	keys := []string{"model_mapping", "compact_model_mapping", "model_whitelist", "openai_workload_capabilities", "api_key", "project_id", "oauth_type", "plan_type", "auth_mode", "openai_auth_mode", "account_scheduling_threshold",
+		// 阈值校验需要同时保留当前身份与观测身份，避免旧工作区用量误停新身份。
+		"email", "chatgpt_account_id", "workspace_id", "chatgpt_workspace_id", "organization_id", "org_id"}
 	filtered := make(map[string]any)
 	for _, key := range keys {
 		if value, ok := credentials[key]; ok && value != nil {
@@ -970,6 +1030,14 @@ func filterSchedulerExtra(extra map[string]any) map[string]any {
 		return nil
 	}
 	keys := []string{
+		"email", "email_address", "chatgpt_account_id", "account_id", "workspace_id", "chatgpt_workspace_id", "organization_id", "org_id",
+		"privacy_mode",
+		"openai_compact_mode", "openai_compact_supported",
+		"openai_native_compaction_v2_mode", "openai_native_compaction_v2_supported",
+		// 窗口阈值在候选摘要上执行，必须与完整账号读取相同的观测字段。
+		"session_window_utilization", "passive_usage_7d_utilization", "passive_usage_7d_reset",
+		"passive_usage_7d_oi_utilization", "passive_usage_7d_oi_reset",
+		"grok_sched_utilization", "grok_sched_reset_at",
 		"quota_limit",
 		"quota_used",
 		"quota_daily_limit",

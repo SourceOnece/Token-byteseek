@@ -48,6 +48,8 @@ Kimi 返回精确文案 `You've reached your concurrent request limit. Please wa
 
 ## 安全边界
 
+本地Codex票据不足使用 `account_selection/codex_ticket_unavailable` 分类，未输出时沿既有预算换号且不计账号健康失败，耗尽返回503并标记路由容量不足；它不是供应商503或凭据认证失败，不套用上游正文展示规则。协议错误封装和已开流边界保持，详见[票据契约](codex_ticket.md#ticket_contract)。
+
 上游 message 可能含 URL、内部 ID、请求片段或供应商调试信息。启用透传前必须确认平台提取器已移除 token、Authorization、Cookie、代理凭据、service account、内部 project 和完整用户内容。无法证明安全时使用 `custom_message`。
 
 测试应覆盖规则优先级、any/all、空平台、大小写、8 KiB 上限、非流/流/WebSocket、跨实例失效、`skip_monitoring` 和未命中默认错误。相关实现变化还要验证不会改变 failover 和结算。

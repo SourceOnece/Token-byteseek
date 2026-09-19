@@ -395,6 +395,11 @@ func (h *GatewayHandler) handleCCFailoverExhausted(c *gin.Context, lastErr *serv
 		h.chatCompletionsErrorResponse(c, status, "server_error", message)
 		return
 	}
+	if lastErr != nil && lastErr.Reason == service.CodexTicketUnavailableReason {
+		markOpsRoutingCapacityLimited(c)
+		h.chatCompletionsErrorResponse(c, http.StatusServiceUnavailable, "api_error", "Service temporarily unavailable")
+		return
+	}
 	if lastErr != nil && lastErr.IsOpenAICapacityShed() && strings.TrimSpace(lastErr.ClientMessage) != "" {
 		status := lastErr.ClientStatusCode
 		if status <= 0 {
