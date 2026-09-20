@@ -61,7 +61,11 @@
               <label :id="uid + '-' + field.key + '-label'" :for="uid + '-' + field.key" class="input-label mb-0">{{ t('admin.accounts.ticketWorkbench.fields.' + field.key) }}</label>
               <input v-if="bulk" v-model="ruleFields[field.key]" type="checkbox" :disabled="locked" :aria-labelledby="uid + '-' + field.key + '-label'" :aria-controls="uid + '-' + field.key" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" :data-testid="'ticket-edit-' + field.key" />
             </div>
-            <input :id="uid + '-' + field.key" v-model.number="rules[field.key]" type="number" :min="field.min" :max="field.max" step="1" class="input w-full font-bold" :disabled="locked || !ruleFields[field.key]" :class="!ruleFields[field.key] && 'cursor-not-allowed opacity-50'" :data-testid="'ticket-rule-' + field.key" />
+            <!-- 长度配置使用固定字段语义色；批量未勾选仍虚化，不改变0关闭与实际判定。 -->
+            <input :id="uid + '-' + field.key" v-model.number="rules[field.key]" type="number" :min="field.min" :max="field.max" step="1" class="input w-full" :disabled="locked || !ruleFields[field.key]" :class="[
+              !ruleFields[field.key] && 'cursor-not-allowed opacity-50',
+              field.key === 'target_length' ? 'font-extrabold text-emerald-700 dark:text-emerald-400' : field.key === 'degraded_signal_length' ? 'font-extrabold text-bh-red dark:text-red-400' : 'font-bold'
+            ]" :data-testid="'ticket-rule-' + field.key" />
             <p v-if="field.key === 'attempt_timeout_seconds'" class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ t('admin.accounts.ticketWorkbench.timeoutHint') }}</p>
           </div>
         </div>
