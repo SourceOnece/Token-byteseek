@@ -16,14 +16,16 @@ import (
 
 // 固定/轮换使用地址列表，动态可选认证会话模板或每次请求取号API；所有地址仅保存密文。
 type codexTicketProxyPolicy struct {
-	Mode             string             `json:"mode"`
-	DynamicSource    string             `json:"dynamic_source,omitempty"`
-	ExtractionCipher string             `json:"extraction_cipher,omitempty"`
-	ProxyProtocol    string             `json:"proxy_protocol,omitempty"`
-	Proxies          []codexTicketProxy `json:"proxies,omitempty"`
-	FixedProxyID     string             `json:"fixed_proxy_id,omitempty"`
+	ReuseSuccessfulIP bool               `json:"reuse_successful_ip,omitempty"`
+	Mode              string             `json:"mode"`
+	DynamicSource     string             `json:"dynamic_source,omitempty"`
+	ExtractionCipher  string             `json:"extraction_cipher,omitempty"`
+	ProxyProtocol     string             `json:"proxy_protocol,omitempty"`
+	Proxies           []codexTicketProxy `json:"proxies,omitempty"`
+	FixedProxyID      string             `json:"fixed_proxy_id,omitempty"`
 }
 type CodexTicketProxyPolicyView struct {
+	ReuseSuccessfulIP    bool                   `json:"reuse_successful_ip"`
 	Mode                 string                 `json:"mode"`
 	DynamicSource        string                 `json:"dynamic_source"`
 	ExtractionConfigured bool                   `json:"extraction_configured"`
@@ -32,12 +34,13 @@ type CodexTicketProxyPolicyView struct {
 	FixedProxyID         string                 `json:"fixed_proxy_id"`
 }
 type CodexTicketProxyPolicyUpdate struct {
-	Mode          string                    `json:"mode"`
-	DynamicSource string                    `json:"dynamic_source"`
-	ExtractionURL *string                   `json:"extraction_url"`
-	ProxyProtocol string                    `json:"proxy_protocol"`
-	Proxies       *[]CodexTicketProxyUpdate `json:"proxies"`
-	FixedProxyID  *string                   `json:"fixed_proxy_id"`
+	ReuseSuccessfulIP *bool                     `json:"reuse_successful_ip"`
+	Mode              string                    `json:"mode"`
+	DynamicSource     string                    `json:"dynamic_source"`
+	ExtractionURL     *string                   `json:"extraction_url"`
+	ProxyProtocol     string                    `json:"proxy_protocol"`
+	Proxies           *[]CodexTicketProxyUpdate `json:"proxies"`
+	FixedProxyID      *string                   `json:"fixed_proxy_id"`
 }
 
 type ticketProviderRejection struct {
@@ -73,7 +76,7 @@ func ticketProxyPolicyView(c *codexTicketConfig) CodexTicketProxyPolicyView {
 	if p == nil {
 		p = &codexTicketProxyPolicy{Mode: c.mode(), DynamicSource: "template", ProxyProtocol: "http", Proxies: c.proxies(), FixedProxyID: c.FixedProxyID}
 	}
-	v := CodexTicketProxyPolicyView{Mode: p.Mode, DynamicSource: p.DynamicSource, ExtractionConfigured: p.ExtractionCipher != "", ProxyProtocol: p.ProxyProtocol, FixedProxyID: p.FixedProxyID, Proxies: []CodexTicketProxyView{}}
+	v := CodexTicketProxyPolicyView{ReuseSuccessfulIP: p.ReuseSuccessfulIP, Mode: p.Mode, DynamicSource: p.DynamicSource, ExtractionConfigured: p.ExtractionCipher != "", ProxyProtocol: p.ProxyProtocol, FixedProxyID: p.FixedProxyID, Proxies: []CodexTicketProxyView{}}
 	if v.DynamicSource == "" {
 		v.DynamicSource = "template"
 	}
@@ -102,6 +105,11 @@ func (s *CodexTicketService) updateTicketProxyPolicy(c *codexTicketConfig, u *Co
 	p := codexTicketProxyPolicy{Mode: u.Mode, DynamicSource: u.DynamicSource, ProxyProtocol: u.ProxyProtocol}
 	if c.ProxyPolicy != nil {
 		p.ExtractionCipher = c.ProxyPolicy.ExtractionCipher
+		p.ReuseSuccessfulIP = c.ProxyPolicy.ReuseSuccessfulIP
+	}
+	// 旧调用方未提供时保留原值；固定模式不使用复用记录。
+	if u.ReuseSuccessfulIP != nil {
+		p.ReuseSuccessfulIP = *u.ReuseSuccessfulIP
 	}
 	if p.DynamicSource == "" {
 		p.DynamicSource = "template"

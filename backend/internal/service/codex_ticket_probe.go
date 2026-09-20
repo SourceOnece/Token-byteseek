@@ -18,6 +18,7 @@ import (
 
 // 诊断只记录数值、固定枚举和管理员自定义名称，绝不包含响应正文/票据/代理地址。
 type CodexTicketDiagnostic struct {
+	ProxyUsage     string                       `json:"proxy_usage,omitempty"`
 	Stages         []CodexTicketValidationStage `json:"stages,omitempty"`
 	Scheduling     string                       `json:"scheduling,omitempty"`
 	DegradedSignal bool                         `json:"degraded_signal,omitempty"`
@@ -40,6 +41,9 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 		return nil
 	}
 	d := *source
+	if d.ProxyUsage != "reused" && d.ProxyUsage != "new" {
+		d.ProxyUsage = ""
+	}
 	d.Stages = nil
 	for i, stage := range source.Stages {
 		if i >= 2 {
@@ -55,6 +59,12 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 		}
 		if stage.StateLength < 0 || stage.StateLength > 8192 {
 			stage.StateLength = 0
+		}
+		if stage.TargetLength < 6 || stage.TargetLength > 8192 {
+			stage.TargetLength = 0
+		}
+		if stage.DegradedSignalLength < 6 || stage.DegradedSignalLength > 8192 {
+			stage.DegradedSignalLength = 0
 		}
 		stage.Reason = safeTicketValidationReason(stage.Reason)
 		d.Stages = append(d.Stages, stage)
@@ -92,7 +102,9 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 	return &d
 }
 
-func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketConfig, account *Account, model, token, key string, proxy codexTicketProxy, attempt int, observers ...func(CodexTicketAttempt)) (ready, retry bool) {
+func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketConfig, account *Account, model, token, key string, selected *codexTicketProxy, attempt int, observers ...func(CodexTicketAttempt)) (ready, retry bool) {
+	proxy := *selected
+	var reuse ticketProxyReuseAttempt
 	diagnostic := &CodexTicketDiagnostic{ProxyID: proxy.ID, ProxyName: proxy.Name}
 	counted := false
 	started := time.Now().UTC()
@@ -100,6 +112,8 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	var expires *time.Time
 	// 手动日志在统一出口收集，自动采集不增加历史/IP 请求。
 	defer func() {
+		// 返回实际使用的代理，失败后从它的下一条继续，而不是从复用前的候选继续。
+		*selected = proxy
 		if ctx.Err() != nil && !ready {
 			state, reason = "cancelled", "cancelled"
 		}
@@ -138,6 +152,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		return false, false
 	}
 	defer release()
+	defer func() { s.finishTicketProxyReuse(ctx, cfg, reuse, proxy, ready, retry, reason, diagnostic) }()
 	if len(observers) == 0 && s.manualAccountReserved(ctx, account.ID) {
 		state, reason = "skipped", "concurrency_busy"
 		return false, false
@@ -195,8 +210,19 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	}
 	counted = true
 	diagnostic.Attempt = attempt
-	proxy, err = s.resolveTicketAttemptProxy(probeCtx, cfg, proxy)
+	proxy, reuse, err = s.resolveReusableTicketProxy(probeCtx, cfg, key, proxy, previous)
+	diagnostic.ProxyID, diagnostic.ProxyName = proxy.ID, proxy.Name
+	if err == nil && (cfg.mode() == "rotate" || cfg.mode() == "dynamic") {
+		diagnostic.ProxyUsage = "new"
+		if reuse.reused {
+			diagnostic.ProxyUsage = "reused"
+		}
+	}
 	if err != nil {
+		if errors.Is(err, errTicketProxyReuseCache) {
+			state, reason = "failed", "storage"
+			return false, false
+		}
 		state, reason = "failed", "proxy_provider"
 		var rejected *ticketProviderRejection
 		if errors.As(err, &rejected) {

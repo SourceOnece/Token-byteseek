@@ -11,13 +11,15 @@ import (
 
 // 管理日志仅记录两阶段安全摘要；不保存STATE、令牌、代理URL或响应正文。
 type CodexTicketValidationStage struct {
-	Name          string `json:"name"`
-	RequestModel  string `json:"request_model"`
-	ResponseModel string `json:"response_model,omitempty"`
-	HTTPStatus    int    `json:"http_status,omitempty"`
-	StateLength   int    `json:"state_length"`
-	Complete      bool   `json:"complete"`
-	Reason        string `json:"reason,omitempty"`
+	Name                 string `json:"name"`
+	RequestModel         string `json:"request_model"`
+	ResponseModel        string `json:"response_model,omitempty"`
+	HTTPStatus           int    `json:"http_status,omitempty"`
+	StateLength          int    `json:"state_length"`
+	TargetLength         int    `json:"target_length,omitempty"`
+	DegradedSignalLength int    `json:"degraded_signal_length,omitempty"`
+	Complete             bool   `json:"complete"`
+	Reason               string `json:"reason,omitempty"`
 }
 
 func safeTicketValidationReason(reason string) string {
@@ -32,7 +34,7 @@ func safeTicketValidationReason(reason string) string {
 // @project-doc docs/interfaces/codex_ticket.md#verified_flow
 func (s *CodexTicketService) validateTicketChain(ctx context.Context, cancel context.CancelFunc, cfg *codexTicketConfig, a *Account, model string, original *http.Request, body []byte, candidate *http.Response, diagnostic *CodexTicketDiagnostic) (bool, bool, string) {
 	check := func(name string, resp *http.Response) (bool, bool, string) {
-		stage := CodexTicketValidationStage{Name: name, RequestModel: model}
+		stage := CodexTicketValidationStage{Name: name, RequestModel: model, TargetLength: cfg.targetLength(), DegradedSignalLength: cfg.DegradedSignalLength}
 		defer func() { diagnostic.Stages = append(diagnostic.Stages, stage) }()
 		if resp == nil {
 			diagnostic.HTTPStatus, diagnostic.HeaderLength = 0, 0
@@ -105,7 +107,7 @@ func (s *CodexTicketService) validateTicketChain(ctx context.Context, cancel con
 	if err != nil {
 		diagnostic.HTTPStatus, diagnostic.HeaderLength = 0, 0
 		diagnostic.HeaderPresent, diagnostic.PrefixValid = false, false
-		diagnostic.Stages = append(diagnostic.Stages, CodexTicketValidationStage{Name: "verify", RequestModel: model, Reason: "network"})
+		diagnostic.Stages = append(diagnostic.Stages, CodexTicketValidationStage{Name: "verify", RequestModel: model, TargetLength: cfg.targetLength(), DegradedSignalLength: cfg.DegradedSignalLength, Reason: "network"})
 		return false, ctx.Err() == nil, "network"
 	}
 	if response != nil && response.Body != nil {

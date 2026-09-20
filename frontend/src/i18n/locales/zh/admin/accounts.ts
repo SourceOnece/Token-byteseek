@@ -3,6 +3,8 @@ export default {
 // Accounts Management
     accounts: {
       ticketWorkbench: {
+        reuseIP: '复用合格IP', reuseIPHint: '获票成功后优先复用，不合格再换；实际出口由代理商决定。',
+        ipUsage: { reused: '复用IP', new: '新IP' },
         createHint: '随新账号创建保存；已有账号重导入不覆盖。',
         templateHint: '随默认值一起保存，仅用于以后新增的账号。',
         verifiedFlow: '双链路验证', verifiedHint: '采集 → 账号业务代理复验 → 缓存；默认关闭，支持批量修改。', verifiedRisk: '需先绑定业务代理。开启后自动废票重采，每次最多两次模型请求；WS重连后使用HTTP桥接逐轮换票，只有两阶段通过才发布新票。',
@@ -19,9 +21,9 @@ export default {
         unlimitedRisk: '0不限次数，会持续消耗额度与代理流量。随时可停止；关闭、认证拒绝和上游限流仍会暂停。',
         proxyMode: '采集代理模式', dynamicSource: '动态来源', proxyProtocol: '返回代理协议', extractionURL: '取号接口（HTTPS）', extractionRequired: '请填写取号接口地址。',
         proxyModes: { inherit: '继承网关代理', fixed: '固定代理', rotate: '轮换代理', dynamic: '动态代理' },
-        sources: { api: '接口取号 · 每次新取', template: '地址模板 · 随机会话' },
-        proxyHints: { inherit: '使用网关默认代理，不复制或回显密码。', fixed: '始终使用选定地址。服务商出口是否固定由服务商决定。', rotate: '未获合格票时，按列表切换下一条。', dynamic: '每次采集重新请求取号接口，或生成新的代理会话标识。' },
-        apiHint: '支持 Mooproxy 的 proxies 数组（主机:端口:用户名:密码）。URL仅加密保存；每次尝试取一条，不保证实际IP一定不同。',
+        sources: { api: '接口取号', template: '地址模板 · 随机会话' },
+        proxyHints: { inherit: '使用网关默认代理及复用策略，不复制或回显密码。', fixed: '始终使用选定地址。服务商出口是否固定由服务商决定。', rotate: '未获合格票时，按列表切换下一条。', dynamic: '新IP通过取号接口或新的代理会话获取；可选复用成功出口。' },
+        apiHint: '支持 Mooproxy 的 proxies 数组（主机:端口:用户名:密码）。URL仅加密保存；需要新IP时取一条，不保证出口一定不同。',
         testProxy: '测试代理', testing: '测试中…', testHint: '仅查询出口IP，会使用代理流量；不保存草稿、不调用模型。', connected: '代理连接成功', connectionFailed: '代理测试未通过', region: '地区',
         filter: '票据配置', filterLength: '输入字节数（6–8192）', lengthLabel: '合格长度 {length}',
         actualLength: '实际票据长度', actualLengthHint: '按任一模型左侧观察值自动筛选', invalidActualLength: '请输入6–8192的整数',

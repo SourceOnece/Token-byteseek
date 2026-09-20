@@ -24,7 +24,7 @@
           </div>
           <details class="border-2 border-[color:var(--bh-ink)] p-3"><summary class="cursor-pointer font-bold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.ticketCollect.live') }}</summary>
             <div class="mt-3 max-h-64 space-y-2 overflow-y-auto">
-              <p v-for="event in live" :key="event.id" class="break-words text-xs"><strong>{{ event.email || event.account_name || event.account_id }}</strong> · <span class="font-bold text-bh-blue dark:text-blue-300">{{ event.model }}</span> · #{{ event.attempt }} · {{ statusLabel(event.status) }} · {{ event.diagnostic?.proxy_name || '—' }} · {{ event.reference_ip || t('admin.accounts.ticketCollect.ipUnknown') }}</p>
+              <p v-for="event in live" :key="event.id" class="break-words text-xs"><strong>{{ event.email || event.account_name || event.account_id }}</strong> · <span class="font-bold text-bh-blue dark:text-blue-300">{{ event.model }}</span> · #{{ event.attempt }} · {{ statusLabel(event.status) }} · {{ event.diagnostic?.proxy_name || '—' }} · <CodexTicketIPUsage :usage="event.diagnostic?.proxy_usage" /> {{ event.reference_ip || t('admin.accounts.ticketCollect.ipUnknown') }}</p>
             </div>
           </details>
           <p class="text-xs text-gray-500">{{ t('admin.accounts.ticketCollect.runStatus') }}：{{ runLabel(run.status) }}</p>
@@ -66,7 +66,8 @@
         <p v-if="item.ip_source" class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.ticketCollect.ipSource') }}：{{ ipSourceLabel(item.ip_source) }}<span v-if="geoCountry(item.reference_ip)" class="ml-2 font-mono font-extrabold text-bh-blue dark:text-blue-300">[{{ geoCountry(item.reference_ip) }}]</span><span v-if="item.ip_checked_at"> · {{ new Date(item.ip_checked_at).toLocaleString() }}</span></p>
         <p v-if="item.diagnostic">HTTP {{ item.diagnostic.http_status || '—' }} · <CodexTicketLength v-if="item.diagnostic.header_present" :actual="item.diagnostic.header_length" :target="item.target_length" :signal="item.diagnostic.degraded_signal" /><span v-else>{{ t('admin.accounts.tickets.noHeader') }}</span><span v-if="responseKindLabel(item.diagnostic.response_kind)"> · {{ responseKindLabel(item.diagnostic.response_kind) }}</span><span v-if="item.diagnostic.error_kind"> · {{ errorKind(item.diagnostic.error_kind) }}</span></p>
         <p v-if="item.diagnostic?.degraded_signal" class="font-bold text-bh-red dark:text-red-400">{{ t('admin.accounts.tickets.degradedSignal') }}</p>
-        <CodexTicketValidationStages :stages="item.diagnostic?.stages" />
+        <CodexTicketIPUsage :usage="item.diagnostic?.proxy_usage" />
+        <CodexTicketValidationStages :stages="item.diagnostic?.stages" :target="item.target_length" />
         <p v-if="item.diagnostic?.scheduling" class="font-bold" :class="['enabled', 'already_on'].includes(item.diagnostic.scheduling) ? 'text-emerald-700 dark:text-emerald-400' : ['disabled', 'already_off'].includes(item.diagnostic.scheduling) ? 'text-bh-red dark:text-red-400' : 'text-yellow-800 dark:text-bh-yellow'">{{ t('admin.accounts.ticketWorkbench.scheduling.' + item.diagnostic.scheduling) }}</p>
         <p v-if="item.reason" class="text-xs">{{ reasonLabel(item.reason) }}</p>
         <p v-if="item.diagnostic?.retry_not_before" class="text-xs text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.tickets.retryAfter', { time: new Date(item.diagnostic.retry_not_before).toLocaleString() }) }}</p>
@@ -82,6 +83,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import CodexTicketValidationStages from './CodexTicketValidationStages.vue'
+import CodexTicketIPUsage from './CodexTicketIPUsage.vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Pagination from '@/components/common/Pagination.vue'

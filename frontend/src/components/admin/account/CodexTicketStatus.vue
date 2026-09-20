@@ -23,8 +23,9 @@
       <p :class="color(selectedRow)">{{ t('admin.accounts.tickets.currentTicket') }}：{{ label(selectedRow) }}</p>
       <p v-if="!failed && displayDiagnostic(selectedRow)?.header_present"><CodexTicketLength :actual="displayDiagnostic(selectedRow)!.header_length" :target="selectedRow.target_length || 292" :signal="displayDiagnostic(selectedRow)?.degraded_signal" /></p>
       <p v-if="!failed && displayDiagnostic(selectedRow)?.degraded_signal" class="font-bold text-bh-red dark:text-red-400">{{ t('admin.accounts.tickets.degradedSignal') }}</p>
+      <CodexTicketIPUsage v-if="!failed" :usage="displayDiagnostic(selectedRow)?.proxy_usage" />
       <p class="whitespace-pre-wrap break-words border-t-2 border-[color:var(--bh-ink)] pt-4 text-sm leading-7 text-gray-700 dark:text-gray-200">{{ description(selectedRow, true) }}</p>
-      <CodexTicketValidationStages v-if="!failed" :stages="displayDiagnostic(selectedRow)?.stages" />
+      <CodexTicketValidationStages v-if="!failed" :stages="displayDiagnostic(selectedRow)?.stages" :target="selectedRow.target_length" :degraded-signal-length="selectedRow.degraded_signal_length" />
       <section v-if="!failed && selectedRow.watchdog" class="space-y-3 border-t-2 border-[color:var(--bh-ink)] pt-4" data-testid="ticket-watchdog-detail">
         <h3 class="text-lg font-extrabold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.ticketPolicy.watchdog') }}</h3>
         <p class="font-bold">{{ t('admin.accounts.ticketPolicy.guards.' + selectedRow.watchdog.mode) }}</p>
@@ -47,6 +48,7 @@ import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import CodexTicketValidationStages from './CodexTicketValidationStages.vue'
 import CodexTicketLength from './CodexTicketLength.vue'
+import CodexTicketIPUsage from './CodexTicketIPUsage.vue'
 import type { TicketAccountStatus, TicketModelStatus, TicketState } from '@/api/admin/codexTickets'
 
 const props = defineProps<{ status?: TicketAccountStatus; now: number; failed?: boolean }>()
@@ -120,6 +122,7 @@ function description(row: TicketModelStatus, compact = false) {
   if (props.status?.collection_paused) info.push(t('admin.accounts.tickets.pausedHint'))
   const diagnostic = displayDiagnostic(row)
   if (diagnostic && !props.failed) {
+    if (!compact && (diagnostic.proxy_usage === 'new' || diagnostic.proxy_usage === 'reused')) info.push(t('admin.accounts.ticketWorkbench.ipUsage.' + diagnostic.proxy_usage))
     if (diagnostic.scheduling) info.push(t('admin.accounts.ticketWorkbench.scheduling.' + diagnostic.scheduling))
     info.push(t('admin.accounts.tickets.attempt', { proxy: diagnostic.proxy_name || '—', count: diagnostic.attempt }))
     if (diagnostic.http_status) info.push(compact ? ['HTTP ' + diagnostic.http_status, !diagnostic.header_present ? t('admin.accounts.tickets.noHeader') : '', diagnosticExtra(row)].filter(Boolean).join(' · ') : diagnosticSummary(row))

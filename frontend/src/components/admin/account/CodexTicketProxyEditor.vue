@@ -5,6 +5,10 @@
       <div v-if="mode === 'dynamic'"><label :for="uid + '-source'" class="input-label">{{ t('admin.accounts.ticketWorkbench.dynamicSource') }}</label><Select :id="uid + '-source'" v-model="source" :options="sourceOptions" :disabled="locked || testing" /></div>
     </div>
     <p v-if="mode" class="text-sm text-gray-600 dark:text-gray-300">{{ t('admin.accounts.ticketWorkbench.proxyHints.' + mode) }}</p>
+    <div v-if="mode === 'rotate' || mode === 'dynamic'" class="space-y-2 border-y-2 border-[color:var(--bh-ink)] py-3" data-testid="ticket-proxy-reuse-setting">
+      <div class="flex items-center justify-between gap-4"><label :for="uid + '-reuse'" class="font-bold">{{ t('admin.accounts.ticketWorkbench.reuseIP') }}</label><Toggle :id="uid + '-reuse'" v-model="reuseSuccessfulIP" :disabled="locked || testing" :aria-label="t('admin.accounts.ticketWorkbench.reuseIP')" data-testid="ticket-proxy-reuse-toggle" /></div>
+      <p class="text-sm text-gray-600 dark:text-gray-300">{{ t('admin.accounts.ticketWorkbench.reuseIPHint') }}</p>
+    </div>
     <template v-if="mode && mode !== 'inherit'">
       <div v-if="mode === 'dynamic' && source === 'api'" class="grid gap-4 sm:grid-cols-[1fr_9rem]">
         <div><label :for="uid + '-api'" class="input-label">{{ t('admin.accounts.ticketWorkbench.extractionURL') }}</label><input :id="uid + '-api'" v-model="extractionURL" type="password" autocomplete="new-password" class="input w-full font-mono" :disabled="locked || testing" :placeholder="value?.extraction_configured ? t('admin.settings.codexTicket.keepAddress') : 'https://provider.example/v1/gen?...'" data-testid="ticket-extraction-url" /></div>
@@ -39,6 +43,7 @@
 import { computed, onBeforeUnmount, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Select from '@/components/common/Select.vue'
+import Toggle from '@/components/common/Toggle.vue'
 import { getAll as loadManagedProxies } from '@/api/admin/proxies'
 import { testTicketProxy, type TicketProxyPatch, type TicketProxyPolicy, type TicketProxyTestResult } from '@/api/admin/codexTickets'
 import { fetchOne, getEntry } from '@/utils/ipGeoLookup'
@@ -52,6 +57,7 @@ async function loadManaged() { try {managed.value=await loadManagedProxies()} ca
 const mode = ref<TicketProxyPatch['mode'] | ''>('fixed'), source = ref<'api' | 'template'>('api'), protocol = ref<'http' | 'socks5h'>('http')
 const rows = ref<{ id: string; name: string; url: string; configured: boolean; source: 'manual' | 'managed'; managed_proxy_id?: number }[]>([]), fixedID = ref(''), extractionURL = ref('')
 const testing = ref(false), error = ref(''), result = ref<TicketProxyTestResult>()
+const reuseSuccessfulIP = ref(false)
 let generation = 0
 const modeOptions = computed(() => [...(props.allowInherit ? ['inherit'] : []), 'fixed', 'rotate', 'dynamic'].map(value => ({ value, label: t('admin.accounts.ticketWorkbench.proxyModes.' + value) })))
 const sourceOptions = computed(() => ['api', 'template'].map(value => ({ value, label: t('admin.accounts.ticketWorkbench.sources.' + value) })))
@@ -64,16 +70,18 @@ function patch(): TicketProxyPatch {
   if (mode.value === 'inherit') return { mode: 'inherit' }
   if (mode.value === 'dynamic' && source.value === 'api') {
     if (!extractionURL.value.trim() && !props.value?.extraction_configured) throw new Error(t('admin.accounts.ticketWorkbench.extractionRequired'))
-    return { mode: 'dynamic', dynamic_source: 'api', proxy_protocol: protocol.value, extraction_url: extractionURL.value.trim() || undefined }
+    return { mode: 'dynamic', dynamic_source: 'api', proxy_protocol: protocol.value, extraction_url: extractionURL.value.trim() || undefined, reuse_successful_ip: reuseSuccessfulIP.value }
   }
   if (!rows.value.length || rows.value.some(r => !r.name.trim() || (r.source === 'managed' ? !r.managed_proxy_id : !r.configured && !r.url.trim()))) throw new Error(t('admin.accounts.ticketPolicy.proxyRequired'))
-  return { mode: mode.value, dynamic_source: 'template', fixed_proxy_id: fixedID.value, proxies: rows.value.map(r => ({ id: r.id, name: r.name.trim(), harvest_proxy_url: r.source==='manual'?r.url.trim():'', managed_proxy_id:r.source==='managed'?r.managed_proxy_id:undefined })) }
+  return { mode: mode.value, dynamic_source: 'template', fixed_proxy_id: fixedID.value, ...(mode.value === 'rotate' || mode.value === 'dynamic' ? { reuse_successful_ip: reuseSuccessfulIP.value } : {}), proxies: rows.value.map(r => ({ id: r.id, name: r.name.trim(), harvest_proxy_url: r.source==='manual'?r.url.trim():'', managed_proxy_id:r.source==='managed'?r.managed_proxy_id:undefined })) }
 }
 async function test() { if (testing.value || props.testDisabled) return; const current = generation; error.value = ''; result.value = undefined
   try { const payload = patch(); testing.value = true; const data = await testTicketProxy(props.accountId, payload, props.templateSource); if (current !== generation) return; result.value = data; if (data.ip) await fetchOne(data.ip) } catch (err) { if (current === generation) error.value = extractApiErrorMessage(err, t('common.error')) } finally { if (current === generation) testing.value = false }
 }
 watch(() => [props.value, props.inherited, props.blank], () => { generation++; testing.value = false; error.value = ''; result.value = undefined; mode.value = props.blank ? '' : props.allowInherit && props.inherited ? 'inherit' : props.value?.mode || 'fixed'; source.value = props.value?.dynamic_source || 'api'; protocol.value = props.value?.proxy_protocol || 'http'; rows.value = (props.value?.proxies || []).map(p => ({ ...p, url: '', source: p.managed_proxy_id ? 'managed' as const : 'manual' as const })); fixedID.value = props.value?.fixed_proxy_id || ''; extractionURL.value = '' }, { immediate: true })
 onBeforeUnmount(() => { generation++; extractionURL.value = ''; rows.value = [] })
+// 切换账号/模板时按该配置回填，旧数据没有字段则关闭，不能沿用上一账号的勾选。
+watch(() => props.value, value => { reuseSuccessfulIP.value = value?.reuse_successful_ip === true }, { immediate: true })
 watch(() => rows.value.some(r=>r.source==='managed'), yes=>{if(yes)void loadManaged()}, { immediate: true })
 defineExpose({ patch })
 </script>

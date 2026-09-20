@@ -5,6 +5,17 @@ import type { TicketAccountStatus } from '@/api/admin/codexTickets'
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 
 describe('CodexTicketStatus', () => {
+  it.each(['new', 'reused'] as const)('悬停与点击详情都显示IP来源：%s，读取失败隐藏旧标签', async usage => {
+    const status: TicketAccountStatus = { account_id: 1, eligible: true, collection_paused: false, models: [{ model: 'gpt-6-astra', state: 'missing', diagnostic: { proxy_usage: usage, proxy_id: 'legacy', proxy_name: 'A', attempt: 1, header_length: 332, header_present: true, prefix_valid: true } }] }
+    const w = mount(CodexTicketStatus, { props: { status, now: Date.now() }, global: { stubs: { BaseDialog: { template: '<div><slot/></div>' } } } })
+    expect(w.get('[title]').attributes('title')).toContain('ticketWorkbench.ipUsage.' + usage)
+    await w.get('[data-testid="ticket-model-detail"]').trigger('click')
+    expect(w.get('[data-testid="ticket-ip-usage"]').text()).toContain('ticketWorkbench.ipUsage.' + usage)
+    await w.setProps({ failed: true })
+    expect(w.find('[data-testid="ticket-ip-usage"]').exists()).toBe(false)
+    expect(w.get('[title]').attributes('title')).not.toContain('ticketWorkbench.ipUsage.')
+    w.unmount()
+  })
   it('手机点击详情展示本次长度调度结果，不把获票当满血检测', async () => {
     const status: TicketAccountStatus = { account_id: 1, eligible: true, collection_paused: false, models: [{ model: 'gpt-6-astra', state: 'missing', diagnostic: { proxy_id: 'legacy', proxy_name: 'A', attempt: 1, header_length: 312, header_present: true, prefix_valid: true, scheduling: 'disabled' } }] }
     const w = mount(CodexTicketStatus, { props: { now: Date.now(), status }, global: { stubs: { BaseDialog: { template: '<div data-testid="dialog"><slot/></div>' } } } })

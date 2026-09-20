@@ -7,8 +7,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { codexTicketLengthColor } from '@/utils/codexTicketLength'
 const props = defineProps<{ actual: number; target: number; signal?: boolean }>()
 const { t } = useI18n()
 // 信号优先于相等色；目标数值始终绿色，避免两侧被同一个状态染色。
-const actualColor = computed(() => props.signal ? 'text-bh-red dark:text-red-400' : props.actual === props.target ? 'text-emerald-700 dark:text-emerald-400' : 'text-yellow-700 dark:text-bh-yellow')
+const actualColor = computed(() => codexTicketLengthColor(props.actual, props.target, props.signal))
 </script>

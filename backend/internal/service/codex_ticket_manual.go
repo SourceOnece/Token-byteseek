@@ -509,7 +509,7 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 			return
 		}
 		var event CodexTicketAttempt
-		ready, retry := m.s.probeAttempt(ctx, cfg, a, model, token, key, proxy, attempt, func(e CodexTicketAttempt) { event = e })
+		ready, retry := m.s.probeAttempt(ctx, cfg, a, model, token, key, &proxy, attempt, func(e CodexTicketAttempt) { event = e })
 		if event.Attempt == 0 {
 			// 等待槽位期间可能新出现冷却/退避；未发请求不消耗次数，任务稍后重新读取状态。
 			if task != nil && (event.Reason == "cooldown" || event.Reason == "concurrency_busy" || event.Reason == "backoff" && cfg.attempts() == 0) && ctx.Err() == nil {

@@ -2,7 +2,7 @@ import { apiClient, buildApiUrl } from '../client'
 import { ADMIN_UI_REQUEST_HEADER } from '../adminUIRequest'
 
 export type TicketState = 'ready' | 'pending' | 'collecting' | 'missing' | 'expired' | 'failed' | 'disabled' | 'unsupported' | 'unavailable' | 'paused' | 'cooldown'
-export interface TicketValidationStage { name: 'harvest' | 'verify'; request_model: string; response_model?: string; http_status?: number; state_length: number; complete: boolean; reason?: string }
+export interface TicketValidationStage { name: 'harvest' | 'verify'; request_model: string; response_model?: string; http_status?: number; state_length: number; target_length?: number; degraded_signal_length?: number; complete: boolean; reason?: string }
 export interface TicketModelStatus {
 	collection?: { consecutive_failures: number; cooldown_until?: string }
 	attempts?: number; max_attempts?: number
@@ -17,6 +17,7 @@ export interface TicketModelStatus {
   checked_at?: string
   expires_at?: string
   diagnostic?: {
+    proxy_usage?: 'reused' | 'new'
     stages?: TicketValidationStage[]
     scheduling?: 'enabled' | 'disabled' | 'already_on' | 'already_off' | 'stale' | 'failed'
     proxy_id: string; proxy_name: string; attempt: number; http_status?: number; degraded_signal?: boolean
@@ -123,10 +124,12 @@ export interface TicketRules {
   retry_interval_seconds: number; probe_interval_seconds: number; failure_threshold: number; cooldown_seconds: number
 }
 export interface TicketProxyPolicy {
+  reuse_successful_ip?: boolean
   mode: 'fixed' | 'rotate' | 'dynamic'; dynamic_source: 'template' | 'api'; extraction_configured: boolean
   proxy_protocol: 'http' | 'socks5h'; fixed_proxy_id: string; proxies: { id: string; name: string; configured: boolean; managed_proxy_id?: number }[]
 }
 export interface TicketProxyPatch {
+  reuse_successful_ip?: boolean
   mode: 'inherit' | TicketProxyPolicy['mode']; dynamic_source?: 'template' | 'api'; extraction_url?: string
   proxy_protocol?: 'http' | 'socks5h'; fixed_proxy_id?: string; proxies?: { id: string; name: string; harvest_proxy_url: string; managed_proxy_id?: number }[]
 }

@@ -742,7 +742,7 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 		if !ok {
 			return
 		}
-		ready, retry := s.probeAttempt(cycleCtx, cfg, fresh, model, token, key, proxy, localAttempt)
+		ready, retry := s.probeAttempt(cycleCtx, cfg, fresh, model, token, key, &proxy, localAttempt)
 		if ready {
 			s.resetTicketAttempts(cycleCtx, key)
 		}

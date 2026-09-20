@@ -2,6 +2,8 @@ export default {
 // Accounts
     accounts: {
       ticketWorkbench: {
+        reuseIP: 'Reuse qualified IP', reuseIPHint: 'Prefer the last successful proxy; switch after failure. The provider controls the actual exit IP.',
+        ipUsage: { reused: 'Reused IP', new: 'New IP' },
         createHint: 'Saved with new accounts. Reimporting an existing account preserves its ticket settings.',
         templateHint: 'Saved with the defaults. Applies only to future accounts.',
         verifiedFlow: 'Dual-route verification', verifiedHint: 'Harvest → verify via account business proxy → cache. Off by default; bulk-editable.', verifiedRisk: 'Bind a business proxy first. Enables recollection and up to two model calls per attempt. Reconnect WS to use the per-turn HTTP bridge. Both stages must pass before publishing.',
@@ -18,9 +20,9 @@ export default {
         unlimitedRisk: 'Unlimited attempts consume quota and proxy traffic until stopped. Disabling, authentication rejection and upstream limits still pause collection.',
         proxyMode: 'Collection proxy mode', dynamicSource: 'Dynamic source', proxyProtocol: 'Returned proxy protocol', extractionURL: 'Extraction API (HTTPS)', extractionRequired: 'Enter the extraction API URL.',
         proxyModes: { inherit: 'Inherit gateway proxy', fixed: 'Fixed proxy', rotate: 'Rotate proxies', dynamic: 'Dynamic proxy' },
-        sources: { api: 'API · Fetch each attempt', template: 'Template · Random session' },
-        proxyHints: { inherit: 'Use gateway defaults without copying or exposing credentials.', fixed: 'Always use the selected address. The provider controls the actual exit IP.', rotate: 'Move to the next proxy when no eligible ticket is obtained.', dynamic: 'Fetch a proxy or generate a session ID before each attempt.' },
-        apiHint: 'Supports Mooproxy proxies arrays (host:port:user:password). URLs are encrypted. Each attempt fetches one proxy; different IPs are not guaranteed.',
+        sources: { api: 'Extraction API', template: 'Template · Random session' },
+        proxyHints: { inherit: 'Use the gateway proxy and reuse policy without copying credentials.', fixed: 'Always use the selected address. The provider controls the actual exit IP.', rotate: 'Move to the next proxy when no eligible ticket is obtained.', dynamic: 'Fetch a proxy or create a session for a new IP; successful routes can optionally be reused.' },
+        apiHint: 'Supports Mooproxy proxies arrays (host:port:user:password). URLs are encrypted. Fetches one proxy when a new IP is needed; different exits are not guaranteed.',
         testProxy: 'Test proxy', testing: 'Testing…', testHint: 'IP lookup consumes proxy traffic. Does not save drafts or call models.', connected: 'Proxy connection succeeded', connectionFailed: 'Proxy test failed', region: 'Region',
         filter: 'Ticket configuration', filterLength: 'Enter bytes (6–8192)', lengthLabel: 'Target length {length}',
         actualLength: 'Observed ticket length', actualLengthHint: 'Auto-filter by any model’s left-hand observation', invalidActualLength: 'Enter an integer from 6 to 8192',
