@@ -24,7 +24,11 @@
           </div>
           <details class="border-2 border-[color:var(--bh-ink)] p-3"><summary class="cursor-pointer font-bold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.ticketCollect.live') }}</summary>
             <div class="mt-3 max-h-64 space-y-2 overflow-y-auto">
-              <p v-for="event in live" :key="event.id" class="break-words text-xs"><strong>{{ event.email || event.account_name || event.account_id }}</strong> · <span class="font-bold text-bh-blue dark:text-blue-300">{{ event.model }}</span> · #{{ event.attempt }} · {{ statusLabel(event.status) }} · {{ event.diagnostic?.proxy_name || '—' }} · <CodexTicketIPUsage :usage="event.diagnostic?.proxy_usage" /> {{ event.reference_ip || t('admin.accounts.ticketCollect.ipUnknown') }}</p>
+              <div v-for="event in live" :key="event.id" class="break-words border-b border-[color:var(--bh-ink)]/20 pb-3 text-sm">
+                <p><strong>{{ event.email || event.account_name || event.account_id }}</strong> · <span class="font-bold text-bh-blue dark:text-blue-300">{{ event.model }}</span> · #{{ event.attempt }} · {{ statusLabel(event.status) }} · {{ event.diagnostic?.proxy_name || '—' }} · <CodexTicketIPUsage :usage="event.diagnostic?.proxy_usage" /> {{ event.reference_ip || t('admin.accounts.ticketCollect.ipUnknown') }}</p>
+                <p v-if="event.reason" class="mt-1 font-bold" :class="['length_signal', 'model_mismatch'].includes(event.reason) ? 'text-bh-red dark:text-red-400' : 'text-yellow-800 dark:text-bh-yellow'">{{ reasonLabel(event.reason) }}</p>
+                <p v-if="event.diagnostic" class="mt-1 text-gray-600 dark:text-gray-300">{{ ticketDiagnosticText(t, event.diagnostic) }}</p>
+              </div>
             </div>
           </details>
           <p class="text-xs text-gray-500">{{ t('admin.accounts.ticketCollect.runStatus') }}：{{ runLabel(run.status) }}</p>
@@ -69,7 +73,8 @@
         <CodexTicketIPUsage :usage="item.diagnostic?.proxy_usage" />
         <CodexTicketValidationStages :stages="item.diagnostic?.stages" :target="item.target_length" />
         <p v-if="item.diagnostic?.scheduling" class="font-bold" :class="['enabled', 'already_on'].includes(item.diagnostic.scheduling) ? 'text-emerald-700 dark:text-emerald-400' : ['disabled', 'already_off'].includes(item.diagnostic.scheduling) ? 'text-bh-red dark:text-red-400' : 'text-yellow-800 dark:text-bh-yellow'">{{ t('admin.accounts.ticketWorkbench.scheduling.' + item.diagnostic.scheduling) }}</p>
-        <p v-if="item.reason" class="text-xs">{{ reasonLabel(item.reason) }}</p>
+        <p v-if="item.reason" class="text-sm font-bold" :class="['length_signal', 'model_mismatch'].includes(item.reason) ? 'text-bh-red dark:text-red-400' : 'text-yellow-800 dark:text-bh-yellow'">{{ reasonLabel(item.reason) }}</p>
+        <p v-if="item.diagnostic" class="text-sm text-gray-600 dark:text-gray-300">{{ ticketDiagnosticText(t, item.diagnostic) }}</p>
         <p v-if="item.diagnostic?.retry_not_before" class="text-xs text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.tickets.retryAfter', { time: new Date(item.diagnostic.retry_not_before).toLocaleString() }) }}</p>
         <button v-if="detailKind === 'result' && item.attempt" class="btn btn-secondary btn-sm" @click="detailKind = 'attempt'; detailAccount = item.account_id; detailModel = item.model; detailStatus = ''; detailPage = 1; loadDetail()">{{ t('admin.accounts.ticketCollect.attempts') }}</button>
         <button class="btn btn-danger btn-sm" :disabled="deleting || detailRunStatus === 'running' || !item.id" :title="t('admin.accounts.ticketCollect.deleteHint')" data-testid="ticket-event-delete" @click="deleteEvent(item)">{{ t('common.delete') }}</button>
@@ -81,6 +86,7 @@
 </template>
 
 <script setup lang="ts">
+import { ticketReasonText, ticketDiagnosticText } from '@/utils/codexTicketDiagnostic'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import CodexTicketValidationStages from './CodexTicketValidationStages.vue'
 import CodexTicketIPUsage from './CodexTicketIPUsage.vue'
@@ -108,7 +114,7 @@ const processed = computed(() => run.value ? totalDone(run.value) : 0)
 const statusLabel = (s: string) => t('admin.accounts.ticketCollect.status.' + (statuses.includes(s) ? s : 'skipped'))
 const runLabel = (s: string) => t('admin.accounts.ticketCollect.run.' + (['running', 'completed', 'cancelled', 'failed', 'interrupted'].includes(s) ? s : 'interrupted'))
 const color = (s: string) => s === 'ready' ? 'text-emerald-700 dark:text-emerald-400' : s === 'failed' ? 'text-bh-red dark:text-red-400' : s === 'missing' ? 'text-yellow-800 dark:text-bh-yellow' : 'text-gray-500 dark:text-gray-400'
-const reasonLabel = (s: string) => ['business_proxy', 'incomplete_response', 'model_mismatch', 'length_signal'].includes(s) ? t('admin.accounts.ticketWorkbench.validationReason.' + s) : ['network', 'upstream', 'invalid_ticket', 'credential', 'storage', 'cancelled', 'proxy_config', 'proxy_provider', 'cooldown'].includes(s) ? t('admin.accounts.tickets.reason.' + s) : t('admin.accounts.ticketCollect.reason.' + (['ineligible', 'account_changed', 'concurrency_busy', 'backoff'].includes(s) ? s : 'account_changed'))
+const reasonLabel = (s: string) => ticketReasonText(t, s)
 const errorKind = (s: string) => ['overloaded', 'rate_limit', 'quota', 'auth', 'invalid_request'].includes(s) ? t('admin.accounts.tickets.errorKind.' + s) : '—'
 const ipStatusLabel = (s: string) => t('admin.accounts.ticketCollect.ipStatus.' + (['unavailable', 'timeout', 'network', 'tls', 'http_error', 'invalid_response', 'proxy_config', 'cancelled', 'not_attempted'].includes(s) ? s : 'unavailable'))
 const ipSourceLabel = (s: string) => s === 'chatgpt_trace' ? t('admin.accounts.ticketCollect.source.chatgptTrace') : s === 'ipify' ? t('admin.accounts.ticketCollect.source.ipify') : t('admin.accounts.ticketCollect.configuredSource')

@@ -43,6 +43,7 @@
 </template>
 
 <script setup lang="ts">
+import { ticketReasonText, ticketDiagnosticText } from '@/utils/codexTicketDiagnostic'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -114,14 +115,16 @@ function description(row: TicketModelStatus, compact = false) {
     }
   }
   if (!row.latest && row.checked_at && !props.failed) info.push(`${t('admin.accounts.tickets.checkedAt')}: ${new Date(row.checked_at).toLocaleString()}`)
-  const reasons = ['network', 'upstream', 'invalid_ticket', 'credential', 'storage', 'cancelled', 'proxy_config', 'proxy_provider', 'cooldown']
   const reason = row.latest ? row.latest.reason : row.reason
-  if (reason && ['business_proxy', 'incomplete_response', 'model_mismatch', 'length_signal'].includes(reason) && !props.failed) info.push(t('admin.accounts.ticketWorkbench.validationReason.' + reason))
-  if (reason && reasons.includes(reason) && !props.failed) info.push(t(`admin.accounts.tickets.reason.${reason}`))
-  else if (reason && ['ineligible', 'account_changed', 'concurrency_busy', 'backoff'].includes(reason) && !props.failed) info.push(t(`admin.accounts.ticketCollect.reason.${reason}`))
-  if (props.status?.collection_paused) info.push(t('admin.accounts.tickets.pausedHint'))
+  if (reason && !props.failed) info.push(ticketReasonText(t, reason))
+  if (props.status?.collection_paused) {
+    info.push(t('admin.accounts.ticketDiagnostic.currentPause', { reason: ticketReasonText(t, props.status.collection_pause_reason || 'ineligible') }))
+    if (props.status.collection_resume_at) info.push(t('admin.accounts.ticketDiagnostic.resumeAt', { time: new Date(props.status.collection_resume_at).toLocaleString() }))
+  }
   const diagnostic = displayDiagnostic(row)
   if (diagnostic && !props.failed) {
+    const detail = ticketDiagnosticText(t, diagnostic)
+    if (detail) info.push(detail)
     if (!compact && (diagnostic.proxy_usage === 'new' || diagnostic.proxy_usage === 'reused')) info.push(t('admin.accounts.ticketWorkbench.ipUsage.' + diagnostic.proxy_usage))
     if (diagnostic.scheduling) info.push(t('admin.accounts.ticketWorkbench.scheduling.' + diagnostic.scheduling))
     info.push(t('admin.accounts.tickets.attempt', { proxy: diagnostic.proxy_name || '—', count: diagnostic.attempt }))

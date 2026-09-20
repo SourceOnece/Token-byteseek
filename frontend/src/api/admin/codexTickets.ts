@@ -17,6 +17,7 @@ export interface TicketModelStatus {
   checked_at?: string
   expires_at?: string
   diagnostic?: {
+	phase?: string; timeout_seconds?: number; elapsed_ms?: number; network_kind?: string; provider_status?: number; previous_attempt?: boolean
     proxy_usage?: 'reused' | 'new'
     stages?: TicketValidationStage[]
     scheduling?: 'enabled' | 'disabled' | 'already_on' | 'already_off' | 'stale' | 'failed'
@@ -96,6 +97,7 @@ export async function runTicketCollection(ids: number[], revision: string, signa
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock() }
 }
 export interface TicketAccountStatus {
+	collection_pause_reason?: string; collection_resume_at?: string
 	settings?: TicketAccountSettings
   account_id: number
   eligible: boolean
@@ -119,6 +121,7 @@ export interface TicketAccountPatch {
 }
 
 export interface TicketRules {
+	attempt_timeout_seconds?: number
   models: string[]; target_length: number; degraded_signal_length: number; max_attempts: number
   concurrency: number; cache_minutes: number; refresh_before_minutes: number
   retry_interval_seconds: number; probe_interval_seconds: number; failure_threshold: number; cooldown_seconds: number

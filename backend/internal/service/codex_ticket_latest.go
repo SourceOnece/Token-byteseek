@@ -59,11 +59,7 @@ func safeTicketLatest(value CodexTicketLatest) *CodexTicketLatest {
 	default:
 		return nil
 	}
-	switch value.Reason {
-	case "network", "upstream", "invalid_ticket", "credential", "storage", "cancelled", "proxy_config", "proxy_provider", "cooldown", "ineligible", "account_changed", "concurrency_busy", "backoff", "business_proxy", "incomplete_response", "model_mismatch", "length_signal":
-	default:
-		value.Reason = ""
-	}
+	value.Reason = safeTicketReason(value.Reason)
 	value.Diagnostic = safeCodexTicketDiagnostic(value.Diagnostic)
 	if ip, err := netip.ParseAddr(value.ReferenceIP); err == nil {
 		value.ReferenceIP = ip.String()

@@ -269,7 +269,8 @@ func TestCodexTicketRegressionManualLastAttemptAndNewEligibility(t *testing.T) {
 	require.Len(t, events, 2)
 	require.Equal(t, "result", events[1].Kind)
 	require.Equal(t, "skipped", events[1].Status)
-	require.Equal(t, "ineligible", events[1].Reason)
+	require.Equal(t, "account_inactive", events[1].Reason)
+	require.True(t, events[1].Diagnostic.PreviousAttempt)
 	require.Equal(t, 1, events[1].Attempt)
 	require.Equal(t, 356, events[1].Diagnostic.HeaderLength)
 }

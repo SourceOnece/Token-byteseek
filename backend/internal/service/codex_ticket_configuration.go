@@ -25,6 +25,12 @@ func canonicalTicketAccount(cfg *codexTicketConfig, account codexTicketAccountCo
 		rules.Models = append([]string(nil), baseline.Rules.Models...)
 		account.Rules = &rules
 	}
+	// 新增字段缺项补旧固定25秒，不修改版本/票据键或共享的规则对象。
+	if account.Rules.AttemptTimeoutSeconds == 0 {
+		rules := *account.Rules
+		rules.AttemptTimeoutSeconds = 25
+		account.Rules = &rules
+	}
 	if account.ProxyCipher != "" {
 		if account.ProxyPolicy == nil {
 			account.ProxyPolicy = &codexTicketProxyPolicy{Mode: "fixed", DynamicSource: "template", ProxyProtocol: "http", FixedProxyID: "account", Proxies: []codexTicketProxy{{ID: "account", Name: "Account", Cipher: account.ProxyCipher}}}

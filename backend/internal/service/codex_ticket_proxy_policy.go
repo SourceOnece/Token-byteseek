@@ -192,6 +192,11 @@ func ticketProviderClient() *http.Client {
 	return &http.Client{Transport: t, Timeout: 8 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 }
 
+// 返回脱敏结构化错误，保留超时/连接类别但不保留取号URL或响应正文。
+type ticketProviderFailure struct{ kind string }
+
+func (e *ticketProviderFailure) Error() string { return "取号请求失败" }
+
 // Mooproxy为JSON proxies数组四段式，也接受单条文本完整代理URL；只使用首条，不执行返回内容。
 func parseTicketProviderResponse(body []byte, protocol string) (string, error) {
 	text := strings.TrimSpace(string(body))
@@ -268,7 +273,7 @@ func (s *CodexTicketService) resolveTicketAttemptProxy(ctx context.Context, c *c
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return p, errors.New("取号请求失败")
+		return p, &ticketProviderFailure{kind: ticketNetworkKind(err)}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
@@ -280,6 +285,9 @@ func (s *CodexTicketService) resolveTicketAttemptProxy(ctx context.Context, c *c
 		return p, &ticketProviderRejection{status: resp.StatusCode, retryAt: until}
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 8193))
+	if err != nil {
+		return p, &ticketProviderFailure{kind: ticketNetworkKind(err)}
+	}
 	if err != nil || len(body) > 8192 {
 		return p, errors.New("取号响应不可读或过大")
 	}

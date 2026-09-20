@@ -15,10 +15,11 @@ import (
 )
 
 type ticketCompletion struct {
-	Model     string
-	Complete  bool
-	Reason    string
-	ErrorKind string
+	NetworkKind string
+	Model       string
+	Complete    bool
+	Reason      string
+	ErrorKind   string
 }
 
 // 诊断模型仅限短文本，不记录任意响应正文或控制字符。
@@ -40,7 +41,7 @@ func parseTicketCompletion(body io.Reader, expected string) ticketCompletion {
 	for {
 		b, err := reader.Peek(1)
 		if err != nil {
-			return ticketCompletion{Reason: "incomplete_response"}
+			return incompleteTicketRead(err)
 		}
 		if !strings.ContainsRune(" \t\r\n", rune(b[0])) {
 			break
@@ -50,7 +51,10 @@ func parseTicketCompletion(body io.Reader, expected string) ticketCompletion {
 	first, _ := reader.Peek(1)
 	if first[0] == '{' {
 		raw, err := io.ReadAll(reader)
-		if err != nil || limited.N <= 0 {
+		if err != nil {
+			return incompleteTicketRead(err)
+		}
+		if limited.N <= 0 {
 			return ticketCompletion{Reason: "incomplete_response"}
 		}
 		return inspectTicketCompletion(raw, "", expected, true)
@@ -92,7 +96,10 @@ func parseTicketCompletion(body io.Reader, expected string) ticketCompletion {
 			}
 		}
 	}
-	if scanner.Err() != nil || limited.N <= 0 {
+	if scanner.Err() != nil {
+		return incompleteTicketRead(scanner.Err())
+	}
+	if limited.N <= 0 {
 		return ticketCompletion{Reason: "incomplete_response"}
 	}
 	result := check()
@@ -100,6 +107,15 @@ func parseTicketCompletion(body io.Reader, expected string) ticketCompletion {
 		return result
 	}
 	return ticketCompletion{Reason: "incomplete_response"}
+}
+
+// 区分正常缺少终态和读取连接错误；仍判不完整，不放宽发布条件。
+func incompleteTicketRead(err error) ticketCompletion {
+	value := ticketCompletion{Reason: "incomplete_response"}
+	if err != nil && err != io.EOF && err != bufio.ErrTooLong {
+		value.NetworkKind = ticketNetworkKind(err)
+	}
+	return value
 }
 
 func inspectTicketCompletion(raw []byte, event, expected string, jsonBody bool) ticketCompletion {

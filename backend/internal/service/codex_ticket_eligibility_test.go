@@ -78,9 +78,12 @@ func TestCodexTicketHarvestContinuesAfterLastModel(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		// 测试缓存不自行过期；清理claim模拟下一真实轮次租约已到期。
 		s.cache.(*ticketCacheStub).claims = map[string]bool{}
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		// 模拟轮次外部取消；不能用不足一次预算的deadline冒充可发起的新轮次。
+		ctx, cancel := context.WithCancel(context.Background())
+		timer := time.AfterFunc(100*time.Millisecond, cancel)
 		s.harvest(ctx)
 		cancel()
+		timer.Stop()
 	}
 	u.mu.Lock()
 	defer u.mu.Unlock()

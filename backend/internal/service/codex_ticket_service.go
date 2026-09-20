@@ -38,6 +38,7 @@ type codexTicketConfig struct {
 	LegacyAccountDefaults *codexTicketAccountConfig `json:"legacy_account_defaults,omitempty"`
 	ImportDefaults        *codexTicketAccountConfig `json:"import_defaults,omitempty"`
 	VerifiedFlow          bool                      `json:"-"`
+	AttemptTimeoutSeconds int                       `json:"-"`
 	FailureThreshold      int                       `json:"failure_threshold,omitempty"`
 	CooldownSeconds       int                       `json:"cooldown_seconds,omitempty"`
 	CollectionConcurrency int                       `json:"collection_concurrency,omitempty"`
@@ -130,7 +131,7 @@ type CodexTicketService struct {
 	cancel              context.CancelFunc
 	done                chan struct{}
 	stopped             bool
-	roundCancel         context.CancelFunc
+	roundCancel         context.CancelCauseFunc
 	roundID             string
 	roundWG             sync.WaitGroup
 	cursor              int64
@@ -138,7 +139,7 @@ type CodexTicketService struct {
 	nextRound           time.Time
 	cacheRetryAt        atomic.Int64
 	watchdogWake        atomic.Bool
-	manualCancel        context.CancelFunc
+	manualCancel        context.CancelCauseFunc
 	manualID            string
 	manualWG            sync.WaitGroup
 	ipProber            ProxyExitInfoProber
@@ -276,10 +277,18 @@ func (s *CodexTicketService) publishConfig(cfg *codexTicketConfig) {
 		s.lifecycleMu.Lock()
 		s.nextRound = time.Time{}
 		if s.roundCancel != nil {
-			s.roundCancel()
+			reason := ticketStopCause("account_changed")
+			if !cfg.Enabled {
+				reason = "config_disabled"
+			}
+			s.roundCancel(reason)
 		}
 		if s.manualCancel != nil {
-			s.manualCancel()
+			reason := ticketStopCause("account_changed")
+			if !cfg.Enabled {
+				reason = "config_disabled"
+			}
+			s.manualCancel(reason)
 		}
 		s.lifecycleMu.Unlock()
 	}
@@ -318,10 +327,10 @@ func (s *CodexTicketService) markConfigUnavailable() {
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
 	if s.roundCancel != nil {
-		s.roundCancel()
+		s.roundCancel(ticketStopCause("config_unavailable"))
 	}
 	if s.manualCancel != nil {
-		s.manualCancel()
+		s.manualCancel(ticketStopCause("config_unavailable"))
 	}
 }
 
@@ -559,21 +568,22 @@ func (s *CodexTicketService) Stop() {
 	}
 	s.lifecycleMu.Lock()
 	s.stopped = true
-	if s.cancel != nil {
-		s.cancel()
-	}
 	if s.roundCancel != nil {
-		s.roundCancel()
+		s.roundCancel(ticketStopCause("service_stopped"))
 	}
 	if s.manualCancel != nil {
-		s.manualCancel()
+		s.manualCancel(ticketStopCause("service_stopped"))
+	}
+	// 先给子任务保留停机原因，再取消父生命周期，避免被覆盖成客户端断开。
+	if s.cancel != nil {
+		s.cancel()
 	}
 	done := s.done
 	s.lifecycleMu.Unlock()
 	if done != nil {
 		<-done
 	}
-	// 轮次最长 30 秒且与生命周期共用取消；等待后台释放并发槽和临时连接。
+	// 轮次预算随账号超时变化，与生命周期共用取消；等待释放并发槽和临时连接。
 	s.roundWG.Wait()
 	s.manualWG.Wait()
 	s.schedulingWG.Wait()
@@ -592,15 +602,20 @@ func (s *CodexTicketService) startRound(ctx context.Context) {
 	if time.Now().Before(s.nextRound) {
 		return
 	}
-	roundCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	id := uuid.NewString()
 	cfg := s.enabledConfig()
+	if cfg == nil {
+		return
+	}
+	budgetCtx, cancelBudget := context.WithTimeoutCause(ctx, cfg.roundTimeout(), ticketStopCause("round_timeout"))
+	roundCtx, cancel := context.WithCancelCause(budgetCtx)
+	id := uuid.NewString()
 	s.roundCancel = cancel
 	s.roundID = id
 	s.roundWG.Add(1)
 	go func() {
 		defer s.roundWG.Done()
-		defer cancel()
+		defer cancelBudget()
+		defer cancel(nil)
 		defer func() {
 			s.lifecycleMu.Lock()
 			if s.roundID == id {
@@ -623,7 +638,7 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 	}
 	// 集群每轮最多一个实例采集；正常结束按 owner 解锁，崩溃则由 TTL 释放。
 	leaseKey, owner := "round:"+cfg.Generation, uuid.NewString()
-	claimed, err := s.cache.AcquireLease(ctx, leaseKey, owner, 45*time.Second)
+	claimed, err := s.cache.AcquireLease(ctx, leaseKey, owner, cfg.roundTimeout()+15*time.Second)
 	if err != nil || !claimed {
 		return
 	}
@@ -632,6 +647,8 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 		defer cancel()
 		_ = s.cache.ReleaseLease(releaseCtx, leaseKey, owner)
 	}()
+	// 30秒只限制继续派发，不再强行截断已经派发的完整单次请求。
+	dispatchEnd := time.Now().Add(30 * time.Second)
 	accounts, err := s.gateway.accountRepo.ListByPlatform(ctx, PlatformOpenAI)
 	if err != nil {
 		return
@@ -691,10 +708,26 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 		if !account.IsModelSupported(model) {
 			continue
 		}
+		// 只把有完整单次预算的任务交给worker；超时前停止派发，游标不越过未执行账号。
+		remaining := time.Until(dispatchEnd)
+		if end, ok := ctx.Deadline(); ok {
+			budget := time.Until(end) - ticketConfigForAccount(cfg, account.ID).attemptTimeout() - 3*time.Second
+			if budget < remaining {
+				remaining = budget
+			}
+		}
+		if remaining <= 0 {
+			return
+		}
+		timer := time.NewTimer(remaining)
 		select {
 		case <-ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
 			return
 		case jobs <- job{account: account, model: model}:
+			timer.Stop()
 			s.cursor, s.cursorModel = account.ID, model
 		}
 	}
@@ -753,14 +786,17 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 		previousID = previous.Diagnostic.ProxyID
 	}
 	failed := previous.State == "failed" || previous.State == "missing"
-	// 每轮最多三十秒；没票才切换重试，成功即停止，不重放任何用户业务请求。
-	cycleCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	// 每轮有界并为当前账号保留一次完整预算，不重放任何用户业务请求。
+	cycleCtx, cancel := context.WithTimeoutCause(ctx, cfg.roundTimeout(), ticketStopCause("round_timeout"))
 	defer cancel()
 	limit := cfg.attempts()
 	if limit == 0 {
 		limit = 1
 	} // 无限采集每轮让出worker，下轮从累计次数继续，防止饿死其它账号。
 	for localAttempt := 1; localAttempt <= limit; localAttempt++ {
+		if deadline, ok := cycleCtx.Deadline(); ok && time.Until(deadline) < cfg.attemptTimeout()+2*time.Second {
+			return
+		}
 		if !s.ticketConfigCurrent(cfg) || cycleCtx.Err() != nil || s.manualAccountReserved(cycleCtx, account.ID) {
 			return
 		}

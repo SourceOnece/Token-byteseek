@@ -18,21 +18,27 @@ import (
 
 // 诊断只记录数值、固定枚举和管理员自定义名称，绝不包含响应正文/票据/代理地址。
 type CodexTicketDiagnostic struct {
-	ProxyUsage     string                       `json:"proxy_usage,omitempty"`
-	Stages         []CodexTicketValidationStage `json:"stages,omitempty"`
-	Scheduling     string                       `json:"scheduling,omitempty"`
-	DegradedSignal bool                         `json:"degraded_signal,omitempty"`
-	ProxyID        string                       `json:"proxy_id"`
-	ProxyName      string                       `json:"proxy_name"`
-	Attempt        int                          `json:"attempt"`
-	HTTPStatus     int                          `json:"http_status,omitempty"`
-	HeaderLength   int                          `json:"header_length"`
-	HeaderPresent  bool                         `json:"header_present"`
-	PrefixValid    bool                         `json:"prefix_valid"`
-	ResponseKind   string                       `json:"response_kind,omitempty"`
-	ErrorKind      string                       `json:"error_kind,omitempty"`
-	CompletionSeen bool                         `json:"completion_seen,omitempty"`
-	RetryNotBefore *time.Time                   `json:"retry_not_before,omitempty"`
+	Phase           string                       `json:"phase,omitempty"`
+	TimeoutSeconds  int                          `json:"timeout_seconds,omitempty"`
+	ElapsedMS       int64                        `json:"elapsed_ms,omitempty"`
+	NetworkKind     string                       `json:"network_kind,omitempty"`
+	ProviderStatus  int                          `json:"provider_status,omitempty"`
+	PreviousAttempt bool                         `json:"previous_attempt,omitempty"`
+	ProxyUsage      string                       `json:"proxy_usage,omitempty"`
+	Stages          []CodexTicketValidationStage `json:"stages,omitempty"`
+	Scheduling      string                       `json:"scheduling,omitempty"`
+	DegradedSignal  bool                         `json:"degraded_signal,omitempty"`
+	ProxyID         string                       `json:"proxy_id"`
+	ProxyName       string                       `json:"proxy_name"`
+	Attempt         int                          `json:"attempt"`
+	HTTPStatus      int                          `json:"http_status,omitempty"`
+	HeaderLength    int                          `json:"header_length"`
+	HeaderPresent   bool                         `json:"header_present"`
+	PrefixValid     bool                         `json:"prefix_valid"`
+	ResponseKind    string                       `json:"response_kind,omitempty"`
+	ErrorKind       string                       `json:"error_kind,omitempty"`
+	CompletionSeen  bool                         `json:"completion_seen,omitempty"`
+	RetryNotBefore  *time.Time                   `json:"retry_not_before,omitempty"`
 }
 
 // 状态接口再次收口枚举与范围，代理名称只从本次配置取，不信任缓存中的任意文案。
@@ -41,6 +47,21 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 		return nil
 	}
 	d := *source
+	d.Phase = safeTicketPhase(d.Phase)
+	if d.TimeoutSeconds < 5 || d.TimeoutSeconds > 300 {
+		d.TimeoutSeconds = 0
+	}
+	if d.ElapsedMS < 0 || d.ElapsedMS > 86400000 {
+		d.ElapsedMS = 0
+	}
+	if d.ProviderStatus < 100 || d.ProviderStatus > 599 {
+		d.ProviderStatus = 0
+	}
+	switch d.NetworkKind {
+	case "timeout", "dns", "tls", "connection":
+	default:
+		d.NetworkKind = ""
+	}
 	if d.ProxyUsage != "reused" && d.ProxyUsage != "new" {
 		d.ProxyUsage = ""
 	}
@@ -105,17 +126,22 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketConfig, account *Account, model, token, key string, selected *codexTicketProxy, attempt int, observers ...func(CodexTicketAttempt)) (ready, retry bool) {
 	proxy := *selected
 	var reuse ticketProxyReuseAttempt
-	diagnostic := &CodexTicketDiagnostic{ProxyID: proxy.ID, ProxyName: proxy.Name}
+	diagnostic := &CodexTicketDiagnostic{ProxyID: proxy.ID, ProxyName: proxy.Name, Phase: "eligibility", TimeoutSeconds: int(cfg.attemptTimeout() / time.Second)}
 	counted := false
 	started := time.Now().UTC()
 	state, reason := "skipped", "account_changed"
 	var expires *time.Time
+	observed := false
 	// 手动日志在统一出口收集，自动采集不增加历史/IP 请求。
 	defer func() {
 		// 返回实际使用的代理，失败后从它的下一条继续，而不是从复用前的候选继续。
 		*selected = proxy
 		if ctx.Err() != nil && !ready {
-			state, reason = "cancelled", "cancelled"
+			state, reason = "cancelled", ticketContextReason(ctx)
+		}
+		diagnostic.ElapsedMS = time.Since(started).Milliseconds()
+		if observed {
+			s.recordObservation(ctx, key, state, reason, expires, diagnostic)
 		}
 		if state == "failed" || state == "missing" || ready {
 			s.recordTicketCollection(ctx, cfg, key, ready, reason)
@@ -132,6 +158,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		}
 	}()
 	if !s.ticketConfigCurrent(cfg) {
+		reason = s.ticketConfigurationReason(cfg)
 		return false, false
 	}
 	policyRaw, e := s.cache.Get(ctx, "collection:"+key)
@@ -145,10 +172,20 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		diagnostic.Attempt = 0
 		return false, false
 	}
-	// 账号级采集槽在取号前获得；45秒租约覆盖8秒取号及25秒请求，不与业务并发槽混用。
-	release, err := s.acquireTicketCollectionSlot(ctx, cfg, account.ID, key)
+	// 采集槽等待单独有界；租约随账号预算延长，不与业务并发槽混用。
+	diagnostic.Phase = "queue"
+	waitCtx, stopWait := context.WithTimeout(ctx, cfg.attemptTimeout())
+	release, err := s.acquireTicketCollectionSlot(waitCtx, cfg, account.ID, key)
+	waitExpired := waitCtx.Err() != nil
+	stopWait()
 	if err != nil {
 		state, reason = "failed", "storage"
+		if waitExpired {
+			state, reason = "skipped", "concurrency_busy"
+		}
+		if !s.ticketConfigCurrent(cfg) {
+			state, reason = "skipped", s.ticketConfigurationReason(cfg)
+		}
 		return false, false
 	}
 	defer release()
@@ -177,17 +214,42 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		return false, false
 	}
 	// 先复核凭据与并发，再请求取号服务；排队/停调不会白白消耗代理额度和尝试计数。
+	diagnostic.Phase = "eligibility"
 	readCtx, readCancel := context.WithTimeout(ctx, 2*time.Second)
 	fresh, err := s.gateway.accountRepo.GetByID(readCtx, account.ID)
 	readCancel()
-	if err != nil || !s.ticketConfigCurrent(cfg) || !codexTicketCollectionAllowed(ctx, fresh) || !fresh.IsModelSupported(model) || fresh.GetOpenAIAccessToken() != token || codexTicketKey(cfg, fresh, model, token) != key {
+	if err != nil {
+		state, reason = "failed", "storage"
+		return false, false
+	}
+	if !s.ticketConfigCurrent(cfg) {
+		reason = s.ticketConfigurationReason(cfg)
+		return false, false
+	}
+	if why, _ := ticketCollectionPause(fresh); why != "" {
+		reason = why
+		return false, false
+	}
+	if !fresh.IsModelSupported(model) {
+		reason = "model_unsupported"
+		return false, false
+	}
+	if fresh.GetOpenAIAccessToken() != token || codexTicketKey(cfg, fresh, model, token) != key {
 		return false, false
 	}
 	if cfg.VerifiedFlow && ticketBusinessFingerprint(fresh) == "" {
 		state, reason = "failed", "business_proxy"
 		return false, false
 	}
-	probeCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
+	// 管理员若把共享业务槽TTL设得过短，明确拒绝不安全的长采集，不偷偷放宽业务并发。
+	if s.gateway.concurrencyService != nil && s.gateway.cfg != nil {
+		ttl := time.Duration(s.gateway.cfg.Gateway.ConcurrencySlotTTLMinutes) * time.Minute
+		if ttl > 0 && cfg.attemptTimeout()+10*time.Second >= ttl {
+			state, reason = "skipped", "concurrency_config"
+			return false, false
+		}
+	}
+	probeCtx, cancel := context.WithTimeoutCause(ctx, cfg.attemptTimeout(), ticketStopCause("timeout"))
 	defer cancel()
 	if s.gateway.concurrencyService != nil {
 		slot, err := s.gateway.concurrencyService.AcquireAccountSlot(probeCtx, fresh.ID, fresh.Concurrency)
@@ -198,7 +260,9 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		defer slot.ReleaseFunc()
 	}
 	if len(observers) == 0 {
-		attempt, err = s.nextTicketAttempt(ctx, key, cfg.attempts(), attempt)
+		countCtx, stopCount := context.WithTimeout(ctx, time.Second)
+		attempt, err = s.nextTicketAttempt(countCtx, key, cfg.attempts(), attempt)
+		stopCount()
 		if err != nil {
 			state, reason = "failed", "storage"
 			return false, false
@@ -210,6 +274,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	}
 	counted = true
 	diagnostic.Attempt = attempt
+	diagnostic.Phase = "proxy"
 	proxy, reuse, err = s.resolveReusableTicketProxy(probeCtx, cfg, key, proxy, previous)
 	diagnostic.ProxyID, diagnostic.ProxyName = proxy.ID, proxy.Name
 	if err == nil && (cfg.mode() == "rotate" || cfg.mode() == "dynamic") {
@@ -227,6 +292,17 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		var rejected *ticketProviderRejection
 		if errors.As(err, &rejected) {
 			diagnostic.RetryNotBefore = rejected.retryAt
+			diagnostic.ProviderStatus = rejected.status
+		}
+		var failure *ticketProviderFailure
+		if errors.As(err, &failure) {
+			diagnostic.NetworkKind = failure.kind
+			if failure.kind == "timeout" {
+				reason = "proxy_timeout"
+			}
+			if why := ticketContextReason(probeCtx); why != "" {
+				reason = why
+			}
 		}
 		s.recordObservation(ctx, key, state, reason, nil, diagnostic)
 		if rejected != nil && (rejected.status == 401 || rejected.status == 403 || rejected.status == 429) {
@@ -270,16 +346,13 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		req.Header.Set("user-agent", openai.CodexDefaultOriginator+"/"+minimum+" (Ubuntu 22.4.0; x86_64) xterm-256color")
 		req.Header.Set("originator", openai.CodexDefaultOriginator)
 	}
+	diagnostic.Phase = "harvest"
 	s.recordObservation(ctx, key, "collecting", "", nil, diagnostic)
+	observed = true
 	state, reason = "failed", "network"
-	defer func() {
-		if ctx.Err() != nil && reason == "network" {
-			reason = "cancelled"
-		}
-		s.recordObservation(ctx, key, state, reason, expires, diagnostic)
-	}()
 	resp, err := s.gateway.httpUpstream.Do(req, proxyURL, fresh.ID, fresh.Concurrency)
 	if err != nil || resp == nil {
+		reason = ticketNetworkReason(probeCtx, err, diagnostic)
 		return false, ctx.Err() == nil
 	}
 	if resp.Body != nil {
@@ -340,12 +413,26 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		}
 		return false, ticketFailureCanRetry(resp, diagnostic) && ctx.Err() == nil
 	}
-	reason = "cancelled"
+	diagnostic.Phase = "publish"
+	reason = "account_changed"
 	if !s.ticketConfigCurrent(cfg) {
+		reason = s.ticketConfigurationReason(cfg)
 		return false, false
 	}
 	final, err := s.readTicketAccount(ctx, account.ID)
-	if err != nil || !codexTicketCollectionAllowed(ctx, final) || !final.IsModelSupported(model) || final.GetOpenAIAccessToken() != token || codexTicketKey(cfg, final, model, token) != key {
+	if err != nil {
+		reason = "storage"
+		return false, false
+	}
+	if why, _ := ticketCollectionPause(final); why != "" {
+		state, reason = "skipped", why
+		return false, false
+	}
+	if !final.IsModelSupported(model) {
+		state, reason = "skipped", "model_unsupported"
+		return false, false
+	}
+	if final.GetOpenAIAccessToken() != token || codexTicketKey(cfg, final, model, token) != key {
 		return false, false
 	}
 	raw, _ := json.Marshal(ticket)
@@ -366,7 +453,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	return true, false
 }
 
-// 采集后的资格复核也要有界，避免数据库故障让已拿到的45秒并发租约先行到期。
+// 采集后的资格复核也要有界，不能拖过配套延长后的并发租约。
 func (s *CodexTicketService) readTicketAccount(ctx context.Context, id int64) (*Account, error) {
 	read, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()

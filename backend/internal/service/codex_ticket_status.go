@@ -34,11 +34,13 @@ type CodexTicketModelStatus struct {
 	Diagnostic           *CodexTicketDiagnostic     `json:"diagnostic,omitempty"`
 }
 type CodexTicketAccountStatus struct {
-	Settings         *CodexTicketAccountSettings `json:"settings,omitempty"`
-	AccountID        int64                       `json:"account_id"`
-	Eligible         bool                        `json:"eligible"`
-	CollectionPaused bool                        `json:"collection_paused"`
-	Models           []CodexTicketModelStatus    `json:"models"`
+	CollectionPauseReason string                      `json:"collection_pause_reason,omitempty"`
+	CollectionResumeAt    *time.Time                  `json:"collection_resume_at,omitempty"`
+	Settings              *CodexTicketAccountSettings `json:"settings,omitempty"`
+	AccountID             int64                       `json:"account_id"`
+	Eligible              bool                        `json:"eligible"`
+	CollectionPaused      bool                        `json:"collection_paused"`
+	Models                []CodexTicketModelStatus    `json:"models"`
 }
 type CodexTicketStatusResponse struct {
 	Models     []string                   `json:"models"`
@@ -149,6 +151,10 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 			row.Settings = &settings
 			cfg := ticketConfigForAccount(cfg, id)
 			row.CollectionPaused = !codexTicketCollectionAllowed(readCtx, a) || !cfg.Enabled
+			row.CollectionPauseReason, row.CollectionResumeAt = ticketCollectionPause(a)
+			if !cfg.Enabled {
+				row.CollectionPauseReason, row.CollectionResumeAt = "config_disabled", nil
+			}
 			for _, model := range cfg.models() {
 				status := CodexTicketModelStatus{Model: model, State: "pending"}
 				switch {
@@ -227,7 +233,11 @@ func (s *CodexTicketService) ticketModelStatusForAccount(model, encrypted, obser
 		status.Diagnostic = safeCodexTicketDiagnostic(record.Diagnostic)
 		switch record.State {
 		case "collecting":
-			if now.Sub(record.CheckedAt) < time.Minute {
+			budget := time.Minute
+			if cfg != nil && cfg.collectionLeaseTTL() > budget {
+				budget = cfg.collectionLeaseTTL()
+			}
+			if now.Sub(record.CheckedAt) < budget {
 				status.State = "collecting"
 			}
 		case "failed", "missing":
@@ -239,10 +249,7 @@ func (s *CodexTicketService) ticketModelStatusForAccount(model, encrypted, obser
 			}
 		}
 		// 仅回传固定原因码，缓存中的任意文本不可进入管理界面。
-		switch record.Reason {
-		case "network", "upstream", "invalid_ticket", "credential", "storage", "cancelled", "proxy_config", "proxy_provider", "cooldown", "business_proxy", "incomplete_response", "model_mismatch", "length_signal", "account_changed":
-			status.Reason = record.Reason
-		}
+		status.Reason = safeTicketReason(record.Reason)
 	}
 	if encrypted != "" {
 		raw, err := s.cipher.Decrypt(encrypted)

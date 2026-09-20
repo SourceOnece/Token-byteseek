@@ -25,7 +25,7 @@ func (s *CodexTicketService) acquireTicketCollectionSlot(ctx context.Context, cf
 		}
 		keys := []string{}
 		modelLease := "model-work:" + modelKey
-		ok, err := s.cache.AcquireLease(ctx, modelLease, owner, 45*time.Second)
+		ok, err := s.cache.AcquireLease(ctx, modelLease, owner, cfg.collectionLeaseTTL())
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +42,7 @@ func (s *CodexTicketService) acquireTicketCollectionSlot(ctx context.Context, cf
 				acquired := false
 				for slot := 0; slot < group.limit; slot++ {
 					key := fmt.Sprintf("%s%d", group.prefix, slot)
-					ok, err := s.cache.AcquireLease(ctx, key, owner, 45*time.Second)
+					ok, err := s.cache.AcquireLease(ctx, key, owner, cfg.collectionLeaseTTL())
 					if err != nil {
 						releaseKeys(keys)
 						return nil, err

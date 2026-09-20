@@ -8,40 +8,43 @@ import (
 
 // 规则在账号中保存完整快照；缺少规则的历史账号沿旧值读取，迁移不擅自改变用户配置。
 type CodexTicketRules struct {
-	FailureThreshold     int      `json:"failure_threshold"`
-	CooldownSeconds      int      `json:"cooldown_seconds"`
-	Models               []string `json:"models"`
-	TargetLength         int      `json:"target_length"`
-	DegradedSignalLength int      `json:"degraded_signal_length"`
-	MaxAttempts          int      `json:"max_attempts"`
-	Concurrency          int      `json:"concurrency"`
-	CacheMinutes         int      `json:"cache_minutes"`
-	RefreshBeforeMinutes int      `json:"refresh_before_minutes"`
-	RetryIntervalSeconds int      `json:"retry_interval_seconds"`
-	ProbeIntervalSeconds int      `json:"probe_interval_seconds"`
+	AttemptTimeoutSeconds int      `json:"attempt_timeout_seconds"`
+	FailureThreshold      int      `json:"failure_threshold"`
+	CooldownSeconds       int      `json:"cooldown_seconds"`
+	Models                []string `json:"models"`
+	TargetLength          int      `json:"target_length"`
+	DegradedSignalLength  int      `json:"degraded_signal_length"`
+	MaxAttempts           int      `json:"max_attempts"`
+	Concurrency           int      `json:"concurrency"`
+	CacheMinutes          int      `json:"cache_minutes"`
+	RefreshBeforeMinutes  int      `json:"refresh_before_minutes"`
+	RetryIntervalSeconds  int      `json:"retry_interval_seconds"`
+	ProbeIntervalSeconds  int      `json:"probe_interval_seconds"`
 }
 
 // 每个字段独立可选，批量没有勾选的项目不能回填默认值。
 type CodexTicketRulesPatch struct {
-	FailureThreshold     *int      `json:"failure_threshold"`
-	CooldownSeconds      *int      `json:"cooldown_seconds"`
-	Models               *[]string `json:"models"`
-	TargetLength         *int      `json:"target_length"`
-	DegradedSignalLength *int      `json:"degraded_signal_length"`
-	MaxAttempts          *int      `json:"max_attempts"`
-	Concurrency          *int      `json:"concurrency"`
-	CacheMinutes         *int      `json:"cache_minutes"`
-	RefreshBeforeMinutes *int      `json:"refresh_before_minutes"`
-	RetryIntervalSeconds *int      `json:"retry_interval_seconds"`
-	ProbeIntervalSeconds *int      `json:"probe_interval_seconds"`
+	AttemptTimeoutSeconds *int      `json:"attempt_timeout_seconds"`
+	FailureThreshold      *int      `json:"failure_threshold"`
+	CooldownSeconds       *int      `json:"cooldown_seconds"`
+	Models                *[]string `json:"models"`
+	TargetLength          *int      `json:"target_length"`
+	DegradedSignalLength  *int      `json:"degraded_signal_length"`
+	MaxAttempts           *int      `json:"max_attempts"`
+	Concurrency           *int      `json:"concurrency"`
+	CacheMinutes          *int      `json:"cache_minutes"`
+	RefreshBeforeMinutes  *int      `json:"refresh_before_minutes"`
+	RetryIntervalSeconds  *int      `json:"retry_interval_seconds"`
+	ProbeIntervalSeconds  *int      `json:"probe_interval_seconds"`
 }
 
 func ticketRulesFromConfig(c *codexTicketConfig) CodexTicketRules {
-	return CodexTicketRules{FailureThreshold: c.FailureThreshold, CooldownSeconds: c.cooldownSeconds(), Models: append([]string(nil), c.models()...), TargetLength: c.targetLength(), DegradedSignalLength: c.DegradedSignalLength,
+	return CodexTicketRules{AttemptTimeoutSeconds: int(c.attemptTimeout() / time.Second), FailureThreshold: c.FailureThreshold, CooldownSeconds: c.cooldownSeconds(), Models: append([]string(nil), c.models()...), TargetLength: c.targetLength(), DegradedSignalLength: c.DegradedSignalLength,
 		MaxAttempts: c.attempts(), Concurrency: c.collectionConcurrency(), CacheMinutes: int(c.ticketTTL() / time.Minute),
 		RefreshBeforeMinutes: int(c.refreshBefore() / time.Minute), RetryIntervalSeconds: int(c.retryInterval() / time.Second), ProbeIntervalSeconds: int(c.interval() / time.Second)}
 }
 func (c *codexTicketConfig) applyRules(r CodexTicketRules) {
+	c.AttemptTimeoutSeconds = r.AttemptTimeoutSeconds
 	c.FailureThreshold = r.FailureThreshold
 	c.CooldownSeconds = r.CooldownSeconds
 	c.Models = append([]string(nil), r.Models...)
@@ -60,6 +63,42 @@ func (c *codexTicketConfig) collectionConcurrency() int {
 		return c.CollectionConcurrency
 	}
 	return 4
+}
+
+// 旧配置缺项仍为25秒；新写入只允许5–300秒，不提供无限占槽的超时设置。
+func (c *codexTicketConfig) attemptTimeout() time.Duration {
+	if c != nil && c.AttemptTimeoutSeconds >= 5 && c.AttemptTimeoutSeconds <= 300 {
+		return time.Duration(c.AttemptTimeoutSeconds) * time.Second
+	}
+	return 25 * time.Second
+}
+
+// 租约覆盖采集总预算和有界资格复核/存票，不能在慢请求尚未结束时释放并发保护。
+func (c *codexTicketConfig) collectionLeaseTTL() time.Duration {
+	return c.attemptTimeout() + 20*time.Second
+}
+
+// 单号保留原30秒基础轮次；全局另给30秒派发窗口，已派发请求仍有完整预算和收尾余量。
+func (c *codexTicketConfig) roundTimeout() time.Duration {
+	budget := 25 * time.Second
+	if c.accountID != 0 {
+		if c.attemptTimeout() > budget {
+			budget = c.attemptTimeout()
+		}
+		return budget + 5*time.Second
+	}
+	if d := ticketConfigForAccount(c, 0).attemptTimeout(); d > budget {
+		budget = d
+	}
+	for id := range c.Accounts {
+		account := c.Accounts[id]
+		if account.Mode != "off" && account.Rules != nil {
+			if d := (&codexTicketConfig{AttemptTimeoutSeconds: account.Rules.AttemptTimeoutSeconds}).attemptTimeout(); d > budget {
+				budget = d
+			}
+		}
+	}
+	return budget + 35*time.Second
 }
 func (c *codexTicketConfig) ticketTTL() time.Duration {
 	if c.CacheMinutes >= 1 && c.CacheMinutes <= 1440 {
@@ -121,6 +160,7 @@ func applyTicketRulesPatch(r CodexTicketRules, p *CodexTicketRulesPatch) (CodexT
 		target *int
 		lo, hi int
 	}{
+		{p.AttemptTimeoutSeconds, &r.AttemptTimeoutSeconds, 5, 300},
 		{p.FailureThreshold, &r.FailureThreshold, 0, 100000}, {p.CooldownSeconds, &r.CooldownSeconds, 1, 86400},
 		{p.TargetLength, &r.TargetLength, 6, 8192}, {p.DegradedSignalLength, &r.DegradedSignalLength, 0, 8192},
 		{p.MaxAttempts, &r.MaxAttempts, 0, 9007199254740991}, {p.Concurrency, &r.Concurrency, 1, 4},

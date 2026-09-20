@@ -92,7 +92,7 @@ func (s *CodexTicketService) resolveReusableTicketProxy(ctx context.Context, c *
 		last := observations[0]
 		if (last.State == "failed" || last.State == "missing") && last.Diagnostic != nil && last.Diagnostic.ProxyID == saved.Proxy.ID && last.CheckedAt.After(saved.ExpiresAt.Add(-ticketProxyReuseTTL)) && last.Diagnostic.RetryNotBefore == nil {
 			switch last.Reason {
-			case "invalid_ticket", "length_signal", "model_mismatch", "incomplete_response", "network", "proxy_provider":
+			case "invalid_ticket", "length_signal", "model_mismatch", "incomplete_response", "network", "proxy_provider", "timeout", "proxy_timeout", "transport_timeout":
 				rejected = true
 			}
 		}
@@ -159,7 +159,7 @@ func (s *CodexTicketService) finishTicketProxyReuse(ctx context.Context, c *code
 		return
 	}
 	// 清理在释放模型租约之前完成，不让下一轮拿到已确认失败的成功出口。
-	failed := reason == "invalid_ticket" || reason == "length_signal" || reason == "model_mismatch" || reason == "incomplete_response" || reason == "proxy_provider" || (reason == "network" && ctx.Err() == nil) || (reason == "upstream" && retry)
+	failed := reason == "invalid_ticket" || reason == "length_signal" || reason == "model_mismatch" || reason == "incomplete_response" || reason == "proxy_provider" || ((reason == "network" || reason == "timeout" || reason == "proxy_timeout" || reason == "transport_timeout") && ctx.Err() == nil) || (reason == "upstream" && retry)
 	if failed && (attempt.reused || reason == "proxy_provider") && (d == nil || d.RetryNotBefore == nil) {
 		_ = s.cache.Set(write, "proxy-reuse:"+attempt.key, "", time.Second)
 	}

@@ -5,6 +5,18 @@ import type { TicketAccountStatus } from '@/api/admin/codexTickets'
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 
 describe('CodexTicketStatus', () => {
+  it('悬停和手机详情都区分历史复验超时与当前暂停状态', async()=>{
+    const status:TicketAccountStatus={account_id:1,eligible:true,collection_paused:true,collection_pause_reason:'account_rate_limited',collection_resume_at:new Date(Date.now()+60000).toISOString(),models:[{model:'gpt-6-astra',state:'missing',latest:{source:'manual',state:'failed',reason:'timeout',checked_at:new Date().toISOString(),diagnostic:{proxy_id:'provider',proxy_name:'API',attempt:41,header_length:0,header_present:false,prefix_valid:false,phase:'verify',timeout_seconds:120,elapsed_ms:120001}}}]}
+    const w=mount(CodexTicketStatus,{props:{status,now:Date.now()},global:{stubs:{BaseDialog:{template:'<div data-testid="detail"><slot/></div>'}}}})
+    const title=w.get('[title]').attributes('title')
+    expect(title).toContain('ticketDiagnostic.reasons.timeout')
+    expect(title).toContain('ticketDiagnostic.phases.verify')
+    expect(title).toContain('ticketDiagnostic.currentPause')
+    expect(title).toContain('ticketDiagnostic.resumeAt')
+    await w.get('[data-testid="ticket-model-detail"]').trigger('click')
+    expect(w.get('[data-testid="detail"]').text()).toContain('ticketDiagnostic.phases.verify')
+    w.unmount()
+  })
   it.each(['new', 'reused'] as const)('悬停与点击详情都显示IP来源：%s，读取失败隐藏旧标签', async usage => {
     const status: TicketAccountStatus = { account_id: 1, eligible: true, collection_paused: false, models: [{ model: 'gpt-6-astra', state: 'missing', diagnostic: { proxy_usage: usage, proxy_id: 'legacy', proxy_name: 'A', attempt: 1, header_length: 332, header_present: true, prefix_valid: true } }] }
     const w = mount(CodexTicketStatus, { props: { status, now: Date.now() }, global: { stubs: { BaseDialog: { template: '<div><slot/></div>' } } } })

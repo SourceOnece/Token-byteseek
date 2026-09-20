@@ -183,7 +183,9 @@ func TestCodexTicketFailureDiagnosticsAndNextCycleProxy(t *testing.T) {
 
 func TestCodexTicketRetryCancelledDuringDelay(t *testing.T) {
 	s, _, a := setupTicketProxyTest(t, "rotate", 3)
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
+	timer := time.AfterFunc(50*time.Millisecond, cancel)
+	defer timer.Stop()
 	defer cancel()
 	u := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(200, 312, "")}}
 	s.gateway.httpUpstream = u

@@ -62,6 +62,7 @@
               <input v-if="bulk" v-model="ruleFields[field.key]" type="checkbox" :disabled="locked" :aria-labelledby="uid + '-' + field.key + '-label'" :aria-controls="uid + '-' + field.key" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" :data-testid="'ticket-edit-' + field.key" />
             </div>
             <input :id="uid + '-' + field.key" v-model.number="rules[field.key]" type="number" :min="field.min" :max="field.max" step="1" class="input w-full font-bold" :disabled="locked || !ruleFields[field.key]" :class="!ruleFields[field.key] && 'cursor-not-allowed opacity-50'" :data-testid="'ticket-rule-' + field.key" />
+            <p v-if="field.key === 'attempt_timeout_seconds'" class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ t('admin.accounts.ticketWorkbench.timeoutHint') }}</p>
           </div>
         </div>
       </div>
@@ -96,10 +97,10 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 const props = withDefaults(defineProps<{ ids?: number[]; bulk?: boolean; templateMode?: boolean; draft?: boolean; busy?: boolean }>(), { ids: () => [] })
 const emit = defineEmits<{ saved: [] }>()
 const { t } = useI18n(), uid = useId()
-const defaults = (): TicketRules => ({ models: ['gpt-6-astra', 'gpt-5.6-sol'], target_length: 292, degraded_signal_length: 0, max_attempts: 1, concurrency: 4, cache_minutes: 60, refresh_before_minutes: 10, retry_interval_seconds: 1, probe_interval_seconds: 6, failure_threshold: 0, cooldown_seconds: 300 })
+const defaults = (): TicketRules => ({ attempt_timeout_seconds: 25, models: ['gpt-6-astra', 'gpt-5.6-sol'], target_length: 292, degraded_signal_length: 0, max_attempts: 1, concurrency: 4, cache_minutes: 60, refresh_before_minutes: 10, retry_interval_seconds: 1, probe_interval_seconds: 6, failure_threshold: 0, cooldown_seconds: 300 })
 type NumberRule = Exclude<keyof TicketRules, 'models'>
 const groups: { name: string; fields: { key: NumberRule; min: number; max?: number }[] }[] = [
-  { name: 'validation', fields: [{ key: 'target_length', min: 6, max: 8192 }, { key: 'degraded_signal_length', min: 0, max: 8192 }, { key: 'max_attempts', min: 0 }, { key: 'retry_interval_seconds', min: 1, max: 30 }] },
+  { name: 'validation', fields: [{ key: 'target_length', min: 6, max: 8192 }, { key: 'degraded_signal_length', min: 0, max: 8192 }, { key: 'max_attempts', min: 0 }, { key: 'retry_interval_seconds', min: 1, max: 30 }, { key: 'attempt_timeout_seconds', min: 5, max: 300 }] },
   { name: 'renewal', fields: [{ key: 'concurrency', min: 1, max: 4 }, { key: 'cache_minutes', min: 1, max: 1440 }, { key: 'refresh_before_minutes', min: 0, max: 1439 }, { key: 'probe_interval_seconds', min: 6, max: 3600 }] },
   { name: 'cooldown', fields: [{ key: 'failure_threshold', min: 0, max: 100000 }, { key: 'cooldown_seconds', min: 1, max: 86400 }] }
 ]
@@ -124,6 +125,7 @@ const dualFlowInForm = computed(() => props.bulk && !fields.flow ? initialAnyVer
 const displayGuard = computed({ get: () => dualFlowInForm.value ? 'recover' : guard.value, set: (value: string) => { if (!dualFlowInForm.value) guard.value = value as TicketAccountSettings['watchdog_mode'] } })
 const revision = ref(''), source = ref('gateway'), policy = ref<TicketProxyPolicy>()
 const globalEnabled = ref(true)
+const timeoutSupported = ref(false)
 const proxyEditor = ref<InstanceType<typeof CodexTicketProxyEditor>>()
 const loading = ref(false), saving = ref(false), loadFailed = ref(false), error = ref(''), saved = ref(false)
 const locked = computed(() => loading.value || saving.value || loadFailed.value || props.busy)
@@ -157,6 +159,7 @@ async function loadData() {
     if (current !== sequence) return
     const data = rows[0]
     if (!data) throw new Error(t('common.error'))
+    timeoutSupported.value = rows.every(row => Number.isInteger(row.rules?.attempt_timeout_seconds))
     if (!data.rules || !Array.isArray(data.rules.models) || !data.proxy_policy || typeof data.verified_flow !== 'boolean') throw new Error(t('admin.settings.codexTicket.versionMismatch'))
     verifiedFlow.value = data.verified_flow
     initialAnyVerifiedFlow.value = rows.some(row => row.verified_flow)
@@ -164,14 +167,14 @@ async function loadData() {
     // 服务端先解析旧继承值；双链路显示强制守护，保存仍保留其下层明确选择。
     if (data.watchdog_mode === 'inherit') throw new Error(t('admin.settings.codexTicket.versionMismatch'))
     mode.value = data.mode === 'off' ? 'off' : 'on'; guard.value = data.watchdog_mode || 'observe'; revision.value = data.revision; source.value = data.proxy_source
-    Object.assign(rules, data.rules || defaults()); modelText.value = Array.isArray(rules.models) ? rules.models.join('\n') : ''; policy.value = data.proxy_policy
-    baseline = { mode: mode.value, watchdog_mode: guard.value, verified_flow: data.verified_flow, rules: { ...data.rules, models: [...data.rules.models] } }
+    Object.assign(rules, data.rules, { attempt_timeout_seconds: data.rules.attempt_timeout_seconds ?? 25 }); modelText.value = Array.isArray(rules.models) ? rules.models.join('\n') : ''; policy.value = data.proxy_policy
+    baseline = { mode: mode.value, watchdog_mode: guard.value, verified_flow: data.verified_flow, rules: { ...defaults(), ...data.rules, attempt_timeout_seconds: data.rules.attempt_timeout_seconds ?? 25, models: [...data.rules.models] } }
     if (props.bulk) {
       const common = (get: (row: TicketAccountSettings) => unknown) => rows.every(row=>JSON.stringify(get(row))===JSON.stringify(get(data)))
       mixedFlow.value=!common(row=>row.verified_flow)
       if (!common(row=>row.mode==='off'?'off':'on')) mode.value=''
       if (!common(row=>row.watchdog_mode)) guard.value=''
-      for (const key of Object.keys(ruleFields) as (keyof TicketRules)[]) if (!common(row=>row.rules[key])) rules[key]='' as never
+      for (const key of Object.keys(ruleFields) as (keyof TicketRules)[]) if (!common(row=>key === 'attempt_timeout_seconds' ? row.rules[key] ?? 25 : row.rules[key])) rules[key]='' as never
       modelText.value=Array.isArray(rules.models)?rules.models.join('\n'):''
       proxyMixed.value=!common(row=>[row.proxy_source,row.proxy_policy])
       if(proxyMixed.value) {policy.value=undefined;source.value=''}
@@ -195,6 +198,7 @@ function patch(): TicketAccountPatch {
       if (!rulePatch.models.length || rulePatch.models.length > 100) throw new Error(t('admin.settings.codexTicket.invalidForm'))
     } else {
       const value = rules[key], field = groups.flatMap(group => group.fields).find(field => field.key === key)!
+      if (key === 'attempt_timeout_seconds' && !timeoutSupported.value && value !== 25) throw new Error(t('admin.settings.codexTicket.versionMismatch'))
       if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < field.min || (field.max !== undefined && value > field.max)) throw new Error(t('admin.settings.codexTicket.invalidForm'))
       rulePatch[key] = value
     }

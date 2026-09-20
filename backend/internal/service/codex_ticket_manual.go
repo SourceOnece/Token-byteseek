@@ -108,7 +108,7 @@ type CodexTicketManualSession struct {
 	cfg        *codexTicketConfig
 	repo       CodexTicketHistoryRepository
 	ctx        context.Context
-	cancel     context.CancelFunc
+	cancel     context.CancelCauseFunc
 	ids        []int64
 	Run        CodexTicketManualRun
 	locked     bool
@@ -158,7 +158,7 @@ func (s *CodexTicketService) PrepareManualCollection(ctx context.Context, req Co
 	if s.cache == nil || s.cipher == nil || s.gateway.httpUpstream == nil {
 		return nil, errors.New("采集服务不可用")
 	}
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancelCause(ctx)
 	total := 0
 	for _, id := range req.AccountIDs {
 		total += len(ticketConfigForAccount(cfg, id).models())
@@ -183,7 +183,7 @@ func (s *CodexTicketService) PrepareManualCollection(ctx context.Context, req Co
 	s.lifecycleMu.Lock()
 	if s.stopped || s.manualCancel != nil {
 		s.lifecycleMu.Unlock()
-		cancel()
+		cancel(nil)
 		return nil, errors.New("已有手动采集正在执行，请稍后重试")
 	}
 	s.manualCancel = cancel
@@ -222,7 +222,7 @@ func (s *CodexTicketService) PrepareManualCollection(ctx context.Context, req Co
 }
 func (m *CodexTicketManualSession) Close() {
 	m.closeOnce.Do(func() {
-		m.cancel()
+		m.cancel(nil)
 		if m.locked {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			m.leaseMu.Lock()
@@ -243,8 +243,8 @@ func (m *CodexTicketManualSession) Close() {
 // 单条日志先落库再发 SSE；断连后仍保存已完成结果，不把未执行任务伪装成失败。
 func (m *CodexTicketManualSession) Execute(emit func(string, any) bool) {
 	defer m.Close()
-	ctx, cancel := context.WithCancel(m.ctx)
-	defer cancel()
+	ctx, cancel := context.WithCancelCause(m.ctx)
+	defer cancel(nil)
 	renewDone := make(chan struct{})
 	go func() {
 		defer close(renewDone)
@@ -263,16 +263,23 @@ func (m *CodexTicketManualSession) Execute(emit func(string, any) bool) {
 				stop()
 				latest := m.s.enabledConfig()
 				if err != nil || !ok || latest == nil || latest.Generation != m.cfg.Generation {
-					cancel()
+					reason := "lease_lost"
+					if err != nil {
+						reason = "storage"
+					}
+					if latest == nil || latest.Generation != m.cfg.Generation {
+						reason = m.s.ticketConfigurationReason(m.cfg)
+					}
+					cancel(ticketStopCause(reason))
 					return
 				}
 			}
 		}
 	}()
-	defer func() { cancel(); <-renewDone }()
+	defer func() { cancel(nil); <-renewDone }()
 	disconnected := !emit("start", m.Run)
 	if disconnected {
-		cancel()
+		cancel(ticketStopCause("client_disconnected"))
 	}
 	events := make(chan CodexTicketAttempt, 8)
 	jobs := make(chan *codexTicketManualTask)
@@ -330,7 +337,7 @@ func (m *CodexTicketManualSession) Execute(emit func(string, any) bool) {
 		case <-ticker.C:
 			if !disconnected && !emit("heartbeat", map[string]string{"run_id": m.Run.ID}) {
 				disconnected = true
-				cancel()
+				cancel(ticketStopCause("client_disconnected"))
 			}
 		case e, ok := <-events:
 			if !ok {
@@ -346,7 +353,7 @@ func (m *CodexTicketManualSession) Execute(emit func(string, any) bool) {
 			stop()
 			if err != nil {
 				storageFailed = true
-				cancel()
+				cancel(ticketStopCause("storage"))
 			} else {
 				if e.Kind == "result" {
 					m.Run.Counts[e.Status]++
@@ -355,12 +362,16 @@ func (m *CodexTicketManualSession) Execute(emit func(string, any) bool) {
 					ok, leaseErr := m.renewSelection(leaseCtx, e.AccountID)
 					release()
 					if leaseErr != nil || !ok {
-						cancel()
+						reason := "lease_lost"
+						if leaseErr != nil {
+							reason = "storage"
+						}
+						cancel(ticketStopCause(reason))
 					}
 				}
 				if !disconnected && !emit(e.Kind, e) {
 					disconnected = true
-					cancel()
+					cancel(ticketStopCause("client_disconnected"))
 				}
 			}
 		}
@@ -398,6 +409,12 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 			result = task.last
 			result.Kind = "result"
 			result.Status, result.Reason = "skipped", "ineligible"
+			// 此次没发请求时保留上轮真实诊断，但明确标成上一轮，不冒充本次失败阶段。
+			if result.Diagnostic != nil {
+				d := *result.Diagnostic
+				d.PreviousAttempt = true
+				result.Diagnostic = &d
+			}
 			latestKey = task.latestKey
 		}
 		if task.startedAt.IsZero() {
@@ -417,16 +434,23 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		}
 		result.FinishedAt = time.Now().UTC()
 		result.DurationMS = time.Since(started).Milliseconds()
+		if ctx.Err() != nil && result.Status != "ready" {
+			result.Status, result.Reason = "cancelled", ticketContextReason(ctx)
+		}
 		m.s.recordLatest(ctx, cfg, latestKey, "manual", result)
 		record(result)
 	}()
 	if ctx.Err() != nil {
 		result.Status = "cancelled"
-		result.Reason = "cancelled"
+		result.Reason = ticketContextReason(ctx)
 		return
 	}
-	a, err := m.s.gateway.accountRepo.GetByID(ctx, id)
+	a, err := m.s.readTicketAccount(ctx, id)
 	if err != nil || a == nil {
+		result.Status, result.Reason = "failed", "storage"
+		if err == nil {
+			result.Status, result.Reason = "skipped", "account_missing"
+		}
 		return
 	}
 	if codexTicketAccount(a) {
@@ -437,7 +461,16 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 	if result.Email == "" {
 		result.Email = firstStringValue(a.Extra, "email", "email_address")
 	}
-	if !cfg.Enabled || !m.s.ticketConfigCurrent(cfg) || !codexTicketCollectionAllowed(ctx, a) || !a.IsModelSupported(model) {
+	if !cfg.Enabled || !m.s.ticketConfigCurrent(cfg) {
+		result.Reason = m.s.ticketConfigurationReason(cfg)
+		return
+	}
+	if why, _ := ticketCollectionPause(a); why != "" {
+		result.Reason = why
+		return
+	}
+	if !a.IsModelSupported(model) {
+		result.Reason = "model_unsupported"
 		return
 	}
 	token, _, err := m.s.gateway.GetAccessToken(ctx, a)
@@ -499,7 +532,10 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 	for attempt := startAttempt; cfg.attempts() == 0 || attempt <= cfg.attempts(); attempt++ {
 		if ctx.Err() != nil || !m.s.ticketConfigCurrent(cfg) {
 			result.Status = "cancelled"
-			result.Reason = "cancelled"
+			result.Reason = ticketContextReason(ctx)
+			if result.Reason == "" {
+				result.Reason = m.s.ticketConfigurationReason(cfg)
+			}
 			return
 		}
 		proxy, ok := selectCodexTicketProxy(cfg, previousID, failed)
@@ -518,6 +554,9 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 				return
 			}
 			result.Status, result.Reason = event.Status, event.Reason
+			if result.Diagnostic == nil {
+				result.Diagnostic = event.Diagnostic
+			}
 			return
 		}
 		event.Kind = "attempt"
@@ -562,7 +601,7 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		case <-ctx.Done():
 			timer.Stop()
 			result.Status = "cancelled"
-			result.Reason = "cancelled"
+			result.Reason = ticketContextReason(ctx)
 			return
 		case <-timer.C:
 		}

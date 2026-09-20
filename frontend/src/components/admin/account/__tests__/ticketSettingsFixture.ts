@@ -5,7 +5,8 @@ export const ticketSettingsFixture = (id = 1): TicketAccountSettings => ({
   account_id: id, mode: 'on', verified_flow: false, global_enabled: true,
   watchdog_mode: 'observe', effective_watchdog_mode: 'observe', effective_enabled: true,
   revision: 'r1', proxy_source: 'gateway', proxy_configured: false,
-  rules: {
+    rules: {
+	  attempt_timeout_seconds: 25,
     models: ['gpt-6-astra'], target_length: 332, degraded_signal_length: 312,
     max_attempts: 3, concurrency: 4, cache_minutes: 60, refresh_before_minutes: 10,
     retry_interval_seconds: 1, probe_interval_seconds: 6, failure_threshold: 0, cooldown_seconds: 300
