@@ -253,8 +253,18 @@ func seedTicket(t *testing.T, s *CodexTicketService, a *Account, model, token st
 	raw, _ := json.Marshal(codexTicketValue{State: ticket, ExpiresAt: time.Now().Add(time.Hour)})
 	encoded, err := s.cipher.Encrypt(string(raw))
 	require.NoError(t, err)
-	require.NoError(t, s.cache.Set(context.Background(), codexTicketKey(s.config.Load(), a, model, token), encoded, time.Hour))
+	require.NoError(t, s.cache.Set(context.Background(), codexTicketKey(ticketConfigForAccount(s.config.Load(), a.ID), a, model, token), encoded, time.Hour))
 	return ticket
+}
+
+// 新用例显式配置账号；不得再用已转为模板适配入口的网关规则来暗改旧号。
+func configureTicketTestAccount(t *testing.T, s *CodexTicketService, patch CodexTicketAccountPatch) error {
+	t.Helper()
+	if s.gateway == nil {
+		s.gateway = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{ticketAccount()}}}
+	}
+	_, err := s.UpdateAccountSettings(context.Background(), CodexTicketAccountsUpdate{AccountIDs: []int64{1}, Patch: patch})
+	return err
 }
 
 // 三种出站构建器共用票据注入，不更改会话隔离、鉴权、路由提示或请求正文。

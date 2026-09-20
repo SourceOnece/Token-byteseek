@@ -9,7 +9,7 @@
       </p>
     </div>
 
-    <div class="space-y-5 p-6">
+    <div class="space-y-5 p-4 sm:p-6">
       <div v-if="loading" class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
         <div class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"></div>
         {{ t('common.loading') }}
@@ -20,8 +20,8 @@
           <div class="text-sm font-medium text-gray-900 dark:text-white">
             {{ t('admin.accounts.openAIOAuthImportDefaultsAccount') }}
           </div>
-          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div class="md:col-span-2">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
               <label class="input-label">{{ t('admin.accounts.notes') }}</label>
               <textarea v-model="form.notes" rows="2" class="input"></textarea>
             </div>
@@ -106,7 +106,8 @@
                 data-testid="openai-oauth-default-codex-allow-claude-code-toggle"
               />
             </div>
-            <div class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700">
+            <div class="grid grid-cols-1 items-start gap-4 border-t border-gray-100 pt-4 dark:border-dark-700 sm:grid-cols-2" data-testid="import-defaults-quota-grid">
+              <div class="space-y-4">
               <div class="space-y-2">
                 <div class="flex items-center justify-between gap-4">
                   <label class="input-label mb-0">{{ t('admin.accounts.autoPause5hDisabled') }}</label>
@@ -131,6 +132,8 @@
                 />
                 <p class="input-hint">{{ t('admin.accounts.autoPauseThresholdHint') }}</p>
               </div>
+              </div>
+              <div class="space-y-4">
               <div class="space-y-2">
                 <div class="flex items-center justify-between gap-4">
                   <label class="input-label mb-0">{{ t('admin.accounts.autoPause7dDisabled') }}</label>
@@ -155,6 +158,7 @@
                 />
                 <p class="input-hint">{{ t('admin.accounts.autoPauseThresholdHint') }}</p>
               </div>
+            </div>
             </div>
             <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div class="min-w-0">
@@ -211,15 +215,17 @@
           </div>
         </section>
 
-        <section class="space-y-3 border-t border-gray-100 pt-5 dark:border-dark-700">
-          <div class="text-sm font-medium text-gray-900 dark:text-white">
+        <!-- 只重排原有模型与映射，桌面并列，小屏堆叠。 -->
+        <div class="grid grid-cols-1 items-start gap-5 border-t border-gray-100 pt-5 dark:border-dark-700 lg:grid-cols-2" data-testid="import-defaults-model-grid">
+        <section class="min-w-0 space-y-3" data-testid="import-defaults-models">
+          <div class="input-label">
             {{ t('admin.accounts.modelWhitelist') }}
           </div>
           <ModelWhitelistSelector v-model="defaultAllowedModels" platform="openai" />
         </section>
 
-        <section class="space-y-3 border-t border-gray-100 pt-5 dark:border-dark-700">
-          <div class="text-sm font-medium text-gray-900 dark:text-white">
+        <section class="min-w-0 space-y-3" data-testid="import-defaults-mappings">
+          <div class="input-label">
             {{ t('admin.accounts.modelMapping') }}
           </div>
           <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -234,7 +240,7 @@
               <input
                 v-model="mapping.from"
                 type="text"
-                class="input flex-1"
+                class="input min-w-0 flex-1"
                 :placeholder="t('admin.accounts.requestModel')"
               />
               <svg
@@ -253,12 +259,13 @@
               <input
                 v-model="mapping.to"
                 type="text"
-                class="input flex-1"
+                class="input min-w-0 flex-1"
                 :placeholder="t('admin.accounts.actualModel')"
               />
               <button
                 type="button"
                 class="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                :aria-label="t('common.delete')"
                 @click="removeDefaultModelMapping(index)"
               >
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -300,6 +307,7 @@
           </div>
         </section>
 
+        </div>
         <section class="grid grid-cols-1 gap-4 border-t border-gray-100 pt-5 dark:border-dark-700 md:grid-cols-2">
           <div>
             <label class="input-label">{{ t('admin.accounts.openAIOAuthImportDefaultsCredentialsJson') }}</label>

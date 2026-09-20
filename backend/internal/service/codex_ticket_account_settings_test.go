@@ -80,7 +80,7 @@ func TestCodexTicketAccountBatchPartialPatchAndValidation(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, r, 2)
 	require.True(t, r[0].ProxyConfigured)
-	require.Equal(t, "inherit", r[0].Mode)
+	require.Equal(t, "on", r[0].Mode)
 	require.NotEqual(t, before.Accounts["1"].Revision, s.config.Load().Accounts["1"].Revision)
 	stale := "stale"
 	off := "off"
@@ -134,7 +134,7 @@ func TestCodexTicketWatchdogModes(t *testing.T) {
 			enableTicketTest(t, s)
 			s.cache = &ticketWatchdogCacheStub{c}
 			length := 312
-			_, err := s.Update(context.Background(), CodexTicketSettingsUpdate{WatchdogMode: &mode, DegradedSignalLength: &length})
+			err := configureTicketTestAccount(t, s, CodexTicketAccountPatch{WatchdogMode: &mode, Rules: &CodexTicketRulesPatch{DegradedSignalLength: &length}})
 			require.NoError(t, err)
 			a := ticketAccount()
 			seedTicket(t, s, &a, "gpt-6-astra", "fake-token")
@@ -167,7 +167,7 @@ func TestCodexTicketWatchdogTransparentBodiesAndStaleReceipt(t *testing.T) {
 			enableTicketTest(t, s)
 			s.cache = &ticketWatchdogCacheStub{c}
 			mode := "recover_model"
-			_, err := s.Update(context.Background(), CodexTicketSettingsUpdate{WatchdogMode: &mode})
+			err := configureTicketTestAccount(t, s, CodexTicketAccountPatch{WatchdogMode: &mode})
 			require.NoError(t, err)
 			a := ticketAccount()
 			seedTicket(t, s, &a, "gpt-6-astra", "fake-token")

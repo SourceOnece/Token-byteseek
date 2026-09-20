@@ -9,7 +9,7 @@ vi.mock('@/api/admin/codexTickets', () => ({ ticketAccountAPI: { get, update, de
 vi.mock('@/api/admin/proxies',()=>({getAll:vi.fn().mockResolvedValue([])}))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 const rules = () => ({ models: ['gpt-6-astra', 'gpt-5.6-sol'], target_length: 332, degraded_signal_length: 312, max_attempts: 3, concurrency: 4, cache_minutes: 60, refresh_before_minutes: 10, retry_interval_seconds: 1, probe_interval_seconds: 6, failure_threshold: 0, cooldown_seconds: 300 })
-const account = () => ({ verified_flow: false, rules: rules(), proxy_policy: { mode: 'fixed', dynamic_source: 'template', proxy_protocol: 'http', extraction_configured: false, fixed_proxy_id: 'account', proxies: [{ id: 'account', name: 'A', configured: true }] }, account_id: 1, mode: 'inherit', watchdog_mode: 'inherit', effective_watchdog_mode: 'observe', effective_enabled: true, proxy_source: 'account', proxy_configured: true, revision: 'r1' })
+const account = () => ({ verified_flow: false, rules: rules(), proxy_policy: { mode: 'fixed', dynamic_source: 'template', proxy_protocol: 'http', extraction_configured: false, fixed_proxy_id: 'account', proxies: [{ id: 'account', name: 'A', configured: true }] }, account_id: 1, mode: 'inherit', watchdog_mode: 'observe', effective_watchdog_mode: 'observe', effective_enabled: true, proxy_source: 'account', proxy_configured: true, revision: 'r1' })
 
 // 父表单先准备快照，再使用原保存按钮提交；组件不再渲染独立保存按钮。
 async function save(w: VueWrapper) {
@@ -21,6 +21,29 @@ const flow = (w: VueWrapper) => w.findAllComponents(Select).find(c => c.attribut
 const guardSelect = (w: VueWrapper) => w.findAllComponents(Select).find(c => c.attributes('data-testid') === 'ticket-guard')!
 
 describe('CodexTicketAccountSettings', () => {
+  it('批量账号已开双链路，未勾选修改双链路也锁定有效守护；明确关闭后恢复', async () => {
+    get.mockResolvedValue({ ...account(), verified_flow: true, watchdog_mode: 'off' })
+    const w=mount(CodexTicketAccountSettings,{attachTo:document.body,props:{ids:[1,2],bulk:true}})
+    await flushPromises()
+    await w.get('[data-testid="ticket-edit-mode"]').setValue(true)
+    expect(guardSelect(w).props('modelValue')).toBe('recover')
+    expect(guardSelect(w).props('disabled')).toBe(true)
+    expect(w.get('[data-testid="ticket-edit-guard"]').attributes('disabled')).toBeDefined()
+    await w.get('[data-testid="ticket-edit-flow"]').setValue(true)
+    flow(w).vm.$emit('update:modelValue','false');await flushPromises()
+    expect(guardSelect(w).props('modelValue')).toBe('off')
+    await w.get('[data-testid="ticket-edit-guard"]').setValue(true)
+    expect(guardSelect(w).props('disabled')).toBe(false)
+    expect(guardSelect(w).props('options').some((option: {value:string})=>option.value==='inherit')).toBe(false)
+    w.unmount()
+  })
+  it('批量混合双链路状态时不提供会被部分账号忽略的守护选择', async () => {
+    get.mockImplementation(async id=>({...account(),verified_flow:id===1}))
+    const w=mount(CodexTicketAccountSettings,{props:{ids:[1,2],bulk:true}});await flushPromises()
+    await w.get('[data-testid="ticket-edit-mode"]').setValue(true)
+    expect(guardSelect(w).props('disabled')).toBe(true)
+    w.unmount()
+  })
   beforeEach(() => { vi.clearAllMocks(); get.mockResolvedValue(account()); defaults.mockResolvedValue(account()); updateDefaults.mockResolvedValue(account());update.mockResolvedValue([{ ...account(), revision: 'r2' }]) })
   it('批量恢复整张卡片与规则分组，虚实勾选不改提交范围', async () => {
     const w = mount(CodexTicketAccountSettings, { attachTo: document.body, props: { ids: [1, 2], bulk: true } })
@@ -128,7 +151,7 @@ describe('CodexTicketAccountSettings', () => {
     expect(update).not.toHaveBeenCalled()
     expect(w.emitted('saved')).toBeUndefined(); w.unmount()
   })
-  it.each(['inherit', 'off', 'recover_length'] as const)('关闭双链路恢复原守护选择：%s', async guard => {
+  it.each(['observe', 'off', 'recover_length'] as const)('关闭双链路恢复原守护选择：%s', async guard => {
     get.mockResolvedValue({ ...account(), verified_flow: true, watchdog_mode: guard, effective_watchdog_mode: 'recover' })
     const w = mount(CodexTicketAccountSettings, { attachTo: document.body, props: { ids: [1] } }); await flushPromises()
     expect(guardSelect(w).props('modelValue')).toBe('recover')

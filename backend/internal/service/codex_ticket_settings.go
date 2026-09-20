@@ -135,9 +135,11 @@ func codexTicketSettingsView(c *codexTicketConfig) CodexTicketSettings {
 	if v.FixedProxyID == "" && len(v.Proxies) > 0 {
 		v.FixedProxyID = v.Proxies[0].ID
 	}
-	if len(v.Proxies) == 0 && c.MaxAttempts == 0 {
-		v.MaxAttempts = 3
-	}
+	// 旧响应字段仍保留，但只投影唯一的新号模板，不能再成为隐式运行默认值。
+	template := ticketAccountSettingsView(ticketTemplateConfig(c), 0)
+	v.Models, v.TargetLength, v.DegradedSignalLength = template.Rules.Models, template.Rules.TargetLength, template.Rules.DegradedSignalLength
+	v.MaxAttempts, v.ProbeIntervalSeconds, v.RetryIntervalSeconds = template.Rules.MaxAttempts, template.Rules.ProbeIntervalSeconds, template.Rules.RetryIntervalSeconds
+	v.WatchdogMode = template.WatchdogMode
 	return v
 }
 
@@ -145,30 +147,6 @@ func codexTicketSettingsView(c *codexTicketConfig) CodexTicketSettings {
 func (s *CodexTicketService) updateProxySettings(c *codexTicketConfig, u CodexTicketSettingsUpdate) error {
 	if u.Revision != nil && *u.Revision != c.Generation {
 		return errors.New("票据配置已更新，请重新加载后再保存")
-	}
-	if u.Models != nil {
-		if len(*u.Models) < 1 || len(*u.Models) > 100 {
-			return errors.New("采集模型数量须为 1–100 个")
-		}
-		seen := map[string]bool{}
-		models := make([]string, 0, len(*u.Models))
-		for _, raw := range *u.Models {
-			model := strings.TrimSpace(raw)
-			if !ValidCodexTicketModelID(model) {
-				return errors.New("模型 ID 不能为空、包含空白/控制字符或超过 256 字节")
-			}
-			if !seen[model] {
-				seen[model] = true
-				models = append(models, model)
-			}
-		}
-		c.Models = models
-	}
-	if u.DegradedSignalLength != nil {
-		if *u.DegradedSignalLength != 0 && (*u.DegradedSignalLength < 6 || *u.DegradedSignalLength > 8192) {
-			return errors.New("降智信号长度须为 6–8192 字节，0 表示关闭提示")
-		}
-		c.DegradedSignalLength = *u.DegradedSignalLength
 	}
 	if u.Proxies != nil && (u.ClearProxy || (u.HarvestProxyURL != nil && strings.TrimSpace(*u.HarvestProxyURL) != "")) {
 		return errors.New("不能同时提交新代理列表与旧单代理字段")
@@ -250,25 +228,6 @@ func (s *CodexTicketService) updateProxySettings(c *codexTicketConfig, u CodexTi
 	}
 	if u.FixedProxyID != nil {
 		c.FixedProxyID = *u.FixedProxyID
-	}
-	for _, field := range []struct {
-		input     *int
-		target    *int
-		low, high int
-	}{{u.ProbeIntervalSeconds, &c.ProbeIntervalSeconds, 6, 3600}, {u.TargetLength, &c.TargetLength, 6, 8192}, {u.RetryIntervalSeconds, &c.RetryIntervalSeconds, 1, 30}} {
-		if field.input != nil {
-			if *field.input < field.low || *field.input > field.high {
-				return errors.New("探测间隔须为 6–3600 秒，合格长度 6–8192 字节，重试间隔 1–30 秒")
-			}
-			*field.target = *field.input
-		}
-	}
-	if u.MaxAttempts != nil {
-		// 不设置业务次数上限，仅排除非正数及浏览器无法精确表示的整数。
-		if *u.MaxAttempts < 1 || int64(*u.MaxAttempts) > 9007199254740991 {
-			return errors.New("最多尝试次数必须为可精确表示的正整数")
-		}
-		c.MaxAttempts = *u.MaxAttempts
 	}
 	if len(list) == 0 {
 		c.FixedProxyID = ""

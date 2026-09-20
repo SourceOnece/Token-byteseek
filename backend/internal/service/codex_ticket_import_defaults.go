@@ -28,9 +28,11 @@ func (s *OpenAIGatewayService) CodexTicketConfiguration() *CodexTicketService {
 func ticketTemplateConfig(cfg *codexTicketConfig) *codexTicketConfig {
 	copy := *cfg
 	copy.Accounts = map[string]codexTicketAccountConfig{}
+	template := codexTicketAccountConfig{}
 	if cfg.ImportDefaults != nil {
-		copy.Accounts["0"] = *cfg.ImportDefaults
+		template = *cfg.ImportDefaults
 	}
+	copy.Accounts["0"] = canonicalTicketAccount(cfg, template)
 	return &copy
 }
 
@@ -84,7 +86,7 @@ func (s *CodexTicketService) applyImportPatch(cfg *codexTicketConfig, p *CodexTi
 		}
 	}
 	a.Revision = uuid.NewString()
-	return a, nil
+	return canonicalTicketAccount(cfg, a), nil
 }
 
 func (s *CodexTicketService) UpdateImportDefaults(ctx context.Context, patch CodexTicketAccountPatch, revision *string) (CodexTicketAccountSettings, error) {
@@ -122,11 +124,7 @@ func (s *CodexTicketService) CreateAccountWithDefaults(ctx context.Context, acco
 	if err != nil {
 		return true, err
 	}
-	// 没有模板且调用方没有显式工作台配置时，保持旧 API 的创建路径，避免无关的
-	// 私有设置写入和多实例首次初始化竞争；前端工作台会显式提交内置默认值。
-	if cfg.ImportDefaults == nil && patch == nil {
-		return false, nil
-	}
+	// 所有新OAuth账号都固化模板；旧调用方缺省字段也不能创建会长期继承旧网关规则的新号。
 	a, err := s.applyImportPatch(cfg, patch)
 	if err != nil {
 		return true, err

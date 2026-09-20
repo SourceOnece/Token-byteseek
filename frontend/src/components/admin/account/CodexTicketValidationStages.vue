@@ -4,7 +4,7 @@
       <h4 class="text-base font-extrabold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.ticketWorkbench.stage.' + stage.name) }}</h4>
       <p class="break-all text-sm"><span class="mr-2 text-gray-500 dark:text-gray-400">{{ t('admin.accounts.ticketWorkbench.requestModel') }}</span><strong class="text-bh-blue dark:text-blue-300">{{ stage.request_model }}</strong></p>
       <p class="break-all text-sm"><span class="mr-2 text-gray-500 dark:text-gray-400">{{ t('admin.accounts.ticketWorkbench.responseModel') }}</span><strong :class="!stage.response_model ? 'text-gray-500 dark:text-gray-400' : stage.response_model === stage.request_model ? 'text-emerald-700 dark:text-emerald-400' : 'text-bh-red dark:text-red-400'">{{ stage.response_model || t('admin.accounts.ticketWorkbench.responseMissing') }}</strong></p>
-      <p class="border-t border-[color:var(--bh-ink)] pt-2 text-sm font-semibold">HTTP {{ stage.http_status || '—' }} · <strong :class="lengthColor(stage)" :data-testid="'ticket-stage-length-' + stage.name">{{ stage.state_length }} B</strong></p>
+      <p class="border-t border-[color:var(--bh-ink)] pt-2 text-sm font-semibold">HTTP {{ stage.http_status || '—' }} · <strong :class="lengthColor(stage)" :data-testid="'ticket-stage-length-' + stage.name">{{ stage.state_length >= 0 ? stage.state_length + ' B' : '—' }}</strong></p>
       <p v-if="stage.reason" class="text-sm font-bold" :class="stage.reason === 'length_signal' || stage.reason === 'model_mismatch' ? 'text-bh-red dark:text-red-400' : 'text-yellow-800 dark:text-bh-yellow'">{{ t('admin.accounts.ticketWorkbench.validationReason.' + stage.reason) }}</p>
     </section>
   </div>

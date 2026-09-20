@@ -81,10 +81,7 @@ func ticketConfigForAccount(cfg *codexTicketConfig, id int64) *codexTicketConfig
 	}
 	copy := *cfg
 	copy.accountID = id
-	override, ok := cfg.Accounts[strconv.FormatInt(id, 10)]
-	if !ok {
-		return &copy
-	}
+	override := canonicalTicketAccount(cfg, cfg.Accounts[strconv.FormatInt(id, 10)])
 	if override.Mode == "off" {
 		copy.Enabled = false
 	}
@@ -95,19 +92,12 @@ func ticketConfigForAccount(cfg *codexTicketConfig, id int64) *codexTicketConfig
 		copy.applyRules(*override.Rules)
 	}
 	copy.VerifiedFlow = override.VerifiedFlow
-	if override.ProxyCipher != "" {
-		copy.ProxyPolicy = nil
-		copy.Proxies = []codexTicketProxy{{ID: "account", Name: "Account", Cipher: override.ProxyCipher}}
-		copy.ProxyCipher, copy.FixedProxyID, copy.SelectionMode = override.ProxyCipher, "account", "fixed"
-	}
 	if override.ProxyPolicy != nil {
 		copy.applyProxyPolicy(override.ProxyPolicy)
-	} else if override.ProxyCipher == "" && cfg.ProxyPolicy != nil {
+	} else if cfg.ProxyPolicy != nil {
 		copy.applyProxyPolicy(cfg.ProxyPolicy)
 	}
-	if override.WatchdogMode != "" && override.WatchdogMode != "inherit" {
-		copy.WatchdogMode = override.WatchdogMode
-	}
+	copy.WatchdogMode = override.WatchdogMode
 	// 双链路模式包含异常自动废票重采，关闭后恢复原先保存的守护选择。
 	if copy.VerifiedFlow {
 		copy.WatchdogMode = "recover"
@@ -134,19 +124,10 @@ func (s *CodexTicketService) ticketConfigCurrent(cfg *codexTicketConfig) bool {
 }
 
 func ticketAccountSettingsView(cfg *codexTicketConfig, id int64) CodexTicketAccountSettings {
-	a := cfg.Accounts[strconv.FormatInt(id, 10)]
+	a := canonicalTicketAccount(cfg, cfg.Accounts[strconv.FormatInt(id, 10)])
 	mode, guard := a.Mode, a.WatchdogMode
-	if mode == "" {
-		mode = "inherit"
-	}
-	if guard == "" {
-		guard = "inherit"
-	}
 	effective := ticketConfigForAccount(cfg, id)
 	source := "gateway"
-	if a.ProxyCipher != "" {
-		source = "account"
-	}
 	if a.ProxyPolicy != nil {
 		source = "account"
 	}
@@ -265,7 +246,7 @@ func (s *CodexTicketService) UpdateAccountSettings(ctx context.Context, input Co
 	}
 	for _, id := range ids {
 		key := strconv.FormatInt(id, 10)
-		a := cfg.Accounts[key]
+		a := canonicalTicketAccount(cfg, cfg.Accounts[key])
 		if input.Revision != nil && (len(ids) != 1 || a.Revision != *input.Revision) {
 			return nil, errors.New("账号票据配置已变化，请重新加载")
 		}
@@ -304,6 +285,7 @@ func (s *CodexTicketService) UpdateAccountSettings(ctx context.Context, input Co
 			a.ProxyCipher = proxyCipher
 			a.ProxyPolicy = nil
 		}
+		a = canonicalTicketAccount(cfg, a)
 		if !reflect.DeepEqual(a, before) {
 			a.Revision = uuid.NewString()
 		}

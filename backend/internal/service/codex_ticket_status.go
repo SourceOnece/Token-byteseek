@@ -125,7 +125,19 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 	}
 	now := time.Now().UTC()
 	response := &CodexTicketStatusResponse{Enabled: cfg.Enabled, ServerTime: now, Items: make([]CodexTicketAccountStatus, 0, len(unique))}
-	response.Models = append([]string(nil), cfg.models()...)
+	// 顶层仅汇总本次实际账号模型，不再回传已不控制账号的旧全局模型列表。
+	seenModels := map[string]bool{}
+	for _, id := range unique {
+		if !codexTicketAccount(byID[id]) {
+			continue
+		}
+		for _, model := range ticketConfigForAccount(cfg, id).models() {
+			if !seenModels[model] {
+				response.Models = append(response.Models, model)
+				seenModels[model] = true
+			}
+		}
+	}
 	for _, id := range unique {
 		a := byID[id]
 		if a == nil {

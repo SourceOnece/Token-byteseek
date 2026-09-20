@@ -78,6 +78,9 @@ func setupTicketManualTest(t *testing.T, length int) (*CodexTicketService, *tick
 	r := &ticketHistoryStub{ticketAccountStub: &ticketAccountStub{accounts: []Account{a}}}
 	u := &ticketUpstreamStub{code: 200, ticket: "gAAAAA" + strings.Repeat("x", length-6)}
 	s.gateway = &OpenAIGatewayService{accountRepo: r, httpUpstream: u}
+	if length != 292 {
+		require.NoError(t, configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{TargetLength: &length}}))
+	}
 	return s, r, u
 }
 func manualRequest(s *CodexTicketService) CodexTicketManualRequest {
@@ -223,7 +226,7 @@ func TestCodexTicketManualHonorsBackoffAndKeepsOldTicket(t *testing.T) {
 func TestCodexTicketManualAttemptsCanExceedTen(t *testing.T) {
 	s, r, u := setupTicketManualTest(t, 292)
 	count := 12
-	_, err := s.Update(context.Background(), CodexTicketSettingsUpdate{MaxAttempts: &count})
+	err := configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{MaxAttempts: &count}})
 	require.NoError(t, err)
 	// 单模型顺序测试：第十二次才命中，配置有效时间使用合成未来时间避免启动自动 runner。
 	cfg := *s.config.Load()

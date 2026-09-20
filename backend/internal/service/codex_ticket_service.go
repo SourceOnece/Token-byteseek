@@ -35,6 +35,7 @@ type CodexTicketCache interface {
 }
 
 type codexTicketConfig struct {
+	LegacyAccountDefaults *codexTicketAccountConfig `json:"legacy_account_defaults,omitempty"`
 	ImportDefaults        *codexTicketAccountConfig `json:"import_defaults,omitempty"`
 	VerifiedFlow          bool                      `json:"-"`
 	FailureThreshold      int                       `json:"failure_threshold,omitempty"`
@@ -175,7 +176,9 @@ func validateCodexHarvestProxy(raw string) error {
 func (s *CodexTicketService) readConfig(ctx context.Context) (*codexTicketConfig, error) {
 	raw, err := s.settings.GetValue(ctx, codexTicketSettingsKey)
 	if errors.Is(err, ErrSettingNotFound) {
-		return &codexTicketConfig{loadedAt: time.Now()}, nil
+		cfg := &codexTicketConfig{loadedAt: time.Now()}
+		normalizeTicketConfiguration(cfg)
+		return cfg, nil
 	}
 	if err != nil {
 		return nil, errors.New("读取票据配置失败")
@@ -186,6 +189,7 @@ func (s *CodexTicketService) readConfig(ctx context.Context) (*codexTicketConfig
 	}
 	cfg.loadedAt = time.Now()
 	cfg.stored = &raw
+	normalizeTicketConfiguration(cfg)
 	return cfg, nil
 }
 
@@ -207,18 +211,38 @@ func (s *CodexTicketService) Update(ctx context.Context, input CodexTicketSettin
 	if input.Enabled != nil {
 		cfg.Enabled = *input.Enabled
 	}
-	if input.WatchdogMode != nil {
-		if !validTicketWatchdogMode(*input.WatchdogMode, false) {
+	if input.Revision != nil && *input.Revision != cfg.Generation {
+		return CodexTicketSettings{}, errors.New("票据配置已更新，请重新加载")
+	}
+	legacyRules := ticketLegacyTemplatePatch(input)
+	if legacyRules != nil {
+		if input.WatchdogMode != nil && !validTicketWatchdogMode(*input.WatchdogMode, false) {
 			return CodexTicketSettings{}, errors.New("无效的守护模式")
 		}
-		cfg.WatchdogMode = *input.WatchdogMode
+		template, e := s.applyImportPatch(cfg, legacyRules)
+		if e != nil {
+			return CodexTicketSettings{}, e
+		}
+		cfg.ImportDefaults = &template
 	}
-	if input.ProxyPolicy == nil {
-		if err = s.updateProxySettings(cfg, input); err != nil {
+	if input.ProxyPolicy == nil && ticketLegacyProxyPatch(input) {
+		// 兼容旧代理入参，但写入统一策略，不能留下与proxy_policy不一致的第二套值。
+		proxyInput := input
+		proxyInput.Models, proxyInput.TargetLength, proxyInput.DegradedSignalLength = nil, nil, nil
+		proxyInput.MaxAttempts, proxyInput.RetryIntervalSeconds, proxyInput.ProbeIntervalSeconds = nil, nil, nil
+		if err = s.updateProxySettings(cfg, proxyInput); err != nil {
 			return CodexTicketSettings{}, err
 		}
-	} else if input.Revision != nil && *input.Revision != cfg.Generation {
-		return CodexTicketSettings{}, errors.New("票据配置已更新，请重新加载")
+		policy := codexTicketProxyPolicy{Mode: cfg.mode(), DynamicSource: "template", ProxyProtocol: "http", Proxies: append([]codexTicketProxy(nil), cfg.Proxies...), FixedProxyID: cfg.FixedProxyID}
+		if cfg.ProxyPolicy != nil {
+			policy.ReuseSuccessfulIP = cfg.ProxyPolicy.ReuseSuccessfulIP
+			if policy.Mode == "dynamic" {
+				policy.DynamicSource = cfg.ProxyPolicy.DynamicSource
+				policy.ExtractionCipher = cfg.ProxyPolicy.ExtractionCipher
+				policy.ProxyProtocol = cfg.ProxyPolicy.ProxyProtocol
+			}
+		}
+		cfg.applyProxyPolicy(&policy)
 	}
 	if input.ProxyPolicy != nil {
 		policy, e := s.updateTicketProxyPolicy(cfg, input.ProxyPolicy)
@@ -231,7 +255,9 @@ func (s *CodexTicketService) Update(ctx context.Context, input CodexTicketSettin
 		return CodexTicketSettings{}, errors.New("开启前请先配置采集代理及 Redis")
 	}
 	// 每次保存换代；禁用再启用、换代理都不能复用旧一代票据或在途探测结果。
-	cfg.Generation = uuid.NewString()
+	if input.Enabled != nil || input.ProxyPolicy != nil || ticketLegacyProxyPatch(input) || legacyRules == nil {
+		cfg.Generation = uuid.NewString()
+	}
 	encoded, err := json.Marshal(cfg)
 	if err != nil {
 		return CodexTicketSettings{}, err

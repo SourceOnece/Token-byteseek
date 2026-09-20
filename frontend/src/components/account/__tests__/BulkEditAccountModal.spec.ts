@@ -175,6 +175,14 @@ describe('BulkEditAccountModal', () => {
     expect(w.emitted('close')).toHaveLength(1)
     w.unmount()
   })
+  it.each([{ parent_account_id:9 },{ credentials:{auth_mode:' AgentIdentity '} }])('批量混入不支持票据的账号时隐藏工作台：%s', async extra => {
+    const w=ticketModal()
+    vi.mocked(adminAPI.accounts.getById).mockImplementation(async id=>createAccount({id,platform:'openai',type:'oauth',...(id===2?extra:{})}))
+    await w.setProps({show:false});await w.setProps({show:true});await flushPromises()
+    expect(w.find('[data-testid="ticket-account-settings"]').exists()).toBe(false)
+    expect(ticketAccountAPI.get).not.toHaveBeenCalled()
+    w.unmount()
+  })
 
   it.each(['success', 'partial', 'ticket_failure'] as const)('混合批量保存只在两部分均成功时关闭：%s', async outcome => {
     const w = ticketModal()

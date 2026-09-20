@@ -8,6 +8,7 @@ describe('票据两阶段长度语义', () => {
   it.each([
     ['harvest', 332, 'text-emerald-700'], ['harvest', 312, 'text-bh-red'], ['harvest', 356, 'text-yellow-700'], ['harvest', 0, 'text-yellow-700'],
     ['verify', 332, 'text-emerald-700'], ['verify', 312, 'text-bh-red'], ['verify', 356, 'text-yellow-700'], ['verify', 0, 'text-emerald-700']
+    , ['verify', 8193, 'text-yellow-700'], ['verify', -1, 'text-yellow-700']
   ] as const)('%s 返回 %d B 使用 %s', (name, length, color) => {
     const stage: TicketValidationStage = { name, state_length: length, http_status: 200, request_model: 'gpt-6-astra', response_model: 'gpt-6-astra', complete: true }
     const w = mount(Stages, { props: { stages: [stage], target: 332, degradedSignalLength: 312 } })

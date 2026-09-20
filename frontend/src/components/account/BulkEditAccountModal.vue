@@ -1661,7 +1661,7 @@
         </div>
       </div>
       <!-- 工作台随原批量按钮统一保存，下层字段仍逐项勾选。 -->
-      <CodexTicketAccountSettings v-if="show && targetMode === 'selected' && targetSelectedPlatforms.length === 1 && targetSelectedPlatforms[0] === 'openai' && targetSelectedTypes.length === 1 && targetSelectedTypes[0] === 'oauth'" ref="ticketSettings" :ids="accountIds" :busy="submitting" bulk />
+      <CodexTicketAccountSettings v-if="show && targetMode === 'selected' && ticketTargetsEligible" ref="ticketSettings" :ids="accountIds" :busy="submitting" bulk />
       </fieldset>
     </form>
 
@@ -1957,6 +1957,7 @@ const enableTLSFingerprint = ref(false)
 // State - field values
 const submitting = ref(false)
 const ticketSettings = ref<InstanceType<typeof CodexTicketAccountSettings>>()
+const ticketTargetsEligible = ref(false)
 const showMixedChannelWarning = ref(false)
 const mixedChannelWarningMessage = ref('')
 const pendingUpdatesForConfirm = ref<Record<string, unknown> | null>(null)
@@ -2268,6 +2269,7 @@ const loadTLSFingerprintRouters = async () => {
 
 const loadSelectedAccountDefaults = async () => {
   const requestSeq = ++modelRestrictionPrefillSeq.value
+  ticketTargetsEligible.value = false
   if (!props.show || props.accountIds.length === 0) {
     return
   }
@@ -2278,6 +2280,7 @@ const loadSelectedAccountDefaults = async () => {
     if (requestSeq !== modelRestrictionPrefillSeq.value || !props.show) {
       return
     }
+    ticketTargetsEligible.value = accounts.length > 0 && accounts.every(account => account.platform === 'openai' && account.type === 'oauth' && account.parent_account_id == null && String(account.credentials?.auth_mode || '').trim().toLowerCase() !== 'agentidentity')
     if (!isModelRestrictionDraftPristine()) {
       return
     }

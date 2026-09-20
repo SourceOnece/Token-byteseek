@@ -71,7 +71,7 @@ func (u *ticketFairnessUpstream) Do(req *http.Request, _ string, _ int64, _ int)
 func TestCodexTicketHarvestContinuesAfterLastModel(t *testing.T) {
 	s, _, _ := setupTicketManualTest(t, 332)
 	models := []string{"model-a", "model-b", "model-c", "model-d", "model-e", "model-f"}
-	_, err := s.Update(context.Background(), CodexTicketSettingsUpdate{Models: &models})
+	err := configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{Models: &models}})
 	require.NoError(t, err)
 	u := &ticketFairnessUpstream{models: map[string]int{}}
 	s.gateway.httpUpstream = u
@@ -137,7 +137,7 @@ func TestCodexTicketCustomAstraProbeVersionFloor(t *testing.T) {
 		t.Run(model, func(t *testing.T) {
 			s, _, a := setupTicketProxyTest(t, "fixed", 1)
 			models := []string{model}
-			_, err := s.Update(context.Background(), CodexTicketSettingsUpdate{Models: &models})
+			err := configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{Models: &models}})
 			require.NoError(t, err)
 			u := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(200, 292, "")}}
 			s.gateway.httpUpstream = u

@@ -111,13 +111,15 @@ const rules = reactive<{ [K in keyof TicketRules]: TicketRules[K] | '' }>(defaul
 const ruleFields = reactive(Object.fromEntries(Object.keys(defaults()).map(k => [k, !props.bulk])) as Record<keyof TicketRules, boolean>)
 const fields = reactive({ mode: !props.bulk, guard: !props.bulk, proxy: false, flow: !props.bulk })
 const verifiedFlow = ref(false)
+const initialAnyVerifiedFlow = ref(false)
 const mixedFlow = ref(false), proxyMixed = ref(false)
 const bulkFlow = computed({ get: () => mixedFlow.value ? '' : String(verifiedFlow.value), set: (v: string) => { mixedFlow.value = v === ''; verifiedFlow.value = v === 'true' } })
 const flowOptions = computed(() => [{ value: 'true', label: t('common.enabled') }, { value: 'false', label: t('common.disabled') }])
-const mode = ref<TicketAccountSettings['mode'] | ''>('inherit'), guard = ref<TicketAccountSettings['watchdog_mode'] | ''>('observe')
+const mode = ref<TicketAccountSettings['mode'] | ''>('on'), guard = ref<TicketAccountSettings['watchdog_mode'] | ''>('observe')
 const enabled = computed({ get: () => mode.value === 'on', set: (value: boolean) => { mode.value = value ? 'on' : 'off' } })
 const bodyExpanded = computed(() => enabled.value && (!props.bulk || fields.mode))
-const dualFlowInForm = computed(() => verifiedFlow.value && (!props.bulk || fields.flow))
+// 未勾选修改双链路时按现有账号状态判断；混选只要仍有双链路账号就不提供无效守护选择。
+const dualFlowInForm = computed(() => props.bulk && !fields.flow ? initialAnyVerifiedFlow.value : verifiedFlow.value && !mixedFlow.value)
 // 显示新模式的有效守护，但不覆盖关闭开关后要恢复的旧选择。
 const displayGuard = computed({ get: () => dualFlowInForm.value ? 'recover' : guard.value, set: (value: string) => { if (!dualFlowInForm.value) guard.value = value as TicketAccountSettings['watchdog_mode'] } })
 const revision = ref(''), source = ref('gateway'), policy = ref<TicketProxyPolicy>()
@@ -128,7 +130,7 @@ const locked = computed(() => loading.value || saving.value || loadFailed.value 
 const hasChanges = computed(() => props.bulk ? fields.mode : Object.values(fields).some(Boolean) || Object.values(ruleFields).some(Boolean))
 let baseline: TicketAccountPatch = {}
 const modeOptions = computed(() => ['on', 'off'].map(value => ({ value, label: t('admin.accounts.ticketPolicy.modes.' + value) })))
-const guardOptions = computed(() => ['inherit', 'off', 'observe', 'recover_length', 'recover_model', 'recover'].map(value => ({ value, label: t('admin.accounts.ticketPolicy.guards.' + value) })))
+const guardOptions = computed(() => ['off', 'observe', 'recover_length', 'recover_model', 'recover'].map(value => ({ value, label: t('admin.accounts.ticketPolicy.guards.' + value) })))
 let controller: AbortController | undefined, sequence = 0
 let readyPromise = Promise.resolve()
 function load() {
@@ -157,9 +159,11 @@ async function loadData() {
     if (!data) throw new Error(t('common.error'))
     if (!data.rules || !Array.isArray(data.rules.models) || !data.proxy_policy || typeof data.verified_flow !== 'boolean') throw new Error(t('admin.settings.codexTicket.versionMismatch'))
     verifiedFlow.value = data.verified_flow
+    initialAnyVerifiedFlow.value = rows.some(row => row.verified_flow)
     globalEnabled.value = data.global_enabled !== false
-    // 保存原选择，双链路强制守护只用于显示；关闭开关不能把继承关系写成observe。
-    mode.value = data.mode === 'off' ? 'off' : 'on'; guard.value = data.watchdog_mode || 'inherit'; revision.value = data.revision; source.value = data.proxy_source
+    // 服务端先解析旧继承值；双链路显示强制守护，保存仍保留其下层明确选择。
+    if (data.watchdog_mode === 'inherit') throw new Error(t('admin.settings.codexTicket.versionMismatch'))
+    mode.value = data.mode === 'off' ? 'off' : 'on'; guard.value = data.watchdog_mode || 'observe'; revision.value = data.revision; source.value = data.proxy_source
     Object.assign(rules, data.rules || defaults()); modelText.value = Array.isArray(rules.models) ? rules.models.join('\n') : ''; policy.value = data.proxy_policy
     baseline = { mode: mode.value, watchdog_mode: guard.value, verified_flow: data.verified_flow, rules: { ...data.rules, models: [...data.rules.models] } }
     if (props.bulk) {

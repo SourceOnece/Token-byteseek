@@ -95,4 +95,14 @@ func TestCodexTicketFiltersRealDatabase(t *testing.T) {
 	count, err = unresolved.Count(ctx)
 	require.NoError(t, err)
 	require.Zero(t, count, "缺少解析结果不能放行全部账号")
+	// 旧号无独立规则时，静态兼容筛选与运行态一样读取冻结快照，不读新号模板。
+	normalized := fmt.Sprintf(`{"enabled":true,"target_length":292,"legacy_account_defaults":{"rules":{"target_length":444}},"import_defaults":{"rules":{"target_length":512}},"accounts":{"%d":{"mode":"on","rules":{"target_length":356}}}}`, b.ID)
+	require.NoError(t, settings.Set(ctx, "codex_ticket_runtime", normalized))
+	for filter, want := range map[string]int{"length:444": 1, "length:356": 1, "length:292": 0, "length:512": 0} {
+		query := client.Account.Query().Where(dbaccount.IDIn(a.ID, b.ID))
+		applyCodexTicketFilter(query, filter)
+		count, e := query.Count(ctx)
+		require.NoError(t, e)
+		require.Equal(t, want, count, filter)
+	}
 }

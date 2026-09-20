@@ -57,8 +57,8 @@ func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagno
 		if stage.HTTPStatus < 100 || stage.HTTPStatus > 599 {
 			stage.HTTPStatus = 0
 		}
-		if stage.StateLength < 0 || stage.StateLength > 8192 {
-			stage.StateLength = 0
+		if stage.StateLength < 0 {
+			stage.StateLength = -1 // 非法/缺失不能冒充复验无STATE的合法0字节。
 		}
 		if stage.TargetLength < 6 || stage.TargetLength > 8192 {
 			stage.TargetLength = 0

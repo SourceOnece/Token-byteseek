@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -43,7 +44,7 @@ func TestCodexTicketModelsAndSignalSettings(t *testing.T) {
 func TestCodexTicketConfiguredModelsManualProgressAndStatus(t *testing.T) {
 	s, r, u := setupTicketManualTest(t, 292)
 	models := []string{"gpt-6-astra", "gpt-5.6-sol", "custom-codex-model"}
-	_, err := s.Update(context.Background(), CodexTicketSettingsUpdate{Models: &models})
+	err := configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{Models: &models}})
 	require.NoError(t, err)
 	m, err := s.PrepareManualCollection(context.Background(), manualRequest(s))
 	require.NoError(t, err)
@@ -61,7 +62,7 @@ func TestCodexTicketConfiguredModelsManualProgressAndStatus(t *testing.T) {
 	require.False(t, s.Blocks(context.Background(), &a, "custom-codex-model"))
 	other := a
 	other.ID = 2
-	require.True(t, s.Blocks(context.Background(), &other, "custom-codex-model"))
+	require.False(t, s.Blocks(context.Background(), &other, "custom-codex-model"), "另一旧号未配置该模型，不因一号配置新增门控")
 	require.False(t, s.Blocks(context.Background(), &other, "not-configured"))
 	headers := http.Header{"Authorization": {"Bearer fake-token"}}
 	require.NoError(t, s.Apply(context.Background(), &a, "custom-codex-model", headers))
@@ -71,7 +72,7 @@ func TestCodexTicketConfiguredModelsManualProgressAndStatus(t *testing.T) {
 func TestCodexTicketConfiguredModelsAutomaticHarvest(t *testing.T) {
 	s, r, u := setupTicketManualTest(t, 292)
 	models := []string{"custom-codex-one", "custom-codex-two", "custom-codex-three"}
-	_, err := s.Update(context.Background(), CodexTicketSettingsUpdate{Models: &models})
+	err := configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{Models: &models}})
 	require.NoError(t, err)
 	s.harvest(context.Background())
 	require.Equal(t, int32(3), u.calls.Load())
@@ -92,8 +93,21 @@ func TestCodexTicketDegradedSignalClosesScheduling(t *testing.T) {
 			s, r, u := setupTicketManualTest(t, 292)
 			s.gateway.accountRepo = &ticketSchedulingRepo{ticketHistoryStub: r}
 			signal := length
-			_, err := s.Update(context.Background(), CodexTicketSettingsUpdate{DegradedSignalLength: &signal})
-			require.NoError(t, err)
+			if signal == 292 {
+				// 明确构造升级前两长度冲突的历史数据；现行账号和模板写入均应拒绝它。
+				cfg := *s.config.Load()
+				baseline := *cfg.LegacyAccountDefaults
+				rules := *baseline.Rules
+				rules.DegradedSignalLength = signal
+				baseline.Rules = &rules
+				cfg.LegacyAccountDefaults = &baseline
+				raw, e := json.Marshal(&cfg)
+				require.NoError(t, e)
+				require.NoError(t, s.settings.Set(context.Background(), codexTicketSettingsKey, string(raw)))
+				s.config.Store(&cfg)
+			} else {
+				require.NoError(t, configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{DegradedSignalLength: &signal}}))
+			}
 			u.ticket = "gAAAAA" + strings.Repeat("x", length-6)
 			m, err := s.PrepareManualCollection(context.Background(), manualRequest(s))
 			require.NoError(t, err)

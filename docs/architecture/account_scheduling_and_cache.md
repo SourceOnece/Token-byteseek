@@ -68,6 +68,8 @@ Codex 额度余量优先读取规范 `codex_5h_*` / `codex_7d_*`，历史 primar
 
 ## 候选筛选与评分
 
+bh.057票据运行配置统一为账号明确值；没有独立记录的旧号沿冻结的legacy_account_defaults快照，不跟随当前新号模板。旧守护inherit在读取边界解析，保留双链路强制前的选择；归一不改global/account revision及票据键、不写accounts或调度。新号复制导入模板，旧网关规则字段仅适配至模板，不再影响已有号。代理默认继承、缺票门控和全部原硬资格不变，详见[账号规则与覆盖](../interfaces/codex_ticket.md#account_overrides_watchdog)。
+
 bh.047可选双链路将票据绑定到账号当前业务代理和验证标记；关闭新模式保持旧键/原门控。新模式调度初筛缺少代理对象时按同ID补全，注入前再以200ms预算读取当前账号资格/凭据/出口，防旧快照或长会话沿旧代理使用票据。续采冷却不阻断仍有效旧验证票，明确异常废票或总调度关闭仍阻断；只有新模式WS走逐轮HTTP桥接，原资格/会话/限流/计费钩子保留。详见[双链路验证](../interfaces/codex_ticket.md#verified_flow)。
 
 bh.046把采集规则集中到账号，自动与手动采集均在本地资格副本中忽略`schedulable=false`，其它资格保留。发布前追加的手动/自动/业务守护长度联动：明确降智长度关调度，合格长度开，其它不变；采集开启须先存票，业务守护通过有界后台队列及实际票据/账号版本复核，数据库调度和outbox原子更新。题目满血开/降智关/失败保留不变，不将票据结果写为题目满血。冷却本身只门控对应模型；详见[长度调度](../interfaces/codex_ticket.md#length_scheduling)及[采集冷却](../interfaces/codex_ticket.md#collection_policy)。

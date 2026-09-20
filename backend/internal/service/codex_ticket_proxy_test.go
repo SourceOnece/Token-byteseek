@@ -25,6 +25,7 @@ func setupTicketProxyTest(t *testing.T, mode string, attempts int) (*CodexTicket
 	require.NoError(t, err)
 	a := ticketAccount()
 	s.gateway = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a}}}
+	require.NoError(t, configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{MaxAttempts: &attempts, RetryIntervalSeconds: &retry, ProbeIntervalSeconds: &interval}}))
 	return s, cache, &a
 }
 
@@ -109,7 +110,7 @@ func TestCodexTicketProxyValidationAndSelection(t *testing.T) {
 	p, _ = selectCodexTicketProxy(&copy, list[0].ID, true)
 	require.Equal(t, list[1].ID, p.ID)
 	for _, bad := range []CodexTicketSettingsUpdate{
-		{MaxAttempts: ticketInt(0)}, {TargetLength: ticketInt(5)}, {ProbeIntervalSeconds: ticketInt(5)}, {RetryIntervalSeconds: ticketInt(0)},
+		{MaxAttempts: ticketInt(-1)}, {TargetLength: ticketInt(5)}, {ProbeIntervalSeconds: ticketInt(5)}, {RetryIntervalSeconds: ticketInt(0)},
 		{Proxies: &[]CodexTicketProxyUpdate{{ID: "missing", Name: "X"}}}, {Proxies: &[]CodexTicketProxyUpdate{{ID: "legacy", Name: "A"}, {ID: "legacy", Name: "A"}}},
 		{Proxies: &[]CodexTicketProxyUpdate{{Name: "", URL: "http://proxy"}}}, {Proxies: &[]CodexTicketProxyUpdate{}},
 	} {

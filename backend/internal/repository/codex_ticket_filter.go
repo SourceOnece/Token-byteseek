@@ -61,7 +61,7 @@ func applyCodexTicketFilter(q *dbent.AccountQuery, filter string, matched ...[]i
 			expr = mode + "='" + filter + "'"
 		default:
 			length, _ := strconv.Atoi(strings.TrimPrefix(filter, "length:"))
-			expr = fmt.Sprintf("COALESCE(%s->'rules'->>'target_length',%s->>'target_length','292')='%d'", ac, root, length)
+			expr = fmt.Sprintf("COALESCE(%s->'rules'->>'target_length',%s->'legacy_account_defaults'->'rules'->>'target_length',%s->>'target_length','292')='%d'", ac, root, root, length)
 		}
 		s.Where(entsql.ExprP(expr))
 	})
