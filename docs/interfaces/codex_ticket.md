@@ -25,6 +25,8 @@ bh.055 按最新需求恢复工作台整张硬阴影卡片、摘要及规则分�
 
 OpenAI OAuth 导入默认值在同一页的“票据采集工作台”编辑，随页面原“保存”提交；读取/保存仍使用`GET/PUT /api/v1/admin/accounts/codex-ticket-import-defaults`。它只作为今后新建 OAuth 账号的模板，重导入已存在账号不覆盖其票据。新增账号窗口会先等待模板读取完成，再将当前工作台快照随创建请求提交，避免异步加载时误用内置默认值。
 
+bh.059新增账号工作台只在第一步“授权方式”显示，第二步“OpenAI账户授权”隐藏同一已挂载实例，不重新读取模板、不丢失草稿；返回第一步仍可修改。进入授权前等待模板并校验票据，错误留在第一步处理。授权/导入创建时继续由ticketCreationPatch读取前一步草稿，原codex_ticket字段及后端原子创建保持。
+
 采集代理行可以选择代理管理中已有的活动代理（只保存管理代理 ID，运行时重新读取地址、状态和过期时间），也可以手动填写地址；同一行不能同时配置两者。管理代理被停用、删除或过期时，采集会失败并记录原因，不会悄悄直连。固定、轮换和动态取号的规则仍由账号覆盖优先、网关默认兜底。
 
 仅支持独立OpenAI OAuth，不包含影子、Agent Identity和API Key。GET `/api/v1/admin/accounts/:id/codex-ticket-settings`返回脱敏有效规则；PUT `/api/v1/admin/accounts/codex-ticket-settings`接受1–500个去重ID及partial patch，先验证整批再单次保存；不支持账号使整批拒绝。单号revision与数据库完整旧值CAS共同防旧表单/多实例覆盖，冲突需重载，不悄悄重试覆盖别人。

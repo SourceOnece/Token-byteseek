@@ -3896,7 +3896,8 @@
 
     </div>
 
-    <CodexTicketAccountSettings v-if="show && isOpenAIOAuthImportDefaultsTarget" ref="ticketDraft" draft class="mt-5" />
+    <!-- 仅第一步编辑票据；授权时保留同一草稿，返回和最终创建不能重置为模板。 -->
+    <CodexTicketAccountSettings v-if="show && isOpenAIOAuthImportDefaultsTarget" v-show="step === 1" ref="ticketDraft" draft class="mt-5" />
 
     <template #footer>
       <div v-if="step === 1" class="flex justify-end gap-3">
@@ -6383,9 +6384,22 @@ const handleSubmit = async () => {
   }
   // For OAuth-based type, handle OAuth flow (goes to step 2)
   if (isOAuthFlow.value) {
+    if (submitting.value) return
     if (!isGrokSSOInputMethod.value && !form.name.trim()) {
       appStore.showError(t('admin.accounts.pleaseEnterAccountName'))
       return
+    }
+    // 授权步骤隐藏工作台，先在当前可编辑步骤校验，避免创建时才报隐藏字段错误。
+    if (isOpenAIOAuthImportDefaultsTarget.value) {
+      submitting.value = true
+      try {
+        await ticketCreationPatch()
+      } catch (error) {
+        appStore.showError(error instanceof Error ? error.message : t('common.error'))
+        return
+      } finally {
+        submitting.value = false
+      }
     }
     const canContinue = await ensureAntigravityMixedChannelConfirmed(async () => {
       step.value = 2

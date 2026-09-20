@@ -62,6 +62,7 @@ vi.mock('vue-i18n', async () => {
 })
 
 import CreateAccountModal from '../CreateAccountModal.vue'
+import CodexTicketAccountSettings from '@/components/admin/account/CodexTicketAccountSettings.vue'
 
 const BaseDialogStub = defineComponent({
   name: 'BaseDialog',
@@ -116,6 +117,7 @@ const OAuthAuthorizationFlowStub = defineComponent({
     initialInputMethod: String,
   },
   data: () => ({ inputMethod: 'manual' }),
+  methods: { reset() { this.inputMethod = 'manual' } },
   emits: ['import-codex-session', 'import-codex-pat'],
   template: `
     <div>
@@ -177,6 +179,12 @@ async function selectButtonByText(wrapper: ReturnType<typeof mountModal>, text: 
   await button?.trigger('click')
 }
 
+// 下一步会等待票据模板并校验，测试同样等待异步步骤完成。
+async function submitForm(wrapper: ReturnType<typeof mountModal>) {
+  await wrapper.get('form#create-account-form').trigger('submit.prevent')
+  await flushPromises()
+}
+
 async function submitApiKeyAccount(platform: 'openai' | 'anthropic') {
   const wrapper = mountModal()
   await selectButtonByText(wrapper, platform === 'openai' ? 'OpenAI' : 'admin.accounts.claudeConsole')
@@ -185,7 +193,7 @@ async function submitApiKeyAccount(platform: 'openai' | 'anthropic') {
   }
   await wrapper.get('form#create-account-form input[type="text"]').setValue(`${platform} account`)
   await wrapper.get('form#create-account-form input[type="password"]').setValue('test-api-key')
-  await wrapper.get('form#create-account-form').trigger('submit.prevent')
+  await submitForm(wrapper)
   await flushPromises()
   return wrapper
 }
@@ -194,7 +202,7 @@ async function openCodexImportStep() {
   const wrapper = mountModal()
   await selectButtonByText(wrapper, 'OpenAI')
   await wrapper.get('form#create-account-form input[type="text"]').setValue('Codex import')
-  await wrapper.get('form#create-account-form').trigger('submit.prevent')
+  await submitForm(wrapper)
   return wrapper
 }
 
@@ -208,6 +216,48 @@ function createDeferred<T>() {
 }
 
 describe('CreateAccountModal OpenAI account options', () => {
+  it.each([
+    ['Session', 'import-codex-session', importCodexSessionMock],
+    ['PAT', 'import-codex-pat', createOpenAICodexPATMock],
+  ])('工作台只在第一步显示，往返保留草稿并提交到%s创建入口', async (_name, trigger, api) => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenAI')
+    await flushPromises()
+    const workbench = wrapper.getComponent(CodexTicketAccountSettings)
+    const element = workbench.element
+    expect(workbench.isVisible()).toBe(true)
+    await wrapper.get('[data-testid="ticket-rule-target_length"]').setValue('356')
+    await wrapper.get('form#create-account-form input[type="text"]').setValue('Synthetic Codex')
+    await submitForm(wrapper)
+    expect(wrapper.findAllComponents(CodexTicketAccountSettings)).toHaveLength(1)
+    expect(wrapper.getComponent(CodexTicketAccountSettings).isVisible()).toBe(false)
+    expect(wrapper.getComponent(CodexTicketAccountSettings).element).toBe(element)
+    await selectButtonByText(wrapper, 'common.back')
+    await flushPromises()
+    expect(wrapper.getComponent(CodexTicketAccountSettings).isVisible()).toBe(true)
+    expect((wrapper.get('[data-testid="ticket-rule-target_length"]').element as HTMLInputElement).value).toBe('356')
+    await submitForm(wrapper)
+    await wrapper.get(`[data-testid="${trigger}"]`).trigger('click')
+    await flushPromises()
+    expect(api.mock.calls[0][0].codex_ticket.rules.target_length).toBe(356)
+    wrapper.unmount()
+  })
+  it('第一步票据无效时不进入授权，修正后才进入', async () => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenAI')
+    await flushPromises()
+    await wrapper.get('form#create-account-form input[type="text"]').setValue('Synthetic Codex')
+    await wrapper.get('[data-testid="ticket-rule-target_length"]').setValue('1')
+    await submitForm(wrapper)
+    expect(wrapper.find('form#create-account-form').exists()).toBe(true)
+    expect(wrapper.getComponent(CodexTicketAccountSettings).isVisible()).toBe(true)
+    expect(wrapper.findComponent(OAuthAuthorizationFlowStub).exists()).toBe(false)
+    await wrapper.get('[data-testid="ticket-rule-target_length"]').setValue('332')
+    await submitForm(wrapper)
+    expect(wrapper.findComponent(OAuthAuthorizationFlowStub).exists()).toBe(true)
+    expect(wrapper.getComponent(CodexTicketAccountSettings).isVisible()).toBe(false)
+    wrapper.unmount()
+  })
   beforeEach(() => {
     createAccountMock.mockReset().mockResolvedValue({ id: 42, platform: 'openai', type: 'apikey' })
     importCodexSessionMock.mockReset().mockResolvedValue({
@@ -255,7 +305,7 @@ describe('CreateAccountModal OpenAI account options', () => {
     await wrapper.get('form#create-account-form input[type="text"]').setValue('openai account')
     await wrapper.get('form#create-account-form input[type="password"]').setValue('test-api-key')
     await wrapper.get('[data-testid="upstream-request-id-header"]').setValue('  X-Oneapi-Request-Id  ')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await flushPromises()
 
     expect(createAccountMock).toHaveBeenCalledTimes(1)
@@ -275,7 +325,7 @@ describe('CreateAccountModal OpenAI account options', () => {
     await wrapper.get('form#create-account-form input[type="password"]').setValue('relay-api-key')
     // 上面的选择器命中 API Key 输入框；钱包 PAT 单独使用 data-testid 覆盖其值。
     await wrapper.get('[data-testid="upstream-usage-wallet-access-token"]').setValue('wallet-pat')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await flushPromises()
 
     const payload = createAccountMock.mock.calls[0]?.[0]
@@ -311,7 +361,7 @@ describe('CreateAccountModal OpenAI account options', () => {
     await toggle.trigger('click')
     await wrapper.get('form#create-account-form input[type="text"]').setValue('Images account')
     await wrapper.get('form#create-account-form input[type="password"]').setValue('test-api-key')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await flushPromises()
     expect(createAccountMock.mock.calls[0]?.[0]?.extra?.images_url_to_b64_json).toBe(true)
   })
@@ -326,7 +376,7 @@ describe('CreateAccountModal OpenAI account options', () => {
     await wrapper.get('[data-testid="openai-text-route-mode-select"]').setValue('force_chat_completions')
     await wrapper.get('form#create-account-form input[type="text"]').setValue('OpenAI account')
     await wrapper.get('form#create-account-form input[type="password"]').setValue('test-api-key')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await flushPromises()
 
     const payload = createAccountMock.mock.calls[0]?.[0]
@@ -366,7 +416,7 @@ describe('CreateAccountModal OpenAI account options', () => {
     await wrapper.get('form#create-account-form input[type="text"]').setValue('Kimi adaptive')
     await wrapper.get('form#create-account-form input[type="password"]').setValue('sk-kimi')
 
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await flushPromises()
 
     expect(createAccountMock).toHaveBeenCalledTimes(1)
@@ -419,7 +469,7 @@ describe('CreateAccountModal OpenAI account options', () => {
     await wrapper.get('form#create-account-form input[type="text"]').setValue('MiniMax test')
     await wrapper.get('form#create-account-form input[type="password"]').setValue('sk-minimax-test')
     await wrapper.get('[data-testid="cn-adaptive-base-url-responses"]').setValue('https://relay.example/custom/responses')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await flushPromises()
     expect(createAccountMock).toHaveBeenCalledTimes(1)
     expect(createAccountMock.mock.calls[0]?.[0]).toMatchObject({
@@ -438,7 +488,7 @@ describe('CreateAccountModal OpenAI account options', () => {
     await wrapper.get('form#create-account-form input[type="text"]').setValue('Kimi coding')
     await wrapper.get('form#create-account-form input[type="password"]').setValue('sk-kimi-coding')
 
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await flushPromises()
 
     expect(createAccountMock).toHaveBeenCalledTimes(1)
@@ -478,7 +528,7 @@ describe('CreateAccountModal OpenAI account options', () => {
     await wrapper.get('form#create-account-form input[type="password"]').setValue('sk-opencode-test')
     await wrapper.get('[data-testid="cn-adaptive-base-url-anthropic"]').setValue('https://relay.example/proxy/v1')
     wrapper.getComponent({ name: 'OpenCodeGoProtocolRulesEditor' }).vm.$emit('update:rows', [])
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await flushPromises()
     expect(createAccountMock).toHaveBeenCalledTimes(1)
     expect(createAccountMock.mock.calls[0]?.[0]).toMatchObject({
@@ -491,7 +541,7 @@ describe('CreateAccountModal OpenAI account options', () => {
     const wrapper = mountModal()
     await selectButtonByText(wrapper, 'OpenAI')
     await wrapper.get('form#create-account-form input[type="text"]').setValue('OpenAI account')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
 
     const flow = wrapper.getComponent(OAuthAuthorizationFlowStub)
     expect(flow.props('showManualOption')).toBe(true)
@@ -548,7 +598,7 @@ describe('CreateAccountModal OpenAI account options', () => {
     await selectButtonByText(wrapper, 'OpenAI')
     await wrapper.get('[data-testid="set-openai-model-whitelist"]').trigger('click')
     await wrapper.get('form#create-account-form input[type="text"]').setValue('Codex import')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await wrapper.get(`[data-testid="${triggerTestId}"]`).trigger('click')
     await flushPromises()
 
@@ -564,7 +614,7 @@ describe('CreateAccountModal OpenAI account options', () => {
     await selectButtonByText(wrapper, 'OpenAI')
     await wrapper.get('[data-testid="clear-openai-model-whitelist"]').trigger('click')
     await wrapper.get('form#create-account-form input[type="text"]').setValue('Codex import')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await wrapper.get('[data-testid="import-codex-session"]').trigger('click')
     await flushPromises()
 
@@ -607,7 +657,7 @@ describe('CreateAccountModal OpenAI account options', () => {
     expect(modeSelect.element.value).toBe('off')
 
     await wrapper.get('form#create-account-form input[type="text"]').setValue('Codex import')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await wrapper.get('[data-testid="import-codex-session"]').trigger('click')
     await flushPromises()
 
@@ -620,7 +670,7 @@ describe('CreateAccountModal OpenAI account options', () => {
 
     await wrapper.get<HTMLSelectElement>('[data-testid="create-codex-fingerprint-mode-select"]').setValue('session')
     await wrapper.get('form#create-account-form input[type="text"]').setValue('Codex import')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await wrapper.get('[data-testid="import-codex-session"]').trigger('click')
     await flushPromises()
 
@@ -646,13 +696,13 @@ describe('CreateAccountModal Gemini API Key provider source', () => {
 
     await wrapper.get('form#create-account-form input[type="text"]').setValue('Third-party Gemini')
     await wrapper.get('form#create-account-form input[type="password"]').setValue('provider-key')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await flushPromises()
 
     expect(createAccountMock).not.toHaveBeenCalled()
 
     await wrapper.get<HTMLInputElement>('[data-testid="create-account-base-url"]').setValue('https://provider.example.test')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await submitForm(wrapper)
     await flushPromises()
 
     expect(createAccountMock).toHaveBeenCalledTimes(1)
