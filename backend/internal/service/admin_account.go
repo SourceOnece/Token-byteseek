@@ -23,6 +23,10 @@ import (
 
 // Account management implementations
 func (s *adminServiceImpl) ListAccounts(ctx context.Context, page, pageSize int, platform, accountType, status, search string, groupID int64, privacyMode string, sortBy, sortOrder string) ([]Account, int64, error) {
+	ctx, err := s.resolveActualTicketFilter(ctx, platform, accountType, status, search, groupID, privacyMode)
+	if err != nil {
+		return nil, 0, err
+	}
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	accounts, result, err := s.accountRepo.ListWithFilters(ctx, params, platform, accountType, status, search, groupID, privacyMode)
 	if err != nil {
@@ -35,6 +39,10 @@ func (s *adminServiceImpl) ListAccounts(ctx context.Context, page, pageSize int,
 func (s *adminServiceImpl) ListAccountsForSchedulerScoreFilter(ctx context.Context, platform, accountType, status, search string, groupID int64, privacyMode string) ([]Account, error) {
 	if s == nil || s.accountRepo == nil {
 		return nil, nil
+	}
+	ctx, err := s.resolveActualTicketFilter(ctx, platform, accountType, status, search, groupID, privacyMode)
+	if err != nil {
+		return nil, err
 	}
 	return s.accountRepo.ListAllWithFilters(ctx, platform, accountType, status, search, groupID, privacyMode)
 }

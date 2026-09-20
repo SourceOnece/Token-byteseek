@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import AccountTableFilters from '../AccountTableFilters.vue'
 import type { AdminGroup } from '@/types'
@@ -60,6 +60,40 @@ function group(overrides: Partial<AdminGroup>): AdminGroup {
 }
 
 describe('AccountTableFilters', () => {
+  afterEach(() => vi.useRealTimers())
+  it('实际长度留空起步，防抖自动筛选，清空取消，不再展示合格长度预设', async () => {
+    vi.useFakeTimers()
+    const wrapper=mount(AccountTableFilters,{props:{searchQuery:'',filters:{ticket_filter:'on'}},global:{stubs:{Select:SelectStub,SearchInput:true}}})
+    await wrapper.get('[data-testid="account-filters-toggle"]').trigger('click')
+    const input=wrapper.get('[data-testid="ticket-actual-length-filter"]')
+    expect((input.element as HTMLInputElement).value).toBe('')
+    const options=wrapper.findAllComponents(SelectStub).find(s=>s.attributes('data-testid')==='ticket-type-filter')!.props('options') as {value:string}[]
+    expect(options.some(o=>o.value.startsWith('length:'))).toBe(false)
+    await input.setValue('356')
+    expect(wrapper.emitted('update:filters')).toBeUndefined()
+    await vi.advanceTimersByTimeAsync(449)
+    expect(wrapper.emitted('update:filters')).toBeUndefined()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(wrapper.emitted('update:filters')?.at(-1)).toEqual([{ticket_filter:'on,actual_length:356'}])
+    await wrapper.setProps({filters:{ticket_filter:'on,actual_length:356'}})
+    await input.setValue('3');await vi.advanceTimersByTimeAsync(500)
+    expect(wrapper.emitted('update:filters')).toHaveLength(1)
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    await input.setValue('');await vi.advanceTimersByTimeAsync(500)
+    expect(wrapper.emitted('update:filters')?.at(-1)).toEqual([{ticket_filter:'on'}])
+    wrapper.unmount()
+  })
+  it('卸载取消待触发筛选，旧目标长度不能冒充实际长度', async () => {
+    vi.useFakeTimers()
+    const updates=vi.fn()
+    const wrapper=mount(AccountTableFilters,{props:{searchQuery:'',filters:{ticket_filter:'length:356'},'onUpdate:filters':updates},global:{stubs:{Select:SelectStub,SearchInput:true}}})
+    expect(wrapper.emitted('update:filters')?.[0]).toEqual([{ticket_filter:''}])
+    await wrapper.setProps({filters:{ticket_filter:''}})
+    await wrapper.get('[data-testid="account-filters-toggle"]').trigger('click')
+    await wrapper.get('[data-testid="ticket-actual-length-filter"]').setValue('332')
+    wrapper.unmount();await vi.advanceTimersByTimeAsync(500)
+    expect(updates).toHaveBeenCalledOnce()
+  })
   it('检测筛选保留为独立字段，重置可清空', async () => {
     const wrapper = mount(AccountTableFilters, { props: { searchQuery: '', filters: { quality_status: 'full' } }, global: { stubs: { Select: SelectStub, SearchInput: true } } })
     await wrapper.get('[data-testid="account-filters-toggle"]').trigger('click')

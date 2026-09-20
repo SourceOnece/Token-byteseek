@@ -80,4 +80,19 @@ func TestCodexTicketFiltersRealDatabase(t *testing.T) {
 		}
 	}
 	require.False(t, service.ValidCodexTicketFilter("length:1 OR 1=1"))
+	// 实际长度只使用服务端解析出的匹配集合，并且先筛选再Count/Offset。
+	q := client.Account.Query().Where(dbaccount.IDIn(a.ID, b.ID))
+	applyCodexTicketFilter(q, "on,actual_length:332", []int64{a.ID, b.ID})
+	count, err := q.Clone().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+	items, err := q.Limit(1).All(ctx)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Equal(t, b.ID, items[0].ID)
+	unresolved := client.Account.Query().Where(dbaccount.IDIn(a.ID, b.ID))
+	applyCodexTicketFilter(unresolved, "actual_length:332")
+	count, err = unresolved.Count(ctx)
+	require.NoError(t, err)
+	require.Zero(t, count, "缺少解析结果不能放行全部账号")
 }

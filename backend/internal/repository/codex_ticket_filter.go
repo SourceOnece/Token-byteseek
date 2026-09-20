@@ -5,18 +5,41 @@ import (
 	"fmt"
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	dbaccount "github.com/TokenFlux/TokenRouter/ent/account"
+	"github.com/TokenFlux/TokenRouter/internal/service"
+	"github.com/lib/pq"
 	"strconv"
 	"strings"
 )
 
 // 数据库私有设置只用于静态筛选，Count和分页前生效，不将当前页状态误当全池结果。
-func applyCodexTicketFilter(q *dbent.AccountQuery, filter string) {
+func applyCodexTicketFilter(q *dbent.AccountQuery, filter string, matched ...[]int64) {
 	if filter == "" {
 		return
 	}
+	static, actual, valid := service.ParseCodexTicketFilter(filter)
+	if !valid {
+		q.Where(dbaccount.IDLT(0))
+		return
+	}
+	if actual > 0 {
+		if len(matched) == 0 || len(matched[0]) == 0 {
+			q.Where(dbaccount.IDLT(0))
+			return
+		}
+		// 使用单个数组参数，避免大号池命中ID过多触及PostgreSQL参数数量上限。
+		q.Where(func(s *entsql.Selector) {
+			s.Where(entsql.P(func(b *entsql.Builder) {
+				b.Ident(s.C("id")).WriteString(" = ANY(").Arg(pq.Array(matched[0])).WriteString("::bigint[])")
+			}))
+		})
+	}
 	q.Where(dbaccount.PlatformEQ("openai"), dbaccount.TypeEQ("oauth"), dbaccount.ParentAccountIDIsNil())
+	filter = static
 	q.Where(func(s *entsql.Selector) {
 		s.Where(entsql.ExprP(fmt.Sprintf("LOWER(BTRIM(COALESCE(%s->>'auth_mode',''))) <> 'agentidentity'", s.C("credentials"))))
+		if filter == "" {
+			return
+		}
 		root := "COALESCE((SELECT value::jsonb FROM settings WHERE key='codex_ticket_runtime'),'{}'::jsonb)"
 		ac := fmt.Sprintf("(%s->'accounts'->(%s)::text)", root, s.C("id"))
 		on := fmt.Sprintf("COALESCE(%s->>'mode','inherit') <> 'off'", ac)

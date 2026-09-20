@@ -73,10 +73,15 @@
             <label class="input-label">{{ t('admin.accounts.columns.groups') }}</label>
             <Select :model-value="filters.group" class="w-full" :options="gOpts" searchable @update:model-value="updateGroup" @change="$emit('change')" />
           </div>
-          <div class="sm:col-span-2 space-y-2">
+          <div>
             <label class="input-label">{{ t('admin.accounts.ticketWorkbench.filter') }}</label>
-            <Select :model-value="filters.ticket_filter || ''" :options="ticketOptions" data-testid="ticket-type-filter" @update:model-value="value => emit('update:filters', { ...filters, ticket_filter: value })" @change="$emit('change')" />
-            <input type="number" min="6" max="8192" class="input w-full" :placeholder="t('admin.accounts.ticketWorkbench.filterLength')" :aria-label="t('admin.accounts.ticketWorkbench.filterLength')" :value="String(filters.ticket_filter || '').startsWith('length:') ? String(filters.ticket_filter).slice(7) : ''" @change="setTicketLength" />
+            <Select v-model="ticketModeDraft" :options="ticketOptions" data-testid="ticket-type-filter" @change="applyTicketFilter" />
+          </div>
+          <div>
+            <label for="ticket-actual-length-filter" class="input-label">{{ t('admin.accounts.ticketWorkbench.actualLength') }}</label>
+            <input id="ticket-actual-length-filter" v-model="ticketLengthDraft" type="number" min="6" max="8192" step="1" class="input w-full" :placeholder="t('admin.accounts.ticketWorkbench.filterLength')" :aria-invalid="ticketLengthInvalid" data-testid="ticket-actual-length-filter" @input="scheduleTicketFilter" @keydown.enter.prevent="applyTicketFilter" />
+            <p v-if="ticketLengthInvalid" role="alert" class="input-hint text-bh-red dark:text-red-400">{{ t('admin.accounts.ticketWorkbench.invalidActualLength') }}</p>
+            <p v-else class="input-hint">{{ t('admin.accounts.ticketWorkbench.actualLengthHint') }}</p>
           </div>
         </div>
       </div>
@@ -85,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Select from '@/components/common/Select.vue'
 import SearchInput from '@/components/common/SearchInput.vue'
@@ -100,8 +105,35 @@ const { t } = useI18n()
 const showFilters = ref(false)
 const filterPanelRef = ref<HTMLElement | null>(null)
 const filterKeys = ['platform', 'type', 'status', 'privacy_mode', 'group', 'quality_status', 'ticket_filter'] as const
-const ticketOptions = computed(() => ['', 'on', 'off', 'configured', 'proxy_account', 'proxy_gateway', 'fixed', 'rotate', 'dynamic', 'length:292', 'length:332', 'length:356'].map(value => ({ value, label: value.startsWith('length:') ? t('admin.accounts.ticketWorkbench.lengthLabel', { length: value.slice(7) }) : t('admin.accounts.ticketWorkbench.filters.' + (value || 'all')) })))
-function setTicketLength(event: Event) { const value = Number((event.target as HTMLInputElement).value); if (Number.isInteger(value) && value >= 6 && value <= 8192) { emit('update:filters', { ...props.filters, ticket_filter: 'length:' + value }); emit('change') } }
+const ticketModes = ['', 'on', 'off', 'configured', 'proxy_account', 'proxy_gateway', 'fixed', 'rotate', 'dynamic']
+const ticketOptions = computed(() => ticketModes.map(value => ({ value, label: t('admin.accounts.ticketWorkbench.filters.' + (value || 'all')) })))
+const ticketModeDraft = ref(''), ticketLengthDraft = ref<string | number>('')
+let ticketTimer: ReturnType<typeof setTimeout> | undefined
+const ticketLengthInvalid = computed(() => {
+  const raw = String(ticketLengthDraft.value).trim(), value = Number(raw)
+  return raw !== '' && (!/^\d+$/.test(raw) || !Number.isInteger(value) || value < 6 || value > 8192)
+})
+// 两列合并为兼容的原ticket_filter参数；只新增实际长度语法，不把旧目标值改解读成实际值。
+watch(() => props.filters.ticket_filter, raw => {
+  clearTimeout(ticketTimer)
+  const parts = String(raw || '').split(',')
+  ticketModeDraft.value = parts.find(value => ticketModes.includes(value)) || ''
+  ticketLengthDraft.value = parts.find(value => value.startsWith('actual_length:'))?.slice(14) || ''
+  if (String(raw || '').startsWith('length:')) {
+    emit('update:filters', { ...props.filters, ticket_filter: '' })
+    emit('change')
+  }
+}, { immediate: true })
+function applyTicketFilter() {
+  clearTimeout(ticketTimer)
+  if (ticketLengthInvalid.value) return
+  const raw = String(ticketLengthDraft.value).trim()
+  const value = [ticketModeDraft.value, raw ? 'actual_length:' + Number(raw) : ''].filter(Boolean).join(',')
+  if (value === String(props.filters.ticket_filter || '')) return
+  emit('update:filters', { ...props.filters, ticket_filter: value })
+  emit('change')
+}
+function scheduleTicketFilter() { clearTimeout(ticketTimer); ticketTimer = setTimeout(applyTicketFilter, 450) }
 const qualityOptions = computed(() => [
   { value: '', label: t('admin.accounts.quality.allResults') },
   ...['full', 'degraded', 'failed', 'untested', 'cancelled', 'stale'].map(value => ({ value, label: value === 'untested' ? t('admin.accounts.quality.untested') : t(`admin.accounts.quality.status.${value}`) }))
@@ -116,6 +148,8 @@ const updatePrivacyMode = (value: string | number | boolean | null) => { emit('u
 const updateGroup = (value: string | number | boolean | null) => { emit('update:filters', { ...props.filters, group: value }) }
 
 const clearFilters = () => {
+  clearTimeout(ticketTimer)
+  ticketModeDraft.value = ''; ticketLengthDraft.value = ''
   const nextFilters = { ...props.filters }
   for (const key of filterKeys) nextFilters[key] = ''
   emit('update:filters', nextFilters)
@@ -145,6 +179,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  clearTimeout(ticketTimer)
   document.removeEventListener('click', handleDocumentClick)
   document.removeEventListener('keydown', handleKeydown)
 })
