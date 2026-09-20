@@ -4,7 +4,7 @@ export default {
     accounts: {
       ticketWorkbench: {
         createHint: '随新账号创建保存；已有账号重导入不覆盖。',
-        templateHint: '单独保存默认模板，仅用于之后新增的 OpenAI OAuth 账号。',
+        templateHint: '随默认值一起保存，仅用于以后新增的账号。',
         verifiedFlow: '双链路验证', verifiedHint: '采集 → 账号业务代理复验 → 缓存；默认关闭，支持批量修改。', verifiedRisk: '需先绑定业务代理。开启后自动废票重采，每次最多两次模型请求；WS重连后使用HTTP桥接逐轮换票，只有两阶段通过才发布新票。',
         stage: { harvest: '候选采集', verify: '业务代理复验' }, requestModel: '请求', responseModel: '响应', responseMissing: '未获取',
         validationReason: { business_proxy: '未绑定可用业务代理', network: '连接失败', upstream: '上游拒绝', invalid_ticket: '长度或格式不符', incomplete_response: '响应未完整结束', model_mismatch: '模型不一致', length_signal: '命中降智长度', account_changed: '账号配置已变化' },
@@ -32,7 +32,9 @@ export default {
         title: '账号票据', selected: '已选 {count} 个账号', hint: '账号优先 · 未设置继承网关 · 总开关仍生效',
         mode: '票据开关', guard: '异常守护', proxy: '修改采集代理', proxyRequired: '请填写代理，或选择恢复网关代理。',
         proxyHint: '仅用于采集，不改业务代理。认证信息支持 {sid} / {random} 会话占位符。',
-        saveHint: '独立保存。修改后仅这些账号的旧票失效；其他账号不变。批量仅修改勾选项。',
+        saveHint: '随账号保存。修改配置可能使旧票失效；批量仅修改勾选项。',
+        partialSave: '普通配置已保存，票据未保存：{error}。请修正后重试。',
+        bulkSaveStopped: '普通配置成功 {success} 个、失败 {failed} 个；票据尚未保存，请处理后重试。',
         save: '保存票据配置', saved: '票据配置已保存', guardRisk: '自动重采会废弃本次异常票据，恢复前该模型可能暂不可用；不重放回答。',
         source: { account: '账号代理', gateway: '网关代理' },
         modes: { inherit: '继承网关', on: '开启', off: '关闭' },

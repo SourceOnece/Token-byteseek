@@ -1660,8 +1660,8 @@
           />
         </div>
       </div>
-      <!-- 票据独立保存后保持弹窗，避免丢失其他尚未提交的批量编辑草稿。 -->
-      <CodexTicketAccountSettings v-if="show && targetMode === 'selected' && targetSelectedPlatforms.length === 1 && targetSelectedPlatforms[0] === 'openai' && targetSelectedTypes.length === 1 && targetSelectedTypes[0] === 'oauth'" :ids="accountIds" bulk />
+      <!-- 工作台随原批量按钮统一保存，下层字段仍逐项勾选。 -->
+      <CodexTicketAccountSettings v-if="show && targetMode === 'selected' && targetSelectedPlatforms.length === 1 && targetSelectedPlatforms[0] === 'openai' && targetSelectedTypes.length === 1 && targetSelectedTypes[0] === 'oauth'" ref="ticketSettings" :ids="accountIds" :busy="submitting" bulk />
       </fieldset>
     </form>
 
@@ -1956,6 +1956,7 @@ const enableTLSFingerprint = ref(false)
 
 // State - field values
 const submitting = ref(false)
+const ticketSettings = ref<InstanceType<typeof CodexTicketAccountSettings>>()
 const showMixedChannelWarning = ref(false)
 const mixedChannelWarningMessage = ref('')
 const pendingUpdatesForConfirm = ref<Record<string, unknown> | null>(null)
@@ -2718,6 +2719,7 @@ const preCheckMixedChannelRisk = async (built: Record<string, unknown>): Promise
 }
 
 const handleSubmit = async () => {
+  if (submitting.value) return
   if(prefillLoading.value||prefillFailed.value){appStore.showError(t('common.error'));return}
   if (targetMode.value === 'selected' && props.accountIds.length === 0) {
     appStore.showError(t('admin.accounts.bulkEdit.noSelection'))
@@ -2759,7 +2761,7 @@ const handleSubmit = async () => {
     enableRpmLimit.value ||
     enableUserMsgQueue.value
 
-  if (!hasAnyFieldEnabled) {
+  if (!hasAnyFieldEnabled && !ticketSettings.value?.hasChanges) {
     appStore.showError(t('admin.accounts.bulkEdit.noFieldsSelected'))
     return
   }
@@ -2798,15 +2800,15 @@ const handleSubmit = async () => {
   try {
     built=buildUpdatePayload()
   }catch(err){appStore.showError(err instanceof Error?err.message:t('common.error'));return}
-  if (!built || Object.keys(built).length === 0) {
+  if ((!built || Object.keys(built).length === 0) && !ticketSettings.value?.hasChanges) {
     appStore.showError(t('admin.accounts.bulkEdit.noFieldsSelected'))
     return
   }
 
-  const canContinue = await preCheckMixedChannelRisk(built)
+  const canContinue = await preCheckMixedChannelRisk(built || {})
   if (!canContinue) return
 
-  await submitBulkUpdate(built)
+  await submitBulkUpdate(built || {})
 }
 
 const submitBulkUpdate = async (baseUpdates: Record<string, unknown>) => {
@@ -2816,16 +2818,37 @@ const submitBulkUpdate = async (baseUpdates: Record<string, unknown>) => {
     : baseUpdates
 
   submitting.value = true
-
+  let accountSaved = false
+  const targetIds = [...props.accountIds]
   try {
+    // 票据独立校验但统一由原按钮提交；仅改票据时不发送空的普通批量更新。
+    const saveTicket = await ticketSettings.value?.prepareSave()
+    if (!props.show || targetIds.join(',') !== props.accountIds.join(',')) return
+    if (Object.keys(baseUpdates).length === 0) {
+      if (!saveTicket) throw new Error(t('admin.accounts.bulkEdit.noFieldsSelected'))
+      await saveTicket()
+      appStore.showSuccess(t('admin.accounts.bulkEdit.success', { count: props.accountIds.length }))
+      emit('updated')
+      handleClose()
+      return
+    }
     const res = targetMode.value === 'filtered' && props.target?.filters
       ? await adminAPI.accounts.bulkUpdate({
         filters: props.target.filters,
         ...updates
       })
-      : await adminAPI.accounts.bulkUpdate(props.accountIds, updates)
+      : await adminAPI.accounts.bulkUpdate(targetIds, updates)
     const success = res.success || 0
     const failed = res.failed || 0
+    accountSaved = success > 0
+    if (saveTicket) {
+      // 普通批量存在失败时不继续全选写票据，以免把失败账号也当作保存完成。
+      if (failed > 0 || success !== props.accountIds.length) {
+        appStore.showError(t('admin.accounts.ticketPolicy.bulkSaveStopped', { success, failed }))
+        return
+      }
+      await saveTicket()
+    }
 
     if (success > 0 && failed === 0) {
       appStore.showSuccess(t('admin.accounts.bulkEdit.success', { count: success }))
@@ -2847,8 +2870,8 @@ const submitBulkUpdate = async (baseUpdates: Record<string, unknown>) => {
       mixedChannelWarningMessage.value = error.message
       showMixedChannelWarning.value = true
     } else {
-      appStore.showError(error.message || t('admin.accounts.bulkEdit.failed'))
-      console.error('Error bulk updating accounts:', error)
+      appStore.showError(accountSaved ? t('admin.accounts.ticketPolicy.partialSave', { error: error.message || t('common.error') }) : error.message || t('admin.accounts.bulkEdit.failed'))
+      // 错误已由界面提示，不将可能包含采集代理凭据的请求配置打印到控制台。
     }
   } finally {
     submitting.value = false

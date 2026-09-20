@@ -11,6 +11,7 @@
       @submit.prevent="handleSubmit"
       class="space-y-5"
     >
+      <fieldset :disabled="submitting" class="min-w-0 space-y-5">
       <div>
         <label class="input-label">{{ t('common.name') }}</label>
         <input v-model="form.name" type="text" required class="input" data-tour="edit-account-form-name" />
@@ -2806,7 +2807,8 @@
         data-tour="account-form-groups"
       />
 
-      <CodexTicketAccountSettings v-if="show && account?.platform === 'openai' && account?.type === 'oauth' && !isSparkShadow && account.credentials?.auth_mode !== 'agentIdentity'" :ids="[account.id]" @saved="emit('updated', account)" />
+      <CodexTicketAccountSettings v-if="show && account?.platform === 'openai' && account?.type === 'oauth' && !isSparkShadow && account.credentials?.auth_mode !== 'agentIdentity'" ref="ticketSettings" :ids="[account.id]" :busy="submitting" />
+      </fieldset>
     </form>
 
     <template #footer>
@@ -3021,6 +3023,7 @@ interface TempUnschedRuleForm {
 
 // State
 const submitting = ref(false)
+const ticketSettings = ref<InstanceType<typeof CodexTicketAccountSettings>>()
 const editBaseUrl = ref('https://api.anthropic.com')
 const editApiKey = ref('')
 const upstreamUsageEnabled = ref(true)
@@ -4843,8 +4846,14 @@ const handleClose = () => {
 
 const submitUpdateAccount = async (accountID: number, updatePayload: Record<string, unknown>) => {
   submitting.value = true
+  let accountSaved = false
   try {
+    // 先校验并冻结票据草稿；普通账号失败不写票据，两部分成功后再关闭弹窗。
+    const saveTicket = await ticketSettings.value?.prepareSave()
+    if (!props.show || props.account?.id !== accountID) return
     const updatedAccount = await adminAPI.accounts.update(accountID, withAntigravityConfirmFlag(updatePayload))
+    accountSaved = true
+    await saveTicket?.()
     appStore.showSuccess(t('admin.accounts.accountUpdated'))
     emit('updated', updatedAccount)
     handleClose()
@@ -4859,13 +4868,14 @@ const submitUpdateAccount = async (accountID: number, updatePayload: Record<stri
       })
       return
     }
-    appStore.showError(error.message || t('admin.accounts.failedToUpdate'))
+    appStore.showError(accountSaved ? t('admin.accounts.ticketPolicy.partialSave', { error: error.message || t('common.error') }) : error.message || t('admin.accounts.failedToUpdate'))
   } finally {
     submitting.value = false
   }
 }
 
 const handleSubmit = async () => {
+  if (submitting.value) return
   if (props.account?.platform === 'opencode_go' && !validOpenCodeGoProtocolRules(editOpenCodeRules.value)) {
     appStore.showError(t('admin.accounts.opencodeGo.protocolRules.invalid'))
     return

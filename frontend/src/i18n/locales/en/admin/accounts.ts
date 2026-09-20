@@ -3,7 +3,7 @@ export default {
     accounts: {
       ticketWorkbench: {
         createHint: 'Saved with new accounts. Reimporting an existing account preserves its ticket settings.',
-        templateHint: 'Save this template separately. It applies only to future OpenAI OAuth accounts.',
+        templateHint: 'Saved with the defaults. Applies only to future accounts.',
         verifiedFlow: 'Dual-route verification', verifiedHint: 'Harvest → verify via account business proxy → cache. Off by default; bulk-editable.', verifiedRisk: 'Bind a business proxy first. Enables recollection and up to two model calls per attempt. Reconnect WS to use the per-turn HTTP bridge. Both stages must pass before publishing.',
         stage: { harvest: 'Candidate harvest', verify: 'Business proxy verification' }, requestModel: 'Request', responseModel: 'Response', responseMissing: 'Not observed',
         validationReason: { business_proxy: 'No usable business proxy', network: 'Connection failed', upstream: 'Upstream rejected', invalid_ticket: 'Invalid length or format', incomplete_response: 'Response did not complete', model_mismatch: 'Model mismatch', length_signal: 'Degradation length detected', account_changed: 'Account configuration changed' },
@@ -31,7 +31,9 @@ export default {
         title: 'Account tickets', selected: '{count} selected', hint: 'Account overrides first · Otherwise inherit gateway · Master switch applies',
         mode: 'Tickets', guard: 'Watchdog', proxy: 'Change collection proxy', proxyRequired: 'Enter a proxy or choose gateway inheritance.',
         proxyHint: 'Collection only; business proxy stays unchanged. Credential placeholders: {sid} / {random}.',
-        saveHint: 'Saved separately. Changed accounts need new tickets; other accounts stay unchanged. Bulk edits only apply checked fields.',
+        saveHint: 'Saved with the account. Changes may invalidate old tickets; bulk edits only apply checked fields.',
+        partialSave: 'General settings saved; tickets were not saved: {error}. Correct and retry.',
+        bulkSaveStopped: 'General settings: {success} succeeded, {failed} failed. Tickets were not saved; resolve and retry.',
         save: 'Save ticket settings', saved: 'Ticket settings saved', guardRisk: 'Recovery revokes the observed ticket. This model may be unavailable until renewed. Answers are never replayed.',
         source: { account: 'Account proxy', gateway: 'Gateway proxy' },
         modes: { inherit: 'Inherit gateway', on: 'On', off: 'Off' },

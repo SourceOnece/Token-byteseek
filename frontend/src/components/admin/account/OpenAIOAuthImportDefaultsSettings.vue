@@ -15,7 +15,7 @@
         {{ t('common.loading') }}
       </div>
 
-      <template v-else>
+      <fieldset v-else :disabled="saving" class="min-w-0 space-y-5">
         <section class="space-y-3">
           <div class="text-sm font-medium text-gray-900 dark:text-white">
             {{ t('admin.accounts.openAIOAuthImportDefaultsAccount') }}
@@ -321,13 +321,13 @@
           </div>
         </section>
 
-        <CodexTicketAccountSettings template-mode />
+        <CodexTicketAccountSettings ref="ticketSettings" :busy="saving" template-mode />
         <div class="flex justify-end">
           <button type="button" class="btn btn-primary" :disabled="saving" @click="save">
             {{ saving ? t('common.saving') : t('common.save') }}
           </button>
         </div>
-      </template>
+      </fieldset>
     </div>
   </div>
 </template>
@@ -377,6 +377,7 @@ const appStore = useAppStore()
 
 const loading = ref(true)
 const saving = ref(false)
+const ticketSettings = ref<InstanceType<typeof CodexTicketAccountSettings>>()
 const defaultAllowedModels = ref<string[]>([])
 const defaultModelMappings = ref<ModelMapping[]>([])
 const credentialsJson = ref('{}')
@@ -723,7 +724,9 @@ const buildAccountDefaults = (): OpenAIOAuthImportDefaults['account'] => {
 }
 
 const save = async () => {
+  if (saving.value) return
   saving.value = true
+  let defaultsSaved = false
   try {
     const credentials = parseJsonObject(
       credentialsJson.value,
@@ -799,15 +802,18 @@ const save = async () => {
       updatedCredentials.model_mapping = modelMapping
     }
 
+    const saveTicket = await ticketSettings.value?.prepareSave()
     const updated = await adminAPI.settings.updateOpenAIOAuthImportDefaults({
       account: buildAccountDefaults(),
       credentials: updatedCredentials,
       extra: Object.keys(extra).length > 0 ? extra : undefined
     })
+    defaultsSaved = true
+    await saveTicket?.()
     hydrate(updated)
     appStore.showSuccess(t('admin.accounts.openAIOAuthImportDefaultsSaved'))
   } catch (error: any) {
-    appStore.showError(error?.message || t('admin.accounts.openAIOAuthImportDefaultsSaveFailed'))
+    appStore.showError(defaultsSaved ? t('admin.accounts.ticketPolicy.partialSave', { error: error?.message || t('common.error') }) : error?.message || t('admin.accounts.openAIOAuthImportDefaultsSaveFailed'))
   } finally {
     saving.value = false
   }

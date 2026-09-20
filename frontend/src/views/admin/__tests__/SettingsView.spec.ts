@@ -3,6 +3,13 @@ import { defineComponent, h } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
 
 import SettingsView from "../SettingsView.vue";
+import { ticketSettingsFixture } from '@/components/admin/account/__tests__/ticketSettingsFixture';
+
+// 普通默认值保存现会等待票据模板准备；补齐只读模板替身，不访问真实接口。
+vi.mock('@/api/admin/codexTickets', async () => {
+  const actual = await vi.importActual<typeof import('@/api/admin/codexTickets')>('@/api/admin/codexTickets');
+  return { ...actual, ticketAccountAPI: { ...actual.ticketAccountAPI, defaults: vi.fn(async () => ticketSettingsFixture(0)) } };
+});
 
 // 票据独立表单的读写在组件测试覆盖，不混入系统设置大表单的依赖替身。
 vi.mock('@/components/admin/settings/CodexTicketSettings.vue', () => ({ default: { template: '<section />' } }));

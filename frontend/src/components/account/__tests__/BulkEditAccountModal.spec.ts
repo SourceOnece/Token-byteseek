@@ -3,6 +3,11 @@ import { flushPromises, mount } from '@vue/test-utils'
 import BulkEditAccountModal from '../BulkEditAccountModal.vue'
 import ModelWhitelistSelector from '../ModelWhitelistSelector.vue'
 import { adminAPI } from '@/api/admin'
+import { ticketAccountAPI } from '@/api/admin/codexTickets'
+import { ticketSettingsFixture } from '@/components/admin/account/__tests__/ticketSettingsFixture'
+
+vi.mock('@/api/admin/codexTickets', () => ({ ticketAccountAPI: { get: vi.fn(), update: vi.fn() }, testTicketProxy: vi.fn() }))
+vi.mock('@/api/admin/proxies', () => ({ getAll: vi.fn().mockResolvedValue([]) }))
 
 vi.mock('@/stores/app', () => ({
   useAppStore: () => ({
@@ -126,7 +131,13 @@ function createAccount(overrides: Record<string, unknown> = {}) {
 }
 
 describe('BulkEditAccountModal', () => {
+  const ticketModal = () => {
+    vi.mocked(adminAPI.accounts.getById).mockImplementation(async id => createAccount({ id, platform: 'openai', type: 'oauth' }))
+    return mountModal({ selectedPlatforms: ['openai'], selectedTypes: ['oauth'] })
+  }
   beforeEach(() => {
+    vi.mocked(ticketAccountAPI.get).mockReset().mockImplementation(async id => ticketSettingsFixture(id))
+    vi.mocked(ticketAccountAPI.update).mockReset().mockResolvedValue([ticketSettingsFixture(1), ticketSettingsFixture(2)])
     vi.mocked(adminAPI.accounts.getById).mockReset()
     vi.mocked(adminAPI.accounts.bulkUpdate).mockReset()
     vi.mocked(adminAPI.accounts.checkMixedChannelRisk).mockReset()
@@ -148,6 +159,37 @@ describe('BulkEditAccountModal', () => {
       { id: 7, name: 'Profile 7' }
     ] as any)
     vi.mocked(adminAPI.tlsFingerprintRouters.list).mockResolvedValue([])
+  })
+
+  it('只改票据用原批量按钮，不发空的普通更新，也不提交未勾选字段', async () => {
+    const w = ticketModal()
+    await flushPromises()
+    expect(w.find('[data-testid="ticket-account-save"]').exists()).toBe(false)
+    await w.get('[data-testid="ticket-edit-mode"]').setValue(true)
+    await w.get('[data-testid="ticket-edit-target_length"]').setValue(true)
+    await w.get('[data-testid="ticket-rule-target_length"]').setValue('356')
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    expect(adminAPI.accounts.bulkUpdate).not.toHaveBeenCalled()
+    expect(ticketAccountAPI.update).toHaveBeenCalledWith([1, 2], { mode: 'on', rules: { target_length: 356 } }, undefined)
+    expect(w.emitted('close')).toHaveLength(1)
+    w.unmount()
+  })
+
+  it.each(['success', 'partial', 'ticket_failure'] as const)('混合批量保存只在两部分均成功时关闭：%s', async outcome => {
+    const w = ticketModal()
+    await flushPromises()
+    await w.get('#bulk-edit-concurrency-enabled').setValue(true)
+    await w.get('[data-testid="ticket-edit-mode"]').setValue(true)
+    if (outcome === 'partial') vi.mocked(adminAPI.accounts.bulkUpdate).mockResolvedValueOnce({ success: 1, failed: 1, results: [] } as any)
+    if (outcome === 'ticket_failure') vi.mocked(ticketAccountAPI.update).mockRejectedValueOnce(new Error('ticket failed'))
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledTimes(1)
+    expect(ticketAccountAPI.update).toHaveBeenCalledTimes(outcome === 'partial' ? 0 : 1)
+    if (outcome === 'success') expect(w.emitted('close')).toHaveLength(1)
+    else expect(w.emitted('close')).toBeUndefined()
+    w.unmount()
   })
 
   it('仅保留原批量配置，不再渲染更多账号配置，Base URL继续虚实切换', async () => {
