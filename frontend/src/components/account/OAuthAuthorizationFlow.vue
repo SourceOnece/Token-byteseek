@@ -11,7 +11,8 @@
       <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500">
         <Icon name="link" size="md" class="text-white" />
       </div>
-      <div class="flex-1">
+      <!-- 手机允许内容列收缩并换行，长授权地址不能把输入框撑出弹窗。 -->
+      <div class="min-w-0 flex-1 break-words">
         <h4 class="mb-3 font-semibold text-blue-900 dark:text-blue-200">{{ oauthTitle }}</h4>
 
         <!-- Auth Method Selection -->
@@ -593,7 +594,7 @@
               >
                 1
               </div>
-              <div class="flex-1">
+              <div class="min-w-0 flex-1">
                 <p class="mb-2 font-medium text-blue-900 dark:text-blue-200">
                   {{ oauthStep1GenerateUrl }}
                 </p>
@@ -810,7 +811,7 @@
               >
                 2
               </div>
-              <div class="flex-1">
+              <div class="min-w-0 flex-1">
                 <p class="mb-2 font-medium text-blue-900 dark:text-blue-200">
                   {{ oauthStep2OpenUrl }}
                 </p>
@@ -851,7 +852,7 @@
               >
                 3
               </div>
-              <div class="flex-1">
+              <div class="min-w-0 flex-1">
                 <p class="mb-2 font-medium text-blue-900 dark:text-blue-200">
                   {{ oauthStep3EnterCode }}
                 </p>
