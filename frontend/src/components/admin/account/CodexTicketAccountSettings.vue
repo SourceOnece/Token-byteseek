@@ -1,5 +1,53 @@
 <template>
-  <section class="space-y-5 border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-4 sm:p-6" style="box-shadow:var(--bh-shadow-sm)" data-testid="ticket-account-settings">
+  <section
+    :class="bulk ? 'space-y-5 border-t border-gray-200 pt-4 dark:border-dark-600' : 'space-y-5 border-2 border-[color:var(--bh-ink)] bg-[var(--bh-surface)] p-4 sm:p-6'"
+    :style="bulk ? undefined : { boxShadow: 'var(--bh-shadow-sm)' }"
+    data-testid="ticket-account-settings"
+  >
+    <!-- 批量入口沿原表单：标题左、勾选右；编辑区虚化且真实禁用，勾选后恢复。 -->
+    <template v-if="bulk">
+      <div>
+        <h3 class="input-label mb-0">{{ t('admin.accounts.ticketWorkbench.title') }}</h3>
+        <p class="input-hint">{{ t('admin.accounts.ticketPolicy.selected', { count: ids.length }) }}</p>
+      </div>
+      <div v-for="item in bulkChoices" :key="item.key" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between gap-4">
+          <label :id="uid + '-bulk-' + item.key + '-label'" :for="uid + '-bulk-' + item.key + '-enabled'" class="input-label mb-0">{{ t(item.label) }}</label>
+          <input :id="uid + '-bulk-' + item.key + '-enabled'" v-model="fields[item.key]" type="checkbox" :disabled="locked || (item.key === 'guard' && dualFlowInForm)" :aria-controls="uid + '-bulk-' + item.key" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" :data-testid="'ticket-edit-' + item.key" />
+        </div>
+        <div :id="uid + '-bulk-' + item.key" role="group" :aria-labelledby="uid + '-bulk-' + item.key + '-label'" :class="!fields[item.key] && 'pointer-events-none opacity-50'" :data-testid="'ticket-bulk-body-' + item.key">
+          <Select v-if="item.key === 'flow'" v-model="bulkFlow" :options="flowOptions" :disabled="locked || !fields.flow" :placeholder="' '" />
+          <Select v-else-if="item.key === 'mode'" v-model="mode" :options="modeOptions" :disabled="locked || !fields.mode" :placeholder="' '" />
+          <Select v-else v-model="displayGuard" :options="guardOptions" :disabled="locked || !fields.guard || dualFlowInForm" :placeholder="' '" />
+        </div>
+        <p v-if="item.key === 'flow' && dualFlowInForm" class="input-hint text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketWorkbench.verifiedRisk') }}</p>
+      </div>
+      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between gap-4">
+          <label :id="uid + '-bulk-models-label'" :for="uid + '-bulk-models-enabled'" class="input-label mb-0">{{ t('admin.settings.codexTicket.models') }}</label>
+          <input :id="uid + '-bulk-models-enabled'" v-model="ruleFields.models" type="checkbox" :disabled="locked" :aria-controls="uid + '-models'" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" data-testid="ticket-edit-models" />
+        </div>
+        <textarea :id="uid + '-models'" v-model="modelText" rows="3" class="input w-full font-mono" :disabled="locked || !ruleFields.models" :class="!ruleFields.models && 'cursor-not-allowed opacity-50'" :aria-labelledby="uid + '-bulk-models-label'" data-testid="ticket-bulk-models" />
+      </div>
+      <div v-for="field in bulkNumberFields" :key="field.key" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between gap-4">
+          <label :id="uid + '-bulk-' + field.key + '-label'" :for="uid + '-bulk-' + field.key + '-enabled'" class="input-label mb-0">{{ t('admin.accounts.ticketWorkbench.fields.' + field.key) }}</label>
+          <input :id="uid + '-bulk-' + field.key + '-enabled'" v-model="ruleFields[field.key]" type="checkbox" :disabled="locked" :aria-controls="uid + '-' + field.key" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" :data-testid="'ticket-edit-' + field.key" />
+        </div>
+        <input :id="uid + '-' + field.key" v-model.number="rules[field.key]" type="number" :min="field.min" :max="field.max" step="1" class="input w-full" :disabled="locked || !ruleFields[field.key]" :class="!ruleFields[field.key] && 'cursor-not-allowed opacity-50'" :aria-labelledby="uid + '-bulk-' + field.key + '-label'" :data-testid="'ticket-rule-' + field.key" />
+      </div>
+      <p v-if="ruleFields.max_attempts && rules.max_attempts === 0" class="input-hint text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketWorkbench.unlimitedRisk') }}</p>
+      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between gap-4">
+          <label :id="uid + '-bulk-proxy-label'" :for="uid + '-bulk-proxy-enabled'" class="input-label mb-0">{{ t('admin.accounts.ticketPolicy.proxy') }}</label>
+          <input :id="uid + '-bulk-proxy-enabled'" v-model="fields.proxy" type="checkbox" :disabled="locked" :aria-controls="uid + '-bulk-proxy'" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" data-testid="ticket-edit-proxy" />
+        </div>
+        <div :id="uid + '-bulk-proxy'" role="group" :aria-labelledby="uid + '-bulk-proxy-label'" :class="!fields.proxy && 'pointer-events-none opacity-50'" data-testid="ticket-bulk-body-proxy">
+          <CodexTicketProxyEditor ref="proxyEditor" :value="policy" :blank="proxyMixed" :account-id="ids[0]" allow-inherit :inherited="source === 'gateway'" :locked="locked || !fields.proxy" :test-disabled="locked || !fields.proxy" />
+        </div>
+      </div>
+    </template>
+    <template v-else>
     <div class="flex flex-wrap items-baseline justify-between gap-2"><h3 class="text-xl font-extrabold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.ticketWorkbench.title') }}</h3><span class="text-sm font-bold">{{ bulk ? t('admin.accounts.ticketPolicy.selected', { count: ids.length }) : source ? t('admin.accounts.ticketPolicy.source.' + source) : '' }}</span></div>
     <p class="text-sm text-gray-600 dark:text-gray-300">{{ t('admin.accounts.ticketWorkbench.accountHint') }}</p>
     <p v-if="!bulk && !globalEnabled" class="border-l-4 border-bh-yellow pl-3 text-sm font-bold text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketWorkbench.masterOff') }}</p>
@@ -35,6 +83,7 @@
       <label class="flex items-center gap-2 text-lg font-extrabold"><input v-model="fields.proxy" type="checkbox" :disabled="locked" data-testid="ticket-edit-proxy" />{{ t('admin.accounts.ticketPolicy.proxy') }}</label>
       <CodexTicketProxyEditor ref="proxyEditor" :value="policy" :blank="proxyMixed" :template-source="templateMode || draft" :account-id="ids[0]" allow-inherit :inherited="source === 'gateway'" :locked="locked || !fields.proxy" :test-disabled="locked" />
     </div>
+    </template>
     <p v-if="guard.startsWith('recover') && fields.guard" class="border-l-4 border-bh-yellow pl-3 text-sm text-yellow-800 dark:text-bh-yellow">{{ t('admin.accounts.ticketPolicy.guardRisk') }}</p>
     <p class="text-sm text-gray-600 dark:text-gray-300">{{ t(draft ? 'admin.accounts.ticketWorkbench.createHint' : templateMode ? 'admin.accounts.ticketWorkbench.templateHint' : 'admin.accounts.ticketPolicy.saveHint') }}</p>
     <p v-if="error" class="break-words text-sm text-bh-red dark:text-red-400" role="alert">{{ error }}</p>
@@ -62,6 +111,12 @@ const groups: { name: string; fields: { key: NumberRule; min: number; max?: numb
   { name: 'renewal', fields: [{ key: 'concurrency', min: 1, max: 4 }, { key: 'cache_minutes', min: 1, max: 1440 }, { key: 'refresh_before_minutes', min: 0, max: 1439 }, { key: 'probe_interval_seconds', min: 6, max: 3600 }] },
   { name: 'cooldown', fields: [{ key: 'failure_threshold', min: 0, max: 100000 }, { key: 'cooldown_seconds', min: 1, max: 86400 }] }
 ]
+const bulkNumberFields = groups.flatMap(group => group.fields)
+const bulkChoices = [
+  { key: 'flow', label: 'admin.accounts.ticketWorkbench.verifiedFlow' },
+  { key: 'mode', label: 'admin.accounts.ticketPolicy.mode' },
+  { key: 'guard', label: 'admin.accounts.ticketPolicy.guard' }
+] as const
 const rules = reactive<{ [K in keyof TicketRules]: TicketRules[K] | '' }>(defaults()), modelText = ref(defaults().models.join('\n'))
 const ruleFields = reactive(Object.fromEntries(Object.keys(defaults()).map(k => [k, !props.bulk])) as Record<keyof TicketRules, boolean>)
 const fields = reactive({ mode: !props.bulk, guard: !props.bulk, proxy: false, flow: !props.bulk })

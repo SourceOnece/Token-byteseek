@@ -150,6 +150,19 @@ describe('BulkEditAccountModal', () => {
     vi.mocked(adminAPI.tlsFingerprintRouters.list).mockResolvedValue([])
   })
 
+  it('仅保留原批量配置，不再渲染更多账号配置，Base URL继续虚实切换', async () => {
+    const w = mountModal({ selectedPlatforms: ['openai'], selectedTypes: ['apikey'] })
+    await flushPromises()
+    expect(w.find('[data-testid="bulk-additional-settings"]').exists()).toBe(false)
+    const input = w.get('#bulk-edit-base-url')
+    expect(input.classes()).toContain('opacity-50')
+    expect(input.attributes('disabled')).toBeDefined()
+    await w.get('#bulk-edit-base-url-enabled').setValue(true)
+    expect(input.classes()).not.toContain('opacity-50')
+    expect(input.attributes('disabled')).toBeUndefined()
+    w.unmount()
+  })
+
   it('批量编辑打开时，相同模型白名单会回填到选择器', async () => {
     vi.mocked(adminAPI.accounts.getById)
       .mockResolvedValueOnce(createAccount({

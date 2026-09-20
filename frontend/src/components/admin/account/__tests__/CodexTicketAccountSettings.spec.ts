@@ -13,6 +13,36 @@ const account = () => ({ verified_flow: false, rules: rules(), proxy_policy: { m
 
 describe('CodexTicketAccountSettings', () => {
   beforeEach(() => { vi.clearAllMocks(); get.mockResolvedValue(account()); defaults.mockResolvedValue(account()); updateDefaults.mockResolvedValue(account());update.mockResolvedValue([{ ...account(), revision: 'r2' }]) })
+  it('批量统一原表单虚实状态，取消勾选后不提交，单号保留独立布局', async () => {
+    const w = mount(CodexTicketAccountSettings, { props: { ids: [1, 2], bulk: true } })
+    await flushPromises()
+    expect(w.attributes('style') || '').not.toContain('box-shadow')
+    const value = w.get('[data-testid="ticket-rule-target_length"]')
+    expect(value.classes()).toContain('opacity-50')
+    expect(value.attributes('disabled')).toBeDefined()
+    await w.get('[data-testid="ticket-edit-target_length"]').setValue(true)
+    expect(value.classes()).not.toContain('opacity-50')
+    expect(value.attributes('disabled')).toBeUndefined()
+    await value.setValue('356')
+    await w.get('[data-testid="ticket-edit-target_length"]').setValue(false)
+    expect(value.classes()).toContain('opacity-50')
+    expect((w.vm as unknown as { patch: () => unknown }).patch()).toEqual({})
+    for (const key of ['mode', 'guard', 'flow', 'proxy']) {
+      const body = w.get(`[data-testid="ticket-bulk-body-${key}"]`)
+      expect(body.classes()).toContain('opacity-50')
+      await w.get(`[data-testid="ticket-edit-${key}"]`).setValue(true)
+      expect(body.classes()).not.toContain('opacity-50')
+      await w.get(`[data-testid="ticket-edit-${key}"]`).setValue(false)
+    }
+    expect(w.get('[data-testid="ticket-proxy-test"]').attributes('disabled')).toBeDefined()
+    expect(testProxy).not.toHaveBeenCalled()
+    w.unmount()
+    const single = mount(CodexTicketAccountSettings, { props: { ids: [1] } })
+    await flushPromises()
+    expect(single.classes()).toContain('border-2')
+    expect(single.attributes('style')).toContain('box-shadow')
+    single.unmount()
+  })
   it('新号等待模板加载，加载失败不能提交内置值', async () => {
     let finish!: (value: ReturnType<typeof account>) => void
     defaults.mockReturnValue(new Promise(resolve => { finish = resolve }))

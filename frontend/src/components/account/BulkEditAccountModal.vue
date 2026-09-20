@@ -1661,7 +1661,6 @@
         </div>
       </div>
       <!-- 票据独立保存后保持弹窗，避免丢失其他尚未提交的批量编辑草稿。 -->
-      <AccountBulkAdditionalSettings v-if="targetMode === 'selected'" ref="additionalSettings" :accounts="selectedAccounts" :platforms="targetSelectedPlatforms" :types="targetSelectedTypes" :locked="submitting || prefillLoading || prefillFailed" />
       <CodexTicketAccountSettings v-if="show && targetMode === 'selected' && targetSelectedPlatforms.length === 1 && targetSelectedPlatforms[0] === 'openai' && targetSelectedTypes.length === 1 && targetSelectedTypes[0] === 'oauth'" :ids="accountIds" bulk />
       </fieldset>
     </form>
@@ -1719,8 +1718,7 @@
 
 <script setup lang="ts">
 import CodexTicketAccountSettings from '@/components/admin/account/CodexTicketAccountSettings.vue'
-import AccountBulkAdditionalSettings from './AccountBulkAdditionalSettings.vue'
-import { commonAccountValue } from './bulkAdditionalFields'
+import { commonAccountValue } from './bulkAccountValues'
 import { readCodexImageToolMode } from '@/utils/codexImageToolMode'
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -1804,8 +1802,6 @@ const { t } = useI18n()
 const appStore = useAppStore()
 const isBlank=(v:unknown)=>v===''||v===null||v===undefined
 const bulkBooleanOptions=computed(()=>[{value:'true',label:t('common.enabled')},{value:'false',label:t('common.disabled')}])
-const additionalSettings=ref<InstanceType<typeof AccountBulkAdditionalSettings>>()
-const selectedAccounts=ref<Account[]>([])
 const prefillLoading=ref(false),prefillFailed=ref(false)
 
 // Platform awareness
@@ -2285,7 +2281,6 @@ const loadSelectedAccountDefaults = async () => {
       return
     }
     hydrateModelRestrictionDraftFromAccounts(accounts)
-    selectedAccounts.value=accounts
     // 展示共同实际值；不同值置空。未勾选的字段永远不随展示回填而提交。
     const shared=(section:'account'|'credentials'|'extra',key:string)=>{
       const value=commonAccountValue(accounts,section,key)
@@ -2730,7 +2725,7 @@ const handleSubmit = async () => {
   }
 
   const hasAnyFieldEnabled =
-    additionalSettings.value?.hasChanges === true || enableBaseUrl.value ||
+    enableBaseUrl.value ||
     enableOpenAIPassthrough.value ||
     enableOpenAIFlattenNamespaces.value ||
     enableCodexImageToolMode.value ||
@@ -2801,10 +2796,7 @@ const handleSubmit = async () => {
 
   let built: Record<string,unknown> | null
   try {
-    const extraPatch=additionalSettings.value?.patch()||{}
-    built=buildUpdatePayload()||{}
-    const creds={...(built.credentials as Record<string,unknown>||{}),...(extraPatch.credentials as Record<string,unknown>||{})},extras={...(built.extra as Record<string,unknown>||{}),...(extraPatch.extra as Record<string,unknown>||{})}
-    built={...built,...extraPatch,...(Object.keys(creds).length?{credentials:creds}:{}),...(Object.keys(extras).length?{extra:extras}:{})}
+    built=buildUpdatePayload()
   }catch(err){appStore.showError(err instanceof Error?err.message:t('common.error'));return}
   if (!built || Object.keys(built).length === 0) {
     appStore.showError(t('admin.accounts.bulkEdit.noFieldsSelected'))
@@ -2878,7 +2870,7 @@ const handleMixedChannelCancel = () => {
 
 const resetBulkEditFormState = () => {
   enableUserMsgQueue.value=false
-  selectedAccounts.value=[];prefillFailed.value=false;prefillLoading.value=false
+  prefillFailed.value=false;prefillLoading.value=false
   enableBaseUrl.value = false
   enableModelRestriction.value = false
   enableCustomErrorCodes.value = false
