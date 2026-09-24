@@ -83,9 +83,9 @@ const (
 	// 内无响应即判定死连接并关闭，从源头避免请求挂在死连接上。
 	longStreamHTTP2ReadIdleTimeout = 10 * time.Second
 	longStreamHTTP2PingTimeout     = 5 * time.Second
-	// 保留旧名称供已有测试和其他内部调用兼容。
-	openAIHTTP2ReadIdleTimeout = longStreamHTTP2ReadIdleTimeout
-	openAIHTTP2PingTimeout     = longStreamHTTP2PingTimeout
+	// OpenAI 保留更宽松的15秒探测窗口，避免代理延迟时过早切断流。
+	openAIHTTP2ReadIdleTimeout = 15 * time.Second
+	openAIHTTP2PingTimeout     = 15 * time.Second
 
 	// Grok CLI 代理会拒绝未标识受支持客户端版本的请求。二进制内置已验证版本，
 	// 同时允许运维人员通过环境变量升级，无需等待 TokenRouter 发版。
@@ -223,7 +223,7 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 	if req != nil {
 		req = req.WithContext(servertiming.BeginHTTPTrace(req.Context()))
 	}
-	resp, err := servertiming.Do(client, req)
+	resp, err := doUpstreamRequest(client, req)
 	if err != nil {
 		s.recordOpenAIHTTP2Failure(profile, entry.protocolMode, entry.proxyKey, err)
 		// 请求失败，立即减少计数
@@ -234,8 +234,6 @@ func (s *httpUpstreamService) Do(req *http.Request, proxyURL string, accountID i
 	s.recordOpenAIHTTP2Success(profile, entry.protocolMode, entry.proxyKey)
 
 	// 如果上游返回了压缩内容，解压后再交给业务层
-	decompressResponseBody(resp)
-
 	// 包装响应体，在关闭时自动减少计数并更新时间戳
 	// 这确保了流式响应（如 SSE）在完全读取前不会被淘汰
 	resp.Body = wrapTrackedBody(resp.Body, func() {
@@ -290,7 +288,7 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 	if req != nil {
 		req = req.WithContext(servertiming.BeginHTTPTrace(req.Context()))
 	}
-	resp, err := servertiming.Do(client, req)
+	resp, err := doUpstreamRequest(client, req)
 	if err != nil {
 		s.recordOpenAIHTTP2Failure(upstreamProfile, entry.protocolMode, entry.proxyKey, err)
 		atomic.AddInt64(&entry.inFlight, -1)
@@ -300,14 +298,55 @@ func (s *httpUpstreamService) DoWithTLS(req *http.Request, proxyURL string, acco
 	}
 	s.recordOpenAIHTTP2Success(upstreamProfile, entry.protocolMode, entry.proxyKey)
 
-	decompressResponseBody(resp)
-
 	resp.Body = wrapTrackedBody(resp.Body, func() {
 		atomic.AddInt64(&entry.inFlight, -1)
 		atomic.StoreInt64(&entry.lastUsed, time.Now().UnixNano())
 	})
 
 	return resp, nil
+}
+
+// 每次请求拥有独立取消上下文；关闭响应体时先取消底层请求，避免早关闭流污染连接池。
+func doUpstreamRequest(client *http.Client, req *http.Request) (*http.Response, error) {
+	ctx, cancel := context.WithCancel(req.Context())
+	resp, err := servertiming.Do(client, req.WithContext(ctx))
+	if err != nil {
+		cancel()
+		return resp, err
+	}
+	decompressResponseBody(resp)
+	resp.Body = &cancelOnCloseBody{ReadCloser: resp.Body, cancel: cancel}
+	return resp, nil
+}
+
+type cancelOnCloseBody struct {
+	io.ReadCloser
+	cancel context.CancelFunc
+	once   sync.Once
+	mu     sync.Mutex
+	closed bool
+	err    error
+}
+
+func (b *cancelOnCloseBody) Read(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.closed {
+		return 0, http.ErrBodyReadAfterClose
+	}
+	return b.ReadCloser.Read(p)
+}
+func (b *cancelOnCloseBody) Close() error {
+	b.once.Do(func() {
+		// 先中断底层读取，再等读取退出；反过来加锁会使流关闭死锁。
+		// 已读完的连接不受取消影响，仍可回到连接池复用。
+		b.cancel()
+		b.mu.Lock()
+		defer b.mu.Unlock()
+		b.closed = true
+		b.err = b.ReadCloser.Close()
+	})
+	return b.err
 }
 
 // httpClientForUpstreamRequest 按请求标记派生客户端，避免修改共享连接池客户端。
@@ -1389,7 +1428,7 @@ func buildUpstreamTransport(settings poolSettings, proxyURL *url.URL, protocolMo
 		transport.ForceAttemptHTTP2 = true
 		// 显式配置 http2 并启用 PING 健康探测，剔除代理/NAT 静默掐断的死连接，
 		// 避免请求挂在死连接上直到 TCP 重传超时（分钟级）。
-		if _, err := enableHTTP2KeepAlive(transport); err != nil {
+		if _, err := enableHTTP2KeepAlive(transport, protocolMode); err != nil {
 			return nil, err
 		}
 	case upstreamProtocolModeOpenAIH1:
@@ -1417,7 +1456,7 @@ func buildUpstreamTransport(settings poolSettings, proxyURL *url.URL, protocolMo
 // Go 默认惰性配置 http2 且 ReadIdleTimeout=0（不发健康 PING），无法检测被代理/NAT
 // 静默掐断的死连接。此处主动设置 ReadIdleTimeout/PingTimeout，让死连接被提前 PING
 // 出并关闭，请求得以重建连接而非挂到 TCP 重传超时。返回底层 *http2.Transport 便于测试。
-func enableHTTP2KeepAlive(transport *http.Transport) (*http2.Transport, error) {
+func enableHTTP2KeepAlive(transport *http.Transport, protocolMode ...string) (*http2.Transport, error) {
 	h2, err := http2.ConfigureTransports(transport)
 	if err != nil {
 		return nil, err
@@ -1425,13 +1464,17 @@ func enableHTTP2KeepAlive(transport *http.Transport) (*http2.Transport, error) {
 	if h2 != nil {
 		h2.ReadIdleTimeout = longStreamHTTP2ReadIdleTimeout
 		h2.PingTimeout = longStreamHTTP2PingTimeout
+		if len(protocolMode) > 0 && protocolMode[0] == upstreamProtocolModeOpenAIH2 {
+			h2.ReadIdleTimeout = openAIHTTP2ReadIdleTimeout
+			h2.PingTimeout = openAIHTTP2PingTimeout
+		}
 	}
 	return h2, nil
 }
 
 // enableOpenAIHTTP2KeepAlive 保留旧内部测试入口，实际使用通用长流保活实现。
 func enableOpenAIHTTP2KeepAlive(transport *http.Transport) (*http2.Transport, error) {
-	return enableHTTP2KeepAlive(transport)
+	return enableHTTP2KeepAlive(transport, upstreamProtocolModeOpenAIH2)
 }
 
 // buildUpstreamTransportWithTLSFingerprint 构建带 TLS 指纹伪装的 RoundTripper

@@ -16,6 +16,8 @@
 
 ## 调度输入
 
+账号缓存投影必须包含 `base_rpm`、`rpm_strategy`、`rpm_sticky_buffer`，与数据库账号使用同一 RPM 判定；缺字段会被误当未设限。bh.061 只补该投影，不替换原基本/高级调度或票据/质量门禁。OpenAI OAuth 用量查询成功不等于刷新令牌恢复，不能因读到历史额度就清除账号刷新错误。
+
 调度不是只按 `platform` 随机选择账号。请求在进入调度前已经确定或携带分组、强制平台、客户端模型、映射后的模型、endpoint/媒体意图、协议 transport、OAuth/privacy 要求和可选 session 标识。账号优先级统一来自 `accounts.priority`；`account_groups` 只表达成员关系，不保存分组内优先级。
 
 快照 bucket 由分组、平台和模式共同区分：

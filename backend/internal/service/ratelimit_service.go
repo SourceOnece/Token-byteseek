@@ -1135,6 +1135,10 @@ func (s *RateLimitService) handleOpenAI403(ctx context.Context, account *Account
 		)
 		return false
 	}
+	if isCloudflareBotBlockResponse(responseBody) {
+		slog.Warn("openai_403_cloudflare_bot_block_skips_account_penalty", "account_id", account.ID, "platform", account.Platform)
+		return false
+	}
 
 	msg := buildForbiddenErrorMessage(
 		"Access forbidden (403):",
@@ -1212,6 +1216,13 @@ func (s *RateLimitService) handleOpenAI403(ctx context.Context, account *Account
 		"error_on_threshold_enabled", settings.ErrorOnThresholdEnabled,
 	)
 	return true
+}
+
+// isCloudflareBotBlockResponse 识别 Cloudflare 1010 边缘拦截；请求没有到达账号上游，
+// 不应消耗账号级 403 strike。
+func isCloudflareBotBlockResponse(body []byte) bool {
+	normalized := strings.ToLower(strings.TrimSpace(string(body)))
+	return strings.Contains(normalized, "error code: 1010")
 }
 
 func (s *RateLimitService) getOpenAI403CooldownSettings(ctx context.Context, accountID int64) *OpenAI403CooldownSettings {

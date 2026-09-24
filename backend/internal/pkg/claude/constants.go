@@ -1,6 +1,8 @@
 // Package claude provides constants and helpers for Claude API integration.
 package claude
 
+import "strings"
+
 // Claude Code 客户端相关常量
 
 // Beta header 常量
@@ -175,6 +177,12 @@ var DefaultModels = []Model{
 		CreatedAt:   "2026-07-25T00:00:00Z",
 	},
 	{
+		ID:          "claude-opus-5-5",
+		Type:        "model",
+		DisplayName: "Claude Opus 5.5",
+		CreatedAt:   "2026-09-22T00:00:00Z",
+	},
+	{
 		ID:          "claude-sonnet-5",
 		Type:        "model",
 		DisplayName: "Claude Sonnet 5",
@@ -246,4 +254,15 @@ func DenormalizeModelID(id string) string {
 		return mapped
 	}
 	return id
+}
+
+// IsOpus55 判断 Claude Opus 5.5 的短名及日期/供应商后缀变体。
+func IsOpus55(id string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(id))
+	if slash := strings.LastIndexByte(normalized, '/'); slash >= 0 {
+		normalized = normalized[slash+1:]
+	}
+	normalized = strings.TrimPrefix(normalized, "anthropic.")
+	normalized = strings.ReplaceAll(normalized, "opus-5.5", "opus-5-5")
+	return normalized == "claude-opus-5-5" || strings.HasPrefix(normalized, "claude-opus-5-5-")
 }

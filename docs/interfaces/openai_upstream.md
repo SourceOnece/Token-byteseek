@@ -13,6 +13,8 @@
 
 ## 账号与凭据
 
+bh.061 的重新授权增量合并 credentials：新令牌覆盖，未提供的模型映射/端点配置保留，Extra 仍按原规则合并。OpenAI 用量查询可能返回缓存快照，不再据此清除刷新令牌错误；其它平台的恢复逻辑不扩大修改。现有隔离/指纹改写中的 turn metadata 采用 ASCII JSON 转义，解码值不变，不重新启用已撤回的 Metadata 补齐实验。
+
 <a id="codex_ticket_opt_in"></a>
 可选“292 打票”通过独立管理员设置开启，默认关闭；实现及与上游不同的保守行为见 [Codex 可选票据](codex_ticket.md#ticket_contract)。不属于账号权限、质量检测或 TLS 模板；不可将票据长度当成满血证明。
 
@@ -146,6 +148,8 @@ Responses 请求降级到 Chat Completions 时，工具结果中的 `input_image
 OpenAI API Key 账号以 `force_chat_completions` 承接 `/v1/messages` 时，Chat 流中的并行 `tool_calls` 必须按 `tool_calls[].index` 聚合 ID、名称和全部参数分片，在流收尾时再按 index 顺序生成各自连续闭合的 `content_block_start`、`input_json_delta`、`content_block_stop`；参数分片暂存后一次拼接，聚合期间通过 Anthropic `ping` 维持下游活动，文本与 thinking 仍即时流式输出。空工具参数归一为 `{}`，call ID 保持原样，以便下一轮 `tool_result.tool_use_id` 配对。Anthropic `tool_choice.disable_parallel_tool_use=true` 映射为 Chat 顶层 `parallel_tool_calls=false`，字段缺失或为 `false` 时保持默认 `true`；`auto`、`any`、`none` 和具名工具的选择语义不变。
 
 ## 模型与能力
+
+bh.061 的 DeepSeek Responses 图片兼容只作用于原生 DeepSeek 或 OpenAI API Key 实际指向官方 DeepSeek 域名的路径：图片 part 同时提供字符串 image_url/url，工具参数和非媒体 JSON 保持。映射账号不因此强制 store=false，其它 CN 平台不增加图片别名。工具 schema 的 required:null 被移除，已受前缀限制的 Responses 输入 item ID 超过 64 字节时删除；不改变调用 call_id 的关联。Anthropic 转 Responses 的 arguments.done 与累计 delta 保持一致。
 
 协议桥新增以下兼容边界：Responses→Anthropic 对仅在 `output_text.done` 出现的文本补缺失后缀；完全无文本增量时才恢复终态 message 文本，按输出/内容索引去重，不在 message_stop 后补发。Responses→Chat 同样补齐工具 arguments/input done，非流聚合按 Call ID 优先恢复空参数；Responses Lite `input[].additional_tools` 的 namespace 声明不再被误删。Responses→Chat 的开头 system/developer 合并为一条系统消息，中途指令保留位置但转换为 user，以适配仅允许开头 system 的兼容上游；原生 Responses 与直接 Chat 请求不执行此角色调整。
 

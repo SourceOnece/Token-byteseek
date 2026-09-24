@@ -26,6 +26,14 @@ func (i *applyOAuthTokenInvalidator) InvalidateToken(ctx context.Context, accoun
 func TestAccountHandlerApplyOAuthCredentials_MergesExtraAndInvalidatesToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	adminSvc := newStubAdminService()
+	// 重授权不能删除旧号的非令牌配置；新令牌必须覆盖旧令牌。
+	adminSvc.accounts = []service.Account{{
+		ID: 3, Platform: service.PlatformOpenAI, Type: service.AccountTypeOAuth,
+		Credentials: map[string]any{
+			"access_token": "old-token", "base_url": "https://relay.example/v1",
+			"model_mapping": map[string]any{"alias": "gpt-6-astra"},
+		},
+	}}
 	invalidator := &applyOAuthTokenInvalidator{}
 	handler := NewAccountHandler(adminSvc, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, invalidator)
 	router := gin.New()
@@ -54,6 +62,8 @@ func TestAccountHandlerApplyOAuthCredentials_MergesExtraAndInvalidatesToken(t *t
 	require.NotNil(t, adminSvc.updateAccountInput)
 	require.Equal(t, service.AccountTypeOAuth, adminSvc.updateAccountInput.Type)
 	require.Equal(t, "new-access-token", adminSvc.updateAccountInput.Credentials["access_token"])
+	require.Equal(t, "https://relay.example/v1", adminSvc.updateAccountInput.Credentials["base_url"])
+	require.Equal(t, map[string]any{"alias": "gpt-6-astra"}, adminSvc.updateAccountInput.Credentials["model_mapping"])
 	require.Nil(t, adminSvc.updateAccountInput.Extra, "凭据更新不应全量覆盖 Extra")
 	require.Len(t, adminSvc.updateExtraCalls, 1)
 	require.Equal(t, "new-account-uuid", adminSvc.updateExtraCalls[0]["account_uuid"])

@@ -21,6 +21,8 @@ Go 的手动用量查询复用本地 `UpstreamUsageService`，读取配置前缀
 
 ## 配置与兼容
 
+bh.061 使 OpenCode 平台及精确 HTTPS 官方 OpenCode/Command Code 端点使用规范 User-Agent；普通/透传 Responses、Chat、原生 Messages 与相应账号测试共用该规则，账号显式 Header 覆写随后生效。明确 Cloudflare 1010 边缘拦截不消耗 403 账号错误次数，真实权限错误照旧。Go 的 /zen/go 根地址兼容补齐，但不采用 sub2api 新增的独立窗口后台和同 Key 共享状态。
+
 管理表单复用现有 Select、BaseDialog、规则列表和包豪斯蓝色重点。模式切换只替换仍等于旧默认的端点/规则，自定义值保留；保存空规则保留空数组。新平台接入现有分组、渠道、额度、错误规则和调度快照，不恢复已移除的 Composite 平台或另一套监控表。
 
 迁移 `274_add_opencode_platform_quota.sql` 对应 sub2api 原 238，仅扩展本地用户平台额度 CHECK。新增平台额度缺失仍为无限，新注册的十一平台批量写入须与 Ent 校验一致。回滚二进制前应停用新平台账号/分组，否则旧实例没有对应平台处理器；迁移记录不得删除。

@@ -150,18 +150,29 @@ func deleteOpenAIResponsesNoneReasoningEffortFromObject(account *Account, body m
 // Responses 均不支持服务端状态存储，携带这些字段会被拒绝）。
 // 非原生 Responses 协议账号原样返回。
 func normalizeDeepSeekResponsesRequestBody(account *Account, body []byte) []byte {
-	if account == nil || !account.UsesNativeCNResponses() {
+	if account == nil {
 		return body
 	}
-	normalized, err := sjson.SetBytes(body, "store", false)
-	if err != nil {
+	native := account.UsesNativeCNResponses()
+	// OpenAI 平台指向 DeepSeek 官方端点时只补图片兼容字段，
+	// 不扩散原生 CN 账号的无状态存储策略。
+	mappedDeepSeek := account.Platform == PlatformOpenAI && account.Type == AccountTypeAPIKey && targetsDeepSeekAPIHost(account)
+	if !native && !mappedDeepSeek {
 		return body
 	}
-	if stripped, err := sjson.DeleteBytes(normalized, "previous_response_id"); err == nil {
-		normalized = stripped
+	normalized := body
+	if native {
+		var err error
+		normalized, err = sjson.SetBytes(body, "store", false)
+		if err != nil {
+			return body
+		}
+		if stripped, err := sjson.DeleteBytes(normalized, "previous_response_id"); err == nil {
+			normalized = stripped
+		}
 	}
 	// 工具图片移位仅针对 DeepSeek，不扩散至同用无状态规范化的 Kimi/MiniMax。
-	if account.Platform != PlatformDeepseek {
+	if account.Platform != PlatformDeepseek && !mappedDeepSeek {
 		return normalized
 	}
 	var requestBody map[string]any
@@ -169,15 +180,181 @@ func normalizeDeepSeekResponsesRequestBody(account *Account, body []byte) []byte
 		return normalized
 	}
 	lifted, changed := apicompat.LiftResponsesToolOutputMedia(requestBody["input"])
+	if changed {
+		requestBody["input"] = lifted
+	}
+	// DeepSeek 的 Responses 图片字段同时要求 image_url 与 url，且不接受
+	// Chat Completions/Anthropic 的旧字段形态；递归处理工具输出移位后的消息。
+	if aliased, did := aliasDeepSeekResponsesInputImages(requestBody["input"]); did {
+		requestBody["input"] = aliased
+		changed = true
+	}
 	if !changed {
 		return normalized
 	}
-	requestBody["input"] = lifted
 	rebuilt, err := marshalOpenAIUpstreamJSON(requestBody)
 	if err != nil {
 		return normalized
 	}
 	return rebuilt
+}
+
+// aliasDeepSeekResponsesInputImages 把图片 part 改写成 DeepSeek 能反序列化
+// 的形状：type=input_image，同时带字符串字段 image_url 与 url。
+// 文档与部分 400 提 image_url；线上 serde 要求 url。只发其中一个都会踩坑。
+// 仅有 file_id、没有可用 URL 的 part 原样保留。
+func aliasDeepSeekResponsesInputImages(input any) (any, bool) {
+	items, ok := asDeepSeekResponsesSlice(input)
+	if !ok {
+		return input, false
+	}
+	changed := false
+	for i, raw := range items {
+		item, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		if aliasDeepSeekResponsesInputItem(item) {
+			items[i] = item
+			changed = true
+		}
+	}
+	if !changed {
+		return input, false
+	}
+	return items, true
+}
+
+func aliasDeepSeekResponsesInputItem(item map[string]any) bool {
+	changed := aliasDeepSeekResponsesImagePart(item)
+	if content, exists := item["content"]; exists {
+		if rewritten, did := aliasDeepSeekResponsesContent(content); did {
+			item["content"] = rewritten
+			changed = true
+		}
+	}
+	if output, exists := item["output"]; exists {
+		if rewritten, did := aliasDeepSeekResponsesContent(output); did {
+			item["output"] = rewritten
+			changed = true
+		}
+	}
+	return changed
+}
+
+func aliasDeepSeekResponsesContent(content any) (any, bool) {
+	parts, ok := asDeepSeekResponsesSlice(content)
+	if !ok {
+		return content, false
+	}
+	changed := false
+	for i, raw := range parts {
+		part, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		if aliasDeepSeekResponsesImagePart(part) {
+			parts[i] = part
+			changed = true
+		}
+	}
+	if !changed {
+		return content, false
+	}
+	return parts, true
+}
+
+func aliasDeepSeekResponsesImagePart(part map[string]any) bool {
+	partType := strings.TrimSpace(deepSeekImageString(part["type"]))
+	switch partType {
+	case "input_image", "image_url", "image":
+	default:
+		return false
+	}
+	imageURL := extractDeepSeekResponsesImageURL(part)
+	if imageURL == "" {
+		return false
+	}
+	changed := false
+	if partType != "input_image" {
+		part["type"] = "input_image"
+		changed = true
+	}
+	if current, ok := part["image_url"].(string); !ok || strings.TrimSpace(current) != imageURL {
+		part["image_url"] = imageURL
+		changed = true
+	}
+	if current, ok := part["url"].(string); !ok || strings.TrimSpace(current) != imageURL {
+		part["url"] = imageURL
+		changed = true
+	}
+	return changed
+}
+
+func extractDeepSeekResponsesImageURL(part map[string]any) string {
+	if imageURL := deepSeekResponsesURLValue(part["url"]); imageURL != "" {
+		return imageURL
+	}
+	if imageURL := deepSeekResponsesURLValue(part["image_url"]); imageURL != "" {
+		return imageURL
+	}
+	if imageURL := deepSeekResponsesURLValue(part["image"]); imageURL != "" {
+		return imageURL
+	}
+	source, ok := part["source"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	if imageURL := deepSeekResponsesURLValue(source["url"]); imageURL != "" {
+		return imageURL
+	}
+	data := strings.TrimSpace(deepSeekImageString(source["data"]))
+	if data == "" {
+		return ""
+	}
+	if strings.HasPrefix(strings.ToLower(data), "data:") {
+		return data
+	}
+	mediaType := strings.TrimSpace(deepSeekImageString(source["media_type"]))
+	if mediaType == "" {
+		mediaType = "image/png"
+	}
+	return "data:" + mediaType + ";base64," + data
+}
+
+func deepSeekResponsesURLValue(value any) string {
+	switch typed := value.(type) {
+	case string:
+		return strings.TrimSpace(typed)
+	case map[string]any:
+		if imageURL := strings.TrimSpace(deepSeekImageString(typed["url"])); imageURL != "" {
+			return imageURL
+		}
+		return strings.TrimSpace(deepSeekImageString(typed["image_url"]))
+	default:
+		return ""
+	}
+}
+
+func asDeepSeekResponsesSlice(value any) ([]any, bool) {
+	switch items := value.(type) {
+	case []any:
+		return items, true
+	case []map[string]any:
+		out := make([]any, len(items))
+		for i := range items {
+			out[i] = items[i]
+		}
+		return out, true
+	default:
+		return nil, false
+	}
+}
+
+// deepSeekImageString 仅接受字符串，不把其它 JSON 值伪造成图片地址。
+func deepSeekImageString(value any) string {
+	text, _ := value.(string)
+	return text
 }
 
 // trimOpenAIEncryptedReasoningItems 清理一次性解密错误恢复中的账号绑定状态：
@@ -1135,13 +1312,49 @@ func normalizeOpenAIOAuthResponsesCompatibilityBody(body []byte) ([]byte, bool, 
 	return normalized, changed, nil
 }
 
-func normalizeOpenAIResponsesReasoningMode(body []byte) ([]byte, bool, error) {
+func normalizeOpenAIResponsesReasoningMode(body []byte, mappedModels ...string) ([]byte, bool, error) {
 	if len(body) == 0 {
 		return body, false, nil
 	}
-	// Astra 的 reasoning.mode 与 reasoning.effort 是独立参数，不做兼容替换；非 Astra 维持旧 strip-mode/pro->max 行为。
-	if isOpenAIGPT6AstraModel(gjson.GetBytes(body, "model").String()) {
-		return body, false, nil
+	model := gjson.GetBytes(body, "model").String()
+	// 别名请求以实际路由目标判断兼容字段，避免在映射前误删新模型 mode。
+	if len(mappedModels) > 0 && mappedModels[0] != "" {
+		model = mappedModels[0]
+	}
+	// Astra 与 Sol/Luna 均保留官方 reasoning 字段；Sol/Luna 额外不接受
+	// 采样参数和 logprobs，避免上游以 400 拒绝请求。
+	if isOpenAIGPT6Model(model) {
+		if isOpenAIGPT6AstraModel(model) || gjson.GetBytes(body, "reasoning.effort").String() == "none" {
+			return body, false, nil
+		}
+		updated := body
+		changed := false
+		for _, key := range []string{"temperature", "top_p", "top_logprobs", "logprobs"} {
+			if !gjson.GetBytes(updated, key).Exists() {
+				continue
+			}
+			var err error
+			updated, err = sjson.DeleteBytes(updated, key)
+			if err != nil {
+				return body, false, fmt.Errorf("remove GPT-6 sampling parameter %s: %w", key, err)
+			}
+			changed = true
+		}
+		if include := gjson.GetBytes(updated, "include"); include.IsArray() {
+			items := include.Array()
+			for i := len(items) - 1; i >= 0; i-- {
+				if items[i].String() != "message.output_text.logprobs" {
+					continue
+				}
+				var err error
+				updated, err = sjson.DeleteBytes(updated, fmt.Sprintf("include.%d", i))
+				if err != nil {
+					return body, false, err
+				}
+				changed = true
+			}
+		}
+		return updated, changed, nil
 	}
 	mode := gjson.GetBytes(body, "reasoning.mode")
 	if !mode.Exists() || mode.Type != gjson.String {
@@ -1233,7 +1446,7 @@ func normalizeOpenAIResponsesWebSocketCompatibilityBody(body []byte, account *Ac
 		changed = true
 	}
 	if account != nil && account.IsOpenAI() && account.IsOAuth() {
-		if reasoningBody, reasoningChanged, err := normalizeOpenAIResponsesReasoningMode(normalized); err != nil {
+		if reasoningBody, reasoningChanged, err := normalizeOpenAIResponsesReasoningMode(normalized, account.GetMappedModel(gjson.GetBytes(normalized, "model").String())); err != nil {
 			return body, false, err
 		} else if reasoningChanged {
 			normalized = reasoningBody

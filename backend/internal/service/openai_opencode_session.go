@@ -13,6 +13,38 @@ import (
 
 const openCodeSessionHeader = "X-OpenCode-Session"
 
+// 官方 OpenCode/Command Code 会按客户端身份做边缘校验，避免编程库 UA 被误判为机器人。
+const openCodeUpstreamUserAgent = "opencode/1.0.0"
+
+func isOfficialOpenCodeHost(targetURL string) bool {
+	parsed, err := url.Parse(targetURL)
+	return err == nil && strings.EqualFold(parsed.Scheme, "https") && strings.EqualFold(parsed.Hostname(), "opencode.ai")
+}
+func isOfficialCommandCodeHost(targetURL string) bool {
+	parsed, err := url.Parse(targetURL)
+	return err == nil && strings.EqualFold(parsed.Scheme, "https") && strings.EqualFold(parsed.Hostname(), "api.commandcode.ai")
+}
+func applyOpenCodeUpstreamUserAgent(account *Account, targetURL string, headers http.Header) {
+	if headers == nil {
+		return
+	}
+	ua := ""
+	if isOfficialCommandCodeHost(targetURL) {
+		ua = CodexCanonicalUserAgent()
+	} else if isOfficialOpenCodeHost(targetURL) || (account != nil && account.IsOpenCodeGo()) {
+		ua = openCodeUpstreamUserAgent
+	}
+	if ua == "" {
+		return
+	}
+	for key := range headers {
+		if strings.EqualFold(key, "User-Agent") {
+			delete(headers, key)
+		}
+	}
+	headers.Set("User-Agent", ua)
+}
+
 // 只把会话标识发送到官方 OpenCode 域名，避免把用户会话头泄露给自定义中继。
 func applyOpenCodeSessionHeader(c *gin.Context, account *Account, targetURL string, headers http.Header, bodies ...[]byte) {
 	if c == nil || c.Request == nil || account == nil || account.Type != AccountTypeAPIKey || headers == nil {

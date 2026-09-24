@@ -40,6 +40,8 @@ Claude Code 可把 base URL 指向部署地址的 `/antigravity`，认证值仍�
 
 ## 协议适配
 
+工具 schema 对 `prefixItems` 元组选择可表达的项补 `items`，合并 union 后递归清理；`const` 转为单项 enum，缺失/非法数组 items 补合法结构，required 与 properties 对齐。它是 Gemini 能接受的兼容降级，不等价于完整 JSON Schema 验证；不借此改写原账号模型选择、thinking 或额度绑定。
+
 进入 Antigravity 转换器时，仅移除顶层 `system` 字符串或文本块开头的 `x-anthropic-billing-header:` 归属行，保留之后的系统指令；不扫描用户消息、工具结果或正文中段。原生 Anthropic 转发不使用此清理规则。
 
 混合内置搜索/代码执行与客户端函数工具时，v1internal 请求优先保留客户端函数，移除冲突的内置工具，不再强制切到纯搜索模型；只有内置搜索时沿用原搜索路径。无工具的推理请求也写出 `toolConfig`。这个限制不是所有 Gemini 接口的全局规则，只适用于本适配器。

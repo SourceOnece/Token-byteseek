@@ -409,10 +409,10 @@ func (s *AccountUsageService) getUsageForAccount(ctx context.Context, account *A
 	accountID := account.ID
 
 	if account.Platform == PlatformOpenAI && account.Type == AccountTypeOAuth {
+		// 查询可能只读到缓存；额度可读不代表已经失效的刷新令牌恢复。
 		usage, err := s.getOpenAIUsage(ctx, account, forceProbe)
 		if err == nil {
 			s.applyOpenAIQuotaAutoPauseState(ctx, account, usage)
-			s.tryClearRecoverableAccountError(ctx, account)
 		}
 		return usage, err
 	}

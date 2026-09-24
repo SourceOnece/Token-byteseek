@@ -128,6 +128,11 @@ func normalizeKnownOpenAICodexModel(model string) string {
 	}
 
 	switch {
+	case openai.IsGPT6SolOrLunaModelSpelling(normalized):
+		if strings.HasPrefix(normalized, "gpt-6-sol") {
+			return "gpt-6-sol"
+		}
+		return "gpt-6-luna"
 	case isOpenAIGPT6AstraModel(normalized):
 		return "gpt-6-astra"
 	case strings.Contains(normalized, "gpt-5.6-sol"):
@@ -182,6 +187,11 @@ func isOpenAIGPT56Model(model string) bool {
 func isOpenAIGPT6AstraModel(model string) bool {
 	normalized := canonicalizeOpenAIModelAliasSpelling(model)
 	return normalized == "gpt-6-astra" || strings.HasPrefix(normalized, "gpt-6-astra-")
+}
+
+// isOpenAIGPT6Model 判断 GPT-6 全系列，供推理档位与 Codex 能力共用。
+func isOpenAIGPT6Model(model string) bool {
+	return isOpenAIGPT6AstraModel(model) || openai.IsGPT6SolOrLunaModelSpelling(model)
 }
 
 func appendUsageBillingModelCandidate(candidates []string, seen map[string]struct{}, model string) []string {

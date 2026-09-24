@@ -1507,8 +1507,10 @@ func (h *AccountHandler) ApplyOAuthCredentials(c *gin.Context) {
 	}
 
 	updatedAccount, err := h.adminService.UpdateAccount(ctx, accountID, &service.UpdateAccountInput{
-		Type:        req.Type,
-		Credentials: req.Credentials,
+		Type: req.Type,
+		// 重新授权只替换令牌字段；保留账号已有的 base_url、model_mapping
+		// 和票据采集配置，避免 OAuth 回调把运营配置清空。
+		Credentials: service.MergeCredentials(existing.Credentials, req.Credentials),
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)

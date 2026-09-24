@@ -1495,12 +1495,16 @@ const (
 
 // isThinkingBudgetConstraintError detects whether an upstream error message indicates
 // a budget_tokens constraint violation (e.g. "budget_tokens >= 1024").
-// Matches three conditions (all must be true):
+// 同时识别 Baseten 为最终回答预留 token 的约束。
+// 原预算约束仍需同时满足以下三个条件：
 //  1. Contains "budget_tokens" or "budget tokens"
 //  2. Contains "thinking"
 //  3. Contains ">= 1024" or "greater than or equal to 1024" or ("1024" + "input should be")
 func isThinkingBudgetConstraintError(errMsg string) bool {
 	m := strings.ToLower(errMsg)
+	if isFinalAnswerReserveError(m) {
+		return true
+	}
 
 	// Condition 1: budget_tokens or budget tokens
 	hasBudget := strings.Contains(m, "budget_tokens") || strings.Contains(m, "budget tokens")
@@ -1522,6 +1526,13 @@ func isThinkingBudgetConstraintError(errMsg string) bool {
 	}
 
 	return false
+}
+
+// 仅匹配明确的回答预算预留错误，不把普通配额或上下文长度错误当成可整流。
+func isFinalAnswerReserveError(errMsg string) bool {
+	m := strings.ToLower(errMsg)
+	return strings.Contains(m, "must be greater than 1024 to reserve tokens for a final answer") &&
+		strings.Contains(m, "baseten reasoning is enabled")
 }
 
 // RectifyThinkingBudget modifies the request body to fix budget_tokens constraint errors.

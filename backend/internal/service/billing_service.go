@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/claude"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/openai"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/xai"
 )
@@ -470,6 +472,13 @@ func (s *BillingService) initFallbackPricing() {
 		SupportsServiceTier:        true,
 	}
 	s.fallbackPrices["claude-opus-5"] = s.fallbackPrices["claude-opus-4.8"]
+	// 新 Opus 独立价卡，保留缓存 TTL 拆分与原 Fast 倍率配置优先级。
+	s.fallbackPrices["claude-opus-5-5"] = &ModelPricing{
+		InputPricePerToken: 4e-6, OutputPricePerToken: 20e-6,
+		CacheCreationPricePerToken: 5e-6, CacheReadPricePerToken: 0.2e-6,
+		CacheCreation5mPrice: 5e-6, CacheCreation1hPrice: 8e-6,
+		SupportsCacheBreakdown: true, SupportsServiceTier: true,
+	}
 
 	// Claude Fable 5.x 的输入/输出和缓存写入价格相同；5.1 的缓存读取价降为每百万 token 0.25 美元。
 	s.fallbackPrices["claude-fable-5"] = &ModelPricing{
@@ -570,6 +579,8 @@ func (s *BillingService) initFallbackPricing() {
 		CacheReadPricePerToken:     1e-6,
 		SupportsServiceTier:        true,
 	}
+	s.fallbackPrices["gpt-6-sol"] = &ModelPricing{InputPricePerToken: 2e-6, InputPricePerTokenPriority: 4e-6, OutputPricePerToken: 10e-6, OutputPricePerTokenPriority: 20e-6, CacheCreationPricePerToken: 2.5e-6, CacheCreationPricePerTokenPriority: 5e-6, CacheReadPricePerToken: 0.2e-6, CacheReadPricePerTokenPriority: 0.4e-6, CacheCreationPriceExplicit: true, LongContextInputThreshold: 272000, LongContextInputMultiplier: 2, LongContextOutputMultiplier: 1.5}
+	s.fallbackPrices["gpt-6-luna"] = &ModelPricing{InputPricePerToken: 0.1e-6, InputPricePerTokenPriority: 0.2e-6, OutputPricePerToken: 0.5e-6, OutputPricePerTokenPriority: 1e-6, CacheCreationPricePerToken: 0.125e-6, CacheCreationPricePerTokenPriority: 0.25e-6, CacheReadPricePerToken: 0.01e-6, CacheReadPricePerTokenPriority: 0.02e-6, CacheCreationPriceExplicit: true, LongContextInputThreshold: 272000, LongContextInputMultiplier: 2, LongContextOutputMultiplier: 1.5}
 
 	// OpenAI GPT-5.6 官方价格（USD/token）。缓存写入为输入价的 1.25 倍。
 	s.fallbackPrices["gpt-5.6-sol"] = &ModelPricing{
@@ -879,6 +890,10 @@ func (s *BillingService) initFallbackPricing() {
 	}
 
 	// xAI Grok 4.3：20 万 token 以下每百万输入 $1.25、缓存输入 $0.20、输出 $2.50。
+	// 4.7 与 4.6 同价，但保持独立条目，未来调整不会串改旧模型。
+	grok47 := *s.fallbackPrices["grok-4.6"]
+	s.fallbackPrices["grok-4.7"] = &grok47
+
 	s.fallbackPrices["grok-4.3"] = &ModelPricing{
 		InputPricePerToken:            1.25e-6,
 		OutputPricePerToken:           2.5e-6,
@@ -942,6 +957,9 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	}
 	if strings.Contains(modelLower, "fable-5") || strings.Contains(modelLower, "fable5") {
 		return s.fallbackPrices["claude-fable-5"]
+	}
+	if claude.IsOpus55(modelLower) || strings.Contains(modelLower, "opus5.5") {
+		return s.fallbackPrices["claude-opus-5-5"]
 	}
 	if strings.Contains(modelLower, "opus") {
 		if strings.Contains(modelLower, "opus-5") || strings.Contains(modelLower, "opus5") {
@@ -1104,6 +1122,8 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 		switch normalized {
 		case "gpt-6-astra":
 			return s.fallbackPrices["gpt-6-astra"]
+		case "gpt-6-sol", "gpt-6-luna":
+			return s.fallbackPrices[normalized]
 		case "gpt-5.6-sol":
 			return s.fallbackPrices["gpt-5.6-sol"]
 		case "gpt-5.6-terra":
@@ -1130,6 +1150,8 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	switch modelLower {
 	case "grok", "grok-latest", "grok-4.6", "grok-4.6-latest":
 		return s.fallbackPrices["grok-4.6"]
+	case "grok-4.7", "grok-4.7-latest":
+		return s.fallbackPrices["grok-4.7"]
 	case "grok-4.5", "grok-4.5-latest":
 		return s.fallbackPrices["grok-4.5"]
 	case "grok-3-mini":
@@ -1224,6 +1246,7 @@ func (s *BillingService) getModelPricingAt(model string, pricingAt time.Time) (*
 			price1h := litellmPricing.CacheCreationInputTokenCostAbove1hr
 			enableBreakdown := price1h > 0 && price1h > price5m
 			return s.applyModelSpecificPricingPolicyEx(model, &ModelPricing{
+				CacheCreationPriceExplicit:         openai.IsGPT6SolOrLunaModelSpelling(model) && litellmPricing.CacheCreationInputTokenCostExplicit,
 				InputPricePerToken:                 litellmPricing.InputCostPerToken,
 				InputPricePerTokenPriority:         litellmPricing.InputCostPerTokenPriority,
 				OutputPricePerToken:                litellmPricing.OutputCostPerToken,
@@ -1680,14 +1703,21 @@ func (s *BillingService) applyModelSpecificPricingPolicyEx(model string, pricing
 	}
 	normalized := normalizeKnownOpenAICodexModel(model)
 	isGPT56 := isOpenAIGPT56Model(normalized)
-	needsCacheCreationPolicy := isGPT56 && !pricing.CacheCreationPriceExplicit && (pricing.CacheCreationPricePerToken <= 0 ||
+	isGPT6SolLuna := openai.IsGPT6SolOrLunaModelSpelling(normalized)
+	needsCacheCreationPolicy := (isGPT56 || isGPT6SolLuna) && !pricing.CacheCreationPriceExplicit && (pricing.CacheCreationPricePerToken <= 0 ||
 		(pricing.InputPricePerTokenPriority > 0 && pricing.CacheCreationPricePerTokenPriority <= 0))
 	fastRatio := openAIModelFastPricingRatio(normalized)
-	if !needsCacheCreationPolicy && fastRatio <= 0 {
+	// Opus 5.5 的 Fast 对全部缓存 TTL 等比例计价，显式运营倍率继续优先。
+	needsOpus55Fast := claude.IsOpus55(model) && pricing.FastMultiplier == nil && pricing.FastModeMultiplier == nil
+	if !needsCacheCreationPolicy && fastRatio <= 0 && !needsOpus55Fast {
 		return pricing
 	}
 	cloned := *pricing
-	if isGPT56 && !cloned.CacheCreationPriceExplicit {
+	if needsOpus55Fast {
+		multiplier := 2.0
+		cloned.FastMultiplier = &multiplier
+	}
+	if (isGPT56 || isGPT6SolLuna) && !cloned.CacheCreationPriceExplicit {
 		if cloned.CacheCreationPricePerToken <= 0 {
 			cloned.CacheCreationPricePerToken = cloned.InputPricePerToken * 1.25
 		}
@@ -1714,7 +1744,7 @@ func longContextMultiplierOrOne(multiplier float64) float64 {
 // 档的模型（如 gpt-5.5-pro、gpt-5.4-mini/nano）返回 0。
 func openAIModelFastPricingRatio(normalized string) float64 {
 	switch normalized {
-	case "gpt-5.4", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna":
+	case "gpt-5.4", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-sol", "gpt-6-luna":
 		return 2.0
 	case "gpt-5.5":
 		return 2.5

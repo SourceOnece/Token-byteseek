@@ -128,6 +128,8 @@ client_model
 
 ## 转发与流式边界
 
+共享 HTTP 上游为每次尝试创建独立可取消子 context。关闭响应体时先取消这一尝试，再等待当前读取退出并关闭解压器；不取消调用方用于重试或客户端断开后结算的 context。已完整读取的 HTTP/1 连接和 HTTP/2 其他流仍可复用。OpenAI HTTP/2 空闲探测/响应期限为 15s/15s，其它长流保留 10s/5s。Responses 完整终态刷出后不再等待 EOF，Codex bare-error 后可能接 completed/failed 的序列继续按原逻辑收口。
+
 Codex可选票据在选后发送前失效时，用 `account_selection/codex_ticket_unavailable` 本地资格错误复用有界换号，不计账号健康失败或现场重采。耗尽归为路由容量不足503，不进入通用上游503的清空排除列表重试。HTTP/透传/WS构建器不先写通用502；已输出回答及WS上下文不可迁移限制不变。详见[票据契约](../interfaces/codex_ticket.md#ticket_contract)。
 
 每次 attempt 都以原始/规范化请求和本次账号重新构造供应商请求，注入凭据、代理、TLS 指纹、客户端标识、Thinking/工具配置及上游模型。平台适配器负责协议转换、上游响应限制和供应商错误解析，handler 负责在客户端协议中返回最终结果。
