@@ -538,7 +538,10 @@ func shouldApplyOpenAIAlphaSearchAccountErrorSideEffects(statusCode int) bool {
 }
 
 func openAIAlphaSearchResponseFromResponsesSSE(body []byte) ([]byte, error) {
-	output, results := parseOpenAIResponsesSSEForAlphaSearch(body)
+	output, results, err := parseOpenAIResponsesSSEForAlphaSearch(body)
+	if err != nil {
+		return nil, err
+	}
 	resp := map[string]any{
 		"output": output,
 	}
@@ -548,7 +551,7 @@ func openAIAlphaSearchResponseFromResponsesSSE(body []byte) ([]byte, error) {
 	return json.Marshal(resp)
 }
 
-func parseOpenAIResponsesSSEForAlphaSearch(body []byte) (string, []any) {
+func parseOpenAIResponsesSSEForAlphaSearch(body []byte) (string, []any, error) {
 	text := strings.ReplaceAll(string(body), "\r\n", "\n")
 	var output strings.Builder
 	var completedResponse any
@@ -564,13 +567,27 @@ func parseOpenAIResponsesSSEForAlphaSearch(body []byte) (string, []any) {
 		if err := json.Unmarshal([]byte(data), &event); err != nil {
 			continue
 		}
+		switch event["type"] {
+		case "error", "response.failed", "response.incomplete":
+			return "", nil, fmt.Errorf("alpha search responses stream ended with %s", event["type"])
+		case "response.completed":
+			response, ok := event["response"].(map[string]any)
+			if !ok || response == nil {
+				return "", nil, fmt.Errorf("alpha search responses completion is missing its response")
+			}
+			if status, present := response["status"]; present && status != "completed" {
+				return "", nil, fmt.Errorf("alpha search responses completion has a non-success status")
+			}
+			completedResponse = response
+		}
 		if delta, _ := event["delta"].(string); delta != "" && event["type"] == "response.output_text.delta" {
 			_, _ = output.WriteString(delta)
 		}
-		if event["type"] == "response.completed" {
-			completedResponse = event["response"]
-		}
 		collectOpenAIAlphaSearchURLCitations(event, &results, seenURLs)
+	}
+	// HTTP 200、delta 或 [DONE] 不代表搜索成功，必须有成功终态才允许返回并计费。
+	if completedResponse == nil {
+		return "", nil, fmt.Errorf("alpha search responses stream ended before completion")
 	}
 
 	out := output.String()
@@ -578,7 +595,7 @@ func parseOpenAIResponsesSSEForAlphaSearch(body []byte) (string, []any) {
 		out = extractOpenAIResponsesCompletedText(completedResponse)
 		collectOpenAIAlphaSearchURLCitations(completedResponse, &results, seenURLs)
 	}
-	return out, results
+	return out, results, nil
 }
 
 func openAIAlphaSearchSSEData(block string) string {

@@ -1170,7 +1170,7 @@ affiliates: {
         peakMultiplier: 'Peak multiplier',
         multiplierHint: 'Applies to token billing multiplier; image tokens in token billing are also affected. 0 means peak token requests are billed at 0x.'
       },
-      modelAllowlist: { title: 'Enable Model Allowlist', models: 'Allowed models' },
+      modelAllowlist: { title: 'Enable Model Allowlist', models: 'Allowed models', hint: 'One per line. Use * anywhere, e.g. gpt-*-sol or *codex*.' },
       modelsList: {
         title: 'Custom /v1/models Model List',
         hint: 'Only changes the /v1/models response. Whitelist model calls and account routing are unchanged.',

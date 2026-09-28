@@ -90,15 +90,12 @@ func AnthropicToChatCompletionsRequest(req *AnthropicRequest) (*ChatCompletionsR
 		}
 	}
 
-	// output_config.effort 复用当前 Responses 桥的按模型映射；thinking.type 与旧桥一致地忽略。
-	effort := "medium"
-	if req.OutputConfig != nil && req.OutputConfig.Effort != "" {
-		effort = req.OutputConfig.Effort
-	}
+	// 与 Responses 桥一致，显式关闭 thinking 优先。
+	effort := anthropicReasoningEffort(req)
 	if isUltraReasoningEffort(effort) {
 		return nil, fmt.Errorf("reasoning effort %q is not supported", strings.TrimSpace(effort))
 	}
-	out.ReasoningEffort = mapAnthropicEffortToResponsesForModel(req.Model, effort)
+	out.ReasoningEffort = effort
 
 	out.ParallelToolCalls = &parallelToolCalls
 

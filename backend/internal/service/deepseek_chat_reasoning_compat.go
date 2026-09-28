@@ -44,7 +44,10 @@ func targetsDeepSeekAPIHost(account *Account) bool {
 // 桥接会从 summary / 缓存回注真实明文；这里只填仍为空的缺口，不覆盖已有内容。
 // 非 DeepSeek 上游原样返回（字节不变）。
 func ensureDeepSeekChatReasoningPlaceholders(account *Account, body []byte) []byte {
-	if !targetsDeepSeekAPIHost(account) {
+	// 官方 OpenCode 的 DeepSeek 转发有同样约束；其它模型/自定义中继不扩散。
+	openCodeDeepSeek := account != nil && isOfficialOpenCodeHost(account.GetOpenAIBaseURL()) &&
+		strings.HasPrefix(normalizeOpenCodeGoModelID(gjson.GetBytes(body, "model").String()), "deepseek")
+	if !targetsDeepSeekAPIHost(account) && !openCodeDeepSeek {
 		return body
 	}
 	messages := gjson.GetBytes(body, "messages")

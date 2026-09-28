@@ -40,6 +40,8 @@ Claude Code 可把 base URL 指向部署地址的 `/antigravity`，认证值仍�
 
 ## 协议适配
 
+bh.062 对 string const 与已有 enum 取交集而非扩大枚举；Responses input_file 的 data URI 转 Anthropic document，再经 Gemini inlineData 转发，只有 file_id 的块仍无法转换，不新增下载。兼容流的 signature、stop 与 message_stop 不单独代表有效输出；没有正文/工具/有效思考时仍走原空流错误和有界重试，已有实际输出后不得换号拼接。
+
 工具 schema 对 `prefixItems` 元组选择可表达的项补 `items`，合并 union 后递归清理；`const` 转为单项 enum，缺失/非法数组 items 补合法结构，required 与 properties 对齐。它是 Gemini 能接受的兼容降级，不等价于完整 JSON Schema 验证；不借此改写原账号模型选择、thinking 或额度绑定。
 
 进入 Antigravity 转换器时，仅移除顶层 `system` 字符串或文本块开头的 `x-anthropic-billing-header:` 归属行，保留之后的系统指令；不扫描用户消息、工具结果或正文中段。原生 Anthropic 转发不使用此清理规则。

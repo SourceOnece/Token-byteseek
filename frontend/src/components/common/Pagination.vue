@@ -23,9 +23,9 @@
       </button>
     </div>
 
-    <div class="pagination-desktop hidden lg:flex lg:flex-1 lg:items-center lg:justify-between">
+    <div class="pagination-desktop hidden lg:flex lg:flex-1 lg:flex-wrap lg:items-center lg:justify-between lg:gap-x-4 lg:gap-y-2">
       <!-- Desktop pagination info -->
-      <div class="flex items-center space-x-4">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
         <p class="pagination-summary text-sm font-semibold text-gray-700 dark:text-dark-200">
           {{ t('pagination.showing') }}
           <span class="font-mono font-bold text-gray-950 dark:text-white">{{ fromItem }}</span>
@@ -41,7 +41,8 @@
           <span class="text-sm font-semibold text-gray-700 dark:text-dark-200"
             >{{ t('pagination.perPage') }}:</span
           >
-          <div class="page-size-select w-20">
+          <!-- 三位数页容量和图标均留足空间，窄桌面允许整组换行。 -->
+          <div class="page-size-select w-24 shrink-0">
             <Select
               :model-value="pageSize"
               :options="pageSizeSelectOptions"
@@ -89,7 +90,7 @@
           @click="typeof pageNum === 'number' && goToPage(pageNum)"
           :disabled="typeof pageNum !== 'number'"
           :class="[
-            'pagination-control pagination-page-button bh-page-btn px-4 font-mono',
+            'pagination-control pagination-page-button bh-page-btn min-w-9 justify-center px-2 font-mono',
             pageNum === page && 'bh-page-btn-active',
             typeof pageNum !== 'number' && 'cursor-default'
           ]"

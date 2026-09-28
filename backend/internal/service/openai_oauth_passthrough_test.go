@@ -112,7 +112,14 @@ func (s *openAIPassthroughSettingRepoStub) Set(ctx context.Context, key, value s
 }
 
 func (s *openAIPassthroughSettingRepoStub) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
-	panic("unexpected GetMultiple call")
+	// 流式转发也会读取 TTFT 等运行配置，替身不能依赖其它用例先暖全局缓存。
+	values := make(map[string]string)
+	for _, key := range keys {
+		if value, ok := s.values[key]; ok {
+			values[key] = value
+		}
+	}
+	return values, nil
 }
 
 func (s *openAIPassthroughSettingRepoStub) SetMultiple(ctx context.Context, settings map[string]string) error {

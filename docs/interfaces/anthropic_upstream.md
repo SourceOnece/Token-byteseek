@@ -43,6 +43,8 @@ bh.050兼容Codex工具根级oneOf/anyOf/allOf：转为Anthropic可接受的obje
 
 ## 模型与请求策略
 
+bh.062 的 OAuth mimic 仅额外保留客户端明确请求的 `structured-outputs-2025-11-13`，未知 beta 不借此通行，管理员过滤集合仍优先。Anthropic→OpenAI 两种兼容桥对 `thinking.type=disabled` 保留 `none`，无设置仍用原 medium；按实际上游区分 max/xhigh 的规则保持，不允许映射阶段把关闭思考再次提升为 max。
+
 `SUB2API_CLAUDE_CLI_VERSION` 在进程启动时解析一次，未配置使用内置版本；只接受不低于内置基线的三段纯数字 semver，无效值告警回退。默认 User-Agent、账号默认指纹和计费归因模板使用相同解析值，修改需要重启。它是协议兼容项，不保证上游资格或降低风控。
 
 最终 beta Header 与正文共同决定字段：`thinking.block_binding` 需要 thinking-binding-controls；`messages[].output_config` 需要 mid-conversation-output-config。缺 beta 时只剥对应字段；仅有控制信息且无正文的 system 消息整条删除，真实正文、其它角色与顶层 output_config 保留。OAuth mimic 包含这两项 beta，API Key 仍遵从自己的最终 beta；server-side fallback 不因此默认开启。Claude Code UA 已通过时，显式 max_tokens=1 探测不限于 Haiku；普通请求仍需原来的严格识别。

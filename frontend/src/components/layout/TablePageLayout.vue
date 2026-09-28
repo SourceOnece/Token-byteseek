@@ -127,7 +127,8 @@ onUnmounted(() => {
 .table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.batch-pagination-root) {
   border-top: 0;
   background: transparent;
-  height: 2.25rem;
+  /* 分页换行时随内容增高，保留单行紧凑高度。 */
+  height: auto;
   min-height: 2.25rem;
   padding: 0 1rem;
 }
@@ -150,7 +151,8 @@ onUnmounted(() => {
 }
 
 .table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.page-size-select) {
-  width: 4rem;
+  width: 6rem;
+  flex-shrink: 0;
 }
 
 .table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.page-size-select .select-trigger) {

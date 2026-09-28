@@ -1414,6 +1414,8 @@ func (s *OpenAIGatewayService) buildUpstreamRequest(ctx context.Context, c *gin.
 			req.Header.Del("OpenAI-Beta")
 			req.Header.Del("originator")
 		} else {
+			// 保留多智能体等独立 beta，只清理废弃的 responses=experimental。
+			stripOpenAILegacyResponsesBeta(req.Header)
 			req.Header.Set("originator", resolveOpenAIUpstreamOriginator(c, isCodexCLI, routerMatch...))
 		}
 		apiKeyID := getAPIKeyIDFromContext(c)

@@ -5,6 +5,7 @@
       <Toggle :model-value="modelValue.enabled" :aria-label="t('admin.groups.modelAllowlist.title')" @update:model-value="setEnabled" />
     </div>
     <textarea v-if="modelValue.enabled" :id="fieldId" v-model="modelText" class="input min-h-28 w-full font-mono text-sm" spellcheck="false" :aria-label="t('admin.groups.modelAllowlist.models')" />
+    <p v-if="modelValue.enabled" class="mt-2 text-sm text-gray-500 dark:text-dark-300">{{ t('admin.groups.modelAllowlist.hint') }}</p>
   </div>
 </template>
 

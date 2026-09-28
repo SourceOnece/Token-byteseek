@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/openai"
 )
 
 // AnthropicToResponses converts an Anthropic Messages request directly into
@@ -58,18 +60,17 @@ func AnthropicToResponses(req *AnthropicRequest) (*ResponsesRequest, error) {
 		out.Tools = convertAnthropicToolsToResponses(req.Tools)
 	}
 
-	// 只使用 output_config.effort 控制推理等级，thinking.type 不参与判断。
+	// 显式关闭 thinking 优先于 output_config.effort。
 	// 默认值跟随 Codex CLI / airgate 的 Anthropic bridge 形态：未设置时使用 medium。
-	effort := "medium"
-	if req.OutputConfig != nil && req.OutputConfig.Effort != "" {
-		effort = req.OutputConfig.Effort
-	}
+	effort := anthropicReasoningEffort(req)
 	if isUltraReasoningEffort(effort) {
 		return nil, fmt.Errorf("reasoning effort %q is not supported", strings.TrimSpace(effort))
 	}
 	out.Reasoning = &ResponsesReasoning{
-		Effort:  mapAnthropicEffortToResponsesForModel(req.Model, effort),
-		Summary: "auto",
+		Effort: effort,
+	}
+	if effort != "none" {
+		out.Reasoning.Summary = "auto"
 	}
 
 	// Convert tool_choice
@@ -545,9 +546,27 @@ func boolPtr(v bool) *bool {
 }
 
 // isReasoningModel 判断模型是否为 Responses API 下不支持 temperature/top_p 的推理模型。
-// 当前所有 gpt-5.x 模型都按推理模型处理。
+// GPT-5 及以后代际都按推理模型处理，保留原供应商别名规范化。
 func isReasoningModel(model string) bool {
-	return strings.HasPrefix(model, "gpt-5")
+	major, ok := openAIModelGeneration(model)
+	return (ok && major >= 5) || openai.IsGPT6SolOrLunaModelSpelling(model)
+}
+
+// anthropicReasoningEffort 让显式关闭 thinking 优先于输出配置。
+func anthropicReasoningEffort(req *AnthropicRequest) string {
+	if req.Thinking != nil && req.Thinking.Type == "disabled" {
+		return "none"
+	}
+	effort := "medium"
+	if req.OutputConfig != nil && req.OutputConfig.Effort != "" {
+		effort = req.OutputConfig.Effort
+	}
+	return mapAnthropicEffortToResponsesForModel(req.Model, effort)
+}
+
+func openAIModelGeneration(model string) (int, bool) {
+	major, _, ok := parseResponsesGPTModelVersion(model)
+	return major, ok
 }
 
 // normalizeToolParameters ensures the tool parameter schema is valid for

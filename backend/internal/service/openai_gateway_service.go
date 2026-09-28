@@ -58,14 +58,15 @@ const (
 	codexCLIVersion                    = "0.144.1"
 	// Codex 限额快照仅用于后台展示/诊断，不需要每个成功请求都立即落库。
 	openAICodexSnapshotPersistMinInterval = 30 * time.Second
-	// 配额自动暂停时，超过该时长仍未刷新的 used% 快照视为陈旧，不再据此暂停账号。
-	// 被暂停的账号收不到流量，其快照永远不会从上游响应头刷新；该兜底让账号在快照
-	// 陈旧时放行一次请求，从而通过正常响应头自愈，而无需等待整个窗口（5h/7d）重置。
+	// 配额快照超过该时长且没有明确未来重置时间时，允许请求刷新信息自愈；
+	// 已知窗口尚未重置则维持配额门禁，不因无流量造成的快照陈旧提前放行。
 	openAICodexAutoPauseStaleAfter = 2 * time.Hour
 )
 
 // OpenAI allowed headers whitelist (for non-passthrough).
 var openaiAllowedHeaders = map[string]bool{
+	// 普通 Responses 与透传链路同样保留调用方的独立 beta 协商。
+	"openai-beta":     true,
 	"accept-language": true,
 	"content-type":    true,
 	"conversation_id": true,

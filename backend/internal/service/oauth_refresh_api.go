@@ -186,6 +186,11 @@ func (api *OAuthRefreshAPI) RefreshIfNeeded(
 		return nil, fmt.Errorf("oauth refresh local lock: %w", err)
 	}
 	defer localMu.Unlock()
+	// 等待锁期间可能取消；同时可取得锁与取消信号时 select 不保证优先取消。
+	// 取得锁后再检查，防止已停止的任务继续请求刷新端点。
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
 	// 1. 获取分布式锁
 	if api.tokenCache != nil {
@@ -252,6 +257,9 @@ func (api *OAuthRefreshAPI) RefreshIfNeeded(
 	}
 
 	// 4. 执行平台特定刷新逻辑
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	attemptedAccount := snapshotOAuthRefreshAccount(freshAccount)
 	newCredentials, refreshErr := executor.Refresh(ctx, freshAccount)
 	if ctxErr := ctx.Err(); ctxErr != nil {

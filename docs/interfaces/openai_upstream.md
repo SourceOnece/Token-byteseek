@@ -149,6 +149,10 @@ OpenAI API Key 账号以 `force_chat_completions` 承接 `/v1/messages` 时，Ch
 
 ## 模型与能力
 
+bh.062 兼容桥按数值代际把 GPT-5 及以后文本型号视为推理模型，剔除不支持的 temperature/top_p；原生请求和 GPT 图片/音频家族不按这个条件处理。转换的角色输入项显式标为 message。Anthropic 工具 start 帧内的完整 input 在无参数 delta 时补成一次 delta/done，真实 delta 优先、跨 item 清理；终态消息为空时只补已经实际流出的文本，非空终态仍优先。
+
+API Key Responses 探测优先通用 GPT 文本模型；400/404 明确为模型不可用时不更新端点能力，不改管理员文本路由；普通端点 404/405 仍判不支持。正常 Responses 现在和透传一样保留客户端独立 OpenAI-Beta，只清理旧 responses=experimental。PAT Alpha Search 的 Responses 回退必须收到成功 completed 才产生搜索计费结果，截断/失败/裸 DONE 不视为成功。
+
 bh.061 的 DeepSeek Responses 图片兼容只作用于原生 DeepSeek 或 OpenAI API Key 实际指向官方 DeepSeek 域名的路径：图片 part 同时提供字符串 image_url/url，工具参数和非媒体 JSON 保持。映射账号不因此强制 store=false，其它 CN 平台不增加图片别名。工具 schema 的 required:null 被移除，已受前缀限制的 Responses 输入 item ID 超过 64 字节时删除；不改变调用 call_id 的关联。Anthropic 转 Responses 的 arguments.done 与累计 delta 保持一致。
 
 协议桥新增以下兼容边界：Responses→Anthropic 对仅在 `output_text.done` 出现的文本补缺失后缀；完全无文本增量时才恢复终态 message 文本，按输出/内容索引去重，不在 message_stop 后补发。Responses→Chat 同样补齐工具 arguments/input done，非流聚合按 Call ID 优先恢复空参数；Responses Lite `input[].additional_tools` 的 namespace 声明不再被误删。Responses→Chat 的开头 system/developer 合并为一条系统消息，中途指令保留位置但转换为 user，以适配仅允许开头 system 的兼容上游；原生 Responses 与直接 Chat 请求不执行此角色调整。
@@ -168,6 +172,8 @@ API Key 的普通调度能力只表达 `text_generation` 与 `embeddings` 工作
 Images API 的流式与非流式上游请求都脱离客户端请求取消信号继续执行，并由上游响应超时控制最终回收。生图属于长耗时且上游可能已经产生实际成本的媒体任务；客户端中途断开不能取消上游并丢失已完成图片的计费结果。下游写失败不改变图片产出和结算事实。
 
 ## 额度与调度
+
+配额阈值命中且已知未来 reset 时，不能仅因快照超过 2 小时就提前恢复候选。绝对时间和相对秒数均使用既有采样锚点；reset 已过期或旧快照没有有效未来 reset 时保留原自愈逻辑。这不写账号 schedulable，不替代题目检测/票据三态调度，最终仍检查所有资格。
 
 HTTP 429 只有明确 5h/7d 用量达到 100% 或响应体明确给出 reset 时才按配额重置长冷却；未耗尽的正常窗口倒计时不能让账号停调数天。普通瞬时 429 仍执行原有有界重试与配置的短冷却，不改账号质量检测和手动调度状态。
 

@@ -13,6 +13,8 @@
 <a id="account_credential_refresh"></a>
 ## 凭据刷新
 
+bh.062 在取得本地刷新锁后、真正交换凭据前复查 context 取消，避免等锁期间停止的任务仍发起交换；锁释放与原凭据 CAS 保持。它没有引入新版 TokenRouter 的生命周期服务，也不因取消改变调度状态。
+
 后台候选不再要求 `schedulable=true`：管理员暂停或质量检测降智停调的账号，仍可在原类型/状态/凭据及限流条件允许时刷新 OAuth，防止等待恢复期间令牌过期。刷新本身不会重新开启人工调度，也不会把失败质量结果改成满血；inactive/error 等原有候选规则保留。
 
 `TokenRefreshService` 分页读取需要维护的账号，按平台 refresher 判断资格，并对每个 provider 应用独立并发/QPS 门槛、单次 attempt 超时、周期总超时和有界退避。OAuth、Setup Token 和 Qoder COSY 的候选规则不同；API Key、Bedrock 和 Service Account 通常由各自请求路径或签名 provider 管理，不应统一假设有 refresh token。

@@ -2026,8 +2026,8 @@ func TestOpenAIGatewayService_SelectAccountForModelWithExclusions_StaleUsageSnap
 		Extra: map[string]any{
 			"codex_5h_used_percent":   99.0,
 			"auto_pause_5h_threshold": 0.95,
-			// 窗口尚未重置，因此 reset 保护不会生效。
-			"codex_5h_reset_at": time.Now().Add(time.Hour).Format(time.RFC3339),
+			// 未知重置时间才允许陈旧快照自愈；已知未来重置时间仍继续限流。
+			"codex_5h_reset_at": "invalid",
 			// 快照已经陈旧：早于 openAICodexAutoPauseStaleAfter（2h）。
 			"codex_usage_updated_at": time.Now().Add(-3 * time.Hour).Format(time.RFC3339),
 		},
