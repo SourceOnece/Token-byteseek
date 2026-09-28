@@ -618,12 +618,12 @@ func TestGetAvailableModels_OpenAIPassthroughUsesDefaultFallback(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "passthrough wins over ordinary account mapping",
+			name: "passthrough keeps ordinary account whitelist",
 			accounts: []Account{
 				{
 					ID:          2,
 					Platform:    PlatformOpenAI,
-					Credentials: map[string]any{"model_mapping": map[string]any{"configured-model": "configured-upstream"}},
+					Credentials: map[string]any{"model_mapping": map[string]any{"configured-model": "configured-upstream"}, "model_whitelist": []any{"configured-upstream"}},
 				},
 				{
 					ID:          3,
@@ -632,7 +632,7 @@ func TestGetAvailableModels_OpenAIPassthroughUsesDefaultFallback(t *testing.T) {
 					Extra:       map[string]any{"openai_passthrough": true},
 				},
 			},
-			want: nil,
+			want: []string{"configured-model", "configured-upstream"},
 		},
 		{
 			name: "ordinary accounts preserve mapped whitelist",

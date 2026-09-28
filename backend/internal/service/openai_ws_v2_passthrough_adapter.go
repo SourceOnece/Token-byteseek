@@ -1113,6 +1113,8 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 			return restoreCodexToolNamesFromContext(c, payload)
 		},
 	}
+	// 仅 client->upstream goroutine 读写；窗口 ID 使用已隔离的同一形态。
+	lastWindowID := openAIWSPayloadCodexWindowID(firstClientMessage)
 	policyClientConn := &openAIWSPolicyEnforcingFrameConn{
 		inner: clientFrameConn,
 		// filter 仅在 runClientToUpstream 这一条 goroutine 中执行；
@@ -1174,6 +1176,13 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 				if accountScoped {
 					payload = accountScopedPayload
 				}
+			}
+			if isResponseCreate && account.Platform == PlatformOpenAI {
+				normalized, _, boundaryErr := normalizeOpenAIWSContextWindowBoundary(payload, lastWindowID)
+				if boundaryErr != nil {
+					return payload, nil, boundaryErr
+				}
+				payload = normalized
 			}
 			originalResponseCreate := payload
 			if isResponseCreate {
@@ -1284,6 +1293,9 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 					hooks.TurnStarted(turnNo, responseCreateAt)
 				}
 				acceptedTurn = true
+				if windowID := openAIWSPayloadCodexWindowID(out); windowID != "" {
+					lastWindowID = windowID
+				}
 			}
 			return out, blocked, policyErr
 		},

@@ -453,7 +453,7 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 	userReleaseFunc, err := geminiConcurrency.AcquireUserSlotWithWait(c, authSubject.UserID, authSubject.Concurrency, stream, &streamStarted)
 	if err != nil {
 		reqLog.Warn("gemini.user_slot_acquire_failed", zap.Error(err))
-		googleError(c, http.StatusTooManyRequests, err.Error())
+		googleConcurrencyError(c, err, "user")
 		return
 	}
 	// 确保请求取消时也会释放槽位，避免长连接被动中断造成泄漏
@@ -596,6 +596,9 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 		// 通用调度器会自行执行 R -> C，这里必须传原始模型，避免把 C 再做一次渠道映射。
 		selection, err := h.gatewayService.SelectAccountWithLoadAwareness(c.Request.Context(), apiKey.GroupID, sessionKey, reqModel, fs.FailedAccountIDs, "", int64(0)) // Gemini 不使用会话限制
 		if err != nil {
+			if failoverClientGone(c) {
+				return
+			}
 			if len(fs.FailedAccountIDs) == 0 {
 				if handleGeminiGroupModelUnsupportedError(c, err) {
 					return
@@ -691,7 +694,7 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 			)
 			if err != nil {
 				reqLog.Warn("gemini.account_slot_acquire_failed", zap.Int64("account_id", account.ID), zap.Error(err))
-				googleError(c, http.StatusTooManyRequests, err.Error())
+				googleConcurrencyError(c, err, "account")
 				return
 			}
 			if accountWaitCounted {
@@ -747,7 +750,8 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 					return
 				}
 			}
-			// ForwardNative already wrote the response
+			// 取消时转发层可能未写响应，统一标记未提交请求。
+			failoverClientGone(c)
 			reqLog.Error("gemini.forward_failed", zap.Int64("account_id", account.ID), zap.Error(err))
 			return
 		}
@@ -939,6 +943,12 @@ func writeUpstreamResponse(c *gin.Context, res *service.UpstreamHTTPResult) {
 		contentType = "application/json"
 	}
 	c.Data(res.StatusCode, contentType, res.Body)
+}
+
+// 并发错误沿用统一状态码，Google 响应仅负责协议外形。
+func googleConcurrencyError(c *gin.Context, err error, slotType string) {
+	status, _, _, message := concurrencyErrorResponse(err, slotType)
+	googleError(c, status, message)
 }
 
 func shouldFallbackGeminiModels(res *service.UpstreamHTTPResult) bool {

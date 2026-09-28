@@ -1154,6 +1154,9 @@ func OpsErrorLoggerMiddleware(ops *service.OpsService) gin.HandlerFunc {
 		if shouldSkipOpsErrorLog(c.Request.Context(), ops, parsed.Message, string(body), c.Request.URL.Path) {
 			return
 		}
+		if shouldSkipOpsClientClosed(c, ops, status) {
+			return
+		}
 
 		apiKey := getOpsAPIKey(c)
 
@@ -2389,6 +2392,12 @@ func hasOpsUpstreamErrorContext(c *gin.Context) bool {
 		}
 	}
 	return false
+}
+
+// 纯取消可按原设置跳过；取消前已记录上游故障时保留事实，不冲掉真实失败。
+func shouldSkipOpsClientClosed(c *gin.Context, ops *service.OpsService, status int) bool {
+	return status == statusClientClosedRequest && ops != nil &&
+		ops.OpsAdvancedSettingsSnapshot().IgnoreContextCanceled && !hasOpsUpstreamErrorContext(c)
 }
 
 func hasOpsAccountAuthFailure(c *gin.Context) bool {

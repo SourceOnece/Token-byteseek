@@ -94,6 +94,8 @@
 
 相关文档：[开发流程](development_workflow.md)、[包豪斯设计契约](bauhaus_design_contract.md)、[版本目录](versions/index.md)、[运维目录](index.md)。
 
+[bh.063](versions/v0_1_278_bh_063.md) 承接固定的 TokenRouter v0.1.279 / sub2api v0.2.9 批次：适配客户端取消 499、透传模型目录混合账号、Codex 三类 WebSocket 窗口边界，以及弹窗监听器、setup 过时字段和 Redis exec 参数安全修复；保留票据、调度、计费、会话隔离和包豪斯契约。Go/前端/Compose 验证已完成，源码和 GHCR 发布证据待追加，未部署线上。
+
 [bh.032](versions/v0_1_278_bh_032.md) 调整手动/定时检测为失败保留原调度、仅降智关闭，并增加按管理员隔离的本浏览器测试配置记忆；不回写旧结果或调度，发布状态见该记录。
 
 [bh.033](versions/v0_1_278_bh_033.md) 固定 TokenRouter 无新增，以 sub2api v0.2.6 补 OAuth 维护、续聊/协议/目录、兑换分页及交互修复，新增默认关闭的 292 票据表单与有限采集；缺票放行且不覆盖已有回合状态。双上游 SHA、差异原因、验证和发布状态均见该记录。

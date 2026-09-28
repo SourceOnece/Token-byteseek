@@ -65,6 +65,11 @@ func classifyUpstreamTransportError(err error) openAITransportErrorClass {
 	return classifyOpenAITransportError(err)
 }
 
+// 客户端取消必须同时有请求 context 与传输错误证据；独立上游超时不能冒充取消。
+func isClientCanceledTransportError(ctx context.Context, err error) bool {
+	return ctx != nil && errors.Is(ctx.Err(), context.Canceled) && errors.Is(err, context.Canceled)
+}
+
 // handleOpenAIUpstreamTransportError 处理没有 HTTP 响应的上游传输层错误。
 //
 // 该函数只记录 ops 和返回错误，不直接写响应；非客户端取消错误会转成
@@ -72,6 +77,9 @@ func classifyUpstreamTransportError(err error) openAITransportErrorClass {
 func (s *OpenAIGatewayService) handleOpenAIUpstreamTransportError(ctx context.Context, c *gin.Context, account *Account, err error, passthrough bool) error {
 	if err == nil {
 		return nil
+	}
+	if isClientCanceledTransportError(ctx, err) {
+		return err
 	}
 	safeErr := sanitizeUpstreamErrorMessage(err.Error())
 	platform, accountName := "", ""

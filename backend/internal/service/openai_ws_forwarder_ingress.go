@@ -582,7 +582,26 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 		bridgeReplayInputExists := false
 		var bridgeAccountFailoverInput []json.RawMessage
 		bridgeAccountFailoverInputExists := false
+		lastBridgeWindowID := ""
 		for turn := 1; ; turn++ {
+			// 新上下文窗口是新根：在续聊权限 hook 和工具回放前断开旧响应链。
+			// 仅丢弃本连接旧窗口的回放，不清账号 STATE、会话身份或业务代理。
+			if account.Platform == PlatformOpenAI {
+				next, boundary, err := normalizeOpenAIWSContextWindowBoundary(currentBridgePayload.payloadRaw, lastBridgeWindowID)
+				if err != nil {
+					return err
+				}
+				if boundary.Changed {
+					currentBridgePayload.payloadRaw, currentBridgePayload.payloadBytes = next, len(next)
+					currentBridgePayload.previousResponseID = ""
+					bridgeReplayInput, bridgeAccountFailoverInput = nil, nil
+					bridgeReplayInputExists, bridgeAccountFailoverInputExists = false, false
+					setOpenAIWSHTTPBridgeToolState(c, openAIWSHTTPBridgeToolState{})
+				}
+				if boundary.WindowID != "" {
+					lastBridgeWindowID = boundary.WindowID
+				}
+			}
 			turnStartedAt := time.Now()
 			if hooks != nil && hooks.TurnStarted != nil {
 				hooks.TurnStarted(turn, turnStartedAt)
@@ -1399,6 +1418,7 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 	turnPrevRecoveryTried := false
 	lastTurnFinishedAt := time.Time{}
 	lastTurnResponseID := ""
+	lastTurnWindowID := ""
 	lastTurnPayload := []byte(nil)
 	var lastTurnStrictState *openAIWSIngressPreviousTurnStrictState
 	lastTurnReplayInput := []json.RawMessage(nil)
@@ -1518,6 +1538,23 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 		return true
 	}
 	for {
+		if account.Platform == PlatformOpenAI {
+			next, boundary, err := normalizeOpenAIWSContextWindowBoundary(currentPayload, lastTurnWindowID)
+			if err != nil {
+				return err
+			}
+			if boundary.Changed {
+				// 同账号复用连接，但不回填旧 response_id、严格状态或工具历史。
+				currentPayload, currentPayloadBytes = next, len(next)
+				lastTurnResponseID, lastTurnPayload, lastTurnStrictState = "", nil, nil
+				lastTurnReplayInput, currentTurnReplayInput = nil, nil
+				lastTurnReplayInputExists, currentTurnReplayInputExists = false, false
+				turnPrevRecoveryTried = false
+			}
+			if boundary.WindowID != "" {
+				lastTurnWindowID = boundary.WindowID
+			}
+		}
 		turnStartedAt := time.Now()
 		if hooks != nil && hooks.TurnStarted != nil {
 			hooks.TurnStarted(turn, turnStartedAt)

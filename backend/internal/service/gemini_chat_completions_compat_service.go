@@ -192,6 +192,10 @@ func (s *GeminiMessagesCompatService) forwardClaudeBodyAsOpenAICompat(
 
 		resp, err = s.httpUpstream.Do(upstreamReq, proxyURL, account.ID, account.Concurrency)
 		if err != nil {
+			// 本地取消不重试、不伪造上游失败；真正网络错误保留原路径。
+			if isClientCanceledTransportError(c.Request.Context(), err) {
+				return nil, err
+			}
 			safeErr := sanitizeUpstreamErrorMessage(err.Error())
 			appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
 				Platform:           account.Platform,

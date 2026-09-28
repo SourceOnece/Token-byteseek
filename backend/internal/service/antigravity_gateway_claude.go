@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -125,8 +126,8 @@ func (s *AntigravityGatewayService) Forward(ctx context.Context, c *gin.Context,
 			}
 		}
 		// 区分客户端取消和真正的上游失败，返回更准确的错误消息
-		if c.Request.Context().Err() != nil {
-			return nil, s.writeClaudeError(c, http.StatusBadGateway, "client_disconnected", "Client disconnected before upstream response")
+		if errors.Is(c.Request.Context().Err(), context.Canceled) {
+			return nil, s.writeClaudeError(c, antigravityStatusClientClosed, "client_disconnected", "Client disconnected before upstream response")
 		}
 		return nil, s.writeClaudeError(c, http.StatusBadGateway, "upstream_error", "Upstream request failed after retries")
 	}

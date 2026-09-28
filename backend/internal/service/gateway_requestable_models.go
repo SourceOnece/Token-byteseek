@@ -111,6 +111,9 @@ func configuredRequestModelsFromAccounts(accounts []Account, platform string) []
 		if platform != "" && account.Platform != platform {
 			continue
 		}
+		if account.IsOpenAIPassthroughEnabled() {
+			continue
+		}
 		requestModels := account.GetConfiguredRequestModels()
 		if len(requestModels) == 0 {
 			continue
@@ -194,7 +197,9 @@ func mergeRequestableModelCandidates(baseModels []string, accounts []Account, ch
 	hasUnrestrictedQoderCN := false
 	for i := range accounts {
 		account := &accounts[i]
-		appendModels(sortedModelMappingSources(account.GetModelMapping())...)
+		if !account.IsOpenAIPassthroughEnabled() {
+			appendModels(sortedModelMappingSources(account.GetModelMapping())...)
+		}
 		if accountHasUnrestrictedModelScope(account) {
 			hasUnrestrictedAccount = true
 			if platform == PlatformQoder && account.Platform == PlatformQoder {
@@ -243,6 +248,10 @@ func sortedModelMappingSources(mapping map[string]string) []string {
 func accountHasUnrestrictedModelScope(account *Account) bool {
 	if account == nil {
 		return false
+	}
+	// 对齐本地真实转发资格；透传旧白名单不抑制目录默认候选，最终仍逐模型校验。
+	if account.IsOpenAIPassthroughEnabled() {
+		return true
 	}
 	mapping := account.GetModelMapping()
 	whitelist, _ := resolveFinalModelWhitelist(account.Platform, account.Credentials, mapping)

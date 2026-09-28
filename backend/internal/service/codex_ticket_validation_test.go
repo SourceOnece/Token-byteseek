@@ -228,6 +228,10 @@ func TestCodexTicketVerifiedWSBridgeReadsEachTicketAndObservesResponse(t *testin
 	require.Equal(t, first, u.calls[0].state)
 	require.Equal(t, "gpt-6-astra", result.UpstreamResponseModel)
 	second := seed("b")
+	// 换窗口只去掉旧续链，不清掉账号新票；业务仍逐轮读取当前验证 STATE。
+	payload, boundary, err := normalizeOpenAIWSContextWindowBoundary([]byte(`{"type":"response.create","model":"gpt-6-astra","previous_response_id":"old-window-response","client_metadata":{"x-codex-window-id":"next"},"input":"hi"}`), "before")
+	require.NoError(t, err)
+	require.True(t, boundary.Changed)
 	result, err = s.gateway.proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, a, a.GetOpenAIAccessToken(), payload, len(payload), "gpt-6-astra", "", "", "", "", 2, func([]byte) error { return nil })
 	require.NoError(t, err)
 	require.Equal(t, second, u.calls[1].state)

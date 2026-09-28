@@ -205,6 +205,10 @@ func TestWriteConfigFileKeepsDefaultUserConcurrency(t *testing.T) {
 	if !strings.Contains(string(data), "user_concurrency: 5") {
 		t.Fatalf("config missing default user concurrency, got:\n%s", string(data))
 	}
+	// 当前配置加载器已没有这套全局限流字段，新安装不能写入误导性默认值。
+	if strings.Contains(string(data), "rate_limit:") || strings.Contains(string(data), "requests_per_minute:") {
+		t.Fatal("setup must not persist obsolete global rate_limit defaults")
+	}
 }
 
 func TestWriteConfigFileIncludesRedisUsername(t *testing.T) {

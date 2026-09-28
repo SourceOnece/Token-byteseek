@@ -221,3 +221,9 @@ bh.030 新增 `271_channel_max_reasoning_effort_multiplier.sql`（TokenRouter 26
 升级完成后至少检查 `/health`、登录/API Key 鉴权、一个非流和流式网关请求、用量结算、关键后台任务及迁移表。保留旧产物和升级前备份，直到这些检查完成。
 
 相关文档：[系统架构](../architecture/system_architecture.md)、[配置边界](../interfaces/configuration.md)、[运维目录](index.md)。
+
+### bh.063 Compose 与初始化配置边界
+
+两份 Compose 的 Redis 服务现在直接以参数列表启动 `redis-server`，不再经过 `sh -c`。`REDIS_PASSWORD` 作为独立参数传入，空值保持无认证；快照、AOF、`REDIS_MAXMEMORY` 和 `REDIS_MAXMEMORY_POLICY` 仍与之前相同。升级不需要迁移或手工清理数据，部署前仍应通过密钥管理传入密码并避免把渲染后的 Compose 输出写入日志。
+
+setup 生成器不再写已经没有配置加载入口的全局 `rate_limit` 默认块。已有配置中的其它字段不受影响；这是初始化输出清理，不是限流策略迁移，也不会替换账号/分组级限流设置。
