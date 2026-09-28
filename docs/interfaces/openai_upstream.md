@@ -201,9 +201,9 @@ WS 重放历史正文按不可变所有权共享，修改时重建元素，避�
 
 ### 客户端取消与 Codex 窗口边界
 
-bh.063 将客户端主动取消限定为“请求 context 已收到 `context.Canceled`，且传输错误本身也能追溯到该取消”。未提交响应的请求归类为 499；已经提交的流不追加错误帧。上游自己的超时、截止时间、连接拒绝和其它网络错误仍走原故障转移、账号健康和 Ops 记录，不能因为状态码相似而被吞掉。
+bh.063 的传输错误过滤要求“请求 context 已收到 `context.Canceled`，且传输错误本身也能追溯到该取消”，只在这时跳过新的上游故障记录。上游自己的超时、连接拒绝和其它网络错误仍保留证据。handler 复用原 `failoverClientGone` 终止已取消或已到期的入口 context：未提交响应标 499，已提交的流不追加错误帧；排队超时沿原并发错误分类。这些收尾判断不修改媒体排水和已有用量结算。
 
-Codex Responses WebSocket 每条连接维护自己的窗口 ID。窗口 ID来自 `client_metadata.x-codex-window-id`，或其中的 `x-codex-turn-metadata.window_id`。明确切换窗口时只清理旧 `previous_response_id`、工具/文本回放和严格续聊状态；账号、会话、业务代理及票据 STATE 继续按原键隔离。原生 ingress、HTTP bridge 和 v2 passthrough 都遵守这个边界；没有窗口 ID 的旧客户端继续使用原有续聊规则。
+Codex Responses WebSocket 每条连接维护自己的窗口 ID。窗口 ID 来自 `client_metadata.x-codex-window-id`，或 `client_metadata.x-codex-turn-metadata` JSON 字符串中的 `window_id`。明确切换窗口时只清理旧 `previous_response_id`、工具/文本回放和严格续聊状态；账号、会话、业务代理及票据 STATE 继续按原键隔离。原生 ingress、HTTP bridge 和 v2 passthrough 都遵守这个边界；没有窗口 ID 的旧客户端继续使用原有续聊规则。
 
 流式错误要保持 SSE/WebSocket 协议完整；Responses 可产生 `response.failed`，非流接口返回相应 OpenAI envelope。入站 WebSocket 的下行写不得继承独立的 ingress 租约取消信号：旧 ingress 路径绑定客户端请求生命周期并叠加 write timeout，v2 relay 只受 write timeout 限制，退出路径再通过显式 Close/CloseNow 回收连接；这样租约丢失不会在终态事件写入期间抢先硬关 TCP，客户端可先收到终态事件，再收到 1013 关闭帧。上行写继续继承控制面取消，以便快速回收上游连接。HTTP 200 SSE 中的 `rate_limit_exceeded` 按语义状态 429 进入故障转移与池模式重试，但不使用该 200 响应的正常配额快照头写入默认账号冷却。上游容量降载通常先发 `error`、再以 `response.failed` 收尾；`server_is_overloaded` / `slow_down` 的前置错误帧在尚无业务输出时继续留在 attempt 缓冲中，触发有界同账号重试和 pre-output failover，并按请求级瞬时故障处理，不冷却当前账号。已有真实输出或重试耗尽后不能重放请求，SSE 与 WS HTTP bridge 会仅在客户端副本中把这两个致命码改为可重试的 `server_error`，原始事件仍用于账号策略与观测。客户端尚未收到业务输出时，池模式账号的其它瞬态流内处理错误也可在请求级预算内重试同一账号；旧版 Compact 桥接心跳注释不算业务输出，即使已提交 200 响应头，只要没有语义 SSE 载荷，最终失败仍必须追加 `response.failed`。OpenAI Responses 标准流与 passthrough 流若只收到前导事件和完全不含 output、usage、error 的 `response.completed` / `response.done`，会在尚未写出客户端业务内容时按静默拒绝切换账号，而不是记录 0/0 成功；终态含 usage、error、任一输出项，或此前已出现语义输出时均不触发该规则。一旦真实输出开始，网关不得重放请求或切换账号。最终错误还可命中[网关错误响应策略](gateway_error_policy.md)，但规则不会把失败结算成成功。排障应同时检查账号类型、required transport/capability、客户端限制、privacy status、模型映射、quota reset、代理/TLS 和 attempt 记录。
 

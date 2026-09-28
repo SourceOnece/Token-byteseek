@@ -166,8 +166,8 @@ Codex可选票据在选后发送前失效时，用 `account_selection/codex_tick
 
 ### 客户端断开收尾
 
-客户端在上游响应前断开时，handler 和传输层先检查真实请求 context 与错误链。两者都指向 `context.Canceled` 才标记 499、停止后续重试并避免写 502；独立上游超时或网络错误仍沿原账号故障转移/健康记录。响应已经提交后只完成资源回收和已有用量处理，不向已断开的连接追加错误。
+客户端在上游响应前断开时，传输层同时检查请求 context 与错误链；两者都指向 `context.Canceled` 才跳过新的上游故障事件。handler 复用原 `failoverClientGone` 终止已取消/已到期的入口 context，未提交时标记 499。独立上游超时或网络错误仍沿原故障/健康记录，取消前的真实上游故障不能被吞掉。已提交响应不追加取消错误，已有用量和原排水逻辑保留。
 
-这条边界只改变错误归类，不改变账号池选择、票据注入、调度三态或计费幂等。Gemini/Antigravity 仍使用各自协议错误外形，Ops 只在纯取消且设置允许时跳过日志；取消之前已经记录的上游失败必须保留。
+这条边界补齐取消收尾，不替换账号池选择、票据注入、调度三态或计费幂等，也不重写既有调度反馈评分。Gemini/Antigravity 仍使用各自协议错误外形，Ops 只在纯取消且设置允许时跳过日志；取消之前已经记录的上游失败必须保留。
 
 相关文档：[系统架构](system_architecture.md)、[账号调度与缓存一致性](account_scheduling_and_cache.md)、[网关策略控制](../domains/gateway_policy_controls.md)、[上游账号能力矩阵](../interfaces/upstream_account_matrix.md)、[网关错误响应策略](../interfaces/gateway_error_policy.md)、[领域目录](../domains/index.md)、[接口目录](../interfaces/index.md)。
