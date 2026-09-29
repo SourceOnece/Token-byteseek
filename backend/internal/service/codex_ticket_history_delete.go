@@ -14,10 +14,10 @@ type CodexTicketHistoryDeleteRepository interface {
 }
 
 func (s *CodexTicketService) DeleteTicketHistory(ctx context.Context, runID string, eventID int64) (int64, error) {
-	if s == nil || s.gateway == nil {
+	if s == nil || s.runtime == nil {
 		return 0, errors.New("采集历史服务不可用")
 	}
-	r, ok := s.gateway.accountRepo.(CodexTicketHistoryDeleteRepository)
+	r, ok := s.ticketAccounts().(CodexTicketHistoryDeleteRepository)
 	if !ok {
 		return 0, errors.New("采集历史删除不可用")
 	}

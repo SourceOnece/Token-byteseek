@@ -216,7 +216,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	// 先复核凭据与并发，再请求取号服务；排队/停调不会白白消耗代理额度和尝试计数。
 	diagnostic.Phase = "eligibility"
 	readCtx, readCancel := context.WithTimeout(ctx, 2*time.Second)
-	fresh, err := s.gateway.accountRepo.GetByID(readCtx, account.ID)
+	fresh, err := s.ticketAccounts().GetByID(readCtx, account.ID)
 	readCancel()
 	if err != nil {
 		state, reason = "failed", "storage"
@@ -242,23 +242,18 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		return false, false
 	}
 	// 管理员若把共享业务槽TTL设得过短，明确拒绝不安全的长采集，不偷偷放宽业务并发。
-	if s.gateway.concurrencyService != nil && s.gateway.cfg != nil {
-		ttl := time.Duration(s.gateway.cfg.Gateway.ConcurrencySlotTTLMinutes) * time.Minute
-		if ttl > 0 && cfg.attemptTimeout()+10*time.Second >= ttl {
-			state, reason = "skipped", "concurrency_config"
-			return false, false
-		}
+	if ttl := s.runtime.TicketSlotTTL(); ttl > 0 && cfg.attemptTimeout()+10*time.Second >= ttl {
+		state, reason = "skipped", "concurrency_config"
+		return false, false
 	}
 	probeCtx, cancel := context.WithTimeoutCause(ctx, cfg.attemptTimeout(), ticketStopCause("timeout"))
 	defer cancel()
-	if s.gateway.concurrencyService != nil {
-		slot, err := s.gateway.concurrencyService.AcquireAccountSlot(probeCtx, fresh.ID, fresh.Concurrency)
-		if err != nil || slot == nil || !slot.Acquired {
-			reason = "concurrency_busy"
-			return false, false
-		}
-		defer slot.ReleaseFunc()
+	slot, err := s.runtime.AcquireTicketSlot(probeCtx, fresh)
+	if err != nil || slot == nil || !slot.Acquired {
+		reason = "concurrency_busy"
+		return false, false
 	}
+	defer slot.ReleaseFunc()
 	if len(observers) == 0 {
 		countCtx, stopCount := context.WithTimeout(ctx, time.Second)
 		attempt, err = s.nextTicketAttempt(countCtx, key, cfg.attempts(), attempt)
@@ -329,7 +324,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("session_id", uuid.NewString())
-	if resolveAndSetOpenAIChatGPTAccountHeaders(probeCtx, s.gateway.accountRepo, req.Header, fresh) != nil {
+	if s.runtime.TicketAccountHeaders(probeCtx, req.Header, fresh) != nil {
 		state, reason = "failed", "credential"
 		s.recordObservation(ctx, key, "failed", "credential", nil, diagnostic)
 		return false, false
@@ -350,7 +345,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 	s.recordObservation(ctx, key, "collecting", "", nil, diagnostic)
 	observed = true
 	state, reason = "failed", "network"
-	resp, err := s.gateway.httpUpstream.Do(req, proxyURL, fresh.ID, fresh.Concurrency)
+	resp, err := s.runtime.SendTicketHarvest(req, proxyURL, fresh)
 	if err != nil || resp == nil {
 		reason = ticketNetworkReason(probeCtx, err, diagnostic)
 		return false, ctx.Err() == nil
@@ -457,7 +452,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 func (s *CodexTicketService) readTicketAccount(ctx context.Context, id int64) (*Account, error) {
 	read, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	return s.gateway.accountRepo.GetByID(read, id)
+	return s.ticketAccounts().GetByID(read, id)
 }
 
 // 普通采集与双链路、HTTP错误与流内错误共用停止/退避判断，不通过换代理绕过明确拒绝。

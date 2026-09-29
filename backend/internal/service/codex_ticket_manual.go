@@ -93,10 +93,10 @@ func (r *CodexTicketManualRequest) Normalize() error {
 }
 
 func (s *CodexTicketService) TicketHistory() (CodexTicketHistoryRepository, error) {
-	if s == nil || s.gateway == nil {
+	if s == nil || s.runtime == nil {
 		return nil, errors.New("票据服务不可用")
 	}
-	r, ok := s.gateway.accountRepo.(CodexTicketHistoryRepository)
+	r, ok := s.ticketAccounts().(CodexTicketHistoryRepository)
 	if !ok {
 		return nil, errors.New("采集历史服务不可用")
 	}
@@ -155,7 +155,7 @@ func (s *CodexTicketService) PrepareManualCollection(ctx context.Context, req Co
 	if req.Revision == "" || req.Revision != cfg.Generation {
 		return nil, errors.New("采集配置已变化，请重新打开弹窗确认")
 	}
-	if s.cache == nil || s.cipher == nil || s.gateway.httpUpstream == nil {
+	if s.cache == nil || s.cipher == nil || !s.runtime.TicketTransportAvailable() {
 		return nil, errors.New("采集服务不可用")
 	}
 	ctx, cancel := context.WithCancelCause(ctx)
@@ -473,7 +473,7 @@ func (m *CodexTicketManualSession) collectModel(ctx context.Context, id int64, m
 		result.Reason = "model_unsupported"
 		return
 	}
-	token, _, err := m.s.gateway.GetAccessToken(ctx, a)
+	token, _, err := m.s.runtime.GetAccessToken(ctx, a)
 	if err != nil || token == "" {
 		result.Status = "failed"
 		result.Reason = "credential"

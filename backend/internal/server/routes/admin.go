@@ -134,66 +134,10 @@ func RegisterAdminRoutes(
 	}
 }
 
-// registerProviderCompatibilityRoutes 为 TokenFlux 新后台提供渐进式 Provider 路径。
-// 当前响应仍是现有 Account DTO；迁移完成前不能让新路径绕过票据、质量检测和调度联动。
+// registerProviderCompatibilityRoutes 与旧账号入口共用注册清单和业务处理器。
+// DTO 暂不改名；审计和幂等规则在同一兼容边界识别两种路径。
 func registerProviderCompatibilityRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAuth middleware.StepUpAuthMiddleware) {
-	providers := admin.Group("/providers")
-	{
-		providers.GET("", h.Admin.Account.List)
-		providers.GET("/codex-ticket-import-defaults", h.Admin.Setting.GetCodexTicketImportDefaults)
-		providers.PUT("/codex-ticket-import-defaults", h.Admin.Setting.UpdateCodexTicketImportDefaults)
-		providers.GET("/:id", h.Admin.Account.GetByID)
-		providers.POST("", h.Admin.Account.Create)
-		providers.PUT("/:id", h.Admin.Account.Update)
-		providers.DELETE("/:id", h.Admin.Account.Delete)
-		providers.POST("/:id/test", h.Admin.Account.Test)
-		providers.POST("/:id/refresh", h.Admin.Account.Refresh)
-		providers.POST("/:id/recover-state", h.Admin.Account.RecoverState)
-		providers.POST("/:id/clear-error", h.Admin.Account.ClearError)
-		providers.POST("/:id/clear-rate-limit", h.Admin.Account.ClearRateLimit)
-		providers.POST("/:id/reset-quota", h.Admin.Account.ResetQuota)
-		providers.POST("/:id/schedulable", h.Admin.Account.SetSchedulable)
-		providers.GET("/:id/temp-unschedulable", h.Admin.Account.GetTempUnschedulable)
-		providers.DELETE("/:id/temp-unschedulable", h.Admin.Account.ClearTempUnschedulable)
-		providers.GET("/:id/stats", h.Admin.Account.GetStats)
-		providers.GET("/:id/usage", h.Admin.Account.GetUsage)
-		providers.GET("/:id/today-stats", h.Admin.Account.GetTodayStats)
-		providers.POST("/usage/batch", h.Admin.Account.GetBatchUsage)
-		providers.POST("/today-stats/batch", h.Admin.Account.GetBatchTodayStats)
-		providers.POST("/:id/upstream-usage/query", h.Admin.Account.QueryUpstreamUsage)
-		providers.POST("/upstream-usage/query/batch", h.Admin.Account.QueryBatchUpstreamUsage)
-		providers.GET("/:id/models", h.Admin.Account.GetAvailableModels)
-		providers.POST("/:id/models/sync-upstream", h.Admin.Account.SyncUpstreamModels)
-		providers.POST("/models/sync-upstream-preview", h.Admin.Account.SyncUpstreamModelsPreview)
-		providers.POST("/batch", h.Admin.Account.BatchCreate)
-		providers.POST("/bulk-update", h.Admin.Account.BulkUpdate)
-		providers.POST("/batch-delete", h.Admin.Account.BatchDelete)
-		providers.POST("/batch-update-credentials", h.Admin.Account.BatchUpdateCredentials)
-		providers.POST("/batch-refresh", h.Admin.Account.BatchRefresh)
-		providers.GET("/data", gin.HandlerFunc(stepUpAuth), h.Admin.Account.ExportData)
-		providers.POST("/data", h.Admin.Account.ImportData)
-
-		// 票据和质量检测仍使用原有服务，确保新 Provider 路径不会绕过 STATE/调度联动。
-		providers.POST("/codex-quality-test", h.Admin.Account.BatchCodexQualityTest)
-		providers.GET("/codex-quality-results", h.Admin.Account.ListCodexQualityResults)
-		providers.GET("/codex-quality-stats", h.Admin.Account.CodexQualityStats)
-		providers.GET("/codex-quality-schedules", h.Admin.Account.ListQualitySchedules)
-		providers.POST("/codex-quality-schedules", h.Admin.Account.SaveQualitySchedule)
-		providers.PUT("/codex-quality-schedules/:id", h.Admin.Account.SaveQualitySchedule)
-		providers.DELETE("/codex-quality-schedules/:id", h.Admin.Account.DeleteQualitySchedule)
-		providers.PUT("/codex-quality-schedules/:id/enabled", h.Admin.Account.SetQualityScheduleEnabled)
-		providers.POST("/codex-quality-schedules/:id/run", h.Admin.Account.TriggerQualitySchedule)
-		providers.GET("/codex-quality-schedules/:id/runs", h.Admin.Account.ListQualityRuns)
-		providers.GET("/codex-quality-runs/:id", h.Admin.Account.QualityRunDetail)
-		providers.POST("/codex-ticket-collect", h.Admin.Setting.BatchCodexTicketCollect)
-		providers.GET("/:id/codex-ticket-settings", h.Admin.Setting.GetCodexTicketAccountSettings)
-		providers.PUT("/codex-ticket-settings", h.Admin.Setting.UpdateCodexTicketAccountSettings)
-		providers.GET("/codex-ticket-runs", h.Admin.Setting.ListCodexTicketRuns)
-		providers.GET("/codex-ticket-runs/:id", h.Admin.Setting.CodexTicketRunDetail)
-		providers.DELETE("/codex-ticket-runs", h.Admin.Setting.DeleteCodexTicketHistory)
-		providers.DELETE("/codex-ticket-runs/:id", h.Admin.Setting.DeleteCodexTicketHistory)
-		providers.DELETE("/codex-ticket-runs/:id/events/:event_id", h.Admin.Setting.DeleteCodexTicketHistory)
-	}
+	registerAccountManagementRoutes(admin.Group("/providers"), h, stepUpAuth)
 }
 
 func registerAuditLogRoutes(admin *gin.RouterGroup, h *handler.Handlers, _ middleware.StepUpAuthMiddleware) {
@@ -412,7 +356,11 @@ func registerGroupRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 }
 
 func registerAccountRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAuth middleware.StepUpAuthMiddleware) {
-	accounts := admin.Group("/accounts")
+	registerAccountManagementRoutes(admin.Group("/accounts"), h, stepUpAuth)
+}
+
+// 所有账号管理入口从同一清单注册，避免新增票据或授权能力时兼容路径漏接。
+func registerAccountManagementRoutes(accounts *gin.RouterGroup, h *handler.Handlers, stepUpAuth middleware.StepUpAuthMiddleware) {
 	{
 		accounts.GET("", h.Admin.Account.List)
 		accounts.GET("/codex-ticket-import-defaults", h.Admin.Setting.GetCodexTicketImportDefaults)

@@ -33,7 +33,7 @@ func TestCodexTicketLegacyAgentIdentityMetadataExemption(t *testing.T) {
 			g.cfg.Gateway.Scheduling.LoadBatchEnabled = mode != "basic"
 			g.schedulerSnapshot = NewSchedulerSnapshotService(cache, nil, repo, nil, g.cfg)
 			g.codexTickets.Store(s)
-			s.gateway = g
+			s.runtime = g
 			ctx := context.Background()
 			require.False(t, s.Blocks(ctx, &full, "gpt-6-astra"))
 			require.False(t, s.Blocks(ctx, &meta, "gpt-6-astra"), "旧摘要缺auth_mode不能让豁免账号被拦")
@@ -74,7 +74,7 @@ func TestCodexTicketHarvestContinuesAfterLastModel(t *testing.T) {
 	err := configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{Models: &models}})
 	require.NoError(t, err)
 	u := &ticketFairnessUpstream{models: map[string]int{}}
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	for i := 0; i < 5; i++ {
 		// 测试缓存不自行过期；清理claim模拟下一真实轮次租约已到期。
 		s.cache.(*ticketCacheStub).claims = map[string]bool{}
@@ -100,7 +100,7 @@ func TestCodexTicketRotationUsesBoundedLocalFailover(t *testing.T) {
 	batch.Execute(func(string, any) bool { return true })
 	a := repo.accounts[0]
 	require.False(t, s.Blocks(ctx, &a, "gpt-6-astra"))
-	g := s.gateway
+	g := s.runtime.(*OpenAIGatewayService)
 	g.codexTickets.Store(s)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = httptest.NewRequest(http.MethodPost, "/responses", nil)
@@ -143,7 +143,7 @@ func TestCodexTicketCustomAstraProbeVersionFloor(t *testing.T) {
 			err := configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{Models: &models}})
 			require.NoError(t, err)
 			u := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(200, 292, "")}}
-			s.gateway.httpUpstream = u
+			s.runtime.(*OpenAIGatewayService).httpUpstream = u
 			s.probe(context.Background(), s.config.Load(), a, model)
 			require.Len(t, u.headers, 1)
 			minimum := "0.153.4"

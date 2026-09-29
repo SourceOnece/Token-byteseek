@@ -89,8 +89,8 @@ func setupVerifiedTicketTest(t *testing.T, enabled bool) (*CodexTicketService, *
 	base.accounts[0].Proxy = &Proxy{ID: 17, Protocol: "http", Host: "business.example", Port: 8080, Status: StatusActive}
 	r := &ticketSchedulingRepo{ticketHistoryStub: base}
 	u := &ticketVerifiedUpstream{}
-	s.gateway.accountRepo = r
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).accountRepo = r
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	models := []string{"gpt-6-astra"}
 	signal := 312
 	_, err := s.UpdateAccountSettings(context.Background(), CodexTicketAccountsUpdate{AccountIDs: []int64{1}, Patch: CodexTicketAccountPatch{VerifiedFlow: &enabled, Rules: &CodexTicketRulesPatch{Models: &models, DegradedSignalLength: &signal}}})
@@ -188,17 +188,17 @@ func TestCodexTicketVerifiedRenewalRetainsUsableOldTicketAndBindsProxy(t *testin
 
 func TestCodexTicketVerifiedWSBridgeDecision(t *testing.T) {
 	s, r, _ := setupVerifiedTicketTest(t, true)
-	s.gateway.codexTickets.Store(s)
+	s.runtime.(*OpenAIGatewayService).codexTickets.Store(s)
 	a, _ := r.GetByID(context.Background(), 1)
 	allowed := OpenAIWSProtocolDecision{Transport: OpenAIUpstreamTransportResponsesWebsocketV2}
-	require.True(t, s.gateway.shouldBridgeVerifiedTicketAccount(a, allowed))
+	require.True(t, s.runtime.(*OpenAIGatewayService).shouldBridgeVerifiedTicketAccount(a, allowed))
 	for _, reason := range []string{"global_disabled", "account_mode_off", "account_force_http"} {
-		require.False(t, s.gateway.shouldBridgeVerifiedTicketAccount(a, OpenAIWSProtocolDecision{Transport: OpenAIUpstreamTransportHTTPSSE, Reason: reason}))
+		require.False(t, s.runtime.(*OpenAIGatewayService).shouldBridgeVerifiedTicketAccount(a, OpenAIWSProtocolDecision{Transport: OpenAIUpstreamTransportHTTPSSE, Reason: reason}))
 	}
 	no := false
 	_, err := s.UpdateAccountSettings(context.Background(), CodexTicketAccountsUpdate{AccountIDs: []int64{1}, Patch: CodexTicketAccountPatch{VerifiedFlow: &no}})
 	require.NoError(t, err)
-	require.False(t, s.gateway.shouldBridgeVerifiedTicketAccount(a, allowed))
+	require.False(t, s.runtime.(*OpenAIGatewayService).shouldBridgeVerifiedTicketAccount(a, allowed))
 }
 
 // 走真实桥接回合函数，验证每轮读新票、记录真实模型，以及不重放异常回答。
@@ -206,8 +206,8 @@ func TestCodexTicketVerifiedWSBridgeReadsEachTicketAndObservesResponse(t *testin
 	gin.SetMode(gin.TestMode)
 	s, r, u := setupVerifiedTicketTest(t, true)
 	s.cache = &ticketWatchdogCacheStub{s.cache.(*ticketCacheStub)}
-	s.gateway.cfg = &config.Config{Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize}}
-	s.gateway.codexTickets.Store(s)
+	s.runtime.(*OpenAIGatewayService).cfg = &config.Config{Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize}}
+	s.runtime.(*OpenAIGatewayService).codexTickets.Store(s)
 	a, _ := r.GetByID(context.Background(), 1)
 	cfg := s.enabledAccountConfig(1)
 	key := codexTicketKey(cfg, a, "gpt-6-astra", a.GetOpenAIAccessToken())
@@ -223,7 +223,7 @@ func TestCodexTicketVerifiedWSBridgeReadsEachTicketAndObservesResponse(t *testin
 	payload := []byte(`{"type":"response.create","model":"gpt-6-astra","input":"hi"}`)
 	u.responses = []*http.Response{verifiedResponse(200, 0, "gpt-6-astra"), verifiedResponse(200, 0, "gpt-5.6-luna")}
 	first := seed("a")
-	result, err := s.gateway.proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, a, a.GetOpenAIAccessToken(), payload, len(payload), "gpt-6-astra", "", "", "", "", 1, func([]byte) error { return nil })
+	result, err := s.runtime.(*OpenAIGatewayService).proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, a, a.GetOpenAIAccessToken(), payload, len(payload), "gpt-6-astra", "", "", "", "", 1, func([]byte) error { return nil })
 	require.NoError(t, err)
 	require.Equal(t, first, u.calls[0].state)
 	require.Equal(t, "gpt-6-astra", result.UpstreamResponseModel)
@@ -232,7 +232,7 @@ func TestCodexTicketVerifiedWSBridgeReadsEachTicketAndObservesResponse(t *testin
 	payload, boundary, err := normalizeOpenAIWSContextWindowBoundary([]byte(`{"type":"response.create","model":"gpt-6-astra","previous_response_id":"old-window-response","client_metadata":{"x-codex-window-id":"next"},"input":"hi"}`), "before")
 	require.NoError(t, err)
 	require.True(t, boundary.Changed)
-	result, err = s.gateway.proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, a, a.GetOpenAIAccessToken(), payload, len(payload), "gpt-6-astra", "", "", "", "", 2, func([]byte) error { return nil })
+	result, err = s.runtime.(*OpenAIGatewayService).proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, a, a.GetOpenAIAccessToken(), payload, len(payload), "gpt-6-astra", "", "", "", "", 2, func([]byte) error { return nil })
 	require.NoError(t, err)
 	require.Equal(t, second, u.calls[1].state)
 	require.Equal(t, "gpt-5.6-luna", result.UpstreamResponseModel)
@@ -244,7 +244,7 @@ func TestCodexTicketVerifiedWSBridgeReadsEachTicketAndObservesResponse(t *testin
 	// 同一客户端下一轮缺少模型声明时，日志必须为空，不能继承刚才的Luna。
 	seed("c")
 	u.responses = append(u.responses, verifiedResponse(200, 0, ""))
-	result, err = s.gateway.proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, a, a.GetOpenAIAccessToken(), payload, len(payload), "gpt-6-astra", "", "", "", "", 3, func([]byte) error { return nil })
+	result, err = s.runtime.(*OpenAIGatewayService).proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, a, a.GetOpenAIAccessToken(), payload, len(payload), "gpt-6-astra", "", "", "", "", 3, func([]byte) error { return nil })
 	require.NoError(t, err)
 	require.Empty(t, result.UpstreamResponseModel)
 	require.Len(t, u.calls, 3)

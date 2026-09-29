@@ -162,10 +162,10 @@ func (s *CodexTicketService) persistTicketConfig(ctx context.Context, cfg *codex
 }
 
 func (s *CodexTicketService) AccountSettings(ctx context.Context, id int64) (CodexTicketAccountSettings, error) {
-	if s == nil || s.gateway == nil || s.gateway.accountRepo == nil {
+	if s == nil || s.runtime == nil || s.ticketAccounts() == nil {
 		return CodexTicketAccountSettings{}, errors.New("票据服务不可用")
 	}
-	a, err := s.gateway.accountRepo.GetByID(ctx, id)
+	a, err := s.ticketAccounts().GetByID(ctx, id)
 	if err != nil || !codexTicketAccount(a) {
 		return CodexTicketAccountSettings{}, errors.New("仅支持独立OpenAI OAuth账号")
 	}
@@ -178,7 +178,7 @@ func (s *CodexTicketService) AccountSettings(ctx context.Context, id int64) (Cod
 
 // 先校验整批账号与配置，再单次持久化，失败不返回部分成功；批量未勾选字段不影响原值。
 func (s *CodexTicketService) UpdateAccountSettings(ctx context.Context, input CodexTicketAccountsUpdate) ([]CodexTicketAccountSettings, error) {
-	if s == nil || s.gateway == nil || s.gateway.accountRepo == nil {
+	if s == nil || s.runtime == nil || s.ticketAccounts() == nil {
 		return nil, errors.New("票据服务不可用")
 	}
 	if len(input.AccountIDs) < 1 || len(input.AccountIDs) > 500 {
@@ -220,7 +220,7 @@ func (s *CodexTicketService) UpdateAccountSettings(ctx context.Context, input Co
 			seen[id] = true
 		}
 	}
-	accounts, err := s.gateway.accountRepo.GetByIDs(ctx, ids)
+	accounts, err := s.ticketAccounts().GetByIDs(ctx, ids)
 	if err != nil {
 		return nil, errors.New("读取账号失败")
 	}

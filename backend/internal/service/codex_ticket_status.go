@@ -90,10 +90,10 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 	if err != nil {
 		return nil, err
 	}
-	if s.gateway == nil || s.gateway.accountRepo == nil {
+	if s.runtime == nil || s.ticketAccounts() == nil {
 		return nil, errors.New("账号服务不可用")
 	}
-	accounts, err := s.gateway.accountRepo.GetByIDs(readCtx, unique)
+	accounts, err := s.ticketAccounts().GetByIDs(readCtx, unique)
 	if err != nil {
 		return nil, errors.New("读取账号失败")
 	}

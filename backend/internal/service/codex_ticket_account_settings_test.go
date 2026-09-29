@@ -24,7 +24,7 @@ func TestCodexTicketAccountOverrides(t *testing.T) {
 	a, b := ticketAccount(), ticketAccount()
 	b.ID = 2
 	b.Credentials = map[string]any{"access_token": "second"}
-	s.gateway = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a, b}}}
+	s.runtime = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a, b}}}
 	ctx := context.Background()
 	root := s.config.Load()
 	beforeA := codexTicketKey(root, &a, "gpt-6-astra", "fake-token")
@@ -69,7 +69,7 @@ func TestCodexTicketAccountBatchPartialPatchAndValidation(t *testing.T) {
 	enableTicketTest(t, s)
 	a, b := ticketAccount(), ticketAccount()
 	b.ID = 2
-	s.gateway = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a, b}}}
+	s.runtime = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a, b}}}
 	ctx := context.Background()
 	proxy := "http://u:synthetic@p.invalid:8080"
 	mode := "recover_length"
@@ -247,7 +247,7 @@ func TestCodexTicketWSReceiptBelongsToPhysicalHandshake(t *testing.T) {
 func TestCodexTicketAccountProxyUsedByManualAndAutomatic(t *testing.T) {
 	s, _, u := setupTicketManualTest(t, 292)
 	proxyCalls := make(chan string, 16)
-	s.gateway.httpUpstream = &ticketAccountProxyRecorder{HTTPUpstream: u, base: u, calls: proxyCalls}
+	s.runtime.(*OpenAIGatewayService).httpUpstream = &ticketAccountProxyRecorder{HTTPUpstream: u, base: u, calls: proxyCalls}
 	proxy := "http://user-{sid}:synthetic@own-proxy.invalid:8080"
 	_, err := s.UpdateAccountSettings(context.Background(), CodexTicketAccountsUpdate{AccountIDs: []int64{1}, Patch: CodexTicketAccountPatch{HarvestProxyURL: &proxy}})
 	require.NoError(t, err)

@@ -81,7 +81,7 @@ func TestCodexTicketTimeoutBothRoutesShareConfiguredBudget(t *testing.T) {
 	err := configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{AttemptTimeoutSeconds: &n}})
 	require.NoError(t, err)
 	u := &ticketBudgetUpstream{t: t}
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	cfg, a := s.enabledAccountConfig(1), &repo.accounts[0]
 	proxy, ok := selectCodexTicketProxy(cfg, "", false)
 	require.True(t, ok)
@@ -100,7 +100,7 @@ func TestCodexTicketTimeoutVerifyFailureDoesNotBecomeCancellation(t *testing.T) 
 	n := 5
 	require.NoError(t, configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{AttemptTimeoutSeconds: &n}}))
 	u := &ticketBudgetUpstream{t: t, blockVerify: true}
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	cfg, a := s.enabledAccountConfig(1), &repo.accounts[0]
 	before := a.Schedulable
 	proxy, _ := selectCodexTicketProxy(cfg, "", false)

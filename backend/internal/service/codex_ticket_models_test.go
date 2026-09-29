@@ -91,7 +91,7 @@ func TestCodexTicketDegradedSignalClosesScheduling(t *testing.T) {
 	for _, length := range []int{292, 312, 356} {
 		t.Run(strconv.Itoa(length), func(t *testing.T) {
 			s, r, u := setupTicketManualTest(t, 292)
-			s.gateway.accountRepo = &ticketSchedulingRepo{ticketHistoryStub: r}
+			s.runtime.(*OpenAIGatewayService).accountRepo = &ticketSchedulingRepo{ticketHistoryStub: r}
 			signal := length
 			if signal == 292 {
 				// 明确构造升级前两长度冲突的历史数据；现行账号和模板写入均应拒绝它。

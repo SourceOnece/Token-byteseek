@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/ctxkey"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/httputil"
 	"github.com/TokenFlux/TokenRouter/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -97,7 +98,9 @@ var auditBodyOmittedRoutes = map[string]struct{}{
 // 未过认证的 401/403 不入库）；auth 组（登录/注册/刷新）无前置认证，天然记录失败尝试。
 func NewAuditLogMiddleware(auditService *service.AuditLogService) AuditLogMiddleware {
 	return AuditLogMiddleware(func(c *gin.Context) {
-		routeKey := c.Request.Method + " " + c.FullPath()
+		// 别名与原账号入口共享敏感导出/整段凭据/测试题目的脱敏策略。
+		canonicalPath := httputil.CanonicalAdminAccountRoute(c.FullPath())
+		routeKey := c.Request.Method + " " + canonicalPath
 
 		record := false
 		action := ""
@@ -169,7 +172,7 @@ func NewAuditLogMiddleware(auditService *service.AuditLogService) AuditLogMiddle
 			entry.Path = c.Request.URL.Path
 		}
 		if entry.Action == "" {
-			entry.Action = deriveAuditAction(c.Request.Method, entry.Path)
+			entry.Action = deriveAuditAction(c.Request.Method, httputil.CanonicalAdminAccountRoute(entry.Path))
 		}
 		if v, ok := c.Get(auditCtxKeyAction); ok {
 			if s, ok := v.(string); ok && s != "" {

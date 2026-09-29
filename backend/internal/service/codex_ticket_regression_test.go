@@ -22,7 +22,7 @@ func TestCodexTicketRegressionSchedulingDoesNotDiscardNewerBusinessSignal(t *tes
 			s, base, _ := setupTicketManualTest(t, 292)
 			base.accounts[0].Schedulable = initial
 			r := &ticketSchedulingRepo{ticketHistoryStub: base}
-			s.gateway.accountRepo = r
+			s.runtime.(*OpenAIGatewayService).accountRepo = r
 			a, err := r.GetByID(context.Background(), 1)
 			require.NoError(t, err)
 			cfg := s.enabledAccountConfig(1)
@@ -155,7 +155,7 @@ func (c *ticketBoundedWriteCache) Set(ctx context.Context, key, value string, tt
 func TestCodexTicketRegressionPublicationIOBounded(t *testing.T) {
 	s, base, u := setupTicketManualTest(t, 292)
 	r := &ticketBoundedReadRepo{ticketSchedulingRepo: &ticketSchedulingRepo{ticketHistoryStub: base}, t: t}
-	s.gateway.accountRepo = r
+	s.runtime.(*OpenAIGatewayService).accountRepo = r
 	s.cache = &ticketBoundedWriteCache{ticketCacheStub: s.cache.(*ticketCacheStub), t: t}
 	u.before = func(*http.Request) { r.afterResponse = true }
 	a, _ := r.GetByID(context.Background(), 1)
@@ -182,7 +182,7 @@ func TestCodexTicketRegressionStaleSettingsDoNotSilentlyBypassVerifiedFlow(t *te
 func TestCodexTicketRegressionSchedulingStillProtectsExternalChanges(t *testing.T) {
 	s, base, _ := setupTicketManualTest(t, 292)
 	r := &ticketSchedulingRepo{ticketHistoryStub: base}
-	s.gateway.accountRepo = r
+	s.runtime.(*OpenAIGatewayService).accountRepo = r
 	a, _ := r.GetByID(context.Background(), 1)
 	cfg := s.enabledAccountConfig(1)
 	key := codexTicketKey(cfg, a, "gpt-6-astra", a.GetOpenAIAccessToken())

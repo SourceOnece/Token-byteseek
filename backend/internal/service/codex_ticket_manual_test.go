@@ -77,7 +77,7 @@ func setupTicketManualTest(t *testing.T, length int) (*CodexTicketService, *tick
 	a.Credentials["email"] = "synthetic@example.invalid"
 	r := &ticketHistoryStub{ticketAccountStub: &ticketAccountStub{accounts: []Account{a}}}
 	u := &ticketUpstreamStub{code: 200, ticket: "gAAAAA" + strings.Repeat("x", length-6)}
-	s.gateway = &OpenAIGatewayService{accountRepo: r, httpUpstream: u}
+	s.runtime = &OpenAIGatewayService{accountRepo: r, httpUpstream: u}
 	if length != 292 {
 		require.NoError(t, configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{TargetLength: &length}}))
 	}

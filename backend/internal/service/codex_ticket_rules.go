@@ -1,42 +1,14 @@
 package service
 
 import (
-	"errors"
-	"strings"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/codexticket"
 )
 
-// 规则在账号中保存完整快照；缺少规则的历史账号沿旧值读取，迁移不擅自改变用户配置。
-type CodexTicketRules struct {
-	AttemptTimeoutSeconds int      `json:"attempt_timeout_seconds"`
-	FailureThreshold      int      `json:"failure_threshold"`
-	CooldownSeconds       int      `json:"cooldown_seconds"`
-	Models                []string `json:"models"`
-	TargetLength          int      `json:"target_length"`
-	DegradedSignalLength  int      `json:"degraded_signal_length"`
-	MaxAttempts           int      `json:"max_attempts"`
-	Concurrency           int      `json:"concurrency"`
-	CacheMinutes          int      `json:"cache_minutes"`
-	RefreshBeforeMinutes  int      `json:"refresh_before_minutes"`
-	RetryIntervalSeconds  int      `json:"retry_interval_seconds"`
-	ProbeIntervalSeconds  int      `json:"probe_interval_seconds"`
-}
-
-// 每个字段独立可选，批量没有勾选的项目不能回填默认值。
-type CodexTicketRulesPatch struct {
-	AttemptTimeoutSeconds *int      `json:"attempt_timeout_seconds"`
-	FailureThreshold      *int      `json:"failure_threshold"`
-	CooldownSeconds       *int      `json:"cooldown_seconds"`
-	Models                *[]string `json:"models"`
-	TargetLength          *int      `json:"target_length"`
-	DegradedSignalLength  *int      `json:"degraded_signal_length"`
-	MaxAttempts           *int      `json:"max_attempts"`
-	Concurrency           *int      `json:"concurrency"`
-	CacheMinutes          *int      `json:"cache_minutes"`
-	RefreshBeforeMinutes  *int      `json:"refresh_before_minutes"`
-	RetryIntervalSeconds  *int      `json:"retry_interval_seconds"`
-	ProbeIntervalSeconds  *int      `json:"probe_interval_seconds"`
-}
+// 兼容原管理API与仓储调用名，规则的唯一实现迁移到独立票据模块。
+type CodexTicketRules = codexticket.Rules
+type CodexTicketRulesPatch = codexticket.Patch
 
 func ticketRulesFromConfig(c *codexTicketConfig) CodexTicketRules {
 	return CodexTicketRules{AttemptTimeoutSeconds: int(c.attemptTimeout() / time.Second), FailureThreshold: c.FailureThreshold, CooldownSeconds: c.cooldownSeconds(), Models: append([]string(nil), c.models()...), TargetLength: c.targetLength(), DegradedSignalLength: c.DegradedSignalLength,
@@ -134,54 +106,5 @@ func (c *codexTicketConfig) scanInterval() time.Duration {
 }
 
 func applyTicketRulesPatch(r CodexTicketRules, p *CodexTicketRulesPatch) (CodexTicketRules, error) {
-	if p == nil {
-		return r, nil
-	}
-	if p.Models != nil {
-		models := []string{}
-		seen := map[string]bool{}
-		for _, v := range *p.Models {
-			v = strings.TrimSpace(v)
-			if !ValidCodexTicketModelID(v) {
-				return r, errors.New("采集模型ID无效")
-			}
-			if !seen[v] {
-				models = append(models, v)
-				seen[v] = true
-			}
-		}
-		if len(models) < 1 || len(models) > 100 {
-			return r, errors.New("采集模型需要1–100个")
-		}
-		r.Models = models
-	}
-	for _, v := range []struct {
-		input  *int
-		target *int
-		lo, hi int
-	}{
-		{p.AttemptTimeoutSeconds, &r.AttemptTimeoutSeconds, 5, 300},
-		{p.FailureThreshold, &r.FailureThreshold, 0, 100000}, {p.CooldownSeconds, &r.CooldownSeconds, 1, 86400},
-		{p.TargetLength, &r.TargetLength, 6, 8192}, {p.DegradedSignalLength, &r.DegradedSignalLength, 0, 8192},
-		{p.MaxAttempts, &r.MaxAttempts, 0, 9007199254740991}, {p.Concurrency, &r.Concurrency, 1, 4},
-		{p.CacheMinutes, &r.CacheMinutes, 1, 1440}, {p.RefreshBeforeMinutes, &r.RefreshBeforeMinutes, 0, 1439},
-		{p.RetryIntervalSeconds, &r.RetryIntervalSeconds, 1, 30}, {p.ProbeIntervalSeconds, &r.ProbeIntervalSeconds, 6, 3600},
-	} {
-		if v.input != nil {
-			if *v.input < v.lo || *v.input > v.hi {
-				return r, errors.New("采集参数超出允许范围")
-			}
-			*v.target = *v.input
-		}
-	}
-	if r.DegradedSignalLength > 0 && r.DegradedSignalLength < 6 {
-		return r, errors.New("长度信号为0或6–8192")
-	}
-	if r.DegradedSignalLength > 0 && r.DegradedSignalLength == r.TargetLength {
-		return r, errors.New("降智长度不能与合格长度相同")
-	}
-	if r.RefreshBeforeMinutes >= r.CacheMinutes {
-		return r, errors.New("提前续采必须小于缓存时间")
-	}
-	return r, nil
+	return codexticket.ApplyPatch(r, p)
 }

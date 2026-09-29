@@ -23,7 +23,7 @@ func TestCodexTicketStatusIsolationAndReadOnly(t *testing.T) {
 	api.ID = 3
 	api.Type = AccountTypeAPIKey
 	repo := &ticketAccountStub{accounts: []Account{a, other, api}}
-	s.gateway = &OpenAIGatewayService{accountRepo: repo}
+	s.runtime = &OpenAIGatewayService{accountRepo: repo}
 	ticket := seedTicket(t, s, &a, "gpt-6-astra", "fake-token")
 	key := codexTicketKey(s.config.Load(), &a, "gpt-5.6-sol", "fake-token")
 	s.recordObservation(context.Background(), key, "missing", "invalid_ticket", nil)
@@ -63,7 +63,7 @@ func TestCodexTicketStatusDisabledPausedAndCacheFailure(t *testing.T) {
 	s, cache, _ := newTicketTestService()
 	a := ticketAccount()
 	a.Schedulable = false
-	s.gateway = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a}}}
+	s.runtime = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a}}}
 	result, err := s.Status(context.Background(), []int64{1})
 	require.NoError(t, err)
 	require.False(t, result.Enabled)
@@ -125,7 +125,7 @@ func TestCodexTicketProbeRecordsSafeStatus(t *testing.T) {
 		enableTicketTest(t, s)
 		a := ticketAccount()
 		up := &ticketUpstreamStub{code: test.code, ticket: test.ticket}
-		s.gateway = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a}}, httpUpstream: up}
+		s.runtime = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a}}, httpUpstream: up}
 		key := codexTicketKey(s.config.Load(), &a, "gpt-6-astra", "fake-token")
 		up.before = func(_ *http.Request) {
 			raw, _ := cache.Get(context.Background(), "status:"+key)

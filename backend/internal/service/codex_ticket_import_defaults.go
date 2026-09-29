@@ -130,7 +130,7 @@ func (s *CodexTicketService) CreateAccountWithDefaults(ctx context.Context, acco
 		return true, err
 	}
 	a.Revision = uuid.NewString()
-	repo, ok := s.gateway.accountRepo.(CodexTicketAccountCreator)
+	repo, ok := s.ticketAccounts().(CodexTicketAccountCreator)
 	if !ok {
 		return true, errors.New("账号票据原子创建不可用")
 	}

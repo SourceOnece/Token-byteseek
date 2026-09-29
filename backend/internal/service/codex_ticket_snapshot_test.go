@@ -70,7 +70,7 @@ func TestCodexTicketSnapshotRefreshUsesTTLOnly(t *testing.T) {
 	s, cache, a := setupTicketProxyTest(t, "fixed", 1)
 	ticket := seedTicket(t, s, a, "gpt-6-astra", "fake-token")
 	up := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(200, 312, "")}}
-	s.gateway.httpUpstream = up
+	s.runtime.(*OpenAIGatewayService).httpUpstream = up
 	ctx := context.Background()
 	s.probe(ctx, s.config.Load(), a, "gpt-6-astra")
 	require.Empty(t, up.proxies)

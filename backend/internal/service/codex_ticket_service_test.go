@@ -260,8 +260,8 @@ func seedTicket(t *testing.T, s *CodexTicketService, a *Account, model, token st
 // 新用例显式配置账号；不得再用已转为模板适配入口的网关规则来暗改旧号。
 func configureTicketTestAccount(t *testing.T, s *CodexTicketService, patch CodexTicketAccountPatch) error {
 	t.Helper()
-	if s.gateway == nil {
-		s.gateway = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{ticketAccount()}}}
+	if s.runtime == nil {
+		s.runtime = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{ticketAccount()}}}
 	}
 	_, err := s.UpdateAccountSettings(context.Background(), CodexTicketAccountsUpdate{AccountIDs: []int64{1}, Patch: patch})
 	return err
@@ -441,7 +441,7 @@ func TestCodexTicketHarvestIsBoundedAndSchedulingDisabledAccountsIncluded(t *tes
 		require.True(t, req.Close)
 		require.Equal(t, "chatgpt.com", req.URL.Host)
 	}
-	s.gateway = &OpenAIGatewayService{accountRepo: repo, httpUpstream: up}
+	s.runtime = &OpenAIGatewayService{accountRepo: repo, httpUpstream: up}
 	s.harvest(context.Background())
 	require.Equal(t, int32(4), up.calls.Load())
 	require.Len(t, cache.values, 12)
@@ -466,7 +466,7 @@ func TestCodexTicketChangedCredentialsNotPersisted(t *testing.T) {
 		repo.accounts[0].Credentials = map[string]any{"access_token": "rotated"}
 		repo.mu.Unlock()
 	}}
-	s.gateway = &OpenAIGatewayService{accountRepo: repo, httpUpstream: up}
+	s.runtime = &OpenAIGatewayService{accountRepo: repo, httpUpstream: up}
 	s.probe(context.Background(), s.config.Load(), &a, "gpt-6-astra")
 	for key := range cache.values {
 		require.True(t, strings.HasPrefix(key, "status:") || strings.HasPrefix(key, "latest:"), "换凭据后的旧结果只能记录隔离诊断，不得保存可用票据")
@@ -480,7 +480,7 @@ func TestCodexTicketStopCancelsProbeAndWaits(t *testing.T) {
 	repo := &ticketAccountStub{accounts: []Account{a}}
 	started := make(chan struct{}, 2)
 	up := &ticketUpstreamStub{code: 200, before: func(req *http.Request) { started <- struct{}{}; <-req.Context().Done() }}
-	s.gateway = &OpenAIGatewayService{accountRepo: repo, httpUpstream: up}
+	s.runtime = &OpenAIGatewayService{accountRepo: repo, httpUpstream: up}
 	s.Start()
 	select {
 	case <-started:

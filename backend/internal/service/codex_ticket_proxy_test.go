@@ -24,7 +24,7 @@ func setupTicketProxyTest(t *testing.T, mode string, attempts int) (*CodexTicket
 	_, err := s.Update(context.Background(), CodexTicketSettingsUpdate{Proxies: &list, SelectionMode: &mode, FixedProxyID: &fixed, MaxAttempts: &attempts, RetryIntervalSeconds: &retry, ProbeIntervalSeconds: &interval})
 	require.NoError(t, err)
 	a := ticketAccount()
-	s.gateway = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a}}}
+	s.runtime = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a}}}
 	require.NoError(t, configureTicketTestAccount(t, s, CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{MaxAttempts: &attempts, RetryIntervalSeconds: &retry, ProbeIntervalSeconds: &interval}}))
 	return s, cache, &a
 }
@@ -123,7 +123,7 @@ func ticketInt(value int) *int { return &value }
 func TestCodexTicketProxyRetryOnlyAfterMissAndStopOnSuccess(t *testing.T) {
 	s, _, a := setupTicketProxyTest(t, "rotate", 3)
 	u := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(200, 312, ""), ticketResponseForProxy(200, 292, "")}}
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	s.probe(context.Background(), s.config.Load(), a, "gpt-6-astra")
 	require.Len(t, u.proxies, 2)
 	require.Contains(t, u.proxies[0], "proxy.example")
@@ -146,7 +146,7 @@ func TestCodexTicketProxyRetryOnlyAfterMissAndStopOnSuccess(t *testing.T) {
 func TestCodexTicketFixedRetryAndAuthLimitStop(t *testing.T) {
 	s, _, a := setupTicketProxyTest(t, "fixed", 3)
 	u := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(200, 312, ""), ticketResponseForProxy(200, 292, "")}}
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	s.probe(context.Background(), s.config.Load(), a, "gpt-5.6-sol")
 	require.Len(t, u.proxies, 2)
 	require.Equal(t, u.proxies[0], u.proxies[1])
@@ -154,7 +154,7 @@ func TestCodexTicketFixedRetryAndAuthLimitStop(t *testing.T) {
 	for _, code := range []int{401, 403, 429} {
 		s, _, a = setupTicketProxyTest(t, "rotate", 3)
 		u = &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(code, 0, "")}}
-		s.gateway.httpUpstream = u
+		s.runtime.(*OpenAIGatewayService).httpUpstream = u
 		s.probe(context.Background(), s.config.Load(), a, "gpt-6-astra")
 		require.Len(t, u.proxies, 1)
 	}
@@ -163,7 +163,7 @@ func TestCodexTicketFixedRetryAndAuthLimitStop(t *testing.T) {
 func TestCodexTicketFailureDiagnosticsAndNextCycleProxy(t *testing.T) {
 	s, cache, a := setupTicketProxyTest(t, "rotate", 1)
 	u := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(200, 0, "data: {\"type\":\"error\",\"error\":{\"code\":\"server_is_overloaded\",\"message\":\"secret-canary\"}}\n\n"), ticketResponseForProxy(200, 292, "")}}
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	s.probe(context.Background(), s.config.Load(), a, "gpt-6-astra")
 	status, err := s.Status(context.Background(), []int64{1})
 	require.NoError(t, err)
@@ -188,7 +188,7 @@ func TestCodexTicketRetryCancelledDuringDelay(t *testing.T) {
 	defer timer.Stop()
 	defer cancel()
 	u := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(200, 312, "")}}
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	s.probe(ctx, s.config.Load(), a, "gpt-6-astra")
 	require.Len(t, u.proxies, 1, "取消等待后不能换代理发下一次")
 }
@@ -196,7 +196,7 @@ func TestCodexTicketRetryCancelledDuringDelay(t *testing.T) {
 func TestCodexTicketProxyRetryIsBounded(t *testing.T) {
 	s, _, a := setupTicketProxyTest(t, "rotate", 3)
 	u := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(200, 312, "")}}
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	s.probe(context.Background(), s.config.Load(), a, "gpt-6-astra")
 	require.Len(t, u.proxies, 3)
 	require.Equal(t, u.proxies[0], u.proxies[2])
@@ -247,7 +247,7 @@ func TestCodexTicketRetryAfterDoesNotSwitchOrProbeEarly(t *testing.T) {
 	response := ticketResponseForProxy(503, 0, "")
 	response.Header.Set("Retry-After", "120")
 	u := &ticketSequenceUpstream{responses: []*http.Response{response}}
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	s.probe(context.Background(), s.config.Load(), a, "gpt-6-astra")
 	require.Len(t, u.proxies, 1)
 	status, err := s.Status(context.Background(), []int64{1})

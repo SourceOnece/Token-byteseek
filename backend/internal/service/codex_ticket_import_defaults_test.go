@@ -45,7 +45,7 @@ func (r *ticketCreateRepo) CreateWithCodexTicket(ctx context.Context, a *Account
 func TestCodexTicketImportDefaultsCreateOverrideAndFailure(t *testing.T) {
 	s, base, _ := setupTicketManualTest(t, 292)
 	repo := &ticketCreateRepo{ticketHistoryStub: base, settings: s.settings.(*ticketSettingStub)}
-	s.gateway.accountRepo = repo
+	s.runtime.(*OpenAIGatewayService).accountRepo = repo
 	mode, guard, length, zero, yes := "on", "recover_length", 332, 0, true
 	before := s.config.Load().Generation
 	template, err := s.UpdateImportDefaults(context.Background(), CodexTicketAccountPatch{Mode: &mode, WatchdogMode: &guard, VerifiedFlow: &yes, Rules: &CodexTicketRulesPatch{TargetLength: &length, MaxAttempts: &zero}}, nil)

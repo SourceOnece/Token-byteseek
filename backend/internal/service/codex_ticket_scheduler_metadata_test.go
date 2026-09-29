@@ -39,7 +39,7 @@ func TestCodexTicketReadyFromMetadataScheduler(t *testing.T) {
 				full := repo.accounts[0]
 				metadata := ticketSchedulerMetadata(full)
 				cache := &openAISnapshotCacheStub{snapshotAccounts: []*Account{&metadata}, accountsByID: map[int64]*Account{1: &full}}
-				g := s.gateway
+				g := s.runtime.(*OpenAIGatewayService)
 				g.codexTickets.Store(s)
 				g.cfg = &config.Config{}
 				g.cfg.Gateway.Scheduling.LoadBatchEnabled = mode != "basic"
@@ -94,7 +94,7 @@ func TestCodexTicketMetadataLookupBoundaries(t *testing.T) {
 			seedTicket(t, s, &full, "gpt-6-astra", "fake-token")
 			cache := &ticketMetadataCache{account: &full}
 			// 空仓储明确返回not found，缓存故障不借其它账号或旧票放行。
-			s.gateway = &OpenAIGatewayService{schedulerSnapshot: NewSchedulerSnapshotService(cache, nil, &ticketAccountStub{}, nil, nil)}
+			s.runtime = &OpenAIGatewayService{schedulerSnapshot: NewSchedulerSnapshotService(cache, nil, &ticketAccountStub{}, nil, nil)}
 			wantBlocked := name != "valid" && name != "disabled_during_read"
 			switch name {
 			case "missing":
@@ -141,7 +141,7 @@ func TestCodexTicketMetadataNoExtraReadsOutsideGate(t *testing.T) {
 	full := ticketAccount()
 	metadata := ticketSchedulerMetadata(full)
 	cache := &ticketMetadataCache{account: &full}
-	s.gateway = &OpenAIGatewayService{schedulerSnapshot: NewSchedulerSnapshotService(cache, nil, &ticketAccountStub{}, nil, nil)}
+	s.runtime = &OpenAIGatewayService{schedulerSnapshot: NewSchedulerSnapshotService(cache, nil, &ticketAccountStub{}, nil, nil)}
 	seedTicket(t, s, &full, "gpt-6-astra", "fake-token")
 	require.False(t, s.Blocks(ctx, &full, "gpt-6-astra"))
 	require.False(t, s.Blocks(ctx, &metadata, "not-target"))
@@ -162,7 +162,7 @@ func TestCodexTicketMetadataRepositoryFallbackAndFinalIdentity(t *testing.T) {
 	ctx := context.Background()
 	full := ticketAccount()
 	metadata := ticketSchedulerMetadata(full)
-	s.gateway = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{full}}}
+	s.runtime = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{full}}}
 	seedTicket(t, s, &full, "gpt-6-astra", "fake-token")
 	require.False(t, s.Blocks(ctx, &metadata, "gpt-6-astra"))
 	// 最终注入仍按本次真实Bearer复核，初筛成功不能借用旧凭据票。
@@ -188,7 +188,7 @@ func TestCodexTicketMetadataAccountAndModelIsolation(t *testing.T) {
 	g := &OpenAIGatewayService{accountRepo: repo, cache: &schedulerTestGatewayCache{}, concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{})}
 	g.schedulerSnapshot = NewSchedulerSnapshotService(cache, nil, repo, nil, nil)
 	g.codexTickets.Store(s)
-	s.gateway = g
+	s.runtime = g
 	seedTicket(t, s, &second, "gpt-6-astra", "second-token")
 	require.True(t, s.Blocks(ctx, &firstMeta, "gpt-6-astra"))
 	require.False(t, s.Blocks(ctx, &secondMeta, "gpt-6-astra"))

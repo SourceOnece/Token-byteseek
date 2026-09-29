@@ -60,7 +60,7 @@ func TestCodexTicketNormalizationPreservesEffectiveRulesKeysAndProxy(t *testing.
 func TestCodexTicketNormalizationRetainsPreviouslyCachedTicket(t *testing.T) {
 	s, cache, settings := newTicketTestService()
 	a := ticketAccount()
-	s.gateway = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a}}}
+	s.runtime = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a}}}
 	legacy := &codexTicketConfig{Enabled: true, Generation: "same-generation", TargetLength: 332, Models: []string{"gpt-6-astra"}}
 	raw, err := json.Marshal(legacy)
 	require.NoError(t, err)
@@ -86,7 +86,7 @@ func TestCodexTicketNormalizationRetainsPreviouslyCachedTicket(t *testing.T) {
 func TestCodexTicketNewDefaultAndExistingAccountAreIndependent(t *testing.T) {
 	s, base, _ := setupTicketManualTest(t, 332)
 	repo := &ticketCreateRepo{ticketHistoryStub: base, settings: s.settings.(*ticketSettingStub)}
-	s.gateway.accountRepo = repo
+	s.runtime.(*OpenAIGatewayService).accountRepo = repo
 	cfg := s.config.Load()
 	old := ticketConfigForAccount(cfg, 1)
 	a, _ := repo.GetByID(context.Background(), 1)
@@ -126,7 +126,7 @@ func TestCodexTicketNewDefaultAndExistingAccountAreIndependent(t *testing.T) {
 func TestCodexTicketCreateWithoutSavedTemplateStillFreezesDefaults(t *testing.T) {
 	s, base, _ := setupTicketManualTest(t, 292)
 	repo := &ticketCreateRepo{ticketHistoryStub: base, settings: s.settings.(*ticketSettingStub)}
-	s.gateway.accountRepo = repo
+	s.runtime.(*OpenAIGatewayService).accountRepo = repo
 	created := ticketAccount()
 	created.ID = 0
 	done, err := s.CreateAccountWithDefaults(context.Background(), &created, nil, nil)

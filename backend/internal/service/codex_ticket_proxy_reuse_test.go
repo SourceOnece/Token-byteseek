@@ -32,7 +32,7 @@ func setupReuseProxyTest(t *testing.T, mode string, reuse bool) (*CodexTicketSer
 func runReuseAttempt(t *testing.T, s *CodexTicketService, a *Account, model string, p *codexTicketProxy, length int) (CodexTicketAttempt, string) {
 	t.Helper()
 	u := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(200, length, "")}}
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	cfg := s.enabledAccountConfig(a.ID)
 	key := codexTicketKey(cfg, a, model, a.GetOpenAIAccessToken())
 	var event CodexTicketAttempt
@@ -166,7 +166,7 @@ func TestCodexTicketReuseNonRetryableRefusalAndStorageKeepRecord(t *testing.T) {
 	before, _ := cache.Get(context.Background(), "proxy-reuse:"+key)
 	for _, status := range []int{401, 403, 429} {
 		u := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(status, 0, "")}}
-		s.gateway.httpUpstream = u
+		s.runtime.(*OpenAIGatewayService).httpUpstream = u
 		var event CodexTicketAttempt
 		ready, retry := s.probeAttempt(context.Background(), cfg, a, "gpt-6-astra", a.GetOpenAIAccessToken(), key, &p, 1, func(e CodexTicketAttempt) { event = e })
 		require.False(t, ready)
@@ -219,7 +219,7 @@ func TestCodexTicketReuseNetworkFailureDropsSuccessfulRoute(t *testing.T) {
 	p := cfg.proxies()[0]
 	runReuseAttempt(t, s, a, "gpt-6-astra", &p, 292)
 	key := codexTicketKey(cfg, a, "gpt-6-astra", a.GetOpenAIAccessToken())
-	s.gateway.httpUpstream = &ticketReuseNetworkError{}
+	s.runtime.(*OpenAIGatewayService).httpUpstream = &ticketReuseNetworkError{}
 	ready, retry := s.probeAttempt(context.Background(), cfg, a, "gpt-6-astra", a.GetOpenAIAccessToken(), key, &p, 1, func(CodexTicketAttempt) {})
 	require.False(t, ready)
 	require.True(t, retry)
@@ -276,7 +276,7 @@ func TestCodexTicketReuseAcrossInstancesAndCredentialChanges(t *testing.T) {
 	p := cfg.proxies()[0]
 	_, first := runReuseAttempt(t, s, a, "gpt-6-astra", &p, 292)
 	// 新服务实例共用持久缓存；不依赖内存中的上一次选择。
-	other := &CodexTicketService{cache: cache, cipher: s.cipher, gateway: s.gateway, proxyRepo: s.proxyRepo}
+	other := &CodexTicketService{cache: cache, cipher: s.cipher, runtime: s.runtime, proxyRepo: s.proxyRepo}
 	other.config.Store(s.config.Load())
 	key := codexTicketKey(cfg, a, "gpt-6-astra", a.GetOpenAIAccessToken())
 	reused, attempt, err := other.resolveReusableTicketProxy(context.Background(), cfg, key, cfg.proxies()[0])
@@ -367,7 +367,7 @@ func TestCodexTicketReuseManualAndAutomaticShareSuccessfulRoute(t *testing.T) {
 	p := cfg.proxies()[0]
 	_, first := runReuseAttempt(t, s, a, "gpt-6-astra", &p, 292)
 	upstream := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(200, 292, "")}}
-	s.gateway.httpUpstream = upstream
+	s.runtime.(*OpenAIGatewayService).httpUpstream = upstream
 	m, err := s.PrepareManualCollection(context.Background(), manualRequest(s))
 	require.NoError(t, err)
 	m.Execute(func(string, any) bool { return true })

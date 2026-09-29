@@ -120,7 +120,7 @@ type CodexTicketService struct {
 	schedulingDropped   atomic.Uint64
 	proxyProviderClient *http.Client
 	proxyRepo           ProxyRepository
-	gateway             *OpenAIGatewayService
+	runtime             CodexTicketRuntime
 	settings            SettingRepository
 	cache               CodexTicketCache
 	cipher              SecretEncryptor
@@ -146,7 +146,7 @@ type CodexTicketService struct {
 }
 
 func ProvideCodexTicketService(gateway *OpenAIGatewayService, settings SettingRepository, cache CodexTicketCache, cipher SecretEncryptor, ipProber ProxyExitInfoProber, proxies ProxyRepository) *CodexTicketService {
-	s := &CodexTicketService{gateway: gateway, settings: settings, cache: cache, cipher: cipher, ipProber: ipProber, proxyRepo: proxies}
+	s := NewCodexTicketService(gateway, settings, cache, cipher, ipProber, proxies)
 	gateway.codexTickets.Store(s)
 	s.Start()
 	return s
@@ -399,11 +399,11 @@ func (s *CodexTicketService) applyWithReceipt(ctx context.Context, account *Acco
 	}
 	// 新模式在注入前复核当前账号/业务出口，长会话或陈旧快照不能沿旧代理继续用票。
 	if cfg.VerifiedFlow {
-		if s.gateway == nil || s.gateway.accountRepo == nil {
+		if s.runtime == nil || s.ticketAccounts() == nil {
 			return nil, newCodexTicketUnavailableError()
 		}
 		read, stop := context.WithTimeout(ctx, 200*time.Millisecond)
-		live, err := s.gateway.accountRepo.GetByID(read, account.ID)
+		live, err := s.ticketAccounts().GetByID(read, account.ID)
 		stop()
 		if err != nil || !codexTicketAccount(live) || !live.IsSchedulable() || !live.IsModelSupported(model) || live.GetOpenAIAccessToken() != token || ticketBusinessFingerprint(live) == "" || codexTicketKey(cfg, live, model, token) != codexTicketKey(cfg, account, model, token) {
 			return nil, newCodexTicketUnavailableError()
@@ -506,18 +506,12 @@ func (s *CodexTicketService) Blocks(ctx context.Context, account *Account, model
 
 // 完整账号优先沿用调度缓存，缺失时走其已有受限数据库回退；不调用带状态更新的资格方法。
 func (s *CodexTicketService) resolveTicketLookupAccount(ctx context.Context, accountID int64) *Account {
-	if s.gateway == nil {
+	if s.runtime == nil {
 		return nil
 	}
 	readCtx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
 	defer cancel()
-	var account *Account
-	var err error
-	if s.gateway.schedulerSnapshot != nil {
-		account, err = s.gateway.schedulerSnapshot.GetAccount(readCtx, accountID)
-	} else if s.gateway.accountRepo != nil {
-		account, err = s.gateway.accountRepo.GetByID(readCtx, accountID)
-	}
+	account, err := s.runtime.TicketSnapshotAccount(readCtx, accountID)
 	if err != nil || readCtx.Err() != nil {
 		return nil
 	}
@@ -633,7 +627,7 @@ func (s *CodexTicketService) startRound(ctx context.Context) {
 
 func (s *CodexTicketService) harvest(ctx context.Context) {
 	cfg := s.enabledConfig()
-	if cfg == nil || s.gateway == nil || s.gateway.accountRepo == nil || s.gateway.httpUpstream == nil || s.cache == nil || s.cipher == nil {
+	if cfg == nil || s.runtime == nil || s.ticketAccounts() == nil || !s.runtime.TicketTransportAvailable() || s.cache == nil || s.cipher == nil {
 		return
 	}
 	// 集群每轮最多一个实例采集；正常结束按 owner 解锁，崩溃则由 TTL 释放。
@@ -649,7 +643,7 @@ func (s *CodexTicketService) harvest(ctx context.Context) {
 	}()
 	// 30秒只限制继续派发，不再强行截断已经派发的完整单次请求。
 	dispatchEnd := time.Now().Add(30 * time.Second)
-	accounts, err := s.gateway.accountRepo.ListByPlatform(ctx, PlatformOpenAI)
+	accounts, err := s.ticketAccounts().ListByPlatform(ctx, PlatformOpenAI)
 	if err != nil {
 		return
 	}
@@ -741,11 +735,11 @@ func (s *CodexTicketService) probe(ctx context.Context, cfg *codexTicketConfig, 
 	if !cfg.Enabled || !s.ticketConfigCurrent(cfg) || ctx.Err() != nil {
 		return
 	}
-	fresh, err := s.gateway.accountRepo.GetByID(ctx, account.ID)
+	fresh, err := s.ticketAccounts().GetByID(ctx, account.ID)
 	if err != nil || !codexTicketCollectionAllowed(ctx, fresh) || !fresh.IsModelSupported(model) {
 		return
 	}
-	token, _, err := s.gateway.GetAccessToken(ctx, fresh)
+	token, _, err := s.runtime.GetAccessToken(ctx, fresh)
 	if err != nil || token == "" {
 		key := codexTicketKey(cfg, fresh, model, fresh.GetOpenAIAccessToken())
 		s.recordObservation(ctx, key, "failed", "credential", nil)

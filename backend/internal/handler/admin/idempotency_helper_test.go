@@ -18,6 +18,34 @@ import (
 
 type storeUnavailableRepoStub struct{}
 
+// 同一业务在旧/新入口间重试只执行一次，不因名称变化被当成不同请求。
+func TestProviderAliasIdempotency(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	service.SetDefaultIdempotencyCoordinator(service.NewIdempotencyCoordinator(newMemoryIdempotencyRepoStub(), service.DefaultIdempotencyConfig()))
+	t.Cleanup(func() { service.SetDefaultIdempotencyCoordinator(nil) })
+	router := gin.New()
+	executed := 0
+	for _, path := range []string{"/api/v1/admin/accounts", "/api/v1/admin/providers"} {
+		router.POST(path, func(c *gin.Context) {
+			executeAdminIdempotentJSON(c, "admin.accounts.create", map[string]any{"name": "migration"}, time.Minute, func(context.Context) (any, error) {
+				executed++
+				return gin.H{"id": 7}, nil
+			})
+		})
+	}
+	for i, path := range []string{"/api/v1/admin/accounts", "/api/v1/admin/providers", "/api/v1/admin/accounts"} {
+		request := httptest.NewRequest(http.MethodPost, path, nil)
+		request.Header.Set("Idempotency-Key", "provider-migration-retry")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, request)
+		require.Equal(t, http.StatusOK, w.Code)
+		if i > 0 {
+			require.Equal(t, "true", w.Header().Get("X-Idempotency-Replayed"))
+		}
+	}
+	require.Equal(t, 1, executed)
+}
+
 func (storeUnavailableRepoStub) CreateProcessing(context.Context, *service.IdempotencyRecord) (bool, error) {
 	return false, errors.New("store unavailable")
 }

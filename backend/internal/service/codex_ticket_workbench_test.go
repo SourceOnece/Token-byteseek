@@ -20,7 +20,7 @@ func TestCodexTicketAccountRulesAndGlobalSwitchOnly(t *testing.T) {
 	enableTicketTest(t, s)
 	a, b := ticketAccount(), ticketAccount()
 	b.ID = 2
-	s.gateway = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a, b}}}
+	s.runtime = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a, b}}}
 	ctx := context.Background()
 	zero, cache, renew, parallel := 0, 120, 15, 1
 	models := []string{"custom-model"}
@@ -70,7 +70,7 @@ func TestCodexTicketExtractionEveryAttemptAndSecretSafety(t *testing.T) {
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"proxies":["8.8.8.8:8080:client:opaque-pass"]}`)), Header: http.Header{}}, nil
 	})}
 	u := &ticketSequenceUpstream{responses: []*http.Response{ticketResponseForProxy(200, 312, ""), ticketResponseForProxy(200, 292, "")}}
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	s.probe(context.Background(), s.config.Load(), a, "gpt-6-astra")
 	require.Equal(t, 2, requests)
 	require.Len(t, u.proxies, 2)
@@ -141,7 +141,7 @@ func TestCodexTicketUnlimitedManualFairnessAndSuccessRounds(t *testing.T) {
 	_, err := s.UpdateAccountSettings(context.Background(), CodexTicketAccountsUpdate{AccountIDs: []int64{1}, Patch: CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{MaxAttempts: &zero, Concurrency: &one}}})
 	require.NoError(t, err)
 	u := &ticketRoundRobinUpstream{calls: map[string]int{}}
-	s.gateway.httpUpstream = u
+	s.runtime.(*OpenAIGatewayService).httpUpstream = u
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
 	batch, err := s.PrepareManualCollection(ctx, manualRequest(s))
@@ -186,7 +186,7 @@ func TestCodexTicketCooldownGatesModelButNeverChangesAccountSwitch(t *testing.T)
 	enableTicketTest(t, s)
 	a := ticketAccount()
 	a.Schedulable = false
-	s.gateway = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a}}}
+	s.runtime = &OpenAIGatewayService{accountRepo: &ticketAccountStub{accounts: []Account{a}}}
 	threshold := 2
 	_, err := s.UpdateAccountSettings(context.Background(), CodexTicketAccountsUpdate{AccountIDs: []int64{1}, Patch: CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{FailureThreshold: &threshold}}})
 	require.NoError(t, err)

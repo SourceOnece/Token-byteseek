@@ -53,7 +53,7 @@ func TestCodexTicketSchedulingLengthMatrixManualAndAutomatic(t *testing.T) {
 					s, base, u := setupTicketManualTest(t, 332)
 					base.accounts[0].Schedulable = initial
 					r := &ticketSchedulingRepo{ticketHistoryStub: base}
-					s.gateway.accountRepo = r
+					s.runtime.(*OpenAIGatewayService).accountRepo = r
 					models := []string{"gpt-6-astra"}
 					signal := 312
 					_, err := s.UpdateAccountSettings(context.Background(), CodexTicketAccountsUpdate{AccountIDs: []int64{1}, Patch: CodexTicketAccountPatch{Rules: &CodexTicketRulesPatch{Models: &models, DegradedSignalLength: &signal}}})
@@ -93,7 +93,7 @@ func TestCodexTicketSchedulingFailureStaleAndStorageGuard(t *testing.T) {
 	s, base, _ := setupTicketManualTest(t, 292)
 	base.accounts[0].Schedulable = false
 	r := &ticketSchedulingRepo{ticketHistoryStub: base}
-	s.gateway.accountRepo = r
+	s.runtime.(*OpenAIGatewayService).accountRepo = r
 	a, _ := r.GetByID(context.Background(), 1)
 	cfg := s.enabledAccountConfig(1)
 	r.fail = true
@@ -141,7 +141,7 @@ func TestCodexTicketBusinessSchedulingLengthAndReceiptGuards(t *testing.T) {
 			s, base, _ := setupTicketManualTest(t, 292)
 			base.accounts[0].Schedulable = tc.initial
 			r := &ticketSchedulingRepo{ticketHistoryStub: base}
-			s.gateway.accountRepo = r
+			s.runtime.(*OpenAIGatewayService).accountRepo = r
 			signal := 312
 			mode := "observe"
 			if tc.off {
@@ -175,7 +175,7 @@ func TestCodexTicketSchedulingQueueBoundedAndLatestWins(t *testing.T) {
 	s, base, _ := setupTicketManualTest(t, 292)
 	base.accounts[0].Schedulable = true
 	r := &ticketSchedulingRepo{ticketHistoryStub: base}
-	s.gateway.accountRepo = r
+	s.runtime.(*OpenAIGatewayService).accountRepo = r
 	cfg := s.enabledAccountConfig(1)
 	receipt := &codexTicketReceipt{s: s, cfg: cfg, key: "synthetic", encoded: "same", model: "gpt-6-astra"}
 	s.queueTicketScheduling(receipt, true)

@@ -126,7 +126,7 @@ func (s *CodexTicketService) validateTicketChain(ctx context.Context, cancel con
 	req.Header.Set(openAICodexTurnStateHeader, extractOpenAICodexTurnState(candidate.Header))
 	// 仅复验请求使用账号业务代理和TLS模板，不改业务流的代理、并发或返回内容。
 	diagnostic.Phase = "verify"
-	response, err := s.gateway.httpUpstream.DoWithTLS(req, proxy, live.ID, live.Concurrency, s.gateway.resolveOpenAITLSProfile(live))
+	response, err := s.runtime.SendTicketVerification(req, proxy, live)
 	if err != nil {
 		diagnostic.HTTPStatus, diagnostic.HeaderLength = 0, 0
 		diagnostic.HeaderPresent, diagnostic.PrefixValid = false, false

@@ -29,7 +29,7 @@ func (s *CodexTicketService) applyTicketSchedulingVersion(ctx context.Context, c
 		}
 		return "already_off", time.Time{}
 	}
-	repo, ok := s.gateway.accountRepo.(CodexTicketSchedulingRepository)
+	repo, ok := s.ticketAccounts().(CodexTicketSchedulingRepository)
 	if !ok {
 		return "failed", time.Time{}
 	}
@@ -116,12 +116,12 @@ func (s *CodexTicketService) runTicketScheduling(ctx context.Context) {
 // 业务回答不等待数据库；消费时复核实际注入票据、账号版本与配置，不拿旧响应覆盖新票/人工修改。
 func (s *CodexTicketService) applyTicketSchedulingSignal(ctx context.Context, signal ticketSchedulingSignal) {
 	r := signal.receipt
-	if s.gateway == nil || s.gateway.accountRepo == nil || !s.ticketConfigCurrent(r.cfg) {
+	if s.runtime == nil || s.ticketAccounts() == nil || !s.ticketConfigCurrent(r.cfg) {
 		return
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	a, err := s.gateway.accountRepo.GetByID(ctx, r.cfg.accountID)
+	a, err := s.ticketAccounts().GetByID(ctx, r.cfg.accountID)
 	if err != nil || !codexTicketCollectionAllowed(ctx, a) || (a.UpdatedAt.After(signal.seenAt) && !a.UpdatedAt.Equal(signal.previousWrite)) || !a.IsModelSupported(r.model) || codexTicketKey(r.cfg, a, r.model, a.GetOpenAIAccessToken()) != r.key {
 		return
 	}

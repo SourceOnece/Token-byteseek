@@ -6,6 +6,7 @@ import (
 	"time"
 
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/errors"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/httputil"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logger"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/response"
 	middleware2 "github.com/TokenFlux/TokenRouter/internal/server/middleware"
@@ -41,7 +42,7 @@ func executeAdminIdempotent(
 		Scope:          scope,
 		ActorScope:     adminActorScope(c),
 		Method:         c.Request.Method,
-		Route:          c.FullPath(),
+		Route:          httputil.CanonicalAdminAccountRoute(c.FullPath()),
 		IdempotencyKey: c.GetHeader("Idempotency-Key"),
 		Payload:        payload,
 		RequireKey:     true,

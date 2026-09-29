@@ -5,8 +5,9 @@ import (
 	"github.com/google/uuid"
 	"strings"
 	"time"
-	"unicode"
 	"unicode/utf8"
+
+	"github.com/TokenFlux/TokenRouter/internal/codexticket"
 )
 
 // 代理列表只保存密文；名称与 ID 用于只读诊断，地址永不回显。
@@ -108,7 +109,7 @@ func (c *codexTicketConfig) hasModel(model string) bool {
 	return false
 }
 func ValidCodexTicketModelID(model string) bool {
-	return model != "" && len(model) <= 256 && strings.IndexFunc(model, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) < 0
+	return codexticket.ValidModelID(model)
 }
 func (c *codexTicketConfig) retryInterval() time.Duration {
 	if c.RetryIntervalSeconds >= 1 && c.RetryIntervalSeconds <= 30 {
