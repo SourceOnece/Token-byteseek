@@ -20,6 +20,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/openai_compat"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/qoder"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/xai"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 type Account struct {
@@ -152,43 +153,24 @@ func (a *Account) IsActive() bool {
 // - 允许 0，表示该账号计费为 0
 // - 负数属于非法数据，出于安全考虑按 1.0 处理
 func (a *Account) BillingRateMultiplier() float64 {
-	if a == nil || a.RateMultiplier == nil {
-		return 1.0
+	if a == nil {
+		return (*provider.Record)(nil).BillingRateMultiplier()
 	}
-	if *a.RateMultiplier < 0 {
-		return 1.0
-	}
-	return *a.RateMultiplier
+	return (&provider.Record{RateMultiplier: a.RateMultiplier}).BillingRateMultiplier()
 }
 
 func (a *Account) EffectiveLoadFactor() int {
 	if a == nil {
-		return 1
+		return (*provider.Record)(nil).EffectiveLoadFactor()
 	}
-	if a.LoadFactor != nil && *a.LoadFactor > 0 {
-		return *a.LoadFactor
-	}
-	if a.Concurrency > 0 {
-		return a.Concurrency
-	}
-	return 1
+	return (&provider.Record{LoadFactor: a.LoadFactor, Concurrency: a.Concurrency}).EffectiveLoadFactor()
 }
 
 func (a *Account) IsSchedulable() bool {
-	if !a.IsActive() || !a.Schedulable {
-		return false
-	}
-	now := time.Now()
-	if a.AutoPauseOnExpired && a.ExpiresAt != nil && !now.Before(*a.ExpiresAt) {
-		return false
-	}
-	if a.OverloadUntil != nil && now.Before(*a.OverloadUntil) {
-		return false
-	}
-	if a.RateLimitResetAt != nil && now.Before(*a.RateLimitResetAt) {
-		return false
-	}
-	if a.TempUnschedulableUntil != nil && now.Before(*a.TempUnschedulableUntil) {
+	// 只迁移共同时间门禁；API Key额度及其后的模型/票据资格仍保留原链路。
+	core := provider.Record{Status: a.Status, Schedulable: a.Schedulable, AutoPauseOnExpired: a.AutoPauseOnExpired,
+		ExpiresAt: a.ExpiresAt, OverloadUntil: a.OverloadUntil, RateLimitResetAt: a.RateLimitResetAt, TempUnschedulableUntil: a.TempUnschedulableUntil}
+	if !core.SchedulingWindowOpen(time.Now()) {
 		return false
 	}
 	if a.IsAPIKeyOrBedrock() && a.IsQuotaExceeded() {

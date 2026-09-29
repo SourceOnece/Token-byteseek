@@ -1,54 +1,15 @@
 package service
 
-import (
-	"net"
-	"net/url"
-	"strconv"
-	"time"
-)
+import "github.com/TokenFlux/TokenRouter/internal/egress"
+
+// 兼容旧业务类型名，代理的唯一实现由egress拥有。
+type Proxy = egress.Proxy
 
 const (
-	FallbackModeNone   = "none"
-	FallbackModeProxy  = "proxy"
-	FallbackModeDirect = "direct"
+	FallbackModeNone   = egress.FallbackModeNone
+	FallbackModeProxy  = egress.FallbackModeProxy
+	FallbackModeDirect = egress.FallbackModeDirect
 )
-
-type Proxy struct {
-	ID             int64
-	Name           string
-	Protocol       string
-	Host           string
-	Port           int
-	Username       string
-	Password       string
-	Status         string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	ExpiresAt      *time.Time
-	FallbackMode   string
-	BackupProxyID  *int64
-	ExpiryWarnDays int
-}
-
-func (p *Proxy) IsActive() bool {
-	return p.Status == StatusActive
-}
-
-// IsExpired 报告代理是否已过期（基于 expires_at，与 status 无关）。
-func (p *Proxy) IsExpired(now time.Time) bool {
-	return p.ExpiresAt != nil && !p.ExpiresAt.After(now)
-}
-
-func (p *Proxy) URL() string {
-	u := &url.URL{
-		Scheme: p.Protocol,
-		Host:   net.JoinHostPort(p.Host, strconv.Itoa(p.Port)),
-	}
-	if p.Username != "" && p.Password != "" {
-		u.User = url.UserPassword(p.Username, p.Password)
-	}
-	return u.String()
-}
 
 type ProxyWithAccountCount struct {
 	Proxy

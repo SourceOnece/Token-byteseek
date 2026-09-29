@@ -27,6 +27,8 @@ import (
 	dbproxy "github.com/TokenFlux/TokenRouter/ent/proxy"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logger"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/service"
 	"github.com/lib/pq"
 
@@ -151,69 +153,11 @@ func createAccountRecord(ctx context.Context, client *dbent.Client, account *ser
 		return service.ErrAccountNilInput
 	}
 	discardDeprecatedAccountExtra(account.Extra)
-
-	builder := client.Account.Create().
-		SetName(account.Name).
-		SetNillableNotes(account.Notes).
-		SetPlatform(account.Platform).
-		SetType(account.Type).
-		SetCredentials(normalizeJSONMap(account.Credentials)).
-		SetExtra(normalizeJSONMap(account.Extra)).
-		SetConcurrency(account.Concurrency).
-		SetPriority(account.Priority).
-		SetStatus(account.Status).
-		SetErrorMessage(account.ErrorMessage).
-		SetSchedulable(account.Schedulable).
-		SetAutoPauseOnExpired(account.AutoPauseOnExpired)
-
-	if account.RateMultiplier != nil {
-		builder.SetRateMultiplier(*account.RateMultiplier)
-	}
-	if account.LoadFactor != nil {
-		builder.SetLoadFactor(*account.LoadFactor)
-	}
-
-	if account.ProxyID != nil {
-		builder.SetProxyID(*account.ProxyID)
-	}
-	if account.LastUsedAt != nil {
-		builder.SetLastUsedAt(*account.LastUsedAt)
-	}
-	if account.ExpiresAt != nil {
-		builder.SetExpiresAt(*account.ExpiresAt)
-	}
-	if account.RateLimitedAt != nil {
-		builder.SetRateLimitedAt(*account.RateLimitedAt)
-	}
-	if account.RateLimitResetAt != nil {
-		builder.SetRateLimitResetAt(*account.RateLimitResetAt)
-	}
-	if account.OverloadUntil != nil {
-		builder.SetOverloadUntil(*account.OverloadUntil)
-	}
-	if account.SessionWindowStart != nil {
-		builder.SetSessionWindowStart(*account.SessionWindowStart)
-	}
-	if account.SessionWindowEnd != nil {
-		builder.SetSessionWindowEnd(*account.SessionWindowEnd)
-	}
-	if account.SessionWindowStatus != "" {
-		builder.SetSessionWindowStatus(account.SessionWindowStatus)
-	}
-
-	builder.SetQuotaDimension(dbaccount.QuotaDimension(account.QuotaDimensionOrDefault()))
-	if account.ParentAccountID != nil {
-		builder.SetParentAccountID(*account.ParentAccountID)
-	}
-
-	created, err := builder.Save(ctx)
-	if err != nil {
+	record := account.ProviderRecord()
+	if err := providerpostgres.NewStore(client).CreateRecord(ctx, record); err != nil {
 		return translatePersistenceError(err, service.ErrAccountNotFound, nil)
 	}
-
-	account.ID = created.ID
-	account.CreatedAt = created.CreatedAt
-	account.UpdatedAt = created.UpdatedAt
+	account.ID, account.CreatedAt, account.UpdatedAt = record.ID, record.CreatedAt, record.UpdatedAt
 	return nil
 }
 
@@ -270,12 +214,14 @@ func (r *accountRepository) CreateWithAccountGroups(ctx context.Context, account
 }
 
 func (r *accountRepository) GetByID(ctx context.Context, id int64) (*service.Account, error) {
-	m, err := r.client.Account.Query().Where(dbaccount.IDEQ(id)).Only(ctx)
+	record, err := providerpostgres.NewStore(r.client).GetByID(ctx, id)
+	if errors.Is(err, providerpostgres.ErrNotFound) {
+		return nil, service.ErrAccountNotFound
+	}
 	if err != nil {
 		return nil, translatePersistenceError(err, service.ErrAccountNotFound, nil)
 	}
-
-	accounts, err := r.accountsToService(ctx, []*dbent.Account{m})
+	accounts, err := r.hydrateProviderRecords(ctx, []*provider.Record{record})
 	if err != nil {
 		return nil, err
 	}
@@ -286,87 +232,30 @@ func (r *accountRepository) GetByID(ctx context.Context, id int64) (*service.Acc
 }
 
 func (r *accountRepository) GetByIDs(ctx context.Context, ids []int64) ([]*service.Account, error) {
-	if len(ids) == 0 {
-		return []*service.Account{}, nil
-	}
-
-	// De-duplicate while preserving order of first occurrence.
-	uniqueIDs := make([]int64, 0, len(ids))
-	seen := make(map[int64]struct{}, len(ids))
-	for _, id := range ids {
-		if id <= 0 {
-			continue
-		}
-		if _, ok := seen[id]; ok {
-			continue
-		}
-		seen[id] = struct{}{}
-		uniqueIDs = append(uniqueIDs, id)
-	}
-	if len(uniqueIDs) == 0 {
-		return []*service.Account{}, nil
-	}
-
-	entAccounts, err := r.client.Account.
-		Query().
-		Where(dbaccount.IDIn(uniqueIDs...)).
-		WithProxy().
-		All(ctx)
+	records, err := providerpostgres.NewStore(r.client).GetByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	if len(entAccounts) == 0 {
+	if len(records) == 0 {
 		return []*service.Account{}, nil
 	}
-
-	accountIDs := make([]int64, 0, len(entAccounts))
-	entByID := make(map[int64]*dbent.Account, len(entAccounts))
-	for _, acc := range entAccounts {
-		entByID[acc.ID] = acc
-		accountIDs = append(accountIDs, acc.ID)
+	accountIDs := make([]int64, 0, len(records))
+	for _, record := range records {
+		accountIDs = append(accountIDs, record.ID)
 	}
-
 	groupsByAccount, groupIDsByAccount, accountGroupsByAccount, err := r.loadAccountGroups(ctx, accountIDs)
 	if err != nil {
 		return nil, err
 	}
-
-	outByID := make(map[int64]*service.Account, len(entAccounts))
-	for _, entAcc := range entAccounts {
-		out := accountEntityToService(entAcc)
-		if out == nil {
-			continue
-		}
-
-		// Prefer the preloaded proxy edge when available.
-		if entAcc.Edges.Proxy != nil {
-			out.Proxy = proxyEntityToService(entAcc.Edges.Proxy)
-		}
-
-		if groups, ok := groupsByAccount[entAcc.ID]; ok {
-			out.Groups = groups
-		}
-		if groupIDs, ok := groupIDsByAccount[entAcc.ID]; ok {
-			out.GroupIDs = groupIDs
-		}
-		if ags, ok := accountGroupsByAccount[entAcc.ID]; ok {
-			out.AccountGroups = ags
-		}
-		outByID[entAcc.ID] = out
+	result := make([]*service.Account, 0, len(records))
+	for _, record := range records {
+		account := service.AccountFromProviderRecord(record)
+		account.Groups = groupsByAccount[record.ID]
+		account.GroupIDs = groupIDsByAccount[record.ID]
+		account.AccountGroups = accountGroupsByAccount[record.ID]
+		result = append(result, account)
 	}
-
-	// Preserve input order (first occurrence), and ignore missing IDs.
-	out := make([]*service.Account, 0, len(uniqueIDs))
-	for _, id := range uniqueIDs {
-		if _, ok := entByID[id]; !ok {
-			continue
-		}
-		if acc, ok := outByID[id]; ok && acc != nil {
-			out = append(out, acc)
-		}
-	}
-
-	return out, nil
+	return result, nil
 }
 
 // ExistsByID 检查指定 ID 的账号是否存在。
@@ -2976,6 +2865,15 @@ func (r *accountRepository) queryAccountsByGroup(ctx context.Context, groupID in
 }
 
 func (r *accountRepository) accountsToService(ctx context.Context, accounts []*dbent.Account) ([]service.Account, error) {
+	records := make([]*provider.Record, 0, len(accounts))
+	for _, account := range accounts {
+		records = append(records, providerpostgres.FromAccountEntity(account))
+	}
+	return r.hydrateProviderRecords(ctx, records)
+}
+
+// 迁移期间分组和故障回退代理仍由旧仓储补全，不能让核心读取变成不完整的调度候选。
+func (r *accountRepository) hydrateProviderRecords(ctx context.Context, accounts []*provider.Record) ([]service.Account, error) {
 	if len(accounts) == 0 {
 		return []service.Account{}, nil
 	}
@@ -3003,7 +2901,7 @@ func (r *accountRepository) accountsToService(ctx context.Context, accounts []*d
 
 	outAccounts := make([]service.Account, 0, len(accounts))
 	for _, acc := range accounts {
-		out := accountEntityToService(acc)
+		out := service.AccountFromProviderRecord(acc)
 		if out == nil {
 			continue
 		}
@@ -3221,45 +3119,7 @@ func buildSchedulerGroupPayload(groupIDs []int64) any {
 }
 
 func accountEntityToService(m *dbent.Account) *service.Account {
-	if m == nil {
-		return nil
-	}
-
-	rateMultiplier := m.RateMultiplier
-
-	return &service.Account{
-		ID:                      m.ID,
-		Name:                    m.Name,
-		Notes:                   m.Notes,
-		Platform:                m.Platform,
-		Type:                    m.Type,
-		Credentials:             copyJSONMap(m.Credentials),
-		Extra:                   copyJSONMap(m.Extra),
-		ProxyID:                 m.ProxyID,
-		ProxyFallbackOriginID:   m.ProxyFallbackOriginID,
-		Concurrency:             m.Concurrency,
-		Priority:                m.Priority,
-		RateMultiplier:          &rateMultiplier,
-		LoadFactor:              m.LoadFactor,
-		Status:                  m.Status,
-		ErrorMessage:            derefString(m.ErrorMessage),
-		LastUsedAt:              m.LastUsedAt,
-		ExpiresAt:               m.ExpiresAt,
-		AutoPauseOnExpired:      m.AutoPauseOnExpired,
-		CreatedAt:               m.CreatedAt,
-		UpdatedAt:               m.UpdatedAt,
-		Schedulable:             m.Schedulable,
-		RateLimitedAt:           m.RateLimitedAt,
-		RateLimitResetAt:        m.RateLimitResetAt,
-		OverloadUntil:           m.OverloadUntil,
-		TempUnschedulableUntil:  m.TempUnschedulableUntil,
-		TempUnschedulableReason: derefString(m.TempUnschedulableReason),
-		SessionWindowStart:      m.SessionWindowStart,
-		SessionWindowEnd:        m.SessionWindowEnd,
-		SessionWindowStatus:     derefString(m.SessionWindowStatus),
-		ParentAccountID:         m.ParentAccountID,
-		QuotaDimension:          string(m.QuotaDimension),
-	}
+	return service.AccountFromProviderRecord(providerpostgres.FromAccountEntity(m))
 }
 
 func normalizeJSONMap(in map[string]any) map[string]any {
