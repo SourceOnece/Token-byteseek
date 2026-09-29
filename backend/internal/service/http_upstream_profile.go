@@ -1,71 +1,21 @@
 package service
 
-import "context"
+import "github.com/TokenFlux/TokenRouter/internal/egress"
 
-// HTTPUpstreamProfile 标记需要 provider 专用传输策略的 HTTP 上游请求。
-type HTTPUpstreamProfile string
+// 旧 service 名称保留为别名，已有调用方不改接口；实际所有权已移到 egress。
+type HTTPUpstreamProfile = egress.HTTPUpstreamProfile
 
 const (
-	HTTPUpstreamProfileDefault       HTTPUpstreamProfile = ""
-	HTTPUpstreamProfileOpenAI        HTTPUpstreamProfile = "openai"
-	HTTPUpstreamProfileOpenAIHarvest HTTPUpstreamProfile = "openai_harvest"
-	HTTPUpstreamProfileGrok          HTTPUpstreamProfile = "grok"
-	HTTPUpstreamProfileLongStream    HTTPUpstreamProfile = "long_stream"
+	HTTPUpstreamProfileDefault       = egress.HTTPUpstreamProfileDefault
+	HTTPUpstreamProfileOpenAI        = egress.HTTPUpstreamProfileOpenAI
+	HTTPUpstreamProfileOpenAIHarvest = egress.HTTPUpstreamProfileOpenAIHarvest
+	HTTPUpstreamProfileGrok          = egress.HTTPUpstreamProfileGrok
+	HTTPUpstreamProfileLongStream    = egress.HTTPUpstreamProfileLongStream
 )
 
-type httpUpstreamProfileContextKey struct{}
-type httpUpstreamDisableRedirectsContextKey struct{}
-type httpUpstreamPublicHostsOnlyContextKey struct{}
-
-// WithHTTPUpstreamProfile 将上游传输 profile 写入 context。
-func WithHTTPUpstreamProfile(ctx context.Context, profile HTTPUpstreamProfile) context.Context {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	if profile == HTTPUpstreamProfileDefault {
-		return ctx
-	}
-	return context.WithValue(ctx, httpUpstreamProfileContextKey{}, profile)
-}
-
-// HTTPUpstreamProfileFromContext 从 context 解析上游传输 profile。
-func HTTPUpstreamProfileFromContext(ctx context.Context) HTTPUpstreamProfile {
-	if ctx == nil {
-		return HTTPUpstreamProfileDefault
-	}
-	profile, ok := ctx.Value(httpUpstreamProfileContextKey{}).(HTTPUpstreamProfile)
-	if !ok {
-		return HTTPUpstreamProfileDefault
-	}
-	switch profile {
-	case HTTPUpstreamProfileOpenAI, HTTPUpstreamProfileOpenAIHarvest, HTTPUpstreamProfileGrok, HTTPUpstreamProfileLongStream:
-		return profile
-	default:
-		return HTTPUpstreamProfileDefault
-	}
-}
-
-// WithHTTPUpstreamRedirectsDisabled 禁止携带凭据的探测请求通过共享上游客户端跟随重定向。
-func WithHTTPUpstreamRedirectsDisabled(ctx context.Context) context.Context {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	return context.WithValue(ctx, httpUpstreamDisableRedirectsContextKey{}, true)
-}
-
-func HTTPUpstreamRedirectsDisabled(ctx context.Context) bool {
-	return ctx != nil && ctx.Value(httpUpstreamDisableRedirectsContextKey{}) == true
-}
-
-// WithHTTPUpstreamPublicHostsOnly 对不可信图片 URL 强制执行公网主机校验。
-func WithHTTPUpstreamPublicHostsOnly(ctx context.Context) context.Context {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	return context.WithValue(ctx, httpUpstreamPublicHostsOnlyContextKey{}, true)
-}
-
-// HTTPUpstreamPublicHostsOnly 供共享客户端识别下载安全标记。
-func HTTPUpstreamPublicHostsOnly(ctx context.Context) bool {
-	return ctx != nil && ctx.Value(httpUpstreamPublicHostsOnlyContextKey{}) == true
-}
+var WithHTTPUpstreamProfile = egress.WithHTTPUpstreamProfile
+var HTTPUpstreamProfileFromContext = egress.HTTPUpstreamProfileFromContext
+var WithHTTPUpstreamRedirectsDisabled = egress.WithHTTPUpstreamRedirectsDisabled
+var HTTPUpstreamRedirectsDisabled = egress.HTTPUpstreamRedirectsDisabled
+var WithHTTPUpstreamPublicHostsOnly = egress.WithHTTPUpstreamPublicHostsOnly
+var HTTPUpstreamPublicHostsOnly = egress.HTTPUpstreamPublicHostsOnly
