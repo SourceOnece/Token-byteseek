@@ -4,7 +4,7 @@
 
 ## 当前基线
 
-最近已发布应用为 `0.1.279-bh.003`（固定版本、latest、bauhaus 同一 digest），恢复 ByteSeek 原版视觉，未替换生产容器。已知生产部署仍为 bh.002 记录中的 bh.001；bh.002 是运维记录，不产生新镜像。此前 bh.061–bh.063 是选择性适配，bh.001 切换为 TokenFlux 主体、ByteSeek 定制与 sub2api 去重增量。
+最近已发布应用为 `0.1.279-bh.004`（固定版本、latest、bauhaus 同一 digest `sha256:81f5fb65…3a11`），在 bh.003 视觉恢复之上将对外品牌标识改为 ByteSeek，未替换生产容器。已知生产部署仍为 bh.002 记录中的 bh.001；bh.002 是运维记录，不产生新镜像。此前 bh.061–bh.063 是选择性适配，bh.001 切换为 TokenFlux 主体、ByteSeek 定制与 sub2api 去重增量。
 
 Metadata 撤回时，应用先回到 bh.002 再保留 Asia/Taipei 选项。用户已明确要求删除后续 Metadata 系列及相关版本文档；bh.003–bh.013 不再位于当前目录，也不得作为自动同步恢复依据。原提交仍在 Git 历史中，不重写远端历史；后续版本在这个撤回结果之上继续开发，编号不复用。
 
@@ -14,7 +14,7 @@ Metadata 撤回时，应用先回到 bh.002 再保留 Asia/Taipei 选项。用�
 
 ## v0.1.279
 
-- [v0.1.279-bh.004：对外品牌标识改为 ByteSeek](v0_1_279_bh_004.md)：“使用密钥”Codex/OpenCode 服务商、`owned_by`、Stripe/Passkey 兜底名、Live 文案改为 ByteSeek，移除公开页上游 GitHub 链接；内部键与模块路径保持。读取时机：维护客户端配置生成、对外品牌字符串或同步相关上游文件时。
+- [v0.1.279-bh.004：对外品牌标识改为 ByteSeek](v0_1_279_bh_004.md)：验证与三标签同 digest 发布完成，未部署；“使用密钥”Codex/OpenCode 服务商、`owned_by`、Stripe/Passkey 兜底名、Live 文案改为 ByteSeek，移除公开页上游 GitHub 链接；内部键与模块路径保持。读取时机：维护客户端配置生成、对外品牌字符串或同步相关上游文件时。
 
 - [v0.1.279-bh.003：恢复 ByteSeek 包豪斯视觉](v0_1_279_bh_003.md)：验证与三标签同 digest 发布完成，未部署；恢复公共样式、排行、图表和菜单，保持当前接口。读取时机：维护本轮视觉恢复、验证或升级时。
 
