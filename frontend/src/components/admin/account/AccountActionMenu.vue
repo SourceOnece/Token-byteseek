@@ -87,7 +87,7 @@ const props = defineProps<{ show: boolean; account: Account | null; position: { 
 const emit = defineEmits(['close', 'test', 'stats', 'advanced-scheduler-score', 'schedule', 'duplicate', 'reauth', 'refresh-token', 'recover-state', 'reset-quota', 'set-privacy', 'invite-reset', 'create-spark-shadow', 'delete'])
 const { t } = useI18n()
 const canDuplicate = computed(() => {
-  if (!props.account || props.account.parent_account_id != null) return false
+  if (!props.account || props.account.parent_provider_id != null) return false
   return ['apikey', 'upstream', 'bedrock', 'service_account'].includes(props.account.type)
 })
 const isRateLimited = computed(() => {
@@ -110,8 +110,8 @@ const hasRecoverableState = computed(() => {
 })
 const isAntigravityOAuth = computed(() => props.account?.platform === 'antigravity' && props.account?.type === 'oauth')
 const isOpenAIOAuth = computed(() => props.account?.platform === 'openai' && props.account?.type === 'oauth')
-// 影子账号(链接型,持 parent_account_id)不持凭据、type 不可变,凭据/隐私类操作对其无效。
-const isShadow = computed(() => props.account?.parent_account_id != null)
+// 影子账号(链接型,持 parent_provider_id)不持凭据、type 不可变,凭据/隐私类操作对其无效。
+const isShadow = computed(() => props.account?.parent_provider_id != null)
 const supportsReauth = computed(() =>
   (props.account?.type === 'oauth' || props.account?.type === 'setup-token') && !isShadow.value
 )
@@ -123,7 +123,7 @@ const supportsTokenRefresh = computed(() =>
     !isShadow.value
   )
 )
-// OpenAI OAuth 母账号指自身不是影子账号(parent_account_id == null)的账号。
+// OpenAI OAuth 母账号指自身不是影子账号(parent_provider_id == null)的账号。
 const isOpenAIOAuthParent = computed(() => isOpenAIOAuth.value && !isShadow.value)
 const supportsPrivacy = computed(() => (isAntigravityOAuth.value || isOpenAIOAuth.value) && !isShadow.value)
 const hasQuotaLimit = computed(() => {

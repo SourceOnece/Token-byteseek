@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/payment"
-	stripe "github.com/stripe/stripe-go/v85"
+	"github.com/stripe/stripe-go/v85"
 	"github.com/stripe/stripe-go/v85/webhook"
 )
 
@@ -60,11 +60,6 @@ func (s *Stripe) ensureInit() {
 		s.sc = stripe.NewClient(s.config["secretKey"])
 		s.initialized = true
 	}
-}
-
-// GetPublishableKey returns the publishable key for frontend use.
-func (s *Stripe) GetPublishableKey() string {
-	return s.config["publishableKey"]
 }
 
 func (s *Stripe) Name() string        { return "Stripe" }

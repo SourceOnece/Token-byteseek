@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
+import { TABLE_DESKTOP_MEDIA_QUERY } from '@/constants/layout'
 import { useI18n } from 'vue-i18n'
 import { opsAPI, type OpsRuntimeLogConfig, type OpsSystemLog, type OpsSystemLogSinkHealth } from '@/api/admin/ops'
 import Pagination from '@/components/common/Pagination.vue'
@@ -11,8 +12,8 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 const appStore = useAppStore()
 const { t } = useI18n()
 
-// 与 DataTable 一致：< 768px 切换为卡片视图，避免宽表在移动端被截断。
-const isDesktopViewport = useMediaQuery('(min-width: 768px)')
+// 与 DataTable 一致：< 1024px 切换为卡片视图，避免宽表在移动端被截断。
+const isDesktopViewport = useMediaQuery(TABLE_DESKTOP_MEDIA_QUERY)
 
 const props = withDefaults(defineProps<{
   platformFilter?: string
@@ -60,7 +61,7 @@ const filters = reactive({
   client_request_id: '',
   user_id: '',
   api_key_id: '',
-  account_id: '',
+  provider_id: '',
   platform: '',
   model: '',
   q: ''
@@ -148,7 +149,7 @@ const formatSystemLogDetail = (row: OpsSystemLog) => {
   if (row.client_request_id) corrParts.push(`client_req=${row.client_request_id}`)
   if (row.user_id != null) corrParts.push(`user=${row.user_id}`)
   if (row.api_key_id != null) corrParts.push(`key=${row.api_key_id}`)
-  if (row.account_id != null) corrParts.push(`acc=${row.account_id}`)
+  if (row.provider_id != null) corrParts.push(`acc=${row.provider_id}`)
   if (row.platform) corrParts.push(`platform=${row.platform}`)
   if (row.model) corrParts.push(`model=${row.model}`)
   if (corrParts.length > 0) parts.push(corrParts.join(' '))
@@ -194,9 +195,9 @@ const buildQuery = () => {
     const v = Number.parseInt(filters.api_key_id.trim(), 10)
     if (Number.isFinite(v) && v > 0) query.api_key_id = v
   }
-  if (filters.account_id.trim()) {
-    const v = Number.parseInt(filters.account_id.trim(), 10)
-    if (Number.isFinite(v) && v > 0) query.account_id = v
+  if (filters.provider_id.trim()) {
+    const v = Number.parseInt(filters.provider_id.trim(), 10)
+    if (Number.isFinite(v) && v > 0) query.provider_id = v
   }
   if (filters.platform.trim()) query.platform = filters.platform.trim()
   if (filters.model.trim()) query.model = filters.model.trim()
@@ -302,7 +303,7 @@ const cleanupCurrentFilter = async () => {
       client_request_id: filters.client_request_id.trim() || undefined,
       user_id: filters.user_id.trim() ? Number.parseInt(filters.user_id.trim(), 10) : undefined,
       api_key_id: filters.api_key_id.trim() ? Number.parseInt(filters.api_key_id.trim(), 10) : undefined,
-      account_id: filters.account_id.trim() ? Number.parseInt(filters.account_id.trim(), 10) : undefined,
+      provider_id: filters.provider_id.trim() ? Number.parseInt(filters.provider_id.trim(), 10) : undefined,
       platform: filters.platform.trim() || undefined,
       model: filters.model.trim() || undefined,
       q: filters.q.trim() || undefined
@@ -332,7 +333,7 @@ const resetFilters = () => {
   filters.client_request_id = ''
   filters.user_id = ''
   filters.api_key_id = ''
-  filters.account_id = ''
+  filters.provider_id = ''
   filters.platform = props.platformFilter || ''
   filters.model = ''
   filters.q = ''
@@ -380,21 +381,21 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-900 dark:ring-dark-700">
+  <section class="rounded-surface bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-900 dark:ring-dark-700">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div>
         <h3 class="text-sm font-bold text-gray-900 dark:text-white">系统日志</h3>
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">默认按最新时间倒序，支持筛选搜索与按条件清理。</p>
       </div>
       <div class="flex flex-wrap items-center gap-2 text-xs">
-        <span class="rounded-md bg-gray-100 px-2 py-1 text-gray-700 dark:bg-dark-950/80 dark:text-gray-200">队列 {{ health.queue_depth }}/{{ health.queue_capacity }}</span>
-        <span class="rounded-md bg-gray-100 px-2 py-1 text-gray-700 dark:bg-dark-950/80 dark:text-gray-200">写入 {{ health.written_count }}</span>
-        <span class="rounded-md bg-amber-100 px-2 py-1 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">丢弃 {{ health.dropped_count }}</span>
-        <span class="rounded-md bg-red-100 px-2 py-1 text-red-700 dark:bg-red-900/30 dark:text-red-300">失败 {{ health.write_failed_count }}</span>
+        <span class="rounded-control bg-gray-100 px-2 py-1 text-gray-700 dark:bg-dark-950/80 dark:text-gray-200">队列 {{ health.queue_depth }}/{{ health.queue_capacity }}</span>
+        <span class="rounded-control bg-gray-100 px-2 py-1 text-gray-700 dark:bg-dark-950/80 dark:text-gray-200">写入 {{ health.written_count }}</span>
+        <span class="rounded-control bg-amber-100 px-2 py-1 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">丢弃 {{ health.dropped_count }}</span>
+        <span class="rounded-control bg-red-100 px-2 py-1 text-red-700 dark:bg-red-900/30 dark:text-red-300">失败 {{ health.write_failed_count }}</span>
       </div>
     </div>
 
-    <div class="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-dark-700 dark:bg-dark-950/50">
+    <div class="mb-4 rounded-surface border border-gray-200 bg-gray-50 p-3 dark:border-dark-700 dark:bg-dark-950/50">
       <div class="mb-2 flex items-center justify-between">
         <div class="text-xs font-semibold text-gray-700 dark:text-gray-200">运行时日志配置（实时生效）</div>
         <span v-if="runtimeLoading" class="text-xs text-gray-500">加载中...</span>
@@ -488,8 +489,8 @@ onMounted(async () => {
         <input v-model="filters.api_key_id" type="text" class="input mt-1" />
       </label>
       <label class="text-xs text-gray-600 dark:text-gray-300">
-        account_id
-        <input v-model="filters.account_id" type="text" class="input mt-1" />
+        provider_id
+        <input v-model="filters.provider_id" type="text" class="input mt-1" />
       </label>
       <label class="text-xs text-gray-600 dark:text-gray-300">
         平台
@@ -512,7 +513,7 @@ onMounted(async () => {
       <button type="button" class="btn btn-secondary btn-sm" @click="fetchHealth">刷新健康指标</button>
     </div>
 
-    <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-dark-700 dark:bg-dark-900">
+    <div class="overflow-hidden rounded-surface border border-gray-200 dark:border-dark-700 dark:bg-dark-900">
       <div v-if="loading" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">{{ t('common.loading') }}</div>
       <div v-else-if="!hasData" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">{{ t('admin.ops.systemLogs.empty') }}</div>
       <div v-else-if="!isDesktopViewport" class="divide-y divide-gray-100 dark:divide-dark-800">
@@ -535,10 +536,10 @@ onMounted(async () => {
         <table class="min-w-full table-fixed divide-y divide-gray-200 dark:divide-dark-700">
           <thead class="bg-gray-50 dark:bg-dark-950/80">
             <tr>
-              <th class="w-[170px] px-3 py-2 text-left text-[11px] font-semibold text-gray-500 dark:text-dark-300">时间</th>
-              <th class="w-[160px] px-3 py-2 text-left text-[11px] font-semibold text-gray-500 dark:text-dark-300">{{ t('admin.ops.systemLogs.host') }}</th>
-              <th class="w-[80px] px-3 py-2 text-left text-[11px] font-semibold text-gray-500 dark:text-dark-300">级别</th>
-              <th class="px-3 py-2 text-left text-[11px] font-semibold text-gray-500 dark:text-dark-300">日志详细信息</th>
+              <th class="w-[170px] px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-dark-300">时间</th>
+              <th class="w-[160px] px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-dark-300">{{ t('admin.ops.systemLogs.host') }}</th>
+              <th class="w-[80px] px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-dark-300">级别</th>
+              <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-dark-300">日志详细信息</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-dark-800 dark:bg-dark-900">

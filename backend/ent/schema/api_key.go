@@ -1,9 +1,6 @@
 package schema
 
 import (
-	"github.com/TokenFlux/TokenRouter/ent/schema/mixins"
-	"github.com/TokenFlux/TokenRouter/internal/domain"
-
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/entsql"
@@ -11,6 +8,8 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+	"github.com/TokenFlux/TokenRouter/ent/schema/mixins"
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
 )
 
 // APIKey holds the schema definition for the APIKey entity.
@@ -53,7 +52,7 @@ func (APIKey) Fields() []ent.Field {
 			Comment("是否通过模型前缀在多个分组之间路由"),
 		field.String("status").
 			MaxLen(20).
-			Default(domain.StatusActive),
+			Default(apikey.StatusActive),
 		// 单个 API Key 的 Fast 模式策略，默认保持下游请求的现有行为。
 		field.String("fast_mode_policy").
 			MaxLen(32).
@@ -68,7 +67,7 @@ func (APIKey) Fields() []ent.Field {
 			Optional().
 			Nillable().
 			Comment("billing_mode 为 subscription 时锁定使用的用户订阅 ID"),
-		// 每个 API Key 可在进入渠道与账号映射前覆盖客户端模型名。
+		// 每个 API Key 可在进入分组与提供商映射前覆盖客户端模型名。
 		field.JSON("model_mapping", map[string]string{}).
 			Default(func() map[string]string { return map[string]string{} }).
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}).
@@ -143,7 +142,7 @@ func (APIKey) Fields() []ent.Field {
 			Comment("Start time of the current 7d rate limit window"),
 
 		// 绑定分组停用时是否允许请求级回退到同平台默认分组。
-		field.Bool("fallback_to_default_group_when_unavailable").
+		field.Bool("fallback_when_group_unavailable").
 			Default(true).
 			Comment("绑定分组不可用时自动回退到同平台默认分组"),
 		// managed_by 标记服务端托管的隐藏 Key（如创作台执行 Key），普通用户接口不得暴露或操作。

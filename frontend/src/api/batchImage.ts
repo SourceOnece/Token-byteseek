@@ -31,7 +31,7 @@ export interface BatchImageSubmitRequest {
   model: string
   task_name?: string
   parent_batch_id?: string
-  provider?: '' | 'gemini_api' | 'vertex' | string
+  platform?: '' | 'gemini_api' | 'vertex' | string
   image_size?: '1K' | '2K' | '4K' | string
   response_mime_type?: string
   aspect_ratio?: string
@@ -46,7 +46,7 @@ export interface BatchImageJob {
   parent_batch_id?: string | null
   status: BatchImageStatus
   model: string
-  provider: string
+  platform: string
   item_count: number
   success_count: number
   fail_count: number
@@ -91,7 +91,7 @@ export interface BatchImageJobsResponse {
 export interface BatchImageModel {
   id: string
   object: string
-  provider: string
+  platform: string
 }
 
 export interface BatchImageModelsResponse {

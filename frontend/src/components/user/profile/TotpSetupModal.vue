@@ -1,9 +1,5 @@
 <template>
-  <div class="fixed inset-0 z-50 overflow-y-auto" @click.self="$emit('close')">
-    <div class="flex min-h-full items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/50 transition-opacity" @click="$emit('close')"></div>
-
-      <div class="relative w-full max-w-md transform rounded-surface bg-white p-6 shadow-xl transition-all dark:bg-dark-800 sm:rounded-dialog">
+  <AuthCardDialog @close="$emit('close')">
         <!-- Header -->
         <div class="mb-6 text-center">
           <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
@@ -82,7 +78,7 @@
           <!-- QR Code and Secret -->
           <template v-if="setupData">
             <div class="flex justify-center">
-              <div class="rounded-lg border border-gray-200 p-4 bg-white dark:border-dark-600 dark:bg-white">
+              <div class="rounded-surface border border-gray-200 p-4 bg-white dark:border-dark-600 dark:bg-white">
                 <img :src="qrCodeDataUrl" alt="QR Code" class="h-48 w-48" />
               </div>
             </div>
@@ -92,12 +88,12 @@
                 {{ t('profile.totp.manualEntry') }}
               </p>
               <div class="flex items-center justify-center gap-2">
-                <code class="rounded bg-gray-100 px-3 py-2 font-mono text-sm dark:bg-dark-700">
+                <code class="rounded-compact bg-gray-100 px-3 py-2 font-mono text-sm dark:bg-dark-700">
                   {{ setupData.secret }}
                 </code>
                 <button
                   type="button"
-                  class="rounded p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-700"
+                  class="rounded-compact p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-700"
                   @click="copySecret"
                 >
                   <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -143,7 +139,7 @@
                   :pattern="index === 0 ? '[0-9]{1,6}' : '[0-9]'"
                   :autocomplete="index === 0 ? 'one-time-code' : 'off'"
                   :name="index === 0 ? 'totp_setup_code' : undefined"
-                  class="h-12 w-10 rounded-lg border border-gray-300 text-center text-lg font-semibold focus:border-primary-500 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-700"
+                  class="h-12 w-10 rounded-control border border-gray-300 text-center text-lg font-semibold focus:border-primary-500 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-700"
                   @input="handleCodeInput($event, index)"
                   @change="handleCodeInput($event, index)"
                   @keydown="handleKeydown($event, index)"
@@ -166,12 +162,11 @@
             </div>
           </form>
         </div>
-      </div>
-    </div>
-  </div>
+  </AuthCardDialog>
 </template>
 
 <script setup lang="ts">
+import AuthCardDialog from '@/components/common/AuthCardDialog.vue'
 import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

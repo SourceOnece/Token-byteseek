@@ -18,24 +18,44 @@ export default {
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
   darkMode: 'class',
   theme: {
-    // 包豪斯：一切皆直角。仅保留 full 用于圆形（圆也是包豪斯的基本形）。
+    // 语义圆角档位:紧凑元素、控件、内容表面、桌面弹窗。
+    // 数值统一由 style.css 的 :root --radius-* 变量定义,raw CSS 与工具类同源。
+    // 旧尺度 key(sm/md/lg/xl…)已删除,check:ui 门禁阻止其复活。
     borderRadius: {
       none: '0px',
-      sm: '0px',
-      DEFAULT: '0px',
-      md: '0px',
-      lg: '0px',
-      xl: '0px',
-      '2xl': '0px',
-      '3xl': '0px',
-      '4xl': '0px',
-      full: '9999px',
-      compact: '0px',
-      control: '0px',
-      surface: '0px',
-      dialog: '0px'
+      compact: 'var(--radius-compact)',
+      control: 'var(--radius-control)',
+      surface: 'var(--radius-surface)',
+      dialog: 'var(--radius-dialog)',
+      full: '9999px'
     },
     extend: {
+      // 浮层层级语义档:数值唯一来源是 style.css :root 的 --z-* 变量,这里只做 var() 引用。
+      // --z-tour(driver.js 外部约束)有意不暴露为工具类,防止业务代码依附第三方层级。
+      zIndex: {
+        'chart-tooltip': 'var(--z-chart-tooltip)',
+        'sidebar-overlay': 'var(--z-sidebar-overlay)',
+        sidebar: 'var(--z-sidebar)',
+        header: 'var(--z-header)',
+        modal: 'var(--z-modal)',
+        'modal-nested': 'var(--z-modal-nested)',
+        tooltip: 'var(--z-tooltip)',
+        announcement: 'var(--z-announcement)',
+        'announcement-raised': 'var(--z-announcement-raised)',
+        'announcement-top': 'var(--z-announcement-top)',
+        'menu-overlay': 'var(--z-menu-overlay)',
+        toast: 'var(--z-toast)',
+        'action-menu': 'var(--z-action-menu)',
+        'teleport-tooltip': 'var(--z-teleport-tooltip)',
+        'help-tooltip': 'var(--z-help-tooltip)',
+        'teleport-dropdown': 'var(--z-teleport-dropdown)'
+      },
+      // 浮层面板最大高度三档,数值同样由 style.css :root 变量承载。
+      maxHeight: {
+        'menu-sm': 'var(--max-h-menu-sm)',
+        menu: 'var(--max-h-menu)',
+        panel: 'var(--max-h-panel)'
+      },
       colors: {
         // 包豪斯命名色，供视图直接使用
         bh: {

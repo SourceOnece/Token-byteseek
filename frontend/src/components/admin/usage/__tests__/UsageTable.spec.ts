@@ -44,10 +44,10 @@ const messages: Record<string, string> = {
   'usage.serviceTierFlex': 'Flex',
   'usage.serviceTierStandard': 'Standard',
   'usage.rate': 'Rate',
-  'usage.accountMultiplier': 'Account rate',
+  'usage.providerMultiplier': 'Provider rate',
   'usage.original': 'Original',
   'usage.userBilled': 'User billed',
-  'usage.accountBilled': 'Account billed',
+  'usage.providerBilled': 'Provider billed',
   'usage.imageUnit': ' images',
   'usage.imageCount': 'Image count',
   'usage.imageBillingSize': 'Billing size',
@@ -121,7 +121,7 @@ const baseImageRow = {
   model: 'gpt-image-2',
   actual_cost: 0.4,
   total_cost: 0.4,
-  account_rate_multiplier: 1,
+  provider_rate_multiplier: 1,
   rate_multiplier: 1,
   service_tier: null,
   input_cost: 0,
@@ -177,7 +177,7 @@ describe('admin UsageTable detailed timing tooltip', () => {
           ...baseImageRow,
           detailed_timing: {
             request_content_length: 8360000,
-            account_slot_acquired_ms: 120,
+            provider_slot_acquired_ms: 120,
             upstream_got_conn_ms: 200,
             upstream_get_conn_ms: 180,
             upstream_wrote_request_ms: 420,
@@ -212,7 +212,7 @@ describe('admin UsageTable detailed timing tooltip', () => {
       props: {
         data: [{
           ...baseImageRow,
-          detailed_timing: { account_slot_acquired_ms: 120 },
+          detailed_timing: { provider_slot_acquired_ms: 120 },
         }],
         loading: false,
         columns: [{ key: 'latency', label: 'Latency' }],
@@ -335,7 +335,7 @@ describe('admin UsageTable tooltip', () => {
       request_id: 'req-admin-1',
       actual_cost: 0.092883,
       total_cost: 0.092883,
-      account_rate_multiplier: 1,
+      provider_rate_multiplier: 1,
       rate_multiplier: 1,
       service_tier: 'priority',
       input_cost: 0.020285,
@@ -371,9 +371,9 @@ describe('admin UsageTable tooltip', () => {
     expect(text).toContain('Fast')
     expect(text).toContain('Rate')
     expect(text).toContain('1.00x')
-    expect(text).toContain('Account rate')
+    expect(text).toContain('Provider rate')
     expect(text).toContain('User billed')
-    expect(text).toContain('Account billed')
+    expect(text).toContain('Provider billed')
     expect(text).toContain('$0.092883')
     expect(text).toContain('$5.0000 / 1M tokens')
     expect(text).toContain('$30.0000 / 1M tokens')
@@ -467,7 +467,7 @@ describe('admin UsageTable tooltip', () => {
       upstream_model: 'claude-sonnet-4-20250514',
       actual_cost: 0,
       total_cost: 0,
-      account_rate_multiplier: 1,
+      provider_rate_multiplier: 1,
       rate_multiplier: 1,
       input_cost: 0,
       output_cost: 0,

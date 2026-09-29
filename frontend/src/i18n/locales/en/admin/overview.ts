@@ -6,9 +6,9 @@ export default {
       apiKeys: 'API Keys',
       totalApiKeys: 'Total API Keys',
       activeApiKeys: 'Active Keys',
-      accounts: 'Accounts',
-      totalAccounts: 'Total Accounts',
-      activeAccounts: 'Active Accounts',
+      providers: 'Providers',
+      totalProviders: 'Total Providers',
+      activeProviders: 'Active Providers',
       users: 'Users',
       totalUsers: 'Total Users',
       todayRequests: 'Today Requests',
@@ -47,10 +47,10 @@ export default {
       cache: 'Cache',
       actual: 'Actual',
       standard: 'Standard',
-      accountCost: 'Cost',
+      providerCost: 'Cost',
       actualDescription: 'The amount actually charged to the user. Calculated with the group multiplier and any user-specific multiplier, and used to deduct user balance or subscription quota.',
-      accountCostDescription: 'The account-side cost. Calculated with account-side pricing and the account billing multiplier, used for account quota statistics and cost analysis, and does not affect the user’s actual charge.',
-      standardDescription: 'The standard billed cost. Calculated from the current model or channel base pricing, and is not affected by group multipliers, user-specific multipliers, or account billing multipliers.',
+      providerCostDescription: 'The provider-side cost. Calculated with provider-side pricing and the provider billing multiplier, used for provider quota statistics and cost analysis, and does not affect the user’s actual charge.',
+      standardDescription: 'The standard billed cost. Calculated from the current model or shared configuration base pricing, and is not affected by group multipliers, user-specific multipliers, or provider billing multipliers.',
       noDataAvailable: 'No data available',
       recentUsage: 'Recent Usage',
       viewModelDistribution: 'Model Distribution',
@@ -72,8 +72,8 @@ export default {
       quickActions: 'Quick Actions',
       manageUsers: 'Manage Users',
       viewUserAccounts: 'View and manage user accounts',
-      manageAccounts: 'Manage Accounts',
-      configureAiAccounts: 'Configure AI platform accounts',
+      manageProviders: 'Manage Providers',
+      configureAiProviders: 'Configure AI platform providers',
       batchImage: 'Batch Image',
       batchImageDesc: 'Submit jobs and copy agent instructions',
       groupPricing: 'Group Pricing',
@@ -566,7 +566,6 @@ affiliates: {
         groups: 'Groups',
         subscriptions: 'Subscriptions',
         balance: 'Balance',
-        balancePlatformQuota: 'Balance (Platform Quota)',
         usage: 'Usage',
         usageAnthropic: 'Usage (Claude)',
         usageOpenAI: 'Usage (OpenAI)',
@@ -775,57 +774,63 @@ affiliates: {
         keyExists: 'Attribute key already exists',
         dragToReorder: 'Drag to reorder'
       },
-      platformQuota: {
-        menuItem: 'Platform Quotas',
-        title: 'Platform Quotas',
-        subtitle: 'Configure daily / weekly / monthly USD usage limits for each upstream platform for user {email}',
-        columns: {
-          platform: 'Platform',
-          daily: 'Daily (USD)',
-          weekly: 'Weekly (USD)',
-          monthly: 'Monthly (USD, 30-day rolling)',
-          usage: 'Current Usage',
-        },
-        placeholder: 'unlimited',
-        save: 'Save',
-        saving: 'Saving...',
-        cancel: 'Cancel',
-        clearAll: 'Clear All (remove all limits)',
-        clearAllConfirm: 'Clear daily / weekly / monthly limits for ALL platforms? All platforms will become "unlimited" with no local undo — you must manually re-enter values before saving.',
-        reset: {
-          button: 'Reset window',
-          confirm: 'Reset the {window} usage for {platform} for this user? This is effective immediately.',
-          success: 'Reset {platform} {window} usage',
-          failed: 'Reset failed',
-        },
-        updateSuccess: 'Platform quotas updated',
-        updateFailed: 'Save failed',
-        loadFailed: 'Load failed',
-        hint: 'Empty = no limit for that window.',
-        windowDaily: 'daily',
-        windowWeekly: 'weekly',
-        windowMonthly: 'monthly',
-        cellNotConfigured: 'Not configured',
-        cellColumnTooltip: 'Only platforms with a limit are shown',
-        subscriptionWarning: 'This user has an active subscription. Platform quotas only apply to balance (standard) mode requests; subscription mode requests are not subject to these limits.',
-        invalidNumber: 'The following fields contain invalid numbers. Please fix them before saving: {fields}',
-      }
     },
 // Groups
     groups: {
-      accountFilters: {
-        title: 'Account filters',
-        oauthOnly: 'Only allow OAuth accounts',
-        privacyRequired: 'Only allow accounts with privacy protection configured'
+      routingPolicy: {
+        "mapping": "Model mapping",
+        "mappingHint": "Group mapping runs before provider mapping. Exact names and trailing * wildcards are supported.",
+        "source": "Source model",
+        "target": "Target model",
+        "restrict": "Enable model allowlist",
+        "allowlistHint": "Only listed models pass the selected check stage. The allowlist is independent of prices; enabling it with an empty list rejects every model.",
+        "webSearch": "Web search emulation",
+        "webSearchHint": "For requests containing only the web search tool, the gateway calls the configured search service and returns its results. Global web search emulation must be enabled; provider settings take priority.",
+        "bedrock": "Bedrock Claude Code compatibility",
+        "bedrockHint": "Adapts Claude Code requests for Bedrock by removing unsupported parameters and filling required fields. Enable for Bedrock or a compatible proxy.",
+        "incompleteMapping": "Enter both source and target models.",
+        "conflict": "Model rules overlap or contain duplicates.",
+        "basis": {
+          "requested": "Client request model",
+          "group_mapped": "Group-mapped model",
+          "upstream": "Final upstream model"
+        }
+      },
+      providerFilters: {
+        title: 'Provider filters',
+        oauthOnly: 'Only allow OAuth providers',
+        privacyRequired: 'Only allow providers with privacy protection configured'
+      },
+      settings: {
+        allowedModels: 'Allowed models',
+        billingAndStatus: 'Billing & status',
+        providerSelection: 'Provider sources & filters',
+        scheduling: 'Scheduling & sessions',
+        fallbacks: 'Group fallbacks',
+        reasoning: 'Reasoning policy',
+        compatibility: 'Compatibility',
+        restrictionSource: 'Allowlist check stage',
+        oauthHint: 'Exclude API Key providers and other non-OAuth providers when enabled.',
+        privacyHint: 'Only use providers with confirmed upstream privacy settings when enabled.',
+        selectedModels: 'Selected {selected} / {total}',
+        selectAll: 'Select all',
+        invertSelection: 'Invert selection',
+        moveUp: 'Move {name} up',
+        moveDown: 'Move {name} down',
+        removeItem: 'Remove {name}',
+        groupProviders: '{name} ({count} providers)',
       },
       tabs: {
+        models: 'Models',
+        request: 'Request policies',
+        routing: "Models and features",
         label: 'Group settings',
-        general: 'General',
-        platform: 'Platform settings',
+        general: 'Basic information',
+        features: 'Feature policies',
         pricing: 'Billing & pricing',
-        protocol: 'Protocol controls',
+        protocol: 'Protocols & access',
         identity: 'Basic information',
-        scheduling: 'Scheduling & access',
+        scheduling: 'Scheduling & recovery',
         imageCapabilities: 'Image capabilities',
         batchPricing: 'Batch image billing'
       },
@@ -867,7 +872,7 @@ affiliates: {
         type: 'Type',
         priority: 'Priority',
         apiKeys: 'API Keys',
-        accounts: 'Accounts',
+        providers: 'Providers',
         capacity: 'Capacity',
         usage: 'Usage',
         status: 'Status',
@@ -881,12 +886,12 @@ affiliates: {
       usageToday: 'Today',
       usageYesterday: 'Yesterday',
       usageTotal: 'Total',
-      accountsAvailable: 'Avail:',
-      accountsRateLimited: 'Limited:',
-      accountsTotal: 'Total:',
-      accountsUnit: '',
-      rateAndAccounts: '{rate}x rate · {count} accounts',
-      accountsCount: '{count} accounts',
+      providersAvailable: 'Avail:',
+      providersRateLimited: 'Limited:',
+      providersTotal: 'Total:',
+      providersUnit: '',
+      rateAndProviders: '{rate}x rate · {count} providers',
+      providersCount: '{count} providers',
       form: {
         name: 'Name',
         description: 'Description',
@@ -940,10 +945,10 @@ affiliates: {
         exclusiveHint: 'Exclusive group, can be manually assigned to users',
         platformLabel: 'Platform Restriction',
         platformPlaceholder: 'Select platform (leave empty for no restriction)',
-        accountsLabel: 'Designated Accounts',
-        accountsPlaceholder: 'Select accounts (leave empty for no restriction)',
+        providersLabel: 'Designated Providers',
+        providersPlaceholder: 'Select providers (leave empty for no restriction)',
         priorityLabel: 'Priority',
-        priorityHint: 'Lower value means higher priority, used for account scheduling',
+        priorityHint: 'Lower value means higher priority, used for provider scheduling',
         statusLabel: 'Status'
       },
       exclusiveObj: {
@@ -954,9 +959,6 @@ affiliates: {
       optionalDescription: 'Optional description',
       displayBrandPlaceholder: 'e.g. DeepSeek / Claude / OpenAI',
       displayBrandCreatablePrefix: 'Use brand',
-      displayBrandHint: 'Only used in the model marketplace. It does not affect routing protocol, account scheduling, or format conversion. Empty uses the group name.',
-      platformHint: 'Select the upstream account and gateway routing format for this group. This is not the model brand.',
-      platformNotEditable: 'The upstream platform cannot be changed after creation; it only affects routing and account scheduling, not the model brand.',
       saving: 'Saving...',
       noGroups: 'No groups yet',
       noGroupsDescription: 'Create a group to better manage API keys and rates.',
@@ -964,17 +966,10 @@ affiliates: {
       groupUpdatedSuccess: 'Group updated successfully',
       groupDeletedSuccess: 'Group deleted successfully',
       rateMultiplierHint: 'Cost multiplier for this group (e.g., 1.5 = 150% of base cost)',
-      defaultGroup: {
-        title: 'Default Group',
-        badge: 'Default',
-        enabled: 'Use as default group',
-        disabled: 'Do not use as default group',
-        hint: 'When an API key has no valid group binding, requests fall back to the default group for that platform. Only one default group is kept per platform.'
-      },
       unavailableFallback: {
         title: 'Specific fallback group',
-        noFallback: 'Not specified (use default group)',
-        hint: 'When this group is disabled, API keys bound to it prefer this group as fallback. Leave empty to keep falling back to the platform default group.'
+        noFallback: 'No fallback',
+        hint: 'When this group is unavailable, keys with fallback enabled use this configured group. Leave empty to disable fallback.'
       },
       sessionIsolation: {
         title: 'Enable Session Isolation',
@@ -1108,32 +1103,12 @@ affiliates: {
         noLimit: 'No limit'
       },
       imagePricing: {
-        title: 'Image Generation Pricing',
-        description: 'Configure image generation access and base image prices. Leave empty to use default prices.',
         allowImageGeneration: 'Allow image generation for this group',
         allowBatchImageGeneration: 'Allow batch image generation for this group',
-        independentMultiplier: 'Use independent image multiplier',
-        imageMultiplier: 'Image multiplier',
         batchDiscountMultiplier: 'Batch image discount',
         batchHoldMultiplier: 'Batch hold price ratio',
         batchSectionHint: 'Batch image settings only apply to batch jobs: settlement applies the batch discount, and the upfront hold is normal image price × batch hold price ratio. Reference images also create upstream input-token usage, so a batch image discount above 0.5 is recommended.',
         batchDisabledHint: 'Enable image generation for this group before enabling batch image generation.',
-        modeHint: 'By default, image billing uses image price × current effective group multiplier. Independent mode uses image price × image multiplier.',
-        finalPricePreview: 'Final per-image price preview',
-        notConfigured: 'Not configured'
-      },
-      videoPricing: {
-        title: 'Video Generation Pricing',
-        description:
-          'Configure Grok video generation prices in USD per second of output video. Leave empty to use the default per-second rates (grok-imagine-video: $0.05/s 480p, $0.07/s 720p; video-1.5: $0.08/s 480p, $0.14/s 720p, $0.25/s 1080p).',
-        modelOverridesTitle: 'Per-model video price overrides',
-        modelOverridesDescription: 'Each populated cell overrides the flat resolution price for that model family. Preview and legacy aliases for video-1.5 use the same family; empty cells fall back to the flat resolution price.',
-        independentMultiplier: 'Use independent video multiplier',
-        videoMultiplier: 'Video multiplier',
-        modeHint:
-          'Videos are billed per second: per-second price × duration (1-15s, default 8s). By default the current effective group multiplier applies; independent mode uses the video multiplier instead.',
-        finalPricePreview: 'Final per-second price preview',
-        notConfigured: 'Not configured'
       },
       explicitPricing: {
         title: 'Grok Search & Voice Pricing',
@@ -1143,9 +1118,9 @@ affiliates: {
       },
       modelPricing: {
         title: 'Per-model group pricing',
-        description: 'Overrides channel and built-in prices for matching models. Long-context tiers come from official presets — do not enter custom intervals. Use per-request tiers such as realtime, tts, and stt for audio.',
+        description: 'Explicit prices or context intervals override shared pricing. Fast/Flex, Max, or time multipliers alone inherit shared prices, falling back to built-in prices. Group multipliers override the same shared price settings. Audio supports realtime, tts, and stt per-request tiers.',
         longContext: 'Enable long-context tier pricing',
-        longContextHint: 'When checked, official/preset long-context tiers apply. When unchecked, token models stay on the first-tier base rate.',
+        longContextHint: 'Only controls built-in long-context tiers. Explicit group or shared configuration intervals always apply and never stack with built-in tiers.',
         add: 'Add model price'
       },
       voicePricing: {
@@ -1157,6 +1132,7 @@ affiliates: {
         pricePlaceholder: 'optional'
       },
       webSearchPricing: {
+        notConfigured: 'Not configured',
         title: 'Codex Web Search Pricing',
         pricePerCall: 'Price per search call (USD)',
         pricePerCallHint:
@@ -1172,8 +1148,8 @@ affiliates: {
       },
       modelAllowlist: { title: 'Enable Model Allowlist', models: 'Allowed models', hint: 'One per line. Use * anywhere, e.g. gpt-*-sol or *codex*.' },
       modelsList: {
-        title: 'Custom /v1/models Model List',
-        hint: 'Only changes the /v1/models response. Whitelist model calls and account routing are unchanged.',
+        title: 'Custom {endpoint} Model List',
+        hint: 'Only changes the {endpoint} response. Whitelist model calls and provider routing are unchanged.',
         loading: 'Loading model list...',
         empty: 'No displayable models'
       },
@@ -1211,40 +1187,22 @@ affiliates: {
           gemini_generate_content: 'Gemini GenerateContent'
         }
       },
-      openaiMessages: {
-        title: 'OpenAI Messages Model Mapping',
-        allowDispatch: 'Allow /v1/messages dispatch',
-        allowDispatchHint: 'When enabled, API keys in this OpenAI group can dispatch requests through /v1/messages endpoint',
-        familyMappingTitle: 'Family Default Mapping',
-        familyMappingHint: 'Only families with an explicit target model are mapped; blank fields skip this mapping.',
-        opusModel: 'Opus Target Model',
-        opusModelPlaceholder: 'e.g., gpt-5.4',
-        sonnetModel: 'Sonnet Target Model',
-        sonnetModelPlaceholder: 'e.g., gpt-5.3-codex',
-        haikuModel: 'Haiku Target Model',
-        haikuModelPlaceholder: 'e.g., gpt-5.4-mini',
-        exactMappingTitle: 'Exact Model Overrides',
-        exactMappingHint: 'Exact Claude model overrides take priority over the family defaults and can route a specific Claude model to a different target model.',
-        noExactMappings: 'No exact model overrides yet',
-        addExactMapping: 'Add Exact Mapping',
-        claudeModel: 'Claude Model',
-        claudeModelPlaceholder: 'e.g., claude-sonnet-4-5-20250929',
-        targetModel: 'Target Model',
-        targetModelPlaceholder: 'e.g., gpt-5.4',
-        removeExactMapping: 'Remove Exact Mapping'
-      },
       openaiLive: {
         title: 'OpenAI Live',
         allow: 'Allow Live access',
-        hint: 'When enabled, API keys in this OpenAI group can create and control Live voice sessions. Disabled by default. The TokenRouter server must run on Apple Silicon macOS with the official ChatGPT app installed; client platforms are unrestricted.',
+        hint: 'When enabled, API keys in this group can create and control Live voice sessions. Disabled by default. The TokenRouter server must run on Apple Silicon macOS with the official ChatGPT app installed; client platforms are unrestricted.',
         unsupportedTitle: 'Current server does not support Live',
         unsupportedMessage: 'This TokenRouter server cannot generate the required Live attestation. Live will not work even if enabled. Continue anyway?',
         enableAnyway: 'Enable anyway'
       },
       openaiFast: {
         title: 'OpenAI Fast',
-        force: 'Force Fast priority',
-        hint: 'When enabled, requests in this OpenAI group use service_tier=priority. Global Fast/Flex policy and API-key overrides still apply.',
+        policy: 'Request acceleration policy',
+        followRequest: 'Follow request',
+        force: 'Force Fast',
+        forceUltrafast: 'Force Ultra Fast',
+        forceOff: 'Force Fast / Ultra Fast off',
+        hint: 'Force off removes Fast and Ultra Fast and prevents API keys from re-enabling them. API keys may disable a group-forced tier. Global filter, block, and force rules take precedence.',
         free: 'Free Fast',
         freeHint: 'Fast requests still use the priority tier, but customers are charged the equivalent Standard price.'
       },
@@ -1253,17 +1211,17 @@ affiliates: {
         hint: 'Triggered only when upstream explicitly returns prompt too long. Leave empty to disable fallback.',
         noFallback: 'No Fallback'
       },
-      copyAccounts: {
-        title: 'Copy Accounts from Groups',
-        tooltip: 'Select one or more groups of the same platform. After creation, all accounts from these groups will be automatically bound to the new group (deduplicated).',
-        tooltipEdit: 'Select one or more groups of the same platform. After saving, current group accounts will be replaced with accounts from these groups (deduplicated).',
-        selectPlaceholder: 'Select groups to copy accounts from...',
-        hint: 'Multiple groups can be selected, accounts will be deduplicated',
-        hintEdit: '⚠️ Warning: This will replace all existing account bindings'
+      copyProviders: {
+        title: 'Copy Providers from Groups',
+        tooltip: 'Select one or more groups. After creation, all providers from these groups will be automatically bound to the new group (deduplicated).',
+        tooltipEdit: 'Select one or more groups. After saving, current group providers will be replaced with providers from these groups (deduplicated).',
+        selectPlaceholder: 'Select groups to copy providers from...',
+        hint: 'Multiple groups can be selected, providers will be deduplicated',
+        hintEdit: '⚠️ Warning: This will replace all existing provider bindings'
       },
       modelRouting: {
         title: 'Model Routing',
-        tooltip: 'Configure specific model requests to be routed to designated accounts. Supports wildcard matching, e.g., claude-opus-* matches all opus models.',
+        tooltip: 'Configure specific model requests to be routed to designated providers. Supports wildcard matching, e.g., claude-opus-* matches all opus models.',
         enabled: 'Enabled',
         disabled: 'Disabled',
         disabledHint: 'Routing rules will only take effect when enabled',
@@ -1271,21 +1229,15 @@ affiliates: {
         modelPattern: 'Model Pattern',
         modelPatternPlaceholder: 'claude-opus-*',
         modelPatternHint: 'Supports * wildcard, e.g., claude-opus-* matches all opus models',
-        accounts: 'Priority Accounts',
-        selectAccounts: 'Select accounts',
-        noAccounts: 'No accounts in this group',
-        loadingAccounts: 'Loading accounts...',
+        providers: 'Priority Providers',
+        selectProviders: 'Select providers',
+        noProviders: 'No providers in this group',
+        loadingProviders: 'Loading providers...',
         removeRule: 'Remove Rule',
         noRules: 'No routing rules',
-        noRulesHint: 'Add routing rules to route specific model requests to designated accounts',
-        searchAccountPlaceholder: 'Search accounts...',
-        accountsHint: 'Select accounts to prioritize for this model pattern'
-      },
-      mcpXml: {
-        title: 'MCP XML Protocol Injection',
-        tooltip: 'When enabled, if the request contains MCP tools, an XML format call protocol prompt will be injected into the system prompt. Disable this to avoid interference with certain clients.',
-        enabled: 'Enabled',
-        disabled: 'Disabled'
+        noRulesHint: 'Add routing rules to route specific model requests to designated providers',
+        searchProviderPlaceholder: 'Search providers...',
+        providersHint: 'Select providers to prioritize for this model pattern'
       },
       claudeMaxSimulation: {
         title: 'Claude Max Usage Simulation',
@@ -1294,14 +1246,6 @@ affiliates: {
         enabled: 'Enabled (simulate 1h cache)',
         disabled: 'Disabled',
         hint: 'Only token categories in usage billing logs are adjusted. No per-request mapping state is persisted.'
-      },
-      supportedScopes: {
-        title: 'Supported Model Families',
-        tooltip: 'Select the model families this group supports. Unchecked families will not be routed to this group.',
-        claude: 'Claude',
-        geminiText: 'Gemini Text',
-        geminiImage: 'Gemini Image',
-        hint: 'Select at least one model family'
       }
     },
 }

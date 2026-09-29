@@ -6,7 +6,7 @@
 import dashboardAPI from './dashboard'
 import usersAPI from './users'
 import groupsAPI from './groups'
-import accountsAPI from './accounts'
+import providersAPI from './providers'
 import proxiesAPI from './proxies'
 import redeemAPI from './redeem'
 import promoAPI from './promo'
@@ -28,7 +28,7 @@ import scheduledTestsAPI from './scheduledTests'
 import backupAPI from './backup'
 import tlsFingerprintProfileAPI from './tlsFingerprintProfile'
 import tlsFingerprintRouterAPI from './tlsFingerprintRouter'
-import channelsAPI from './channels'
+import channelsAPI from './pricing'
 import adminPaymentAPI from './payment'
 import riskControlAPI from './riskControl'
 import auditAPI from './audit'
@@ -41,7 +41,8 @@ export const adminAPI = {
   dashboard: dashboardAPI,
   users: usersAPI,
   groups: groupsAPI,
-  accounts: accountsAPI,
+  providers: providersAPI,
+  accounts: providersAPI,
   proxies: proxiesAPI,
   redeem: redeemAPI,
   promo: promoAPI,
@@ -63,7 +64,7 @@ export const adminAPI = {
   backup: backupAPI,
   tlsFingerprintProfiles: tlsFingerprintProfileAPI,
   tlsFingerprintRouters: tlsFingerprintRouterAPI,
-  channels: channelsAPI,
+  pricing: channelsAPI,
   payment: adminPaymentAPI,
   riskControl: riskControlAPI,
   audit: auditAPI,
@@ -74,7 +75,7 @@ export {
   dashboardAPI,
   usersAPI,
   groupsAPI,
-  accountsAPI,
+  providersAPI,
   proxiesAPI,
   redeemAPI,
   promoAPI,

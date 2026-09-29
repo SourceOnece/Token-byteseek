@@ -7,17 +7,17 @@
           <!-- Left: Search + Active Filters -->
           <div class="flex min-w-0 w-full flex-1 flex-wrap items-center gap-3 sm:w-auto">
             <!-- Search Box -->
-            <div class="relative min-w-0 flex-1 sm:flex-none sm:w-64">
+            <div class="input-icon-wrap min-w-0 flex-1 sm:flex-none sm:w-64">
               <Icon
                 name="search"
                 size="md"
-                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                class="input-icon text-gray-400"
               />
               <input
                 v-model="searchQuery"
                 type="text"
                 :placeholder="t('admin.users.searchUsers')"
-                class="input pl-10"
+                class="input input-has-icon"
                 @input="handleSearch"
               />
             </div>
@@ -27,7 +27,7 @@
               <button
                 type="button"
                 @click="showFilterDropdown = !showFilterDropdown"
-                class="btn btn-secondary h-9 w-9 shrink-0 p-0"
+                class="btn btn-secondary shrink-0 btn-icon"
                 :title="t('admin.users.filterSettings')"
                 :aria-label="t('admin.users.filterSettings')"
               >
@@ -35,14 +35,14 @@
               </button>
               <div
                 v-if="showFilterDropdown"
-                class="absolute left-auto right-0 top-full z-50 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800 sm:left-0 sm:right-auto"
+                class="absolute left-auto right-0 top-full z-50 mt-1 w-48 rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800 sm:left-0 sm:right-auto"
                 @click.stop
               >
                 <button
                   v-for="filter in builtInFilters"
                   :key="filter.key"
                   @click="toggleBuiltInFilter(filter.key)"
-                  class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                  class="dropdown-item justify-between"
                 >
                   <span>{{ filter.name }}</span>
                   <Icon v-if="visibleFilters.has(filter.key)" name="check" size="sm" class="text-primary-500" :stroke-width="2" />
@@ -52,7 +52,7 @@
                   v-for="attr in filterableAttributes"
                   :key="attr.id"
                   @click="toggleAttributeFilter(attr)"
-                  class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                  class="dropdown-item justify-between"
                 >
                   <span>{{ attr.name }}</span>
                   <Icon v-if="visibleFilters.has(`attr_${attr.id}`)" name="check" size="sm" class="text-primary-500" :stroke-width="2" />
@@ -169,7 +169,7 @@
               <button
                 @click="loadUsers"
                 :disabled="loading"
-                class="btn btn-secondary h-9 w-9 shrink-0 p-0"
+                class="btn btn-secondary shrink-0 btn-icon"
                 :title="t('common.refresh')"
               >
                 <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
@@ -178,7 +178,7 @@
               <div class="relative" ref="columnDropdownRef">
                 <button
                   @click="showColumnDropdown = !showColumnDropdown"
-                  class="btn btn-secondary h-9 w-9 shrink-0 p-0"
+                  class="btn btn-secondary shrink-0 btn-icon"
                   :title="t('admin.users.columnSettings')"
                 >
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
@@ -189,7 +189,7 @@
                 <!-- Dropdown menu -->
                 <div
                   v-if="showColumnDropdown"
-                  class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+                  class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
                 >
                   <button
                     v-for="col in toggleableColumns"
@@ -197,9 +197,9 @@
                     :disabled="isForcedVisibleColumn(col.key)"
                     @click="toggleColumn(col.key)"
                     :class="[
-                      'flex w-full items-center justify-between px-4 py-2 text-left text-sm',
+                      'dropdown-item justify-between',
                       isForcedVisibleColumn(col.key)
-                        ? 'cursor-not-allowed text-gray-400 dark:text-gray-500'
+                        ? 'cursor-not-allowed text-gray-400 hover:bg-transparent dark:text-gray-500 dark:hover:bg-transparent'
                         : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700'
                     ]"
                     :title="isForcedVisibleColumn(col.key) ? t('admin.users.columnAlwaysVisible') : ''"
@@ -218,7 +218,7 @@
               <!-- Attributes Config Button -->
               <button
                 @click="showAttributesModal = true"
-                class="btn btn-secondary h-9 w-9 shrink-0 p-0"
+                class="btn btn-secondary shrink-0 btn-icon"
                 :title="t('admin.users.attributes.configButton')"
               >
                 <Icon name="cog" size="sm" />
@@ -228,7 +228,7 @@
 
             <button
               v-if="selectedCount > 0"
-              class="btn btn-secondary h-9 flex-none whitespace-nowrap px-3 md:flex-initial"
+              class="btn btn-secondary flex-none whitespace-nowrap px-3 md:flex-initial"
               data-test="bulk-edit-limits"
               @click="showBulkEditModal = true"
             >
@@ -237,17 +237,7 @@
             </button>
 
             <!-- Create User Button (full width on mobile, auto width on desktop) -->
-            <button
-              v-if="selectedCount > 0"
-              class="btn btn-danger h-9 flex-none whitespace-nowrap px-3"
-              data-test="bulk-delete-users"
-              :disabled="bulkDeleting"
-              @click="bulkDeleteIds = [...selectedIds]"
-            >
-              <Icon name="trash" size="sm" class="mr-2" />
-              {{ t('admin.users.bulkDelete.action', { count: selectedCount }) }}
-            </button>
-            <button @click="showCreateModal = true" class="btn btn-primary h-9 flex-none whitespace-nowrap px-3 md:flex-initial">
+            <button @click="showCreateModal = true" class="btn btn-primary flex-none whitespace-nowrap px-3 md:flex-initial">
               <Icon name="plus" size="md" class="mr-2" />
               {{ t('admin.users.createUser') }}
             </button>
@@ -338,7 +328,7 @@
                 <!-- Hover tooltip（操作菜单未打开时显示） -->
                 <div
                   v-if="expandedGroupUserId !== row.id"
-                  class="pointer-events-none absolute left-0 top-full z-50 mt-1.5 rounded bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 shadow-lg transition-opacity duration-75 group-hover/ex:opacity-100 dark:bg-dark-600"
+                  class="pointer-events-none absolute left-0 top-full z-50 mt-1.5 rounded-compact bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 shadow-lg transition-opacity duration-75 group-hover/ex:opacity-100 dark:bg-dark-600"
                 >
                   <div class="absolute left-4 bottom-full border-4 border-transparent border-b-gray-900 dark:border-b-dark-600"></div>
                   <div class="flex flex-col gap-0.5 whitespace-nowrap">
@@ -348,15 +338,15 @@
                 <!-- 点击展开分组操作菜单 -->
                 <div
                   v-if="expandedGroupUserId === row.id"
-                  class="absolute left-0 top-full z-50 mt-1.5 min-w-[160px] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-xs shadow-xl dark:border-dark-600 dark:bg-dark-700"
+                  class="absolute left-0 top-full z-50 mt-1.5 min-w-[160px] overflow-hidden rounded-control border border-gray-200 bg-white py-1 text-xs shadow-xl dark:border-dark-600 dark:bg-dark-700"
                 >
-                  <div class="border-b border-gray-100 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:border-dark-600 dark:text-dark-400">
+                  <div class="border-b border-gray-100 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-gray-400 dark:border-dark-600 dark:text-dark-400">
                     {{ t('admin.users.clickToReplace') }}
                   </div>
                   <div
                     v-for="g in getUserGroups(row).exclusive"
                     :key="g.id"
-                    class="flex cursor-pointer items-center gap-2 px-3 py-2 text-gray-700 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:text-dark-200 dark:hover:bg-primary-900/30 dark:hover:text-primary-400"
+                    class="dropdown-item-sm hover:bg-primary-50 hover:text-primary-600 dark:text-dark-200 dark:hover:bg-primary-900/30 dark:hover:text-primary-400"
                     @click.stop="openGroupReplace(row, g)"
                   >
                     <Icon name="swap" size="xs" class="h-3.5 w-3.5 flex-shrink-0 opacity-50" />
@@ -373,7 +363,7 @@
                 <span class="font-medium text-gray-600 dark:text-dark-300">{{ getUserGroups(row).publicGroups.length }}</span>
                 <span class="text-gray-400 dark:text-dark-500">{{ t('admin.users.publicLabel') }}</span>
                 <!-- Tooltip: 向下弹出 -->
-                <div class="pointer-events-none absolute left-0 top-full z-50 mt-1.5 rounded bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 shadow-lg transition-opacity duration-75 group-hover/pub:opacity-100 dark:bg-dark-600">
+                <div class="pointer-events-none absolute left-0 top-full z-50 mt-1.5 rounded-compact bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 shadow-lg transition-opacity duration-75 group-hover/pub:opacity-100 dark:bg-dark-600">
                   <div class="absolute left-4 bottom-full border-4 border-transparent border-b-gray-900 dark:border-b-dark-600"></div>
                   <div class="flex flex-col gap-0.5 whitespace-nowrap">
                     <span v-for="g in getUserGroups(row).publicGroups" :key="g.id">{{ g.name }}</span>
@@ -404,7 +394,7 @@
             </div>
             <span
               v-else
-              class="inline-flex items-center gap-1.5 rounded-md bg-gray-50 px-2 py-1 text-xs text-gray-400 dark:bg-dark-700/50 dark:text-dark-500"
+              class="inline-flex items-center gap-1.5 rounded-compact bg-gray-50 px-2 py-1 text-xs text-gray-400 dark:bg-dark-700/50 dark:text-dark-500"
             >
               <Icon name="ban" size="xs" class="h-3.5 w-3.5" />
               <span>{{ t('admin.users.noSubscription') }}</span>
@@ -421,14 +411,14 @@
                   {{ formatBalanceAmount(value) }}
                 </button>
                 <!-- Instant tooltip -->
-                <div class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-75 group-hover:opacity-100 dark:bg-dark-600">
+                <div class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-compact bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-75 group-hover:opacity-100 dark:bg-dark-600">
                   {{ t('admin.users.balanceHistoryTip') }}
                   <div class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-dark-600"></div>
                 </div>
               </div>
               <button
                 @click.stop="handleDeposit(row)"
-                class="rounded px-2 py-0.5 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                class="rounded-compact px-2 py-0.5 text-xs font-medium text-emerald-600 transition-colors hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
                 :title="t('admin.users.deposit')"
               >
                 {{ t('admin.users.deposit') }}
@@ -436,16 +426,7 @@
             </div>
           </template>
 
-          <template #cell-balance_platform_quota="{ row }">
-            <button
-              type="button"
-              class="block text-left underline decoration-dashed decoration-gray-300 underline-offset-4 transition-colors hover:decoration-primary-400 dark:decoration-dark-500"
-              :title="t('admin.users.platformQuota.cellColumnTooltip')"
-              @click="handlePlatformQuota(row)"
-            >
-              <UserPlatformQuotaCell :quotas="platformQuotaStats[row.id]" />
-            </button>
-          </template>
+
 
           <!-- 用量列自定义表头：列名 + 单个排序图标按钮，点击展开"今日/近30天"菜单。
                column.sortable=false，DataTable 内置点击逻辑不会触发；
@@ -460,7 +441,7 @@
               <div class="usage-sort-trigger relative">
                 <button
                   type="button"
-                  class="flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-gray-200 dark:hover:bg-dark-700"
+                  class="flex items-center gap-1 rounded-compact px-1 py-0.5 transition-colors hover:bg-gray-200 dark:hover:bg-dark-700"
                   :class="usageSort && usageSort.key === usageKey
                     ? 'text-primary-600 dark:text-primary-400'
                     : 'text-gray-400 dark:text-dark-500'"
@@ -470,7 +451,7 @@
                 >
                   <span
                     v-if="usageSort && usageSort.key === usageKey"
-                    class="text-[10px] normal-case font-medium tracking-normal"
+                    class="text-xs normal-case font-medium tracking-normal"
                   >{{ usageSort.metric === 'today' ? t('admin.users.today') : t('admin.users.total') }}</span>
                   <Icon
                     v-if="usageSort && usageSort.key === usageKey"
@@ -484,7 +465,7 @@
                 <!-- 弹出菜单：今日 / 近30天，点击进行三态循环切换。 -->
                 <div
                   v-if="openUsageSortMenu === usageKey"
-                  class="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+                  class="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
                 >
                   <button
                     v-for="metric in (['today', 'total'] as const)"
@@ -506,7 +487,7 @@
                       :stroke-width="2"
                     />
                   </button>
-                  <div class="mt-1 border-t border-gray-100 px-3 py-1 text-[10px] normal-case tracking-normal text-gray-400 dark:border-dark-700 dark:text-dark-500">
+                  <div class="mt-1 border-t border-gray-100 px-3 py-1 text-xs normal-case tracking-normal text-gray-400 dark:border-dark-700 dark:text-dark-500">
                     {{ t('admin.users.sortCurrentPageOnly') }}
                   </div>
                 </div>
@@ -584,7 +565,7 @@
               <!-- Edit Button -->
               <button
                 @click="handleEdit(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
+                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
               >
                 <Icon name="edit" size="sm" />
                 <span class="text-xs">{{ t('common.edit') }}</span>
@@ -595,7 +576,7 @@
                 v-if="row.role !== 'admin'"
                 @click="handleToggleStatus(row)"
                 :class="[
-                  'flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors',
+                  'flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors',
                   row.status === 'active'
                     ? 'hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-900/20 dark:hover:text-orange-400'
                     : 'hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400'
@@ -609,7 +590,7 @@
               <!-- More Actions Menu Trigger -->
               <button
                 @click="openActionMenu(row, $event)"
-                class="action-menu-trigger flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-dark-700 dark:hover:text-white"
+                class="action-menu-trigger flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-dark-700 dark:hover:text-white"
                 :class="{ 'bg-gray-100 text-gray-900 dark:bg-dark-700 dark:text-white': activeMenuId === row.id }"
               >
                 <Icon name="more" size="sm" />
@@ -646,7 +627,7 @@
     <Teleport to="body">
       <div
         v-if="activeMenuId !== null && menuPosition"
-        class="action-menu-content fixed z-[9999] w-48 overflow-hidden rounded-control bg-white shadow-lg ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
+        class="action-menu action-menu-content w-48 overflow-hidden"
         :style="{ top: menuPosition.top + 'px', left: menuPosition.left + 'px' }"
       >
         <div class="py-1">
@@ -655,7 +636,7 @@
               <!-- View API Keys -->
               <button
                 @click="handleViewApiKeys(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="dropdown-item"
               >
                 <Icon name="key" size="sm" class="text-gray-400" :stroke-width="2" />
                 {{ t('admin.users.apiKeys') }}
@@ -664,7 +645,7 @@
               <!-- Allowed Groups -->
               <button
                 @click="handleAllowedGroups(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="dropdown-item"
               >
                 <Icon name="users" size="sm" class="text-gray-400" :stroke-width="2" />
                 {{ t('admin.users.groups') }}
@@ -675,7 +656,7 @@
               <!-- Deposit -->
               <button
                 @click="handleDeposit(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="dropdown-item"
               >
                 <Icon name="plus" size="sm" class="text-emerald-500" :stroke-width="2" />
                 {{ t('admin.users.deposit') }}
@@ -684,7 +665,7 @@
               <!-- Withdraw -->
               <button
                 @click="handleWithdraw(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="dropdown-item"
               >
                 <svg class="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
@@ -693,18 +674,12 @@
               </button>
 
               <!-- Platform Quotas -->
-              <button
-                @click="handlePlatformQuota(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
-              >
-                <Icon name="chartBar" size="sm" class="text-gray-400" :stroke-width="2" />
-                {{ t('admin.users.platformQuota.menuItem') }}
-              </button>
+
 
               <!-- Balance History -->
               <button
                 @click="handleBalanceHistory(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="dropdown-item"
               >
                 <BalanceIcon size="sm" class="text-gray-400" />
                 {{ t('admin.users.balanceHistory') }}
@@ -716,7 +691,7 @@
               <button
                 v-if="user.role !== 'admin'"
                 @click="handleDelete(user); closeActionMenu()"
-                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                class="dropdown-item text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
               >
                 <Icon name="trash" size="sm" :stroke-width="2" />
                 {{ t('common.delete') }}
@@ -746,12 +721,7 @@
       @close="showBulkEditModal = false"
       @success="handleBulkLimitsSuccess"
     />
-    <UserPlatformQuotaModal
-      :show="showPlatformQuotaModal"
-      :user="platformQuotaUser"
-      @close="closePlatformQuotaModal"
-      @success="loadUsers"
-    />
+
     <UserApiKeysModal :show="showApiKeysModal" :user="viewingUser" @close="closeApiKeysModal" />
     <UserAllowedGroupsModal :show="showAllowedGroupsModal" :user="allowedGroupsUser" @close="closeAllowedGroupsModal" @success="loadUsers" />
     <UserBalanceModal :show="showBalanceModal" :user="balanceUser" :operation="balanceOperation" @close="closeBalanceModal" @success="loadUsers" />
@@ -776,7 +746,6 @@ const { t } = useI18n()
 import { adminAPI } from '@/api/admin'
 import type { AdminUser, AdminGroup, UserAttributeDefinition } from '@/types'
 import type { BatchUserUsageStats } from '@/api/admin/dashboard'
-import type { PlatformQuotaItem } from '@/api/admin/users'
 import type { Column } from '@/components/common/types'
 import type { SelectOption } from '@/components/common/Select.vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -793,11 +762,9 @@ import UserAttributesConfigModal from '@/components/user/UserAttributesConfigMod
 import UserConcurrencyCell from '@/components/user/UserConcurrencyCell.vue'
 import PlatformUsageBreakdown from '@/components/user/PlatformUsageBreakdown.vue'
 import PlatformCostCell from '@/components/user/PlatformCostCell.vue'
-import UserPlatformQuotaCell from '@/components/user/UserPlatformQuotaCell.vue'
 import UserCreateModal from '@/components/admin/user/UserCreateModal.vue'
 import UserEditModal from '@/components/admin/user/UserEditModal.vue'
 import BulkEditUserModal from '@/components/admin/user/BulkEditUserModal.vue'
-import UserPlatformQuotaModal from '@/components/admin/user/UserPlatformQuotaModal.vue'
 import UserApiKeysModal from '@/components/admin/user/UserApiKeysModal.vue'
 import UserAllowedGroupsModal from '@/components/admin/user/UserAllowedGroupsModal.vue'
 import UserBalanceModal from '@/components/admin/user/UserBalanceModal.vue'
@@ -865,7 +832,6 @@ const allColumns = computed<Column[]>(() => [
   { key: 'groups', label: t('admin.users.columns.groups'), sortable: false },
   { key: 'subscriptions', label: t('admin.users.columns.subscriptions'), sortable: false },
   { key: 'balance', label: t('admin.users.columns.balance'), sortable: true },
-  { key: 'balance_platform_quota', label: t('admin.users.columns.balancePlatformQuota'), sortable: false },
   { key: 'usage', label: t('admin.users.columns.usage'), sortable: false },
   { key: 'usage_anthropic', label: t('admin.users.columns.usageAnthropic'), sortable: false },
   { key: 'usage_openai', label: t('admin.users.columns.usageOpenAI'), sortable: false },
@@ -893,7 +859,6 @@ const hiddenColumns = reactive<Set<string>>(new Set())
 const DEFAULT_HIDDEN_COLUMNS = [
   'notes', 'groups', 'subscriptions', 'usage', 'concurrency',
   'usage_anthropic', 'usage_openai', 'usage_gemini', 'usage_antigravity', 'usage_qoder',
-  'balance_platform_quota'
 ]
 const REMOVED_COLUMNS = new Set(['last_login_at'])
 // 强制可见列：加载时会被强制移出 hiddenColumns，并在列设置 UI 上 disabled。
@@ -909,7 +874,6 @@ const COLUMN_SETTINGS_VERSION_KEY = 'user-column-settings-version'
 const COLUMN_SETTINGS_VERSION = 4
 const VERSION_NEW_HIDDEN_COLUMNS: Record<number, string[]> = {
   2: ['usage_anthropic', 'usage_openai', 'usage_gemini', 'usage_antigravity'],
-  3: ['balance_platform_quota'],
   4: ['usage_qoder']
 }
 
@@ -973,7 +937,7 @@ const toggleColumn = (key: string) => {
     hiddenColumns.add(key)
   }
   saveColumnsToStorage()
-  if (wasHidden && (key === 'usage' || key.startsWith('usage_') || key.startsWith('attr_') || key === 'balance_platform_quota')) {
+  if (wasHidden && (key === 'usage' || key.startsWith('usage_') || key.startsWith('attr_'))) {
     refreshCurrentPageSecondaryData()
   }
   if (key === 'subscriptions') {
@@ -1004,7 +968,6 @@ const hasVisibleUsageColumn = computed(
   () => !hiddenColumns.has('usage') || PLATFORM_USAGE_COLUMNS.some((k) => !hiddenColumns.has(k))
 )
 const hasVisibleGroupsColumn = computed(() => !hiddenColumns.has('groups'))
-const hasVisiblePlatformQuotaColumn = computed(() => !hiddenColumns.has('balance_platform_quota'))
 const hasVisibleAttributeColumns = computed(() =>
   attributeDefinitions.value.some((def) => def.enabled && !hiddenColumns.has(`attr_${def.id}`))
 )
@@ -1190,7 +1153,6 @@ const getAttributeDefinition = (attrId: number): UserAttributeDefinition | undef
   return attributeDefinitions.value.find(d => d.id === attrId)
 }
 const usageStats = ref<Record<string, BatchUserUsageStats>>({})
-const platformQuotaStats = ref<Record<number, PlatformQuotaItem[]>>({})
 
 const getPlatformUsage = (userId: number, platform: string) =>
   usageStats.value[userId]?.by_platform?.find((p) => p.platform === platform)
@@ -1325,21 +1287,11 @@ const bulkDeleteIds = ref<number[]>([])
 const bulkDeleting = ref(false)
 const showApiKeysModal = ref(false)
 const showAttributesModal = ref(false)
-const showPlatformQuotaModal = ref(false)
 const editingUser = ref<AdminUser | null>(null)
 const deletingUser = ref<AdminUser | null>(null)
 const viewingUser = ref<AdminUser | null>(null)
-const platformQuotaUser = ref<AdminUser | null>(null)
 
-const handlePlatformQuota = (user: AdminUser) => {
-  platformQuotaUser.value = user
-  showPlatformQuotaModal.value = true
-}
 
-const closePlatformQuotaModal = () => {
-  showPlatformQuotaModal.value = false
-  platformQuotaUser.value = null
-}
 let abortController: AbortController | null = null
 let secondaryDataSeq = 0
 
@@ -1379,37 +1331,6 @@ const loadUsersSecondaryData = async (
         } catch (e) {
           if (signal?.aborted) return
           console.error('Failed to load user attribute values:', e)
-        }
-      })()
-    )
-  }
-
-  if (hasVisiblePlatformQuotaColumn.value) {
-    tasks.push(
-      (async () => {
-        try {
-          // 无批量端点：对当前页用户逐个拉取，分块并发（每批 6），批间检查中止条件，避免大 pageSize 时请求洪峰
-          const CHUNK = 6
-          for (let i = 0; i < userIds.length; i += CHUNK) {
-            if (signal?.aborted) return
-            if (typeof expectedSeq === 'number' && expectedSeq !== secondaryDataSeq) return
-            const chunk = userIds.slice(i, i + CHUNK)
-            const results = await Promise.allSettled(
-              chunk.map((id) => adminAPI.users.getPlatformQuotas(id))
-            )
-            if (signal?.aborted) return
-            if (typeof expectedSeq === 'number' && expectedSeq !== secondaryDataSeq) return
-            const merged = { ...platformQuotaStats.value }
-            results.forEach((r, idx) => {
-              if (r.status === 'fulfilled') {
-                merged[chunk[idx]] = r.value.platform_quotas || []
-              }
-            })
-            platformQuotaStats.value = merged
-          }
-        } catch (e) {
-          if (signal?.aborted) return
-          console.error('Failed to load platform quotas:', e)
         }
       })()
     )
@@ -1585,7 +1506,6 @@ const loadUsers = async () => {
         group_name: filters.group || undefined,
         api_key_group_id: filters.apiKeyGroup ?? undefined,
         attributes: Object.keys(attrFilters).length > 0 ? attrFilters : undefined,
-        // 始终请求 subscriptions：列隐藏时仍需用于 UserPlatformQuotaModal 的 active-subscription 警示 banner
         include_subscriptions: true,
         sort_by: sortState.sort_by,
         sort_order: sortState.sort_order
@@ -1600,7 +1520,6 @@ const loadUsers = async () => {
     pagination.pages = response.pages
     usageStats.value = {}
     userAttributeValues.value = {}
-    platformQuotaStats.value = {}
 
     // Defer heavy secondary data so table can render first.
     if (response.items.length > 0) {

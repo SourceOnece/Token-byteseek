@@ -50,7 +50,7 @@ Navigation sidebar with user and admin sections.
   - Admin Dashboard
   - Users
   - Groups
-  - Accounts
+  - Providers
   - Proxies
   - Redeem Codes
 - Collapsible sidebar with toggle button
@@ -186,7 +186,7 @@ Components use HTML entity icons for simplicity:
 - &#128268; Admin
 - &#128101; Users
 - &#128193; Folder (Groups)
-- &#127760; Globe (Accounts)
+- &#127760; Globe (Providers)
 - &#128260; Network (Proxies)
 - &#127991; Ticket (Redeem Codes)
 

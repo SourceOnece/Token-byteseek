@@ -1,18 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
-import { flushPromises, mount } from "@vue/test-utils";
+import { flushPromises, mount, DOMWrapper } from "@vue/test-utils";
 
 import SettingsView from "../SettingsView.vue";
-import { ticketSettingsFixture } from '@/components/admin/account/__tests__/ticketSettingsFixture';
-
-// 普通默认值保存现会等待票据模板准备；补齐只读模板替身，不访问真实接口。
-vi.mock('@/api/admin/codexTickets', async () => {
-  const actual = await vi.importActual<typeof import('@/api/admin/codexTickets')>('@/api/admin/codexTickets');
-  return { ...actual, ticketAccountAPI: { ...actual.ticketAccountAPI, defaults: vi.fn(async () => ticketSettingsFixture(0)) } };
-});
-
-// 票据独立表单的读写在组件测试覆盖，不混入系统设置大表单的依赖替身。
-vi.mock('@/components/admin/settings/CodexTicketSettings.vue', () => ({ default: { template: '<section />' } }));
+import BaseDialog from "@/components/common/BaseDialog.vue";
 
 const {
   getSettings,
@@ -21,6 +12,7 @@ const {
   updateSettings,
   getWebSearchEmulationConfig,
   updateWebSearchEmulationConfig,
+  testWebSearchEmulation,
   getAdminApiKey,
   getOverloadCooldownSettings,
   getOpenAI403CooldownSettings,
@@ -59,6 +51,7 @@ const {
   updateSettings: vi.fn(),
   getWebSearchEmulationConfig: vi.fn(),
   updateWebSearchEmulationConfig: vi.fn(),
+  testWebSearchEmulation: vi.fn(),
   getAdminApiKey: vi.fn(),
   getOverloadCooldownSettings: vi.fn(),
   getOpenAI403CooldownSettings: vi.fn(),
@@ -130,6 +123,7 @@ vi.mock("@/api", () => ({
       updateSettings,
       getWebSearchEmulationConfig,
       updateWebSearchEmulationConfig,
+      testWebSearchEmulation,
       getAdminApiKey,
       getOverloadCooldownSettings,
       getOpenAI403CooldownSettings,
@@ -147,7 +141,7 @@ vi.mock("@/api", () => ({
       getRectifierSettings,
       getBetaPolicySettings,
     },
-    accounts: {
+    providers: {
       getOllamaCloudUsageSettings,
       updateOllamaCloudUsageSettings,
     },
@@ -225,7 +219,7 @@ vi.mock("vue-i18n", async () => {
       "启用后，注册或修改邮箱时会按归一化后的邮箱地址检查重复注册。",
     "admin.settings.registration.emailDomainQuota": "非白名单域名限量注册",
     "admin.settings.registration.emailDomainQuotaHint":
-      "开启后，其他可注册主域名各限注册一个账户。",
+      "开启后，其他可注册主域名各限注册一个提供商。",
     "admin.settings.wechatConnect.title": "微信登录",
     "admin.settings.wechatConnect.description": "用于微信开放平台或公众号/小程序的第三方登录配置。",
     "admin.settings.wechatConnect.enabledLabel": "启用微信登录",
@@ -253,7 +247,7 @@ vi.mock("vue-i18n", async () => {
     "admin.settings.authSourceDefaults.description": "按注册来源配置新用户默认余额、并发、订阅与授权策略。",
     "admin.settings.authSourceDefaults.requireEmailLabel": "第三方注册强制补充邮箱",
     "admin.settings.authSourceDefaults.requireEmailHint": "启用后，Linux DO、OIDC、微信注册缺少邮箱时必须先补充邮箱地址。",
-    "admin.settings.authSourceDefaults.enabledHint": "以下默认值会在该来源注册新用户时发放；首次绑定时授权仅作用于已有账号绑定该来源。",
+    "admin.settings.authSourceDefaults.enabledHint": "以下默认值会在该来源注册新用户时发放；首次绑定时授权仅作用于已有提供商绑定该来源。",
     "admin.settings.authSourceDefaults.sources.email.title": "邮箱注册",
     "admin.settings.authSourceDefaults.sources.email.description": "适用于邮箱密码注册的新用户默认配额。",
     "admin.settings.authSourceDefaults.sources.linuxdo.title": "Linux DO 登录",
@@ -263,7 +257,7 @@ vi.mock("vue-i18n", async () => {
     "admin.settings.authSourceDefaults.sources.wechat.title": "微信登录",
     "admin.settings.authSourceDefaults.sources.wechat.description": "适用于微信第三方注册的新用户默认配额。",
     "admin.settings.authSourceDefaults.grantOnFirstBindLabel": "首次绑定时授权",
-    "admin.settings.authSourceDefaults.grantOnFirstBindHint": "已有账号首次绑定该来源时发放默认权益。",
+    "admin.settings.authSourceDefaults.grantOnFirstBindHint": "已有提供商首次绑定该来源时发放默认权益。",
     "admin.settings.authSourceDefaults.defaultSubscriptionsLabel": "默认订阅",
     "admin.settings.authSourceDefaults.defaultSubscriptionsHint": "仅对当前认证来源生效，未配置时不追加来源专属订阅。",
     "admin.settings.authSourceDefaults.noSourceSubscriptions": "当前来源未配置专属默认订阅。",
@@ -285,19 +279,19 @@ vi.mock("vue-i18n", async () => {
     "admin.settings.scheduling.advancedDescription": "高级调度器按分组启用，使用通用候选评分、Top-K 加权和运行时错误率与首 token 延迟反馈。未启用高级调度器的分组继续使用基础调度器。",
     "admin.settings.scheduling.advancedHelp.trigger": "查看高级调度器评分与选择原理",
     "admin.settings.scheduling.advancedHelp.title": "高级调度器如何工作",
-    "admin.settings.scheduling.advancedHelp.summary": "请求会先通过硬过滤，再对剩余候选账号打分；高分账号进入 Top-K 候选池。",
+    "admin.settings.scheduling.advancedHelp.summary": "请求会先通过硬过滤，再对剩余候选提供商打分；高分提供商进入 Top-K 候选池。",
     "admin.settings.scheduling.advancedHelp.formula": "总分 = 各信号的归一化得分 × 对应权重 + 可选的粘性加分",
     "admin.settings.scheduling.advancedHelp.hardFilterTitle": "先硬过滤：",
-    "admin.settings.scheduling.advancedHelp.hardFilter": "按分组、模型与能力、账号状态、限流、代理和并发槽位排除不可用账号。",
+    "admin.settings.scheduling.advancedHelp.hardFilter": "按分组、模型与能力、提供商状态、限流、代理和并发槽位排除不可用提供商。",
     "admin.settings.scheduling.advancedHelp.scoreTitle": "再计算分数：",
     "admin.settings.scheduling.advancedHelp.score": "优先级、低负载、低排队、低错误率、低首 token 延迟、窗口重置和额度余量会按权重加总；缺失的可选信号保持中性。",
     "admin.settings.scheduling.advancedHelp.feedbackTitle": "持续反馈：",
-    "admin.settings.scheduling.advancedHelp.feedback": "请求结果和首 token 延迟以平滑统计更新账号表现，让后续请求避开近期表现较差的账号。",
+    "admin.settings.scheduling.advancedHelp.feedback": "请求结果和首 token 延迟以平滑统计更新提供商表现，让后续请求避开近期表现较差的提供商。",
     "admin.settings.scheduling.advancedHelp.selectionTitle": "Top-K 加权选择：",
-    "admin.settings.scheduling.advancedHelp.selection": "取分数最高的 Top-K，再按分数权重随机选择，避免单一账号长期垄断；开启粘性加权后，上一响应和会话账号会获得额外优先。",
-    "admin.settings.scheduling.advancedHelp.boundary": "每次尝试都会重查硬约束；发生分组回退时按目标分组重新调度。响应流开始后不会中途切换账号。",
-    "admin.settings.openaiQuotaAutoPause.title": "OpenAI 账号配额自动暂停",
-    "admin.settings.openaiQuotaAutoPause.description": "当 OpenAI 账号 5h / 7d 用量达到阈值时，调度会自动跳过该账号；窗口滚动后自动恢复。账号级阈值优先于此全局默认值。",
+    "admin.settings.scheduling.advancedHelp.selection": "取分数最高的 Top-K，再按分数权重随机选择，避免单一提供商长期垄断；开启粘性加权后，上一响应和会话提供商会获得额外优先。",
+    "admin.settings.scheduling.advancedHelp.boundary": "每次尝试都会重查硬约束；发生分组回退时按目标分组重新调度。响应流开始后不会中途切换提供商。",
+    "admin.settings.openaiQuotaAutoPause.title": "OpenAI 提供商配额自动暂停",
+    "admin.settings.openaiQuotaAutoPause.description": "当 OpenAI 提供商 5h / 7d 用量达到阈值时，调度会自动跳过该提供商；窗口滚动后自动恢复。提供商级阈值优先于此全局默认值。",
     "admin.settings.openaiQuotaAutoPause.default5h": "默认 5h 用量阈值 (%)",
     "admin.settings.openaiQuotaAutoPause.default7d": "默认 7d 用量阈值 (%)",
     "admin.settings.openaiQuotaAutoPause.thresholdHint": "取值 0-100，留空或 0 表示不启用全局默认阈值。",
@@ -305,9 +299,9 @@ vi.mock("vue-i18n", async () => {
     "admin.settings.scheduling.stickyWeightedTitle": "粘性加权",
     "admin.settings.scheduling.stickyWeightedDescription": "开启后，上一响应和会话粘性作为评分信号参与选择；关闭时保留既有粘性优先行为。",
     "admin.settings.scheduling.subscriptionPriorityTitle": "订阅优先",
-    "admin.settings.scheduling.subscriptionPriorityDescription": "具备订阅能力的账号会获得订阅优先评分；缺少该能力的账号保持中性。",
+    "admin.settings.scheduling.subscriptionPriorityDescription": "具备订阅能力的提供商会获得订阅优先评分；缺少该能力的提供商保持中性。",
     "admin.settings.scheduling.stickyEscapeTitle": "粘性健康切换",
-    "admin.settings.scheduling.stickyEscapeDescription": "绑定账号的错误率或首 token 延迟超过阈值时，本次请求允许切换到其它账号，并保留原粘性绑定。",
+    "admin.settings.scheduling.stickyEscapeDescription": "绑定提供商的错误率或首 token 延迟超过阈值时，本次请求允许切换到其它提供商，并保留原粘性绑定。",
     "admin.settings.scheduling.stickyEscapeEnabled": "强制粘性切换",
     "admin.settings.scheduling.stickyEscapeTTFT": "TTFT 切换阈值（毫秒）",
     "admin.settings.scheduling.stickyEscapeErrorRate": "错误率切换阈值（0-1）",
@@ -345,49 +339,49 @@ vi.mock("vue-i18n", async () => {
     "admin.settings.defaults.platformQuotaNotice": "月限额为 30 天滚动窗口，非自然月",
     "admin.settings.authSourceDefaults.platformQuotasOverride": "平台限额覆盖",
     "admin.settings.authSourceDefaults.platformQuotasOverrideHint": "留空的字段继承「系统默认平台限额」；填 0 表示禁止该窗口使用。",
-    "admin.accounts.openAIOAuthImportDefaultsTitle": "OpenAI OAuth 导入默认值",
-    "admin.accounts.openAIOAuthImportDefaultsDescription": "这些默认值会在添加 OpenAI OAuth 账号时自动带入，也会用于批量导入中缺失字段的 OpenAI OAuth 账号。",
-    "admin.accounts.openAIOAuthImportDefaultsAccount": "账号字段",
-    "admin.accounts.openAIOAuthImportDefaultsOpenAIOptions": "OpenAI OAuth 选项",
-    "admin.accounts.openAIOAuthImportDefaultsUnset": "不设置",
-    "admin.accounts.openAIOAuthImportDefaultsCredentialsJson": "Credentials 附加 JSON",
-    "admin.accounts.openAIOAuthImportDefaultsExtraJson": "Extra 附加 JSON",
-    "admin.accounts.openAIOAuthImportDefaultsSaved": "导入默认值已保存",
-    "admin.accounts.openai.oauthPassthrough": "自动透传（仅替换认证）",
-    "admin.accounts.openai.oauthPassthroughDesc": "开启后，该 OpenAI 账号将自动透传请求与响应，仅替换认证并保留计费/并发/审计及必要安全过滤；如遇兼容性问题可随时关闭回滚。",
-    "admin.accounts.openai.wsMode": "WS mode",
-    "admin.accounts.openai.wsModeDesc": "仅对当前 OpenAI 账号类型生效。",
-    "admin.accounts.openai.wsModeOff": "关闭（off）",
-    "admin.accounts.openai.wsModeCtxPool": "上下文池（ctx_pool）",
-    "admin.accounts.openai.wsModePassthrough": "透传（passthrough）",
-    "admin.accounts.openai.codexCLIOnly": "仅允许 Codex 官方客户端",
-    "admin.accounts.openai.codexCLIOnlyDesc": "仅对 OpenAI OAuth 生效。开启后仅允许 Codex 官方客户端家族访问；关闭后完全绕过并保持原逻辑。",
-    "admin.accounts.openai.codexCLIOnlyAllowClaudeCode": "额外放行 Claude Code 的 Codex 插件",
-    "admin.accounts.openai.codexCLIOnlyAllowClaudeCodeDesc": "仅在上方开关开启时生效。额外放行通过 Claude Code 的 Codex 插件发起的请求。",
-    "admin.accounts.autoPause5hDisabled": "禁用 5h 自动暂停",
-    "admin.accounts.autoPause7dDisabled": "禁用 7d 自动暂停",
-    "admin.accounts.autoPause5hThreshold": "5h 用量阈值(%)",
-    "admin.accounts.autoPause7dThreshold": "7d 用量阈值(%)",
-    "admin.accounts.autoPauseDisabledHint": "开启后该账号永不进入自动暂停。",
-    "admin.accounts.autoPauseThresholdHint": "留空或填 0 表示使用全局默认阈值。",
-    "admin.accounts.openai.compactMode": "旧版 Compact 端点",
-    "admin.accounts.openai.compactModeDesc": "仅控制本账号参与旧版 /responses/compact 调度，不影响原生 remote_compaction_v2。自动跟随探测结果，强制开启始终允许，强制关闭始终排除。",
-    "admin.accounts.openai.compactModeAuto": "自动",
-    "admin.accounts.openai.compactModeForceOn": "强制开启",
-    "admin.accounts.openai.compactModeForceOff": "强制关闭",
-    "admin.accounts.openai.nativeCompactV2Mode": "原生 V2 压缩",
-    "admin.accounts.openai.nativeCompactV2ModeDesc": "仅控制本账号参与原生 remote_compaction_v2 调度。自动跟随原生 V2 探测结果，强制开启始终允许，强制关闭始终排除。",
-    "admin.accounts.openai.nativeCompactV2ModeAuto": "自动",
-    "admin.accounts.openai.nativeCompactV2ModeForceOn": "强制开启",
-    "admin.accounts.openai.nativeCompactV2ModeForceOff": "强制关闭",
-    "admin.accounts.quotaControl.tlsFingerprint.label": "TLS 指纹模拟",
-    "admin.accounts.quotaControl.tlsFingerprint.hint": "模拟 Node.js/Claude Code/Codex CLI 客户端的 TLS 指纹",
-    "admin.accounts.quotaControl.tlsFingerprint.defaultProfile": "内置默认",
-    "admin.accounts.quotaControl.tlsFingerprint.randomProfile": "随机",
-    "admin.accounts.modelWhitelist": "模型白名单",
-    "admin.accounts.modelMapping": "模型映射",
-    "admin.accounts.mapRequestModels": "将请求模型映射到实际模型。",
-    "admin.accounts.addMapping": "添加映射",
+    "admin.providers.openAIOAuthImportDefaultsTitle": "OpenAI OAuth 导入默认值",
+    "admin.providers.openAIOAuthImportDefaultsDescription": "这些默认值会在添加 OpenAI OAuth 提供商时自动带入，也会用于批量导入中缺失字段的 OpenAI OAuth 提供商。",
+    "admin.providers.openAIOAuthImportDefaultsProvider": "提供商字段",
+    "admin.providers.openAIOAuthImportDefaultsOpenAIOptions": "OpenAI OAuth 选项",
+    "admin.providers.openAIOAuthImportDefaultsUnset": "不设置",
+    "admin.providers.openAIOAuthImportDefaultsCredentialsJson": "Credentials 附加 JSON",
+    "admin.providers.openAIOAuthImportDefaultsExtraJson": "Extra 附加 JSON",
+    "admin.providers.openAIOAuthImportDefaultsSaved": "导入默认值已保存",
+    "admin.providers.openai.oauthPassthrough": "自动透传（仅替换认证）",
+    "admin.providers.openai.oauthPassthroughDesc": "开启后，该 OpenAI 提供商将自动透传请求与响应，仅替换认证并保留计费/并发/审计及必要安全过滤；如遇兼容性问题可随时关闭回滚。",
+    "admin.providers.openai.wsMode": "WS mode",
+    "admin.providers.openai.wsModeDesc": "仅对当前 OpenAI 提供商类型生效。",
+    "admin.providers.openai.wsModeOff": "关闭（off）",
+    "admin.providers.openai.wsModeCtxPool": "上下文池（ctx_pool）",
+    "admin.providers.openai.wsModePassthrough": "透传（passthrough）",
+    "admin.providers.openai.codexCLIOnly": "仅允许 Codex 官方客户端",
+    "admin.providers.openai.codexCLIOnlyDesc": "仅对 OpenAI OAuth 生效。开启后仅允许 Codex 官方客户端家族访问；关闭后完全绕过并保持原逻辑。",
+    "admin.providers.openai.codexCLIOnlyAllowClaudeCode": "额外放行 Claude Code 的 Codex 插件",
+    "admin.providers.openai.codexCLIOnlyAllowClaudeCodeDesc": "仅在上方开关开启时生效。额外放行通过 Claude Code 的 Codex 插件发起的请求。",
+    "admin.providers.autoPause5hDisabled": "禁用 5h 自动暂停",
+    "admin.providers.autoPause7dDisabled": "禁用 7d 自动暂停",
+    "admin.providers.autoPause5hThreshold": "5h 用量阈值(%)",
+    "admin.providers.autoPause7dThreshold": "7d 用量阈值(%)",
+    "admin.providers.autoPauseDisabledHint": "开启后该提供商永不进入自动暂停。",
+    "admin.providers.autoPauseThresholdHint": "留空或填 0 表示使用全局默认阈值。",
+    "admin.providers.openai.compactMode": "旧版 Compact 端点",
+    "admin.providers.openai.compactModeDesc": "仅控制本提供商参与旧版 /responses/compact 调度，不影响原生 remote_compaction_v2。自动跟随探测结果，强制开启始终允许，强制关闭始终排除。",
+    "admin.providers.openai.compactModeAuto": "自动",
+    "admin.providers.openai.compactModeForceOn": "强制开启",
+    "admin.providers.openai.compactModeForceOff": "强制关闭",
+    "admin.providers.openai.nativeCompactV2Mode": "原生 V2 压缩",
+    "admin.providers.openai.nativeCompactV2ModeDesc": "仅控制本提供商参与原生 remote_compaction_v2 调度。自动跟随原生 V2 探测结果，强制开启始终允许，强制关闭始终排除。",
+    "admin.providers.openai.nativeCompactV2ModeAuto": "自动",
+    "admin.providers.openai.nativeCompactV2ModeForceOn": "强制开启",
+    "admin.providers.openai.nativeCompactV2ModeForceOff": "强制关闭",
+    "admin.providers.quotaControl.tlsFingerprint.label": "TLS 指纹模拟",
+    "admin.providers.quotaControl.tlsFingerprint.hint": "模拟 Node.js/Claude Code/Codex CLI 客户端的 TLS 指纹",
+    "admin.providers.quotaControl.tlsFingerprint.defaultProfile": "内置默认",
+    "admin.providers.quotaControl.tlsFingerprint.randomProfile": "随机",
+    "admin.providers.modelWhitelist": "模型白名单",
+    "admin.providers.modelMapping": "模型映射",
+    "admin.providers.mapRequestModels": "将请求模型映射到实际模型。",
+    "admin.providers.addMapping": "添加映射",
   };
   return {
     ...actual,
@@ -692,7 +686,7 @@ const baseSettingsResponse = {
   advanced_scheduler_effective_sticky_escape_enabled: true,
   advanced_scheduler_effective_sticky_escape_ttft_ms: "15000",
   advanced_scheduler_effective_sticky_escape_error_rate: "0.5",
-  openai_account_quota_auto_pause: {
+  openai_provider_quota_auto_pause: {
     default_threshold_5h: 0,
     default_threshold_7d: 0,
   },
@@ -700,15 +694,8 @@ const baseSettingsResponse = {
   balance_low_notify_threshold: 0,
   balance_low_notify_recharge_url: "",
   subscription_expiry_notify_enabled: true,
-  account_quota_notify_enabled: false,
-  account_quota_notify_emails: [],
-  // 平台限额嵌套字段（新后端契约）
-  default_platform_quotas: {
-    anthropic:   { daily: null, weekly: null, monthly: null },
-    openai:      { daily: null, weekly: 12.5, monthly: null },
-    gemini:      { daily: null, weekly: null, monthly: 200 },
-    antigravity: { daily: null, weekly: null, monthly: null },
-  },
+  provider_quota_notify_enabled: false,
+  provider_quota_notify_emails: [],
 };
 
 function mountView() {
@@ -904,6 +891,74 @@ describe("admin SettingsView payment visible method controls", () => {
     ]);
     fetchPublicSettings.mockResolvedValue(undefined);
     adminSettingsFetch.mockResolvedValue(undefined);
+  });
+
+  it("搜索测试默认隐藏，点击测试后以弹窗展示并可关闭", async () => {
+    getWebSearchEmulationConfig.mockResolvedValue({ enabled: true, providers: [] });
+    testWebSearchEmulation.mockReset();
+    testWebSearchEmulation.mockResolvedValue({
+      provider: "brave",
+      results: [
+        { title: "测试结果", url: "https://example.com", snippet: "结果摘要" },
+      ],
+    });
+    const wrapper = mountView();
+    const querySelector =
+      'input[placeholder="admin.settings.webSearchEmulation.testDefaultQuery"]';
+    try {
+      await flushPromises();
+      await openGatewayTab(wrapper);
+      // 使用真实组件验证注册与 Teleport，避免 stub 掩盖漏导入导致的内联渲染。
+      expect(wrapper.findComponent(BaseDialog).exists()).toBe(true);
+      expect(wrapper.find("basedialog").exists()).toBe(false);
+      expect(wrapper.find(querySelector).exists()).toBe(false);
+      expect(document.body.querySelector(querySelector)).toBeNull();
+
+      await openGatewaySection(wrapper, "anthropic");
+      const providerCard = wrapper.get(
+        '[data-testid="gateway-card-web-search-emulation"]',
+      );
+      await providerCard.findAll("button")
+        .find(button => button.text() === "admin.settings.webSearchEmulation.addProvider")!
+        .trigger("click");
+      const openTest = providerCard.findAll("button")
+        .find(button => button.text() === "admin.settings.webSearchEmulation.test")!;
+      await openTest.trigger("click");
+      await flushPromises();
+
+      const dialog = new DOMWrapper(document.body).get('[role="dialog"]');
+      expect(dialog.text()).toContain("admin.settings.webSearchEmulation.testResultTitle");
+      expect(document.body.classList.contains("modal-open")).toBe(true);
+      await dialog.get(querySelector).setValue("测试查询");
+      await dialog.findAll("button")
+        .find(button => button.text() === "admin.settings.webSearchEmulation.test")!
+        .trigger("click");
+      await flushPromises();
+      expect(testWebSearchEmulation).toHaveBeenCalledWith("测试查询");
+      expect(dialog.text()).toContain("测试结果");
+      expect(updateSettings).not.toHaveBeenCalled();
+
+      await dialog.findAll("button")
+        .find(button => button.text() === "common.close")!
+        .trigger("click");
+      await flushPromises();
+      await vi.waitFor(() => {
+        expect(document.body.querySelector(querySelector)).toBeNull();
+      });
+      expect(document.body.classList.contains("modal-open")).toBe(false);
+
+      await openTest.trigger("click");
+      await flushPromises();
+      expect(new DOMWrapper(document.body).get('[role="dialog"]').text())
+        .not.toContain("测试结果");
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      await flushPromises();
+      await vi.waitFor(() => {
+        expect(document.body.querySelector(querySelector)).toBeNull();
+      });
+    } finally {
+      wrapper.unmount();
+    }
   });
 
   it("renders panel rate limit card and saves settings", async () => {
@@ -1454,7 +1509,7 @@ describe("admin SettingsView payment visible method controls", () => {
   it("renders and submits OpenAI quota auto-pause gateway settings", async () => {
     getSettings.mockResolvedValueOnce({
       ...baseSettingsResponse,
-      openai_account_quota_auto_pause: {
+      openai_provider_quota_auto_pause: {
         default_threshold_5h: 0.95,
         default_threshold_7d: 0.9,
       },
@@ -1464,7 +1519,7 @@ describe("admin SettingsView payment visible method controls", () => {
 
     await flushPromises();
 
-    expect(wrapper.text()).toContain("OpenAI 账号配额自动暂停");
+    expect(wrapper.text()).toContain("OpenAI 提供商配额自动暂停");
     const fiveHourInput = wrapper.get('[data-testid="settings-openai-quota-auto-pause-5h"]');
     const sevenDayInput = wrapper.get('[data-testid="settings-openai-quota-auto-pause-7d"]');
     expect((fiveHourInput.element as HTMLInputElement).value).toBe("95");
@@ -1477,7 +1532,7 @@ describe("admin SettingsView payment visible method controls", () => {
 
     expect(updateSettings).toHaveBeenCalledWith(
       expect.objectContaining({
-        openai_account_quota_auto_pause: {
+        openai_provider_quota_auto_pause: {
           default_threshold_5h: 0.885,
           default_threshold_7d: 0.775,
         },
@@ -2002,27 +2057,11 @@ describe("admin SettingsView payment visible method controls", () => {
     ).toBe("true");
   });
 
-  it("preserves unsaved gateway form state while switching platform sections", async () => {
+  it("requires explicit groups and omits platform quota settings", async () => {
     const wrapper = mountView();
-
     await flushPromises();
     await openGatewayTab(wrapper);
-
-    const ungroupedKeyToggle = wrapper.get(
-      '[data-testid="gateway-allow-ungrouped-key"]',
-    );
-    await ungroupedKeyToggle.setValue(true);
-    expect((ungroupedKeyToggle.element as HTMLInputElement).checked).toBe(true);
-
-    await openGatewaySection(wrapper, "openai");
-    await openGatewaySection(wrapper, "general");
-
-    expect(
-      (
-        wrapper.get('[data-testid="gateway-allow-ungrouped-key"]')
-          .element as HTMLInputElement
-      ).checked,
-    ).toBe(true);
+    expect(wrapper.find('[data-testid="gateway-allow-ungrouped-key"]').exists()).toBe(false);
   });
 
   it("omits the retired CCH signing setting from the UI and update payload", async () => {
@@ -2210,8 +2249,8 @@ describe("admin SettingsView payment visible method controls", () => {
     await flushPromises();
 
     const mode = wrapper.get('[data-testid="openai-oauth-default-native-compaction-v2-mode"]');
-    expect((mode.element as HTMLSelectElement).value).toBe("force_off");
-    await mode.setValue("force_on");
+    expect((mode.element as HTMLInputElement).checked).toBe(false);
+    await mode.setValue(true);
 
     const defaultsCard = wrapper.get("#openai-oauth-import-defaults");
     const saveButton = defaultsCard
@@ -2804,231 +2843,5 @@ describe("admin SettingsView security tab controls", () => {
         oidc_connect_validate_id_token: false,
       }),
     );
-  });
-});
-
-describe("admin SettingsView platform quota matrix", () => {
-  beforeEach(() => {
-    getSettings.mockReset();
-    getCreativeModelCandidates.mockReset();
-    updateSettings.mockReset();
-    getWebSearchEmulationConfig.mockReset();
-    updateWebSearchEmulationConfig.mockReset();
-    getAdminApiKey.mockReset();
-    getOverloadCooldownSettings.mockReset();
-    getRateLimit429CooldownSettings.mockReset();
-    updateRateLimit429CooldownSettings.mockReset();
-    getStreamTimeoutSettings.mockReset();
-    getRectifierSettings.mockReset();
-    getBetaPolicySettings.mockReset();
-    getGroups.mockReset();
-    listProxies.mockReset();
-    getProviders.mockReset();
-    updateProvider.mockReset();
-    createProvider.mockReset();
-    deleteProvider.mockReset();
-    fetchPublicSettings.mockReset();
-    adminSettingsFetch.mockReset();
-    showError.mockReset();
-    showSuccess.mockReset();
-    localeRef.value = "zh-CN";
-
-    getSettings.mockResolvedValue({ ...baseSettingsResponse });
-    getCreativeModelCandidates.mockResolvedValue([]);
-    updateSettings.mockImplementation(async (payload) => ({
-      ...baseSettingsResponse,
-      ...payload,
-    }));
-    getWebSearchEmulationConfig.mockResolvedValue({ enabled: false, providers: [] });
-    updateWebSearchEmulationConfig.mockResolvedValue({ enabled: false, providers: [] });
-    getAdminApiKey.mockResolvedValue({ exists: false, masked_key: "" });
-    getOverloadCooldownSettings.mockResolvedValue({});
-    getRateLimit429CooldownSettings.mockResolvedValue({});
-    updateRateLimit429CooldownSettings.mockResolvedValue({});
-    getStreamTimeoutSettings.mockResolvedValue({});
-    getRectifierSettings.mockResolvedValue({});
-    getBetaPolicySettings.mockResolvedValue({});
-    getGroups.mockResolvedValue([]);
-    listProxies.mockResolvedValue({ items: [] });
-    getProviders.mockResolvedValue({ data: [] });
-  });
-
-  it("从 baseSettings 加载默认平台配额数据并在 Users tab 渲染 6 平台行", async () => {
-    const wrapper = mountView();
-    await flushPromises();
-    await openUsersTab(wrapper);
-
-    expect(getSettings).toHaveBeenCalled();
-
-    const html = wrapper.html();
-    // 表格行的平台字段：font-mono 渲染纯英文 platform key
-    expect(html).toContain("anthropic");
-    expect(html).toContain("openai");
-    expect(html).toContain("gemini");
-    expect(html).toContain("antigravity");
-    expect(html).toContain("qoder");
-    expect(html).toContain("grok");
-  });
-
-  it("保存时 updateSettings payload 应包含嵌套 default_platform_quotas 对象（含全 6 平台）", async () => {
-    const wrapper = mountView();
-    await flushPromises();
-    await openUsersTab(wrapper);
-
-    await wrapper.find("form").trigger("submit.prevent");
-    await flushPromises();
-
-    expect(updateSettings).toHaveBeenCalled();
-    const lastCallArgs = updateSettings.mock.calls.at(-1);
-    expect(lastCallArgs).toBeDefined();
-    const payload = lastCallArgs![0] as Record<string, unknown>;
-
-    // 应携带嵌套对象，而非扁平字段
-    expect(payload).toHaveProperty("default_platform_quotas");
-    const quotas = payload["default_platform_quotas"] as Record<string, unknown>;
-    const platforms = ["anthropic", "openai", "gemini", "antigravity", "qoder", "grok"];
-    for (const p of platforms) {
-      expect(quotas).toHaveProperty(p);
-      const pq = quotas[p] as Record<string, unknown>;
-      expect(pq).toHaveProperty("daily");
-      expect(pq).toHaveProperty("weekly");
-      expect(pq).toHaveProperty("monthly");
-    }
-
-    // 不应存在旧扁平字段
-    expect(payload).not.toHaveProperty("default_platform_quota_anthropic_daily");
-    expect(payload).not.toHaveProperty("default_platform_quota_openai_weekly");
-  });
-
-  it("加载并保存默认 API Key 数量上限的显式零值", async () => {
-    getSettings.mockResolvedValueOnce({
-      ...baseSettingsResponse,
-      default_user_api_key_limit: 17,
-    });
-    const wrapper = mountView();
-    await flushPromises();
-    await openUsersTab(wrapper);
-
-    const input = wrapper.get('[data-test="default-user-api-key-limit"]');
-    expect((input.element as HTMLInputElement).value).toBe("17");
-    await input.setValue("0");
-    await wrapper.find("form").trigger("submit.prevent");
-    await flushPromises();
-
-    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
-    expect(payload["default_user_api_key_limit"]).toBe(0);
-  });
-
-  it("拒绝负数默认 API Key 数量上限", async () => {
-    const wrapper = mountView();
-    await flushPromises();
-    await openUsersTab(wrapper);
-    await wrapper.get('[data-test="default-user-api-key-limit"]').setValue("-1");
-
-    await wrapper.find("form").trigger("submit.prevent");
-    await flushPromises();
-
-    expect(updateSettings).not.toHaveBeenCalled();
-    expect(showError).toHaveBeenCalledWith(
-      "admin.settings.defaults.defaultUserApiKeyLimitInvalid",
-    );
-  });
-
-  it("拒绝空的默认 API Key 数量上限", async () => {
-    const wrapper = mountView();
-    await flushPromises();
-    await openUsersTab(wrapper);
-    await wrapper.get('[data-test="default-user-api-key-limit"]').setValue("");
-
-    await wrapper.find("form").trigger("submit.prevent");
-    await flushPromises();
-
-    expect(updateSettings).not.toHaveBeenCalled();
-    expect(showError).toHaveBeenCalledWith(
-      "admin.settings.defaults.defaultUserApiKeyLimitInvalid",
-    );
-  });
-
-  it("拒绝超过数据库范围的默认 API Key 数量上限", async () => {
-    const wrapper = mountView();
-    await flushPromises();
-    await openUsersTab(wrapper);
-    await wrapper
-      .get('[data-test="default-user-api-key-limit"]')
-      .setValue("2147483648");
-
-    await wrapper.find("form").trigger("submit.prevent");
-    await flushPromises();
-
-    expect(updateSettings).not.toHaveBeenCalled();
-    expect(showError).toHaveBeenCalledWith(
-      "admin.settings.defaults.defaultUserApiKeyLimitInvalid",
-    );
-  });
-
-  it("加载后 form.default_platform_quotas 含全 6 平台，从嵌套 JSON 正确读取数值", async () => {
-    getSettings.mockResolvedValueOnce({
-      ...baseSettingsResponse,
-      default_platform_quotas: {
-        anthropic: { daily: 5, weekly: null, monthly: null },
-        openai:    { daily: null, weekly: 12.5, monthly: null },
-        // gemini / antigravity / qoder / grok 缺失 → 应被归一化为全 null
-      },
-    });
-
-    const wrapper = mountView();
-    await flushPromises();
-    await openUsersTab(wrapper);
-
-    await wrapper.find("form").trigger("submit.prevent");
-    await flushPromises();
-
-    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
-    const quotas = payload["default_platform_quotas"] as Record<string, Record<string, unknown>>;
-
-    expect(quotas["anthropic"]?.["daily"]).toBe(5);
-    expect(quotas["openai"]?.["weekly"]).toBe(12.5);
-    // 缺失平台应补全为 null
-    expect(quotas["gemini"]).toEqual({ daily: null, weekly: null, monthly: null });
-    expect(quotas["antigravity"]).toEqual({ daily: null, weekly: null, monthly: null });
-    expect(quotas["qoder"]).toEqual({ daily: null, weekly: null, monthly: null });
-    expect(quotas["grok"]).toEqual({ daily: null, weekly: null, monthly: null });
-  });
-
-  it("空输入（v-model.number 产出 \"\"）在提交时清洗为 null 而非空字符串", async () => {
-    // 模拟后端返回带有 anthropic daily 值的配额
-    getSettings.mockResolvedValueOnce({
-      ...baseSettingsResponse,
-      default_platform_quotas: {
-        anthropic: { daily: 10, weekly: null, monthly: null },
-        openai:    { daily: null, weekly: null, monthly: null },
-        gemini:    { daily: null, weekly: null, monthly: null },
-        antigravity: { daily: null, weekly: null, monthly: null },
-      },
-    });
-
-    const wrapper = mountView();
-    await flushPromises();
-    await openUsersTab(wrapper);
-
-    // 找到 anthropic daily 输入框并清空（模拟用户删除值）
-    const inputs = wrapper.findAll('input[type="number"]');
-    const anthropicDailyInput = inputs.find((i) => {
-      const parent = i.element.closest("tr");
-      return parent?.textContent?.includes("anthropic");
-    });
-
-    if (anthropicDailyInput) {
-      // 设置为空字符串，模拟 v-model.number 在清空时产出 ""
-      await anthropicDailyInput.setValue("");
-    }
-
-    await wrapper.find("form").trigger("submit.prevent");
-    await flushPromises();
-
-    const payload = updateSettings.mock.calls.at(-1)![0] as Record<string, unknown>;
-    const quotas = payload["default_platform_quotas"] as Record<string, Record<string, unknown>>;
-    // 不管输入是什么，提交值应为 null（而非 "" 或 NaN）
-    expect(quotas["anthropic"]?.["daily"]).toBe(null);
   });
 });

@@ -2,11 +2,12 @@
 
 TokenRouter 支持长时间运行的 SSE 和 WebSocket 请求。入口保护不能依赖响应 `WriteTimeout`，因为写超时会终止正常的长耗时生成和流式响应。
 
-本文拥有应用与反向代理入口限制、可信客户端 IP 解析、流式传输和 DDoS 责任边界。它不能替代云厂商防火墙或 CDN 策略，也不定义已认证账号的并发和计费限速。
+本文说明应用与反向代理的入口限制、可信客户端 IP 解析、流式传输和 DDoS 防护分工。它不能替代云厂商防火墙或 CDN 策略，也不定义已认证提供商的并发和计费限速。
 
 ## 章节导航
 
 - [应用默认值](#http_ingress_limits)：修改 HTTP/H2C 限制或请求体分类时读取。
+- [固定窗口限流](#fixed_window_rate_limits)：修改 Redis 计数、TTL、故障策略或限流响应时读取。
 - [可信客户端 IP](#可信客户端-ip)：修改代理信任、IP ACL 或运行时安全设置时读取。
 - [Nginx 基线](#nginx-基线)：使用 Nginx 作为边缘入口时读取。
 - [Caddy 与 CDN](#caddy-与-cdn)：修改仓库内 Caddyfile 或接入 CDN 前读取。
@@ -25,7 +26,17 @@ TokenRouter 支持长时间运行的 SSE 和 WebSocket 请求。入口保护不�
 
 不要增加全应用共用的请求信号量，因为一个 SSE 请求可能正常占用它数分钟。连接和未认证请求限制应放在边缘；已认证用户或 API Key 的并发仍由应用负责。
 
+<a id="fixed_window_rate_limits"></a>
+## 固定窗口限流
+
+`infra/redis.FixedWindowLimiter` 通过 Lua 原子递增，首次计数设置 TTL，并修复已有计数键缺失 TTL 的情况；后续请求不延长窗口。应用仍使用 `rate_limit:` 前缀。超限时尽力读取剩余 PTTL，查询失败时回退到完整窗口，HTTP 层继续向上取整输出 `Retry-After`。
+
+`server/middleware.RateLimiter` 通过只返回标量结果的计数接口适配 HTTP，拥有客户端 IP 维度、故障策略和 429 格式。公开高风险认证路由显式 fail-close；面板限流 fail-open，认证请求按用户 ID 分桶，公开请求只按可公开路由的客户端 IP 分桶。设置缓存、管理员豁免和缺少 Redis 时的面板放行保持原有语义。计数器当前由既有路由装配创建，不由 HTTP 中间件构造数据库客户端。
+
+<a id="trusted_client_ip"></a>
 ## 可信客户端 IP
+
+地址解析和请求快照由 `server/clientip` 拥有；纯 IP/CIDR 编译与匹配由 `pkg/ipmatch` 提供。Key 的黑白名单裁决由 apikey 的认证用例执行，不能把匹配成功直接当作授权。
 
 为兼容升级，`security.trust_forwarded_ip_for_api_key_acl` 默认开启。开启后，原始转发请求头接管日志与安全敏感路径的客户端 IP 解析。`security.forwarded_client_ip_headers` 中的自定义请求头按配置顺序检查，优先于内置的 `CF-Connecting-IP`、`X-Real-IP` 和 `X-Forwarded-For` 回退。请求头名称不区分大小写，加载时会规范化并去重，最多允许 16 个唯一且有效的 HTTP 字段名。请求头值必须包含 IP 字面量；支持逗号分隔，跳过无效项，并优先选择公网地址而不是私网回退地址。
 
@@ -66,7 +77,7 @@ server {
     large_client_header_buffers 4 16k;
     limit_conn sub2api_conn 40;
 
-    location ~ ^/(auth|api/auth)/ {
+    location ~ ^/(auth|api/auth|api/v1/auth)/ {
         limit_req zone=sub2api_auth burst=10 nodelay;
         proxy_pass http://127.0.0.1:8080;
     }

@@ -13,14 +13,16 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
-	"github.com/TokenFlux/TokenRouter/ent/account"
 	"github.com/TokenFlux/TokenRouter/ent/apikey"
 	"github.com/TokenFlux/TokenRouter/ent/apikeycompositegroup"
 	"github.com/TokenFlux/TokenRouter/ent/group"
 	"github.com/TokenFlux/TokenRouter/ent/predicate"
+	"github.com/TokenFlux/TokenRouter/ent/provider"
 	"github.com/TokenFlux/TokenRouter/ent/usagelog"
 	"github.com/TokenFlux/TokenRouter/ent/user"
-	"github.com/TokenFlux/TokenRouter/internal/domain"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
+	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
 // GroupUpdate is the builder for updating Group entities.
@@ -117,69 +119,6 @@ func (_u *GroupUpdate) AddRateMultiplier(v float64) *GroupUpdate {
 	return _u
 }
 
-// SetPeakRateEnabled sets the "peak_rate_enabled" field.
-func (_u *GroupUpdate) SetPeakRateEnabled(v bool) *GroupUpdate {
-	_u.mutation.SetPeakRateEnabled(v)
-	return _u
-}
-
-// SetNillablePeakRateEnabled sets the "peak_rate_enabled" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillablePeakRateEnabled(v *bool) *GroupUpdate {
-	if v != nil {
-		_u.SetPeakRateEnabled(*v)
-	}
-	return _u
-}
-
-// SetPeakStart sets the "peak_start" field.
-func (_u *GroupUpdate) SetPeakStart(v string) *GroupUpdate {
-	_u.mutation.SetPeakStart(v)
-	return _u
-}
-
-// SetNillablePeakStart sets the "peak_start" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillablePeakStart(v *string) *GroupUpdate {
-	if v != nil {
-		_u.SetPeakStart(*v)
-	}
-	return _u
-}
-
-// SetPeakEnd sets the "peak_end" field.
-func (_u *GroupUpdate) SetPeakEnd(v string) *GroupUpdate {
-	_u.mutation.SetPeakEnd(v)
-	return _u
-}
-
-// SetNillablePeakEnd sets the "peak_end" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillablePeakEnd(v *string) *GroupUpdate {
-	if v != nil {
-		_u.SetPeakEnd(*v)
-	}
-	return _u
-}
-
-// SetPeakRateMultiplier sets the "peak_rate_multiplier" field.
-func (_u *GroupUpdate) SetPeakRateMultiplier(v float64) *GroupUpdate {
-	_u.mutation.ResetPeakRateMultiplier()
-	_u.mutation.SetPeakRateMultiplier(v)
-	return _u
-}
-
-// SetNillablePeakRateMultiplier sets the "peak_rate_multiplier" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillablePeakRateMultiplier(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetPeakRateMultiplier(*v)
-	}
-	return _u
-}
-
-// AddPeakRateMultiplier adds value to the "peak_rate_multiplier" field.
-func (_u *GroupUpdate) AddPeakRateMultiplier(v float64) *GroupUpdate {
-	_u.mutation.AddPeakRateMultiplier(v)
-	return _u
-}
-
 // SetIsExclusive sets the "is_exclusive" field.
 func (_u *GroupUpdate) SetIsExclusive(v bool) *GroupUpdate {
 	_u.mutation.SetIsExclusive(v)
@@ -194,20 +133,6 @@ func (_u *GroupUpdate) SetNillableIsExclusive(v *bool) *GroupUpdate {
 	return _u
 }
 
-// SetIsDefault sets the "is_default" field.
-func (_u *GroupUpdate) SetIsDefault(v bool) *GroupUpdate {
-	_u.mutation.SetIsDefault(v)
-	return _u
-}
-
-// SetNillableIsDefault sets the "is_default" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableIsDefault(v *bool) *GroupUpdate {
-	if v != nil {
-		_u.SetIsDefault(*v)
-	}
-	return _u
-}
-
 // SetStatus sets the "status" field.
 func (_u *GroupUpdate) SetStatus(v string) *GroupUpdate {
 	_u.mutation.SetStatus(v)
@@ -218,20 +143,6 @@ func (_u *GroupUpdate) SetStatus(v string) *GroupUpdate {
 func (_u *GroupUpdate) SetNillableStatus(v *string) *GroupUpdate {
 	if v != nil {
 		_u.SetStatus(*v)
-	}
-	return _u
-}
-
-// SetPlatform sets the "platform" field.
-func (_u *GroupUpdate) SetPlatform(v string) *GroupUpdate {
-	_u.mutation.SetPlatform(v)
-	return _u
-}
-
-// SetNillablePlatform sets the "platform" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillablePlatform(v *string) *GroupUpdate {
-	if v != nil {
-		_u.SetPlatform(*v)
 	}
 	return _u
 }
@@ -251,13 +162,13 @@ func (_u *GroupUpdate) SetNillableSchedulerType(v *string) *GroupUpdate {
 }
 
 // SetAdvancedSchedulerOverrides sets the "advanced_scheduler_overrides" field.
-func (_u *GroupUpdate) SetAdvancedSchedulerOverrides(v domain.GroupAdvancedSchedulerOverrides) *GroupUpdate {
+func (_u *GroupUpdate) SetAdvancedSchedulerOverrides(v policy.GroupAdvancedSchedulerOverrides) *GroupUpdate {
 	_u.mutation.SetAdvancedSchedulerOverrides(v)
 	return _u
 }
 
 // SetNillableAdvancedSchedulerOverrides sets the "advanced_scheduler_overrides" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableAdvancedSchedulerOverrides(v *domain.GroupAdvancedSchedulerOverrides) *GroupUpdate {
+func (_u *GroupUpdate) SetNillableAdvancedSchedulerOverrides(v *policy.GroupAdvancedSchedulerOverrides) *GroupUpdate {
 	if v != nil {
 		_u.SetAdvancedSchedulerOverrides(*v)
 	}
@@ -306,456 +217,21 @@ func (_u *GroupUpdate) SetNillableAllowBatchImageGeneration(v *bool) *GroupUpdat
 	return _u
 }
 
-// SetImageRateIndependent sets the "image_rate_independent" field.
-func (_u *GroupUpdate) SetImageRateIndependent(v bool) *GroupUpdate {
-	_u.mutation.SetImageRateIndependent(v)
+// SetRoutingPolicy sets the "routing_policy" field.
+func (_u *GroupUpdate) SetRoutingPolicy(v jsontext.Value) *GroupUpdate {
+	_u.mutation.SetRoutingPolicy(v)
 	return _u
 }
 
-// SetNillableImageRateIndependent sets the "image_rate_independent" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableImageRateIndependent(v *bool) *GroupUpdate {
-	if v != nil {
-		_u.SetImageRateIndependent(*v)
-	}
+// AppendRoutingPolicy appends value to the "routing_policy" field.
+func (_u *GroupUpdate) AppendRoutingPolicy(v jsontext.Value) *GroupUpdate {
+	_u.mutation.AppendRoutingPolicy(v)
 	return _u
 }
 
-// SetImageRateMultiplier sets the "image_rate_multiplier" field.
-func (_u *GroupUpdate) SetImageRateMultiplier(v float64) *GroupUpdate {
-	_u.mutation.ResetImageRateMultiplier()
-	_u.mutation.SetImageRateMultiplier(v)
-	return _u
-}
-
-// SetNillableImageRateMultiplier sets the "image_rate_multiplier" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableImageRateMultiplier(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetImageRateMultiplier(*v)
-	}
-	return _u
-}
-
-// AddImageRateMultiplier adds value to the "image_rate_multiplier" field.
-func (_u *GroupUpdate) AddImageRateMultiplier(v float64) *GroupUpdate {
-	_u.mutation.AddImageRateMultiplier(v)
-	return _u
-}
-
-// SetImagePrice1k sets the "image_price_1k" field.
-func (_u *GroupUpdate) SetImagePrice1k(v float64) *GroupUpdate {
-	_u.mutation.ResetImagePrice1k()
-	_u.mutation.SetImagePrice1k(v)
-	return _u
-}
-
-// SetNillableImagePrice1k sets the "image_price_1k" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableImagePrice1k(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetImagePrice1k(*v)
-	}
-	return _u
-}
-
-// AddImagePrice1k adds value to the "image_price_1k" field.
-func (_u *GroupUpdate) AddImagePrice1k(v float64) *GroupUpdate {
-	_u.mutation.AddImagePrice1k(v)
-	return _u
-}
-
-// ClearImagePrice1k clears the value of the "image_price_1k" field.
-func (_u *GroupUpdate) ClearImagePrice1k() *GroupUpdate {
-	_u.mutation.ClearImagePrice1k()
-	return _u
-}
-
-// SetImagePrice2k sets the "image_price_2k" field.
-func (_u *GroupUpdate) SetImagePrice2k(v float64) *GroupUpdate {
-	_u.mutation.ResetImagePrice2k()
-	_u.mutation.SetImagePrice2k(v)
-	return _u
-}
-
-// SetNillableImagePrice2k sets the "image_price_2k" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableImagePrice2k(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetImagePrice2k(*v)
-	}
-	return _u
-}
-
-// AddImagePrice2k adds value to the "image_price_2k" field.
-func (_u *GroupUpdate) AddImagePrice2k(v float64) *GroupUpdate {
-	_u.mutation.AddImagePrice2k(v)
-	return _u
-}
-
-// ClearImagePrice2k clears the value of the "image_price_2k" field.
-func (_u *GroupUpdate) ClearImagePrice2k() *GroupUpdate {
-	_u.mutation.ClearImagePrice2k()
-	return _u
-}
-
-// SetImagePrice4k sets the "image_price_4k" field.
-func (_u *GroupUpdate) SetImagePrice4k(v float64) *GroupUpdate {
-	_u.mutation.ResetImagePrice4k()
-	_u.mutation.SetImagePrice4k(v)
-	return _u
-}
-
-// SetNillableImagePrice4k sets the "image_price_4k" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableImagePrice4k(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetImagePrice4k(*v)
-	}
-	return _u
-}
-
-// AddImagePrice4k adds value to the "image_price_4k" field.
-func (_u *GroupUpdate) AddImagePrice4k(v float64) *GroupUpdate {
-	_u.mutation.AddImagePrice4k(v)
-	return _u
-}
-
-// ClearImagePrice4k clears the value of the "image_price_4k" field.
-func (_u *GroupUpdate) ClearImagePrice4k() *GroupUpdate {
-	_u.mutation.ClearImagePrice4k()
-	return _u
-}
-
-// SetBatchImageDiscountMultiplier sets the "batch_image_discount_multiplier" field.
-func (_u *GroupUpdate) SetBatchImageDiscountMultiplier(v float64) *GroupUpdate {
-	_u.mutation.ResetBatchImageDiscountMultiplier()
-	_u.mutation.SetBatchImageDiscountMultiplier(v)
-	return _u
-}
-
-// SetNillableBatchImageDiscountMultiplier sets the "batch_image_discount_multiplier" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableBatchImageDiscountMultiplier(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetBatchImageDiscountMultiplier(*v)
-	}
-	return _u
-}
-
-// AddBatchImageDiscountMultiplier adds value to the "batch_image_discount_multiplier" field.
-func (_u *GroupUpdate) AddBatchImageDiscountMultiplier(v float64) *GroupUpdate {
-	_u.mutation.AddBatchImageDiscountMultiplier(v)
-	return _u
-}
-
-// SetBatchImageHoldMultiplier sets the "batch_image_hold_multiplier" field.
-func (_u *GroupUpdate) SetBatchImageHoldMultiplier(v float64) *GroupUpdate {
-	_u.mutation.ResetBatchImageHoldMultiplier()
-	_u.mutation.SetBatchImageHoldMultiplier(v)
-	return _u
-}
-
-// SetNillableBatchImageHoldMultiplier sets the "batch_image_hold_multiplier" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableBatchImageHoldMultiplier(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetBatchImageHoldMultiplier(*v)
-	}
-	return _u
-}
-
-// AddBatchImageHoldMultiplier adds value to the "batch_image_hold_multiplier" field.
-func (_u *GroupUpdate) AddBatchImageHoldMultiplier(v float64) *GroupUpdate {
-	_u.mutation.AddBatchImageHoldMultiplier(v)
-	return _u
-}
-
-// SetVideoRateIndependent sets the "video_rate_independent" field.
-func (_u *GroupUpdate) SetVideoRateIndependent(v bool) *GroupUpdate {
-	_u.mutation.SetVideoRateIndependent(v)
-	return _u
-}
-
-// SetNillableVideoRateIndependent sets the "video_rate_independent" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableVideoRateIndependent(v *bool) *GroupUpdate {
-	if v != nil {
-		_u.SetVideoRateIndependent(*v)
-	}
-	return _u
-}
-
-// SetVideoRateMultiplier sets the "video_rate_multiplier" field.
-func (_u *GroupUpdate) SetVideoRateMultiplier(v float64) *GroupUpdate {
-	_u.mutation.ResetVideoRateMultiplier()
-	_u.mutation.SetVideoRateMultiplier(v)
-	return _u
-}
-
-// SetNillableVideoRateMultiplier sets the "video_rate_multiplier" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableVideoRateMultiplier(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetVideoRateMultiplier(*v)
-	}
-	return _u
-}
-
-// AddVideoRateMultiplier adds value to the "video_rate_multiplier" field.
-func (_u *GroupUpdate) AddVideoRateMultiplier(v float64) *GroupUpdate {
-	_u.mutation.AddVideoRateMultiplier(v)
-	return _u
-}
-
-// SetVideoPrice480p sets the "video_price_480p" field.
-func (_u *GroupUpdate) SetVideoPrice480p(v float64) *GroupUpdate {
-	_u.mutation.ResetVideoPrice480p()
-	_u.mutation.SetVideoPrice480p(v)
-	return _u
-}
-
-// SetNillableVideoPrice480p sets the "video_price_480p" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableVideoPrice480p(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetVideoPrice480p(*v)
-	}
-	return _u
-}
-
-// AddVideoPrice480p adds value to the "video_price_480p" field.
-func (_u *GroupUpdate) AddVideoPrice480p(v float64) *GroupUpdate {
-	_u.mutation.AddVideoPrice480p(v)
-	return _u
-}
-
-// ClearVideoPrice480p clears the value of the "video_price_480p" field.
-func (_u *GroupUpdate) ClearVideoPrice480p() *GroupUpdate {
-	_u.mutation.ClearVideoPrice480p()
-	return _u
-}
-
-// SetVideoPrice720p sets the "video_price_720p" field.
-func (_u *GroupUpdate) SetVideoPrice720p(v float64) *GroupUpdate {
-	_u.mutation.ResetVideoPrice720p()
-	_u.mutation.SetVideoPrice720p(v)
-	return _u
-}
-
-// SetNillableVideoPrice720p sets the "video_price_720p" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableVideoPrice720p(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetVideoPrice720p(*v)
-	}
-	return _u
-}
-
-// AddVideoPrice720p adds value to the "video_price_720p" field.
-func (_u *GroupUpdate) AddVideoPrice720p(v float64) *GroupUpdate {
-	_u.mutation.AddVideoPrice720p(v)
-	return _u
-}
-
-// ClearVideoPrice720p clears the value of the "video_price_720p" field.
-func (_u *GroupUpdate) ClearVideoPrice720p() *GroupUpdate {
-	_u.mutation.ClearVideoPrice720p()
-	return _u
-}
-
-// SetVideoPrice1080p sets the "video_price_1080p" field.
-func (_u *GroupUpdate) SetVideoPrice1080p(v float64) *GroupUpdate {
-	_u.mutation.ResetVideoPrice1080p()
-	_u.mutation.SetVideoPrice1080p(v)
-	return _u
-}
-
-// SetNillableVideoPrice1080p sets the "video_price_1080p" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableVideoPrice1080p(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetVideoPrice1080p(*v)
-	}
-	return _u
-}
-
-// AddVideoPrice1080p adds value to the "video_price_1080p" field.
-func (_u *GroupUpdate) AddVideoPrice1080p(v float64) *GroupUpdate {
-	_u.mutation.AddVideoPrice1080p(v)
-	return _u
-}
-
-// ClearVideoPrice1080p clears the value of the "video_price_1080p" field.
-func (_u *GroupUpdate) ClearVideoPrice1080p() *GroupUpdate {
-	_u.mutation.ClearVideoPrice1080p()
-	return _u
-}
-
-// SetVideoModelPrices sets the "video_model_prices" field.
-func (_u *GroupUpdate) SetVideoModelPrices(v map[string]map[string]float64) *GroupUpdate {
-	_u.mutation.SetVideoModelPrices(v)
-	return _u
-}
-
-// ClearVideoModelPrices clears the value of the "video_model_prices" field.
-func (_u *GroupUpdate) ClearVideoModelPrices() *GroupUpdate {
-	_u.mutation.ClearVideoModelPrices()
-	return _u
-}
-
-// SetWebSearchPricePerCall sets the "web_search_price_per_call" field.
-func (_u *GroupUpdate) SetWebSearchPricePerCall(v float64) *GroupUpdate {
-	_u.mutation.ResetWebSearchPricePerCall()
-	_u.mutation.SetWebSearchPricePerCall(v)
-	return _u
-}
-
-// SetNillableWebSearchPricePerCall sets the "web_search_price_per_call" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableWebSearchPricePerCall(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetWebSearchPricePerCall(*v)
-	}
-	return _u
-}
-
-// AddWebSearchPricePerCall adds value to the "web_search_price_per_call" field.
-func (_u *GroupUpdate) AddWebSearchPricePerCall(v float64) *GroupUpdate {
-	_u.mutation.AddWebSearchPricePerCall(v)
-	return _u
-}
-
-// ClearWebSearchPricePerCall clears the value of the "web_search_price_per_call" field.
-func (_u *GroupUpdate) ClearWebSearchPricePerCall() *GroupUpdate {
-	_u.mutation.ClearWebSearchPricePerCall()
-	return _u
-}
-
-// SetSearchPricePer1k sets the "search_price_per_1k" field.
-func (_u *GroupUpdate) SetSearchPricePer1k(v float64) *GroupUpdate {
-	_u.mutation.ResetSearchPricePer1k()
-	_u.mutation.SetSearchPricePer1k(v)
-	return _u
-}
-
-// SetNillableSearchPricePer1k sets the "search_price_per_1k" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableSearchPricePer1k(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetSearchPricePer1k(*v)
-	}
-	return _u
-}
-
-// AddSearchPricePer1k adds value to the "search_price_per_1k" field.
-func (_u *GroupUpdate) AddSearchPricePer1k(v float64) *GroupUpdate {
-	_u.mutation.AddSearchPricePer1k(v)
-	return _u
-}
-
-// ClearSearchPricePer1k clears the value of the "search_price_per_1k" field.
-func (_u *GroupUpdate) ClearSearchPricePer1k() *GroupUpdate {
-	_u.mutation.ClearSearchPricePer1k()
-	return _u
-}
-
-// SetAudioRealtimePricePerMin sets the "audio_realtime_price_per_min" field.
-func (_u *GroupUpdate) SetAudioRealtimePricePerMin(v float64) *GroupUpdate {
-	_u.mutation.ResetAudioRealtimePricePerMin()
-	_u.mutation.SetAudioRealtimePricePerMin(v)
-	return _u
-}
-
-// SetNillableAudioRealtimePricePerMin sets the "audio_realtime_price_per_min" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableAudioRealtimePricePerMin(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetAudioRealtimePricePerMin(*v)
-	}
-	return _u
-}
-
-// AddAudioRealtimePricePerMin adds value to the "audio_realtime_price_per_min" field.
-func (_u *GroupUpdate) AddAudioRealtimePricePerMin(v float64) *GroupUpdate {
-	_u.mutation.AddAudioRealtimePricePerMin(v)
-	return _u
-}
-
-// ClearAudioRealtimePricePerMin clears the value of the "audio_realtime_price_per_min" field.
-func (_u *GroupUpdate) ClearAudioRealtimePricePerMin() *GroupUpdate {
-	_u.mutation.ClearAudioRealtimePricePerMin()
-	return _u
-}
-
-// SetAudioTtsPricePerMillionChars sets the "audio_tts_price_per_million_chars" field.
-func (_u *GroupUpdate) SetAudioTtsPricePerMillionChars(v float64) *GroupUpdate {
-	_u.mutation.ResetAudioTtsPricePerMillionChars()
-	_u.mutation.SetAudioTtsPricePerMillionChars(v)
-	return _u
-}
-
-// SetNillableAudioTtsPricePerMillionChars sets the "audio_tts_price_per_million_chars" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableAudioTtsPricePerMillionChars(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetAudioTtsPricePerMillionChars(*v)
-	}
-	return _u
-}
-
-// AddAudioTtsPricePerMillionChars adds value to the "audio_tts_price_per_million_chars" field.
-func (_u *GroupUpdate) AddAudioTtsPricePerMillionChars(v float64) *GroupUpdate {
-	_u.mutation.AddAudioTtsPricePerMillionChars(v)
-	return _u
-}
-
-// ClearAudioTtsPricePerMillionChars clears the value of the "audio_tts_price_per_million_chars" field.
-func (_u *GroupUpdate) ClearAudioTtsPricePerMillionChars() *GroupUpdate {
-	_u.mutation.ClearAudioTtsPricePerMillionChars()
-	return _u
-}
-
-// SetAudioSttPricePerHour sets the "audio_stt_price_per_hour" field.
-func (_u *GroupUpdate) SetAudioSttPricePerHour(v float64) *GroupUpdate {
-	_u.mutation.ResetAudioSttPricePerHour()
-	_u.mutation.SetAudioSttPricePerHour(v)
-	return _u
-}
-
-// SetNillableAudioSttPricePerHour sets the "audio_stt_price_per_hour" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableAudioSttPricePerHour(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetAudioSttPricePerHour(*v)
-	}
-	return _u
-}
-
-// AddAudioSttPricePerHour adds value to the "audio_stt_price_per_hour" field.
-func (_u *GroupUpdate) AddAudioSttPricePerHour(v float64) *GroupUpdate {
-	_u.mutation.AddAudioSttPricePerHour(v)
-	return _u
-}
-
-// ClearAudioSttPricePerHour clears the value of the "audio_stt_price_per_hour" field.
-func (_u *GroupUpdate) ClearAudioSttPricePerHour() *GroupUpdate {
-	_u.mutation.ClearAudioSttPricePerHour()
-	return _u
-}
-
-// SetLongContextPricingEnabled sets the "long_context_pricing_enabled" field.
-func (_u *GroupUpdate) SetLongContextPricingEnabled(v bool) *GroupUpdate {
-	_u.mutation.SetLongContextPricingEnabled(v)
-	return _u
-}
-
-// SetNillableLongContextPricingEnabled sets the "long_context_pricing_enabled" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableLongContextPricingEnabled(v *bool) *GroupUpdate {
-	if v != nil {
-		_u.SetLongContextPricingEnabled(*v)
-	}
-	return _u
-}
-
-// SetModelPricing sets the "model_pricing" field.
-func (_u *GroupUpdate) SetModelPricing(v jsontext.Value) *GroupUpdate {
-	_u.mutation.SetModelPricing(v)
-	return _u
-}
-
-// AppendModelPricing appends value to the "model_pricing" field.
-func (_u *GroupUpdate) AppendModelPricing(v jsontext.Value) *GroupUpdate {
-	_u.mutation.AppendModelPricing(v)
-	return _u
-}
-
-// ClearModelPricing clears the value of the "model_pricing" field.
-func (_u *GroupUpdate) ClearModelPricing() *GroupUpdate {
-	_u.mutation.ClearModelPricing()
+// ClearRoutingPolicy clears the value of the "routing_policy" field.
+func (_u *GroupUpdate) ClearRoutingPolicy() *GroupUpdate {
+	_u.mutation.ClearRoutingPolicy()
 	return _u
 }
 
@@ -941,15 +417,35 @@ func (_u *GroupUpdate) SetNillableAllowMessagesDispatch(v *bool) *GroupUpdate {
 	return _u
 }
 
-// SetAllowedClientProtocols sets the "allowed_client_protocols" field.
-func (_u *GroupUpdate) SetAllowedClientProtocols(v []domain.GroupClientProtocol) *GroupUpdate {
-	_u.mutation.SetAllowedClientProtocols(v)
+// SetAllowedProtocols sets the "allowed_protocols" field.
+func (_u *GroupUpdate) SetAllowedProtocols(v []protocol.ProtocolID) *GroupUpdate {
+	_u.mutation.SetAllowedProtocols(v)
 	return _u
 }
 
-// AppendAllowedClientProtocols appends value to the "allowed_client_protocols" field.
-func (_u *GroupUpdate) AppendAllowedClientProtocols(v []domain.GroupClientProtocol) *GroupUpdate {
-	_u.mutation.AppendAllowedClientProtocols(v)
+// AppendAllowedProtocols appends value to the "allowed_protocols" field.
+func (_u *GroupUpdate) AppendAllowedProtocols(v []protocol.ProtocolID) *GroupUpdate {
+	_u.mutation.AppendAllowedProtocols(v)
+	return _u
+}
+
+// SetProtocolFallbacks sets the "protocol_fallbacks" field.
+func (_u *GroupUpdate) SetProtocolFallbacks(v map[protocol.ProtocolID][]protocol.ProtocolID) *GroupUpdate {
+	_u.mutation.SetProtocolFallbacks(v)
+	return _u
+}
+
+// SetResponsesImagePolicy sets the "responses_image_policy" field.
+func (_u *GroupUpdate) SetResponsesImagePolicy(v string) *GroupUpdate {
+	_u.mutation.SetResponsesImagePolicy(v)
+	return _u
+}
+
+// SetNillableResponsesImagePolicy sets the "responses_image_policy" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableResponsesImagePolicy(v *string) *GroupUpdate {
+	if v != nil {
+		_u.SetResponsesImagePolicy(*v)
+	}
 	return _u
 }
 
@@ -967,6 +463,20 @@ func (_u *GroupUpdate) SetNillableAllowLive(v *bool) *GroupUpdate {
 	return _u
 }
 
+// SetOpenaiFastPolicy sets the "openai_fast_policy" field.
+func (_u *GroupUpdate) SetOpenaiFastPolicy(v string) *GroupUpdate {
+	_u.mutation.SetOpenaiFastPolicy(v)
+	return _u
+}
+
+// SetNillableOpenaiFastPolicy sets the "openai_fast_policy" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableOpenaiFastPolicy(v *string) *GroupUpdate {
+	if v != nil {
+		_u.SetOpenaiFastPolicy(*v)
+	}
+	return _u
+}
+
 // SetForceOpenaiFast sets the "force_openai_fast" field.
 func (_u *GroupUpdate) SetForceOpenaiFast(v bool) *GroupUpdate {
 	_u.mutation.SetForceOpenaiFast(v)
@@ -977,20 +487,6 @@ func (_u *GroupUpdate) SetForceOpenaiFast(v bool) *GroupUpdate {
 func (_u *GroupUpdate) SetNillableForceOpenaiFast(v *bool) *GroupUpdate {
 	if v != nil {
 		_u.SetForceOpenaiFast(*v)
-	}
-	return _u
-}
-
-// SetFreeOpenaiFast sets the "free_openai_fast" field.
-func (_u *GroupUpdate) SetFreeOpenaiFast(v bool) *GroupUpdate {
-	_u.mutation.SetFreeOpenaiFast(v)
-	return _u
-}
-
-// SetNillableFreeOpenaiFast sets the "free_openai_fast" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableFreeOpenaiFast(v *bool) *GroupUpdate {
-	if v != nil {
-		_u.SetFreeOpenaiFast(*v)
 	}
 	return _u
 }
@@ -1037,56 +533,42 @@ func (_u *GroupUpdate) SetNillableDefaultMappedModel(v *string) *GroupUpdate {
 	return _u
 }
 
-// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
-func (_u *GroupUpdate) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupUpdate {
-	_u.mutation.SetMessagesDispatchModelConfig(v)
-	return _u
-}
-
-// SetNillableMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableMessagesDispatchModelConfig(v *domain.OpenAIMessagesDispatchModelConfig) *GroupUpdate {
-	if v != nil {
-		_u.SetMessagesDispatchModelConfig(*v)
-	}
-	return _u
-}
-
-// SetModelAllowlist sets the "model_allowlist" field.
-func (_u *GroupUpdate) SetModelAllowlist(v domain.GroupModelAllowlist) *GroupUpdate {
-	_u.mutation.SetModelAllowlist(v)
-	return _u
-}
-
-// SetNillableModelAllowlist sets the "model_allowlist" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableModelAllowlist(v *domain.GroupModelAllowlist) *GroupUpdate {
-	if v != nil {
-		_u.SetModelAllowlist(*v)
-	}
-	return _u
-}
-
 // SetModelsListConfig sets the "models_list_config" field.
-func (_u *GroupUpdate) SetModelsListConfig(v domain.GroupModelsListConfig) *GroupUpdate {
+func (_u *GroupUpdate) SetModelsListConfig(v accessview.GroupModelsListConfig) *GroupUpdate {
 	_u.mutation.SetModelsListConfig(v)
 	return _u
 }
 
 // SetNillableModelsListConfig sets the "models_list_config" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableModelsListConfig(v *domain.GroupModelsListConfig) *GroupUpdate {
+func (_u *GroupUpdate) SetNillableModelsListConfig(v *accessview.GroupModelsListConfig) *GroupUpdate {
 	if v != nil {
 		_u.SetModelsListConfig(*v)
 	}
 	return _u
 }
 
+// SetModelAllowlist sets the "model_allowlist" field.
+func (_u *GroupUpdate) SetModelAllowlist(v accessview.GroupModelAllowlist) *GroupUpdate {
+	_u.mutation.SetModelAllowlist(v)
+	return _u
+}
+
+// SetNillableModelAllowlist sets the "model_allowlist" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableModelAllowlist(v *accessview.GroupModelAllowlist) *GroupUpdate {
+	if v != nil {
+		_u.SetModelAllowlist(*v)
+	}
+	return _u
+}
+
 // SetAvailabilityProbeConfig sets the "availability_probe_config" field.
-func (_u *GroupUpdate) SetAvailabilityProbeConfig(v domain.GroupAvailabilityProbeConfig) *GroupUpdate {
+func (_u *GroupUpdate) SetAvailabilityProbeConfig(v accessview.GroupAvailabilityProbeConfig) *GroupUpdate {
 	_u.mutation.SetAvailabilityProbeConfig(v)
 	return _u
 }
 
 // SetNillableAvailabilityProbeConfig sets the "availability_probe_config" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableAvailabilityProbeConfig(v *domain.GroupAvailabilityProbeConfig) *GroupUpdate {
+func (_u *GroupUpdate) SetNillableAvailabilityProbeConfig(v *accessview.GroupAvailabilityProbeConfig) *GroupUpdate {
 	if v != nil {
 		_u.SetAvailabilityProbeConfig(*v)
 	}
@@ -1143,13 +625,13 @@ func (_u *GroupUpdate) SetNillableMaxReasoningEffortOverLimit(v *string) *GroupU
 }
 
 // SetReasoningEffortMappings sets the "reasoning_effort_mappings" field.
-func (_u *GroupUpdate) SetReasoningEffortMappings(v []domain.ReasoningEffortMapping) *GroupUpdate {
+func (_u *GroupUpdate) SetReasoningEffortMappings(v []accessview.ReasoningEffortMapping) *GroupUpdate {
 	_u.mutation.SetReasoningEffortMappings(v)
 	return _u
 }
 
 // AppendReasoningEffortMappings appends value to the "reasoning_effort_mappings" field.
-func (_u *GroupUpdate) AppendReasoningEffortMappings(v []domain.ReasoningEffortMapping) *GroupUpdate {
+func (_u *GroupUpdate) AppendReasoningEffortMappings(v []accessview.ReasoningEffortMapping) *GroupUpdate {
 	_u.mutation.AppendReasoningEffortMappings(v)
 	return _u
 }
@@ -1213,19 +695,19 @@ func (_u *GroupUpdate) AddUsageLogs(v ...*UsageLog) *GroupUpdate {
 	return _u.AddUsageLogIDs(ids...)
 }
 
-// AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
-func (_u *GroupUpdate) AddAccountIDs(ids ...int64) *GroupUpdate {
-	_u.mutation.AddAccountIDs(ids...)
+// AddProviderIDs adds the "providers" edge to the Provider entity by IDs.
+func (_u *GroupUpdate) AddProviderIDs(ids ...int64) *GroupUpdate {
+	_u.mutation.AddProviderIDs(ids...)
 	return _u
 }
 
-// AddAccounts adds the "accounts" edges to the Account entity.
-func (_u *GroupUpdate) AddAccounts(v ...*Account) *GroupUpdate {
+// AddProviders adds the "providers" edges to the Provider entity.
+func (_u *GroupUpdate) AddProviders(v ...*Provider) *GroupUpdate {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.AddAccountIDs(ids...)
+	return _u.AddProviderIDs(ids...)
 }
 
 // AddAllowedUserIDs adds the "allowed_users" edge to the User entity by IDs.
@@ -1326,25 +808,25 @@ func (_u *GroupUpdate) RemoveUsageLogs(v ...*UsageLog) *GroupUpdate {
 	return _u.RemoveUsageLogIDs(ids...)
 }
 
-// ClearAccounts clears all "accounts" edges to the Account entity.
-func (_u *GroupUpdate) ClearAccounts() *GroupUpdate {
-	_u.mutation.ClearAccounts()
+// ClearProviders clears all "providers" edges to the Provider entity.
+func (_u *GroupUpdate) ClearProviders() *GroupUpdate {
+	_u.mutation.ClearProviders()
 	return _u
 }
 
-// RemoveAccountIDs removes the "accounts" edge to Account entities by IDs.
-func (_u *GroupUpdate) RemoveAccountIDs(ids ...int64) *GroupUpdate {
-	_u.mutation.RemoveAccountIDs(ids...)
+// RemoveProviderIDs removes the "providers" edge to Provider entities by IDs.
+func (_u *GroupUpdate) RemoveProviderIDs(ids ...int64) *GroupUpdate {
+	_u.mutation.RemoveProviderIDs(ids...)
 	return _u
 }
 
-// RemoveAccounts removes "accounts" edges to Account entities.
-func (_u *GroupUpdate) RemoveAccounts(v ...*Account) *GroupUpdate {
+// RemoveProviders removes "providers" edges to Provider entities.
+func (_u *GroupUpdate) RemoveProviders(v ...*Provider) *GroupUpdate {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.RemoveAccountIDs(ids...)
+	return _u.RemoveProviderIDs(ids...)
 }
 
 // ClearAllowedUsers clears all "allowed_users" edges to the User entity.
@@ -1438,24 +920,9 @@ func (_u *GroupUpdate) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Group.name": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.PeakStart(); ok {
-		if err := group.PeakStartValidator(v); err != nil {
-			return &ValidationError{Name: "peak_start", err: fmt.Errorf(`ent: validator failed for field "Group.peak_start": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.PeakEnd(); ok {
-		if err := group.PeakEndValidator(v); err != nil {
-			return &ValidationError{Name: "peak_end", err: fmt.Errorf(`ent: validator failed for field "Group.peak_end": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := group.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Group.status": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.Platform(); ok {
-		if err := group.PlatformValidator(v); err != nil {
-			return &ValidationError{Name: "platform", err: fmt.Errorf(`ent: validator failed for field "Group.platform": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.SchedulerType(); ok {
@@ -1466,26 +933,6 @@ func (_u *GroupUpdate) check() error {
 	if v, ok := _u.mutation.DisplayBrand(); ok {
 		if err := group.DisplayBrandValidator(v); err != nil {
 			return &ValidationError{Name: "display_brand", err: fmt.Errorf(`ent: validator failed for field "Group.display_brand": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.SearchPricePer1k(); ok {
-		if err := group.SearchPricePer1kValidator(v); err != nil {
-			return &ValidationError{Name: "search_price_per_1k", err: fmt.Errorf(`ent: validator failed for field "Group.search_price_per_1k": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.AudioRealtimePricePerMin(); ok {
-		if err := group.AudioRealtimePricePerMinValidator(v); err != nil {
-			return &ValidationError{Name: "audio_realtime_price_per_min", err: fmt.Errorf(`ent: validator failed for field "Group.audio_realtime_price_per_min": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.AudioTtsPricePerMillionChars(); ok {
-		if err := group.AudioTtsPricePerMillionCharsValidator(v); err != nil {
-			return &ValidationError{Name: "audio_tts_price_per_million_chars", err: fmt.Errorf(`ent: validator failed for field "Group.audio_tts_price_per_million_chars": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.AudioSttPricePerHour(); ok {
-		if err := group.AudioSttPricePerHourValidator(v); err != nil {
-			return &ValidationError{Name: "audio_stt_price_per_hour", err: fmt.Errorf(`ent: validator failed for field "Group.audio_stt_price_per_hour": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.DefaultMappedModel(); ok {
@@ -1542,35 +989,14 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedRateMultiplier(); ok {
 		_spec.AddField(group.FieldRateMultiplier, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.PeakRateEnabled(); ok {
-		_spec.SetField(group.FieldPeakRateEnabled, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.PeakStart(); ok {
-		_spec.SetField(group.FieldPeakStart, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.PeakEnd(); ok {
-		_spec.SetField(group.FieldPeakEnd, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.PeakRateMultiplier(); ok {
-		_spec.SetField(group.FieldPeakRateMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedPeakRateMultiplier(); ok {
-		_spec.AddField(group.FieldPeakRateMultiplier, field.TypeFloat64, value)
-	}
 	if value, ok := _u.mutation.IsExclusive(); ok {
 		_spec.SetField(group.FieldIsExclusive, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.IsDefault(); ok {
-		_spec.SetField(group.FieldIsDefault, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(group.FieldStatus, field.TypeString, value)
 	}
 	if _u.mutation.DuplicateOperationIDCleared() {
 		_spec.ClearField(group.FieldDuplicateOperationID, field.TypeString)
-	}
-	if value, ok := _u.mutation.Platform(); ok {
-		_spec.SetField(group.FieldPlatform, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.SchedulerType(); ok {
 		_spec.SetField(group.FieldSchedulerType, field.TypeString, value)
@@ -1587,154 +1013,16 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AllowBatchImageGeneration(); ok {
 		_spec.SetField(group.FieldAllowBatchImageGeneration, field.TypeBool, value)
 	}
-	if value, ok := _u.mutation.ImageRateIndependent(); ok {
-		_spec.SetField(group.FieldImageRateIndependent, field.TypeBool, value)
+	if value, ok := _u.mutation.RoutingPolicy(); ok {
+		_spec.SetField(group.FieldRoutingPolicy, field.TypeJSON, value)
 	}
-	if value, ok := _u.mutation.ImageRateMultiplier(); ok {
-		_spec.SetField(group.FieldImageRateMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedImageRateMultiplier(); ok {
-		_spec.AddField(group.FieldImageRateMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.ImagePrice1k(); ok {
-		_spec.SetField(group.FieldImagePrice1k, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedImagePrice1k(); ok {
-		_spec.AddField(group.FieldImagePrice1k, field.TypeFloat64, value)
-	}
-	if _u.mutation.ImagePrice1kCleared() {
-		_spec.ClearField(group.FieldImagePrice1k, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.ImagePrice2k(); ok {
-		_spec.SetField(group.FieldImagePrice2k, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedImagePrice2k(); ok {
-		_spec.AddField(group.FieldImagePrice2k, field.TypeFloat64, value)
-	}
-	if _u.mutation.ImagePrice2kCleared() {
-		_spec.ClearField(group.FieldImagePrice2k, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.ImagePrice4k(); ok {
-		_spec.SetField(group.FieldImagePrice4k, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedImagePrice4k(); ok {
-		_spec.AddField(group.FieldImagePrice4k, field.TypeFloat64, value)
-	}
-	if _u.mutation.ImagePrice4kCleared() {
-		_spec.ClearField(group.FieldImagePrice4k, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.BatchImageDiscountMultiplier(); ok {
-		_spec.SetField(group.FieldBatchImageDiscountMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedBatchImageDiscountMultiplier(); ok {
-		_spec.AddField(group.FieldBatchImageDiscountMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.BatchImageHoldMultiplier(); ok {
-		_spec.SetField(group.FieldBatchImageHoldMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedBatchImageHoldMultiplier(); ok {
-		_spec.AddField(group.FieldBatchImageHoldMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.VideoRateIndependent(); ok {
-		_spec.SetField(group.FieldVideoRateIndependent, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.VideoRateMultiplier(); ok {
-		_spec.SetField(group.FieldVideoRateMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedVideoRateMultiplier(); ok {
-		_spec.AddField(group.FieldVideoRateMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.VideoPrice480p(); ok {
-		_spec.SetField(group.FieldVideoPrice480p, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedVideoPrice480p(); ok {
-		_spec.AddField(group.FieldVideoPrice480p, field.TypeFloat64, value)
-	}
-	if _u.mutation.VideoPrice480pCleared() {
-		_spec.ClearField(group.FieldVideoPrice480p, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.VideoPrice720p(); ok {
-		_spec.SetField(group.FieldVideoPrice720p, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedVideoPrice720p(); ok {
-		_spec.AddField(group.FieldVideoPrice720p, field.TypeFloat64, value)
-	}
-	if _u.mutation.VideoPrice720pCleared() {
-		_spec.ClearField(group.FieldVideoPrice720p, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.VideoPrice1080p(); ok {
-		_spec.SetField(group.FieldVideoPrice1080p, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedVideoPrice1080p(); ok {
-		_spec.AddField(group.FieldVideoPrice1080p, field.TypeFloat64, value)
-	}
-	if _u.mutation.VideoPrice1080pCleared() {
-		_spec.ClearField(group.FieldVideoPrice1080p, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.VideoModelPrices(); ok {
-		_spec.SetField(group.FieldVideoModelPrices, field.TypeJSON, value)
-	}
-	if _u.mutation.VideoModelPricesCleared() {
-		_spec.ClearField(group.FieldVideoModelPrices, field.TypeJSON)
-	}
-	if value, ok := _u.mutation.WebSearchPricePerCall(); ok {
-		_spec.SetField(group.FieldWebSearchPricePerCall, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedWebSearchPricePerCall(); ok {
-		_spec.AddField(group.FieldWebSearchPricePerCall, field.TypeFloat64, value)
-	}
-	if _u.mutation.WebSearchPricePerCallCleared() {
-		_spec.ClearField(group.FieldWebSearchPricePerCall, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.SearchPricePer1k(); ok {
-		_spec.SetField(group.FieldSearchPricePer1k, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedSearchPricePer1k(); ok {
-		_spec.AddField(group.FieldSearchPricePer1k, field.TypeFloat64, value)
-	}
-	if _u.mutation.SearchPricePer1kCleared() {
-		_spec.ClearField(group.FieldSearchPricePer1k, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.AudioRealtimePricePerMin(); ok {
-		_spec.SetField(group.FieldAudioRealtimePricePerMin, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedAudioRealtimePricePerMin(); ok {
-		_spec.AddField(group.FieldAudioRealtimePricePerMin, field.TypeFloat64, value)
-	}
-	if _u.mutation.AudioRealtimePricePerMinCleared() {
-		_spec.ClearField(group.FieldAudioRealtimePricePerMin, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.AudioTtsPricePerMillionChars(); ok {
-		_spec.SetField(group.FieldAudioTtsPricePerMillionChars, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedAudioTtsPricePerMillionChars(); ok {
-		_spec.AddField(group.FieldAudioTtsPricePerMillionChars, field.TypeFloat64, value)
-	}
-	if _u.mutation.AudioTtsPricePerMillionCharsCleared() {
-		_spec.ClearField(group.FieldAudioTtsPricePerMillionChars, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.AudioSttPricePerHour(); ok {
-		_spec.SetField(group.FieldAudioSttPricePerHour, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedAudioSttPricePerHour(); ok {
-		_spec.AddField(group.FieldAudioSttPricePerHour, field.TypeFloat64, value)
-	}
-	if _u.mutation.AudioSttPricePerHourCleared() {
-		_spec.ClearField(group.FieldAudioSttPricePerHour, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.LongContextPricingEnabled(); ok {
-		_spec.SetField(group.FieldLongContextPricingEnabled, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.ModelPricing(); ok {
-		_spec.SetField(group.FieldModelPricing, field.TypeJSON, value)
-	}
-	if value, ok := _u.mutation.AppendedModelPricing(); ok {
+	if value, ok := _u.mutation.AppendedRoutingPolicy(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, group.FieldModelPricing, value)
+			sqljson.Append(u, group.FieldRoutingPolicy, value)
 		})
 	}
-	if _u.mutation.ModelPricingCleared() {
-		_spec.ClearField(group.FieldModelPricing, field.TypeJSON)
+	if _u.mutation.RoutingPolicyCleared() {
+		_spec.ClearField(group.FieldRoutingPolicy, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.ClaudeCodeOnly(); ok {
 		_spec.SetField(group.FieldClaudeCodeOnly, field.TypeBool, value)
@@ -1795,22 +1083,28 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AllowMessagesDispatch(); ok {
 		_spec.SetField(group.FieldAllowMessagesDispatch, field.TypeBool, value)
 	}
-	if value, ok := _u.mutation.AllowedClientProtocols(); ok {
-		_spec.SetField(group.FieldAllowedClientProtocols, field.TypeJSON, value)
+	if value, ok := _u.mutation.AllowedProtocols(); ok {
+		_spec.SetField(group.FieldAllowedProtocols, field.TypeJSON, value)
 	}
-	if value, ok := _u.mutation.AppendedAllowedClientProtocols(); ok {
+	if value, ok := _u.mutation.AppendedAllowedProtocols(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, group.FieldAllowedClientProtocols, value)
+			sqljson.Append(u, group.FieldAllowedProtocols, value)
 		})
+	}
+	if value, ok := _u.mutation.ProtocolFallbacks(); ok {
+		_spec.SetField(group.FieldProtocolFallbacks, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.ResponsesImagePolicy(); ok {
+		_spec.SetField(group.FieldResponsesImagePolicy, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.AllowLive(); ok {
 		_spec.SetField(group.FieldAllowLive, field.TypeBool, value)
 	}
+	if value, ok := _u.mutation.OpenaiFastPolicy(); ok {
+		_spec.SetField(group.FieldOpenaiFastPolicy, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.ForceOpenaiFast(); ok {
 		_spec.SetField(group.FieldForceOpenaiFast, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.FreeOpenaiFast(); ok {
-		_spec.SetField(group.FieldFreeOpenaiFast, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.RequireOauthOnly(); ok {
 		_spec.SetField(group.FieldRequireOauthOnly, field.TypeBool, value)
@@ -1821,14 +1115,11 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.DefaultMappedModel(); ok {
 		_spec.SetField(group.FieldDefaultMappedModel, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.MessagesDispatchModelConfig(); ok {
-		_spec.SetField(group.FieldMessagesDispatchModelConfig, field.TypeJSON, value)
+	if value, ok := _u.mutation.ModelsListConfig(); ok {
+		_spec.SetField(group.FieldModelsListConfig, field.TypeJSON, value)
 	}
 	if value, ok := _u.mutation.ModelAllowlist(); ok {
 		_spec.SetField(group.FieldModelAllowlist, field.TypeJSON, value)
-	}
-	if value, ok := _u.mutation.ModelsListConfig(); ok {
-		_spec.SetField(group.FieldModelsListConfig, field.TypeJSON, value)
 	}
 	if value, ok := _u.mutation.AvailabilityProbeConfig(); ok {
 		_spec.SetField(group.FieldAvailabilityProbeConfig, field.TypeJSON, value)
@@ -1991,58 +1282,58 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if _u.mutation.AccountsCleared() {
+	if _u.mutation.ProvidersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
-		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _u.config, mutation: newProviderGroupMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RemovedAccountsIDs(); len(nodes) > 0 && !_u.mutation.AccountsCleared() {
+	if nodes := _u.mutation.RemovedProvidersIDs(); len(nodes) > 0 && !_u.mutation.ProvidersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _u.config, mutation: newProviderGroupMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.AccountsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ProvidersIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _u.config, mutation: newProviderGroupMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
@@ -2263,69 +1554,6 @@ func (_u *GroupUpdateOne) AddRateMultiplier(v float64) *GroupUpdateOne {
 	return _u
 }
 
-// SetPeakRateEnabled sets the "peak_rate_enabled" field.
-func (_u *GroupUpdateOne) SetPeakRateEnabled(v bool) *GroupUpdateOne {
-	_u.mutation.SetPeakRateEnabled(v)
-	return _u
-}
-
-// SetNillablePeakRateEnabled sets the "peak_rate_enabled" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillablePeakRateEnabled(v *bool) *GroupUpdateOne {
-	if v != nil {
-		_u.SetPeakRateEnabled(*v)
-	}
-	return _u
-}
-
-// SetPeakStart sets the "peak_start" field.
-func (_u *GroupUpdateOne) SetPeakStart(v string) *GroupUpdateOne {
-	_u.mutation.SetPeakStart(v)
-	return _u
-}
-
-// SetNillablePeakStart sets the "peak_start" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillablePeakStart(v *string) *GroupUpdateOne {
-	if v != nil {
-		_u.SetPeakStart(*v)
-	}
-	return _u
-}
-
-// SetPeakEnd sets the "peak_end" field.
-func (_u *GroupUpdateOne) SetPeakEnd(v string) *GroupUpdateOne {
-	_u.mutation.SetPeakEnd(v)
-	return _u
-}
-
-// SetNillablePeakEnd sets the "peak_end" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillablePeakEnd(v *string) *GroupUpdateOne {
-	if v != nil {
-		_u.SetPeakEnd(*v)
-	}
-	return _u
-}
-
-// SetPeakRateMultiplier sets the "peak_rate_multiplier" field.
-func (_u *GroupUpdateOne) SetPeakRateMultiplier(v float64) *GroupUpdateOne {
-	_u.mutation.ResetPeakRateMultiplier()
-	_u.mutation.SetPeakRateMultiplier(v)
-	return _u
-}
-
-// SetNillablePeakRateMultiplier sets the "peak_rate_multiplier" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillablePeakRateMultiplier(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetPeakRateMultiplier(*v)
-	}
-	return _u
-}
-
-// AddPeakRateMultiplier adds value to the "peak_rate_multiplier" field.
-func (_u *GroupUpdateOne) AddPeakRateMultiplier(v float64) *GroupUpdateOne {
-	_u.mutation.AddPeakRateMultiplier(v)
-	return _u
-}
-
 // SetIsExclusive sets the "is_exclusive" field.
 func (_u *GroupUpdateOne) SetIsExclusive(v bool) *GroupUpdateOne {
 	_u.mutation.SetIsExclusive(v)
@@ -2340,20 +1568,6 @@ func (_u *GroupUpdateOne) SetNillableIsExclusive(v *bool) *GroupUpdateOne {
 	return _u
 }
 
-// SetIsDefault sets the "is_default" field.
-func (_u *GroupUpdateOne) SetIsDefault(v bool) *GroupUpdateOne {
-	_u.mutation.SetIsDefault(v)
-	return _u
-}
-
-// SetNillableIsDefault sets the "is_default" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableIsDefault(v *bool) *GroupUpdateOne {
-	if v != nil {
-		_u.SetIsDefault(*v)
-	}
-	return _u
-}
-
 // SetStatus sets the "status" field.
 func (_u *GroupUpdateOne) SetStatus(v string) *GroupUpdateOne {
 	_u.mutation.SetStatus(v)
@@ -2364,20 +1578,6 @@ func (_u *GroupUpdateOne) SetStatus(v string) *GroupUpdateOne {
 func (_u *GroupUpdateOne) SetNillableStatus(v *string) *GroupUpdateOne {
 	if v != nil {
 		_u.SetStatus(*v)
-	}
-	return _u
-}
-
-// SetPlatform sets the "platform" field.
-func (_u *GroupUpdateOne) SetPlatform(v string) *GroupUpdateOne {
-	_u.mutation.SetPlatform(v)
-	return _u
-}
-
-// SetNillablePlatform sets the "platform" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillablePlatform(v *string) *GroupUpdateOne {
-	if v != nil {
-		_u.SetPlatform(*v)
 	}
 	return _u
 }
@@ -2397,13 +1597,13 @@ func (_u *GroupUpdateOne) SetNillableSchedulerType(v *string) *GroupUpdateOne {
 }
 
 // SetAdvancedSchedulerOverrides sets the "advanced_scheduler_overrides" field.
-func (_u *GroupUpdateOne) SetAdvancedSchedulerOverrides(v domain.GroupAdvancedSchedulerOverrides) *GroupUpdateOne {
+func (_u *GroupUpdateOne) SetAdvancedSchedulerOverrides(v policy.GroupAdvancedSchedulerOverrides) *GroupUpdateOne {
 	_u.mutation.SetAdvancedSchedulerOverrides(v)
 	return _u
 }
 
 // SetNillableAdvancedSchedulerOverrides sets the "advanced_scheduler_overrides" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableAdvancedSchedulerOverrides(v *domain.GroupAdvancedSchedulerOverrides) *GroupUpdateOne {
+func (_u *GroupUpdateOne) SetNillableAdvancedSchedulerOverrides(v *policy.GroupAdvancedSchedulerOverrides) *GroupUpdateOne {
 	if v != nil {
 		_u.SetAdvancedSchedulerOverrides(*v)
 	}
@@ -2452,456 +1652,21 @@ func (_u *GroupUpdateOne) SetNillableAllowBatchImageGeneration(v *bool) *GroupUp
 	return _u
 }
 
-// SetImageRateIndependent sets the "image_rate_independent" field.
-func (_u *GroupUpdateOne) SetImageRateIndependent(v bool) *GroupUpdateOne {
-	_u.mutation.SetImageRateIndependent(v)
+// SetRoutingPolicy sets the "routing_policy" field.
+func (_u *GroupUpdateOne) SetRoutingPolicy(v jsontext.Value) *GroupUpdateOne {
+	_u.mutation.SetRoutingPolicy(v)
 	return _u
 }
 
-// SetNillableImageRateIndependent sets the "image_rate_independent" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableImageRateIndependent(v *bool) *GroupUpdateOne {
-	if v != nil {
-		_u.SetImageRateIndependent(*v)
-	}
+// AppendRoutingPolicy appends value to the "routing_policy" field.
+func (_u *GroupUpdateOne) AppendRoutingPolicy(v jsontext.Value) *GroupUpdateOne {
+	_u.mutation.AppendRoutingPolicy(v)
 	return _u
 }
 
-// SetImageRateMultiplier sets the "image_rate_multiplier" field.
-func (_u *GroupUpdateOne) SetImageRateMultiplier(v float64) *GroupUpdateOne {
-	_u.mutation.ResetImageRateMultiplier()
-	_u.mutation.SetImageRateMultiplier(v)
-	return _u
-}
-
-// SetNillableImageRateMultiplier sets the "image_rate_multiplier" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableImageRateMultiplier(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetImageRateMultiplier(*v)
-	}
-	return _u
-}
-
-// AddImageRateMultiplier adds value to the "image_rate_multiplier" field.
-func (_u *GroupUpdateOne) AddImageRateMultiplier(v float64) *GroupUpdateOne {
-	_u.mutation.AddImageRateMultiplier(v)
-	return _u
-}
-
-// SetImagePrice1k sets the "image_price_1k" field.
-func (_u *GroupUpdateOne) SetImagePrice1k(v float64) *GroupUpdateOne {
-	_u.mutation.ResetImagePrice1k()
-	_u.mutation.SetImagePrice1k(v)
-	return _u
-}
-
-// SetNillableImagePrice1k sets the "image_price_1k" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableImagePrice1k(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetImagePrice1k(*v)
-	}
-	return _u
-}
-
-// AddImagePrice1k adds value to the "image_price_1k" field.
-func (_u *GroupUpdateOne) AddImagePrice1k(v float64) *GroupUpdateOne {
-	_u.mutation.AddImagePrice1k(v)
-	return _u
-}
-
-// ClearImagePrice1k clears the value of the "image_price_1k" field.
-func (_u *GroupUpdateOne) ClearImagePrice1k() *GroupUpdateOne {
-	_u.mutation.ClearImagePrice1k()
-	return _u
-}
-
-// SetImagePrice2k sets the "image_price_2k" field.
-func (_u *GroupUpdateOne) SetImagePrice2k(v float64) *GroupUpdateOne {
-	_u.mutation.ResetImagePrice2k()
-	_u.mutation.SetImagePrice2k(v)
-	return _u
-}
-
-// SetNillableImagePrice2k sets the "image_price_2k" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableImagePrice2k(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetImagePrice2k(*v)
-	}
-	return _u
-}
-
-// AddImagePrice2k adds value to the "image_price_2k" field.
-func (_u *GroupUpdateOne) AddImagePrice2k(v float64) *GroupUpdateOne {
-	_u.mutation.AddImagePrice2k(v)
-	return _u
-}
-
-// ClearImagePrice2k clears the value of the "image_price_2k" field.
-func (_u *GroupUpdateOne) ClearImagePrice2k() *GroupUpdateOne {
-	_u.mutation.ClearImagePrice2k()
-	return _u
-}
-
-// SetImagePrice4k sets the "image_price_4k" field.
-func (_u *GroupUpdateOne) SetImagePrice4k(v float64) *GroupUpdateOne {
-	_u.mutation.ResetImagePrice4k()
-	_u.mutation.SetImagePrice4k(v)
-	return _u
-}
-
-// SetNillableImagePrice4k sets the "image_price_4k" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableImagePrice4k(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetImagePrice4k(*v)
-	}
-	return _u
-}
-
-// AddImagePrice4k adds value to the "image_price_4k" field.
-func (_u *GroupUpdateOne) AddImagePrice4k(v float64) *GroupUpdateOne {
-	_u.mutation.AddImagePrice4k(v)
-	return _u
-}
-
-// ClearImagePrice4k clears the value of the "image_price_4k" field.
-func (_u *GroupUpdateOne) ClearImagePrice4k() *GroupUpdateOne {
-	_u.mutation.ClearImagePrice4k()
-	return _u
-}
-
-// SetBatchImageDiscountMultiplier sets the "batch_image_discount_multiplier" field.
-func (_u *GroupUpdateOne) SetBatchImageDiscountMultiplier(v float64) *GroupUpdateOne {
-	_u.mutation.ResetBatchImageDiscountMultiplier()
-	_u.mutation.SetBatchImageDiscountMultiplier(v)
-	return _u
-}
-
-// SetNillableBatchImageDiscountMultiplier sets the "batch_image_discount_multiplier" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableBatchImageDiscountMultiplier(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetBatchImageDiscountMultiplier(*v)
-	}
-	return _u
-}
-
-// AddBatchImageDiscountMultiplier adds value to the "batch_image_discount_multiplier" field.
-func (_u *GroupUpdateOne) AddBatchImageDiscountMultiplier(v float64) *GroupUpdateOne {
-	_u.mutation.AddBatchImageDiscountMultiplier(v)
-	return _u
-}
-
-// SetBatchImageHoldMultiplier sets the "batch_image_hold_multiplier" field.
-func (_u *GroupUpdateOne) SetBatchImageHoldMultiplier(v float64) *GroupUpdateOne {
-	_u.mutation.ResetBatchImageHoldMultiplier()
-	_u.mutation.SetBatchImageHoldMultiplier(v)
-	return _u
-}
-
-// SetNillableBatchImageHoldMultiplier sets the "batch_image_hold_multiplier" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableBatchImageHoldMultiplier(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetBatchImageHoldMultiplier(*v)
-	}
-	return _u
-}
-
-// AddBatchImageHoldMultiplier adds value to the "batch_image_hold_multiplier" field.
-func (_u *GroupUpdateOne) AddBatchImageHoldMultiplier(v float64) *GroupUpdateOne {
-	_u.mutation.AddBatchImageHoldMultiplier(v)
-	return _u
-}
-
-// SetVideoRateIndependent sets the "video_rate_independent" field.
-func (_u *GroupUpdateOne) SetVideoRateIndependent(v bool) *GroupUpdateOne {
-	_u.mutation.SetVideoRateIndependent(v)
-	return _u
-}
-
-// SetNillableVideoRateIndependent sets the "video_rate_independent" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableVideoRateIndependent(v *bool) *GroupUpdateOne {
-	if v != nil {
-		_u.SetVideoRateIndependent(*v)
-	}
-	return _u
-}
-
-// SetVideoRateMultiplier sets the "video_rate_multiplier" field.
-func (_u *GroupUpdateOne) SetVideoRateMultiplier(v float64) *GroupUpdateOne {
-	_u.mutation.ResetVideoRateMultiplier()
-	_u.mutation.SetVideoRateMultiplier(v)
-	return _u
-}
-
-// SetNillableVideoRateMultiplier sets the "video_rate_multiplier" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableVideoRateMultiplier(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetVideoRateMultiplier(*v)
-	}
-	return _u
-}
-
-// AddVideoRateMultiplier adds value to the "video_rate_multiplier" field.
-func (_u *GroupUpdateOne) AddVideoRateMultiplier(v float64) *GroupUpdateOne {
-	_u.mutation.AddVideoRateMultiplier(v)
-	return _u
-}
-
-// SetVideoPrice480p sets the "video_price_480p" field.
-func (_u *GroupUpdateOne) SetVideoPrice480p(v float64) *GroupUpdateOne {
-	_u.mutation.ResetVideoPrice480p()
-	_u.mutation.SetVideoPrice480p(v)
-	return _u
-}
-
-// SetNillableVideoPrice480p sets the "video_price_480p" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableVideoPrice480p(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetVideoPrice480p(*v)
-	}
-	return _u
-}
-
-// AddVideoPrice480p adds value to the "video_price_480p" field.
-func (_u *GroupUpdateOne) AddVideoPrice480p(v float64) *GroupUpdateOne {
-	_u.mutation.AddVideoPrice480p(v)
-	return _u
-}
-
-// ClearVideoPrice480p clears the value of the "video_price_480p" field.
-func (_u *GroupUpdateOne) ClearVideoPrice480p() *GroupUpdateOne {
-	_u.mutation.ClearVideoPrice480p()
-	return _u
-}
-
-// SetVideoPrice720p sets the "video_price_720p" field.
-func (_u *GroupUpdateOne) SetVideoPrice720p(v float64) *GroupUpdateOne {
-	_u.mutation.ResetVideoPrice720p()
-	_u.mutation.SetVideoPrice720p(v)
-	return _u
-}
-
-// SetNillableVideoPrice720p sets the "video_price_720p" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableVideoPrice720p(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetVideoPrice720p(*v)
-	}
-	return _u
-}
-
-// AddVideoPrice720p adds value to the "video_price_720p" field.
-func (_u *GroupUpdateOne) AddVideoPrice720p(v float64) *GroupUpdateOne {
-	_u.mutation.AddVideoPrice720p(v)
-	return _u
-}
-
-// ClearVideoPrice720p clears the value of the "video_price_720p" field.
-func (_u *GroupUpdateOne) ClearVideoPrice720p() *GroupUpdateOne {
-	_u.mutation.ClearVideoPrice720p()
-	return _u
-}
-
-// SetVideoPrice1080p sets the "video_price_1080p" field.
-func (_u *GroupUpdateOne) SetVideoPrice1080p(v float64) *GroupUpdateOne {
-	_u.mutation.ResetVideoPrice1080p()
-	_u.mutation.SetVideoPrice1080p(v)
-	return _u
-}
-
-// SetNillableVideoPrice1080p sets the "video_price_1080p" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableVideoPrice1080p(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetVideoPrice1080p(*v)
-	}
-	return _u
-}
-
-// AddVideoPrice1080p adds value to the "video_price_1080p" field.
-func (_u *GroupUpdateOne) AddVideoPrice1080p(v float64) *GroupUpdateOne {
-	_u.mutation.AddVideoPrice1080p(v)
-	return _u
-}
-
-// ClearVideoPrice1080p clears the value of the "video_price_1080p" field.
-func (_u *GroupUpdateOne) ClearVideoPrice1080p() *GroupUpdateOne {
-	_u.mutation.ClearVideoPrice1080p()
-	return _u
-}
-
-// SetVideoModelPrices sets the "video_model_prices" field.
-func (_u *GroupUpdateOne) SetVideoModelPrices(v map[string]map[string]float64) *GroupUpdateOne {
-	_u.mutation.SetVideoModelPrices(v)
-	return _u
-}
-
-// ClearVideoModelPrices clears the value of the "video_model_prices" field.
-func (_u *GroupUpdateOne) ClearVideoModelPrices() *GroupUpdateOne {
-	_u.mutation.ClearVideoModelPrices()
-	return _u
-}
-
-// SetWebSearchPricePerCall sets the "web_search_price_per_call" field.
-func (_u *GroupUpdateOne) SetWebSearchPricePerCall(v float64) *GroupUpdateOne {
-	_u.mutation.ResetWebSearchPricePerCall()
-	_u.mutation.SetWebSearchPricePerCall(v)
-	return _u
-}
-
-// SetNillableWebSearchPricePerCall sets the "web_search_price_per_call" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableWebSearchPricePerCall(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetWebSearchPricePerCall(*v)
-	}
-	return _u
-}
-
-// AddWebSearchPricePerCall adds value to the "web_search_price_per_call" field.
-func (_u *GroupUpdateOne) AddWebSearchPricePerCall(v float64) *GroupUpdateOne {
-	_u.mutation.AddWebSearchPricePerCall(v)
-	return _u
-}
-
-// ClearWebSearchPricePerCall clears the value of the "web_search_price_per_call" field.
-func (_u *GroupUpdateOne) ClearWebSearchPricePerCall() *GroupUpdateOne {
-	_u.mutation.ClearWebSearchPricePerCall()
-	return _u
-}
-
-// SetSearchPricePer1k sets the "search_price_per_1k" field.
-func (_u *GroupUpdateOne) SetSearchPricePer1k(v float64) *GroupUpdateOne {
-	_u.mutation.ResetSearchPricePer1k()
-	_u.mutation.SetSearchPricePer1k(v)
-	return _u
-}
-
-// SetNillableSearchPricePer1k sets the "search_price_per_1k" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableSearchPricePer1k(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetSearchPricePer1k(*v)
-	}
-	return _u
-}
-
-// AddSearchPricePer1k adds value to the "search_price_per_1k" field.
-func (_u *GroupUpdateOne) AddSearchPricePer1k(v float64) *GroupUpdateOne {
-	_u.mutation.AddSearchPricePer1k(v)
-	return _u
-}
-
-// ClearSearchPricePer1k clears the value of the "search_price_per_1k" field.
-func (_u *GroupUpdateOne) ClearSearchPricePer1k() *GroupUpdateOne {
-	_u.mutation.ClearSearchPricePer1k()
-	return _u
-}
-
-// SetAudioRealtimePricePerMin sets the "audio_realtime_price_per_min" field.
-func (_u *GroupUpdateOne) SetAudioRealtimePricePerMin(v float64) *GroupUpdateOne {
-	_u.mutation.ResetAudioRealtimePricePerMin()
-	_u.mutation.SetAudioRealtimePricePerMin(v)
-	return _u
-}
-
-// SetNillableAudioRealtimePricePerMin sets the "audio_realtime_price_per_min" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableAudioRealtimePricePerMin(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetAudioRealtimePricePerMin(*v)
-	}
-	return _u
-}
-
-// AddAudioRealtimePricePerMin adds value to the "audio_realtime_price_per_min" field.
-func (_u *GroupUpdateOne) AddAudioRealtimePricePerMin(v float64) *GroupUpdateOne {
-	_u.mutation.AddAudioRealtimePricePerMin(v)
-	return _u
-}
-
-// ClearAudioRealtimePricePerMin clears the value of the "audio_realtime_price_per_min" field.
-func (_u *GroupUpdateOne) ClearAudioRealtimePricePerMin() *GroupUpdateOne {
-	_u.mutation.ClearAudioRealtimePricePerMin()
-	return _u
-}
-
-// SetAudioTtsPricePerMillionChars sets the "audio_tts_price_per_million_chars" field.
-func (_u *GroupUpdateOne) SetAudioTtsPricePerMillionChars(v float64) *GroupUpdateOne {
-	_u.mutation.ResetAudioTtsPricePerMillionChars()
-	_u.mutation.SetAudioTtsPricePerMillionChars(v)
-	return _u
-}
-
-// SetNillableAudioTtsPricePerMillionChars sets the "audio_tts_price_per_million_chars" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableAudioTtsPricePerMillionChars(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetAudioTtsPricePerMillionChars(*v)
-	}
-	return _u
-}
-
-// AddAudioTtsPricePerMillionChars adds value to the "audio_tts_price_per_million_chars" field.
-func (_u *GroupUpdateOne) AddAudioTtsPricePerMillionChars(v float64) *GroupUpdateOne {
-	_u.mutation.AddAudioTtsPricePerMillionChars(v)
-	return _u
-}
-
-// ClearAudioTtsPricePerMillionChars clears the value of the "audio_tts_price_per_million_chars" field.
-func (_u *GroupUpdateOne) ClearAudioTtsPricePerMillionChars() *GroupUpdateOne {
-	_u.mutation.ClearAudioTtsPricePerMillionChars()
-	return _u
-}
-
-// SetAudioSttPricePerHour sets the "audio_stt_price_per_hour" field.
-func (_u *GroupUpdateOne) SetAudioSttPricePerHour(v float64) *GroupUpdateOne {
-	_u.mutation.ResetAudioSttPricePerHour()
-	_u.mutation.SetAudioSttPricePerHour(v)
-	return _u
-}
-
-// SetNillableAudioSttPricePerHour sets the "audio_stt_price_per_hour" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableAudioSttPricePerHour(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetAudioSttPricePerHour(*v)
-	}
-	return _u
-}
-
-// AddAudioSttPricePerHour adds value to the "audio_stt_price_per_hour" field.
-func (_u *GroupUpdateOne) AddAudioSttPricePerHour(v float64) *GroupUpdateOne {
-	_u.mutation.AddAudioSttPricePerHour(v)
-	return _u
-}
-
-// ClearAudioSttPricePerHour clears the value of the "audio_stt_price_per_hour" field.
-func (_u *GroupUpdateOne) ClearAudioSttPricePerHour() *GroupUpdateOne {
-	_u.mutation.ClearAudioSttPricePerHour()
-	return _u
-}
-
-// SetLongContextPricingEnabled sets the "long_context_pricing_enabled" field.
-func (_u *GroupUpdateOne) SetLongContextPricingEnabled(v bool) *GroupUpdateOne {
-	_u.mutation.SetLongContextPricingEnabled(v)
-	return _u
-}
-
-// SetNillableLongContextPricingEnabled sets the "long_context_pricing_enabled" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableLongContextPricingEnabled(v *bool) *GroupUpdateOne {
-	if v != nil {
-		_u.SetLongContextPricingEnabled(*v)
-	}
-	return _u
-}
-
-// SetModelPricing sets the "model_pricing" field.
-func (_u *GroupUpdateOne) SetModelPricing(v jsontext.Value) *GroupUpdateOne {
-	_u.mutation.SetModelPricing(v)
-	return _u
-}
-
-// AppendModelPricing appends value to the "model_pricing" field.
-func (_u *GroupUpdateOne) AppendModelPricing(v jsontext.Value) *GroupUpdateOne {
-	_u.mutation.AppendModelPricing(v)
-	return _u
-}
-
-// ClearModelPricing clears the value of the "model_pricing" field.
-func (_u *GroupUpdateOne) ClearModelPricing() *GroupUpdateOne {
-	_u.mutation.ClearModelPricing()
+// ClearRoutingPolicy clears the value of the "routing_policy" field.
+func (_u *GroupUpdateOne) ClearRoutingPolicy() *GroupUpdateOne {
+	_u.mutation.ClearRoutingPolicy()
 	return _u
 }
 
@@ -3087,15 +1852,35 @@ func (_u *GroupUpdateOne) SetNillableAllowMessagesDispatch(v *bool) *GroupUpdate
 	return _u
 }
 
-// SetAllowedClientProtocols sets the "allowed_client_protocols" field.
-func (_u *GroupUpdateOne) SetAllowedClientProtocols(v []domain.GroupClientProtocol) *GroupUpdateOne {
-	_u.mutation.SetAllowedClientProtocols(v)
+// SetAllowedProtocols sets the "allowed_protocols" field.
+func (_u *GroupUpdateOne) SetAllowedProtocols(v []protocol.ProtocolID) *GroupUpdateOne {
+	_u.mutation.SetAllowedProtocols(v)
 	return _u
 }
 
-// AppendAllowedClientProtocols appends value to the "allowed_client_protocols" field.
-func (_u *GroupUpdateOne) AppendAllowedClientProtocols(v []domain.GroupClientProtocol) *GroupUpdateOne {
-	_u.mutation.AppendAllowedClientProtocols(v)
+// AppendAllowedProtocols appends value to the "allowed_protocols" field.
+func (_u *GroupUpdateOne) AppendAllowedProtocols(v []protocol.ProtocolID) *GroupUpdateOne {
+	_u.mutation.AppendAllowedProtocols(v)
+	return _u
+}
+
+// SetProtocolFallbacks sets the "protocol_fallbacks" field.
+func (_u *GroupUpdateOne) SetProtocolFallbacks(v map[protocol.ProtocolID][]protocol.ProtocolID) *GroupUpdateOne {
+	_u.mutation.SetProtocolFallbacks(v)
+	return _u
+}
+
+// SetResponsesImagePolicy sets the "responses_image_policy" field.
+func (_u *GroupUpdateOne) SetResponsesImagePolicy(v string) *GroupUpdateOne {
+	_u.mutation.SetResponsesImagePolicy(v)
+	return _u
+}
+
+// SetNillableResponsesImagePolicy sets the "responses_image_policy" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableResponsesImagePolicy(v *string) *GroupUpdateOne {
+	if v != nil {
+		_u.SetResponsesImagePolicy(*v)
+	}
 	return _u
 }
 
@@ -3113,6 +1898,20 @@ func (_u *GroupUpdateOne) SetNillableAllowLive(v *bool) *GroupUpdateOne {
 	return _u
 }
 
+// SetOpenaiFastPolicy sets the "openai_fast_policy" field.
+func (_u *GroupUpdateOne) SetOpenaiFastPolicy(v string) *GroupUpdateOne {
+	_u.mutation.SetOpenaiFastPolicy(v)
+	return _u
+}
+
+// SetNillableOpenaiFastPolicy sets the "openai_fast_policy" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableOpenaiFastPolicy(v *string) *GroupUpdateOne {
+	if v != nil {
+		_u.SetOpenaiFastPolicy(*v)
+	}
+	return _u
+}
+
 // SetForceOpenaiFast sets the "force_openai_fast" field.
 func (_u *GroupUpdateOne) SetForceOpenaiFast(v bool) *GroupUpdateOne {
 	_u.mutation.SetForceOpenaiFast(v)
@@ -3123,20 +1922,6 @@ func (_u *GroupUpdateOne) SetForceOpenaiFast(v bool) *GroupUpdateOne {
 func (_u *GroupUpdateOne) SetNillableForceOpenaiFast(v *bool) *GroupUpdateOne {
 	if v != nil {
 		_u.SetForceOpenaiFast(*v)
-	}
-	return _u
-}
-
-// SetFreeOpenaiFast sets the "free_openai_fast" field.
-func (_u *GroupUpdateOne) SetFreeOpenaiFast(v bool) *GroupUpdateOne {
-	_u.mutation.SetFreeOpenaiFast(v)
-	return _u
-}
-
-// SetNillableFreeOpenaiFast sets the "free_openai_fast" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableFreeOpenaiFast(v *bool) *GroupUpdateOne {
-	if v != nil {
-		_u.SetFreeOpenaiFast(*v)
 	}
 	return _u
 }
@@ -3183,56 +1968,42 @@ func (_u *GroupUpdateOne) SetNillableDefaultMappedModel(v *string) *GroupUpdateO
 	return _u
 }
 
-// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
-func (_u *GroupUpdateOne) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupUpdateOne {
-	_u.mutation.SetMessagesDispatchModelConfig(v)
-	return _u
-}
-
-// SetNillableMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableMessagesDispatchModelConfig(v *domain.OpenAIMessagesDispatchModelConfig) *GroupUpdateOne {
-	if v != nil {
-		_u.SetMessagesDispatchModelConfig(*v)
-	}
-	return _u
-}
-
-// SetModelAllowlist sets the "model_allowlist" field.
-func (_u *GroupUpdateOne) SetModelAllowlist(v domain.GroupModelAllowlist) *GroupUpdateOne {
-	_u.mutation.SetModelAllowlist(v)
-	return _u
-}
-
-// SetNillableModelAllowlist sets the "model_allowlist" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableModelAllowlist(v *domain.GroupModelAllowlist) *GroupUpdateOne {
-	if v != nil {
-		_u.SetModelAllowlist(*v)
-	}
-	return _u
-}
-
 // SetModelsListConfig sets the "models_list_config" field.
-func (_u *GroupUpdateOne) SetModelsListConfig(v domain.GroupModelsListConfig) *GroupUpdateOne {
+func (_u *GroupUpdateOne) SetModelsListConfig(v accessview.GroupModelsListConfig) *GroupUpdateOne {
 	_u.mutation.SetModelsListConfig(v)
 	return _u
 }
 
 // SetNillableModelsListConfig sets the "models_list_config" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableModelsListConfig(v *domain.GroupModelsListConfig) *GroupUpdateOne {
+func (_u *GroupUpdateOne) SetNillableModelsListConfig(v *accessview.GroupModelsListConfig) *GroupUpdateOne {
 	if v != nil {
 		_u.SetModelsListConfig(*v)
 	}
 	return _u
 }
 
+// SetModelAllowlist sets the "model_allowlist" field.
+func (_u *GroupUpdateOne) SetModelAllowlist(v accessview.GroupModelAllowlist) *GroupUpdateOne {
+	_u.mutation.SetModelAllowlist(v)
+	return _u
+}
+
+// SetNillableModelAllowlist sets the "model_allowlist" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableModelAllowlist(v *accessview.GroupModelAllowlist) *GroupUpdateOne {
+	if v != nil {
+		_u.SetModelAllowlist(*v)
+	}
+	return _u
+}
+
 // SetAvailabilityProbeConfig sets the "availability_probe_config" field.
-func (_u *GroupUpdateOne) SetAvailabilityProbeConfig(v domain.GroupAvailabilityProbeConfig) *GroupUpdateOne {
+func (_u *GroupUpdateOne) SetAvailabilityProbeConfig(v accessview.GroupAvailabilityProbeConfig) *GroupUpdateOne {
 	_u.mutation.SetAvailabilityProbeConfig(v)
 	return _u
 }
 
 // SetNillableAvailabilityProbeConfig sets the "availability_probe_config" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableAvailabilityProbeConfig(v *domain.GroupAvailabilityProbeConfig) *GroupUpdateOne {
+func (_u *GroupUpdateOne) SetNillableAvailabilityProbeConfig(v *accessview.GroupAvailabilityProbeConfig) *GroupUpdateOne {
 	if v != nil {
 		_u.SetAvailabilityProbeConfig(*v)
 	}
@@ -3289,13 +2060,13 @@ func (_u *GroupUpdateOne) SetNillableMaxReasoningEffortOverLimit(v *string) *Gro
 }
 
 // SetReasoningEffortMappings sets the "reasoning_effort_mappings" field.
-func (_u *GroupUpdateOne) SetReasoningEffortMappings(v []domain.ReasoningEffortMapping) *GroupUpdateOne {
+func (_u *GroupUpdateOne) SetReasoningEffortMappings(v []accessview.ReasoningEffortMapping) *GroupUpdateOne {
 	_u.mutation.SetReasoningEffortMappings(v)
 	return _u
 }
 
 // AppendReasoningEffortMappings appends value to the "reasoning_effort_mappings" field.
-func (_u *GroupUpdateOne) AppendReasoningEffortMappings(v []domain.ReasoningEffortMapping) *GroupUpdateOne {
+func (_u *GroupUpdateOne) AppendReasoningEffortMappings(v []accessview.ReasoningEffortMapping) *GroupUpdateOne {
 	_u.mutation.AppendReasoningEffortMappings(v)
 	return _u
 }
@@ -3359,19 +2130,19 @@ func (_u *GroupUpdateOne) AddUsageLogs(v ...*UsageLog) *GroupUpdateOne {
 	return _u.AddUsageLogIDs(ids...)
 }
 
-// AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
-func (_u *GroupUpdateOne) AddAccountIDs(ids ...int64) *GroupUpdateOne {
-	_u.mutation.AddAccountIDs(ids...)
+// AddProviderIDs adds the "providers" edge to the Provider entity by IDs.
+func (_u *GroupUpdateOne) AddProviderIDs(ids ...int64) *GroupUpdateOne {
+	_u.mutation.AddProviderIDs(ids...)
 	return _u
 }
 
-// AddAccounts adds the "accounts" edges to the Account entity.
-func (_u *GroupUpdateOne) AddAccounts(v ...*Account) *GroupUpdateOne {
+// AddProviders adds the "providers" edges to the Provider entity.
+func (_u *GroupUpdateOne) AddProviders(v ...*Provider) *GroupUpdateOne {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.AddAccountIDs(ids...)
+	return _u.AddProviderIDs(ids...)
 }
 
 // AddAllowedUserIDs adds the "allowed_users" edge to the User entity by IDs.
@@ -3472,25 +2243,25 @@ func (_u *GroupUpdateOne) RemoveUsageLogs(v ...*UsageLog) *GroupUpdateOne {
 	return _u.RemoveUsageLogIDs(ids...)
 }
 
-// ClearAccounts clears all "accounts" edges to the Account entity.
-func (_u *GroupUpdateOne) ClearAccounts() *GroupUpdateOne {
-	_u.mutation.ClearAccounts()
+// ClearProviders clears all "providers" edges to the Provider entity.
+func (_u *GroupUpdateOne) ClearProviders() *GroupUpdateOne {
+	_u.mutation.ClearProviders()
 	return _u
 }
 
-// RemoveAccountIDs removes the "accounts" edge to Account entities by IDs.
-func (_u *GroupUpdateOne) RemoveAccountIDs(ids ...int64) *GroupUpdateOne {
-	_u.mutation.RemoveAccountIDs(ids...)
+// RemoveProviderIDs removes the "providers" edge to Provider entities by IDs.
+func (_u *GroupUpdateOne) RemoveProviderIDs(ids ...int64) *GroupUpdateOne {
+	_u.mutation.RemoveProviderIDs(ids...)
 	return _u
 }
 
-// RemoveAccounts removes "accounts" edges to Account entities.
-func (_u *GroupUpdateOne) RemoveAccounts(v ...*Account) *GroupUpdateOne {
+// RemoveProviders removes "providers" edges to Provider entities.
+func (_u *GroupUpdateOne) RemoveProviders(v ...*Provider) *GroupUpdateOne {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.RemoveAccountIDs(ids...)
+	return _u.RemoveProviderIDs(ids...)
 }
 
 // ClearAllowedUsers clears all "allowed_users" edges to the User entity.
@@ -3597,24 +2368,9 @@ func (_u *GroupUpdateOne) check() error {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Group.name": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.PeakStart(); ok {
-		if err := group.PeakStartValidator(v); err != nil {
-			return &ValidationError{Name: "peak_start", err: fmt.Errorf(`ent: validator failed for field "Group.peak_start": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.PeakEnd(); ok {
-		if err := group.PeakEndValidator(v); err != nil {
-			return &ValidationError{Name: "peak_end", err: fmt.Errorf(`ent: validator failed for field "Group.peak_end": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := group.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Group.status": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.Platform(); ok {
-		if err := group.PlatformValidator(v); err != nil {
-			return &ValidationError{Name: "platform", err: fmt.Errorf(`ent: validator failed for field "Group.platform": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.SchedulerType(); ok {
@@ -3625,26 +2381,6 @@ func (_u *GroupUpdateOne) check() error {
 	if v, ok := _u.mutation.DisplayBrand(); ok {
 		if err := group.DisplayBrandValidator(v); err != nil {
 			return &ValidationError{Name: "display_brand", err: fmt.Errorf(`ent: validator failed for field "Group.display_brand": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.SearchPricePer1k(); ok {
-		if err := group.SearchPricePer1kValidator(v); err != nil {
-			return &ValidationError{Name: "search_price_per_1k", err: fmt.Errorf(`ent: validator failed for field "Group.search_price_per_1k": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.AudioRealtimePricePerMin(); ok {
-		if err := group.AudioRealtimePricePerMinValidator(v); err != nil {
-			return &ValidationError{Name: "audio_realtime_price_per_min", err: fmt.Errorf(`ent: validator failed for field "Group.audio_realtime_price_per_min": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.AudioTtsPricePerMillionChars(); ok {
-		if err := group.AudioTtsPricePerMillionCharsValidator(v); err != nil {
-			return &ValidationError{Name: "audio_tts_price_per_million_chars", err: fmt.Errorf(`ent: validator failed for field "Group.audio_tts_price_per_million_chars": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.AudioSttPricePerHour(); ok {
-		if err := group.AudioSttPricePerHourValidator(v); err != nil {
-			return &ValidationError{Name: "audio_stt_price_per_hour", err: fmt.Errorf(`ent: validator failed for field "Group.audio_stt_price_per_hour": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.DefaultMappedModel(); ok {
@@ -3718,35 +2454,14 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	if value, ok := _u.mutation.AddedRateMultiplier(); ok {
 		_spec.AddField(group.FieldRateMultiplier, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.PeakRateEnabled(); ok {
-		_spec.SetField(group.FieldPeakRateEnabled, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.PeakStart(); ok {
-		_spec.SetField(group.FieldPeakStart, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.PeakEnd(); ok {
-		_spec.SetField(group.FieldPeakEnd, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.PeakRateMultiplier(); ok {
-		_spec.SetField(group.FieldPeakRateMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedPeakRateMultiplier(); ok {
-		_spec.AddField(group.FieldPeakRateMultiplier, field.TypeFloat64, value)
-	}
 	if value, ok := _u.mutation.IsExclusive(); ok {
 		_spec.SetField(group.FieldIsExclusive, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.IsDefault(); ok {
-		_spec.SetField(group.FieldIsDefault, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(group.FieldStatus, field.TypeString, value)
 	}
 	if _u.mutation.DuplicateOperationIDCleared() {
 		_spec.ClearField(group.FieldDuplicateOperationID, field.TypeString)
-	}
-	if value, ok := _u.mutation.Platform(); ok {
-		_spec.SetField(group.FieldPlatform, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.SchedulerType(); ok {
 		_spec.SetField(group.FieldSchedulerType, field.TypeString, value)
@@ -3763,154 +2478,16 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	if value, ok := _u.mutation.AllowBatchImageGeneration(); ok {
 		_spec.SetField(group.FieldAllowBatchImageGeneration, field.TypeBool, value)
 	}
-	if value, ok := _u.mutation.ImageRateIndependent(); ok {
-		_spec.SetField(group.FieldImageRateIndependent, field.TypeBool, value)
+	if value, ok := _u.mutation.RoutingPolicy(); ok {
+		_spec.SetField(group.FieldRoutingPolicy, field.TypeJSON, value)
 	}
-	if value, ok := _u.mutation.ImageRateMultiplier(); ok {
-		_spec.SetField(group.FieldImageRateMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedImageRateMultiplier(); ok {
-		_spec.AddField(group.FieldImageRateMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.ImagePrice1k(); ok {
-		_spec.SetField(group.FieldImagePrice1k, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedImagePrice1k(); ok {
-		_spec.AddField(group.FieldImagePrice1k, field.TypeFloat64, value)
-	}
-	if _u.mutation.ImagePrice1kCleared() {
-		_spec.ClearField(group.FieldImagePrice1k, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.ImagePrice2k(); ok {
-		_spec.SetField(group.FieldImagePrice2k, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedImagePrice2k(); ok {
-		_spec.AddField(group.FieldImagePrice2k, field.TypeFloat64, value)
-	}
-	if _u.mutation.ImagePrice2kCleared() {
-		_spec.ClearField(group.FieldImagePrice2k, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.ImagePrice4k(); ok {
-		_spec.SetField(group.FieldImagePrice4k, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedImagePrice4k(); ok {
-		_spec.AddField(group.FieldImagePrice4k, field.TypeFloat64, value)
-	}
-	if _u.mutation.ImagePrice4kCleared() {
-		_spec.ClearField(group.FieldImagePrice4k, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.BatchImageDiscountMultiplier(); ok {
-		_spec.SetField(group.FieldBatchImageDiscountMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedBatchImageDiscountMultiplier(); ok {
-		_spec.AddField(group.FieldBatchImageDiscountMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.BatchImageHoldMultiplier(); ok {
-		_spec.SetField(group.FieldBatchImageHoldMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedBatchImageHoldMultiplier(); ok {
-		_spec.AddField(group.FieldBatchImageHoldMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.VideoRateIndependent(); ok {
-		_spec.SetField(group.FieldVideoRateIndependent, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.VideoRateMultiplier(); ok {
-		_spec.SetField(group.FieldVideoRateMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedVideoRateMultiplier(); ok {
-		_spec.AddField(group.FieldVideoRateMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.VideoPrice480p(); ok {
-		_spec.SetField(group.FieldVideoPrice480p, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedVideoPrice480p(); ok {
-		_spec.AddField(group.FieldVideoPrice480p, field.TypeFloat64, value)
-	}
-	if _u.mutation.VideoPrice480pCleared() {
-		_spec.ClearField(group.FieldVideoPrice480p, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.VideoPrice720p(); ok {
-		_spec.SetField(group.FieldVideoPrice720p, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedVideoPrice720p(); ok {
-		_spec.AddField(group.FieldVideoPrice720p, field.TypeFloat64, value)
-	}
-	if _u.mutation.VideoPrice720pCleared() {
-		_spec.ClearField(group.FieldVideoPrice720p, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.VideoPrice1080p(); ok {
-		_spec.SetField(group.FieldVideoPrice1080p, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedVideoPrice1080p(); ok {
-		_spec.AddField(group.FieldVideoPrice1080p, field.TypeFloat64, value)
-	}
-	if _u.mutation.VideoPrice1080pCleared() {
-		_spec.ClearField(group.FieldVideoPrice1080p, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.VideoModelPrices(); ok {
-		_spec.SetField(group.FieldVideoModelPrices, field.TypeJSON, value)
-	}
-	if _u.mutation.VideoModelPricesCleared() {
-		_spec.ClearField(group.FieldVideoModelPrices, field.TypeJSON)
-	}
-	if value, ok := _u.mutation.WebSearchPricePerCall(); ok {
-		_spec.SetField(group.FieldWebSearchPricePerCall, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedWebSearchPricePerCall(); ok {
-		_spec.AddField(group.FieldWebSearchPricePerCall, field.TypeFloat64, value)
-	}
-	if _u.mutation.WebSearchPricePerCallCleared() {
-		_spec.ClearField(group.FieldWebSearchPricePerCall, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.SearchPricePer1k(); ok {
-		_spec.SetField(group.FieldSearchPricePer1k, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedSearchPricePer1k(); ok {
-		_spec.AddField(group.FieldSearchPricePer1k, field.TypeFloat64, value)
-	}
-	if _u.mutation.SearchPricePer1kCleared() {
-		_spec.ClearField(group.FieldSearchPricePer1k, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.AudioRealtimePricePerMin(); ok {
-		_spec.SetField(group.FieldAudioRealtimePricePerMin, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedAudioRealtimePricePerMin(); ok {
-		_spec.AddField(group.FieldAudioRealtimePricePerMin, field.TypeFloat64, value)
-	}
-	if _u.mutation.AudioRealtimePricePerMinCleared() {
-		_spec.ClearField(group.FieldAudioRealtimePricePerMin, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.AudioTtsPricePerMillionChars(); ok {
-		_spec.SetField(group.FieldAudioTtsPricePerMillionChars, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedAudioTtsPricePerMillionChars(); ok {
-		_spec.AddField(group.FieldAudioTtsPricePerMillionChars, field.TypeFloat64, value)
-	}
-	if _u.mutation.AudioTtsPricePerMillionCharsCleared() {
-		_spec.ClearField(group.FieldAudioTtsPricePerMillionChars, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.AudioSttPricePerHour(); ok {
-		_spec.SetField(group.FieldAudioSttPricePerHour, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedAudioSttPricePerHour(); ok {
-		_spec.AddField(group.FieldAudioSttPricePerHour, field.TypeFloat64, value)
-	}
-	if _u.mutation.AudioSttPricePerHourCleared() {
-		_spec.ClearField(group.FieldAudioSttPricePerHour, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.LongContextPricingEnabled(); ok {
-		_spec.SetField(group.FieldLongContextPricingEnabled, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.ModelPricing(); ok {
-		_spec.SetField(group.FieldModelPricing, field.TypeJSON, value)
-	}
-	if value, ok := _u.mutation.AppendedModelPricing(); ok {
+	if value, ok := _u.mutation.AppendedRoutingPolicy(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, group.FieldModelPricing, value)
+			sqljson.Append(u, group.FieldRoutingPolicy, value)
 		})
 	}
-	if _u.mutation.ModelPricingCleared() {
-		_spec.ClearField(group.FieldModelPricing, field.TypeJSON)
+	if _u.mutation.RoutingPolicyCleared() {
+		_spec.ClearField(group.FieldRoutingPolicy, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.ClaudeCodeOnly(); ok {
 		_spec.SetField(group.FieldClaudeCodeOnly, field.TypeBool, value)
@@ -3971,22 +2548,28 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	if value, ok := _u.mutation.AllowMessagesDispatch(); ok {
 		_spec.SetField(group.FieldAllowMessagesDispatch, field.TypeBool, value)
 	}
-	if value, ok := _u.mutation.AllowedClientProtocols(); ok {
-		_spec.SetField(group.FieldAllowedClientProtocols, field.TypeJSON, value)
+	if value, ok := _u.mutation.AllowedProtocols(); ok {
+		_spec.SetField(group.FieldAllowedProtocols, field.TypeJSON, value)
 	}
-	if value, ok := _u.mutation.AppendedAllowedClientProtocols(); ok {
+	if value, ok := _u.mutation.AppendedAllowedProtocols(); ok {
 		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, group.FieldAllowedClientProtocols, value)
+			sqljson.Append(u, group.FieldAllowedProtocols, value)
 		})
+	}
+	if value, ok := _u.mutation.ProtocolFallbacks(); ok {
+		_spec.SetField(group.FieldProtocolFallbacks, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.ResponsesImagePolicy(); ok {
+		_spec.SetField(group.FieldResponsesImagePolicy, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.AllowLive(); ok {
 		_spec.SetField(group.FieldAllowLive, field.TypeBool, value)
 	}
+	if value, ok := _u.mutation.OpenaiFastPolicy(); ok {
+		_spec.SetField(group.FieldOpenaiFastPolicy, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.ForceOpenaiFast(); ok {
 		_spec.SetField(group.FieldForceOpenaiFast, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.FreeOpenaiFast(); ok {
-		_spec.SetField(group.FieldFreeOpenaiFast, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.RequireOauthOnly(); ok {
 		_spec.SetField(group.FieldRequireOauthOnly, field.TypeBool, value)
@@ -3997,14 +2580,11 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	if value, ok := _u.mutation.DefaultMappedModel(); ok {
 		_spec.SetField(group.FieldDefaultMappedModel, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.MessagesDispatchModelConfig(); ok {
-		_spec.SetField(group.FieldMessagesDispatchModelConfig, field.TypeJSON, value)
+	if value, ok := _u.mutation.ModelsListConfig(); ok {
+		_spec.SetField(group.FieldModelsListConfig, field.TypeJSON, value)
 	}
 	if value, ok := _u.mutation.ModelAllowlist(); ok {
 		_spec.SetField(group.FieldModelAllowlist, field.TypeJSON, value)
-	}
-	if value, ok := _u.mutation.ModelsListConfig(); ok {
-		_spec.SetField(group.FieldModelsListConfig, field.TypeJSON, value)
 	}
 	if value, ok := _u.mutation.AvailabilityProbeConfig(); ok {
 		_spec.SetField(group.FieldAvailabilityProbeConfig, field.TypeJSON, value)
@@ -4167,58 +2747,58 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if _u.mutation.AccountsCleared() {
+	if _u.mutation.ProvidersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
-		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _u.config, mutation: newProviderGroupMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RemovedAccountsIDs(); len(nodes) > 0 && !_u.mutation.AccountsCleared() {
+	if nodes := _u.mutation.RemovedProvidersIDs(); len(nodes) > 0 && !_u.mutation.ProvidersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _u.config, mutation: newProviderGroupMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.AccountsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ProvidersIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _u.config, mutation: newProviderGroupMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields

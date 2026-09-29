@@ -1,7 +1,7 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
-      <UsageStatsCards :stats="usageStats" :show-account-cost="false" :show-standard-cost="false" />
+      <UsageStatsCards :stats="usageStats" :show-provider-cost="false" :show-standard-cost="false" />
 
       <div class="space-y-4">
         <div class="card p-4">
@@ -31,7 +31,7 @@
             :show-source-toggle="false"
             :show-metric-toggle="true"
             :enable-breakdown="false"
-            :show-account-cost="false"
+            :show-provider-cost="false"
             :show-standard-cost="false"
             :start-date="startDate"
             :end-date="endDate"
@@ -43,7 +43,7 @@
             chart-type="bar"
             :show-metric-toggle="true"
             :enable-breakdown="false"
-            :show-account-cost="false"
+            :show-provider-cost="false"
             :show-standard-cost="false"
             :start-date="startDate"
             :end-date="endDate"
@@ -83,7 +83,7 @@
           <div ref="filterPanelRef" class="relative shrink-0">
             <button
               type="button"
-              class="btn btn-secondary relative h-9 w-9 p-0"
+              class="btn btn-secondary relative btn-icon"
               :aria-expanded="showFilterDropdown"
               :aria-label="t('common.filter')"
               :title="t('common.filter')"
@@ -95,7 +95,7 @@
               </span>
             </button>
 
-            <div v-show="showFilterDropdown" class="absolute left-0 top-full z-[60] mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
+            <div v-show="showFilterDropdown" class="absolute left-0 top-full z-modal-nested mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
               <div class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
               <div v-if="activeTab === 'errors'" class="flex flex-wrap items-end gap-4">
             <div class="w-full sm:w-auto sm:min-w-[220px]">
@@ -157,14 +157,14 @@
           </div>
 
           <div class="flex flex-wrap items-center justify-end gap-2">
-            <button type="button" @click="refreshData" :disabled="activeTab === 'errors' ? errorLoading : loading" class="btn btn-secondary h-9 w-9 p-0" :title="t('common.refresh')">
+            <button type="button" @click="refreshData" :disabled="activeTab === 'errors' ? errorLoading : loading" class="btn btn-secondary btn-icon" :title="t('common.refresh')">
               <Icon name="refresh" size="sm" :class="(activeTab === 'errors' ? errorLoading : loading) ? 'animate-spin' : ''" />
             </button>
             <div class="relative" ref="columnDropdownRef">
               <button
                 type="button"
                 @click="showColumnDropdown = !showColumnDropdown"
-                class="btn btn-secondary h-9 w-9 shrink-0 p-0"
+                class="btn btn-secondary shrink-0 btn-icon"
                 :title="t('admin.users.columnSettings')"
               >
                 <Icon name="grid" size="sm" />
@@ -172,14 +172,14 @@
               </button>
               <div
                 v-if="showColumnDropdown"
-                class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+                class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
               >
                 <button
                   v-for="col in currentToggleableColumns"
                   :key="col.key"
                   type="button"
                   @click="toggleCurrentColumn(col.key)"
-                  class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                  class="dropdown-item justify-between"
                 >
                   <span>{{ col.label }}</span>
                   <Icon v-if="isCurrentColumnVisible(col.key)" name="check" size="sm" class="text-primary-500" />
@@ -192,7 +192,7 @@
               inline
               @failed="handleIpGeoBatchFailed"
             />
-            <button v-if="activeTab !== 'errors'" type="button" @click="exportToCSV" :disabled="exporting" class="btn btn-primary h-9 whitespace-nowrap px-3 sm:px-4">
+            <button v-if="activeTab !== 'errors'" type="button" @click="exportToCSV" :disabled="exporting" class="btn btn-primary whitespace-nowrap px-3 sm:px-4">
               {{ exporting ? t('usage.exporting') : t('usage.exportCsv') }}
             </button>
           </div>
@@ -214,7 +214,7 @@
           :loading="loading"
           :columns="visibleColumns"
           :server-side-sort="true"
-          :show-account-billing="false"
+          :show-provider-billing="false"
           :show-standard-cost="false"
           :show-upstream-endpoint="false"
           :user-clickable="false"

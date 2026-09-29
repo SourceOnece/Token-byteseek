@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/TokenFlux/TokenRouter/internal/domain"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
 const (
@@ -28,8 +28,10 @@ const (
 	FieldGroupID = "group_id"
 	// FieldAPIKeyID holds the string denoting the api_key_id field in the database.
 	FieldAPIKeyID = "api_key_id"
-	// FieldAccountID holds the string denoting the account_id field in the database.
-	FieldAccountID = "account_id"
+	// FieldProviderID holds the string denoting the provider_id field in the database.
+	FieldProviderID = "provider_id"
+	// FieldPlatform holds the string denoting the platform field in the database.
+	FieldPlatform = "platform"
 	// FieldModel holds the string denoting the model field in the database.
 	FieldModel = "model"
 	// FieldRequestedModel holds the string denoting the requested_model field in the database.
@@ -114,7 +116,8 @@ var Columns = []string{
 	FieldWorkspaceID,
 	FieldGroupID,
 	FieldAPIKeyID,
-	FieldAccountID,
+	FieldProviderID,
+	FieldPlatform,
 	FieldModel,
 	FieldRequestedModel,
 	FieldOperation,
@@ -173,6 +176,10 @@ var (
 	RunIDValidator func(string) error
 	// WorkspaceIDValidator is a validator for the "workspace_id" field. It is called by the builders before save.
 	WorkspaceIDValidator func(string) error
+	// DefaultPlatform holds the default value on creation for the "platform" field.
+	DefaultPlatform string
+	// PlatformValidator is a validator for the "platform" field. It is called by the builders before save.
+	PlatformValidator func(string) error
 	// ModelValidator is a validator for the "model" field. It is called by the builders before save.
 	ModelValidator func(string) error
 	// DefaultRequestedModel holds the default value on creation for the "requested_model" field.
@@ -210,7 +217,7 @@ var (
 	// DefaultBalanceHoldAmount holds the default value on creation for the "balance_hold_amount" field.
 	DefaultBalanceHoldAmount float64
 	// DefaultSubscriptionHoldAllocations holds the default value on creation for the "subscription_hold_allocations" field.
-	DefaultSubscriptionHoldAllocations func() []domain.BillingAllocation
+	DefaultSubscriptionHoldAllocations func() []billing.BillingAllocation
 	// DefaultBaseUnitPrice holds the default value on creation for the "base_unit_price" field.
 	DefaultBaseUnitPrice float64
 	// DefaultSubscriptionRateMultiplier holds the default value on creation for the "subscription_rate_multiplier" field.
@@ -284,9 +291,14 @@ func ByAPIKeyID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAPIKeyID, opts...).ToFunc()
 }
 
-// ByAccountID orders the results by the account_id field.
-func ByAccountID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAccountID, opts...).ToFunc()
+// ByProviderID orders the results by the provider_id field.
+func ByProviderID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProviderID, opts...).ToFunc()
+}
+
+// ByPlatform orders the results by the platform field.
+func ByPlatform(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPlatform, opts...).ToFunc()
 }
 
 // ByModel orders the results by the model field.

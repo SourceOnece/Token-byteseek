@@ -1,6 +1,6 @@
 import { reactive, ref } from 'vue'
 import { adminAPI } from '@/api/admin'
-import { QUOTA_THRESHOLD_TYPE_FIXED, type QuotaThresholdType } from '@/constants/account'
+import { QUOTA_THRESHOLD_TYPE_FIXED, type QuotaThresholdType } from '@/constants/provider'
 
 export const QUOTA_NOTIFY_DIMS = ['daily', 'weekly', 'total'] as const
 export type QuotaNotifyDim = (typeof QUOTA_NOTIFY_DIMS)[number]
@@ -23,7 +23,7 @@ export function useQuotaNotifyState() {
     adminAPI.settings
       .getSettings()
       .then((settings) => {
-        globalEnabled.value = settings.account_quota_notify_enabled === true
+        globalEnabled.value = settings.provider_quota_notify_enabled === true
       })
       .catch(() => {
         globalEnabled.value = false

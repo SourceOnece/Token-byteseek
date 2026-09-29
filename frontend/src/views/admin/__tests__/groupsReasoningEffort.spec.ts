@@ -17,7 +17,7 @@ import {
 describe("groupsReasoningEffort", () => {
   it("keeps none out of the max-effort choices while allowing it in mappings", () => {
     expect(
-      reasoningEffortOptionsForPlatform("openai").map((option) => option.value),
+      reasoningEffortOptionsForPlatform().map((option) => option.value),
     ).toEqual([
       "minimal",
       "low",
@@ -26,33 +26,28 @@ describe("groupsReasoningEffort", () => {
       "xhigh",
       "max",
     ]);
-    for (const platform of [
-      "gemini",
-      "antigravity",
-      "grok",
-    ] as const) {
-      expect(reasoningEffortOptionsForPlatform(platform)).toEqual([]);
-    }
     expect(
-      reasoningEffortMappingOptionsForPlatform("openai").map(
+      reasoningEffortMappingOptionsForPlatform().map(
         (option) => option.value,
       ),
     ).toEqual(["none", "minimal", "low", "medium", "high", "xhigh", "max"]);
   });
 
-  // Anthropic 原生和兼容入口共用五档策略，不继承 OpenAI 的 none/minimal。
-  it("round-trips Anthropic mappings and rejects OpenAI-only levels", () => {
-    expect(reasoningEffortOptionsForPlatform("anthropic").map((option) => option.value))
-      .toEqual(["low", "medium", "high", "xhigh", "max"]);
+  // 混合分组保存完整强度集合，具体模型能力由执行器检查。
+  it("round-trips model-scoped mappings across providers", () => {
+    expect(reasoningEffortOptionsForPlatform().map((option) => option.value))
+      .toEqual(["minimal", "low", "medium", "high", "xhigh", "max"]);
     const rows = reasoningEffortMappingsToRows([
       { from: "max", to: "xhigh", match_type: "prefix", model: "claude-" },
       { from: "minimal", to: "low" },
       { from: "none", to: "low" },
-    ], "anthropic");
+    ]);
     expect(reasoningEffortMappingsToAPI(rows)).toEqual([
       { from: "max", to: "xhigh", match_type: "prefix", model: "claude-" },
+      { from: "minimal", to: "low" },
+      { from: "none", to: "low" },
     ]);
-    expect(validateReasoningEffortMappings(rows, "anthropic")).toEqual({});
+    expect(validateReasoningEffortMappings(rows)).toEqual({});
   });
 
   it("hydrates supported rows and drops stale custom values", () => {
@@ -61,7 +56,6 @@ describe("groupsReasoningEffort", () => {
         { from: " max ", to: " xhigh " },
         { from: "ultra", to: "high" },
       ],
-      "openai",
     );
 
     expect(rows).toHaveLength(1);
@@ -86,7 +80,6 @@ describe("groupsReasoningEffort", () => {
           model: "gpt-5.4",
         },
       ],
-      "openai",
     );
 
     expect(reasoningEffortMappingsToAPI(rows)).toEqual([
@@ -101,7 +94,6 @@ describe("groupsReasoningEffort", () => {
         { from: "high", to: "medium", match_type: "prefix", model: "gpt" },
         { from: "xhigh", to: "medium", match_type: "prefix", model: "GPT" },
       ],
-      "openai",
     );
 
     expect(rows).toHaveLength(1);
@@ -128,7 +120,6 @@ describe("groupsReasoningEffort", () => {
   it("hydrates suffix mappings", () => {
     const rows = reasoningEffortMappingsToRows(
       [{ from: "max", to: "low", match_type: "suffix", model: " mini " }],
-      "openai",
     );
     expect(reasoningEffortMappingsToAPI(rows)).toEqual([
       { from: "max", to: "low", match_type: "suffix", model: "mini" },
@@ -136,11 +127,11 @@ describe("groupsReasoningEffort", () => {
   });
 
   it("keeps none limited to mappings and clears unsupported values", () => {
-    expect(normalizeReasoningEffortForPlatform("openai", " MAX ")).toBe("max");
-    expect(normalizeReasoningEffortForPlatform("grok", "max")).toBe("");
-    expect(normalizeReasoningEffortForPlatform("openai", "none")).toBe("");
-    expect(normalizeReasoningEffortMappingForPlatform("openai", " none ")).toBe("none");
-    expect(normalizeReasoningEffortMappingForPlatform("grok", "none")).toBe("");
+    expect(normalizeReasoningEffortForPlatform(" MAX ")).toBe("max");
+    expect(normalizeReasoningEffortForPlatform("unsupported")).toBe("");
+    expect(normalizeReasoningEffortForPlatform("none")).toBe("");
+    expect(normalizeReasoningEffortMappingForPlatform(" none ")).toBe("none");
+    expect(normalizeReasoningEffortMappingForPlatform("unsupported")).toBe("");
   });
 
   it("normalizes the over-limit action with downgrade as the default", () => {
@@ -246,7 +237,7 @@ describe("groupsReasoningEffort", () => {
     });
     expect(row.match_type).toBe("");
     expect(row.model).toBe("");
-    expect(validateReasoningEffortMappings([row], "openai")).toEqual({});
+    expect(validateReasoningEffortMappings([row])).toEqual({});
   });
 
   it("treats prefix without a model as a global mapping", () => {
@@ -255,7 +246,7 @@ describe("groupsReasoningEffort", () => {
       to: "low",
       match_type: "prefix",
     });
-    expect(validateReasoningEffortMappings([row], "openai")).toEqual({});
+    expect(validateReasoningEffortMappings([row])).toEqual({});
     expect(reasoningEffortMappingsToAPI([row])).toEqual([
       { from: "max", to: "low" },
     ]);
@@ -263,7 +254,7 @@ describe("groupsReasoningEffort", () => {
 
   it("rejects custom mappings", () => {
     const row = createReasoningEffortMappingRow({ from: "ultra", to: "high" });
-    expect(validateReasoningEffortMappings([row], "openai")).toEqual({
+    expect(validateReasoningEffortMappings([row])).toEqual({
       [row.pairs[0].id]: { from: "unsupportedFrom" },
     });
   });
@@ -271,7 +262,6 @@ describe("groupsReasoningEffort", () => {
   it("hydrates none mapping values", () => {
     const rows = reasoningEffortMappingsToRows(
       [{ from: "none", to: "low", match_type: "exact", model: "gpt-6-astra" }],
-      "openai",
     );
 
     expect(reasoningEffortMappingsToAPI(rows)).toEqual([

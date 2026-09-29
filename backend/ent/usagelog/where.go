@@ -75,9 +75,14 @@ func APIKeyID(v int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldAPIKeyID, v))
 }
 
-// AccountID applies equality check predicate on the "account_id" field. It's identical to AccountIDEQ.
-func AccountID(v int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldEQ(FieldAccountID, v))
+// ProviderID applies equality check predicate on the "provider_id" field. It's identical to ProviderIDEQ.
+func ProviderID(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldProviderID, v))
+}
+
+// Platform applies equality check predicate on the "platform" field. It's identical to PlatformEQ.
+func Platform(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldPlatform, v))
 }
 
 // RequestID applies equality check predicate on the "request_id" field. It's identical to RequestIDEQ.
@@ -100,9 +105,9 @@ func UpstreamModel(v string) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldUpstreamModel, v))
 }
 
-// ChannelID applies equality check predicate on the "channel_id" field. It's identical to ChannelIDEQ.
-func ChannelID(v int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldEQ(FieldChannelID, v))
+// PricingConfigID applies equality check predicate on the "pricing_config_id" field. It's identical to PricingConfigIDEQ.
+func PricingConfigID(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldPricingConfigID, v))
 }
 
 // ResponseModel applies equality check predicate on the "response_model" field. It's identical to ResponseModelEQ.
@@ -215,9 +220,9 @@ func LongContextBillingApplied(v bool) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldLongContextBillingApplied, v))
 }
 
-// AccountRateMultiplier applies equality check predicate on the "account_rate_multiplier" field. It's identical to AccountRateMultiplierEQ.
-func AccountRateMultiplier(v float64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldEQ(FieldAccountRateMultiplier, v))
+// ProviderRateMultiplier applies equality check predicate on the "provider_rate_multiplier" field. It's identical to ProviderRateMultiplierEQ.
+func ProviderRateMultiplier(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldProviderRateMultiplier, v))
 }
 
 // BillingType applies equality check predicate on the "billing_type" field. It's identical to BillingTypeEQ.
@@ -420,24 +425,89 @@ func APIKeyIDNotIn(vs ...int64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotIn(FieldAPIKeyID, vs...))
 }
 
-// AccountIDEQ applies the EQ predicate on the "account_id" field.
-func AccountIDEQ(v int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldEQ(FieldAccountID, v))
+// ProviderIDEQ applies the EQ predicate on the "provider_id" field.
+func ProviderIDEQ(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldProviderID, v))
 }
 
-// AccountIDNEQ applies the NEQ predicate on the "account_id" field.
-func AccountIDNEQ(v int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldNEQ(FieldAccountID, v))
+// ProviderIDNEQ applies the NEQ predicate on the "provider_id" field.
+func ProviderIDNEQ(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldProviderID, v))
 }
 
-// AccountIDIn applies the In predicate on the "account_id" field.
-func AccountIDIn(vs ...int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldIn(FieldAccountID, vs...))
+// ProviderIDIn applies the In predicate on the "provider_id" field.
+func ProviderIDIn(vs ...int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldProviderID, vs...))
 }
 
-// AccountIDNotIn applies the NotIn predicate on the "account_id" field.
-func AccountIDNotIn(vs ...int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldNotIn(FieldAccountID, vs...))
+// ProviderIDNotIn applies the NotIn predicate on the "provider_id" field.
+func ProviderIDNotIn(vs ...int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldProviderID, vs...))
+}
+
+// PlatformEQ applies the EQ predicate on the "platform" field.
+func PlatformEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldPlatform, v))
+}
+
+// PlatformNEQ applies the NEQ predicate on the "platform" field.
+func PlatformNEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldPlatform, v))
+}
+
+// PlatformIn applies the In predicate on the "platform" field.
+func PlatformIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldPlatform, vs...))
+}
+
+// PlatformNotIn applies the NotIn predicate on the "platform" field.
+func PlatformNotIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldPlatform, vs...))
+}
+
+// PlatformGT applies the GT predicate on the "platform" field.
+func PlatformGT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldPlatform, v))
+}
+
+// PlatformGTE applies the GTE predicate on the "platform" field.
+func PlatformGTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldPlatform, v))
+}
+
+// PlatformLT applies the LT predicate on the "platform" field.
+func PlatformLT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldPlatform, v))
+}
+
+// PlatformLTE applies the LTE predicate on the "platform" field.
+func PlatformLTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldPlatform, v))
+}
+
+// PlatformContains applies the Contains predicate on the "platform" field.
+func PlatformContains(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContains(FieldPlatform, v))
+}
+
+// PlatformHasPrefix applies the HasPrefix predicate on the "platform" field.
+func PlatformHasPrefix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasPrefix(FieldPlatform, v))
+}
+
+// PlatformHasSuffix applies the HasSuffix predicate on the "platform" field.
+func PlatformHasSuffix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasSuffix(FieldPlatform, v))
+}
+
+// PlatformEqualFold applies the EqualFold predicate on the "platform" field.
+func PlatformEqualFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEqualFold(FieldPlatform, v))
+}
+
+// PlatformContainsFold applies the ContainsFold predicate on the "platform" field.
+func PlatformContainsFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContainsFold(FieldPlatform, v))
 }
 
 // RequestIDEQ applies the EQ predicate on the "request_id" field.
@@ -720,54 +790,54 @@ func UpstreamModelContainsFold(v string) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldContainsFold(FieldUpstreamModel, v))
 }
 
-// ChannelIDEQ applies the EQ predicate on the "channel_id" field.
-func ChannelIDEQ(v int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldEQ(FieldChannelID, v))
+// PricingConfigIDEQ applies the EQ predicate on the "pricing_config_id" field.
+func PricingConfigIDEQ(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldPricingConfigID, v))
 }
 
-// ChannelIDNEQ applies the NEQ predicate on the "channel_id" field.
-func ChannelIDNEQ(v int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldNEQ(FieldChannelID, v))
+// PricingConfigIDNEQ applies the NEQ predicate on the "pricing_config_id" field.
+func PricingConfigIDNEQ(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldPricingConfigID, v))
 }
 
-// ChannelIDIn applies the In predicate on the "channel_id" field.
-func ChannelIDIn(vs ...int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldIn(FieldChannelID, vs...))
+// PricingConfigIDIn applies the In predicate on the "pricing_config_id" field.
+func PricingConfigIDIn(vs ...int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldPricingConfigID, vs...))
 }
 
-// ChannelIDNotIn applies the NotIn predicate on the "channel_id" field.
-func ChannelIDNotIn(vs ...int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldNotIn(FieldChannelID, vs...))
+// PricingConfigIDNotIn applies the NotIn predicate on the "pricing_config_id" field.
+func PricingConfigIDNotIn(vs ...int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldPricingConfigID, vs...))
 }
 
-// ChannelIDGT applies the GT predicate on the "channel_id" field.
-func ChannelIDGT(v int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldGT(FieldChannelID, v))
+// PricingConfigIDGT applies the GT predicate on the "pricing_config_id" field.
+func PricingConfigIDGT(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldPricingConfigID, v))
 }
 
-// ChannelIDGTE applies the GTE predicate on the "channel_id" field.
-func ChannelIDGTE(v int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldGTE(FieldChannelID, v))
+// PricingConfigIDGTE applies the GTE predicate on the "pricing_config_id" field.
+func PricingConfigIDGTE(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldPricingConfigID, v))
 }
 
-// ChannelIDLT applies the LT predicate on the "channel_id" field.
-func ChannelIDLT(v int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldLT(FieldChannelID, v))
+// PricingConfigIDLT applies the LT predicate on the "pricing_config_id" field.
+func PricingConfigIDLT(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldPricingConfigID, v))
 }
 
-// ChannelIDLTE applies the LTE predicate on the "channel_id" field.
-func ChannelIDLTE(v int64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldLTE(FieldChannelID, v))
+// PricingConfigIDLTE applies the LTE predicate on the "pricing_config_id" field.
+func PricingConfigIDLTE(v int64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldPricingConfigID, v))
 }
 
-// ChannelIDIsNil applies the IsNil predicate on the "channel_id" field.
-func ChannelIDIsNil() predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldIsNull(FieldChannelID))
+// PricingConfigIDIsNil applies the IsNil predicate on the "pricing_config_id" field.
+func PricingConfigIDIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldPricingConfigID))
 }
 
-// ChannelIDNotNil applies the NotNil predicate on the "channel_id" field.
-func ChannelIDNotNil() predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldNotNull(FieldChannelID))
+// PricingConfigIDNotNil applies the NotNil predicate on the "pricing_config_id" field.
+func PricingConfigIDNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldPricingConfigID))
 }
 
 // ResponseModelEQ applies the EQ predicate on the "response_model" field.
@@ -1750,54 +1820,54 @@ func LongContextBillingAppliedNEQ(v bool) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNEQ(FieldLongContextBillingApplied, v))
 }
 
-// AccountRateMultiplierEQ applies the EQ predicate on the "account_rate_multiplier" field.
-func AccountRateMultiplierEQ(v float64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldEQ(FieldAccountRateMultiplier, v))
+// ProviderRateMultiplierEQ applies the EQ predicate on the "provider_rate_multiplier" field.
+func ProviderRateMultiplierEQ(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldProviderRateMultiplier, v))
 }
 
-// AccountRateMultiplierNEQ applies the NEQ predicate on the "account_rate_multiplier" field.
-func AccountRateMultiplierNEQ(v float64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldNEQ(FieldAccountRateMultiplier, v))
+// ProviderRateMultiplierNEQ applies the NEQ predicate on the "provider_rate_multiplier" field.
+func ProviderRateMultiplierNEQ(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldProviderRateMultiplier, v))
 }
 
-// AccountRateMultiplierIn applies the In predicate on the "account_rate_multiplier" field.
-func AccountRateMultiplierIn(vs ...float64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldIn(FieldAccountRateMultiplier, vs...))
+// ProviderRateMultiplierIn applies the In predicate on the "provider_rate_multiplier" field.
+func ProviderRateMultiplierIn(vs ...float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldProviderRateMultiplier, vs...))
 }
 
-// AccountRateMultiplierNotIn applies the NotIn predicate on the "account_rate_multiplier" field.
-func AccountRateMultiplierNotIn(vs ...float64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldNotIn(FieldAccountRateMultiplier, vs...))
+// ProviderRateMultiplierNotIn applies the NotIn predicate on the "provider_rate_multiplier" field.
+func ProviderRateMultiplierNotIn(vs ...float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldProviderRateMultiplier, vs...))
 }
 
-// AccountRateMultiplierGT applies the GT predicate on the "account_rate_multiplier" field.
-func AccountRateMultiplierGT(v float64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldGT(FieldAccountRateMultiplier, v))
+// ProviderRateMultiplierGT applies the GT predicate on the "provider_rate_multiplier" field.
+func ProviderRateMultiplierGT(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldProviderRateMultiplier, v))
 }
 
-// AccountRateMultiplierGTE applies the GTE predicate on the "account_rate_multiplier" field.
-func AccountRateMultiplierGTE(v float64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldGTE(FieldAccountRateMultiplier, v))
+// ProviderRateMultiplierGTE applies the GTE predicate on the "provider_rate_multiplier" field.
+func ProviderRateMultiplierGTE(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldProviderRateMultiplier, v))
 }
 
-// AccountRateMultiplierLT applies the LT predicate on the "account_rate_multiplier" field.
-func AccountRateMultiplierLT(v float64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldLT(FieldAccountRateMultiplier, v))
+// ProviderRateMultiplierLT applies the LT predicate on the "provider_rate_multiplier" field.
+func ProviderRateMultiplierLT(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldProviderRateMultiplier, v))
 }
 
-// AccountRateMultiplierLTE applies the LTE predicate on the "account_rate_multiplier" field.
-func AccountRateMultiplierLTE(v float64) predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldLTE(FieldAccountRateMultiplier, v))
+// ProviderRateMultiplierLTE applies the LTE predicate on the "provider_rate_multiplier" field.
+func ProviderRateMultiplierLTE(v float64) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldProviderRateMultiplier, v))
 }
 
-// AccountRateMultiplierIsNil applies the IsNil predicate on the "account_rate_multiplier" field.
-func AccountRateMultiplierIsNil() predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldIsNull(FieldAccountRateMultiplier))
+// ProviderRateMultiplierIsNil applies the IsNil predicate on the "provider_rate_multiplier" field.
+func ProviderRateMultiplierIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldProviderRateMultiplier))
 }
 
-// AccountRateMultiplierNotNil applies the NotNil predicate on the "account_rate_multiplier" field.
-func AccountRateMultiplierNotNil() predicate.UsageLog {
-	return predicate.UsageLog(sql.FieldNotNull(FieldAccountRateMultiplier))
+// ProviderRateMultiplierNotNil applies the NotNil predicate on the "provider_rate_multiplier" field.
+func ProviderRateMultiplierNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldProviderRateMultiplier))
 }
 
 // BillingTypeEQ applies the EQ predicate on the "billing_type" field.
@@ -2711,21 +2781,21 @@ func HasAPIKeyWith(preds ...predicate.APIKey) predicate.UsageLog {
 	})
 }
 
-// HasAccount applies the HasEdge predicate on the "account" edge.
-func HasAccount() predicate.UsageLog {
+// HasProvider applies the HasEdge predicate on the "provider" edge.
+func HasProvider() predicate.UsageLog {
 	return predicate.UsageLog(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, AccountTable, AccountColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, ProviderTable, ProviderColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasAccountWith applies the HasEdge predicate on the "account" edge with a given conditions (other predicates).
-func HasAccountWith(preds ...predicate.Account) predicate.UsageLog {
+// HasProviderWith applies the HasEdge predicate on the "provider" edge with a given conditions (other predicates).
+func HasProviderWith(preds ...predicate.Provider) predicate.UsageLog {
 	return predicate.UsageLog(func(s *sql.Selector) {
-		step := newAccountStep()
+		step := newProviderStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

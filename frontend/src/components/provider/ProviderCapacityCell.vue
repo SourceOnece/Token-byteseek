@@ -1,0 +1,190 @@
+<template>
+  <div class="flex flex-col gap-0.5">
+    <!-- 并发槽位 -->
+    <CapacityBadge :color-class="concurrencyClass" :current="currentConcurrency" :max="provider.concurrency">
+      <svg class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
+    </CapacityBadge>
+
+    <!-- 5h窗口费用限制 -->
+    <CapacityBadge v-if="showWindowCost" :color-class="windowCostClass" :tooltip="windowCostTooltip" :current="'$' + formatCost(currentWindowCost)" :max="'$' + formatCost(provider.window_cost_limit)">
+      <svg class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </CapacityBadge>
+
+    <!-- 会话数量限制 -->
+    <CapacityBadge v-if="showSessionLimit" :color-class="sessionLimitClass" :tooltip="sessionLimitTooltip" :current="activeSessions" :max="provider.max_sessions!">
+      <svg class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+      </svg>
+    </CapacityBadge>
+
+    <!-- RPM 限制 -->
+    <CapacityBadge v-if="showRpmLimit" :color-class="rpmClass" :tooltip="rpmTooltip" :current="currentRPM" :max="provider.base_rpm!" :suffix="rpmStrategyTag">
+      <svg class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+      </svg>
+    </CapacityBadge>
+
+    <!-- API Key 提供商配额限制 -->
+    <QuotaBadge v-if="showDailyQuota" :used="provider.quota_daily_used ?? 0" :limit="provider.quota_daily_limit!" label="D" />
+    <QuotaBadge v-if="showWeeklyQuota" :used="provider.quota_weekly_used ?? 0" :limit="provider.quota_weekly_limit!" label="W" />
+    <QuotaBadge v-if="showTotalQuota" :used="provider.quota_used ?? 0" :limit="provider.quota_limit!" />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type { Provider } from '@/types'
+import CapacityBadge from '@/components/provider/CapacityBadge.vue'
+import QuotaBadge from '@/components/provider/QuotaBadge.vue'
+
+const props = defineProps<{
+  provider: Provider
+}>()
+
+const { t } = useI18n()
+
+// ====== 并发 ======
+const currentConcurrency = computed(() => props.provider.current_concurrency || 0)
+
+const concurrencyClass = computed(() => {
+  const current = currentConcurrency.value
+  const max = props.provider.concurrency
+  if (current >= max) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+  if (current > 0) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+  return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+})
+
+// ====== 窗口费用 ======
+const isAnthropicOAuthOrSetupToken = computed(() =>
+  props.provider.platform === 'anthropic' &&
+  (props.provider.type === 'oauth' || props.provider.type === 'setup-token')
+)
+
+const showWindowCost = computed(() =>
+  isAnthropicOAuthOrSetupToken.value &&
+  props.provider.window_cost_limit != null &&
+  props.provider.window_cost_limit > 0
+)
+
+const currentWindowCost = computed(() => props.provider.current_window_cost ?? 0)
+
+const windowCostClass = computed(() => {
+  if (!showWindowCost.value) return ''
+  const current = currentWindowCost.value
+  const limit = props.provider.window_cost_limit || 0
+  const reserve = props.provider.window_cost_sticky_reserve || 10
+  if (current >= limit + reserve) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+  if (current >= limit) return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+  if (current >= limit * 0.8) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+  return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+})
+
+const windowCostTooltip = computed(() => {
+  if (!showWindowCost.value) return ''
+  const current = currentWindowCost.value
+  const limit = props.provider.window_cost_limit || 0
+  const reserve = props.provider.window_cost_sticky_reserve || 10
+  if (current >= limit + reserve) return t('admin.providers.capacity.windowCost.blocked')
+  if (current >= limit) return t('admin.providers.capacity.windowCost.stickyOnly')
+  return t('admin.providers.capacity.windowCost.normal')
+})
+
+// ====== 会话限制 ======
+const showSessionLimit = computed(() =>
+  isAnthropicOAuthOrSetupToken.value &&
+  props.provider.max_sessions != null &&
+  props.provider.max_sessions > 0
+)
+
+const activeSessions = computed(() => props.provider.active_sessions ?? 0)
+
+const sessionLimitClass = computed(() => {
+  if (!showSessionLimit.value) return ''
+  const current = activeSessions.value
+  const max = props.provider.max_sessions || 0
+  if (current >= max) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+  if (current >= max * 0.8) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+  return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+})
+
+const sessionLimitTooltip = computed(() => {
+  if (!showSessionLimit.value) return ''
+  const current = activeSessions.value
+  const max = props.provider.max_sessions || 0
+  const idle = props.provider.session_idle_timeout_minutes || 5
+  if (current >= max) return t('admin.providers.capacity.sessions.full', { idle })
+  return t('admin.providers.capacity.sessions.normal', { idle })
+})
+
+// ====== RPM ======
+const showRpmLimit = computed(() =>
+  isAnthropicOAuthOrSetupToken.value &&
+  props.provider.base_rpm != null &&
+  props.provider.base_rpm > 0
+)
+
+const currentRPM = computed(() => props.provider.current_rpm ?? 0)
+const rpmStrategy = computed(() => props.provider.rpm_strategy || 'tiered')
+const rpmStrategyTag = computed(() => rpmStrategy.value === 'sticky_exempt' ? '[S]' : '[T]')
+
+const rpmBuffer = computed(() => {
+  const base = props.provider.base_rpm || 0
+  return props.provider.rpm_sticky_buffer ?? (base > 0 ? Math.max(1, Math.floor(base / 5)) : 0)
+})
+
+const rpmClass = computed(() => {
+  if (!showRpmLimit.value) return ''
+  const current = currentRPM.value
+  const base = props.provider.base_rpm ?? 0
+  const buffer = rpmBuffer.value
+  if (rpmStrategy.value === 'tiered') {
+    if (current >= base + buffer) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+    if (current >= base) return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+  } else {
+    if (current >= base) return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+  }
+  if (current >= base * 0.8) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+  return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+})
+
+const rpmTooltip = computed(() => {
+  if (!showRpmLimit.value) return ''
+  const current = currentRPM.value
+  const base = props.provider.base_rpm ?? 0
+  const buffer = rpmBuffer.value
+  if (rpmStrategy.value === 'tiered') {
+    if (current >= base + buffer) return t('admin.providers.capacity.rpm.tieredBlocked', { buffer })
+    if (current >= base) return t('admin.providers.capacity.rpm.tieredStickyOnly', { buffer })
+    if (current >= base * 0.8) return t('admin.providers.capacity.rpm.tieredWarning')
+    return t('admin.providers.capacity.rpm.tieredNormal')
+  } else {
+    if (current >= base) return t('admin.providers.capacity.rpm.stickyExemptOver')
+    if (current >= base * 0.8) return t('admin.providers.capacity.rpm.stickyExemptWarning')
+    return t('admin.providers.capacity.rpm.stickyExemptNormal')
+  }
+})
+
+// 格式化费用显示
+const formatCost = (value: number | null | undefined) => {
+  if (value === null || value === undefined) return '0'
+  return value.toFixed(2)
+}
+
+// ====== 配额 ======
+const isQuotaEligible = computed(() => props.provider.type === 'apikey' || props.provider.type === 'bedrock')
+
+const showDailyQuota = computed(() =>
+  isQuotaEligible.value && props.provider.quota_daily_limit != null && props.provider.quota_daily_limit > 0
+)
+const showWeeklyQuota = computed(() =>
+  isQuotaEligible.value && props.provider.quota_weekly_limit != null && props.provider.quota_weekly_limit > 0
+)
+const showTotalQuota = computed(() =>
+  isQuotaEligible.value && props.provider.quota_limit != null && props.provider.quota_limit > 0
+)
+</script>

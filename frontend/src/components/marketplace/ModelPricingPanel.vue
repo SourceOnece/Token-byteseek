@@ -1,5 +1,5 @@
 <template>
-  <div v-if="hasDisplayPricing">
+  <div v-if="hasDisplayPricing" class="min-w-0">
     <!-- 展开/收起触发条：右下角箭头指示面板状态，展开时向上、收起时向下。 -->
     <button
       type="button"
@@ -17,12 +17,12 @@
 
     <!-- 抽屉式定价面板：grid 行高 0fr -> 1fr 过渡实现原地展开收起。 -->
     <div
-      class="grid transition-[grid-template-rows,opacity] duration-300 ease-in-out"
+      class="grid min-w-0 grid-cols-1 transition-[grid-template-rows,opacity] duration-300 ease-in-out"
       :class="expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 invisible'"
     >
       <!-- 抽屉内容顶部间距：仅展开时保留，收起时归零，不占卡片空间。 -->
       <div
-        class="min-h-0 overflow-hidden transition-[padding-top] duration-300 ease-in-out"
+        class="min-h-0 min-w-0 overflow-hidden transition-[padding-top] duration-300 ease-in-out"
         :class="{ 'pt-3': expanded }"
       >
         <!-- 右上角：上下文区间 / fast mode 切换，定价行随选择联动。 -->
@@ -32,15 +32,15 @@
         >
           <div
             v-if="selectableIntervals.length > 0"
-            class="inline-flex rounded-lg bg-gray-100 p-0.5 dark:bg-dark-800"
+            class="inline-flex max-w-full flex-wrap rounded-compact bg-gray-100 p-0.5 dark:bg-dark-800"
             data-testid="pricing-interval-switch"
           >
             <button
               v-for="(item, index) in selectableIntervals"
               :key="item.key"
               type="button"
-              class="rounded-md px-2 py-0.5 text-xs font-semibold transition"
-              :class="index === activeIntervalIndex ? (isFastModeActive ? fastActiveClass : standardActiveClass) : segmentInactiveClass"
+              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
+              :class="index === activeIntervalIndex ? (fastMode ? fastActiveClass : standardActiveClass) : segmentInactiveClass"
               @click="selectedIntervalIndex = index"
             >
               {{ formatCompactTokenRange(item.interval.min_tokens, item.interval.max_tokens) }}
@@ -48,21 +48,21 @@
           </div>
           <div
             v-if="hasFastPricing"
-            class="inline-flex rounded-lg bg-gray-100 p-0.5 dark:bg-dark-800"
+            class="inline-flex max-w-full flex-wrap rounded-control bg-gray-100 p-0.5 dark:bg-dark-800"
             data-testid="pricing-fast-switch"
           >
             <button
               type="button"
-              class="rounded-md px-2 py-0.5 text-xs font-semibold transition"
-              :class="!isFastModeActive ? standardActiveClass : segmentInactiveClass"
+              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
+              :class="!fastMode ? standardActiveClass : segmentInactiveClass"
               @click="fastMode = false"
             >
               {{ t('marketplace.pricingStandard') }}
             </button>
             <button
               type="button"
-              class="rounded-md px-2 py-0.5 text-xs font-semibold transition"
-              :class="isFastModeActive ? fastActiveClass : segmentInactiveClass"
+              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
+              :class="fastMode ? fastActiveClass : segmentInactiveClass"
               @click="fastMode = true"
             >
               {{ t('marketplace.pricingFast') }}
@@ -70,11 +70,7 @@
           </div>
         </div>
 
-        <!-- 可选推理倍率公开提示，不改变标准/Fast 基础价格的呈现。 -->
-        <p v-if="model.pricing.max_reasoning_effort_multiplier != null" class="mb-3 border-2 px-2 py-1 text-sm font-extrabold" :class="[pricingRowClass, pricingTextClass]" data-testid="pricing-max-multiplier">
-          {{ t('marketplace.maxReasoningMultiplier', { value: model.pricing.max_reasoning_effort_multiplier }) }}
-        </p>
-        <!-- 完整定价：单列展示，标签与价格都不换行。 -->
+        <!-- 完整定价允许在窄卡片内换行，避免隐藏的抽屉也撑大父网格。 -->
         <div v-if="activeRows.length > 0" class="space-y-2.5" data-testid="pricing-rows">
           <div
             v-for="row in activeRows"
@@ -82,8 +78,8 @@
             class="flex items-baseline justify-between gap-3 border-2 px-2 py-1 text-sm"
             :class="pricingRowClass"
           >
-            <span class="shrink-0 whitespace-nowrap font-extrabold" :class="pricingTextClass">{{ row.label }}</span>
-            <span class="whitespace-nowrap text-right font-extrabold tabular-nums" :class="pricingTextClass">{{ row.value }}</span>
+            <span class="min-w-0 max-w-[45%] shrink-0 break-words text-gray-500 dark:text-dark-400">{{ row.label }}</span>
+            <span class="min-w-0 break-words text-right font-extrabold [overflow-wrap:anywhere] tabular-nums" :class="pricingTextClass">{{ row.value }}</span>
           </div>
         </div>
         <p v-else class="text-sm text-gray-400 dark:text-dark-500">
@@ -99,6 +95,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
+import { formatCompactTokenRange } from '@/utils/formatters'
 import type { MarketplaceModel, MarketplaceModelPricing, MarketplacePricingInterval } from '@/types'
 
 // 抽屉式完整定价面板：原地展开收起、上下文区间与 fast mode 切换都收敛在卡片内部。
@@ -150,36 +147,6 @@ function formatPerMillion(value: number): string {
 
 function formatPerImage(value: number): string {
   return `${formatPrice(value)} ${t('marketplace.perImage')}`
-}
-
-function formatTokenCount(value: number): string {
-  return new Intl.NumberFormat(undefined, {
-    maximumFractionDigits: 0,
-  }).format(value)
-}
-
-function formatCompactNumber(value: number): string {
-  return new Intl.NumberFormat(undefined, {
-    maximumFractionDigits: value >= 100 ? 0 : 1,
-  }).format(value)
-}
-
-function formatCompactTokenCount(value: number): string {
-  if (value >= 1_000_000) {
-    return `${formatCompactNumber(value / 1_000_000)}m`
-  }
-  if (value >= 1_000) {
-    return `${formatCompactNumber(value / 1_000)}k`
-  }
-  return formatTokenCount(value)
-}
-
-// 区间切换用紧凑区间文案，与卡片预览里的上下文区间行保持一致。
-function formatCompactTokenRange(minTokens: number, maxTokens?: number | null): string {
-  if (typeof maxTokens !== 'number') {
-    return `${formatCompactTokenCount(minTokens)}+`
-  }
-  return `${formatCompactTokenCount(minTokens)}-${formatCompactTokenCount(maxTokens)}`
 }
 
 // —— 定价行构建 ——
@@ -292,11 +259,10 @@ function pricingKind(pricing: MarketplaceModelPricing): 'token' | 'image' | 'unp
 
 const hasDisplayPricing = computed(() => pricingKind(props.model.pricing) !== 'unpriced')
 
-// 只有真正带价的上下文区间才参与切换，避免空区间制造无意义的选项。
+// 后端仅返回有定价的区间；零价字段会被 JSON 省略，不能据此过滤免费区间。
 const selectableIntervals = computed(() =>
   (props.model.pricing.context_intervals ?? [])
     .map((interval, index) => ({ interval, key: `${interval.min_tokens}-${interval.max_tokens ?? 'up'}-${index}` }))
-    .filter((item) => tokenPricingRowsFromValues(item.interval).length > 0 || fastTokenPricingRows(item.interval).length > 0)
 )
 
 const activeIntervalIndex = computed(() =>

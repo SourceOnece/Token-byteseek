@@ -77,7 +77,7 @@ const phaseSelectOptions = computed(() => {
     { value: '', label: t('common.all') },
     { value: 'request', label: t('admin.ops.errorDetails.phase.request') || 'request' },
     { value: 'auth', label: t('admin.ops.errorDetails.phase.auth') || 'auth' },
-    { value: 'account_auth', label: t('admin.ops.errorDetails.phase.account_auth') || 'account_auth' },
+    { value: 'provider_auth', label: t('admin.ops.errorDetails.phase.provider_auth') || 'provider_auth' },
     { value: 'routing', label: t('admin.ops.errorDetails.phase.routing') || 'routing' },
     { value: 'upstream', label: t('admin.ops.errorDetails.phase.upstream') || 'upstream' },
     { value: 'network', label: t('admin.ops.errorDetails.phase.network') || 'network' },
@@ -237,7 +237,7 @@ watch(
               <input
                 v-model="q"
                 type="text"
-                class="h-9 w-full rounded-lg border-gray-200 bg-gray-50/50 py-1.5 pl-9 pr-3 text-xs font-medium text-gray-700 transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/10 dark:border-dark-700 dark:bg-dark-950 dark:text-gray-300 dark:focus:bg-dark-800"
+                class="h-9 w-full rounded-control border-gray-200 bg-gray-50/50 py-1.5 pl-9 pr-3 text-xs font-medium text-gray-700 transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/10 dark:border-dark-700 dark:bg-dark-950 dark:text-gray-300 dark:focus:bg-dark-800"
                 :placeholder="t('admin.ops.errorDetails.searchPlaceholder')"
               />
             </div>
@@ -298,7 +298,8 @@ watch(
 </template>
 
 <style>
-.compact-select .select-trigger {
-  @apply py-1.5 px-3 text-xs rounded-lg;
+/* 触发器基线类更名后沿用紧凑参数(py-1.5/px-3/text-xs)。 */
+.compact-select .input-trigger {
+  @apply py-1.5 px-3 text-xs rounded-control;
 }
 </style>

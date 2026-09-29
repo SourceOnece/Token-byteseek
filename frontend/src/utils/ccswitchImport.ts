@@ -1,10 +1,5 @@
-import type { GroupPlatform } from '@/types'
-import { OPENAI_CODEX_DEFAULT_MODEL } from '@/constants/openai'
 
-export const OPENAI_CC_SWITCH_CODEX_MODEL = OPENAI_CODEX_DEFAULT_MODEL
-export const GROK_CC_SWITCH_MODEL = 'grok-4.5'
-
-export type CcSwitchClientType = 'claude' | 'gemini'
+export type CcSwitchClientType = 'claude' | 'codex' | 'gemini' | 'grok'
 
 export interface CcSwitchImportConfig {
   app: string
@@ -14,7 +9,7 @@ export interface CcSwitchImportConfig {
 
 export interface CcSwitchImportDeeplinkInput {
   baseUrl: string
-  platform?: GroupPlatform | null
+  model: string
   clientType: CcSwitchClientType
   providerName: string
   apiKey: string
@@ -79,44 +74,21 @@ function withV1Endpoint(baseUrl: string): string {
   return normalizedBaseUrl.endsWith('/v1') ? normalizedBaseUrl : `${normalizedBaseUrl}/v1`
 }
 
+// 导入目标由用户选择的客户端决定，模型由分组的可请求目录提供。
 export function resolveCcSwitchImportConfig(
-  platform: GroupPlatform | undefined | null,
   clientType: CcSwitchClientType,
-  baseUrl: string
+  baseUrl: string,
+  model: string,
 ): CcSwitchImportConfig {
-  switch (platform || 'anthropic') {
-    case 'antigravity':
-      return {
-        app: clientType === 'gemini' ? 'gemini' : 'claude',
-        endpoint: `${baseUrl}/antigravity`
-      }
-    case 'openai':
-      return {
-        app: 'codex',
-        endpoint: baseUrl,
-        model: OPENAI_CC_SWITCH_CODEX_MODEL
-      }
-    case 'gemini':
-      return {
-        app: 'gemini',
-        endpoint: baseUrl
-      }
-    case 'grok':
-      return {
-        app: 'grokbuild',
-        endpoint: withV1Endpoint(baseUrl),
-        model: GROK_CC_SWITCH_MODEL
-      }
-    default:
-      return {
-        app: 'claude',
-        endpoint: stripTrailingV1(baseUrl)
-      }
+  return {
+    app: clientType === 'grok' ? 'grokbuild' : clientType,
+    endpoint: clientType === 'grok' || clientType === 'codex' ? withV1Endpoint(baseUrl) : stripTrailingV1(baseUrl),
+    model,
   }
 }
 
 export function buildCcSwitchImportDeeplink(input: CcSwitchImportDeeplinkInput): string {
-  const config = resolveCcSwitchImportConfig(input.platform, input.clientType, input.baseUrl)
+  const config = resolveCcSwitchImportConfig(input.clientType, input.baseUrl, input.model)
   const entries: [string, string][] = [
     ['resource', 'provider'],
     ['app', config.app],

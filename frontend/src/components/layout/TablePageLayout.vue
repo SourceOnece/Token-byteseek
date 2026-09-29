@@ -44,12 +44,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 桌面端：Flexbox 布局 */
+/* 桌面端：Flexbox 布局。高度由 AppLayout 的 flex 链分配(flex-1 占满主区剩余空间),
+   不再自行计算视口高度;移动端恢复自然高度。 */
 .table-page-layout {
-  @apply flex flex-col gap-4;
-  /* 扩大表格滚动区并抵消主区底部内边距，让分页条贴近视口底部。 */
-  height: calc(100vh - 64px - 1rem - var(--page-heading-space, 0px));
-  margin-bottom: -2rem;
+  @apply flex flex-1 flex-col gap-4 min-h-0;
 }
 
 .layout-section-fixed {
@@ -88,25 +86,12 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(th) {
-  @apply px-5 py-3.5 text-left text-sm;
-  font-weight: 800;
-  color: #141414;
-  background: var(--bh-yellow);
-  border-bottom: 2px solid #141414;
-  letter-spacing: 0.02em;
+  /* 表头与 DataTable、.table 保持同一密度:py-2 + text-xs,给数据行留出可视空间。 */
+  @apply px-4 py-2 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-dark-400 border-b border-gray-200 dark:border-dark-700;
 }
 
 .table-scroll-container :deep(td) {
-  @apply px-5 py-4 text-sm font-medium text-gray-800 dark:text-gray-200;
-  border-bottom: 1px solid rgba(20, 20, 20, 0.22);
-}
-
-.dark .table-scroll-container :deep(td) {
-  border-bottom-color: rgba(244, 240, 230, 0.18);
-}
-
-.table-scroll-container :deep(tbody tr:hover) {
-  background: rgba(255, 204, 0, 0.12);
+  @apply px-4 py-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-dark-800;
 }
 
 /* 桌面分页器与表头共用同一外框，表体滚动时保持固定。 */
@@ -119,68 +104,22 @@ onUnmounted(() => {
 }
 
 .table-page-layout:not(.mobile-mode) .table-pagination-footer {
-  --pagination-control-height: 2rem;
   @apply border-t border-gray-200 bg-gray-50/80 dark:border-dark-700 dark:bg-dark-950;
 }
 
+/* 页脚内的分页器去掉自带边框与底色,与表格外框融为一体;控件保持全站 36px 基线。 */
 .table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.pagination-root),
 .table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.batch-pagination-root) {
   border-top: 0;
   background: transparent;
-  /* 分页换行时随内容增高，保留单行紧凑高度。 */
-  height: auto;
-  min-height: 2.25rem;
-  padding: 0 1rem;
-}
-
-/* 页码分段保持连续拼接并压到 28px 正方形；表格行内控件不受影响。 */
-.table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.pagination-nav .pagination-control) {
-  width: 1.75rem;
-  height: 1.75rem;
-  min-height: 1.75rem;
-  justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.page-size-select .select-trigger),
-.table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.pagination-jump-input),
-.table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.pagination-jump-button) {
-  height: 1.75rem;
-  min-height: 1.75rem;
-}
-
-.table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.page-size-select) {
-  width: 6rem;
-  flex-shrink: 0;
-}
-
-.table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.page-size-select .select-trigger) {
-  gap: 0.25rem;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
-}
-
-.table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.pagination-summary) {
-  font-size: 0.8125rem;
-}
-
-.table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.pagination-page-button) {
-  justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.table-page-layout:not(.mobile-mode) .table-pagination-footer :deep(.batch-pagination-root .select-trigger) {
-  height: var(--pagination-control-height);
-  min-height: var(--pagination-control-height);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
 /* 移动端：恢复正常滚动 */
 .table-page-layout.mobile-mode {
   /* 移动端表格卡片高度由内容决定，避免固定视口高度导致后续区域被溢出内容覆盖。 */
-  height: auto;
-  margin-bottom: 0;
+  @apply h-auto flex-none;
 }
 
 .table-page-layout.mobile-mode .table-scroll-container {

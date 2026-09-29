@@ -54,7 +54,6 @@ services:
       # 可选 Claude CLI 版本覆盖，空值沿用内置基线；修改后需重建容器。
       - SUB2API_CLAUDE_CLI_VERSION=${SUB2API_CLAUDE_CLI_VERSION:-}
       - ENABLE_SERVER_TIMING=${ENABLE_SERVER_TIMING:-false}
-      - RUN_MODE=${RUN_MODE:-standard}
       - GOMEMLIMIT=${GOMEMLIMIT:-8GiB}
       - UPDATE_GITHUB_TOKEN=${UPDATE_GITHUB_TOKEN:-}
       - ALIPAY_MOBILE_PRECREATE_DEEP_LINK=${ALIPAY_MOBILE_PRECREATE_DEEP_LINK:-}
@@ -86,7 +85,7 @@ services:
       - REDIS_ENABLE_TLS=${REDIS_ENABLE_TLS:-false}
 
       # =======================================================================
-      # Admin Account (auto-created on first run)
+      # 管理员账户（首次运行时自动创建）
       # =======================================================================
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@sub2api.local}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}

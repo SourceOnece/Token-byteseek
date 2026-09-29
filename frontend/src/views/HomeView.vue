@@ -1106,18 +1106,8 @@ function homeProviderCategory(group: MarketplaceGroup): HomeProviderCategory {
     return homeProviderCategoryFromBrand(brandKey, brandSource)
   }
 
-  switch (group.platform) {
-    case 'anthropic':
-      return { key: 'claude', label: t('home.providers.claude'), iconBrand: 'Claude' }
-    case 'openai':
-      return { key: 'gpt', label: t('home.providers.gpt'), iconBrand: 'OpenAI' }
-    case 'gemini':
-      return { key: 'gemini', label: t('home.providers.gemini'), iconBrand: 'Gemini' }
-    case 'antigravity':
-      return { key: 'antigravity', label: t('home.providers.antigravity'), iconBrand: 'Antigravity' }
-  }
-
-  const fallbackLabel = brandSource || group.platform
+  // 分组已支持跨平台；展示使用分组品牌，不以已删除的平台字段推断路由。
+  const fallbackLabel = brandSource || group.name
   return {
     key: providerBrandFilterKey(fallbackLabel),
     label: fallbackLabel,

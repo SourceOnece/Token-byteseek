@@ -2,7 +2,7 @@
   <aside
     class="sidebar"
     :class="[
-      sidebarCollapsed ? 'w-[72px]' : 'w-56',
+      sidebarCollapsed ? 'w-[var(--sidebar-w-collapsed)]' : 'w-[var(--sidebar-w)]',
       { '-translate-x-full lg:translate-x-0': !mobileOpen }
     ]"
   >
@@ -61,7 +61,7 @@
               :class="{ 'sidebar-link-active': isActive(item.path), 'sidebar-link-collapsed': sidebarCollapsed }"
               :title="sidebarCollapsed ? item.label : undefined"
               :id="
-                item.path === '/admin/accounts'
+                item.path === '/admin/providers'
                   ? 'sidebar-channel-manage'
                   : item.path === '/admin/groups'
                     ? 'sidebar-group-manage'
@@ -78,8 +78,8 @@
           </template>
         </div>
 
-        <!-- Personal Section for Admin (hidden in simple mode) -->
-        <div v-if="!authStore.isSimpleMode" class="sidebar-section">
+        <!-- 管理员的个人功能区 -->
+        <div class="sidebar-section">
           <div class="sidebar-section-title" :class="{ 'sidebar-section-title-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
             <span class="sidebar-section-title-text" :class="{ 'sidebar-section-title-text-collapsed': sidebarCollapsed }">
               {{ t('nav.myAccount') }}
@@ -143,7 +143,7 @@
   <transition name="fade">
     <div
       v-if="mobileOpen"
-      class="fixed inset-x-0 bottom-0 top-14 z-30 bg-black/50 lg:hidden"
+      class="mobile-overlay fixed inset-x-0 bottom-0 top-[var(--header-h)] z-sidebar-overlay bg-black/50 lg:hidden"
       @click="closeMobile"
     ></div>
   </transition>
@@ -163,7 +163,6 @@ interface NavItem {
   label: string
   icon: unknown
   iconSvg?: string
-  hideInSimpleMode?: boolean
   // featureFlag 返回 false 时隐藏菜单项，用于按公开设置控制可选入口。
   featureFlag?: () => boolean
   children?: NavItem[]
@@ -180,10 +179,22 @@ const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 const mobileOpen = computed(() => appStore.mobileOpen)
+
+// 移动端抽屉的收起挂在导航完成事件上，取代原来 150ms 的定时器猜测：
+// 路由一变，抽屉里那份导航清单就过时了，所以不限于菜单点击引发的导航。
+watch(
+  () => route.fullPath,
+  () => {
+    if (mobileOpen.value) appStore.setMobileOpen(false)
+  }
+)
 const isAdmin = computed(() => authStore.isAdmin)
 const sidebarNavRef = ref<HTMLElement | null>(null)
 
-// 用户手动折叠/展开优先于当前子路由自动展开，未操作的组继续跟随路由。
+// Per-group expand/collapse overrides. A group with no entry follows the
+// automatic behavior (expanded while the active route is one of its children);
+// a chevron click records the user's choice, which wins over the automatic
+// state so an active group can still be collapsed manually.
 const groupExpandOverrides = ref<Map<string, boolean>>(new Map())
 
 // SVG Icon Components
@@ -380,7 +391,7 @@ const FolderIcon = {
     )
 }
 
-const ChannelIcon = {
+const PricingIcon = {
   render: () =>
     h(
       'svg',
@@ -588,20 +599,19 @@ const userNavItems = computed((): NavItem[] => {
   const items: NavItem[] = [
     { path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon },
     { path: '/models', label: t('nav.modelMarketplace'), icon: ModelMarketplaceIcon },
-    { path: '/usage-ranking', label: t('nav.usageRanking'), icon: RankingIcon, hideInSimpleMode: true, featureFlag: flagUsageRankingAccess },
+    { path: '/usage-ranking', label: t('nav.usageRanking'), icon: RankingIcon, featureFlag: flagUsageRankingAccess },
     { path: '/keys', label: t('nav.apiKeys'), icon: KeyIcon },
-    { path: '/team', label: t('nav.team'), icon: UsersIcon, hideInSimpleMode: true, featureFlag: flagTeamAccess },
-    { path: '/batch-image', label: t('nav.batchImage'), icon: BatchImageIcon, hideInSimpleMode: true, featureFlag: flagBatchImageAccess },
-    { path: '/creative', label: t('nav.creative'), icon: CreativeIcon, hideInSimpleMode: true, featureFlag: flagCreativeStudioAccess },
-    { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
-    { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
+    { path: '/team', label: t('nav.team'), icon: UsersIcon, featureFlag: flagTeamAccess },
+    { path: '/batch-image', label: t('nav.batchImage'), icon: BatchImageIcon, featureFlag: flagBatchImageAccess },
+    { path: '/creative', label: t('nav.creative'), icon: CreativeIcon, featureFlag: flagCreativeStudioAccess },
+    { path: '/usage', label: t('nav.usage'), icon: ChartIcon },
+    { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon },
     ...(appStore.cachedPublicSettings?.payment_enabled
       ? [
           {
             path: '/purchase',
             label: t(purchaseLabelKey(appStore.cachedPublicSettings)),
             icon: RechargeSubscriptionIcon,
-            hideInSimpleMode: true
           },
         ]
       : []),
@@ -611,18 +621,16 @@ const userNavItems = computed((): NavItem[] => {
             path: '/orders',
             label: t('nav.myOrders'),
             icon: OrderListIcon,
-            hideInSimpleMode: true
           },
         ]
       : []),
-    { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon, hideInSimpleMode: true },
+    { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon },
     ...(appStore.cachedPublicSettings?.affiliate_enabled === true
       ? [
           {
             path: '/affiliate',
             label: t('nav.affiliate'),
             icon: AffiliateIcon,
-            hideInSimpleMode: true
           },
         ]
       : []),
@@ -635,28 +643,27 @@ const userNavItems = computed((): NavItem[] => {
     })),
   ]
   const visibleItems = items.filter(item => item.featureFlag?.() !== false)
-  return authStore.isSimpleMode ? visibleItems.filter(item => !item.hideInSimpleMode) : visibleItems
+  return visibleItems
 })
 
-// 管理员“我的账户”分组使用的个人导航项
+// 管理员“我的提供商”分组使用的个人导航项
 const personalNavItems = computed((): NavItem[] => {
   const items: NavItem[] = [
     { path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon },
     { path: '/models', label: t('nav.modelMarketplace'), icon: ModelMarketplaceIcon },
-    { path: '/usage-ranking', label: t('nav.usageRanking'), icon: RankingIcon, hideInSimpleMode: true, featureFlag: flagUsageRankingAccess },
+    { path: '/usage-ranking', label: t('nav.usageRanking'), icon: RankingIcon, featureFlag: flagUsageRankingAccess },
     { path: '/keys', label: t('nav.apiKeys'), icon: KeyIcon },
-    { path: '/team', label: t('nav.team'), icon: UsersIcon, hideInSimpleMode: true, featureFlag: flagTeamAccess },
-    { path: '/batch-image', label: t('nav.batchImage'), icon: BatchImageIcon, hideInSimpleMode: true, featureFlag: flagBatchImageAccess },
-    { path: '/creative', label: t('nav.creative'), icon: CreativeIcon, hideInSimpleMode: true, featureFlag: flagCreativeStudioAccess },
-    { path: '/usage', label: t('nav.usage'), icon: ChartIcon, hideInSimpleMode: true },
-    { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
+    { path: '/team', label: t('nav.team'), icon: UsersIcon, featureFlag: flagTeamAccess },
+    { path: '/batch-image', label: t('nav.batchImage'), icon: BatchImageIcon, featureFlag: flagBatchImageAccess },
+    { path: '/creative', label: t('nav.creative'), icon: CreativeIcon, featureFlag: flagCreativeStudioAccess },
+    { path: '/usage', label: t('nav.usage'), icon: ChartIcon },
+    { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: CreditCardIcon },
     ...(appStore.cachedPublicSettings?.payment_enabled
       ? [
           {
             path: '/purchase',
             label: t(purchaseLabelKey(appStore.cachedPublicSettings)),
             icon: RechargeSubscriptionIcon,
-            hideInSimpleMode: true
           },
         ]
       : []),
@@ -666,18 +673,16 @@ const personalNavItems = computed((): NavItem[] => {
             path: '/orders',
             label: t('nav.myOrders'),
             icon: OrderListIcon,
-            hideInSimpleMode: true
           },
         ]
       : []),
-    { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon, hideInSimpleMode: true },
+    { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon },
     ...(appStore.cachedPublicSettings?.affiliate_enabled === true
       ? [
           {
             path: '/affiliate',
             label: t('nav.affiliate'),
             icon: AffiliateIcon,
-            hideInSimpleMode: true
           },
         ]
       : []),
@@ -690,7 +695,7 @@ const personalNavItems = computed((): NavItem[] => {
     })),
   ]
   const visibleItems = items.filter(item => item.featureFlag?.() !== false)
-  return authStore.isSimpleMode ? visibleItems.filter(item => !item.hideInSimpleMode) : visibleItems
+  return visibleItems
 })
 
 // Custom menu items filtered by visibility
@@ -714,12 +719,12 @@ const adminNavItems = computed((): NavItem[] => {
     ...(adminSettingsStore.opsMonitoringEnabled
       ? [{ path: '/admin/ops', label: t('nav.ops'), icon: ChartIcon }]
       : []),
-    { path: '/admin/users', label: t('nav.users'), icon: UsersIcon, hideInSimpleMode: true },
-    { path: '/admin/teams', label: t('nav.teams'), icon: UsersIcon, hideInSimpleMode: true, featureFlag: flagTeamAccess },
-    { path: '/admin/groups', label: t('nav.groups'), icon: FolderIcon, hideInSimpleMode: true },
-    { path: '/admin/channels', label: t('nav.channels', '渠道管理'), icon: ChannelIcon, hideInSimpleMode: true },
-    { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
-    { path: '/admin/accounts', label: t('nav.accounts'), icon: GlobeIcon },
+    { path: '/admin/users', label: t('nav.users'), icon: UsersIcon },
+    { path: '/admin/teams', label: t('nav.teams'), icon: UsersIcon, featureFlag: flagTeamAccess },
+    { path: '/admin/groups', label: t('nav.groups'), icon: FolderIcon },
+    { path: '/admin/pricing', label: t('nav.pricing', '价格管理'), icon: PricingIcon },
+    { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon },
+    { path: '/admin/providers', label: t('nav.providers'), icon: GlobeIcon },
     { path: '/admin/announcements', label: t('nav.announcements'), icon: BellIcon },
     { path: '/admin/proxies', label: t('nav.proxies'), icon: ServerIcon },
     {
@@ -728,15 +733,14 @@ const adminNavItems = computed((): NavItem[] => {
       icon: ShieldIcon,
       featureFlag: () => appStore.cachedPublicSettings?.risk_control_enabled === true
     },
-    { path: '/admin/redeem', label: t('nav.redeemCodes'), icon: TicketIcon, hideInSimpleMode: true },
-    { path: '/admin/promo-codes', label: t('nav.promoCodes'), icon: GiftIcon, hideInSimpleMode: true },
+    { path: '/admin/redeem', label: t('nav.redeemCodes'), icon: TicketIcon },
+    { path: '/admin/promo-codes', label: t('nav.promoCodes'), icon: GiftIcon },
     ...(appStore.cachedPublicSettings?.affiliate_enabled === true
       ? [
           {
             path: '/admin/affiliates',
             label: t('nav.affiliateManagement'),
             icon: UsersIcon,
-            hideInSimpleMode: true,
             children: [
               { path: '/admin/affiliates/invites', label: t('nav.affiliateInviteRecords'), icon: UsersIcon },
               { path: '/admin/affiliates/rebates', label: t('nav.affiliateRebateRecords'), icon: OrderIcon },
@@ -751,7 +755,6 @@ const adminNavItems = computed((): NavItem[] => {
             path: '/admin/orders',
             label: t('nav.orderManagement'),
             icon: OrderIcon,
-            hideInSimpleMode: true,
             children: [
               { path: '/admin/orders/dashboard', label: t('nav.paymentDashboard'), icon: ChartIcon },
               { path: '/admin/orders', label: t('nav.orderManagement'), icon: OrderIcon },
@@ -761,20 +764,8 @@ const adminNavItems = computed((): NavItem[] => {
         ]
       : []),
     { path: '/admin/usage', label: t('nav.usage'), icon: ChartIcon },
-    { path: '/admin/audit-logs', label: t('nav.auditLogs'), icon: ShieldIcon, hideInSimpleMode: true }
+    { path: '/admin/audit-logs', label: t('nav.auditLogs'), icon: ShieldIcon }
   ]
-
-  // 简单模式下，在系统设置前插入 API密钥
-  if (authStore.isSimpleMode) {
-    const filtered = baseItems.filter(item => !item.hideInSimpleMode && item.featureFlag?.() !== false)
-    filtered.push({ path: '/keys', label: t('nav.apiKeys'), icon: KeyIcon })
-    filtered.push({ path: '/admin/settings', label: t('nav.settings'), icon: CogIcon })
-    // Add admin custom menu items after settings
-    for (const cm of customMenuItemsForAdmin.value) {
-      filtered.push({ path: `/custom/${cm.id}`, label: cm.label, icon: null, iconSvg: cm.icon_svg })
-    }
-    return filtered
-  }
 
   const visibleItems = baseItems.filter(item => item.featureFlag?.() !== false)
   visibleItems.push({ path: '/admin/settings', label: t('nav.settings'), icon: CogIcon })
@@ -790,16 +781,15 @@ function closeMobile() {
 }
 
 function handleMenuItemClick(itemPath: string) {
-  if (mobileOpen.value) {
-    setTimeout(() => {
-      appStore.setMobileOpen(false)
-    }, 150)
+  // 点击当前路由不会触发导航（router-link 去重），上面的 route 监听不会命中，这里立即收起。
+  if (mobileOpen.value && itemPath === route.path) {
+    appStore.setMobileOpen(false)
   }
 
   // Map paths to tour selectors
   const pathToSelector: Record<string, string> = {
     '/admin/groups': '#sidebar-group-manage',
-    '/admin/accounts': '#sidebar-channel-manage',
+    '/admin/providers': '#sidebar-channel-manage',
     '/keys': '[data-tour="sidebar-my-keys"]',
     '/usage': '[data-tour="sidebar-usage"]'
   }
@@ -863,24 +853,11 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.fade-enter-active {
-  transition: opacity 200ms ease-out;
-}
-
-.fade-leave-active {
-  transition: opacity 150ms ease-in;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fade-enter-active,
-  .fade-leave-active {
-    transition-duration: 1ms;
-  }
+/* 遮罩淡入 200ms / 淡出 150ms,变量由全局 fade 配方读取(默认档为 0.2s 双侧);
+   reduced-motion 收敛由全局配方统一处理。 */
+.mobile-overlay {
+  --fade-duration-enter: 200ms;
+  --fade-duration-leave: 150ms;
 }
 
 .sidebar-link-collapsed {

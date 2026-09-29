@@ -20,7 +20,7 @@ const { driverFactory, routerPush, currentRoute, onboardingStore } = vi.hoisted(
 vi.mock('driver.js', () => ({ driver: driverFactory }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 vi.mock('@/stores/auth', () => ({
-  useAuthStore: () => ({ user: { id: 7, role: 'user' }, isSimpleMode: false }),
+  useAuthStore: () => ({ user: { id: 7, role: 'user' } }),
 }))
 vi.mock('@/stores/onboarding', () => ({ useOnboardingStore: () => onboardingStore }))
 vi.mock('vue-router', () => ({

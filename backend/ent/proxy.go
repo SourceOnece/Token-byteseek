@@ -53,8 +53,8 @@ type Proxy struct {
 
 // ProxyEdges holds the relations/edges for other nodes in the graph.
 type ProxyEdges struct {
-	// Accounts holds the value of the accounts edge.
-	Accounts []*Account `json:"accounts,omitempty"`
+	// Providers holds the value of the providers edge.
+	Providers []*Provider `json:"providers,omitempty"`
 	// PrimaryProxies holds the value of the primary_proxies edge.
 	PrimaryProxies []*Proxy `json:"primary_proxies,omitempty"`
 	// BackupProxy holds the value of the backup_proxy edge.
@@ -64,13 +64,13 @@ type ProxyEdges struct {
 	loadedTypes [3]bool
 }
 
-// AccountsOrErr returns the Accounts value or an error if the edge
+// ProvidersOrErr returns the Providers value or an error if the edge
 // was not loaded in eager-loading.
-func (e ProxyEdges) AccountsOrErr() ([]*Account, error) {
+func (e ProxyEdges) ProvidersOrErr() ([]*Provider, error) {
 	if e.loadedTypes[0] {
-		return e.Accounts, nil
+		return e.Providers, nil
 	}
-	return nil, &NotLoadedError{edge: "accounts"}
+	return nil, &NotLoadedError{edge: "providers"}
 }
 
 // PrimaryProxiesOrErr returns the PrimaryProxies value or an error if the edge
@@ -227,9 +227,9 @@ func (_m *Proxy) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryAccounts queries the "accounts" edge of the Proxy entity.
-func (_m *Proxy) QueryAccounts() *AccountQuery {
-	return NewProxyClient(_m.config).QueryAccounts(_m)
+// QueryProviders queries the "providers" edge of the Proxy entity.
+func (_m *Proxy) QueryProviders() *ProviderQuery {
+	return NewProxyClient(_m.config).QueryProviders(_m)
 }
 
 // QueryPrimaryProxies queries the "primary_proxies" edge of the Proxy entity.

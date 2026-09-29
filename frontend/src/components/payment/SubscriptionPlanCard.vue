@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'group relative flex flex-col overflow-hidden rounded-2xl border transition-all',
+      'group relative flex flex-col overflow-hidden rounded-surface border transition-all',
       'hover:shadow-xl hover:-translate-y-0.5',
       borderClass,
       'bg-white dark:bg-dark-800',
@@ -30,16 +30,16 @@
             <span :class="['text-2xl font-extrabold tracking-tight', textClass]">{{ plan.price }}</span>
             <span v-if="plan.currency" class="text-xs font-medium text-gray-400 dark:text-dark-500">{{ plan.currency }}</span>
           </div>
-          <span class="text-[11px] text-gray-400 dark:text-dark-500">/ {{ validitySuffix }}</span>
+          <span class="text-xs text-gray-400 dark:text-dark-500">/ {{ validitySuffix }}</span>
           <div v-if="plan.original_price" class="mt-0.5 flex items-center justify-end gap-1.5">
             <span class="text-xs text-gray-400 line-through dark:text-dark-500">{{ planCurrencySymbol }}{{ plan.original_price }}<template v-if="plan.currency"> {{ plan.currency }}</template></span>
-            <span :class="['rounded px-1 py-0.5 text-[10px] font-semibold', discountClass]">{{ discountText }}</span>
+            <span :class="['rounded-compact px-1 py-0.5 text-xs font-semibold', discountClass]">{{ discountText }}</span>
           </div>
         </div>
       </div>
 
       <!-- 套餐额度信息 -->
-      <div class="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 rounded-lg bg-gray-50 px-3 py-2 text-xs dark:bg-dark-700/50">
+      <div class="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 rounded-control bg-gray-50 px-3 py-2 text-xs dark:bg-dark-700/50">
         <div v-if="hasPlanQuota(plan.daily_limit_usd)" class="flex items-center justify-between">
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.dailyLimit') }}</span>
           <span class="font-medium text-gray-700 dark:text-gray-300">{{ formatPlanQuota(plan.daily_limit_usd) }}</span>
@@ -60,7 +60,7 @@
           <span class="text-gray-400 dark:text-dark-500">{{ t('payment.planCard.models') }}</span>
           <div class="flex flex-wrap justify-end gap-1">
             <span v-for="scope in modelScopeLabels" :key="scope"
-              class="rounded bg-gray-200/80 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-dark-600 dark:text-gray-300">
+              class="rounded-compact bg-gray-200/80 px-1.5 py-0.5 text-xs font-medium text-gray-600 dark:bg-dark-600 dark:text-gray-300">
               {{ scope }}
             </span>
           </div>
@@ -82,7 +82,7 @@
       <!-- Subscribe Button -->
       <button
         type="button"
-        :class="['h-9 w-full rounded-xl py-1.5 text-sm font-semibold transition-all active:scale-[0.98]', btnClass]"
+        :class="['h-9 w-full rounded-control py-1.5 text-sm font-semibold transition-all active:scale-[0.98]', btnClass]"
         @click="emit('select', plan)"
       >
         {{ isRenewal ? t('payment.renewNow') : t('payment.subscribeNow') }}
@@ -114,18 +114,18 @@ const { t } = useI18n()
 const { formatBalanceAmount } = useBalanceDisplay()
 const planCurrencySymbol = computed(() => currencySymbol(props.plan.currency || 'USD'))
 
-const platform = computed(() => props.plan.group_platform || '')
+
 const isRenewal = computed(() =>
   props.activeSubscriptions?.some(s => s.plan_id === props.plan.id && s.status === 'active') ?? false
 )
 
 // Derived color classes from central config
-const accentClass = computed(() => platformAccentBarClass(platform.value))
-const borderClass = computed(() => platformBorderClass(platform.value))
-const textClass = computed(() => platformTextClass(platform.value))
-const iconClass = computed(() => platformIconClass(platform.value))
-const btnClass = computed(() => platformButtonClass(platform.value))
-const discountClass = computed(() => platformDiscountClass(platform.value))
+const accentClass = computed(() => platformAccentBarClass(''))
+const borderClass = computed(() => platformBorderClass(''))
+const textClass = computed(() => platformTextClass(''))
+const iconClass = computed(() => platformIconClass(''))
+const btnClass = computed(() => platformButtonClass(''))
+const discountClass = computed(() => platformDiscountClass(''))
 
 const discountText = computed(() => {
   if (!props.plan.original_price || props.plan.original_price <= 0) return ''
@@ -149,8 +149,7 @@ const MODEL_SCOPE_LABELS: Record<string, string> = {
 }
 
 const modelScopeLabels = computed(() => {
-  // 模型系列只对 Antigravity 套餐有含义，其他平台不展示历史残留字段。
-  if (platform.value !== 'antigravity') return []
+  // 模型系列限制由分组策略提供，作用于相关提供商。
   const scopes = props.plan.supported_model_scopes
   if (!scopes || scopes.length === 0) return []
   return scopes.map(s => MODEL_SCOPE_LABELS[s] || s)

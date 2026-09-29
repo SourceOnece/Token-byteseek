@@ -1430,6 +1430,29 @@ func APIKeyLimitLTE(v int) predicate.User {
 	return predicate.User(sql.FieldLTE(FieldAPIKeyLimit, v))
 }
 
+// HasPlatformQuotas applies the HasEdge predicate on the "platform_quotas" edge.
+func HasPlatformQuotas() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, PlatformQuotasTable, PlatformQuotasColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPlatformQuotasWith applies the HasEdge predicate on the "platform_quotas" edge with a given conditions (other predicates).
+func HasPlatformQuotasWith(preds ...predicate.UserPlatformQuota) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newPlatformQuotasStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasAPIKeys applies the HasEdge predicate on the "api_keys" edge.
 func HasAPIKeys() predicate.User {
 	return predicate.User(func(s *sql.Selector) {
@@ -1744,29 +1767,6 @@ func HasPendingAuthSessions() predicate.User {
 func HasPendingAuthSessionsWith(preds ...predicate.PendingAuthSession) predicate.User {
 	return predicate.User(func(s *sql.Selector) {
 		step := newPendingAuthSessionsStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasPlatformQuotas applies the HasEdge predicate on the "platform_quotas" edge.
-func HasPlatformQuotas() predicate.User {
-	return predicate.User(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, PlatformQuotasTable, PlatformQuotasColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasPlatformQuotasWith applies the HasEdge predicate on the "platform_quotas" edge with a given conditions (other predicates).
-func HasPlatformQuotasWith(preds ...predicate.UserPlatformQuota) predicate.User {
-	return predicate.User(func(s *sql.Selector) {
-		step := newPlatformQuotasStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

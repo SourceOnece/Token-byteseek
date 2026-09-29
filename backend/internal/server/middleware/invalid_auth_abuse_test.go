@@ -9,15 +9,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	testkit "github.com/TokenFlux/TokenRouter/internal/apikey/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
-	"github.com/TokenFlux/TokenRouter/internal/service"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
 func invalidAuthAbuseTestConfig(threshold int) *config.Config {
 	return &config.Config{
-		RunMode: config.RunModeSimple,
 		APIKeyAuth: config.APIKeyAuthCacheConfig{InvalidAbuse: config.InvalidAuthAbuseConfig{
 			Enabled: true, Threshold: threshold, WindowSeconds: 60, BlockSeconds: 60, Capacity: 256,
 		}},
@@ -25,14 +27,14 @@ func invalidAuthAbuseTestConfig(threshold int) *config.Config {
 }
 
 func TestAPIKeyAuthInvalidAbuseReturns429BeforeRepository(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	repoCalls := 0
-	repo := &stubApiKeyRepo{getByKey: func(context.Context, string) (*service.APIKey, error) {
+	repo := &stubApiKeyRepo{getByKey: func(context.Context, string) (*apikey.APIKey, error) {
 		repoCalls++
-		return nil, service.ErrAPIKeyNotFound
+		return nil, apikey.ErrAPIKeyNotFound
 	}}
 	cfg := invalidAuthAbuseTestConfig(3)
-	svc := service.NewAPIKeyService(repo, nil, nil, nil, nil, nil, cfg)
+	svc := testkit.NewService(repo, nil, nil, nil, nil, nil, cfg)
+	svc.Start()
 	r := gin.New()
 	var reason IngressRejectReason
 	r.Use(func(c *gin.Context) { c.Next(); reason, _ = GetIngressRejectReason(c) })
@@ -60,14 +62,14 @@ func TestAPIKeyAuthInvalidAbuseReturns429BeforeRepository(t *testing.T) {
 }
 
 func TestGoogleAPIKeyAuthInvalidAbuseReturnsProtocol429(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	repoCalls := 0
-	repo := fakeAPIKeyRepo{getByKey: func(context.Context, string) (*service.APIKey, error) {
+	repo := fakeAPIKeyRepo{getByKey: func(context.Context, string) (*apikey.APIKey, error) {
 		repoCalls++
-		return nil, service.ErrAPIKeyNotFound
+		return nil, apikey.ErrAPIKeyNotFound
 	}}
 	cfg := invalidAuthAbuseTestConfig(2)
-	svc := service.NewAPIKeyService(repo, nil, nil, nil, nil, nil, cfg)
+	svc := testkit.NewService(repo, nil, nil, nil, nil, nil, cfg)
+	svc.Start()
 	r := gin.New()
 	var reason IngressRejectReason
 	r.Use(func(c *gin.Context) { c.Next(); reason, _ = GetIngressRejectReason(c) })
@@ -94,20 +96,20 @@ func TestGoogleAPIKeyAuthInvalidAbuseReturnsProtocol429(t *testing.T) {
 }
 
 func TestInvalidAuthAbuseDoesNotCountValidOrOperationalFailures(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	user := &service.User{ID: 1, Status: service.StatusActive, Role: service.RoleUser, Balance: 1}
-	repo := &stubApiKeyRepo{getByKey: func(_ context.Context, key string) (*service.APIKey, error) {
+	user := &identity.User{ID: 1, Status: billing.StatusActive, Role: identity.RoleUser, Balance: 1}
+	repo := &stubApiKeyRepo{getByKey: func(_ context.Context, key string) (*apikey.APIKey, error) {
 		switch key {
 		case "valid-key":
-			return &service.APIKey{ID: 1, UserID: 1, Key: key, Status: service.StatusActive, User: user}, nil
+			return bindAuthTestGroup(&apikey.APIKey{ID: 1, UserID: 1, Key: key, Status: billing.StatusActive, User: user}), nil
 		case "db-error":
 			return nil, errors.New("database unavailable")
 		default:
-			return nil, service.ErrAPIKeyNotFound
+			return nil, apikey.ErrAPIKeyNotFound
 		}
 	}}
 	cfg := invalidAuthAbuseTestConfig(10)
-	svc := service.NewAPIKeyService(repo, nil, nil, nil, nil, nil, cfg)
+	svc := testkit.NewService(repo, nil, nil, nil, nil, nil, cfg)
+	svc.Start()
 	r := gin.New()
 	r.Use(gin.HandlerFunc(NewAPIKeyAuthMiddleware(svc, nil, cfg)))
 	r.POST("/t", func(c *gin.Context) { c.Status(http.StatusOK) })

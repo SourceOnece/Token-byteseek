@@ -5,7 +5,7 @@
     <div :class="[isFullscreen ? 'relative z-10 p-4 md:p-6' : '', 'space-y-6 pb-12']">
       <div
         v-if="errorMessage"
-        class="rounded-2xl bg-red-50 p-4 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400"
+        class="rounded-surface bg-red-50 p-4 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400"
       >
         {{ errorMessage }}
       </div>
@@ -212,7 +212,7 @@ const lastUpdated = ref<Date | null>(new Date())
 const timeRange = ref<TimeRange>('1h')
 const platform = ref<string>('')
 const groupId = ref<number | null>(null)
-const groups = ref<Array<{ id: number; name: string; platform: string }>>([])
+const groups = ref<Array<{ id: number; name: string }>>([])
 const latencyBucketBoundaries = ref<number[]>(defaultLatencyBucketBoundaries())
 const invalidLatencyBoundsQuery = ref(false)
 const customStartTime = ref<string | null>(null)
@@ -497,7 +497,7 @@ async function loadDashboardAdvancedSettings() {
 async function loadGroups() {
   try {
     const list = await adminAPI.groups.getAll()
-    groups.value = list.map((group) => ({ id: group.id, name: group.name, platform: group.platform }))
+    groups.value = list.map((group) => ({ id: group.id, name: group.name }))
   } catch (err) {
     console.error('[OpsDashboard] Failed to load groups', err)
     groups.value = []
@@ -558,10 +558,6 @@ function onPlatformChange(v: string | number | boolean | null) {
   const nextPlatform = typeof v === 'string' ? v : ''
   platform.value = nextPlatform
 
-  const selectedGroup = groups.value.find((group) => group.id === groupId.value)
-  if (nextPlatform && selectedGroup && selectedGroup.platform !== nextPlatform) {
-    groupId.value = null
-  }
 }
 
 function onGroupChange(v: string | number | boolean | null) {

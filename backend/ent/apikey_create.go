@@ -399,16 +399,16 @@ func (_c *APIKeyCreate) SetNillableWindow7dStart(v *time.Time) *APIKeyCreate {
 	return _c
 }
 
-// SetFallbackToDefaultGroupWhenUnavailable sets the "fallback_to_default_group_when_unavailable" field.
-func (_c *APIKeyCreate) SetFallbackToDefaultGroupWhenUnavailable(v bool) *APIKeyCreate {
-	_c.mutation.SetFallbackToDefaultGroupWhenUnavailable(v)
+// SetFallbackWhenGroupUnavailable sets the "fallback_when_group_unavailable" field.
+func (_c *APIKeyCreate) SetFallbackWhenGroupUnavailable(v bool) *APIKeyCreate {
+	_c.mutation.SetFallbackWhenGroupUnavailable(v)
 	return _c
 }
 
-// SetNillableFallbackToDefaultGroupWhenUnavailable sets the "fallback_to_default_group_when_unavailable" field if the given value is not nil.
-func (_c *APIKeyCreate) SetNillableFallbackToDefaultGroupWhenUnavailable(v *bool) *APIKeyCreate {
+// SetNillableFallbackWhenGroupUnavailable sets the "fallback_when_group_unavailable" field if the given value is not nil.
+func (_c *APIKeyCreate) SetNillableFallbackWhenGroupUnavailable(v *bool) *APIKeyCreate {
 	if v != nil {
-		_c.SetFallbackToDefaultGroupWhenUnavailable(*v)
+		_c.SetFallbackWhenGroupUnavailable(*v)
 	}
 	return _c
 }
@@ -582,9 +582,9 @@ func (_c *APIKeyCreate) defaults() error {
 		v := apikey.DefaultUsage7d
 		_c.mutation.SetUsage7d(v)
 	}
-	if _, ok := _c.mutation.FallbackToDefaultGroupWhenUnavailable(); !ok {
-		v := apikey.DefaultFallbackToDefaultGroupWhenUnavailable
-		_c.mutation.SetFallbackToDefaultGroupWhenUnavailable(v)
+	if _, ok := _c.mutation.FallbackWhenGroupUnavailable(); !ok {
+		v := apikey.DefaultFallbackWhenGroupUnavailable
+		_c.mutation.SetFallbackWhenGroupUnavailable(v)
 	}
 	return nil
 }
@@ -673,8 +673,8 @@ func (_c *APIKeyCreate) check() error {
 	if _, ok := _c.mutation.Usage7d(); !ok {
 		return &ValidationError{Name: "usage_7d", err: errors.New(`ent: missing required field "APIKey.usage_7d"`)}
 	}
-	if _, ok := _c.mutation.FallbackToDefaultGroupWhenUnavailable(); !ok {
-		return &ValidationError{Name: "fallback_to_default_group_when_unavailable", err: errors.New(`ent: missing required field "APIKey.fallback_to_default_group_when_unavailable"`)}
+	if _, ok := _c.mutation.FallbackWhenGroupUnavailable(); !ok {
+		return &ValidationError{Name: "fallback_when_group_unavailable", err: errors.New(`ent: missing required field "APIKey.fallback_when_group_unavailable"`)}
 	}
 	if v, ok := _c.mutation.ManagedBy(); ok {
 		if err := apikey.ManagedByValidator(v); err != nil {
@@ -819,9 +819,9 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 		_spec.SetField(apikey.FieldWindow7dStart, field.TypeTime, value)
 		_node.Window7dStart = &value
 	}
-	if value, ok := _c.mutation.FallbackToDefaultGroupWhenUnavailable(); ok {
-		_spec.SetField(apikey.FieldFallbackToDefaultGroupWhenUnavailable, field.TypeBool, value)
-		_node.FallbackToDefaultGroupWhenUnavailable = value
+	if value, ok := _c.mutation.FallbackWhenGroupUnavailable(); ok {
+		_spec.SetField(apikey.FieldFallbackWhenGroupUnavailable, field.TypeBool, value)
+		_node.FallbackWhenGroupUnavailable = value
 	}
 	if value, ok := _c.mutation.ManagedBy(); ok {
 		_spec.SetField(apikey.FieldManagedBy, field.TypeString, value)
@@ -1430,15 +1430,15 @@ func (u *APIKeyUpsert) ClearWindow7dStart() *APIKeyUpsert {
 	return u
 }
 
-// SetFallbackToDefaultGroupWhenUnavailable sets the "fallback_to_default_group_when_unavailable" field.
-func (u *APIKeyUpsert) SetFallbackToDefaultGroupWhenUnavailable(v bool) *APIKeyUpsert {
-	u.Set(apikey.FieldFallbackToDefaultGroupWhenUnavailable, v)
+// SetFallbackWhenGroupUnavailable sets the "fallback_when_group_unavailable" field.
+func (u *APIKeyUpsert) SetFallbackWhenGroupUnavailable(v bool) *APIKeyUpsert {
+	u.Set(apikey.FieldFallbackWhenGroupUnavailable, v)
 	return u
 }
 
-// UpdateFallbackToDefaultGroupWhenUnavailable sets the "fallback_to_default_group_when_unavailable" field to the value that was provided on create.
-func (u *APIKeyUpsert) UpdateFallbackToDefaultGroupWhenUnavailable() *APIKeyUpsert {
-	u.SetExcluded(apikey.FieldFallbackToDefaultGroupWhenUnavailable)
+// UpdateFallbackWhenGroupUnavailable sets the "fallback_when_group_unavailable" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateFallbackWhenGroupUnavailable() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldFallbackWhenGroupUnavailable)
 	return u
 }
 
@@ -2051,17 +2051,17 @@ func (u *APIKeyUpsertOne) ClearWindow7dStart() *APIKeyUpsertOne {
 	})
 }
 
-// SetFallbackToDefaultGroupWhenUnavailable sets the "fallback_to_default_group_when_unavailable" field.
-func (u *APIKeyUpsertOne) SetFallbackToDefaultGroupWhenUnavailable(v bool) *APIKeyUpsertOne {
+// SetFallbackWhenGroupUnavailable sets the "fallback_when_group_unavailable" field.
+func (u *APIKeyUpsertOne) SetFallbackWhenGroupUnavailable(v bool) *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
-		s.SetFallbackToDefaultGroupWhenUnavailable(v)
+		s.SetFallbackWhenGroupUnavailable(v)
 	})
 }
 
-// UpdateFallbackToDefaultGroupWhenUnavailable sets the "fallback_to_default_group_when_unavailable" field to the value that was provided on create.
-func (u *APIKeyUpsertOne) UpdateFallbackToDefaultGroupWhenUnavailable() *APIKeyUpsertOne {
+// UpdateFallbackWhenGroupUnavailable sets the "fallback_when_group_unavailable" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateFallbackWhenGroupUnavailable() *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
-		s.UpdateFallbackToDefaultGroupWhenUnavailable()
+		s.UpdateFallbackWhenGroupUnavailable()
 	})
 }
 
@@ -2843,17 +2843,17 @@ func (u *APIKeyUpsertBulk) ClearWindow7dStart() *APIKeyUpsertBulk {
 	})
 }
 
-// SetFallbackToDefaultGroupWhenUnavailable sets the "fallback_to_default_group_when_unavailable" field.
-func (u *APIKeyUpsertBulk) SetFallbackToDefaultGroupWhenUnavailable(v bool) *APIKeyUpsertBulk {
+// SetFallbackWhenGroupUnavailable sets the "fallback_when_group_unavailable" field.
+func (u *APIKeyUpsertBulk) SetFallbackWhenGroupUnavailable(v bool) *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
-		s.SetFallbackToDefaultGroupWhenUnavailable(v)
+		s.SetFallbackWhenGroupUnavailable(v)
 	})
 }
 
-// UpdateFallbackToDefaultGroupWhenUnavailable sets the "fallback_to_default_group_when_unavailable" field to the value that was provided on create.
-func (u *APIKeyUpsertBulk) UpdateFallbackToDefaultGroupWhenUnavailable() *APIKeyUpsertBulk {
+// UpdateFallbackWhenGroupUnavailable sets the "fallback_when_group_unavailable" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateFallbackWhenGroupUnavailable() *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
-		s.UpdateFallbackToDefaultGroupWhenUnavailable()
+		s.UpdateFallbackWhenGroupUnavailable()
 	})
 }
 

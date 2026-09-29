@@ -5,7 +5,7 @@
         <div ref="filterPanelRef" class="relative shrink-0">
           <button
             type="button"
-            class="btn btn-secondary relative h-9 w-9 p-0"
+            class="btn btn-secondary relative btn-icon"
             :aria-expanded="showFilterDropdown"
             :aria-label="t('common.filter')"
             :title="t('common.filter')"
@@ -17,7 +17,7 @@
             </span>
           </button>
 
-          <div v-show="showFilterDropdown" class="absolute left-0 top-full z-[60] mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
+          <div v-show="showFilterDropdown" class="absolute left-0 top-full z-modal-nested mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
             <div class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
             <div class="flex flex-wrap items-end gap-4">
         <div v-if="mode === 'usage'" class="w-full sm:w-auto sm:min-w-[200px]">
@@ -47,17 +47,17 @@
           </button>
           <div
             v-if="showUserDropdown && (userResults.length > 0 || userKeyword)"
-            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:bg-gray-800"
+            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border bg-white shadow-lg dark:bg-gray-800"
           >
             <button
               v-for="u in userResults"
               :key="u.id"
               type="button"
               @click="selectUser(u)"
-              class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+              class="dropdown-item"
             >
               <span>{{ u.email }}<span v-if="u.deleted" class="ml-1 text-xs text-gray-400">（{{ t('admin.usage.userDeletedBadge') }}）</span></span>
-              <span class="ml-2 text-xs text-gray-400">#{{ u.id }}</span>
+              <span class="text-xs text-gray-400">#{{ u.id }}</span>
             </button>
           </div>
         </div>
@@ -84,17 +84,17 @@
           </button>
           <div
             v-if="showApiKeyDropdown && apiKeyResults.length > 0"
-            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:bg-gray-800"
+            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border bg-white shadow-lg dark:bg-gray-800"
           >
             <button
               v-for="k in apiKeyResults"
               :key="k.id"
               type="button"
               @click="selectApiKey(k)"
-              class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+              class="dropdown-item"
             >
               <span class="truncate">{{ k.name || `#${k.id}` }}</span>
-              <span class="ml-2 text-xs text-gray-400">#{{ k.id }}</span>
+              <span class="text-xs text-gray-400">#{{ k.id }}</span>
             </button>
           </div>
         </div>
@@ -105,39 +105,39 @@
           <Select v-model="filters.model" :options="modelOptions" searchable @change="emitChange" />
         </div>
 
-        <!-- Account Filter -->
-        <div ref="accountSearchRef" class="usage-filter-dropdown relative w-full sm:w-auto sm:min-w-[220px]">
-          <label class="input-label">{{ t('admin.usage.account') }}</label>
+        <!-- Provider Filter -->
+        <div ref="providerSearchRef" class="usage-filter-dropdown relative w-full sm:w-auto sm:min-w-[220px]">
+          <label class="input-label">{{ t('admin.usage.provider') }}</label>
           <input
-            v-model="accountKeyword"
+            v-model="providerKeyword"
             type="text"
             class="input pr-8"
-            :placeholder="t('admin.usage.searchAccountPlaceholder')"
-            @input="debounceAccountSearch"
-            @focus="showAccountDropdown = true"
+            :placeholder="t('admin.usage.searchProviderPlaceholder')"
+            @input="debounceProviderSearch"
+            @focus="showProviderDropdown = true"
           />
           <button
-            v-if="filters.account_id"
+            v-if="filters.provider_id"
             type="button"
-            @click="clearAccount"
+            @click="clearProvider"
             class="absolute right-2 top-9 text-gray-400"
-            aria-label="Clear account filter"
+            aria-label="Clear provider filter"
           >
             ✕
           </button>
           <div
-            v-if="showAccountDropdown && (accountResults.length > 0 || accountKeyword)"
-            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-white shadow-lg dark:bg-gray-800"
+            v-if="showProviderDropdown && (providerResults.length > 0 || providerKeyword)"
+            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border bg-white shadow-lg dark:bg-gray-800"
           >
             <button
-              v-for="a in accountResults"
+              v-for="a in providerResults"
               :key="a.id"
               type="button"
-              @click="selectAccount(a)"
-              class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+              @click="selectProvider(a)"
+              class="dropdown-item"
             >
               <span class="truncate">{{ a.name }}</span>
-              <span class="ml-2 text-xs text-gray-400">#{{ a.id }}</span>
+              <span class="text-xs text-gray-400">#{{ a.id }}</span>
             </button>
           </div>
         </div>
@@ -194,15 +194,15 @@
         </div>
 
         <div v-if="showActions" class="flex flex-wrap items-center justify-end gap-2">
-          <button type="button" @click="$emit('refresh')" class="btn btn-secondary h-9 w-9 p-0" :title="t('common.refresh')">
+          <button type="button" @click="$emit('refresh')" class="btn btn-secondary btn-icon" :title="t('common.refresh')">
             <Icon name="refresh" size="sm" />
           </button>
           <slot name="after-reset" />
           <template v-if="mode === 'usage'">
-            <button type="button" @click="$emit('cleanup')" class="btn btn-danger h-9 whitespace-nowrap px-3 sm:px-4">
+            <button type="button" @click="$emit('cleanup')" class="btn btn-danger whitespace-nowrap px-3 sm:px-4">
               {{ t('admin.usage.cleanup.button') }}
             </button>
-            <button type="button" @click="$emit('export')" :disabled="exporting" class="btn btn-primary h-9 whitespace-nowrap px-3 sm:px-4">
+            <button type="button" @click="$emit('export')" :disabled="exporting" class="btn btn-primary whitespace-nowrap px-3 sm:px-4">
               {{ t('usage.exportExcel') }}
             </button>
           </template>
@@ -219,6 +219,7 @@ import { adminAPI } from '@/api/admin'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { COMMON_ERROR_STATUS_CODES } from '@/utils/errorBadges'
+import { SEARCH_DEBOUNCE_MS } from '@/constants/ui'
 import type { SimpleApiKey, SimpleUser } from '@/api/admin/usage'
 
 type ModelValue = Record<string, any>
@@ -258,7 +259,7 @@ const filters = toRef(props, 'modelValue')
 
 const userSearchRef = ref<HTMLElement | null>(null)
 const apiKeySearchRef = ref<HTMLElement | null>(null)
-const accountSearchRef = ref<HTMLElement | null>(null)
+const providerSearchRef = ref<HTMLElement | null>(null)
 const filterPanelRef = ref<HTMLElement | null>(null)
 const showFilterDropdown = ref(false)
 
@@ -273,14 +274,14 @@ const apiKeyResults = ref<SimpleApiKey[]>([])
 const showApiKeyDropdown = ref(false)
 let apiKeySearchTimeout: ReturnType<typeof setTimeout> | null = null
 
-interface SimpleAccount {
+interface SimpleProvider {
   id: number
   name: string
 }
-const accountKeyword = ref('')
-const accountResults = ref<SimpleAccount[]>([])
-const showAccountDropdown = ref(false)
-let accountSearchTimeout: ReturnType<typeof setTimeout> | null = null
+const providerKeyword = ref('')
+const providerResults = ref<SimpleProvider[]>([])
+const showProviderDropdown = ref(false)
+let providerSearchTimeout: ReturnType<typeof setTimeout> | null = null
 
 const modelOptions = computed<SelectOption[]>(() => [
   { value: null, label: t('admin.usage.allModels') },
@@ -309,7 +310,7 @@ const billingTypeOptions = ref<SelectOption[]>([
 const errorPhaseOptions = computed<SelectOption[]>(() => [
   { value: null, label: t('admin.usage.allTypes') },
   { value: 'upstream', label: t('admin.ops.errorLog.typeUpstream') },
-  { value: 'account_auth', label: t('admin.ops.errorLog.typeAccountAuth') },
+  { value: 'provider_auth', label: t('admin.ops.errorLog.typeProviderAuth') },
   { value: 'request', label: t('admin.ops.errorLog.typeRequest') },
   { value: 'auth', label: t('admin.ops.errorLog.typeAuth') },
   { value: 'routing', label: t('admin.ops.errorLog.typeRouting') },
@@ -374,7 +375,7 @@ const debounceUserSearch = () => {
         userResults.value = []
       }
     }
-  }, 300)
+  }, SEARCH_DEBOUNCE_MS)
 }
 
 const debounceApiKeySearch = () => {
@@ -388,7 +389,7 @@ const debounceApiKeySearch = () => {
     } catch {
       apiKeyResults.value = []
     }
-  }, 300)
+  }, SEARCH_DEBOUNCE_MS)
 }
 
 const selectUser = async (u: SimpleUser) => {
@@ -437,34 +438,34 @@ const onClearApiKey = () => {
   emitChange()
 }
 
-const debounceAccountSearch = () => {
-  if (accountSearchTimeout) clearTimeout(accountSearchTimeout)
-  accountSearchTimeout = setTimeout(async () => {
-    if (!accountKeyword.value) {
-      accountResults.value = []
+const debounceProviderSearch = () => {
+  if (providerSearchTimeout) clearTimeout(providerSearchTimeout)
+  providerSearchTimeout = setTimeout(async () => {
+    if (!providerKeyword.value) {
+      providerResults.value = []
       return
     }
     try {
-      const res = await adminAPI.accounts.list(1, 20, { search: accountKeyword.value })
-      accountResults.value = res.items.map((a) => ({ id: a.id, name: a.name }))
+      const res = await adminAPI.providers.list(1, 20, { search: providerKeyword.value })
+      providerResults.value = res.items.map((a) => ({ id: a.id, name: a.name }))
     } catch {
-      accountResults.value = []
+      providerResults.value = []
     }
-  }, 300)
+  }, SEARCH_DEBOUNCE_MS)
 }
 
-const selectAccount = (a: SimpleAccount) => {
-  accountKeyword.value = a.name
-  showAccountDropdown.value = false
-  filters.value.account_id = a.id
+const selectProvider = (a: SimpleProvider) => {
+  providerKeyword.value = a.name
+  showProviderDropdown.value = false
+  filters.value.provider_id = a.id
   emitChange()
 }
 
-const clearAccount = () => {
-  accountKeyword.value = ''
-  accountResults.value = []
-  showAccountDropdown.value = false
-  filters.value.account_id = undefined
+const clearProvider = () => {
+  providerKeyword.value = ''
+  providerResults.value = []
+  showProviderDropdown.value = false
+  filters.value.provider_id = undefined
   emitChange()
 }
 
@@ -483,12 +484,12 @@ const onDocumentClick = (e: MouseEvent) => {
 
   const clickedInsideUser = userSearchRef.value?.contains(target) ?? false
   const clickedInsideApiKey = apiKeySearchRef.value?.contains(target) ?? false
-  const clickedInsideAccount = accountSearchRef.value?.contains(target) ?? false
+  const clickedInsideProvider = providerSearchRef.value?.contains(target) ?? false
   const clickedInsideFilters = filterPanelRef.value?.contains(target) ?? false
 
   if (!clickedInsideUser) showUserDropdown.value = false
   if (!clickedInsideApiKey) showApiKeyDropdown.value = false
-  if (!clickedInsideAccount) showAccountDropdown.value = false
+  if (!clickedInsideProvider) showProviderDropdown.value = false
   if (!clickedInsideFilters) showFilterDropdown.value = false
 }
 
@@ -530,11 +531,11 @@ watch(
 )
 
 watch(
-  () => filters.value.account_id,
-  (accountId) => {
-    if (!accountId) {
-      accountKeyword.value = ''
-      accountResults.value = []
+  () => filters.value.provider_id,
+  (providerId) => {
+    if (!providerId) {
+      providerKeyword.value = ''
+      providerResults.value = []
     }
   }
 )

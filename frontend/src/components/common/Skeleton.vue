@@ -2,8 +2,8 @@
   <!-- 包豪斯骨架屏：斜纹底 + 高光扫过，直角硬边 -->
   <div
     :class="[
-      'bh-skeleton',
-      variant === 'circle' ? 'rounded-full' : 'rounded-none',
+      'animate-pulse bg-gray-200 dark:bg-dark-700',
+      variant === 'circle' ? 'rounded-full' : 'rounded-compact',
       customClass
     ]"
     :style="style"

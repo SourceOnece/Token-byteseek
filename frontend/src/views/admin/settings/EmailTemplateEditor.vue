@@ -78,7 +78,7 @@
 
         <div
           v-if="selectedEventMeta"
-          class="rounded-lg border border-primary-100 bg-primary-50/70 p-4 dark:border-primary-900/50 dark:bg-primary-950/20"
+          class="rounded-surface border border-primary-100 bg-primary-50/70 p-4 dark:border-primary-900/50 dark:bg-primary-950/20"
         >
           <div class="flex flex-wrap items-center gap-2">
             <div class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -113,7 +113,7 @@
 
         <div
           v-if="!eventOptions.length || !localeOptions.length"
-          class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
+          class="rounded-control border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
         >
           {{ t("admin.settings.emailTemplates.empty") }}
         </div>
@@ -149,7 +149,7 @@
             </div>
 
             <div
-              class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800/60"
+              class="rounded-surface border border-gray-200 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800/60"
             >
               <div class="text-sm font-medium text-gray-900 dark:text-white">
                 {{ t("admin.settings.emailTemplates.placeholders") }}
@@ -173,7 +173,7 @@
 
           <div class="space-y-4">
             <div
-              class="rounded-lg border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-800"
+              class="rounded-control border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-800"
             >
               <div
                 class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-dark-700"
@@ -195,7 +195,7 @@
               </div>
               <div class="bg-gray-100 p-3 dark:bg-dark-900">
                 <iframe
-                  class="h-[36rem] w-full rounded-md border border-gray-200 bg-white dark:border-dark-700"
+                  class="h-[36rem] w-full rounded-control border border-gray-200 bg-white dark:border-dark-700"
                   sandbox=""
                   :srcdoc="previewHtml"
                   :title="t('admin.settings.emailTemplates.livePreview')"
@@ -248,8 +248,8 @@ const fallbackPlaceholders = [
   "{{recharge_amount}}",
   "{{order_id}}",
   "{{unsubscribe_url}}",
-  "{{account_id}}",
-  "{{account_name}}",
+  "{{provider_id}}",
+  "{{provider_name}}",
   "{{platform}}",
   "{{quota_dimension}}",
   "{{quota_used}}",
@@ -368,9 +368,9 @@ const eventDisplayMeta: Record<string, EventDisplayMeta> = {
     timing: "余额充值订单支付完成并入账后发送。",
     categoryLabel: "计费",
   },
-  "account.quota_alert": {
-    label: "账号限额告警",
-    timing: "上游账号的用量达到配置的额度告警阈值时发送给管理员通知邮箱。",
+  "provider.quota_alert": {
+    label: "提供商限额告警",
+    timing: "上游提供商的用量达到配置的额度告警阈值时发送给管理员通知邮箱。",
     categoryLabel: "管理告警",
   },
   "content_moderation.violation_notice": {
@@ -390,7 +390,7 @@ const eventDisplayMeta: Record<string, EventDisplayMeta> = {
   },
   "ops.scheduled_report": {
     label: "运维定时报表",
-    timing: "运维日报、周报、错误摘要或账号健康报表到达配置的发送时间时发送；日报和周报的完整指标均可在模板中编辑。",
+    timing: "运维日报、周报、错误摘要或提供商健康报表到达配置的发送时间时发送；日报和周报的完整指标均可在模板中编辑。",
     categoryLabel: "运维",
   },
 };
@@ -436,14 +436,14 @@ const eventDisplayMetaEn: Record<string, EventDisplayMeta> = {
     timing: "Sent after a balance recharge order is paid and credited.",
     categoryLabel: "Billing",
   },
-  "account.quota_alert": {
-    label: "Account Quota Alert",
-    timing: "Sent to admin notification emails when an upstream account reaches the configured quota alert threshold.",
+  "provider.quota_alert": {
+    label: "Provider Quota Alert",
+    timing: "Sent to admin notification emails when an upstream provider reaches the configured quota alert threshold.",
     categoryLabel: "Admin",
   },
   "content_moderation.violation_notice": {
     label: "Risk Control Violation Notice",
-    timing: "Sent when a user request triggers content moderation or risk-control rules but the account is not disabled yet.",
+    timing: "Sent when a user request triggers content moderation or risk-control rules but the user account is not disabled yet.",
     categoryLabel: "Risk Control",
   },
   "content_moderation.account_disabled": {
@@ -458,7 +458,7 @@ const eventDisplayMetaEn: Record<string, EventDisplayMeta> = {
   },
   "ops.scheduled_report": {
     label: "Ops Scheduled Report",
-    timing: "Sent when a configured daily, weekly, error digest, or account health report reaches its scheduled send time. Every daily and weekly summary metric is editable in this template.",
+    timing: "Sent when a configured daily, weekly, error digest, or provider health report reaches its scheduled send time. Every daily and weekly summary metric is editable in this template.",
     categoryLabel: "Ops",
   },
 };

@@ -9,10 +9,7 @@
     <!-- 独立 mask 画布：先以不透明颜色合成，再整体设置透明度，避免笔迹重叠变深 -->
     <canvas ref="maskCanvasElRef" class="mask-overlay"></canvas>
     <!-- 拖放目标反馈不接收指针事件，避免覆盖 Fabric 画布交互。 -->
-    <div
-      v-if="dropTargetActive"
-      class="pointer-events-none absolute inset-2 z-[2] rounded-xl border-2 border-dashed border-primary-500/70 bg-primary-500/5"
-    ></div>
+    <div v-if="dropTargetActive" class="pointer-events-none absolute inset-2 z-[2] rounded-surface border-2 border-dashed border-primary-500/70 bg-primary-500/5"><!-- check-ui-allow: 画布内局部堆叠 --></div>
 
     <!-- 浮动工具栏（顶部居中，含移动端；窄屏限宽并换行，圆角保持与桌面端一致，避免与左上角设置、右上角历史按钮重叠）：上传 | 局部重绘画笔组 | 删除选中 / 清空 -->
     <div
@@ -101,7 +98,7 @@
               class="brush-size h-8 w-16 cursor-pointer sm:w-24"
               :title="t('creative.canvas.brushSize')"
             />
-            <span class="w-6 text-center text-[11px] tabular-nums text-gray-500 dark:text-dark-400">{{ brushSize }}</span>
+            <span class="w-6 text-center text-xs tabular-nums text-gray-500 dark:text-dark-400">{{ brushSize }}</span>
           </div>
           <!-- 笔迹形状：圆头 / 方头 -->
           <button
@@ -1961,13 +1958,12 @@ defineExpose({
 
 /* mask 独立画布只展示，不拦截主画布的指针事件；整层透明度避免笔迹重叠变深 */
 .mask-overlay {
-  @apply pointer-events-none absolute inset-0 z-[1];
+  @apply pointer-events-none absolute inset-0 z-[1]; /* check-ui-allow: 画布内局部堆叠 */
 }
 
 .canvas-tool-btn {
-  @apply inline-flex h-8 w-8 items-center justify-center rounded-none text-gray-600 transition-colors;
-  border: 2px solid transparent;
-  @apply hover:bg-bh-yellow hover:text-gray-900;
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-control text-gray-600 transition-colors;
+  @apply hover:bg-gray-100 hover:text-gray-900;
   @apply disabled:cursor-not-allowed disabled:opacity-40;
   @apply dark:text-gray-300 dark:hover:bg-dark-700 dark:hover:text-gray-100;
 }

@@ -12,8 +12,6 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/TokenFlux/TokenRouter/ent/account"
-	"github.com/TokenFlux/TokenRouter/ent/accountgroup"
 	"github.com/TokenFlux/TokenRouter/ent/announcement"
 	"github.com/TokenFlux/TokenRouter/ent/announcementread"
 	"github.com/TokenFlux/TokenRouter/ent/apikey"
@@ -36,6 +34,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/ent/pendingauthsession"
 	"github.com/TokenFlux/TokenRouter/ent/promocode"
 	"github.com/TokenFlux/TokenRouter/ent/promocodeusage"
+	"github.com/TokenFlux/TokenRouter/ent/provider"
+	"github.com/TokenFlux/TokenRouter/ent/providergroup"
 	"github.com/TokenFlux/TokenRouter/ent/proxy"
 	"github.com/TokenFlux/TokenRouter/ent/redeemcode"
 	"github.com/TokenFlux/TokenRouter/ent/redeemcodeusage"
@@ -119,8 +119,6 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			apikey.Table:                   apikey.ValidColumn,
 			apikeycompositegroup.Table:     apikeycompositegroup.ValidColumn,
-			account.Table:                  account.ValidColumn,
-			accountgroup.Table:             accountgroup.ValidColumn,
 			announcement.Table:             announcement.ValidColumn,
 			announcementread.Table:         announcementread.ValidColumn,
 			authidentity.Table:             authidentity.ValidColumn,
@@ -141,6 +139,8 @@ func checkColumn(t, c string) error {
 			pendingauthsession.Table:       pendingauthsession.ValidColumn,
 			promocode.Table:                promocode.ValidColumn,
 			promocodeusage.Table:           promocodeusage.ValidColumn,
+			provider.Table:                 provider.ValidColumn,
+			providergroup.Table:            providergroup.ValidColumn,
 			proxy.Table:                    proxy.ValidColumn,
 			redeemcode.Table:               redeemcode.ValidColumn,
 			redeemcodeusage.Table:          redeemcodeusage.ValidColumn,

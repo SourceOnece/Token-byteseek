@@ -1,0 +1,163 @@
+package postgres
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+
+	"github.com/TokenFlux/TokenRouter/internal/quality"
+	"github.com/lib/pq"
+)
+
+// AcquireCodexQualityTest 用数据库时间租约跨实例排除同账号重复测试，不覆盖最近结果。
+func (r *Store) AcquireCodexQualityTest(ctx context.Context, id int64, runID string, timeout int) (bool, error) {
+	if timeout < 10 || timeout > 3600 {
+		return false, errors.New("invalid quality timeout")
+	}
+	result, err := r.sql.ExecContext(ctx, `
+		INSERT INTO codex_quality_tests (account_id,run_id,lease_until)
+		SELECT id,$2,NOW()+make_interval(secs=>$3) FROM providers
+		WHERE id=$1 AND deleted_at IS NULL AND platform='openai' AND type IN ('oauth','apikey')
+		AND parent_provider_id IS NULL AND (type<>'oauth' OR LOWER(BTRIM(COALESCE(credentials->>'auth_mode',''))) <> 'agentidentity')
+		ON CONFLICT (account_id) DO UPDATE
+		SET run_id=EXCLUDED.run_id,lease_until=EXCLUDED.lease_until
+		WHERE codex_quality_tests.lease_until <= NOW()
+	`, id, runID, timeout+30)
+	if err != nil {
+		return false, err
+	}
+	n, err := result.RowsAffected()
+	return n > 0, err
+}
+
+// FinishCodexQualityTest 原子保存有效结果；仅满血/降智更新调度及 outbox。
+// 返回值表示结果已接受，失败结果可被接受但 SchedulingApplied 为 false。
+// @project-doc docs/operations/account_maintenance.md#codex_quality_testing
+func (r *Store) FinishCodexQualityTest(ctx context.Context, account *quality.Account, runID string, result *quality.CodexQualityResult) (bool, error) {
+	want := result.Status == "full"
+	payload, err := json.Marshal(result)
+	if err != nil {
+		return false, err
+	}
+	// 计划被删除或撤销时仅释放租约；保留最近结果，且不再插入已消失轮次的历史。
+	rows, err := r.sql.QueryContext(ctx, `
+		WITH schedule_guard AS MATERIALIZED (
+			SELECT p.id FROM codex_quality_schedules p JOIN codex_quality_runs r ON r.schedule_id=p.id
+			WHERE r.id=$8 AND r.status='running' AND (p.enabled OR r.trigger_source='manual') AND p.active_run_id=r.id AND p.lease_until>NOW()
+			FOR SHARE OF p
+		), owned AS MATERIALIZED (
+			SELECT account_id FROM codex_quality_tests
+			WHERE account_id=$1 AND run_id=$2 AND lease_until>NOW() FOR UPDATE
+		), eligible AS MATERIALIZED (
+			SELECT a.id,a.schedulable FROM providers a
+			WHERE a.id IN (SELECT account_id FROM owned)
+			AND a.deleted_at IS NULL AND a.platform='openai' AND a.type IN ('oauth','apikey')
+			AND a.parent_provider_id IS NULL AND (a.type<>'oauth' OR LOWER(BTRIM(COALESCE(a.credentials->>'auth_mode',''))) <> 'agentidentity')
+			AND a.updated_at=$4 AND $5 IN ('full','degraded','failed')
+			AND ($8=0 OR EXISTS(SELECT 1 FROM schedule_guard))
+			FOR UPDATE OF a
+		), changed AS (
+			UPDATE providers SET schedulable=$3,updated_at=NOW()
+			WHERE id IN (SELECT id FROM eligible) AND $5 IN ('full','degraded')
+			RETURNING id,schedulable
+		), recorded AS (
+			UPDATE codex_quality_tests SET
+				result=$6::jsonb || jsonb_build_object(
+					'scheduling_applied',EXISTS(SELECT 1 FROM changed),
+					'schedulable',COALESCE((SELECT schedulable FROM changed),(SELECT schedulable FROM eligible),false),
+					'status',CASE WHEN $5='cancelled' THEN 'cancelled'
+						WHEN $5='failed' AND EXISTS(SELECT 1 FROM eligible) THEN 'failed'
+						WHEN EXISTS(SELECT 1 FROM changed) THEN $5 ELSE 'stale' END),
+				lease_until=NOW(),updated_at=NOW()
+			WHERE account_id IN (SELECT account_id FROM owned)
+			AND ($8=0 OR EXISTS(SELECT 1 FROM schedule_guard))
+			RETURNING result
+		), released AS (
+			UPDATE codex_quality_tests SET lease_until=NOW()
+			WHERE account_id IN (SELECT account_id FROM owned)
+			AND $8>0 AND NOT EXISTS(SELECT 1 FROM schedule_guard)
+		), notification AS (
+			INSERT INTO scheduler_outbox (event_type,provider_id,group_id,payload)
+			SELECT $7,id,NULL,NULL FROM changed
+		), history AS (
+			INSERT INTO codex_quality_run_results(run_id,account_id,result)
+			SELECT $8,$1,result FROM recorded WHERE $8>0
+			ON CONFLICT(run_id,account_id) DO NOTHING
+		)
+		SELECT result FROM recorded
+	`, account.ID, runID, want, account.UpdatedAt, result.Status, string(payload), SchedulerOutboxEventProviderChanged, quality.QualityScheduledRunID(ctx))
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = rows.Close() }()
+	if !rows.Next() {
+		return false, rows.Err()
+	}
+	var raw []byte
+	if err = rows.Scan(&raw); err != nil {
+		return false, err
+	}
+	if err = json.Unmarshal(raw, result); err != nil {
+		return false, err
+	}
+	// 先结束 SQL 游标，再同步最新账号快照，使已有粘性请求也能看到停调。
+	if err = rows.Close(); err != nil {
+		return false, err
+	}
+	if result.SchedulingApplied {
+		r.syncSchedulerAccountSnapshot(ctx, account.ID)
+	}
+	return result.SchedulingApplied || result.Status == "failed", nil
+}
+
+// ListCodexQualityResults 只读当前可见账号的最近结果，不将长回答放入调度缓存。
+func (r *Store) ListCodexQualityResults(ctx context.Context, ids []int64, detail bool) ([]*quality.CodexQualityResult, error) {
+	if len(ids) > 500 {
+		return nil, errors.New("最多查询 500 个账号")
+	}
+	rows, err := r.sql.QueryContext(ctx, `SELECT CASE WHEN $2 THEN q.result ELSE q.result - 'prompt' - 'response_text' END FROM codex_quality_tests q
+		JOIN providers a ON a.id=q.account_id
+		WHERE a.deleted_at IS NULL AND a.platform='openai' AND a.type IN ('oauth','apikey')
+		AND a.parent_provider_id IS NULL AND (a.type<>'oauth' OR LOWER(BTRIM(COALESCE(a.credentials->>'auth_mode',''))) <> 'agentidentity')
+		AND q.account_id=ANY($1) AND q.result IS NOT NULL`, pq.Array(ids), detail && len(ids) == 1)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	results := make([]*quality.CodexQualityResult, 0)
+	for rows.Next() {
+		var raw []byte
+		if err = rows.Scan(&raw); err != nil {
+			return nil, err
+		}
+		var result quality.CodexQualityResult
+		if err = json.Unmarshal(raw, &result); err != nil {
+			return nil, err
+		}
+		results = append(results, &result)
+	}
+	return results, rows.Err()
+}
+
+// CodexQualityCounts 只统计最近结果，不读取回答，不把历史轮次重复计入。
+func (r *Store) CodexQualityCounts(ctx context.Context) (map[string]int, error) {
+	rows, err := r.sql.QueryContext(ctx, `SELECT COALESCE(q.result->>'status','untested'),COUNT(*)
+	FROM providers a LEFT JOIN codex_quality_tests q ON q.account_id=a.id
+	WHERE a.deleted_at IS NULL AND a.platform='openai' AND a.type IN ('oauth','apikey')
+	AND a.parent_provider_id IS NULL AND (a.type<>'oauth' OR LOWER(BTRIM(COALESCE(a.credentials->>'auth_mode',''))) <> 'agentidentity')
+	GROUP BY COALESCE(q.result->>'status','untested')`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	counts := map[string]int{"full": 0, "degraded": 0, "failed": 0, "untested": 0, "cancelled": 0, "stale": 0, "skipped": 0}
+	for rows.Next() {
+		var status string
+		var count int
+		if err = rows.Scan(&status, &count); err != nil {
+			return nil, err
+		}
+		counts[status] = count
+	}
+	return counts, rows.Err()
+}

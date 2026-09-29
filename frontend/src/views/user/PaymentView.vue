@@ -8,7 +8,7 @@
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
         <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" class="flex space-x-1 rounded-control bg-gray-100 p-1 dark:bg-dark-800">
           <button v-for="tab in tabs" :key="tab.key"
-            class="flex h-9 flex-1 items-center justify-center rounded-lg px-4 py-1.5 text-sm font-medium transition-all"
+            class="flex h-9 flex-1 items-center justify-center rounded-control px-4 py-1.5 text-sm font-medium transition-all"
             :class="activeTab === tab.key ? 'bg-white text-gray-900 shadow dark:bg-dark-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
             @click="activeTab = tab.key">{{ tab.label }}</button>
         </div>
@@ -37,7 +37,7 @@
           <div v-if="tabs.length === 0" class="py-12 text-center text-sm font-bold">{{ t('payment.billingUnavailable') }}</div>
           <template v-else-if="activeTab === 'recharge'">
             <!-- Recharge Account Card -->
-            <div class="card p-5">
+            <div class="card p-6">
               <p class="text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('payment.rechargeAccount') }}</p>
               <p class="mt-1 text-base font-semibold text-gray-900 dark:text-white">{{ user?.username || '' }}</p>
               <p class="mt-0.5 text-sm font-medium text-green-600 dark:text-green-400">{{ t('payment.currentBalance') }}: {{ formatBalanceAmount(user?.balance, { fractionDigits: 2 }) }}</p>
@@ -125,7 +125,7 @@
                 </p>
               </div>
             </div>
-            <button :class="['btn h-9 w-full py-0 text-base font-medium', paymentButtonClass]" :disabled="!canSubmit || submitting" @click="handleSubmitRecharge">
+            <button :class="['btn w-full py-0 text-base font-medium', paymentButtonClass]" :disabled="!canSubmit || submitting" @click="handleSubmitRecharge">
               <span v-if="submitting" class="flex items-center justify-center gap-2">
                 <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                 {{ t('common.processing') }}
@@ -138,7 +138,7 @@
           <template v-else-if="activeTab === 'subscription'">
             <!-- Subscription confirm (inline, replaces plan list) -->
             <template v-if="selectedPlan">
-              <div class="card p-5">
+              <div class="card p-6">
                 <!-- 套餐名称 -->
                 <div class="mb-3 flex flex-wrap items-center gap-2">
                   <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ selectedPlan.name }}</h3>
@@ -238,7 +238,7 @@
                   </div>
                 </div>
               </div>
-              <button :class="['btn h-9 w-full py-0 text-base font-medium', paymentButtonClass]" :disabled="!canSubmitSubscription || submitting" @click="confirmSubscribe">
+              <button :class="['btn w-full py-0 text-base font-medium', paymentButtonClass]" :disabled="!canSubmitSubscription || submitting" @click="confirmSubscribe">
                 <span v-if="submitting" class="flex items-center justify-center gap-2">
                   <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                   {{ t('common.processing') }}
@@ -261,19 +261,19 @@
                 <p class="mb-2 text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('payment.activeSubscription') }}</p>
                 <div class="space-y-2">
                   <div v-for="sub in activeSubscriptions" :key="sub.id"
-                    class="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2 dark:border-dark-700 dark:bg-dark-800">
-                    <div :class="['h-6 w-1 shrink-0 rounded-full', platformAccentBarClass(subscriptionPlatform(sub))]" />
+                    class="flex items-center gap-3 rounded-surface border border-gray-100 bg-white px-3 py-2 dark:border-dark-700 dark:bg-dark-800">
+                    <div :class="['h-6 w-1 shrink-0 rounded-full', platformAccentBarClass('')]" />
                     <div class="min-w-0 flex-1">
                       <div class="flex items-center gap-1.5">
                         <span class="truncate text-xs font-semibold text-gray-900 dark:text-white">{{ subscriptionName(sub) }}</span>
                       </div>
-                      <div class="flex flex-wrap gap-x-3 text-[11px] text-gray-400 dark:text-gray-500">
+                      <div class="flex flex-wrap gap-x-3 text-xs text-gray-400 dark:text-gray-500">
                         <span v-if="subscriptionUnlimited(sub)">{{ t('payment.planCard.quota') }}: {{ t('payment.planCard.unlimited') }}</span>
                         <span v-if="sub.expires_at">{{ t('userSubscriptions.daysRemaining', { days: getDaysRemaining(sub.expires_at) }) }}</span>
                         <span v-else>{{ t('userSubscriptions.noExpiration') }}</span>
                       </div>
                     </div>
-                    <span class="badge badge-success shrink-0 text-[10px]">{{ t('userSubscriptions.status.active') }}</span>
+                    <span class="badge badge-success shrink-0 text-xs">{{ t('userSubscriptions.status.active') }}</span>
                   </div>
                 </div>
               </div>
@@ -283,7 +283,7 @@
         <div v-if="(checkout.help_text || checkout.help_image_url) && paymentPhase === 'select' && !selectedPlan" class="card p-4">
           <div class="flex flex-col items-center gap-3">
             <img v-if="checkout.help_image_url" :src="checkout.help_image_url" alt=""
-              class="h-40 max-w-full cursor-pointer rounded-lg object-contain transition-opacity hover:opacity-80"
+              class="h-40 max-w-full cursor-pointer rounded-control object-contain transition-opacity hover:opacity-80"
               @click="previewImage = checkout.help_image_url" />
             <div
               v-if="renderedHelpText"
@@ -295,22 +295,17 @@
       </template>
     </div>
     <!-- Renewal Plan Selection Modal -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showRenewalModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" @click.self="closeRenewalModal">
-          <div class="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col border-2 border-[var(--bh-ink)] bg-[var(--bh-paper)] p-6 shadow-[var(--bh-shadow)]">
-            <!-- Close button -->
-            <button class="absolute right-4 top-4 rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-200" @click="closeRenewalModal">
-              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-            <h3 class="mb-4 shrink-0 pr-8 text-lg font-semibold text-gray-900 dark:text-white">{{ t('payment.selectPlan') }}</h3>
-            <div class="min-h-0 space-y-4 overflow-y-auto p-1">
-              <SubscriptionPlanCard v-for="plan in renewalPlans" :key="plan.id" :plan="plan" :active-subscriptions="activeSubscriptions" @select="selectPlanFromModal" />
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+    <BaseDialog
+      :show="showRenewalModal"
+      :title="t('payment.selectPlan')"
+      width="normal"
+      close-on-click-outside
+      @close="closeRenewalModal"
+    >
+      <div class="space-y-4">
+        <SubscriptionPlanCard v-for="plan in renewalPlans" :key="plan.id" :plan="plan" :active-subscriptions="activeSubscriptions" @select="selectPlanFromModal" />
+      </div>
+    </BaseDialog>
     <ConfirmDialog
       :show="duplicatePlanDialogPlan !== null"
       :title="t('payment.duplicatePlan.title')"
@@ -323,8 +318,8 @@
     <!-- Image Preview Overlay -->
     <Teleport to="body">
       <Transition name="modal">
-        <div v-if="previewImage" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm" @click="previewImage = ''">
-          <img :src="previewImage" alt="" class="max-h-[85vh] max-w-[90vw] rounded-xl object-contain shadow-2xl" />
+        <div v-if="previewImage" class="fixed inset-0 z-modal-nested flex items-center justify-center bg-[var(--overlay-bg-strong)] backdrop-blur-sm" @click="previewImage = ''">
+          <img :src="previewImage" alt="" class="max-h-[85vh] max-w-[90vw] rounded-surface object-contain shadow-2xl" />
         </div>
       </Transition>
     </Teleport>
@@ -365,6 +360,7 @@ import { platformAccentBarClass, platformTextClass } from '@/utils/platformColor
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
 import PaymentStatusPanel from '@/components/payment/PaymentStatusPanel.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { DEFAULT_PAYMENT_CURRENCY, formatPaymentAmount, normalizePaymentCurrency, paymentCurrencyFractionDigits } from '@/components/payment/currency'
@@ -884,7 +880,7 @@ const paymentButtonClass = computed(() => {
 })
 
 // Subscription confirm: platform accent colors (clean card, no gradient)
-const planTextClass = computed(() => platformTextClass(selectedPlan.value?.group_platform || ''))
+const planTextClass = computed(() => platformTextClass(''))
 
 // Renewal modal state
 const showRenewalModal = ref(false)
@@ -970,9 +966,6 @@ function resolveSubscriptionPlan(sub: UserSubscription): UserSubscription['plan'
   return sub.plan ?? findCheckoutPlan(sub.plan_id)
 }
 
-function subscriptionPlatform(sub: UserSubscription): string {
-  return resolveSubscriptionPlan(sub)?.group_platform || ''
-}
 
 function subscriptionName(sub: UserSubscription): string {
   return resolveSubscriptionPlan(sub)?.name || `Plan #${sub.plan_id}`

@@ -1,6 +1,6 @@
 # TokenRouter 项目总览
 
-本文说明 TokenRouter 的产品责任、运行边界、仓库所有权和跨模块核心术语，供首次进入仓库或判断变更归属时建立共同上下文。本文不枚举具体 HTTP 字段、平台模型表、部署命令或单个函数行为；这些内容由对应分类文档或库外用户手册负责。
+本文说明 TokenRouter 的产品职责、运行边界、仓库目录和核心术语，供首次接触项目或定位变更时使用。本文不枚举具体 HTTP 字段、平台模型表、部署命令或单个函数行为；这些内容由对应分类文档或库外用户手册负责。
 
 ## 章节导航
 
@@ -13,12 +13,12 @@
 
 ## 项目定位与边界
 
-TokenRouter 是基于上游 Sub2API 持续演进的 AI API 网关与管理平台。调用方使用平台签发的 API Key 访问 Anthropic、OpenAI、Gemini 及其他兼容入口；平台负责认证、模型路由、上游账号调度、协议转换、故障转移、并发与限额控制、用量记录和计费。浏览器管理端同时提供用户自助、管理员运营、支付订阅、用量分析和运行观测能力。
+TokenRouter 是基于上游 Sub2API 持续演进的 AI API 网关与管理平台。调用方使用平台签发的 API Key 访问 Anthropic、OpenAI、Gemini 及其他兼容入口；平台负责认证、模型路由、上游提供商调度、协议转换、故障转移、并发与限额控制、用量记录和计费。浏览器管理端同时提供用户自助、管理员运营、支付订阅、用量分析和运行观测能力。
 
 本仓库拥有以下边界：
 
 - 面向 AI 客户端的网关入口和协议兼容行为。
-- 用户、团队、API Key、分组、渠道、上游账号及其权限和调度关系。
+- 用户、团队、API Key、分组、价格配置、上游提供商及其权限和调度关系。
 - 用量、价格、余额、订阅、兑换和支付订单的内部状态与结算。
 - 管理前端、公开页面、首次设置流程和服务端配置。
 - PostgreSQL schema 演进、Redis 运行状态、后台任务以及官方构建部署资产。
@@ -36,7 +36,7 @@ TokenRouter 是基于上游 Sub2API 持续演进的 AI API 网关与管理平台
 | PostgreSQL | 用户、路由、订单、订阅、用量、任务、运行设置和审计等权威数据 | 由 Ent schema、手写 repository 和前向 SQL 迁移共同维护 |
 | Redis | 缓存、限流、并发计数、会话/粘性状态、分布式锁、队列和跨实例失效通知 | 运行依赖；不能被当作业务权威数据库，部分功能在 Redis 故障时按安全要求关闭或降级 |
 | 对象/文件存储 | 批量图片和备份等大对象 | 按功能使用本地数据目录、S3 兼容存储或供应商对象存储；生命周期由各专题拥有 |
-| 外部上游 | Anthropic、OpenAI、Gemini、Grok、Qoder 等模型或账号服务 | 通过平台适配器访问；账号能力、代理、渠道和分组共同限制可调度范围 |
+| 外部上游 | Anthropic、OpenAI、Gemini、Grok、Qoder 等模型或提供商服务 | 通过平台适配器访问；提供商能力、代理、价格配置和分组共同限制可调度范围 |
 
 Go 模块路径为 `github.com/TokenFlux/TokenRouter`。后端以 `backend/go.mod` 声明的 Go 版本为准；前端使用 Vue 3、TypeScript、Vite、Pinia 和 pnpm，Node 版本由 CI workflow 固定。README 徽章或旧手册中的版本只用于展示，不能覆盖 manifest 和 CI。
 
@@ -44,19 +44,22 @@ Go 模块路径为 `github.com/TokenFlux/TokenRouter`。后端以 `backend/go.mo
 
 | 路径 | 规范责任 | 注意事项 |
 | --- | --- | --- |
-| `backend/cmd/server/` | 主进程入口、版本信息、Wire 依赖图和有序关闭 | `wire_gen.go` 是生成物；修改依赖图应改 `wire.go` 后重新生成 |
-| `backend/internal/server/` | HTTP server、中间件顺序和路由注册 | 路由只负责接口装配，业务不变量应留在 service/domain 层 |
-| `backend/internal/handler/` | HTTP/协议适配、输入输出和网关 attempt 编排 | 同时包含普通面板 handler 和多协议网关 handler |
-| `backend/internal/service/` | 核心业务、调度、计费、协议转换和后台运行时 | 跨 repository 的不变量通常由这里拥有 |
-| `backend/internal/repository/` | PostgreSQL、Redis、对象存储和外部基础设施实现 | 包含迁移执行器和缓存实现；失败语义会影响 service 层降级 |
+| `backend/cmd/server/` | 参数、版本信息与最终退出 | 保留版本参数与 Wire 生成入口 |
+| `backend/internal/app/` | 唯一组合根、精简初始化及生命周期 | 修改手写装配后生成 Wire，资源由原生模块唯一持有 |
+| `backend/internal/server/` | HTTP server、中间件顺序和路由注册 | 路由只负责接口装配，业务不变量由所属模块持有 |
+| `backend/internal/gateway/` | 入站编排、准入、会话、输出和完成处理 | HTTP Adapter 与单次平台执行分别绑定原生端口 |
+| `backend/internal/upstream/` | 平台交换、原生报文与连接资源 | 凭据持久化由 provider 负责，资金由 billing 负责 |
+| `backend/internal/<module>/` | 原生用例及其 PostgreSQL、Redis、HTTP、provider 适配 | 通用技术实现归 infra，模块职责见下方地图 |
 | `backend/ent/schema/` | 主要持久实体的 Ent schema 源 | `backend/ent/` 下其余大部分文件为生成代码 |
 | `backend/migrations/` | 已发布数据库的前向演进 | SQL 被嵌入二进制并按文件名执行；已应用文件不可改写 |
-| `backend/internal/config/` | 启动配置结构、默认值、环境映射和校验 | 数据库中的运行时设置由 Setting 相关 service/handler 负责，不等同于启动配置 |
+| `backend/internal/config/` | 启动配置结构、默认值、环境映射和校验 | 数据库中的运行时设置由 settings 和所属模块读取器负责，不等同于启动配置 |
 | `frontend/src/` | Vue 应用、路由、API 客户端、Pinia store、视图、组件和 i18n | 后端 API 契约变化通常需要同步类型、调用方和前端测试 |
 | `deploy/` | Compose、安装脚本、反向代理基线和运行配置示例 | 与根 Dockerfile、GoReleaser 和 workflow 共同定义发布形态 |
 | `.github/workflows/` | 后端 CI、安全扫描和 release 自动化 | 实际工具链版本和发布触发条件以 workflow 为准 |
 | `docs/` | Project Doc 与库外用户/法律资料 | 只有各级 `index.md` 规范列出的文档属于 Project Doc |
 | `skills/`、`tools/` | 仓库专用操作技能和维护工具 | 不属于应用运行时；变更时仍需遵守相应输入输出契约 |
+
+完整后端包结构、每个包的职责和依赖关系见[后端模块地图](architecture/backend_modules.md)。
 
 ## 核心术语
 
@@ -65,25 +68,24 @@ Go 模块路径为 `github.com/TokenFlux/TokenRouter`。后端以 `backend/go.mo
 | 用户（User） | 登录控制台并拥有余额、并发、API Key、订阅及可选团队关系的主体；管理员是带特殊角色的用户 |
 | 认证身份（Auth Identity） | 邮箱密码、OAuth、Passkey 等外部或本地登录身份与用户之间的绑定，不等同于网关 API Key |
 | 团队（Team） | 共享所有权、成员角色和配额作用域；团队 Key 的用量归属和权限不能退化为个人 Key 规则 |
-| API Key | 网关凭据及请求级配额/模型规则载体；普通 Key 绑定一个分组，复合 Key 通过前缀选择多个分组之一 |
-| 分组（Group） | 用户可购买或获准使用的产品/路由边界，定义平台、模型、倍率、限额及可关联账号 |
-| 渠道（Channel） | 分组与上游能力之间的配置层，拥有模型映射、价格、功能和限制；同一分组当前最多关联一个渠道 |
-| 账号（Account） | 实际上游凭据与运行状态的载体，包含平台类型、代理、资格、模型能力、限流和调度属性 |
-| 平台（Platform） | 决定协议处理器和上游适配器家族的标识，例如 Anthropic、OpenAI、Gemini、Grok 或 Qoder |
-| 请求模型 | 客户端表达的模型名；可能依次经过复合 Key 去前缀、Key 级重定向、渠道映射和账号映射 |
+| API Key | 网关凭据及请求级配额/模型规则载体；普通 Key 必须明确绑定一个分组，复合 Key 通过前缀选择多个分组之一 |
+| 分组（Group） | 用户可购买或获准使用的产品/路由边界，定义模型、客户端协议、倍率、限额及可关联提供商，可同时容纳不同平台提供商 |
+| 价格配置（PricingConfig） | 多个分组共享、按模型与计费规则解析的价格配置，不按平台分表；一个分组最多关联一个价格配置，模型映射、白名单和功能属于分组 |
+| 提供商（Provider） | 实际上游凭据与运行状态的载体，包含平台类型、代理、资格、模型能力、限流和调度属性 |
+| 平台（Platform） | 提供商所属上游适配器家族的标识；选中提供商后用于认证、协议转换和执行，例如 Anthropic、OpenAI、Gemini、Grok 或 Qoder |
+| 请求模型 | 客户端表达的模型名；可能依次经过复合 Key 去前缀、Key 级重定向、分组映射和提供商映射 |
 | 上游模型 | 最终发送给供应商的模型或路由键；与客户端模型、计费模型不必相同 |
-| 使用记录（Usage Log） | 一次请求的归属、模型链、token/媒体用量、价格、状态和诊断信息；也是聚合与运维查询的原始来源 |
-| 权益 | 允许消费的余额、订阅窗口、额度包、用户×平台配额或 Key 自身配额；不同来源按结算策略共同判定 |
+| 使用记录（Usage Log） | 一次请求的归属、实际执行平台、模型链、token/媒体用量、价格、状态和诊断信息；也是聚合与运维查询的原始来源 |
+| 权益 | 允许消费的余额、订阅窗口、额度包、团队限制或 Key 自身配额；不同来源按结算策略共同判定 |
 | 运行时设置（Setting） | 保存在 PostgreSQL、可由管理端更新的站点或功能策略；与启动时 YAML/环境变量配置分属不同生命周期 |
+
+提供商（Provider）只指本地上游接入配置。用户登录账户、Google Service Account、支付渠道账户及第三方协议中的 `account` 字段仍保留原义；SDK 对象、官方域名、授权端点和上游错误原文不能随产品术语替换。
 
 ## 运行形态
 
 进程启动前先判断是否需要首次设置。未配置且未启用自动初始化时，仅启动 setup 路由和可用的嵌入前端；CLI `-setup` 走终端设置流程。配置完整后，主服务加载启动配置、初始化日志、构建完整 Wire 依赖图，启动 HTTP server 与后台运行时，并在收到终止信号时有序停止 worker、刷新缓冲数据、关闭 Redis 和 PostgreSQL。
 
-业务模式分为：
-
-- `standard`：默认完整模式，启用用户面、余额/订阅/配额校验和 SaaS 相关功能。
-- `simple`：内部简化模式，隐藏或拒绝部分用户/支付接口，并跳过正常的余额和订阅扣费；它不是仅用于调试的开关。
+所有部署统一启用余额、订阅、配额校验和正常结算。页面和接口访问由角色权限及各自的功能开关控制。Key 和提供商须有明确分组关联，未分组提供商不会进入任何分组的候选池。
 
 前端交付分为：
 

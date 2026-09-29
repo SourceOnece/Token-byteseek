@@ -13,12 +13,33 @@
       <div class="bh-404-geo bh-404-hatch"></div>
     </div>
 
-    <div class="relative z-10 w-full max-w-xl text-center">
-      <!-- 404：数字即海报 —— 4 0 4 三块色牌 -->
-      <div class="mb-10 flex items-end justify-center gap-3 sm:gap-4" aria-label="404">
-        <span class="bh-404-digit bg-bh-red text-white">4</span>
-        <span class="bh-404-digit bh-404-digit-circle bg-bh-yellow text-gray-950">0</span>
-        <span class="bh-404-digit bg-bh-blue text-white">4</span>
+    <div class="relative z-10 w-full max-w-md text-center">
+      <!-- 404 Display -->
+      <div class="mb-8">
+        <div class="relative inline-block">
+          <span class="text-[12rem] font-bold leading-none text-gray-100 dark:text-dark-800"
+            >404</span
+          >
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div
+              class="flex h-24 w-24 items-center justify-center rounded-surface bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg shadow-primary-500/30"
+            >
+              <svg
+                class="h-12 w-12 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="1.5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Text Content -->

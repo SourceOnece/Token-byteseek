@@ -61,16 +61,16 @@ describe('openaiWsMode utils', () => {
 
   it('resolves concurrency hint key by mode', () => {
     expect(resolveOpenAIWSModeConcurrencyHintKey(OPENAI_WS_MODE_OFF)).toBe(
-      'admin.accounts.openai.wsModeConcurrencyHint'
+      'admin.providers.openai.wsModeConcurrencyHint'
     )
     expect(resolveOpenAIWSModeConcurrencyHintKey(OPENAI_WS_MODE_CTX_POOL)).toBe(
-      'admin.accounts.openai.wsModeConcurrencyHint'
+      'admin.providers.openai.wsModeConcurrencyHint'
     )
     expect(resolveOpenAIWSModeConcurrencyHintKey(OPENAI_WS_MODE_PASSTHROUGH)).toBe(
-      'admin.accounts.openai.wsModePassthroughHint'
+      'admin.providers.openai.wsModePassthroughHint'
     )
     expect(resolveOpenAIWSModeConcurrencyHintKey(OPENAI_WS_MODE_HTTP_BRIDGE)).toBe(
-      'admin.accounts.openai.wsModePassthroughHint'
+      'admin.providers.openai.wsModePassthroughHint'
     )
   })
 })

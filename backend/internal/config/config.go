@@ -7,20 +7,21 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"net/textproto"
 	"net/url"
 	"os"
 	"strings"
 	"sync/atomic"
 	"time"
 
-	"github.com/spf13/viper"
-	"golang.org/x/net/http/httpguts"
-)
+	"github.com/TokenFlux/TokenRouter/internal/server/httpconfig"
 
-const (
-	RunModeStandard = "standard"
-	RunModeSimple   = "simple"
+	schedulerpolicy "github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
+
+	ippolicy "github.com/TokenFlux/TokenRouter/internal/server/clientip/policy"
+
+	"github.com/TokenFlux/TokenRouter/internal/identity/authconfig"
+
+	"github.com/spf13/viper"
 )
 
 // 使用量记录队列溢出策略
@@ -32,28 +33,20 @@ const (
 
 // DefaultCSPPolicy is the default Content-Security-Policy with nonce support
 // __CSP_NONCE__ will be replaced with actual nonce at request time by the SecurityHeaders middleware
-const DefaultCSPPolicy = "default-src 'self'; worker-src 'self' blob:; script-src 'self' __CSP_NONCE__ https://accounts.google.com/gsi/client https://challenges.cloudflare.com https://*.alicdn.com https://static.cloudflareinsights.com https://turing.captcha.qcloud.com https://turing.captcha.gtimg.com https://ca.turing.captcha.qcloud.com https://global.turing.captcha.gtimg.com https://www.tycaptcha.com https://cloudcache.tencentcs.com https://*.stripe.com https://static.airwallex.com https://checkout.airwallex.com https://static-demo.airwallex.com https://checkout-demo.airwallex.com; style-src 'self' 'unsafe-inline' https://*.captcha.gtimg.com https://accounts.google.com/gsi/style https://fonts.googleapis.com https://*.alicdn.com https://static.airwallex.com https://checkout.airwallex.com https://static-demo.airwallex.com https://checkout-demo.airwallex.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' http://127.0.0.1:43110 http://127.0.0.1:43111 http://127.0.0.1:43112 http://127.0.0.1:43113 http://127.0.0.1:43114 http://127.0.0.1:43115 http://127.0.0.1:43116 http://127.0.0.1:43117 http://127.0.0.1:43118 http://127.0.0.1:43119 https://accounts.google.com/gsi/ https://turing.captcha.qcloud.com https://www.tycaptcha.com https://rce.tencentrio.com https:; frame-src https://accounts.google.com/gsi/ https://challenges.cloudflare.com https://turing.captcha.qcloud.com https://ca.turing.captcha.qcloud.com https://www.tycaptcha.com https://*.stripe.com https://checkout.airwallex.com https://checkout-demo.airwallex.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-
-// UMQ（用户消息队列）模式常量
-const (
-	// UMQModeSerialize: 账号级串行锁 + RPM 自适应延迟
-	UMQModeSerialize = "serialize"
-	// UMQModeThrottle: 仅 RPM 自适应前置延迟，不阻塞并发
-	UMQModeThrottle = "throttle"
-)
+const DefaultCSPPolicy = httpconfig.DefaultCSPPolicy
 
 // 连接池隔离策略常量
 // 用于控制上游 HTTP 连接池的隔离粒度，影响连接复用和资源消耗
 const (
 	// ConnectionPoolIsolationProxy: 按代理隔离
-	// 同一代理地址共享连接池，适合代理数量少、账户数量多的场景
+	// 同一代理地址共享连接池，适合代理数量少、提供商数量多的场景
 	ConnectionPoolIsolationProxy = "proxy"
-	// ConnectionPoolIsolationAccount: 按账户隔离
-	// 每个账户独立连接池，适合账户数量少、需要严格隔离的场景
-	ConnectionPoolIsolationAccount = "account"
-	// ConnectionPoolIsolationAccountProxy: 按账户+代理组合隔离（默认）
-	// 同一账户+代理组合共享连接池，提供最细粒度的隔离
-	ConnectionPoolIsolationAccountProxy = "account_proxy"
+	// ConnectionPoolIsolationProvider: 按提供商隔离
+	// 每个提供商独立连接池，适合提供商数量少、需要严格隔离的场景
+	ConnectionPoolIsolationProvider = "provider"
+	// ConnectionPoolIsolationProviderProxy: 按提供商+代理组合隔离（默认）
+	// 同一提供商+代理组合共享连接池，提供最细粒度的隔离
+	ConnectionPoolIsolationProviderProxy = "provider_proxy"
 )
 
 // DefaultUpstreamResponseReadMaxBytes 上游非流式响应体的默认读取上限。
@@ -66,44 +59,42 @@ const DefaultUpstreamResponseReadMaxBytes int64 = 128 * 1024 * 1024
 const DefaultModelsListReadMaxBytes int64 = 8 * 1024 * 1024
 
 type Config struct {
-	Server                  ServerConfig                  `mapstructure:"server"`
-	Log                     LogConfig                     `mapstructure:"log"`
-	CORS                    CORSConfig                    `mapstructure:"cors"`
-	Security                SecurityConfig                `mapstructure:"security"`
-	Billing                 BillingConfig                 `mapstructure:"billing"`
-	Turnstile               TurnstileConfig               `mapstructure:"turnstile"`
-	Database                DatabaseConfig                `mapstructure:"database"`
-	Redis                   RedisConfig                   `mapstructure:"redis"`
-	Ops                     OpsConfig                     `mapstructure:"ops"`
-	JWT                     JWTConfig                     `mapstructure:"jwt"`
-	Totp                    TotpConfig                    `mapstructure:"totp"`
-	WebAuthn                WebAuthnConfig                `mapstructure:"webauthn"`
-	LinuxDo                 LinuxDoConnectConfig          `mapstructure:"linuxdo_connect"`
-	WeChat                  WeChatConnectConfig           `mapstructure:"wechat_connect"`
-	OIDC                    OIDCConnectConfig             `mapstructure:"oidc_connect"`
-	DingTalk                DingTalkConnectConfig         `mapstructure:"dingtalk_connect"`
-	GitHubOAuth             EmailOAuthProviderConfig      `mapstructure:"github_oauth"`
-	GoogleOAuth             EmailOAuthProviderConfig      `mapstructure:"google_oauth"`
-	Default                 DefaultConfig                 `mapstructure:"default"`
-	RateLimit               RateLimitConfig               `mapstructure:"rate_limit"`
-	Pricing                 PricingConfig                 `mapstructure:"pricing"`
-	Gateway                 GatewayConfig                 `mapstructure:"gateway"`
-	APIKeyAuth              APIKeyAuthCacheConfig         `mapstructure:"api_key_auth_cache"`
-	SubscriptionCache       SubscriptionCacheConfig       `mapstructure:"subscription_cache"`
-	SubscriptionMaintenance SubscriptionMaintenanceConfig `mapstructure:"subscription_maintenance"`
-	Dashboard               DashboardCacheConfig          `mapstructure:"dashboard_cache"`
-	DashboardAgg            DashboardAggregationConfig    `mapstructure:"dashboard_aggregation"`
-	UsageCleanup            UsageCleanupConfig            `mapstructure:"usage_cleanup"`
-	Concurrency             ConcurrencyConfig             `mapstructure:"concurrency"`
-	TokenRefresh            TokenRefreshConfig            `mapstructure:"token_refresh"`
-	RunMode                 string                        `mapstructure:"run_mode" yaml:"run_mode"`
-	Timezone                string                        `mapstructure:"timezone"` // e.g. "Asia/Shanghai", "UTC"
-	Gemini                  GeminiConfig                  `mapstructure:"gemini"`
-	Update                  UpdateConfig                  `mapstructure:"update"`
-	Idempotency             IdempotencyConfig             `mapstructure:"idempotency"`
-	BatchImage              BatchImageConfig              `mapstructure:"batch_image"`
-	Creative                CreativeConfig                `mapstructure:"creative"`
-	Team                    TeamConfig                    `mapstructure:"team"`
+	Server            ServerConfig               `mapstructure:"server"`
+	Log               LogConfig                  `mapstructure:"log"`
+	CORS              CORSConfig                 `mapstructure:"cors"`
+	Security          SecurityConfig             `mapstructure:"security"`
+	Billing           BillingConfig              `mapstructure:"billing"`
+	Turnstile         TurnstileConfig            `mapstructure:"turnstile"`
+	Database          DatabaseConfig             `mapstructure:"database"`
+	Redis             RedisConfig                `mapstructure:"redis"`
+	Ops               OpsConfig                  `mapstructure:"ops"`
+	JWT               JWTConfig                  `mapstructure:"jwt"`
+	Totp              TotpConfig                 `mapstructure:"totp"`
+	WebAuthn          WebAuthnConfig             `mapstructure:"webauthn"`
+	LinuxDo           LinuxDoConnectConfig       `mapstructure:"linuxdo_connect"`
+	WeChat            WeChatConnectConfig        `mapstructure:"wechat_connect"`
+	OIDC              OIDCConnectConfig          `mapstructure:"oidc_connect"`
+	DingTalk          DingTalkConnectConfig      `mapstructure:"dingtalk_connect"`
+	GitHubOAuth       EmailOAuthProviderConfig   `mapstructure:"github_oauth"`
+	GoogleOAuth       EmailOAuthProviderConfig   `mapstructure:"google_oauth"`
+	Default           DefaultConfig              `mapstructure:"default"`
+	RateLimit         RateLimitConfig            `mapstructure:"rate_limit"`
+	Pricing           PricingConfig              `mapstructure:"pricing"`
+	Gateway           GatewayConfig              `mapstructure:"gateway"`
+	APIKeyAuth        APIKeyAuthCacheConfig      `mapstructure:"api_key_auth_cache"`
+	SubscriptionCache SubscriptionCacheConfig    `mapstructure:"subscription_cache"`
+	Dashboard         DashboardCacheConfig       `mapstructure:"dashboard_cache"`
+	DashboardAgg      DashboardAggregationConfig `mapstructure:"dashboard_aggregation"`
+	UsageCleanup      UsageCleanupConfig         `mapstructure:"usage_cleanup"`
+	Concurrency       ConcurrencyConfig          `mapstructure:"concurrency"`
+	TokenRefresh      TokenRefreshConfig         `mapstructure:"token_refresh"`
+	Timezone          string                     `mapstructure:"timezone"` // e.g. "Asia/Shanghai", "UTC"
+	Gemini            GeminiConfig               `mapstructure:"gemini"`
+	Update            UpdateConfig               `mapstructure:"update"`
+	Idempotency       IdempotencyConfig          `mapstructure:"idempotency"`
+	BatchImage        BatchImageConfig           `mapstructure:"batch_image"`
+	Creative          CreativeConfig             `mapstructure:"creative"`
+	Team              TeamConfig                 `mapstructure:"team"`
 }
 
 // TeamConfig 控制团队功能的默认开放策略。
@@ -279,129 +270,16 @@ type CreativeConfig struct {
 	MaxExecuteAttempts int `mapstructure:"max_execute_attempts"`
 }
 
-type LinuxDoConnectConfig struct {
-	Enabled             bool   `mapstructure:"enabled"`
-	ClientID            string `mapstructure:"client_id"`
-	ClientSecret        string `mapstructure:"client_secret"`
-	AuthorizeURL        string `mapstructure:"authorize_url"`
-	TokenURL            string `mapstructure:"token_url"`
-	UserInfoURL         string `mapstructure:"userinfo_url"`
-	Scopes              string `mapstructure:"scopes"`
-	RedirectURL         string `mapstructure:"redirect_url"`          // 后端回调地址（需在提供方后台登记）
-	FrontendRedirectURL string `mapstructure:"frontend_redirect_url"` // 前端接收 token 的路由（默认：/auth/linuxdo/callback）
-	TokenAuthMethod     string `mapstructure:"token_auth_method"`     // client_secret_post / client_secret_basic / none
-	UsePKCE             bool   `mapstructure:"use_pkce"`
+type LinuxDoConnectConfig = authconfig.LinuxDoConnectConfig
 
-	// 可选：用于从 userinfo JSON 中提取字段的 gjson 路径。
-	// 为空时，服务端会尝试一组常见字段名。
-	UserInfoEmailPath    string `mapstructure:"userinfo_email_path"`
-	UserInfoIDPath       string `mapstructure:"userinfo_id_path"`
-	UserInfoUsernamePath string `mapstructure:"userinfo_username_path"`
-}
+type WeChatConnectConfig = authconfig.WeChatConnectConfig
 
-type WeChatConnectConfig struct {
-	Enabled             bool   `mapstructure:"enabled"`
-	AppID               string `mapstructure:"app_id"`
-	AppSecret           string `mapstructure:"app_secret"`
-	OpenAppID           string `mapstructure:"open_app_id"`
-	OpenAppSecret       string `mapstructure:"open_app_secret"`
-	MPAppID             string `mapstructure:"mp_app_id"`
-	MPAppSecret         string `mapstructure:"mp_app_secret"`
-	MobileAppID         string `mapstructure:"mobile_app_id"`
-	MobileAppSecret     string `mapstructure:"mobile_app_secret"`
-	OpenEnabled         bool   `mapstructure:"open_enabled"`
-	MPEnabled           bool   `mapstructure:"mp_enabled"`
-	MobileEnabled       bool   `mapstructure:"mobile_enabled"`
-	Mode                string `mapstructure:"mode"`
-	Scopes              string `mapstructure:"scopes"`
-	RedirectURL         string `mapstructure:"redirect_url"`
-	FrontendRedirectURL string `mapstructure:"frontend_redirect_url"`
-}
+type OIDCConnectConfig = authconfig.OIDCConnectConfig
 
-type OIDCConnectConfig struct {
-	Enabled                 bool   `mapstructure:"enabled"`
-	ProviderName            string `mapstructure:"provider_name"` // 显示名: "Keycloak" 等
-	ClientID                string `mapstructure:"client_id"`
-	ClientSecret            string `mapstructure:"client_secret"`
-	IssuerURL               string `mapstructure:"issuer_url"`
-	DiscoveryURL            string `mapstructure:"discovery_url"`
-	AuthorizeURL            string `mapstructure:"authorize_url"`
-	TokenURL                string `mapstructure:"token_url"`
-	UserInfoURL             string `mapstructure:"userinfo_url"`
-	JWKSURL                 string `mapstructure:"jwks_url"`
-	Scopes                  string `mapstructure:"scopes"`                // 默认 "openid email profile"
-	RedirectURL             string `mapstructure:"redirect_url"`          // 后端回调地址（需在提供方后台登记）
-	FrontendRedirectURL     string `mapstructure:"frontend_redirect_url"` // 前端接收 token 的路由（默认：/auth/oidc/callback）
-	TokenAuthMethod         string `mapstructure:"token_auth_method"`     // client_secret_post / client_secret_basic / none
-	UsePKCE                 bool   `mapstructure:"use_pkce"`
-	ValidateIDToken         bool   `mapstructure:"validate_id_token"`
-	UsePKCEExplicit         bool   `mapstructure:"-" yaml:"-"`
-	ValidateIDTokenExplicit bool   `mapstructure:"-" yaml:"-"`
-	AllowedSigningAlgs      string `mapstructure:"allowed_signing_algs"`   // 默认 "RS256,ES256,PS256"
-	ClockSkewSeconds        int    `mapstructure:"clock_skew_seconds"`     // 默认 120
-	RequireEmailVerified    bool   `mapstructure:"require_email_verified"` // 默认 false
-
-	// 可选：用于从 userinfo JSON 中提取字段的 gjson 路径。
-	// 为空时，服务端会尝试一组常见字段名。
-	UserInfoEmailPath    string `mapstructure:"userinfo_email_path"`
-	UserInfoIDPath       string `mapstructure:"userinfo_id_path"`
-	UserInfoUsernamePath string `mapstructure:"userinfo_username_path"`
-}
-
-type DingTalkConnectConfig struct {
-	Enabled             bool   `mapstructure:"enabled"`
-	ClientID            string `mapstructure:"client_id"`
-	ClientSecret        string `mapstructure:"client_secret"`
-	AuthorizeURL        string `mapstructure:"authorize_url"`
-	TokenURL            string `mapstructure:"token_url"`
-	UserInfoURL         string `mapstructure:"userinfo_url"`
-	Scopes              string `mapstructure:"scopes"`
-	RedirectURL         string `mapstructure:"redirect_url"`
-	FrontendRedirectURL string `mapstructure:"frontend_redirect_url"`
-
-	// 平台底座 + 业务行为
-	DingTalkAppKind string `mapstructure:"dingtalk_app_kind"` // 仅 "internal_app"（V4 fail-closed）
-	AppType         string `mapstructure:"app_type"`          // "public" (default) | "internal"
-
-	// Corp 限定（none | internal_only）
-	CorpRestrictionPolicy   string `mapstructure:"corp_restriction_policy"`
-	InternalCorpID          string `mapstructure:"internal_corp_id"`
-	BypassRegistration      bool   `mapstructure:"bypass_registration"`
-	SyncCorpEmail           bool   `mapstructure:"sync_corp_email"`
-	SyncDisplayName         bool   `mapstructure:"sync_display_name"`
-	SyncDept                bool   `mapstructure:"sync_dept"`
-	SyncCorpEmailAttrKey    string `mapstructure:"sync_corp_email_attr_key"`
-	SyncDisplayNameAttrKey  string `mapstructure:"sync_display_name_attr_key"`
-	SyncDeptAttrKey         string `mapstructure:"sync_dept_attr_key"`
-	SyncCorpEmailAttrName   string `mapstructure:"sync_corp_email_attr_name"`
-	SyncDisplayNameAttrName string `mapstructure:"sync_display_name_attr_name"`
-	SyncDeptAttrName        string `mapstructure:"sync_dept_attr_name"`
-
-	// 邮箱 + Username
-	RequireEmail            bool   `mapstructure:"require_email"`
-	UsernameOverwritePolicy string `mapstructure:"username_overwrite_policy"`
-
-	// Attribute（私有版扩展点；开源版仅声明）
-	UsernameAttributeKey         string   `mapstructure:"username_attribute_key"`
-	EnableAttributeMatching      bool     `mapstructure:"enable_attribute_matching"`
-	EnableAttributeSync          bool     `mapstructure:"enable_attribute_sync"`
-	AttributeSyncFields          []string `mapstructure:"attribute_sync_fields"`
-	AttributeSyncOverwritePolicy string   `mapstructure:"attribute_sync_overwrite_policy"`
-}
+type DingTalkConnectConfig = authconfig.DingTalkConnectConfig
 
 // EmailOAuthProviderConfig 保存 GitHub/Google 这类邮箱 OAuth 登录的配置。
-type EmailOAuthProviderConfig struct {
-	Enabled             bool   `mapstructure:"enabled"`
-	ClientID            string `mapstructure:"client_id"`
-	ClientSecret        string `mapstructure:"client_secret"`
-	AuthorizeURL        string `mapstructure:"authorize_url"`
-	TokenURL            string `mapstructure:"token_url"`
-	UserInfoURL         string `mapstructure:"userinfo_url"`
-	EmailsURL           string `mapstructure:"emails_url"`
-	Scopes              string `mapstructure:"scopes"`
-	RedirectURL         string `mapstructure:"redirect_url"`
-	FrontendRedirectURL string `mapstructure:"frontend_redirect_url"`
-}
+type EmailOAuthProviderConfig = authconfig.EmailOAuthProviderConfig
 
 const (
 	defaultWeChatConnectMode             = "open"
@@ -634,7 +512,7 @@ type TokenRefreshConfig struct {
 	MaxRetries int `mapstructure:"max_retries"`
 	// 重试退避基础时间（秒）
 	RetryBackoffSeconds int `mapstructure:"retry_backoff_seconds"`
-	// 每次从数据库读取的候选账号上限
+	// 每次从数据库读取的候选提供商上限
 	CandidatePageSize int `mapstructure:"candidate_page_size"`
 	// 每个平台允许的并发刷新数
 	ProviderConcurrency int `mapstructure:"provider_concurrency"`
@@ -702,10 +580,7 @@ type H2CConfig struct {
 	MaxUploadBufferPerStream     int    `mapstructure:"max_upload_buffer_per_stream"`     // 每个流的上传缓冲区（字节）
 }
 
-type CORSConfig struct {
-	AllowedOrigins   []string `mapstructure:"allowed_origins"`
-	AllowCredentials bool     `mapstructure:"allow_credentials"`
-}
+type CORSConfig = httpconfig.CORSConfig
 
 // WebAuthnConfig 定义当前部署作为 WebAuthn 依赖方时使用的固定身份。
 // RPID 与 RPOrigins 属于安全边界，不能从不可信的 Host 或 Origin 请求头推断。
@@ -716,7 +591,7 @@ type WebAuthnConfig struct {
 	RPOrigins     []string `mapstructure:"rp_origins"`
 }
 
-const MaxForwardedClientIPHeaders = 16
+const MaxForwardedClientIPHeaders = ippolicy.MaxForwardedClientIPHeaders
 
 type ForwardedClientIPSettings struct {
 	TrustForwardedIP bool
@@ -737,25 +612,7 @@ type SecurityConfig struct {
 }
 
 func NormalizeForwardedClientIPHeaders(headers []string) ([]string, error) {
-	normalized := make([]string, 0, len(headers))
-	seen := make(map[string]struct{}, len(headers))
-	for _, header := range headers {
-		header = strings.TrimSpace(header)
-		if !httpguts.ValidHeaderFieldName(header) {
-			return nil, fmt.Errorf("invalid HTTP header field name %q", header)
-		}
-		canonical := textproto.CanonicalMIMEHeaderKey(header)
-		key := strings.ToLower(canonical)
-		if _, exists := seen[key]; exists {
-			continue
-		}
-		if len(normalized) == MaxForwardedClientIPHeaders {
-			return nil, fmt.Errorf("forwarded client IP headers must contain at most %d unique names", MaxForwardedClientIPHeaders)
-		}
-		seen[key] = struct{}{}
-		normalized = append(normalized, canonical)
-	}
-	return normalized, nil
+	return ippolicy.NormalizeForwardedClientIPHeaders(headers)
 }
 
 func cloneForwardedClientIPHeaders(headers []string) []string {
@@ -786,11 +643,6 @@ func (c *Config) ForwardedClientIPSettings() ForwardedClientIPSettings {
 
 func (c *Config) TrustForwardedIPForAPIKeyACL() bool {
 	return c.ForwardedClientIPSettings().TrustForwardedIP
-}
-
-// ForwardedClientIPTrustEnabled 表示旧版转发头兼容模式当前是否覆盖 server.trusted_proxies。
-func (c *Config) ForwardedClientIPTrustEnabled() bool {
-	return c != nil && c.TrustForwardedIPForAPIKeyACL()
 }
 
 func (c *Config) SetForwardedClientIPSettings(enabled bool, headers []string) {
@@ -830,17 +682,14 @@ type ResponseHeaderConfig struct {
 	ForceRemove       []string `mapstructure:"force_remove"`
 }
 
-type CSPConfig struct {
-	Enabled bool   `mapstructure:"enabled"`
-	Policy  string `mapstructure:"policy"`
-}
+type CSPConfig = httpconfig.CSPConfig
 
 type ProxyFallbackConfig struct {
 	// AllowDirectOnError 当辅助服务的代理初始化失败时是否允许回退直连。
-	// 仅影响以下非 AI 账号连接的辅助服务：
+	// 仅影响以下非 AI 提供商连接的辅助服务：
 	//   - GitHub Release 更新检查
 	//   - 定价数据拉取
-	// 不影响 AI 账号网关连接（Claude/OpenAI/Gemini/Antigravity），
+	// 不影响 AI 提供商网关连接（Claude/OpenAI/Gemini/Antigravity），
 	// 这些关键路径的代理失败始终返回错误，不会回退直连。
 	// 默认 false：避免因代理配置错误导致服务器真实 IP 泄露。
 	AllowDirectOnError bool `mapstructure:"allow_direct_on_error"`
@@ -896,15 +745,6 @@ type BillingConfig struct {
 	// MinimumBalanceReserve 是余额计费转发前的保守余额下限。
 	// 设为 0 时保持仅要求 balance > 0 的旧行为。
 	MinimumBalanceReserve float64 `mapstructure:"minimum_balance_reserve"`
-	// UserPlatformQuotaCacheTTLSeconds 用户 × 平台 quota 缓存 TTL（秒），默认 86400=1天，覆盖典型 daily 窗口。
-	// 消费点：
-	//   - billing_cache_service.cacheWriteWorker 异步累加
-	//   - billing_cache_service.checkUserPlatformQuotaEligibility 首次缓存装载
-	// 读写两端必须共用同一 TTL，避免缓存生命周期不一致导致 quota 计数漂移。
-	UserPlatformQuotaCacheTTLSeconds int `mapstructure:"user_platform_quota_cache_ttl_seconds"`
-	// UserPlatformQuotaSentinelTTLSeconds sentinel(无 limit 占位)entry 的 TTL,
-	// 显著短于 quota cache 默认 86400s 以控 Redis 内存;默认 3600=1h。
-	UserPlatformQuotaSentinelTTLSeconds int `mapstructure:"user_platform_quota_sentinel_ttl_seconds"`
 }
 
 type CircuitBreakerConfig struct {
@@ -965,7 +805,7 @@ type GatewayConfig struct {
 	ProxyProbeResponseReadMaxBytes int64 `mapstructure:"proxy_probe_response_read_max_bytes"`
 	// Gemini 上游响应头调试日志开关（默认关闭，避免高频日志开销）
 	GeminiDebugResponseHeaders bool `mapstructure:"gemini_debug_response_headers"`
-	// ConnectionPoolIsolation: 上游连接池隔离策略（proxy/account/account_proxy）
+	// ConnectionPoolIsolation: 上游连接池隔离策略（proxy/provider/provider_proxy）
 	ConnectionPoolIsolation string `mapstructure:"connection_pool_isolation"`
 	// ForceCodexCLI: 强制将 OpenAI `/v1/responses` 请求按 Codex CLI 处理。
 	// 用于网关未透传/改写 User-Agent 时的兼容兜底（默认关闭，避免影响其他客户端）。
@@ -979,7 +819,7 @@ type GatewayConfig struct {
 	// ForcedCodexInstructionsTemplate: 启动时从模板文件读取并缓存的模板内容。
 	// 该字段不直接参与配置反序列化，仅用于请求热路径避免重复读盘。
 	ForcedCodexInstructionsTemplate string `mapstructure:"-"`
-	// OpenAICompactModel 是显式 compact 请求在账号映射未命中时使用的全局回退模型。
+	// OpenAICompactModel 是显式 compact 请求在提供商映射未命中时使用的全局回退模型。
 	OpenAICompactModel string `mapstructure:"openai_compact_model"`
 	// OpenAIPassthroughAllowTimeoutHeaders: OpenAI 透传模式是否放行客户端超时头
 	// 关闭（默认）可避免 x-stainless-timeout 等头导致上游提前断流。
@@ -1007,9 +847,9 @@ type GatewayConfig struct {
 	// IdleConnTimeoutSeconds: 空闲连接超时时间（秒）
 	IdleConnTimeoutSeconds int `mapstructure:"idle_conn_timeout_seconds"`
 	// MaxUpstreamClients: 上游连接池客户端最大缓存数量
-	// 当使用连接池隔离策略时，系统会为不同的账户/代理组合创建独立的 HTTP 客户端
+	// 当使用连接池隔离策略时，系统会为不同的提供商/代理组合创建独立的 HTTP 客户端
 	// 此参数限制缓存的客户端数量，超出后会淘汰最久未使用的客户端
-	// 建议值：预估的活跃账户数 * 1.2（留有余量）
+	// 建议值：预估的活跃提供商数 * 1.2（留有余量）
 	MaxUpstreamClients int `mapstructure:"max_upstream_clients"`
 	// ClientIdleTTLSeconds: 上游连接池客户端空闲回收阈值（秒）
 	// 超过此时间未使用的客户端会被标记为可回收
@@ -1019,7 +859,7 @@ type GatewayConfig struct {
 	// 应大于最长 LLM 请求时间，防止请求完成前槽位过期
 	ConcurrencySlotTTLMinutes int `mapstructure:"concurrency_slot_ttl_minutes"`
 	// SessionIdleTimeoutMinutes: 会话空闲超时时间（分钟），默认 5 分钟
-	// 用于 Anthropic OAuth/SetupToken 账号的会话数量限制功能
+	// 用于 Anthropic OAuth/SetupToken 提供商的会话数量限制功能
 	// 空闲超过此时间的会话将被自动释放
 	SessionIdleTimeoutMinutes int `mapstructure:"session_idle_timeout_minutes"`
 
@@ -1041,21 +881,21 @@ type GatewayConfig struct {
 	// 上游错误响应体记录最大字节数（超过会截断）
 	LogUpstreamErrorBodyMaxBytes int `mapstructure:"log_upstream_error_body_max_bytes"`
 
-	// API-key 账号在客户端未提供 anthropic-beta 时，是否按需自动补齐（默认关闭以保持兼容）
+	// API-key 提供商在客户端未提供 anthropic-beta 时，是否按需自动补齐（默认关闭以保持兼容）
 	InjectBetaForAPIKey bool `mapstructure:"inject_beta_for_apikey"`
 
 	// 是否允许对部分 400 错误触发 failover（默认关闭以避免改变语义）
 	FailoverOn400 bool `mapstructure:"failover_on_400"`
 
-	// 账户切换最大次数（遇到上游错误时切换到其他账户的次数上限）
-	MaxAccountSwitches int `mapstructure:"max_account_switches"`
-	// Gemini 账户切换最大次数（Gemini 平台单独配置，因 API 限制更严格）
-	MaxAccountSwitchesGemini int `mapstructure:"max_account_switches_gemini"`
+	// 提供商切换最大次数（遇到上游错误时切换到其他提供商的次数上限）
+	MaxProviderSwitches int `mapstructure:"max_provider_switches"`
+	// Gemini 提供商切换最大次数（Gemini 平台单独配置，因 API 限制更严格）
+	MaxProviderSwitchesGemini int `mapstructure:"max_provider_switches_gemini"`
 
 	// Antigravity 429 fallback 限流时间（分钟），解析重置时间失败时使用
 	AntigravityFallbackCooldownMinutes int `mapstructure:"antigravity_fallback_cooldown_minutes"`
 
-	// Scheduling: 账号调度相关配置
+	// Scheduling: 提供商调度相关配置
 	Scheduling GatewaySchedulingConfig `mapstructure:"scheduling"`
 
 	// TLSFingerprint: TLS指纹伪装配置
@@ -1070,7 +910,7 @@ type GatewayConfig struct {
 	ModelsListCacheTTLSeconds int `mapstructure:"models_list_cache_ttl_seconds"`
 
 	// UserMessageQueue: 用户消息串行队列配置
-	// 对 role:"user" 的真实用户消息实施账号级串行化 + RPM 自适应延迟
+	// 对 role:"user" 的真实用户消息实施提供商级串行化 + RPM 自适应延迟
 	UserMessageQueue UserMessageQueueConfig `mapstructure:"user_message_queue"`
 
 	// Grok 保存 Grok/xAI 网关调度与免费层软门禁配置。
@@ -1083,7 +923,7 @@ type GatewayConfig struct {
 // GatewayGrokConfig 保存 Grok 专用的网关调度参数。
 //
 // 免费额度软门禁键位均位于 gateway.grok：
-//   - free_quota_soft_gate_enabled：为明确标记为 free 的 OAuth 账号启用本地滚动窗口调度门禁；
+//   - free_quota_soft_gate_enabled：为明确标记为 free 的 OAuth 提供商启用本地滚动窗口调度门禁；
 //   - free_quota_token_limit：滚动窗口名义 token 额度；
 //   - free_quota_soft_gate_percent：达到名义额度前停止新调度的百分比，范围 1-100；
 //   - free_quota_window_hours：本地用量滚动窗口小时数；
@@ -1093,7 +933,7 @@ type GatewayGrokConfig struct {
 	// PasswordAuthEnabled 控制可选的密码转 SSO OAuth 流程，默认关闭，必须由运维显式启用。
 	// 启用后 POST /admin/grok/oauth/password 才执行实际授权。
 	PasswordAuthEnabled bool `mapstructure:"password_auth_enabled"`
-	// FreeQuotaSoftGateEnabled 仅为明确标记为 free 的 Grok OAuth 账号启用本地滚动窗口门禁。
+	// FreeQuotaSoftGateEnabled 仅为明确标记为 free 的 Grok OAuth 提供商启用本地滚动窗口门禁。
 	FreeQuotaSoftGateEnabled bool `mapstructure:"free_quota_soft_gate_enabled"`
 	// FreeQuotaTokenLimit 是滚动窗口的名义 token 额度。
 	FreeQuotaTokenLimit int64 `mapstructure:"free_quota_token_limit"`
@@ -1107,7 +947,7 @@ type GatewayGrokConfig struct {
 }
 
 // GatewayCNProvidersConfig 配置国产供应商的周期性余额/额度探测。
-// 该任务默认关闭；开启后只处理活动的 API Key 账号，不改变管理员手动查询语义。
+// 该任务默认关闭；开启后只处理活动的 API Key 提供商，不改变管理员手动查询语义。
 type GatewayCNProvidersConfig struct {
 	// MonitorEnabled 显式开启后才运行后台周期探测；手动查询不受此开关影响。
 	MonitorEnabled      bool    `mapstructure:"monitor_enabled"`
@@ -1152,10 +992,10 @@ type GatewayOpenAIProxyStreamCircuitConfig struct {
 }
 
 // UserMessageQueueConfig 用户消息串行队列配置
-// 用于 Anthropic OAuth/SetupToken 账号的用户消息串行化发送
+// 用于 Anthropic OAuth/SetupToken 提供商的用户消息串行化发送
 type UserMessageQueueConfig struct {
 	// Mode: 模式选择
-	// "serialize" = 账号级串行锁 + RPM 自适应延迟
+	// "serialize" = 提供商级串行锁 + RPM 自适应延迟
 	// "throttle" = 仅 RPM 自适应前置延迟，不阻塞并发
 	// "" = 禁用（默认）
 	Mode string `mapstructure:"mode"`
@@ -1184,11 +1024,11 @@ func (c *UserMessageQueueConfig) WaitTimeout() time.Duration {
 // GetEffectiveMode 返回生效的模式
 // 注意：Mode 字段已在 load() 中做过白名单校验和规范化，此处无需重复验证
 func (c *UserMessageQueueConfig) GetEffectiveMode() string {
-	if c.Mode == UMQModeSerialize || c.Mode == UMQModeThrottle {
+	if c.Mode == schedulerpolicy.MessageQueueSerialize || c.Mode == schedulerpolicy.MessageQueueThrottle {
 		return c.Mode
 	}
 	if c.Enabled {
-		return UMQModeSerialize // 向后兼容
+		return schedulerpolicy.MessageQueueSerialize // 向后兼容
 	}
 	return ""
 }
@@ -1212,9 +1052,9 @@ type GatewayOpenAIWSConfig struct {
 	MaxIngressConnectionsPerAPIKey int `mapstructure:"max_ingress_connections_per_api_key"`
 	// Enabled: 全局总开关（默认 true）
 	Enabled bool `mapstructure:"enabled"`
-	// OAuthEnabled: 是否允许 OpenAI OAuth 账号使用 WS
+	// OAuthEnabled: 是否允许 OpenAI OAuth 提供商使用 WS
 	OAuthEnabled bool `mapstructure:"oauth_enabled"`
-	// APIKeyEnabled: 是否允许 OpenAI API Key 账号使用 WS
+	// APIKeyEnabled: 是否允许 OpenAI API Key 提供商使用 WS
 	APIKeyEnabled bool `mapstructure:"apikey_enabled"`
 	// ForceHTTP: 全局强制 HTTP（用于紧急回滚）
 	ForceHTTP bool `mapstructure:"force_http"`
@@ -1244,16 +1084,14 @@ type GatewayOpenAIWSConfig struct {
 	ResponsesWebsocketsV2 bool `mapstructure:"responses_websockets_v2"`
 
 	// 连接池参数
-	MaxConnsPerAccount int `mapstructure:"max_conns_per_account"`
-	MinIdlePerAccount  int `mapstructure:"min_idle_per_account"`
-	MaxIdlePerAccount  int `mapstructure:"max_idle_per_account"`
-	// DynamicMaxConnsByAccountConcurrencyEnabled: 是否按账号并发动态计算连接池上限。
-	// 旧版及 mode_router_v2 的 ctx_pool 共用此开关和类型系数；关闭后使用 max_conns_per_account。
-	// mode_router_v2 下并发数 <= 0 的账号仍不可调度。
-	DynamicMaxConnsByAccountConcurrencyEnabled bool `mapstructure:"dynamic_max_conns_by_account_concurrency_enabled"`
-	// OAuthMaxConnsFactor: OAuth 账号连接池系数（effective=ceil(concurrency*factor)）
+	MaxConnsPerProvider int `mapstructure:"max_conns_per_provider"`
+	MinIdlePerProvider  int `mapstructure:"min_idle_per_provider"`
+	MaxIdlePerProvider  int `mapstructure:"max_idle_per_provider"`
+	// DynamicMaxConnsByProviderConcurrencyEnabled: 是否按提供商并发动态计算连接池上限
+	DynamicMaxConnsByProviderConcurrencyEnabled bool `mapstructure:"dynamic_max_conns_by_provider_concurrency_enabled"`
+	// OAuthMaxConnsFactor: OAuth 提供商连接池系数（effective=ceil(concurrency*factor)）
 	OAuthMaxConnsFactor float64 `mapstructure:"oauth_max_conns_factor"`
-	// APIKeyMaxConnsFactor: API Key 账号连接池系数（effective=ceil(concurrency*factor)）
+	// APIKeyMaxConnsFactor: API Key 提供商连接池系数（effective=ceil(concurrency*factor)）
 	APIKeyMaxConnsFactor  float64 `mapstructure:"apikey_max_conns_factor"`
 	DialTimeoutSeconds    int     `mapstructure:"dial_timeout_seconds"`
 	ReadTimeoutSeconds    int     `mapstructure:"read_timeout_seconds"`
@@ -1266,8 +1104,6 @@ type GatewayOpenAIWSConfig struct {
 	EventFlushIntervalMS int `mapstructure:"event_flush_interval_ms"`
 	// PrewarmCooldownMS: 连接池预热触发冷却时间（毫秒）
 	PrewarmCooldownMS int `mapstructure:"prewarm_cooldown_ms"`
-	// FallbackCooldownSeconds: WS 回退冷却窗口，避免 WS/HTTP 抖动；0 表示关闭冷却
-	FallbackCooldownSeconds int `mapstructure:"fallback_cooldown_seconds"`
 	// RetryBackoffInitialMS: WS 重试初始退避（毫秒）；<=0 表示关闭退避
 	RetryBackoffInitialMS int `mapstructure:"retry_backoff_initial_ms"`
 	// RetryBackoffMaxMS: WS 重试最大退避（毫秒）
@@ -1279,60 +1115,23 @@ type GatewayOpenAIWSConfig struct {
 	// PayloadLogSampleRate: payload_schema 日志采样率（0-1）
 	PayloadLogSampleRate float64 `mapstructure:"payload_log_sample_rate"`
 
-	// 账号调度与粘连参数
-	// StickySessionTTLSeconds: session_hash -> account_id 粘连 TTL
+	// 提供商调度与粘连参数
+	// StickySessionTTLSeconds: session_hash -> provider_id 粘连 TTL
 	StickySessionTTLSeconds int `mapstructure:"sticky_session_ttl_seconds"`
 	// SessionHashReadOldFallback: 会话哈希迁移期是否允许“新 key 未命中时回退读旧 SHA-256 key”
 	SessionHashReadOldFallback bool `mapstructure:"session_hash_read_old_fallback"`
 	// SessionHashDualWriteOld: 会话哈希迁移期是否双写旧 SHA-256 key（短 TTL）
 	SessionHashDualWriteOld bool `mapstructure:"session_hash_dual_write_old"`
-	// MetadataBridgeEnabled: RequestMetadata 迁移期是否保留旧 ctxkey.* 兼容桥接
+	// MetadataBridgeEnabled 保留旧配置的读取兼容；执行参数已统一为原生快照，不再双写旧 key。
 	MetadataBridgeEnabled bool `mapstructure:"metadata_bridge_enabled"`
-	// StickyResponseIDTTLSeconds: response_id -> account_id 粘连 TTL
+	// StickyResponseIDTTLSeconds: response_id -> provider_id 粘连 TTL
 	StickyResponseIDTTLSeconds int `mapstructure:"sticky_response_id_ttl_seconds"`
 	// StickyPreviousResponseTTLSeconds: 兼容旧键（当新键未设置时回退）
 	StickyPreviousResponseTTLSeconds int `mapstructure:"sticky_previous_response_ttl_seconds"`
 }
 
-// GatewayAdvancedSchedulerScoreWeights 高级调度器账号打分权重。
-type GatewayAdvancedSchedulerScoreWeights struct {
-	Priority  float64 `mapstructure:"priority"`
-	Load      float64 `mapstructure:"load"`
-	Queue     float64 `mapstructure:"queue"`
-	ErrorRate float64 `mapstructure:"error_rate"`
-	TTFT      float64 `mapstructure:"ttft"`
-	// Reset 倾向「会话窗口最早重置」的账号。
-	// >0 时，剩余重置时间越短的账号得分越高，从而被优先用尽。默认 0（关闭，不改变原有行为）。
-	Reset float64 `mapstructure:"reset"`
-	// QuotaHeadroom 倾向 Codex 7d 剩余额度更健康的账号。
-	// 默认 0（关闭，不改变原有行为）。
-	QuotaHeadroom float64 `mapstructure:"quota_headroom"`
-	// PreviousResponse/SessionSticky 仅在高级调度启用粘性加权时生效。
-	PreviousResponse float64 `mapstructure:"previous_response"`
-	SessionSticky    float64 `mapstructure:"session_sticky"`
-}
-
-func (w GatewayAdvancedSchedulerScoreWeights) BaseWeightSum() float64 {
-	return w.Priority + w.Load + w.Queue + w.ErrorRate + w.TTFT + w.Reset + w.QuotaHeadroom
-}
-
-func (w GatewayAdvancedSchedulerScoreWeights) TotalWeightSum() float64 {
-	return w.BaseWeightSum() + w.PreviousResponse + w.SessionSticky
-}
-
-func (w GatewayAdvancedSchedulerScoreWeights) IsValid() bool {
-	for _, weight := range []float64{
-		w.Priority, w.Load, w.Queue, w.ErrorRate, w.TTFT, w.Reset,
-		w.QuotaHeadroom, w.PreviousResponse, w.SessionSticky,
-	} {
-		if weight < 0 || math.IsNaN(weight) || math.IsInf(weight, 0) {
-			return false
-		}
-	}
-	baseSum := w.BaseWeightSum()
-	return baseSum > 0 && !math.IsNaN(baseSum) && !math.IsInf(baseSum, 0) &&
-		!math.IsNaN(w.TotalWeightSum()) && !math.IsInf(w.TotalWeightSum(), 0)
-}
+// GatewayAdvancedSchedulerScoreWeights 高级调度器提供商打分权重。
+type GatewayAdvancedSchedulerScoreWeights = schedulerpolicy.ConfigScoreWeights
 
 // GatewayAdvancedSchedulerConfig 跨平台高级调度器配置。
 type GatewayAdvancedSchedulerConfig struct {
@@ -1344,7 +1143,7 @@ type GatewayAdvancedSchedulerConfig struct {
 	EWMAErrorRateAlpha float64 `mapstructure:"ewma_error_rate_alpha"`
 	// EWMATTFTAlpha 是首 token 延迟反馈的 EWMA 平滑系数，取值越大越重视最新样本。
 	EWMATTFTAlpha float64 `mapstructure:"ewma_ttft_alpha"`
-	// StickyEscapeEnabled: 是否允许 session_hash sticky 在账号健康度劣化时临时逃逸
+	// StickyEscapeEnabled: 是否允许 session_hash sticky 在提供商健康度劣化时临时逃逸
 	StickyEscapeEnabled bool `mapstructure:"sticky_escape_enabled"`
 	// StickyEscapeTTFTMs: TTFT EWMA 超过该阈值时跳过 sticky
 	StickyEscapeTTFTMs int `mapstructure:"sticky_escape_ttft_ms"`
@@ -1425,7 +1224,7 @@ type TLSProfileConfig struct {
 	Extensions []uint16 `mapstructure:"extensions"`
 }
 
-// GatewaySchedulingConfig accounts scheduling configuration.
+// GatewaySchedulingConfig providers scheduling configuration.
 type GatewaySchedulingConfig struct {
 	// 粘性会话排队配置
 	StickySessionMaxWaiting  int           `mapstructure:"sticky_session_max_waiting"`
@@ -1435,11 +1234,11 @@ type GatewaySchedulingConfig struct {
 	FallbackWaitTimeout time.Duration `mapstructure:"fallback_wait_timeout"`
 	FallbackMaxWaiting  int           `mapstructure:"fallback_max_waiting"`
 
-	// 兜底层账户选择策略: "last_used"(按最后使用时间排序，默认) 或 "random"(随机)
+	// 兜底层提供商选择策略: "last_used"(按最后使用时间排序，默认) 或 "random"(随机)
 	FallbackSelectionMode string `mapstructure:"fallback_selection_mode"`
 
-	// PreferSoonestReset 开启后，负载感知选择会优先选用「会话窗口最早重置」的账号
-	// 先用尽即将重置的账号，保留重置时间还很久的账号。
+	// PreferSoonestReset 开启后，负载感知选择会优先选用「会话窗口最早重置」的提供商
+	// 先用尽即将重置的提供商，保留重置时间还很久的提供商。
 	// 默认 false，保持原有「优先级 → 负载率 → LRU」行为不变。
 	PreferSoonestReset bool `mapstructure:"prefer_soonest_reset"`
 
@@ -1500,13 +1299,6 @@ type DatabaseConfig struct {
 	ConnMaxLifetimeMinutes int `mapstructure:"conn_max_lifetime_minutes"`
 	// ConnMaxIdleTimeMinutes: 空闲连接最大存活时间，及时释放不活跃连接
 	ConnMaxIdleTimeMinutes int `mapstructure:"conn_max_idle_time_minutes"`
-	// UserPlatformQuotaFlusherEnabled: 是否启用 user×platform 配额写聚合 flusher
-	UserPlatformQuotaFlusherEnabled bool `mapstructure:"user_platform_quota_flusher_enabled"`
-	// UserPlatformQuotaFlushIntervalMs: flusher 刷写间隔（毫秒）
-	UserPlatformQuotaFlushIntervalMs int `mapstructure:"user_platform_quota_flush_interval_ms"`
-	// UserPlatformQuotaFlushBatchSize: flusher 单批最大条数
-	// 建议 ≤ 6000（单条 UPSERT 原子上限）
-	UserPlatformQuotaFlushBatchSize int `mapstructure:"user_platform_quota_flush_batch_size"`
 }
 
 func (d *DatabaseConfig) DSN() string {
@@ -1676,13 +1468,6 @@ type SubscriptionCacheConfig struct {
 	JitterPercent int `mapstructure:"jitter_percent"`
 }
 
-// SubscriptionMaintenanceConfig 订阅窗口维护后台任务配置。
-// 用于将“请求路径触发的维护动作”有界化，避免高并发下 goroutine 膨胀。
-type SubscriptionMaintenanceConfig struct {
-	WorkerCount int `mapstructure:"worker_count"`
-	QueueSize   int `mapstructure:"queue_size"`
-}
-
 // DashboardCacheConfig 仪表盘统计缓存配置
 type DashboardCacheConfig struct {
 	// Enabled: 是否启用仪表盘缓存
@@ -1737,16 +1522,6 @@ type UsageCleanupConfig struct {
 	TaskTimeoutSeconds int `mapstructure:"task_timeout_seconds"`
 }
 
-func NormalizeRunMode(value string) string {
-	normalized := strings.ToLower(strings.TrimSpace(value))
-	switch normalized {
-	case RunModeStandard, RunModeSimple:
-		return normalized
-	default:
-		return RunModeStandard
-	}
-}
-
 // Load 读取并校验完整配置（要求 jwt.secret 已显式提供）。
 func Load() (*Config, error) {
 	return load(false)
@@ -1786,7 +1561,7 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 		}
 		// 配置文件不存在时使用默认值
 	}
-	if err := rejectLegacyAdvancedSchedulerConfig(); err != nil {
+	if err := applyLegacyConfigCompatibility(); err != nil {
 		return nil, err
 	}
 	trustedProxiesEnv, trustedProxiesEnvConfigured := os.LookupEnv("SERVER_TRUSTED_PROXIES")
@@ -1805,13 +1580,13 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 		cfg.Security.ForwardedClientIPHeaders = normalizeStringSlice(strings.Split(forwardedClientIPHeadersEnv, ","))
 	}
 	cfg.Server.TrustedProxiesConfigured = trustedProxiesConfigured
+	cfg.Gateway.ConnectionPoolIsolation = normalizeLegacyConnectionPoolIsolation(cfg.Gateway.ConnectionPoolIsolation)
 	// 作为兜底保留：setEnvReachableDefaults 已用实际默认值 true 注册该键，
 	// 因而 IsSet 通常恒为 true；若后续误删注册，这里仍能守住默认行为。
 	if !cfg.Gateway.AdvancedScheduler.StickyEscapeEnabled && !viper.IsSet("gateway.advanced_scheduler.sticky_escape_enabled") {
 		cfg.Gateway.AdvancedScheduler.StickyEscapeEnabled = true
 	}
 
-	cfg.RunMode = NormalizeRunMode(cfg.RunMode)
 	cfg.Server.Mode = strings.ToLower(strings.TrimSpace(cfg.Server.Mode))
 	if cfg.Server.Mode == "" {
 		cfg.Server.Mode = "debug"
@@ -1884,10 +1659,10 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 	}
 
 	// Normalize UMQ mode: 白名单校验，非法值在加载时一次性 warn 并清空
-	if m := cfg.Gateway.UserMessageQueue.Mode; m != "" && m != UMQModeSerialize && m != UMQModeThrottle {
+	if m := cfg.Gateway.UserMessageQueue.Mode; m != "" && m != schedulerpolicy.MessageQueueSerialize && m != schedulerpolicy.MessageQueueThrottle {
 		slog.Warn("invalid user_message_queue mode, disabling",
 			"mode", m,
-			"valid_modes", []string{UMQModeSerialize, UMQModeThrottle})
+			"valid_modes", []string{schedulerpolicy.MessageQueueSerialize, schedulerpolicy.MessageQueueThrottle})
 		cfg.Gateway.UserMessageQueue.Mode = ""
 	}
 
@@ -1939,39 +1714,6 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 	return &cfg, nil
 }
 
-// rejectLegacyAdvancedSchedulerConfig 拒绝已迁移的 OpenAI 专属调度配置。
-// 旧部署必须先改用 gateway.advanced_scheduler，避免旧键被静默忽略造成策略漂移。
-func rejectLegacyAdvancedSchedulerConfig() error {
-	legacy := []struct {
-		configKey   string
-		envKey      string
-		replacement string
-	}{
-		{"gateway.openai_ws.lb_top_k", "GATEWAY_OPENAI_WS_LB_TOP_K", "gateway.advanced_scheduler.lb_top_k"},
-		{"gateway.openai_ws.scheduler_score_weights.priority", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_PRIORITY", "gateway.advanced_scheduler.score_weights.priority"},
-		{"gateway.openai_ws.scheduler_score_weights.load", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_LOAD", "gateway.advanced_scheduler.score_weights.load"},
-		{"gateway.openai_ws.scheduler_score_weights.queue", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_QUEUE", "gateway.advanced_scheduler.score_weights.queue"},
-		{"gateway.openai_ws.scheduler_score_weights.error_rate", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_ERROR_RATE", "gateway.advanced_scheduler.score_weights.error_rate"},
-		{"gateway.openai_ws.scheduler_score_weights.ttft", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_TTFT", "gateway.advanced_scheduler.score_weights.ttft"},
-		{"gateway.openai_ws.scheduler_score_weights.reset", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_RESET", "gateway.advanced_scheduler.score_weights.reset"},
-		{"gateway.openai_ws.scheduler_score_weights.quota_headroom", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_QUOTA_HEADROOM", "gateway.advanced_scheduler.score_weights.quota_headroom"},
-		{"gateway.openai_ws.scheduler_score_weights.previous_response", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_PREVIOUS_RESPONSE", "gateway.advanced_scheduler.score_weights.previous_response"},
-		{"gateway.openai_ws.scheduler_score_weights.session_sticky", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_SESSION_STICKY", "gateway.advanced_scheduler.score_weights.session_sticky"},
-		{"gateway.openai_scheduler.sticky_escape_enabled", "GATEWAY_OPENAI_SCHEDULER_STICKY_ESCAPE_ENABLED", "gateway.advanced_scheduler.sticky_escape_enabled"},
-		{"gateway.openai_scheduler.sticky_escape_ttft_ms", "GATEWAY_OPENAI_SCHEDULER_STICKY_ESCAPE_TTFT_MS", "gateway.advanced_scheduler.sticky_escape_ttft_ms"},
-		{"gateway.openai_scheduler.sticky_escape_error_rate", "GATEWAY_OPENAI_SCHEDULER_STICKY_ESCAPE_ERROR_RATE", "gateway.advanced_scheduler.sticky_escape_error_rate"},
-	}
-	for _, item := range legacy {
-		if viper.InConfig(item.configKey) {
-			return fmt.Errorf("deprecated configuration %q is no longer supported; use %q", item.configKey, item.replacement)
-		}
-		if _, ok := os.LookupEnv(item.envKey); ok {
-			return fmt.Errorf("deprecated environment variable %q is no longer supported; use %q", item.envKey, strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(item.replacement, ".", "_"), "-", "_")))
-		}
-	}
-	return nil
-}
-
 // configureConfigSource 优先使用显式 CONFIG_FILE，否则按既有目录顺序搜索 config.yaml。
 func configureConfigSource(setConfigFile, addConfigPath func(string)) {
 	if configFile := strings.TrimSpace(os.Getenv("CONFIG_FILE")); configFile != "" {
@@ -1990,8 +1732,6 @@ func configureConfigSource(setConfigFile, addConfigPath func(string)) {
 }
 
 func setDefaults() {
-	viper.SetDefault("run_mode", RunModeStandard)
-
 	// Server
 	viper.SetDefault("server.host", "0.0.0.0")
 	viper.SetDefault("server.port", 8080)
@@ -2090,8 +1830,6 @@ func setDefaults() {
 	viper.SetDefault("billing.circuit_breaker.reset_timeout_seconds", 30)
 	viper.SetDefault("billing.circuit_breaker.half_open_requests", 3)
 	viper.SetDefault("billing.minimum_balance_reserve", 0.000001)
-	viper.SetDefault("billing.user_platform_quota_cache_ttl_seconds", 86400)
-	viper.SetDefault("billing.user_platform_quota_sentinel_ttl_seconds", 3600)
 
 	// Turnstile
 	viper.SetDefault("turnstile.required", false)
@@ -2178,9 +1916,6 @@ func setDefaults() {
 	viper.SetDefault("database.max_idle_conns", 128)
 	viper.SetDefault("database.conn_max_lifetime_minutes", 30)
 	viper.SetDefault("database.conn_max_idle_time_minutes", 5)
-	viper.SetDefault("database.user_platform_quota_flusher_enabled", false)
-	viper.SetDefault("database.user_platform_quota_flush_interval_ms", 2000)
-	viper.SetDefault("database.user_platform_quota_flush_batch_size", 1000)
 
 	// Redis
 	viper.SetDefault("redis.host", "localhost")
@@ -2390,8 +2125,8 @@ func setDefaults() {
 	viper.SetDefault("gateway.log_upstream_error_body_max_bytes", 2048)
 	viper.SetDefault("gateway.inject_beta_for_apikey", false)
 	viper.SetDefault("gateway.failover_on_400", false)
-	viper.SetDefault("gateway.max_account_switches", 10)
-	viper.SetDefault("gateway.max_account_switches_gemini", 3)
+	viper.SetDefault("gateway.max_provider_switches", 10)
+	viper.SetDefault("gateway.max_provider_switches_gemini", 3)
 	viper.SetDefault("gateway.force_codex_cli", false)
 	viper.SetDefault("gateway.codex_image_generation_bridge_enabled", false)
 	viper.SetDefault("gateway.openai_passthrough_allow_timeout_headers", false)
@@ -2416,10 +2151,10 @@ func setDefaults() {
 	viper.SetDefault("gateway.openai_ws.http_bridge_threshold_bytes", 15*1024*1024)
 	viper.SetDefault("gateway.openai_ws.responses_websockets", false)
 	viper.SetDefault("gateway.openai_ws.responses_websockets_v2", true)
-	viper.SetDefault("gateway.openai_ws.max_conns_per_account", 128)
-	viper.SetDefault("gateway.openai_ws.min_idle_per_account", 4)
-	viper.SetDefault("gateway.openai_ws.max_idle_per_account", 12)
-	viper.SetDefault("gateway.openai_ws.dynamic_max_conns_by_account_concurrency_enabled", true)
+	viper.SetDefault("gateway.openai_ws.max_conns_per_provider", 128)
+	viper.SetDefault("gateway.openai_ws.min_idle_per_provider", 4)
+	viper.SetDefault("gateway.openai_ws.max_idle_per_provider", 12)
+	viper.SetDefault("gateway.openai_ws.dynamic_max_conns_by_provider_concurrency_enabled", true)
 	viper.SetDefault("gateway.openai_ws.oauth_max_conns_factor", 1.0)
 	viper.SetDefault("gateway.openai_ws.apikey_max_conns_factor", 1.0)
 	viper.SetDefault("gateway.openai_ws.dial_timeout_seconds", 10)
@@ -2430,7 +2165,6 @@ func setDefaults() {
 	viper.SetDefault("gateway.openai_ws.event_flush_batch_size", 1)
 	viper.SetDefault("gateway.openai_ws.event_flush_interval_ms", 10)
 	viper.SetDefault("gateway.openai_ws.prewarm_cooldown_ms", 300)
-	viper.SetDefault("gateway.openai_ws.fallback_cooldown_seconds", 30)
 	viper.SetDefault("gateway.openai_ws.retry_backoff_initial_ms", 120)
 	viper.SetDefault("gateway.openai_ws.retry_backoff_max_ms", 2000)
 	viper.SetDefault("gateway.openai_ws.retry_jitter_ratio", 0.2)
@@ -2465,7 +2199,7 @@ func setDefaults() {
 	viper.SetDefault("gateway.openai_proxy_stream_circuit.window_seconds", 60)
 	viper.SetDefault("gateway.openai_proxy_stream_circuit.ttl_seconds", 600)
 	// Grok 免费层本地软门禁仅用于调度，管理端 QueryQuota 不经过该门禁。
-	// 免费层识别要求显式标记，因此默认启用不会误拦未知或付费账号。
+	// 免费层识别要求显式标记，因此默认启用不会误拦未知或付费提供商。
 	viper.SetDefault("gateway.grok.free_quota_soft_gate_enabled", true)
 	viper.SetDefault("gateway.grok.password_auth_enabled", false)
 	// 运维默认策略：滚动 24 小时名义额度为 50 万 token。
@@ -2493,7 +2227,7 @@ func setDefaults() {
 	viper.SetDefault("gateway.models_list_read_max_bytes", DefaultModelsListReadMaxBytes)
 	viper.SetDefault("gateway.proxy_probe_response_read_max_bytes", int64(1024*1024))
 	viper.SetDefault("gateway.gemini_debug_response_headers", false)
-	viper.SetDefault("gateway.connection_pool_isolation", ConnectionPoolIsolationAccountProxy)
+	viper.SetDefault("gateway.connection_pool_isolation", ConnectionPoolIsolationProviderProxy)
 	// HTTP 上游连接池配置（针对 5000+ 并发用户优化）
 	viper.SetDefault("gateway.max_idle_conns", 2560)          // 最大空闲连接总数（高并发场景可调大）
 	viper.SetDefault("gateway.max_idle_conns_per_host", 120)  // 每主机最大空闲连接（HTTP/2 场景默认）
@@ -2547,7 +2281,7 @@ func setDefaults() {
 	viper.SetDefault("gateway.usage_record.auto_scale_cooldown_seconds", 10)
 	viper.SetDefault("gateway.user_group_rate_cache_ttl_seconds", 30)
 	viper.SetDefault("gateway.models_list_cache_ttl_seconds", 15)
-	// TLS指纹伪装配置（默认关闭，需要账号级别单独启用）
+	// TLS指纹伪装配置（默认关闭，需要提供商级别单独启用）
 	// 用户消息串行队列默认值
 	viper.SetDefault("gateway.user_message_queue.enabled", false)
 	viper.SetDefault("gateway.user_message_queue.lock_ttl_ms", 120000)
@@ -2579,10 +2313,6 @@ func setDefaults() {
 	viper.SetDefault("gemini.oauth.client_secret", "")
 	viper.SetDefault("gemini.oauth.scopes", "")
 	viper.SetDefault("gemini.quota.policy", "")
-
-	// Subscription Maintenance (bounded queue + worker pool)
-	viper.SetDefault("subscription_maintenance.worker_count", 2)
-	viper.SetDefault("subscription_maintenance.queue_size", 1024)
 
 	setEnvReachableDefaults()
 }
@@ -2764,13 +2494,6 @@ func (c *Config) Validate() error {
 		if c.Log.Sampling.Thereafter < 0 {
 			return fmt.Errorf("log.sampling.thereafter must be non-negative")
 		}
-	}
-
-	if c.SubscriptionMaintenance.WorkerCount < 0 {
-		return fmt.Errorf("subscription_maintenance.worker_count must be non-negative")
-	}
-	if c.SubscriptionMaintenance.QueueSize < 0 {
-		return fmt.Errorf("subscription_maintenance.queue_size must be non-negative")
 	}
 
 	// Gemini OAuth 配置校验：client_id 与 client_secret 必须同时设置或同时留空。
@@ -3363,10 +3086,10 @@ func (c *Config) Validate() error {
 	}
 	if strings.TrimSpace(c.Gateway.ConnectionPoolIsolation) != "" {
 		switch c.Gateway.ConnectionPoolIsolation {
-		case ConnectionPoolIsolationProxy, ConnectionPoolIsolationAccount, ConnectionPoolIsolationAccountProxy:
+		case ConnectionPoolIsolationProxy, ConnectionPoolIsolationProvider, ConnectionPoolIsolationProviderProxy:
 		default:
 			return fmt.Errorf("gateway.connection_pool_isolation must be one of: %s/%s/%s",
-				ConnectionPoolIsolationProxy, ConnectionPoolIsolationAccount, ConnectionPoolIsolationAccountProxy)
+				ConnectionPoolIsolationProxy, ConnectionPoolIsolationProvider, ConnectionPoolIsolationProviderProxy)
 		}
 	}
 	if c.Gateway.ImageConcurrency.MaxConcurrentRequests < 0 {
@@ -3447,8 +3170,8 @@ func (c *Config) Validate() error {
 	if c.Gateway.OpenAIWS.StickyResponseIDTTLSeconds <= 0 && c.Gateway.OpenAIWS.StickyPreviousResponseTTLSeconds > 0 {
 		c.Gateway.OpenAIWS.StickyResponseIDTTLSeconds = c.Gateway.OpenAIWS.StickyPreviousResponseTTLSeconds
 	}
-	if c.Gateway.OpenAIWS.MaxConnsPerAccount <= 0 {
-		return fmt.Errorf("gateway.openai_ws.max_conns_per_account must be positive")
+	if c.Gateway.OpenAIWS.MaxConnsPerProvider <= 0 {
+		return fmt.Errorf("gateway.openai_ws.max_conns_per_provider must be positive")
 	}
 	if c.Gateway.OpenAIWS.ClientFirstMessageTimeoutSeconds <= 0 {
 		return fmt.Errorf("gateway.openai_ws.client_first_message_timeout_seconds must be positive")
@@ -3459,17 +3182,17 @@ func (c *Config) Validate() error {
 	if c.Gateway.OpenAIWS.MaxIngressConnectionsPerAPIKey < 0 {
 		return fmt.Errorf("gateway.openai_ws.max_ingress_connections_per_api_key must be non-negative")
 	}
-	if c.Gateway.OpenAIWS.MinIdlePerAccount < 0 {
-		return fmt.Errorf("gateway.openai_ws.min_idle_per_account must be non-negative")
+	if c.Gateway.OpenAIWS.MinIdlePerProvider < 0 {
+		return fmt.Errorf("gateway.openai_ws.min_idle_per_provider must be non-negative")
 	}
-	if c.Gateway.OpenAIWS.MaxIdlePerAccount < 0 {
-		return fmt.Errorf("gateway.openai_ws.max_idle_per_account must be non-negative")
+	if c.Gateway.OpenAIWS.MaxIdlePerProvider < 0 {
+		return fmt.Errorf("gateway.openai_ws.max_idle_per_provider must be non-negative")
 	}
-	if c.Gateway.OpenAIWS.MinIdlePerAccount > c.Gateway.OpenAIWS.MaxIdlePerAccount {
-		return fmt.Errorf("gateway.openai_ws.min_idle_per_account must be <= max_idle_per_account")
+	if c.Gateway.OpenAIWS.MinIdlePerProvider > c.Gateway.OpenAIWS.MaxIdlePerProvider {
+		return fmt.Errorf("gateway.openai_ws.min_idle_per_provider must be <= max_idle_per_provider")
 	}
-	if c.Gateway.OpenAIWS.MaxIdlePerAccount > c.Gateway.OpenAIWS.MaxConnsPerAccount {
-		return fmt.Errorf("gateway.openai_ws.max_idle_per_account must be <= max_conns_per_account")
+	if c.Gateway.OpenAIWS.MaxIdlePerProvider > c.Gateway.OpenAIWS.MaxConnsPerProvider {
+		return fmt.Errorf("gateway.openai_ws.max_idle_per_provider must be <= max_conns_per_provider")
 	}
 	if c.Gateway.OpenAIWS.OAuthMaxConnsFactor <= 0 {
 		return fmt.Errorf("gateway.openai_ws.oauth_max_conns_factor must be positive")
@@ -3509,9 +3232,6 @@ func (c *Config) Validate() error {
 	}
 	if c.Gateway.OpenAIWS.HTTPBridgeEnabled && c.Gateway.OpenAIWS.HTTPBridgeThresholdBytes == 0 {
 		return fmt.Errorf("gateway.openai_ws.http_bridge_threshold_bytes must be positive when http_bridge_enabled is true")
-	}
-	if c.Gateway.OpenAIWS.FallbackCooldownSeconds < 0 {
-		return fmt.Errorf("gateway.openai_ws.fallback_cooldown_seconds must be non-negative")
 	}
 	if c.Gateway.OpenAIWS.RetryBackoffInitialMS < 0 {
 		return fmt.Errorf("gateway.openai_ws.retry_backoff_initial_ms must be non-negative")
@@ -3850,62 +3570,11 @@ func GetServerAddress() string {
 }
 
 // ValidateAbsoluteHTTPURL 验证是否为有效的绝对 HTTP(S) URL
-func ValidateAbsoluteHTTPURL(raw string) error {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return fmt.Errorf("empty url")
-	}
-	u, err := url.Parse(raw)
-	if err != nil {
-		return err
-	}
-	if !u.IsAbs() {
-		return fmt.Errorf("must be absolute")
-	}
-	if !isHTTPScheme(u.Scheme) {
-		return fmt.Errorf("unsupported scheme: %s", u.Scheme)
-	}
-	if strings.TrimSpace(u.Host) == "" {
-		return fmt.Errorf("missing host")
-	}
-	if u.Fragment != "" {
-		return fmt.Errorf("must not include fragment")
-	}
-	return nil
-}
+func ValidateAbsoluteHTTPURL(raw string) error { return authconfig.ValidateAbsoluteHTTPURL(raw) }
 
 // ValidateFrontendRedirectURL 验证前端重定向 URL（可以是绝对 URL 或相对路径）
 func ValidateFrontendRedirectURL(raw string) error {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return fmt.Errorf("empty url")
-	}
-	if strings.ContainsAny(raw, "\r\n") {
-		return fmt.Errorf("contains invalid characters")
-	}
-	if strings.HasPrefix(raw, "/") {
-		if strings.HasPrefix(raw, "//") {
-			return fmt.Errorf("must not start with //")
-		}
-		return nil
-	}
-	u, err := url.Parse(raw)
-	if err != nil {
-		return err
-	}
-	if !u.IsAbs() {
-		return fmt.Errorf("must be absolute http(s) url or relative path")
-	}
-	if !isHTTPScheme(u.Scheme) {
-		return fmt.Errorf("unsupported scheme: %s", u.Scheme)
-	}
-	if strings.TrimSpace(u.Host) == "" {
-		return fmt.Errorf("missing host")
-	}
-	if u.Fragment != "" {
-		return fmt.Errorf("must not include fragment")
-	}
-	return nil
+	return authconfig.ValidateFrontendRedirectURL(raw)
 }
 
 func scopeContainsOpenID(scopes string) bool {
@@ -3915,11 +3584,6 @@ func scopeContainsOpenID(scopes string) bool {
 		}
 	}
 	return false
-}
-
-// isHTTPScheme 检查是否为 HTTP 或 HTTPS 协议
-func isHTTPScheme(scheme string) bool {
-	return strings.EqualFold(scheme, "http") || strings.EqualFold(scheme, "https")
 }
 
 func warnIfInsecureURL(field, raw string) {

@@ -15,9 +15,9 @@
           >
             <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
           </div>
-          <!-- 品牌标题：厚重几何 + 红色句点 -->
-          <h1 class="mb-2 text-4xl font-extrabold tracking-tight text-gray-950 dark:text-white">
-            {{ siteName }}<span class="text-bh-red">.</span>
+          <!-- 品牌标题在浅色和深色主题下保持清晰对比。 -->
+          <h1 class="mb-2 page-title">
+            {{ siteName }}
           </h1>
           <p class="inline-block text-sm font-bold text-gray-700 dark:text-dark-200">
             {{ siteSubtitle }}

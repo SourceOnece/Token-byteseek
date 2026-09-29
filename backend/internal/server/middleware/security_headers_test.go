@@ -15,7 +15,6 @@ import (
 )
 
 func init() {
-	gin.SetMode(gin.TestMode)
 }
 
 func TestGenerateNonce(t *testing.T) {
@@ -493,5 +492,28 @@ func BenchmarkSecurityHeadersMiddleware(b *testing.B) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
 		middleware(c)
+	}
+}
+
+// Google SDK 的域名是外部契约，默认和旧自定义策略都必须允许真实来源。
+func TestGoogleIdentityCSPPreservesOfficialAccountsOrigins(t *testing.T) {
+	expected := map[string]string{
+		"script-src":  "https://accounts.google.com/gsi/client",
+		"style-src":   "https://accounts.google.com/gsi/style",
+		"connect-src": "https://accounts.google.com/gsi/",
+		"frame-src":   "https://accounts.google.com/gsi/",
+	}
+	for _, policy := range []string{config.DefaultCSPPolicy, enhanceCSPPolicy("default-src 'self'; script-src 'self'")} {
+		directives := map[string][]string{}
+		for _, part := range strings.Split(policy, ";") {
+			fields := strings.Fields(part)
+			if len(fields) > 0 {
+				directives[fields[0]] = fields[1:]
+			}
+		}
+		for directive, origin := range expected {
+			require.Contains(t, directives[directive], origin, directive)
+		}
+		require.NotContains(t, policy, "providers.google.com")
 	}
 }

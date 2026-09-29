@@ -73,7 +73,7 @@
       <div>
         <label class="input-label">{{ t('payment.admin.planGroups') }}</label>
         <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">{{ t('payment.admin.planGroupsGlobalHint') }}</p>
-        <div class="max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-white p-2 dark:border-dark-600 dark:bg-dark-800">
+        <div class="max-h-40 overflow-y-auto rounded-control border border-gray-200 bg-white p-2 dark:border-dark-600 dark:bg-dark-800">
           <div class="mb-1 flex items-center px-2 text-xs text-gray-400">
             <span class="flex-1">{{ t('payment.admin.planGroups') }}</span>
             <span>{{ t('payment.admin.subscriptionRateMultiplier') }}</span>
@@ -81,19 +81,19 @@
           <div
             v-for="group in groups"
             :key="group.id"
-            class="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-dark-700"
+            class="flex items-center gap-2 rounded-compact px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-dark-700"
           >
             <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
               <input
                 v-model="planForm.group_ids"
                 type="checkbox"
                 :value="group.id"
-                class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                class="h-4 w-4 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
                 @change="ensureGroupRate(group.id)"
               />
               <span class="flex-1 truncate">{{ group.name }}</span>
             </label>
-            <span class="text-xs text-gray-400">{{ group.platform }}</span>
+
             <input
               v-if="isGroupSelected(group.id)"
               :value="planForm.group_rate_multipliers[group.id] ?? ''"
@@ -129,21 +129,7 @@
 
       <div class="flex items-center gap-3">
         <label class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.admin.forSale') }}</label>
-        <button
-          type="button"
-          :class="[
-            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
-            planForm.for_sale ? 'bg-primary-500' : 'bg-gray-300 dark:bg-dark-600'
-          ]"
-          @click="planForm.for_sale = !planForm.for_sale"
-        >
-          <span
-            :class="[
-              'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-              planForm.for_sale ? 'translate-x-5' : 'translate-x-0'
-            ]"
-          />
-        </button>
+        <Toggle v-model="planForm.for_sale" variant="flush" on-class="bg-primary-500" />
       </div>
     </form>
 
@@ -161,6 +147,7 @@
 </template>
 
 <script setup lang="ts">
+import Toggle from '@/components/common/Toggle.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

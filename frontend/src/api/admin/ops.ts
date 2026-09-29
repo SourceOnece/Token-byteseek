@@ -14,8 +14,8 @@ export interface OpsRequestOptions {
 export type OpsUpstreamErrorEvent = {
   at_unix_ms?: number
   platform?: string
-  account_id?: number
-  account_name?: string
+  provider_id?: number
+  provider_name?: string
   upstream_status_code?: number
   upstream_request_id?: string
   kind?: string
@@ -124,7 +124,7 @@ export interface OpsRequestDetail {
 
   user_id?: number | null
   api_key_id?: number | null
-  account_id?: number | null
+  provider_id?: number | null
   group_id?: number | null
 
   stream?: boolean
@@ -143,7 +143,7 @@ export interface OpsRequestDetailsParams {
 
   user_id?: number
   api_key_id?: number
-  account_id?: number
+  provider_id?: number
 
   model?: string
   request_id?: string
@@ -282,7 +282,7 @@ export interface OpsSystemMetricsSnapshot {
 
   goroutine_count?: number | null
   concurrency_queue_depth?: number | null
-  account_switch_count?: number | null
+  provider_switch_count?: number | null
 }
 
 export interface OpsJobHeartbeat {
@@ -307,16 +307,15 @@ export interface PlatformConcurrencyInfo {
 export interface GroupConcurrencyInfo {
   group_id: number
   group_name: string
-  platform: string
   current_in_use: number
   max_capacity: number
   load_percentage: number
   waiting_in_queue: number
 }
 
-export interface AccountConcurrencyInfo {
-  account_id: number
-  account_name?: string
+export interface ProviderConcurrencyInfo {
+  provider_id: number
+  provider_name?: string
   platform: string
   group_id: number
   group_name: string
@@ -330,7 +329,7 @@ export interface OpsConcurrencyStatsResponse {
   enabled: boolean
   platform: Record<string, PlatformConcurrencyInfo>
   group: Record<string, GroupConcurrencyInfo>
-  account: Record<string, AccountConcurrencyInfo>
+  provider: Record<string, ProviderConcurrencyInfo>
   timestamp?: string
 }
 
@@ -370,7 +369,7 @@ export async function getUserConcurrencyStats(): Promise<OpsUserConcurrencyStats
 
 export interface PlatformAvailability {
   platform: string
-  total_accounts: number
+  total_providers: number
   available_count: number
   rate_limit_count: number
   error_count: number
@@ -379,16 +378,15 @@ export interface PlatformAvailability {
 export interface GroupAvailability {
   group_id: number
   group_name: string
-  platform: string
-  total_accounts: number
+  total_providers: number
   available_count: number
   rate_limit_count: number
   error_count: number
 }
 
-export interface AccountAvailability {
-  account_id: number
-  account_name: string
+export interface ProviderAvailability {
+  provider_id: number
+  provider_name: string
   platform: string
   group_id: number
   group_name: string
@@ -404,15 +402,15 @@ export interface AccountAvailability {
   error_message?: string
 }
 
-export interface OpsAccountAvailabilityStatsResponse {
+export interface OpsProviderAvailabilityStatsResponse {
   enabled: boolean
   platform: Record<string, PlatformAvailability>
   group: Record<string, GroupAvailability>
-  account: Record<string, AccountAvailability>
+  provider: Record<string, ProviderAvailability>
   timestamp?: string
 }
 
-export async function getAccountAvailabilityStats(platform?: string, groupId?: number | null): Promise<OpsAccountAvailabilityStatsResponse> {
+export async function getProviderAvailabilityStats(platform?: string, groupId?: number | null): Promise<OpsProviderAvailabilityStatsResponse> {
   const params: Record<string, any> = {}
   if (platform) {
     params.platform = platform
@@ -420,7 +418,7 @@ export async function getAccountAvailabilityStats(platform?: string, groupId?: n
   if (typeof groupId === 'number' && groupId > 0) {
     params.group_id = groupId
   }
-  const { data } = await apiClient.get<OpsAccountAvailabilityStatsResponse>('/admin/ops/account-availability', { params })
+  const { data } = await apiClient.get<OpsProviderAvailabilityStatsResponse>('/admin/ops/provider-availability', { params })
   return data
 }
 
@@ -693,13 +691,13 @@ export type MetricType =
   | 'memory_usage_percent'
   | 'disk_usage_percent'
   | 'concurrency_queue_depth'
-  | 'group_available_accounts'
+  | 'group_available_providers'
   | 'group_available_ratio'
   | 'group_rate_limit_ratio'
-  | 'account_rate_limited_count'
-  | 'account_error_count'
-  | 'account_error_ratio'
-  | 'overload_account_count'
+  | 'provider_rate_limited_count'
+  | 'provider_error_count'
+  | 'provider_error_ratio'
+  | 'overload_provider_count'
 export type Operator = '>' | '>=' | '<' | '<=' | '==' | '!='
 
 export interface AlertRule {
@@ -756,9 +754,9 @@ export interface EmailNotificationConfig {
     error_digest_enabled: boolean
     error_digest_schedule: string
     error_digest_min_count: number
-    account_health_enabled: boolean
-    account_health_schedule: string
-    account_health_error_rate_threshold: number
+    provider_health_enabled: boolean
+    provider_health_schedule: string
+    provider_health_error_rate_threshold: number
   }
 }
 
@@ -792,17 +790,17 @@ export interface OpsAlertRuntimeSettings {
   thresholds: OpsMetricThresholds // 指标阈值配置
 }
 
-export interface OpsOpenAIAccountQuotaAutoPauseSettings {
+export interface OpsOpenAIProviderQuotaAutoPauseSettings {
   default_threshold_5h: number // 0~1，0 表示不启用全局默认 5h 阈值
   default_threshold_7d: number // 0~1，0 表示不启用全局默认 7d 阈值
 }
 
 export interface OpsAdvancedSettings {
   data_retention: OpsDataRetentionSettings
-  openai_account_quota_auto_pause: OpsOpenAIAccountQuotaAutoPauseSettings
+  openai_provider_quota_auto_pause: OpsOpenAIProviderQuotaAutoPauseSettings
   ignore_count_tokens_errors: boolean
   ignore_context_canceled: boolean
-  ignore_no_available_accounts: boolean
+  ignore_no_available_providers: boolean
   ignore_invalid_api_key_errors: boolean
   ignore_insufficient_balance_errors: boolean
   ignored_status_codes: number[]
@@ -846,7 +844,7 @@ export interface OpsSystemLog {
   client_request_id?: string
   user_id?: number | null
   api_key_id?: number | null
-  account_id?: number | null
+  provider_id?: number | null
   platform?: string
   model?: string
   extra?: Record<string, any>
@@ -867,7 +865,7 @@ export interface OpsSystemLogQuery {
   client_request_id?: string
   user_id?: number | null
   api_key_id?: number | null
-  account_id?: number | null
+  provider_id?: number | null
   platform?: string
   model?: string
   q?: string
@@ -883,7 +881,7 @@ export interface OpsSystemLogCleanupRequest {
   client_request_id?: string
   user_id?: number | null
   api_key_id?: number | null
-  account_id?: number | null
+  provider_id?: number | null
   platform?: string
   model?: string
   q?: string
@@ -928,8 +926,8 @@ export interface OpsErrorLog {
   // 关联 api_key 名称（后端 LEFT JOIN api_keys；软删保留 name，故已删 key 仍有原名）。
   api_key_name?: string
   api_key_deleted?: boolean
-  account_id?: number | null
-  account_name: string
+  provider_id?: number | null
+  provider_name: string
   group_id?: number | null
   group_name: string
 
@@ -1091,7 +1089,7 @@ export type OpsErrorListQueryParams = {
   end_time?: string
   platform?: string
   group_id?: number | null
-  account_id?: number | null
+  provider_id?: number | null
   user_id?: number
   api_key_id?: number
   // 模型过滤：后端以 COALESCE(requested_model, model) 精确匹配（admin 路径）。
@@ -1317,7 +1315,7 @@ export const opsAPI = {
   getTokenStats,
   getConcurrencyStats,
   getUserConcurrencyStats,
-  getAccountAvailabilityStats,
+  getProviderAvailabilityStats,
   getRealtimeTrafficSummary,
   subscribeQPS,
 

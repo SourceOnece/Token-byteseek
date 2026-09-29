@@ -19,6 +19,7 @@ const SelectStub = defineComponent({
   name: 'PaginationSelectStub',
   props: ['modelValue', 'options'],
   setup(props) {
+    // 真实 Select 的 36px 由 .input 基线(min-h-9)提供,stub 以 h-9 顶替这一高度契约。
     return () => h('button', { class: 'select-trigger h-9' }, String(props.modelValue))
   }
 })
@@ -38,17 +39,24 @@ describe('Bauhaus control sizing', () => {
     const dateRangePickerSource = readSource('../DateRangePicker.vue')
     const paginationSource = readSource('../Pagination.vue')
 
-    // 全局控件使用 44px 硬边基线，显式 h-8/h-9/h-10 的紧凑工具栏仍由页面保留。
-    expect(globalStyle).toContain('@apply rounded-none px-4 py-2.5 text-sm font-bold;')
-    expect(globalStyle).toContain('@apply min-h-11;')
-    expect(globalStyle).toContain('@apply rounded-none p-2.5;')
-    expect(globalStyle).toContain('@apply w-full rounded-none px-4 py-2.5 text-sm font-medium;')
-    expect(globalStyle).toContain('@apply flex items-center gap-3 rounded-none py-2.5;')
-    expect(selectSource).toContain('@apply rounded-none px-4 py-2.5 text-sm font-semibold;')
-    expect(proxySelectorSource).toContain('@apply h-9 min-h-9 rounded-control px-4 py-1.5 text-sm;')
-    expect(dateRangePickerSource).toContain('@apply h-9 min-h-9 rounded-control px-4 py-1.5 text-sm;')
-    expect(dateRangePickerSource).toContain('@apply inline-flex h-9 min-h-9 items-center justify-center rounded-control px-4 py-1.5 text-sm font-medium;')
-    expect(paginationSource).toContain('height: 2.25rem;')
+    expect(globalStyle).toContain('@apply rounded-control px-4 py-1.5 text-sm font-medium;')
+    expect(globalStyle).toContain('@apply min-h-9;')
+    expect(globalStyle).toContain('@apply inline-flex h-9 w-9 items-center justify-center rounded-control p-0;')
+    expect(globalStyle).toContain('@apply w-full rounded-control px-4 py-1.5 text-sm;')
+    expect(globalStyle).toContain('@apply flex h-9 items-center gap-3 rounded-control py-1.5;')
+    // 三个下拉触发器以模板组合 input input-trigger 共享 36px 基线,不再各自复制配方。
+    expect(selectSource).toContain("'input input-trigger'")
+    expect(proxySelectorSource).toContain("'input input-trigger'")
+    expect(dateRangePickerSource).toContain("'input input-trigger'")
+    for (const source of [selectSource, proxySelectorSource, dateRangePickerSource]) {
+      expect(source).not.toContain('@apply h-9 min-h-9 rounded-control px-4 py-1.5 text-sm;')
+    }
+    // 弹层内的确认按钮直接使用共享按钮配方。
+    expect(dateRangePickerSource).toContain('class="btn btn-primary"')
+    expect(dateRangePickerSource).not.toContain('.date-picker-apply')
+    // 分页控件直接由模板里的 h-9 提供 36px 基线,不再有局部高度覆盖。
+    expect(paginationSource).toContain('pagination-jump-button btn btn-ghost btn-sm h-9')
+    expect(paginationSource).not.toContain('--pagination-control-height')
   })
 
   it('renders every pagination button with the shared hard-edge control classes', () => {
@@ -74,7 +82,7 @@ describe('Bauhaus control sizing', () => {
   })
 
   it('keeps the latest page-specific sizing fixes explicit', () => {
-    const accountBulkActionsSource = readSource('../../admin/account/AccountBulkActionsBar.vue')
+    const providerBulkActionsSource = readSource('../../admin/provider/ProviderBulkActionsBar.vue')
     const userUsageSource = readSource('../../../views/user/UsageView.vue')
     const adminUsageSource = readSource('../../../views/admin/UsageView.vue')
     const riskControlSource = readSource('../../../views/admin/RiskControlView.vue')
@@ -85,7 +93,7 @@ describe('Bauhaus control sizing', () => {
     const adminOrdersSource = readSource('../../../views/admin/orders/AdminOrdersView.vue')
     const adminPaymentPlansSource = readSource('../../../views/admin/orders/AdminPaymentPlansView.vue')
 
-    expect(accountBulkActionsSource).toContain('class="btn btn-primary btn-sm h-[30px]"')
+    expect(providerBulkActionsSource).toContain('class="btn btn-primary btn-sm h-[30px]"')
     expect(userUsageSource).toContain('<div class="card p-4">')
     expect(adminUsageSource).toContain('<div class="card p-4">')
     expect(riskControlSource).toContain('class="grid grid-cols-1 items-start gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]"')
@@ -94,7 +102,7 @@ describe('Bauhaus control sizing', () => {
     expect(settingsSource).toContain('class="btn btn-secondary btn-sm h-9 w-fit"')
     expect(emailTemplateSource).toContain('class="btn btn-primary btn-sm h-9"')
     expect(backupSource).toContain('class="btn btn-primary btn-sm h-9"')
-    expect(providerListSource).toContain('class="btn btn-secondary btn-sm h-9 w-9 p-0"')
+    expect(providerListSource).toContain('class="btn btn-secondary btn-icon"')
     expect(adminOrdersSource).toContain('<TablePageLayout>')
     expect(adminOrdersSource).toContain('<template #table>')
     expect(adminPaymentPlansSource).toContain('<TablePageLayout>')

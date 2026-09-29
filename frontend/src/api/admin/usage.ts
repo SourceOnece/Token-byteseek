@@ -19,7 +19,7 @@ export interface AdminUsageStatsResponse {
   total_tokens: number
   total_cost: number
   total_actual_cost: number
-  total_account_cost: number
+  total_provider_cost: number
   average_duration_ms: number
   endpoints?: EndpointStat[]
   upstream_endpoints?: EndpointStat[]
@@ -43,7 +43,7 @@ export interface UsageCleanupFilters {
   end_time: string
   user_id?: number
   api_key_id?: number
-  account_id?: number
+  provider_id?: number
   group_id?: number
   team_id?: number
   model?: string | null
@@ -72,7 +72,7 @@ export interface CreateUsageCleanupTaskRequest {
   end_date: string
   user_id?: number
   api_key_id?: number
-  account_id?: number
+  provider_id?: number
   group_id?: number
   team_id?: number
   model?: string | null
@@ -123,7 +123,7 @@ export async function getStats(params: {
   user_id?: number
   team_id?: number
   api_key_id?: number
-  account_id?: number
+  provider_id?: number
   group_id?: number
   model?: string
   request_type?: UsageRequestType

@@ -9,9 +9,9 @@ export default {
       users: '用户',
       totalUsers: '用户总数',
       activeUsers: '活跃用户',
-      accounts: '账号',
-      totalAccounts: '账号总数',
-      activeAccounts: '活跃账号',
+      providers: '提供商',
+      totalProviders: '提供商总数',
+      activeProviders: '活跃提供商',
       todayRequests: '今日请求',
       totalRequests: '总请求数',
       todayCost: '今日消费',
@@ -19,10 +19,10 @@ export default {
       newUsersToday: '今日新增用户',
       actual: '实际',
       standard: '标准',
-      accountCost: '成本',
+      providerCost: '成本',
       actualDescription: '用户实际消耗的费用。按分组倍率和用户专属倍率计算，用于扣减用户余额或订阅配额。',
-      accountCostDescription: '账号口径的费用。按账号侧定价与账号计费倍率计算，用于账号配额统计和账号成本分析，不影响用户实际扣费。',
-      standardDescription: '标准计费费用。按当前模型或渠道的基础定价计算，不受分组倍率、用户专属倍率和账号计费倍率影响。',
+      providerCostDescription: '提供商口径的费用。按提供商侧定价与提供商计费倍率计算，用于提供商配额统计和提供商成本分析，不影响用户实际扣费。',
+      standardDescription: '标准计费费用。按当前模型或共享价格配置的基础定价计算，不受分组倍率、用户专属倍率和提供商计费倍率影响。',
       todayTokens: '今日 Token',
       totalTokens: '总 Token',
       input: '输入',
@@ -72,8 +72,8 @@ export default {
       quickActions: '快捷操作',
       manageUsers: '管理用户',
       viewUserAccounts: '查看和管理用户账户',
-      manageAccounts: '管理账号',
-      configureAiAccounts: '配置 AI 平台账号',
+      manageProviders: '管理提供商',
+      configureAiProviders: '配置 AI 平台提供商',
       batchImage: '批量生图',
       batchImageDesc: '提交任务、复制 Agent 调用说明',
       groupPricing: '分组定价',
@@ -538,7 +538,6 @@ affiliates: {
         groups: '分组',
         subscriptions: '订阅分组',
         balance: '余额',
-        balancePlatformQuota: '余额(平台配额)',
         usage: '用量',
         usageAnthropic: '用量 (Claude)',
         usageOpenAI: '用量 (OpenAI)',
@@ -772,57 +771,63 @@ affiliates: {
         keyExists: '属性键已存在',
         dragToReorder: '拖拽排序'
       },
-      platformQuota: {
-        menuItem: '平台限额',
-        title: '平台限额',
-        subtitle: '为用户 {email} 配置各上游平台的日 / 周 / 月用量上限',
-        columns: {
-          platform: '平台',
-          daily: '日 (USD)',
-          weekly: '周 (USD)',
-          monthly: '月 (USD, 30天滚动)',
-          usage: '当前用量',
-        },
-        placeholder: '不限制',
-        save: '保存',
-        saving: '保存中...',
-        cancel: '取消',
-        clearAll: '全部清空（取消所有限额）',
-        clearAllConfirm: '确认清空全部平台的日 / 周 / 月限额？所有平台将变为"无限额"，本地无法撤销，需要在保存前手动重填。',
-        reset: {
-          button: '重置该窗口',
-          confirm: '确认重置该用户 {platform} 平台的 {window} 用量？此操作立即生效。',
-          success: '已重置 {platform} {window} 用量',
-          failed: '重置失败',
-        },
-        updateSuccess: '平台限额已更新',
-        updateFailed: '保存失败',
-        loadFailed: '加载失败',
-        hint: '留空 = 不限制该窗口。',
-        windowDaily: '日',
-        windowWeekly: '周',
-        windowMonthly: '月',
-        cellNotConfigured: '未配置',
-        cellColumnTooltip: '仅展示已设限额的平台',
-        subscriptionWarning: '此用户有活跃订阅，平台限额仅在余额（标准）模式下生效，订阅模式请求不受此限额约束。',
-        invalidNumber: '以下字段填写不是合法数字，请修正后再保存：{fields}',
-      }
     },
 // Groups Management
     groups: {
-      accountFilters: {
-        title: '账号过滤控制',
-        oauthOnly: '仅允许 OAuth 账号',
-        privacyRequired: '仅允许隐私保护已设置的账号'
+      routingPolicy: {
+        "mapping": "模型映射",
+        "mappingHint": "客户端模型先经过分组映射，再进入提供商映射。支持模型名和末尾 * 通配符。",
+        "source": "源模型",
+        "target": "目标模型",
+        "restrict": "启用模型白名单",
+        "allowlistHint": "仅允许白名单中的模型通过所选阶段的检查。白名单独立于价格列表，开启后留空会拒绝全部模型。",
+        "webSearch": "网页搜索模拟",
+        "webSearchHint": "当请求仅包含网页搜索工具时，由网关调用已配置的搜索服务并返回结果。需先开启全局网页搜索模拟；提供商设置优先。",
+        "bedrock": "Bedrock Claude Code 兼容",
+        "bedrockHint": "为 Bedrock 上游适配 Claude Code 请求，清理不支持的参数并补齐必填字段。接入 Bedrock 或其兼容代理时可开启。",
+        "incompleteMapping": "请填写完整的源模型和目标模型。",
+        "conflict": "模型规则重复或通配范围重叠。",
+        "basis": {
+          "requested": "客户端请求模型",
+          "group_mapped": "分组映射后模型",
+          "upstream": "最终上游模型"
+        }
+      },
+      providerFilters: {
+        title: '提供商过滤控制',
+        oauthOnly: '仅允许 OAuth 提供商',
+        privacyRequired: '仅允许隐私保护已设置的提供商'
+      },
+      settings: {
+        allowedModels: '允许的模型',
+        billingAndStatus: '计费与状态',
+        providerSelection: '提供商来源与筛选',
+        scheduling: '调度与会话',
+        fallbacks: '分组回退',
+        reasoning: '推理策略',
+        compatibility: '兼容功能',
+        restrictionSource: '白名单检查阶段',
+        oauthHint: '启用后排除 API Key 等非 OAuth 提供商。',
+        privacyHint: '启用后仅使用已确认上游隐私设置的提供商。',
+        selectedModels: '已选 {selected} / {total}',
+        selectAll: '全选',
+        invertSelection: '反选',
+        moveUp: '上移 {name}',
+        moveDown: '下移 {name}',
+        removeItem: '移除 {name}',
+        groupProviders: '{name}（{count} 个提供商）',
       },
       tabs: {
+        models: '模型配置',
+        request: '请求策略',
+        routing: "\u6a21\u578b\u4e0e\u529f\u80fd",
         label: '分组设置',
-        general: '通用',
-        platform: '平台设置',
+        general: '基本信息',
+        features: '功能策略',
         pricing: '计费与定价',
-        protocol: '协议控制',
+        protocol: '协议与访问',
         identity: '基本信息',
-        scheduling: '调度与访问',
+        scheduling: '调度与容错',
         imageCapabilities: '图片能力',
         batchPricing: '批量图片计费'
       },
@@ -860,7 +865,7 @@ affiliates: {
         type: '类型',
         priority: '优先级',
         apiKeys: 'API 密钥数',
-        accounts: '账号数',
+        providers: '提供商数',
         capacity: '容量',
         usage: '用量',
         status: '状态',
@@ -874,10 +879,10 @@ affiliates: {
       usageToday: '今日',
       usageYesterday: '昨日',
       usageTotal: '累计',
-      accountsAvailable: '可用:',
-      accountsRateLimited: '限流:',
-      accountsTotal: '总量:',
-      accountsUnit: '个账号',
+      providersAvailable: '可用:',
+      providersRateLimited: '限流:',
+      providersTotal: '总量:',
+      providersUnit: '个提供商',
       form: {
         name: '名称',
         description: '描述',
@@ -931,10 +936,10 @@ affiliates: {
         exclusiveHint: '专属分组，可以手动指定给用户',
         platformLabel: '平台限制',
         platformPlaceholder: '选择平台（留空则不限制）',
-        accountsLabel: '指定账号',
-        accountsPlaceholder: '选择账号（留空则不限制）',
+        providersLabel: '指定提供商',
+        providersPlaceholder: '选择提供商（留空则不限制）',
         priorityLabel: '优先级',
-        priorityHint: '数值越小优先级越高，用于账号调度',
+        priorityHint: '数值越小优先级越高，用于提供商调度',
         statusLabel: '状态'
       },
       exclusiveObj: {
@@ -952,17 +957,10 @@ affiliates: {
           '公开分组费率 0.8，您可以创建一个费率 0.7 的专属分组，手动分配给 VIP 用户，让他们享受更优惠的价格。'
       },
       rateMultiplierHint: '1.0 = 标准费率，0.5 = 半价，2.0 = 双倍',
-      defaultGroup: {
-        title: '默认分组',
-        badge: '默认',
-        enabled: '作为默认分组',
-        disabled: '不作为默认分组',
-        hint: '当 API Key 未绑定到任何有效分组时，会自动回退到该平台的默认分组；同一平台只会保留一个默认分组。'
-      },
       unavailableFallback: {
         title: '指定 fallback 分组',
-        noFallback: '不指定（使用默认分组）',
-        hint: '当该分组被停用时，绑定到该分组的 API Key 会优先回退到这里选择的分组；留空则继续回退到同平台默认分组。'
+        noFallback: '不回退',
+        hint: '分组不可用时，仅在 Key 允许回退的情况下使用这里指定的分组。留空则不回退。'
       },
       sessionIsolation: {
         title: '开启会话隔离',
@@ -1042,15 +1040,12 @@ affiliates: {
       exclusiveFilter: '专属',
       nonExclusive: '公开',
       public: '公开',
-      rateAndAccounts: '{rate}x 费率 · {count} 个账号',
-      accountsCount: '{count} 个账号',
+      rateAndProviders: '{rate}x 费率 · {count} 个提供商',
+      providersCount: '{count} 个提供商',
       enterGroupName: '请输入分组名称',
       optionalDescription: '可选描述',
       displayBrandPlaceholder: '例如 DeepSeek / Claude / OpenAI',
       displayBrandCreatablePrefix: '使用品牌',
-      displayBrandHint: '仅用于模型广场展示，不影响路由协议、账号调度或格式转换；留空时使用分组名称。',
-      platformHint: '选择此分组使用的上游账号和网关路由格式，不代表模型品牌。',
-      platformNotEditable: '创建后不可更改上游平台；它只影响路由和账号调度，不代表模型品牌。',
       noGroupsYet: '暂无分组',
       createFirstGroup: '创建您的第一个分组来组织 API 密钥。',
       creating: '创建中...',
@@ -1105,32 +1100,12 @@ affiliates: {
         noLimit: '无限制'
       },
       imagePricing: {
-        title: '图片生成计费',
-        description: '配置图片生成能力和图片基础单价，留空则使用默认价格',
         allowImageGeneration: '允许当前分组生图',
         allowBatchImageGeneration: '允许当前分组批量生图',
-        independentMultiplier: '生图倍率独立',
-        imageMultiplier: '生图独立倍率',
         batchDiscountMultiplier: '批量生图折扣倍率',
         batchHoldMultiplier: '批量冻结价格比例',
         batchSectionHint: '批量生图仅影响批量任务：结算价格会叠加批量折扣倍率，提交时冻结金额按普通生图原价 × 批量冻结价格比例计算。参考图也会产生上游输入 token 消耗，建议批量生图折扣倍率设置大于 0.5。',
-        batchDisabledHint: '请先开启当前分组生图，才能开启批量生图。',
-        modeHint: '默认关闭独立倍率时，图片费用 = 图片价格 × 当前分组有效倍率；开启独立倍率后，图片费用 = 图片价格 × 生图独立倍率。',
-        finalPricePreview: '最终单张价格预览',
-        notConfigured: '未配置'
-      },
-      videoPricing: {
-        title: '视频生成计费',
-        description:
-          '配置 Grok 视频生成的每秒单价（USD/秒），留空则使用默认每秒价（grok-imagine-video：480p $0.05/s、720p $0.07/s；video-1.5：480p $0.08/s、720p $0.14/s、1080p $0.25/s）',
-        modelOverridesTitle: '按模型覆盖视频价格',
-        modelOverridesDescription: '已填写的单元格会覆盖该模型族的平面分辨率价格。video-1.5 的 preview 与 legacy 别名共用同一模型族；留空则回退到平面分辨率价格。',
-        independentMultiplier: '视频倍率独立',
-        videoMultiplier: '视频独立倍率',
-        modeHint:
-          '视频按秒计费：费用 = 每秒价格 × 时长（1-15 秒，未指定默认 8 秒）。默认叠加当前分组有效倍率；开启独立倍率后改用视频独立倍率。',
-        finalPricePreview: '最终每秒价格预览',
-        notConfigured: '未配置'
+        batchDisabledHint: '请先开启当前分组生图，才能开启批量生图。'
       },
       explicitPricing: {
         title: 'Grok 搜索与 Voice 定价',
@@ -1140,9 +1115,9 @@ affiliates: {
       },
       modelPricing: {
         title: '分组逐模型定价',
-        description: '匹配模型后覆盖渠道和内置价格。长上下文阶梯沿用官方/预设价卡，无需再手填区间。音频可用按次层级配置 realtime、tts、stt。',
+        description: '配置基础单价或上下文区间后覆盖共享价格配置价格；仅设置 Fast/Flex、Max 或分时倍率时继承共享价格配置价格，无共享价格配置价格则使用内置价格。同名倍率由分组覆盖。音频可用按次层级配置 realtime、tts、stt。',
         longContext: '启用长上下文阶梯定价',
-        longContextHint: '勾选后按官方/预设阶梯计费；关闭则始终按第一档基础价。',
+        longContextHint: '仅控制模型默认长上下文阶梯；分组或共享价格配置手动配置的上下文区间始终生效，不重复叠加默认阶梯。',
         add: '添加模型价格'
       },
       voicePricing: {
@@ -1154,6 +1129,7 @@ affiliates: {
         pricePlaceholder: '可选'
       },
       webSearchPricing: {
+        notConfigured: '未配置',
         title: 'Codex 网页搜索计费',
         pricePerCall: '搜索单次价格（USD/次）',
         pricePerCallHint:
@@ -1169,8 +1145,8 @@ affiliates: {
       },
       modelAllowlist: { title: '启用模型调用白名单', models: '允许调用的模型', hint: '每行一个；* 可放任意位置，如 gpt-*-sol、*codex*。' },
       modelsList: {
-        title: '自定义 /v1/models 模型列表',
-        hint: '仅影响 /v1/models 展示结果，不影响白名单模型调用和账号调度。',
+        title: '自定义 {endpoint} 模型列表',
+        hint: '仅影响 {endpoint} 展示结果，不影响白名单模型调用和提供商调度。',
         loading: '正在加载模型列表...',
         empty: '暂无可展示模型'
       },
@@ -1209,28 +1185,6 @@ affiliates: {
           gemini_generate_content: 'Gemini GenerateContent'
         }
       },
-      openaiMessages: {
-        title: 'OpenAI Messages 模型映射',
-        allowDispatch: '允许 /v1/messages 调度',
-        allowDispatchHint: '启用后，此 OpenAI 分组的 API Key 可以通过 /v1/messages 端点调度请求',
-        familyMappingTitle: '系列默认映射',
-        familyMappingHint: '仅对已填写目标模型的系列执行映射；留空时不执行这里的映射。',
-        opusModel: 'Opus 映射模型',
-        opusModelPlaceholder: '例如: gpt-5.4',
-        sonnetModel: 'Sonnet 映射模型',
-        sonnetModelPlaceholder: '例如: gpt-5.3-codex',
-        haikuModel: 'Haiku 映射模型',
-        haikuModelPlaceholder: '例如: gpt-5.4-mini',
-        exactMappingTitle: '精确模型覆盖',
-        exactMappingHint: '精确 Claude 模型覆盖优先级高于系列默认映射，可将某个具体 Claude 模型单独映射到不同的目标模型。',
-        noExactMappings: '暂无精确模型覆盖规则',
-        addExactMapping: '添加精确映射',
-        claudeModel: 'Claude 模型',
-        claudeModelPlaceholder: '例如: claude-sonnet-4-5-20250929',
-        targetModel: '目标模型',
-        targetModelPlaceholder: '例如: gpt-5.4',
-        removeExactMapping: '删除精确映射'
-      },
       openaiLive: {
         title: 'OpenAI Live',
         allow: '允许访问 Live',
@@ -1241,8 +1195,12 @@ affiliates: {
       },
       openaiFast: {
         title: 'OpenAI Fast',
-        force: '强制使用 Fast 优先级',
-        hint: '启用后，此 OpenAI 分组的请求会使用 service_tier=priority；全局 Fast/Flex 策略和 API Key 覆盖仍然有效。',
+        policy: '请求加速策略',
+        followRequest: '跟随请求',
+        force: '强制使用 Fast',
+        forceUltrafast: '强制使用 Ultra Fast',
+        forceOff: '强制关闭 Fast / Ultra Fast',
+        hint: '强制关闭会移除 Fast 和 Ultra Fast，并禁止 API Key 重新开启。强制开启仍允许 API Key 关闭；全局过滤、拦截和强制规则具有最终优先级。',
         free: '免费 Fast',
         freeHint: '请求仍使用 priority 档位，但客户实际费用按同一请求的 Standard 价格计算。'
       },
@@ -1251,18 +1209,18 @@ affiliates: {
         hint: '仅当上游明确返回 prompt too long 时才会触发，留空表示不兜底',
         noFallback: '不兜底'
       },
-      copyAccounts: {
-        title: '从分组复制账号',
-        tooltip: '选择一个或多个相同平台的分组，创建后会自动将这些分组的所有账号绑定到新分组（去重）。',
-        tooltipEdit: '选择一个或多个相同平台的分组，保存后当前分组的账号会被替换为这些分组的账号（去重）。',
-        selectPlaceholder: '选择分组以复制其账号...',
-        hint: '可选多个分组，账号会自动去重',
-        hintEdit: '⚠️ 注意：这会替换当前分组的所有账号绑定'
+      copyProviders: {
+        title: '从分组复制提供商',
+        tooltip: '选择一个或多个分组，创建后会自动将这些分组的所有提供商绑定到新分组（去重）。',
+        tooltipEdit: '选择一个或多个分组，保存后当前分组的提供商会被替换为这些分组的提供商（去重）。',
+        selectPlaceholder: '选择分组以复制其提供商...',
+        hint: '可选多个分组，提供商会自动去重',
+        hintEdit: '⚠️ 注意：这会替换当前分组的所有提供商绑定'
       },
       modelRouting: {
         title: '模型路由配置',
         tooltip:
-          '配置特定模型请求优先路由到指定账号。支持通配符匹配，如 claude-opus-* 匹配所有 opus 模型。',
+          '配置特定模型请求优先路由到指定提供商。支持通配符匹配，如 claude-opus-* 匹配所有 opus 模型。',
         enabled: '已启用',
         disabled: '已禁用',
         disabledHint: '启用后，配置的路由规则才会生效',
@@ -1270,21 +1228,15 @@ affiliates: {
         modelPattern: '模型模式',
         modelPatternPlaceholder: 'claude-opus-*',
         modelPatternHint: '支持 * 通配符，如 claude-opus-* 匹配所有 opus 模型',
-        accounts: '优先账号',
-        selectAccounts: '选择账号',
-        noAccounts: '此分组暂无账号',
-        loadingAccounts: '加载账号中...',
+        providers: '优先提供商',
+        selectProviders: '选择提供商',
+        noProviders: '此分组暂无提供商',
+        loadingProviders: '加载提供商中...',
         removeRule: '删除规则',
         noRules: '暂无路由规则',
-        noRulesHint: '添加路由规则以将特定模型请求优先路由到指定账号',
-        searchAccountPlaceholder: '搜索账号...',
-        accountsHint: '选择此模型模式优先使用的账号'
-      },
-      mcpXml: {
-        title: 'MCP XML 协议注入',
-        tooltip: '启用后，当请求包含 MCP 工具时，会在 system prompt 中注入 XML 格式调用协议提示词。关闭此选项可避免对某些客户端造成干扰。',
-        enabled: '已启用',
-        disabled: '已禁用'
+        noRulesHint: '添加路由规则以将特定模型请求优先路由到指定提供商',
+        searchProviderPlaceholder: '搜索提供商...',
+        providersHint: '选择此模型模式优先使用的提供商'
       },
       claudeMaxSimulation: {
         title: 'Claude Max 用量模拟',
@@ -1293,14 +1245,6 @@ affiliates: {
         enabled: '已启用（模拟 1h 缓存）',
         disabled: '已禁用',
         hint: '仅调整用量计费日志中的 token 类别。不会持久化每个请求的映射状态。'
-      },
-      supportedScopes: {
-        title: '支持的模型系列',
-        tooltip: '选择此分组支持的模型系列。未勾选的系列将不会被路由到此分组。',
-        claude: 'Claude',
-        geminiText: 'Gemini Text',
-        geminiImage: 'Gemini Image',
-        hint: '至少选择一个模型系列'
       }
     },
 }

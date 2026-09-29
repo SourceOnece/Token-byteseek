@@ -1,16 +1,18 @@
 # Grok / xAI 上游
 
-TokenRouter 支持 Grok OAuth 订阅账号和标准 xAI API Key 账号，并通过 OpenAI 兼容的 Responses、Chat Completions、Messages 和 WebSocket 入口转发请求。Grok 分组还支持图片生成/编辑、视频生成/编辑/扩展、视频状态查询、原生搜索和 Voice API。
+Grok 原生集合包含 HTTP Responses、Chat、Images、视频与 Voice；Responses WebSocket、Compact、网页/X 搜索是分组到 Responses 的转换入口，不显示为原生提供商选项。统一配置字段与入口门禁见[统一协议能力](protocol_capabilities.md)。
 
-本文覆盖账号凭据、聊天/媒体转发、媒体资格、异步视频归属、模型目录和运行时变量，不定义 xAI 套餐价格，也不把上游当前返回的所有动态模型固化为兼容承诺。
+TokenRouter 支持 Grok OAuth 订阅提供商和标准 xAI API Key 提供商，并通过 OpenAI 兼容的 Responses、Chat Completions、Messages 和 WebSocket 入口转发请求。Grok 分组还支持图片生成/编辑、视频生成/编辑/扩展、视频状态查询、原生搜索和 Voice API。
+
+本文覆盖提供商凭据、聊天/媒体转发、媒体资格、异步视频归属、模型目录和运行时变量，不定义 xAI 套餐价格，也不把上游当前返回的所有动态模型固化为兼容承诺。
 
 ## 章节导航
 
 - [基本信息](#基本信息)：修改路由或默认上游时读取。
-- [账号配置](#账号配置)：修改 OAuth/API Key 导入与刷新时读取。
+- [提供商配置](#提供商配置)：修改 OAuth/API Key 导入与刷新时读取。
 - [客户端协议](#客户端协议)：修改 Responses、Chat 或 Messages 准入时读取。
 - [媒体请求格式](#媒体请求格式)：修改图片/视频 body 转换时读取。
-- [媒体账号资格](#媒体账号资格)：修改付费探测和调度隔离时读取。
+- [媒体提供商资格](#媒体提供商资格)：修改付费探测和调度隔离时读取。
 - [搜索与语音](#搜索与语音)：修改搜索、TTS、STT、自定义 Voice 或 Realtime 时读取。
 - [任务归属与结算](#任务归属与结算)：修改视频查询、下载或用量记录时读取。
 - [客户端配置](#客户端配置)：核对生成给客户端的 base URL。
@@ -20,62 +22,80 @@ TokenRouter 支持 Grok OAuth 订阅账号和标准 xAI API Key 账号，并通�
 ## 基本信息
 
 - 平台名：`grok`
-- 账号类型：OAuth 订阅账号、API Key 账号
+- 提供商类型：OAuth 订阅提供商、API Key 提供商
 - 主要网关入口：`/v1/responses`、`/responses`、Chat Completions、Messages、Responses WebSocket、`/v1/web_search`、`/v1/x_search`、`/v1/tts`、`/v1/stt`、`/v1/custom-voices` 和 `/v1/realtime`；Voice/搜索也提供不带 `/v1` 的同名入口
-- API Key 账号默认上游地址：`https://api.x.ai/v1`
+- API Key 提供商默认上游地址：`https://api.x.ai/v1`
 
 ## 客户端协议
 
-Grok 分组支持 Anthropic Messages、OpenAI Responses 和 Chat Completions，新建时默认启用 Responses 与 Chat；三项都可关闭，迁移前已有分组启用三项。文本协议禁用时会在账号选择、计费、重试和 fallback 前返回协议原生 `403`。
+Grok 分组支持 Anthropic Messages、OpenAI Responses 和 Chat Completions，新建时默认启用 Responses 与 Chat；三项都可关闭，迁移前已有分组启用三项。文本协议禁用时会在提供商选择、计费、重试和 fallback 前返回协议原生 `403`。
+
+原生 Responses 保留一次同提供商的密文/Compact 解码恢复；Chat→Responses 与图片辅助请求继续单次交换。HTTP 提交、关闭重试窗口、语义输出和 TTFT 是独立观测。执行结果可与错误共存，Grok 失败入口按自身规则判断结算资格，不能仅凭响应 ID、前导事件或部分观察执行成功专属后置操作。
 
 Grok Responses 上游可能注入严格客户端不认识的 `event: ping` 帧。流式转发会把 data 未声明冲突事件类型的 ping 改写为 `: ping` SSE 注释，既保留连接活性，也避免中断 Grok CLI 或 Codex CLI；普通事件、未知字段帧和终止用量事件保持原样进入公共流处理链路。
 
 Responses WebSocket 是 Grok/OpenAI 的原生传输能力，不由兼容 Responses 开关扩展到其它平台。图片和视频继续使用独立媒体资格与分组策略，不受文本协议集合直接控制。
 
 <a id="grok_account_contract"></a>
-## 账号配置
+## 提供商配置
 
-管理员可在控制台选择 OAuth 或 API Key 创建账号。OAuth 账号可通过浏览器授权、refresh token 或 SSO cookie 创建和重新授权；创建 Grok 分组并绑定账号后，用户即可生成分组 API Key。OAuth state 和 PKCE 会话优先保存在 Redis，并通过一次性消费标记阻止多实例重复兑换；Redis 写入失败时才使用进程内短期回退。SSO cookie、邮箱密码等临时输入只能用于兑换 Build OAuth token，不能写入账号凭据、响应或日志。
+供应商 OAuth/SSO 交换、模型与额度解析位于 `upstream/grok`，提供商授权和令牌读取分别由 `provider.GrokAuthorization`、`GrokTokenSource` 与 `GrokTokenRefresher` 执行。提供商通过 `protocol/grok` 报文与注入端口调用供应商，不持有其具体客户端。app 直接构造唯一授权实例，`provider/provider` 投影代理读取及密码授权开关，`provider/rediscache` 使用原 Redis 会话技术实现。
 
-邮箱密码授权由进程配置 `gateway.grok.password_auth_enabled` 控制，默认关闭且管理端不展示入口。即使显式开启，服务也只接受密码到 SSO、再到 OAuth token 的临时转换。成功重新授权会清除 Grok 的软性消费上限重新授权标记，并以凭据快照/CAS 规则更新账号，避免旧请求覆盖新 token。
+管理员 Grok 授权和 SSO 导入 HTTP 已由 `provider/httpapi` 接入；导入队列、配额探测与模型观测共用提供商运行时。Responses、Chat 桥接、Composer 图片辅助请求、媒体和 Voice 由 `gateway/httpapi.GrokExecutor` 接入，响应解析复用 upstream 与共享 `OpenAIResponseOutput`。app 固定绑定凭据、健康、HTTP 池、TLS 和同一个 WS 拨号器；Realtime 与视频内容分别通过连接和流式资源接口释放。Chat 桥接不适用时返回原生 Chat 分支，提供商切换、入站编排和资金完成仍由请求拥有者负责。
 
-账号未保存显式 base URL 时，数据库运行时设置 `grok_default_base_url_mode` 决定文本请求使用 CLI 代理、公共 API 或三个区域 API；账号显式端点始终优先。`grok_default_text_model` 作为需要默认文本模型的请求及 Claude Messages 映射的目标；`grok_cross_client_model_map_enabled` 开启后，Grok 分组的 Anthropic Messages 派发会将 Claude 模型 ID 映射到该目标，不影响 Responses 或 Chat Completions 中的其他模型。三项设置热更新运行时映射快照，不能把媒体模型继承为文本价格或文本默认模型。
+管理员可在控制台选择 OAuth 或 API Key 创建提供商。OAuth 提供商可通过浏览器授权、refresh token 或 SSO cookie 创建和重新授权；创建 Grok 分组并绑定提供商后，用户即可生成分组 API Key。OAuth state 和 PKCE 会话优先保存在 Redis，并通过一次性消费标记阻止多实例重复兑换；Redis 写入失败时才使用进程内短期回退。SSO cookie、邮箱密码等临时输入只能用于兑换 Build OAuth token，不能写入提供商凭据、响应或日志。
 
-其它通用账号类型即使可由兼容导入层保存，也没有 Grok 正式凭据和转发契约；`cosy` 明确只属于 Qoder。完整分类见[上游账号能力矩阵](upstream_account_matrix.md)。
+邮箱密码授权由进程配置 `gateway.grok.password_auth_enabled` 控制，默认关闭且管理端不展示入口。即使显式开启，服务也只接受密码到 SSO、再到 OAuth token 的临时转换。成功重新授权会清除 Grok 的软性消费上限重新授权标记，并以凭据快照/CAS 规则更新提供商，避免旧请求覆盖新 token。
 
-Grok 使用 OpenAI 兼容能力适配层，但高级调度器由分组而不是平台全局开关决定。最终目标 Group 的 `scheduler_type=advanced` 时，Grok 在既有模型、媒体、账号状态、配额和 transport 硬过滤后复用通用 Top-K 评分；`basic` 保持原有选择顺序。Grok 的请求/令牌额度快照、媒体付费资格和 HTTP bridge 仍是平台专属资格，不能因通用评分缺少这些可选信号而被错误排除。
+`provider/provider` 统一投影文本与媒体端点：保留显式自定义地址，OAuth 的官方 CLI 主机在媒体请求中转为官方媒体 API。实际请求仍执行原 URL 信任检查；该选择不影响官方授权与刷新端点。
 
-OAuth 访问令牌 JWT 的数字或字符串 `tier` 是账号档位的首选信号；刷新后新 JWT 有声明时覆盖旧凭据，没有声明时才保留已有值。账单月限额可进一步确认已知付费档位。供应商含糊的 `SuperGrokPro` 只有在 24 小时内观察到 `grok-4.5` Responses 的 Heavy 请求/令牌窗口时才显示为 Heavy，其他模型的新快照会延续但不会刷新该信号；过期或来自其它模型的窗口不能升级档位。明确的 Free、SuperGrok Lite、SuperGrok Plus 和 Heavy 信号不走这条推断。管理端账号徽章和用量条都使用同一规范档位，并在额度快照变化后刷新。
+提供商未保存显式 base URL 时，数据库运行时设置 `grok_default_base_url_mode` 决定文本请求使用 CLI 代理、公共 API 或三个区域 API；提供商显式端点始终优先。`grok_default_text_model` 作为需要默认文本模型的请求及 Claude Messages 映射的目标；`grok_cross_client_model_map_enabled` 开启后，Grok 分组的 Anthropic Messages 派发会将 Claude 模型 ID 映射到该目标，不影响 Responses 或 Chat Completions 中的其他模型。三项设置热更新运行时映射快照，不能把媒体模型继承为文本价格或文本默认模型。
+
+其它通用提供商类型即使可由兼容导入层保存，也没有 Grok 正式凭据和转发契约；`cosy` 明确只属于 Qoder。完整分类见[上游提供商能力矩阵](upstream_provider_matrix.md)。
+
+Grok 复用 OpenAI 兼容能力适配层，高级调度器由分组配置选择。最终目标 Group 的 `scheduler_type=advanced` 时，Grok 在既有模型、媒体、提供商状态、配额和 transport 硬过滤后复用通用 Top-K 评分；`basic` 保持原有选择顺序。Grok 的请求/令牌额度快照、媒体付费资格和 HTTP bridge 仍是平台专属资格，不能因通用评分缺少这些可选信号而被错误排除。
+
+OAuth 访问令牌 JWT 的数字或字符串 `tier` 是提供商档位的首选信号；刷新后新 JWT 有声明时覆盖旧凭据，没有声明时才保留已有值。账单月限额可进一步确认已知付费档位。供应商含糊的 `SuperGrokPro` 只有在 24 小时内观察到 `grok-4.5` Responses 的 Heavy 请求/令牌窗口时才显示为 Heavy，其他模型的新快照会延续但不会刷新该信号；过期或来自其它模型的窗口不能升级档位。明确的 Free、SuperGrok Lite、SuperGrok Plus 和 Heavy 信号不走这条推断。管理端提供商徽章和用量条都使用同一规范档位，并在额度快照变化后刷新。
 
 ## 媒体请求格式
+
+媒体与 Voice HTTP 由 app 直接绑定 `gateway/httpapi/mediaentry`；生成循环和视频归属/认领仍由 gateway/media 唯一持有，计量输入在提交完成任务前固化。gateway/provider 只组合现有 Grok Codec 与纯价格规范化端口，媒体资格复用提供商规则并在原位置执行缺少观测时的探测。
 
 JSON 图片编辑和视频生成请求可在 `image`、`images`、`reference_images` 与 `mask` 对象中提供参考图片。与 xAI 直接兼容的请求应使用 `url` 字段；历史 `image_url` 字段仍可使用，TokenRouter 会在转发前把它规范化为 `url`。如果两者同时存在，则保留非空的 `url`；空白 `url` 会回退使用 `image_url`。multipart 图片编辑中的上传文件也会转换为 `url` 形式的 data URL。
 
 创作台的 Grok 图片 `edit` 使用 xAI 官方 JSON `POST /v1/images/edits`，而不是 OpenAI 风格 multipart：单图请求使用 `image: {"type":"image_url","url":"data:image/png;base64,..."}`，多图请求使用 `images` 数组，最多 3 张源图；请求保留 `model`、`prompt`、`resolution`、`aspect_ratio`，并设置 `response_format: "b64_json"`，响应从 `data[].b64_json` 解析为创作台输出。`generate` 仍使用 `/v1/images/generations`。
 
-## 媒体账号资格
+## 媒体提供商资格
 
-新的 Grok 图片或视频生成请求会执行媒体专用的账号资格检查。API Key 账号保持可用；OAuth 账号必须由 xAI 计费探测提供明确的付费资格证据。Free、禁止访问、缺少观测、观测格式错误或结论不明确的 OAuth 账号都不会承接新的媒体生成请求。尚无观测的 OAuth 账号会在第一次转发媒体请求前执行探测，导入账号时也会主动先执行计费探测。聊天请求和已有视频任务的状态查询不受这项隔离影响。当分组中没有合格账号时，媒体端点返回 HTTP `503`，错误类型为 `grok_media_no_eligible_account`。
+新的 Grok 图片或视频生成请求会执行媒体专用的提供商资格检查。API Key 提供商保持可用；OAuth 提供商必须由 xAI 计费探测提供明确的付费资格证据。Free、禁止访问、缺少观测、观测格式错误或结论不明确的 OAuth 提供商都不会承接新的媒体生成请求。尚无观测的 OAuth 提供商会在第一次转发媒体请求前执行探测，导入提供商时也会主动先执行计费探测。聊天请求和已有视频任务的状态查询不受这项隔离影响。当分组中没有合格提供商时，媒体端点返回 HTTP `503`，错误类型为 `grok_media_no_eligible_provider`。
 
-管理员可通过账号创建或更新 API 的 `extra.grok_media_eligible` 覆盖自动判定：`false` 表示排除，`true` 表示强制允许；更新时传 `null` 可删除覆盖并恢复基于探测结果的自动判定，省略该字段则保留现有覆盖。仅出现每周用量周期不能作为付费层级证据。图片接口返回成功时必须包含至少一个实际图片输出；空的 HTTP `200` 响应会触发账号 failover，不会作为成功生成结果计数或返回。
+管理员可通过提供商创建或更新 API 的 `extra.grok_media_eligible` 覆盖自动判定：`false` 表示排除，`true` 表示强制允许；更新时传 `null` 可删除覆盖并恢复基于探测结果的自动判定，省略该字段则保留现有覆盖。仅出现每周用量周期不能作为付费层级证据。图片接口返回成功时必须包含至少一个实际图片输出；空的 HTTP `200` 响应会触发提供商 failover，不会作为成功生成结果计数或返回。
 
-Grok 兼容账号对所选端点返回 HTTP `405` 时，表示该账号不支持当前端点；在尚未向客户端输出内容时请求会切换到其它账号，非池模式账号同时临时排除 30 分钟，避免粘性会话反复命中。公共池账号继续跳过默认账号冷却，`405` 也不会被误记为模型级冷却。
+Grok 兼容提供商对所选端点返回 HTTP `405` 时，表示该提供商不支持当前端点；在尚未向客户端输出内容时请求会切换到其它提供商，非池模式提供商同时临时排除 30 分钟，避免粘性会话反复命中。公共池提供商继续跳过默认提供商冷却，`405` 也不会被误记为模型级冷却。
 
 ## 搜索与语音
 
-`POST /v1/web_search` 和 `POST /v1/x_search` 只允许 Grok 分组，接收查询或 `input` 和最多 20 条结果。两者在选择账号前进入共同内容审计，随后复用常规 Grok 账号资格、并发等待和最多四次账号尝试。`web_search` 使用原生 Responses `web_search` 工具；`x_search` 强制使用 `x_search`，并接受 `allowed_x_handles`、`excluded_x_handles`、`from_date`、`to_date` 及图片/视频理解开关。两者只返回实际工具来源 URL 对应的结果，分别以 `grok-web-search` 和 `grok-x-search` 记录计费模型。每次调用使用独立服务端 request ID 作为结算幂等键；不得用查询、IP 或 User-Agent 哈希合并相同搜索。Responses/Chat 路径会保留原生 `x_search` 工具字段，并从上游 usage 或工具事件恢复 `SearchCount` 作为 token 费用之外的附加费。
+`POST /v1/web_search` 和 `POST /v1/x_search` 只允许 Grok 分组，接收查询或 `input` 和最多 20 条结果。两者在选择提供商前进入共同内容审计，随后复用常规 Grok 提供商资格、并发等待和最多四次提供商尝试。`web_search` 使用原生 Responses `web_search` 工具；`x_search` 强制使用 `x_search`，并接受 `allowed_x_handles`、`excluded_x_handles`、`from_date`、`to_date` 及图片/视频理解开关。
+
+两者只返回实际工具来源 URL 对应的结果，分别以 `grok-web-search` 和 `grok-x-search` 记录计费模型。每次调用使用独立服务端 request ID 作为结算幂等键；不得用查询、IP 或 User-Agent 哈希合并相同搜索。Responses/Chat 路径会保留原生 `x_search` 工具字段，并从上游 usage 或工具事件恢复 `SearchCount` 作为 token 费用之外的附加费。
 
 Voice HTTP 入口包括 TTS、STT 和自定义 Voice 的创建、读取、修改、删除与音频下载；`GET /v1/realtime` 代理 xAI Voice WebSocket。所有入口只允许 Grok 分组，并在整个会话持有并发槽。TTS 按字符、STT 按音频时长生成 `AudioUsage`；Realtime 必须先在任一中继方向观察到包含非空音频负载的事件，才按连接会话时长生成用量，握手失败、纯文本或只有转录事件的会话不结算。正常或常见断开仍要结算此前已确认的音频会话。Voice 和搜索分别使用分组显式价格，`NULL` 回退代码默认价，显式 `0` 表示免费，且都使用基础分组倍率，不混入文本 token 价格。
 
 ## 任务归属与结算
 
-新视频请求成功后会从上游响应的 `request_id`、`id` 或 `task_id`（包括 `data.*`、`video.*` 嵌套形态）提取任务标识，且保留既有 `request_id` / `id` 优先级；服务按规范化后的任务标识 + `user_id + api_key_id` 保存所选分组和账号绑定。后续状态与 content 下载必须回到创建任务的账号，不能重新随机调度；复合 Key 的映射后来被删除时，服务仍可从持久/缓存绑定构造只用于旧任务查询的最小 Grok 分组视图。查询已有任务不要求账号仍具备“新媒体生成”资格，但仍校验 Key、用户和任务归属。
+新视频请求成功后会从上游响应的 `request_id`、`id` 或 `task_id`（包括 `data.*`、`video.*` 嵌套形态）提取任务标识，且保留既有 `request_id` / `id` 优先级；服务按规范化后的任务标识 + `user_id + api_key_id` 保存所选分组和提供商绑定。后续状态与 content 下载必须回到创建任务的提供商，不能重新随机调度；复合 Key 的映射后来被删除时，服务仍可从持久/缓存绑定构造只用于旧任务查询的最小 Grok 分组视图。查询已有任务不要求提供商仍具备“新媒体生成”资格，但仍校验 Key、用户和任务归属。
 
 视频 content 先确认任务状态，再使用服务端上游凭据代理下载，并安全透传 Range/内容头；上游 URL 和 bearer token 不返回客户端。异步视频创建成功时只保存模型、计费模型、分辨率、时长和创建时间快照，不立即扣费；状态查询或 content 下载首次观察到官方 `status=done` 且存在 `video.url` 时才尝试结算。模型和时长优先采用完成响应，分辨率采用创建快照，缺失时分别使用官方默认族、8 秒和 480p。多实例通过 Redis `SET NX` 领取一次性结算权，持久结算失败会释放领取供后续轮询重试，并以任务 ID 派生稳定 request ID 防止重复扣费。普通查询/下载不生成第二笔费用。
 
-模型重定向、渠道映射和响应模型恢复遵守共同模型链，媒体专用路由模型只用于能力选择，不能覆盖用户账单中的 requested/upstream model。视频单价优先使用 `video_model_prices` 的模型族和分辨率覆盖，其次使用旧 `video_price_*` 列，最后使用内置每秒默认价。
+模型重定向、分组映射和响应模型恢复遵守共同模型链，媒体专用路由模型只用于能力选择，不能覆盖用户账单中的 requested/upstream model。视频单价统一按分组模型价卡、共享模型价卡、内置每秒默认价解析。`video` 价卡按分辨率选择每秒单价，按次价卡按输出数量计算；媒体使用普通分组、用户及订阅倍率。
 
-OAuth 凭据失效、账号资格变化和上游限流使用带凭据快照的分类与 CAS 更新，避免旧请求把刚刷新的账号再次封禁。内容策略 403 与凭据 401/403、付费资格拒绝和可切换上游错误要分别处理；只有可切换且响应未开始的错误进入下一账号。实际 Grok 非流 Chat 响应必须包含至少一个为正的聚合输入、输出、缓存写入或缓存读取 token 桶；缺失、全零或只有图片/文本明细的成功响应会在 HTTP 200 提交前返回稳定的 `grok_missing_usage` 故障转移错误。识别同时依据 Grok 平台账号、最终计费模型、映射后上游模型和响应模型，通用 OpenAI 兼容账号不能绕过，客户端 Grok 命名别名映射到非 Grok 上游时也不会误拒。
+OAuth 凭据失效、提供商资格变化和上游限流使用带凭据快照的分类与 CAS 更新，避免旧请求把刚刷新的提供商再次封禁。凭据获取的分类结果及 reason 常量归 `gateway/forward`，分类只读取错误链和代理存在性；持久化比较快照保持私有且不参与 JSON。提供商写入与请求重试仍由各自用例执行。内容策略 403 与凭据 401/403、付费资格拒绝和可切换上游错误要分别处理；只有可切换且响应未开始的错误进入下一提供商。实际 Grok 非流 Chat 响应必须包含至少一个为正的聚合输入、输出、缓存写入或缓存读取 token 桶；缺失、全零或只有图片/文本明细的成功响应会在 HTTP 200 提交前返回稳定的 `grok_missing_usage` 故障转移错误。
+
+识别同时依据 Grok 平台提供商、最终计费模型、映射后上游模型和响应模型，通用 OpenAI 兼容提供商不能绕过，客户端 Grok 命名别名映射到非 Grok 上游时也不会误拒。
+
+请求凭据由 `gateway/provider.RequestCredentials` 统一取得，文本、媒体、Voice 与 WS 共用同一实例。十五秒换号预算由请求自己的 `requeststate.CredentialBudget` 持有，HTTP Adapter 负责把失败分类关联到 Ops。条件写入、重新读取确认和缓存清理由 `provider.GrokCredentialRecovery` 执行，并共享应用的运行时阻断状态；五秒写入、250 毫秒提交确认和 500 毫秒缓存清理预算保持。Grok 转发与共享 Responses 输出使用同一凭据恢复实例。
+
+额度观测和错误后的提供商状态由 `provider/provider.GrokHealth` 统一处理。`app` 将同一提供商存储、运行时阻断、模型冷却与快照节流器注入文本、媒体和 WS 消费者，Grok 与 OpenAI 的普通快照仍共享原写入间隔。429、窗口耗尽和成功恢复继续绕过普通节流；持久化仍使用“只延长限流”和“比较已观察代次后恢复”的能力。团队冷却模型由当前尝试显式传入，请求内容拒绝仍在写入前短路。
 
 ## 客户端配置
 
@@ -100,7 +120,9 @@ Grok Build CLI 的模型配置必须指向 TokenRouter 对外地址（以 `/v1` 
 - `grok-imagine-video`
 - `grok-imagine-video-1.5`
 
-文本 Responses 的 `grok`、`grok-latest` 使用运行时默认文本模型，未配置时为 `grok-4.6`；带明确版本的 `grok-4.5-latest`、`grok-4.6-latest` 分别归一化为对应版本。模型市场目录查询复用这套已知文本别名，不启用 GPT/Claude 跨客户端映射，其它内置别名及历史协议 ID 兼容规则由 `internal/pkg/xai/models.go` 维护。模型列表默认展示当前目录，并结合账号模型映射/范围和 API Key 别名；未知模型保持透传，以支持管理员配置的 xAI 兼容上游。未知 Grok 文本族在没有显式定价时按现有 `grok-4.6` 静态价回退，该计费回退不代表继承能力；图片、视频、Voice 和搜索等非文本族不会误用该价格。
+文本 Responses 的 `grok`、`grok-latest` 使用运行时默认文本模型，未配置时为 `grok-4.6`；带明确版本的 `grok-4.5-latest`、`grok-4.6-latest` 分别归一化为对应版本。模型市场目录查询复用这套已知文本别名，不启用 GPT/Claude 跨客户端映射，其它内置别名及历史协议 ID 兼容规则由 `internal/upstream/grok/models.go` 维护。模型列表默认展示当前目录，并结合提供商模型映射/范围和 API Key 别名；未知模型保持透传，以支持管理员配置的 xAI 兼容上游。
+
+未知 Grok 文本族在没有显式定价时按现有 `grok-4.6` 静态价回退，该计费回退不代表继承能力；图片、视频、Voice 和搜索等非文本族不会误用该价格。
 
 ## 环境变量
 
@@ -112,8 +134,8 @@ Grok Build CLI 的模型配置必须指向 TokenRouter 对外地址（以 `/v1` 
 - `XAI_BASE_URL`
 - `XAI_GROK_CLI_VERSION`：覆盖 Grok CLI 客户端版本；内置版本与最低允许版本均为 `0.2.114`，覆盖值必须是规范 SemVer 且不得低于该版本
 
-进程配置 `gateway.grok` 还包含 Free OAuth 账号的本地滚动窗口软门禁：默认 24 小时、500000 token、95% 停调阈值和 60 秒统计缓存。只有明确标记为 Free 的账号参与；未知或付费层级以及数据库/统计失败均 fail-open。管理端主动额度查询和导入探测不经过该软门禁。
+进程配置 `gateway.grok` 还包含 Free OAuth 提供商的本地滚动窗口软门禁：默认 24 小时、500000 token、95% 停调阈值和 60 秒统计缓存。只有明确标记为 Free 的提供商参与；未知或付费层级以及数据库/统计失败均 fail-open。管理端主动额度查询和导入探测不经过该软门禁。门禁裁决与缓存由 `provider.FreeQuotaGate` 拥有，app 投影配置、绑定 usage 批量统计和后台任务屏障；两条普通选择链分别共享自身缓存，高级调度器按实例保持独立缓存，首次缺失仍放行并后台刷新。
 
 自定义 base URL 和媒体/billing 子路径都必须通过同一 URL allowlist/SSRF 校验。环境变量中的 client secret、token 和上游 URL 不得进入前端配置或错误响应。
 
-相关文档：[上游账号能力矩阵](upstream_account_matrix.md)、[网关请求生命周期](../architecture/gateway_request_lifecycle.md)、[路由与结算](../domains/routing_and_billing.md)、[HTTP 接口边界](http_api.md)、[接口目录](index.md)。
+相关文档：[上游提供商能力矩阵](upstream_provider_matrix.md)、[网关请求生命周期](../architecture/gateway_request_lifecycle.md)、[路由与结算](../domains/routing_and_billing.md)、[HTTP 接口边界](http_api.md)、[接口目录](index.md)。

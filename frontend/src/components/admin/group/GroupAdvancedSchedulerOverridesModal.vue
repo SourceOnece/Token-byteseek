@@ -3,10 +3,10 @@
     :show="show"
     :title="t('admin.groups.advancedSchedulerOverrides.title')"
     width="wide"
-    :z-index="60"
+    :z-index="Z_INDEX.MODAL_NESTED"
     @close="emit('close')"
   >
-    <form id="advanced-scheduler-overrides-form" class="space-y-5" @submit.prevent="handleSave">
+    <form id="advanced-scheduler-overrides-form" class="space-y-6" @submit.prevent="handleSave">
       <p class="text-sm leading-6 text-gray-500 dark:text-gray-400">
         {{ t('admin.groups.advancedSchedulerOverrides.description') }}
       </p>
@@ -54,7 +54,7 @@
     </form>
 
     <template #footer>
-      <div class="flex flex-wrap items-center justify-between gap-3 pt-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
           class="btn btn-ghost"
@@ -85,6 +85,7 @@
 
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
+import { Z_INDEX } from '@/constants/overlay'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'

@@ -74,6 +74,7 @@ import { Doughnut } from 'vue-chartjs'
 import TokenUsageTrend from '@/components/charts/TokenUsageTrend.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { externalTooltipHandler, hideExternalTooltip } from '@/utils/chartExternalTooltip'
+// 图表沿用全站包豪斯配色。
 import type { TrendDataPoint, ModelStat } from '@/types'
 import { formatNumberLocaleString as formatNumber, formatTokensK as formatTokens } from '@/utils/format'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'

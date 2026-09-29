@@ -12,12 +12,6 @@ type APIKey func(*sql.Selector)
 // APIKeyCompositeGroup is the predicate function for apikeycompositegroup builders.
 type APIKeyCompositeGroup func(*sql.Selector)
 
-// Account is the predicate function for account builders.
-type Account func(*sql.Selector)
-
-// AccountGroup is the predicate function for accountgroup builders.
-type AccountGroup func(*sql.Selector)
-
 // Announcement is the predicate function for announcement builders.
 type Announcement func(*sql.Selector)
 
@@ -77,6 +71,12 @@ type PromoCode func(*sql.Selector)
 
 // PromoCodeUsage is the predicate function for promocodeusage builders.
 type PromoCodeUsage func(*sql.Selector)
+
+// Provider is the predicate function for provider builders.
+type Provider func(*sql.Selector)
+
+// ProviderGroup is the predicate function for providergroup builders.
+type ProviderGroup func(*sql.Selector)
 
 // Proxy is the predicate function for proxy builders.
 type Proxy func(*sql.Selector)

@@ -20,7 +20,7 @@
       </button>
     </div>
     <div ref="contentRef" class="group-tab-content">
-      <!-- 所有页签持续挂载，避免定价条目和推理规则的内部草稿在切页时丢失。 -->
+      <!-- 所有页签持续挂载，避免模型策略和推理规则的内部草稿在切页时丢失。 -->
       <section
         v-for="tab in allTabs"
         v-show="activeTab === tab && visibleTabs.includes(tab)"
@@ -30,7 +30,7 @@
         :aria-labelledby="`${idPrefix}-tab-${tab}`"
         :data-group-tab="tab"
         tabindex="0"
-        class="group-tab-panel space-y-5"
+        class="group-tab-panel space-y-6"
       >
         <slot :name="tab" />
       </section>
@@ -42,16 +42,14 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const props = defineProps<{ platform: string; idPrefix: string }>()
+defineProps<{ idPrefix: string }>()
 const { t } = useI18n()
-const allTabs = ['general', 'platform', 'pricing', 'protocol'] as const
+const allTabs = ['general', 'models', 'scheduling', 'protocol', 'request'] as const
 type GroupFormTab = typeof allTabs[number]
 const activeTab = ref<GroupFormTab>('general')
 const rootRef = ref<HTMLElement | null>(null)
 const contentRef = ref<HTMLElement | null>(null)
-const visibleTabs = computed(() => allTabs.filter(tab =>
-  tab !== 'platform' || ['anthropic', 'openai', 'gemini', 'antigravity'].includes(props.platform),
-))
+const visibleTabs = computed(() => [...allTabs])
 
 watch(visibleTabs, tabs => {
   if (!tabs.includes(activeTab.value)) activeTab.value = 'general'
@@ -127,7 +125,7 @@ defineExpose({ validate, revealField })
 .group-form-tabs {
   display: flex;
   height: min(68dvh, 760px);
-  max-height: calc(90dvh - 180px);
+  flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
   flex-direction: column;
@@ -188,24 +186,11 @@ defineExpose({ validate, revealField })
 }
 
 .group-tab-content {
-  @apply min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pl-1 pr-2 pb-2 pt-5;
+  @apply min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-2 pt-6;
 }
 
-/* 仅省略普通分区首块的重复边线，独立包豪斯卡片保留完整边框。 */
-.group-tab-panel :deep(> :first-child:not(.bh-policy-section):not(.bh-policy-card)) {
-  border-top: 0;
-  margin-top: 0;
-  padding-top: 0;
-}
-
+/* 窄屏上限为 BREAKPOINT_SM（640px）减 1，与项目断点保持一致。 */
 @media (max-width: 639px) {
-  .group-form-tabs { max-height: calc(95dvh - 180px); }
-  /* 四个入口在手机上全部可见，长英文文案仍可在各自格子内换行。 */
-  .group-tab-list { @apply grid grid-cols-2; }
-  .group-tab { @apply min-w-0 whitespace-normal px-3 text-left; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .group-tab { transition: none; }
+  .group-tab { @apply px-3; }
 }
 </style>

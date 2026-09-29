@@ -1,0 +1,551 @@
+package codexticket
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
+	"github.com/google/uuid"
+	"github.com/tidwall/gjson"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// 诊断只记录数值、固定枚举和管理员自定义名称，绝不包含响应正文/票据/代理地址。
+type CodexTicketDiagnostic struct {
+	Phase           string                       `json:"phase,omitempty"`
+	TimeoutSeconds  int                          `json:"timeout_seconds,omitempty"`
+	ElapsedMS       int64                        `json:"elapsed_ms,omitempty"`
+	NetworkKind     string                       `json:"network_kind,omitempty"`
+	ProviderStatus  int                          `json:"provider_status,omitempty"`
+	PreviousAttempt bool                         `json:"previous_attempt,omitempty"`
+	ProxyUsage      string                       `json:"proxy_usage,omitempty"`
+	Stages          []CodexTicketValidationStage `json:"stages,omitempty"`
+	Scheduling      string                       `json:"scheduling,omitempty"`
+	DegradedSignal  bool                         `json:"degraded_signal,omitempty"`
+	ProxyID         string                       `json:"proxy_id"`
+	ProxyName       string                       `json:"proxy_name"`
+	Attempt         int                          `json:"attempt"`
+	HTTPStatus      int                          `json:"http_status,omitempty"`
+	HeaderLength    int                          `json:"header_length"`
+	HeaderPresent   bool                         `json:"header_present"`
+	PrefixValid     bool                         `json:"prefix_valid"`
+	ResponseKind    string                       `json:"response_kind,omitempty"`
+	ErrorKind       string                       `json:"error_kind,omitempty"`
+	CompletionSeen  bool                         `json:"completion_seen,omitempty"`
+	RetryNotBefore  *time.Time                   `json:"retry_not_before,omitempty"`
+}
+
+// 状态接口再次收口枚举与范围，代理名称只从本次配置取，不信任缓存中的任意文案。
+func safeCodexTicketDiagnostic(source *CodexTicketDiagnostic) *CodexTicketDiagnostic {
+	if source == nil {
+		return nil
+	}
+	d := *source
+	d.Phase = safeTicketPhase(d.Phase)
+	if d.TimeoutSeconds < 5 || d.TimeoutSeconds > 300 {
+		d.TimeoutSeconds = 0
+	}
+	if d.ElapsedMS < 0 || d.ElapsedMS > 86400000 {
+		d.ElapsedMS = 0
+	}
+	if d.ProviderStatus < 100 || d.ProviderStatus > 599 {
+		d.ProviderStatus = 0
+	}
+	switch d.NetworkKind {
+	case "timeout", "dns", "tls", "connection":
+	default:
+		d.NetworkKind = ""
+	}
+	if d.ProxyUsage != "reused" && d.ProxyUsage != "new" {
+		d.ProxyUsage = ""
+	}
+	d.Stages = nil
+	for i, stage := range source.Stages {
+		if i >= 2 {
+			break
+		}
+		if stage.Name != "harvest" && stage.Name != "verify" {
+			continue
+		}
+		stage.RequestModel = safeTicketResponseModel(stage.RequestModel)
+		stage.ResponseModel = safeTicketResponseModel(stage.ResponseModel)
+		if stage.HTTPStatus < 100 || stage.HTTPStatus > 599 {
+			stage.HTTPStatus = 0
+		}
+		if stage.StateLength < 0 {
+			stage.StateLength = -1 // 非法/缺失不能冒充复验无STATE的合法0字节。
+		}
+		if stage.TargetLength < 6 || stage.TargetLength > 8192 {
+			stage.TargetLength = 0
+		}
+		if stage.DegradedSignalLength < 6 || stage.DegradedSignalLength > 8192 {
+			stage.DegradedSignalLength = 0
+		}
+		stage.Reason = safeTicketValidationReason(stage.Reason)
+		d.Stages = append(d.Stages, stage)
+	}
+	switch d.Scheduling {
+	case "enabled", "disabled", "already_on", "already_off", "stale", "failed":
+	default:
+		d.Scheduling = ""
+	}
+	d.ProxyName = ""
+	if d.ProxyID != "legacy" && d.ProxyID != "account" && d.ProxyID != "provider" {
+		if _, err := uuid.Parse(d.ProxyID); err != nil {
+			d.ProxyID = ""
+		}
+	}
+	if d.Attempt < 1 {
+		d.Attempt = 0
+	}
+	if d.HTTPStatus < 100 || d.HTTPStatus > 599 {
+		d.HTTPStatus = 0
+	}
+	if d.HeaderLength < 0 || d.HeaderLength > 1048576 {
+		d.HeaderLength = 0
+	}
+	switch d.ResponseKind {
+	case "sse", "json", "html", "other":
+	default:
+		d.ResponseKind = ""
+	}
+	switch d.ErrorKind {
+	case "overloaded", "rate_limit", "quota", "auth", "invalid_request":
+	default:
+		d.ErrorKind = ""
+	}
+	return &d
+}
+
+func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketConfig, account *Account, model, token, key string, selected *codexTicketProxy, attempt int, observers ...func(CodexTicketAttempt)) (ready, retry bool) {
+	proxy := *selected
+	var reuse ticketProxyReuseAttempt
+	diagnostic := &CodexTicketDiagnostic{ProxyID: proxy.ID, ProxyName: proxy.Name, Phase: "eligibility", TimeoutSeconds: int(cfg.attemptTimeout() / time.Second)}
+	counted := false
+	started := time.Now().UTC()
+	state, reason := "skipped", "account_changed"
+	var expires *time.Time
+	observed := false
+	// 手动日志在统一出口收集，自动采集不增加历史/IP 请求。
+	defer func() {
+		// 返回实际使用的代理，失败后从它的下一条继续，而不是从复用前的候选继续。
+		*selected = proxy
+		if ctx.Err() != nil && !ready {
+			state, reason = "cancelled", ticketContextReason(ctx)
+		}
+		diagnostic.ElapsedMS = time.Since(started).Milliseconds()
+		if observed {
+			s.recordObservation(ctx, key, state, reason, expires, diagnostic)
+		}
+		if state == "failed" || state == "missing" || ready {
+			s.recordTicketCollection(ctx, cfg, key, ready, reason)
+		}
+		if len(observers) == 0 && reason != "cooldown" && reason != "concurrency_busy" && reason != "backoff" {
+			s.recordLatest(ctx, cfg, key, "auto", CodexTicketAttempt{Status: state, Reason: reason, FinishedAt: time.Now().UTC(), Diagnostic: diagnostic})
+		}
+		for _, observer := range observers {
+			actualAttempt := 0
+			if counted {
+				actualAttempt = attempt
+			}
+			observer(CodexTicketAttempt{usedProxy: proxy, Status: state, Reason: reason, Attempt: actualAttempt, StartedAt: started, FinishedAt: time.Now().UTC(), DurationMS: time.Since(started).Milliseconds(), Diagnostic: safeCodexTicketDiagnostic(diagnostic), ExpiresAt: expires})
+		}
+	}()
+	if !s.ticketConfigCurrent(cfg) {
+		reason = s.ticketConfigurationReason(cfg)
+		return false, false
+	}
+	policyRaw, e := s.cache.Get(ctx, "collection:"+key)
+	if e != nil {
+		state, reason = "failed", "storage"
+		return false, false
+	}
+	if ticketCollectionState(policyRaw).CooldownUntil != nil {
+		state, reason = "skipped", "cooldown"
+		// 冷却检查不算采集，不覆盖上次真实响应，也不占着worker重复检查。
+		diagnostic.Attempt = 0
+		return false, false
+	}
+	// 采集槽等待单独有界；租约随账号预算延长，不与业务并发槽混用。
+	diagnostic.Phase = "queue"
+	waitCtx, stopWait := context.WithTimeout(ctx, cfg.attemptTimeout())
+	release, err := s.acquireTicketCollectionSlot(waitCtx, cfg, account.ID, key)
+	waitExpired := waitCtx.Err() != nil
+	stopWait()
+	if err != nil {
+		state, reason = "failed", "storage"
+		if waitExpired {
+			state, reason = "skipped", "concurrency_busy"
+		}
+		if !s.ticketConfigCurrent(cfg) {
+			state, reason = "skipped", s.ticketConfigurationReason(cfg)
+		}
+		return false, false
+	}
+	defer release()
+	defer func() { s.finishTicketProxyReuse(ctx, cfg, reuse, proxy, ready, retry, reason, diagnostic) }()
+	if len(observers) == 0 && s.manualAccountReserved(ctx, account.ID) {
+		state, reason = "skipped", "concurrency_busy"
+		return false, false
+	}
+	// 手动等待在途自动请求结束后重新读退避/冷却，不能使用等待前的旧状态再发请求。
+	guardCtx, guardCancel := context.WithTimeout(ctx, time.Second)
+	guard, err := s.cache.GetMany(guardCtx, []string{"collection:" + key, "status:" + key})
+	guardCancel()
+	if err != nil {
+		state, reason = "failed", "storage"
+		return false, false
+	}
+	if ticketCollectionState(guard["collection:"+key]).CooldownUntil != nil {
+		state, reason = "skipped", "cooldown"
+		return false, false
+	}
+	var previous codexTicketObservation
+	_ = json.Unmarshal([]byte(guard["status:"+key]), &previous)
+	if previous.Diagnostic != nil && previous.Diagnostic.RetryNotBefore != nil && time.Now().Before(*previous.Diagnostic.RetryNotBefore) {
+		state, reason = "skipped", "backoff"
+		diagnostic.RetryNotBefore = previous.Diagnostic.RetryNotBefore
+		return false, false
+	}
+	// 先复核凭据与并发，再请求取号服务；排队/停调不会白白消耗代理额度和尝试计数。
+	diagnostic.Phase = "eligibility"
+	readCtx, readCancel := context.WithTimeout(ctx, 2*time.Second)
+	fresh, err := s.ticketAccounts().GetByID(readCtx, account.ID)
+	readCancel()
+	if err != nil {
+		state, reason = "failed", "storage"
+		return false, false
+	}
+	if !s.ticketConfigCurrent(cfg) {
+		reason = s.ticketConfigurationReason(cfg)
+		return false, false
+	}
+	if why, _ := ticketCollectionPause(fresh); why != "" {
+		reason = why
+		return false, false
+	}
+	if !s.runtime.TicketModelSupported(fresh, model) {
+		reason = "model_unsupported"
+		return false, false
+	}
+	if fresh.GetOpenAIAccessToken() != token || codexTicketKey(cfg, fresh, model, token) != key {
+		return false, false
+	}
+	if cfg.VerifiedFlow && ticketBusinessFingerprint(fresh) == "" {
+		state, reason = "failed", "business_proxy"
+		return false, false
+	}
+	// 管理员若把共享业务槽TTL设得过短，明确拒绝不安全的长采集，不偷偷放宽业务并发。
+	if ttl := s.runtime.TicketSlotTTL(); ttl > 0 && cfg.attemptTimeout()+10*time.Second >= ttl {
+		state, reason = "skipped", "concurrency_config"
+		return false, false
+	}
+	probeCtx, cancel := context.WithTimeoutCause(ctx, cfg.attemptTimeout(), ticketStopCause("timeout"))
+	defer cancel()
+	slot, err := s.runtime.AcquireTicketSlot(probeCtx, fresh)
+	if err != nil || slot == nil || !slot.Acquired {
+		reason = "concurrency_busy"
+		return false, false
+	}
+	defer slot.ReleaseFunc()
+	if len(observers) == 0 {
+		countCtx, stopCount := context.WithTimeout(ctx, time.Second)
+		attempt, err = s.nextTicketAttempt(countCtx, key, cfg.attempts(), attempt)
+		stopCount()
+		if err != nil {
+			state, reason = "failed", "storage"
+			return false, false
+		}
+		if attempt == 0 {
+			state, reason = "skipped", "attempt_limit"
+			return false, false
+		}
+	}
+	counted = true
+	diagnostic.Attempt = attempt
+	diagnostic.Phase = "proxy"
+	proxy, reuse, err = s.resolveReusableTicketProxy(probeCtx, cfg, key, proxy, previous)
+	diagnostic.ProxyID, diagnostic.ProxyName = proxy.ID, proxy.Name
+	if err == nil && (cfg.mode() == "rotate" || cfg.mode() == "dynamic") {
+		diagnostic.ProxyUsage = "new"
+		if reuse.reused {
+			diagnostic.ProxyUsage = "reused"
+		}
+	}
+	if err != nil {
+		if errors.Is(err, errTicketProxyReuseCache) {
+			state, reason = "failed", "storage"
+			return false, false
+		}
+		state, reason = "failed", "proxy_provider"
+		var rejected *ticketProviderRejection
+		if errors.As(err, &rejected) {
+			diagnostic.RetryNotBefore = rejected.retryAt
+			diagnostic.ProviderStatus = rejected.status
+		}
+		var failure *ticketProviderFailure
+		if errors.As(err, &failure) {
+			diagnostic.NetworkKind = failure.kind
+			if failure.kind == "timeout" {
+				reason = "proxy_timeout"
+			}
+			if why := ticketContextReason(probeCtx); why != "" {
+				reason = why
+			}
+		}
+		s.recordObservation(ctx, key, state, reason, nil, diagnostic)
+		if rejected != nil && (rejected.status == 401 || rejected.status == 403 || rejected.status == 429) {
+			return false, false
+		}
+		return false, ctx.Err() == nil
+	}
+	proxyURL, err := s.cipher.Decrypt(proxy.Cipher)
+	if err != nil || validateCodexHarvestProxy(proxyURL) != nil {
+		state, reason = "failed", "proxy_config"
+		s.recordObservation(ctx, key, "failed", "proxy_config", nil, diagnostic)
+		return false, cfg.mode() == "rotate"
+	}
+	// 与回退前快照使用相同 input_text 数组，不再依赖字符串内容的宽松兼容。
+	body, _ := json.Marshal(map[string]any{"model": model, "store": false, "stream": true, "instructions": "Reply with exactly: pong", "input": []any{map[string]any{"role": "user", "content": []any{map[string]any{"type": "input_text", "text": "ping"}}}}})
+	probeCtx = WithHTTPUpstreamRedirectsDisabled(WithHTTPUpstreamProfile(probeCtx, HTTPUpstreamProfileOpenAIHarvest))
+	req, err := http.NewRequestWithContext(probeCtx, http.MethodPost, chatgptCodexURL, bytes.NewReader(body))
+	if err != nil {
+		return false, false
+	}
+	req.Close = true
+	req.Host = "chatgpt.com"
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("session_id", uuid.NewString())
+	if s.runtime.TicketAccountHeaders(probeCtx, req.Header, fresh) != nil {
+		state, reason = "failed", "credential"
+		s.recordObservation(ctx, key, "failed", "credential", nil, diagnostic)
+		return false, false
+	}
+	ensureCodexIdentityHeaders(req.Header)
+	enforceCodexIdentityHeaders(req.Header)
+	minimum := "0.146.0"
+	if strings.Contains(strings.ToLower(model), "gpt-6") || strings.Contains(strings.ToLower(model), "astra") {
+		minimum = "0.153.4"
+	}
+	if CompareVersions(req.Header.Get("version"), minimum) < 0 {
+		// 仅合成采集对齐固定快照的版本下限，保留更高的后台版本，不更改业务身份。
+		req.Header.Set("version", minimum)
+		req.Header.Set("user-agent", openai.CodexDefaultOriginator+"/"+minimum+" (Ubuntu 22.4.0; x86_64) xterm-256color")
+		req.Header.Set("originator", openai.CodexDefaultOriginator)
+	}
+	diagnostic.Phase = "harvest"
+	s.recordObservation(ctx, key, "collecting", "", nil, diagnostic)
+	observed = true
+	state, reason = "failed", "network"
+	resp, err := s.runtime.SendTicketHarvest(req, proxyURL, fresh)
+	if err != nil || resp == nil {
+		reason = ticketNetworkReason(probeCtx, err, diagnostic)
+		return false, ctx.Err() == nil
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	if cfg.VerifiedFlow {
+		ok, canRetry, why := s.validateTicketChain(probeCtx, cancel, cfg, fresh, model, req, body, resp, diagnostic)
+		if !ok {
+			state, reason = "failed", why
+			// 明确异常长度继续沿bh.046关闭调度，模型不符/普通失败不直接改总调度。
+			if diagnostic.DegradedSignal {
+				final, e := s.readTicketAccount(ctx, account.ID)
+				if e == nil && codexTicketCollectionAllowed(ctx, final) && final.GetOpenAIAccessToken() == token && codexTicketKey(cfg, final, model, token) == key {
+					diagnostic.Scheduling = s.applyTicketScheduling(ctx, cfg, final, false)
+				}
+			}
+			return false, canRetry
+		}
+	}
+	ticket := codexTicketValue{Attempts: attempt, State: extractOpenAICodexTurnState(resp.Header), ExpiresAt: time.Now().Add(cfg.ticketTTL())}
+	if cfg.VerifiedFlow {
+		ticket.Verified = true
+		ticket.BusinessFingerprint = ticketBusinessFingerprint(fresh)
+	}
+	diagnostic.HTTPStatus = resp.StatusCode
+	diagnostic.HeaderPresent = len(resp.Header.Values(openAICodexTurnStateHeader)) > 0
+	diagnostic.HeaderLength = len(ticket.State)
+	// 只接受原有安全格式的STATE；其它长度、HTTP错误或损坏头不产生调度结论。
+	diagnostic.DegradedSignal = resp.StatusCode == http.StatusOK && cfg.DegradedSignalLength > 0 && validCodexTicket(ticket, cfg.DegradedSignalLength)
+	diagnostic.PrefixValid = strings.HasPrefix(ticket.State, "gAAAAA")
+	switch strings.ToLower(strings.TrimSpace(strings.Split(resp.Header.Get("Content-Type"), ";")[0])) {
+	case "text/event-stream":
+		diagnostic.ResponseKind = "sse"
+	case "application/json":
+		diagnostic.ResponseKind = "json"
+	case "text/html":
+		diagnostic.ResponseKind = "html"
+	default:
+		diagnostic.ResponseKind = "other"
+	}
+	if diagnostic.DegradedSignal {
+		final, err := s.readTicketAccount(ctx, account.ID)
+		if err == nil && codexTicketCollectionAllowed(ctx, final) && s.runtime.TicketModelSupported(final, model) && final.GetOpenAIAccessToken() == token && codexTicketKey(cfg, final, model, token) == key {
+			diagnostic.Scheduling = s.applyTicketScheduling(ctx, cfg, final, false)
+		} else {
+			diagnostic.Scheduling = "stale"
+		}
+	}
+	// 历史配置两长度相同时，明确异常优先，不能同轮先关再开。
+	if resp.StatusCode != http.StatusOK || diagnostic.DegradedSignal || !validCodexTicket(ticket, cfg.targetLength()) {
+		reason = "upstream"
+		if resp.StatusCode == http.StatusOK {
+			state, reason = "missing", "invalid_ticket"
+		}
+		readTicketFailureDiagnostic(resp.Body, diagnostic, cancel)
+		if diagnostic.ErrorKind != "" {
+			state, reason = "failed", "upstream"
+		}
+		return false, ticketFailureCanRetry(resp, diagnostic) && ctx.Err() == nil
+	}
+	diagnostic.Phase = "publish"
+	reason = "account_changed"
+	if !s.ticketConfigCurrent(cfg) {
+		reason = s.ticketConfigurationReason(cfg)
+		return false, false
+	}
+	final, err := s.readTicketAccount(ctx, account.ID)
+	if err != nil {
+		reason = "storage"
+		return false, false
+	}
+	if why, _ := ticketCollectionPause(final); why != "" {
+		state, reason = "skipped", why
+		return false, false
+	}
+	if !s.runtime.TicketModelSupported(final, model) {
+		state, reason = "skipped", "model_unsupported"
+		return false, false
+	}
+	if final.GetOpenAIAccessToken() != token || codexTicketKey(cfg, final, model, token) != key {
+		return false, false
+	}
+	raw, _ := json.Marshal(ticket)
+	reason = "storage"
+	encrypted, err := s.cipher.Encrypt(string(raw))
+	if err != nil {
+		return false, false
+	}
+	writeCtx, writeCancel := context.WithTimeout(ctx, time.Second)
+	err = s.cache.Set(writeCtx, key, encrypted, cfg.ticketTTL())
+	writeCancel()
+	if err != nil {
+		return false, false
+	}
+	// 手动/自动成功都开调度，必须先存票；调度写失败不谎称成功，也不删除已保存票据。
+	diagnostic.Scheduling = s.applyTicketScheduling(ctx, cfg, final, true)
+	state, reason, expires = "ready", "", &ticket.ExpiresAt
+	return true, false
+}
+
+// 采集后的资格复核也要有界，不能拖过配套延长后的并发租约。
+func (s *CodexTicketService) readTicketAccount(ctx context.Context, id int64) (*Account, error) {
+	read, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	return s.ticketAccounts().GetByID(read, id)
+}
+
+// 普通采集与双链路、HTTP错误与流内错误共用停止/退避判断，不通过换代理绕过明确拒绝。
+func ticketFailureCanRetry(resp *http.Response, diagnostic *CodexTicketDiagnostic) bool {
+	diagnostic.RetryNotBefore = codexTicketRetryNotBefore(resp.Header.Get("Retry-After"), resp.StatusCode, diagnostic.ErrorKind)
+	if diagnostic.RetryNotBefore == nil && (resp.StatusCode == 401 || resp.StatusCode == 403 || diagnostic.ErrorKind == "auth" || diagnostic.ErrorKind == "quota") {
+		at := time.Now().Add(5 * time.Minute)
+		diagnostic.RetryNotBefore = &at
+	}
+	return diagnostic.RetryNotBefore == nil && resp.StatusCode != 401 && resp.StatusCode != 403 && resp.StatusCode != 429 && diagnostic.ErrorKind != "auth" && diagnostic.ErrorKind != "quota" && diagnostic.ErrorKind != "rate_limit" && diagnostic.ErrorKind != "invalid_request"
+}
+
+// 仅给后台采集退避，不修改账号调度；尊重服务端 Retry-After，避免换代理绕过明确限流。
+func codexTicketRetryNotBefore(raw string, status int, kind string) *time.Time {
+	now := time.Now().UTC()
+	wait := time.Duration(0)
+	if seconds, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64); err == nil && seconds > 0 {
+		if seconds > 86400 {
+			seconds = 86400
+		}
+		wait = time.Duration(seconds) * time.Second
+	} else if deadline, err := http.ParseTime(raw); err == nil && deadline.After(now) {
+		wait = deadline.Sub(now)
+	}
+	if (status == 429 || kind == "rate_limit") && wait < time.Minute {
+		wait = time.Minute
+	}
+	if wait <= 0 {
+		return nil
+	}
+	if wait > 24*time.Hour {
+		wait = 24 * time.Hour
+	}
+	deadline := now.Add(wait)
+	return &deadline
+}
+
+// 只有未获有效票时读取少量失败数据，最多 8KiB/1.5 秒，任何原文都不持久化或返回。
+func readTicketFailureDiagnostic(body io.ReadCloser, d *CodexTicketDiagnostic, cancel context.CancelFunc) {
+	if body == nil {
+		return
+	}
+	// 取消该次采集 HTTP 请求来解除网络 Read，不只依赖 Body.Close 的具体实现。
+	timer := time.AfterFunc(1500*time.Millisecond, cancel)
+	defer timer.Stop()
+	scanner := bufio.NewScanner(io.LimitReader(body, 8192))
+	var aggregate bytes.Buffer
+	for scanner.Scan() {
+		line := bytes.TrimSpace(scanner.Bytes())
+		aggregate.Write(line)
+		aggregate.WriteByte('\n')
+		line = bytes.TrimSpace(bytes.TrimPrefix(line, []byte("data:")))
+		classifyTicketFailureJSON(line, d)
+		if d.CompletionSeen || d.ErrorKind != "" {
+			return
+		}
+	}
+	// 兼容多行 JSON 错误信封，仍不保存或回传任何原始正文。
+	classifyTicketFailureJSON(aggregate.Bytes(), d)
+}
+
+func classifyTicketFailureJSON(line []byte, d *CodexTicketDiagnostic) {
+	if !gjson.ValidBytes(line) {
+		return
+	}
+	typeName := gjson.GetBytes(line, "type").String()
+	if typeName == "response.completed" || typeName == "response.done" {
+		d.CompletionSeen = true
+		return
+	}
+	for _, path := range []string{"error.code", "error.type", "response.error.code", "response.error.type", "code"} {
+		switch gjson.GetBytes(line, path).String() {
+		case "server_is_overloaded", "server_overloaded":
+			d.ErrorKind = "overloaded"
+		case "rate_limit_exceeded", "rate_limit_error":
+			d.ErrorKind = "rate_limit"
+		case "insufficient_quota", "usage_limit_reached":
+			d.ErrorKind = "quota"
+		case "invalid_api_key", "authentication_error", "token_expired":
+			d.ErrorKind = "auth"
+		case "invalid_request_error":
+			d.ErrorKind = "invalid_request"
+		}
+	}
+	if d.ErrorKind == "" {
+		paths := []string{"error.message", "response.error.message"}
+		if typeName == "error" || d.HTTPStatus >= 400 {
+			paths = append(paths, "message")
+		}
+		for _, path := range paths {
+			if strings.Contains(strings.ToLower(gjson.GetBytes(line, path).String()), "our servers are currently overloaded") {
+				d.ErrorKind = "overloaded"
+			}
+		}
+	}
+}

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
+import { TABLE_DESKTOP_MEDIA_QUERY } from '@/constants/layout'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Pagination from '@/components/common/Pagination.vue'
@@ -39,8 +40,8 @@ const { t } = useI18n()
 const appStore = useAppStore()
 const { copyToClipboard } = useClipboard()
 
-// 与 DataTable 一致：< 768px 切换为卡片视图，避免宽表在移动端被截断。
-const isDesktopViewport = useMediaQuery('(min-width: 768px)')
+// 与 DataTable 一致：< 1024px 切换为卡片视图，避免宽表在移动端被截断。
+const isDesktopViewport = useMediaQuery(TABLE_DESKTOP_MEDIA_QUERY)
 
 const loading = ref(false)
 const items = ref<OpsRequestDetail[]>([])
@@ -208,21 +209,21 @@ const kindBadgeClass = (kind: string) => {
 
         <!-- Table -->
         <div v-else class="flex min-h-0 flex-1 flex-col">
-          <div v-if="items.length === 0" class="rounded-xl border border-dashed border-gray-200 p-10 text-center dark:border-dark-700">
+          <div v-if="items.length === 0" class="rounded-surface border border-dashed border-gray-200 p-10 text-center dark:border-dark-700">
             <div class="text-sm font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.requestDetails.empty') }}</div>
             <div class="mt-1 text-xs text-gray-400">{{ t('admin.ops.requestDetails.emptyHint') }}</div>
           </div>
 
-          <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 dark:border-dark-700">
+          <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-surface border border-gray-200 dark:border-dark-700">
             <div class="min-h-0 flex-1 overflow-auto">
               <div v-if="!isDesktopViewport" class="divide-y divide-gray-100 dark:divide-dark-800">
                 <div v-for="(row, idx) in items" :key="idx" class="space-y-2 p-4">
                   <div class="flex flex-wrap items-center gap-2">
-                    <span class="rounded-full px-2 py-1 text-[10px] font-bold" :class="kindBadgeClass(row.kind)">
+                    <span class="rounded-full px-2 py-1 text-xs font-bold" :class="kindBadgeClass(row.kind)">
                       {{ row.kind === 'error' ? t('admin.ops.requestDetails.kind.error') : t('admin.ops.requestDetails.kind.success') }}
                     </span>
                     <span class="text-xs font-medium text-gray-700 dark:text-gray-200">{{ (row.platform || 'unknown').toUpperCase() }}</span>
-                    <span class="ml-auto text-[11px] text-gray-500 dark:text-gray-400">{{ formatDateTime(row.created_at) }}</span>
+                    <span class="ml-auto text-xs text-gray-500 dark:text-gray-400">{{ formatDateTime(row.created_at) }}</span>
                   </div>
                   <div class="break-all text-xs text-gray-600 dark:text-gray-300">{{ row.model || '-' }}</div>
                   <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
@@ -230,11 +231,11 @@ const kindBadgeClass = (kind: string) => {
                     <span>{{ row.status_code ?? '-' }}</span>
                   </div>
                   <div v-if="row.request_id" class="flex items-center gap-2">
-                    <span class="min-w-0 flex-1 truncate font-mono text-[11px] text-gray-700 dark:text-gray-200" :title="row.request_id">
+                    <span class="min-w-0 flex-1 truncate font-mono text-xs text-gray-700 dark:text-gray-200" :title="row.request_id">
                       {{ row.request_id }}
                     </span>
                     <button
-                      class="shrink-0 rounded-md bg-gray-100 px-2 py-1 text-[10px] font-bold text-gray-600 hover:bg-gray-200 dark:bg-dark-700 dark:text-gray-300 dark:hover:bg-dark-600"
+                      class="shrink-0 rounded-control bg-gray-100 px-2 py-1 text-xs font-bold text-gray-600 hover:bg-gray-200 dark:bg-dark-700 dark:text-gray-300 dark:hover:bg-dark-600"
                       @click="handleCopyRequestId(row.request_id)"
                     >
                       {{ t('admin.ops.requestDetails.copy') }}
@@ -242,7 +243,7 @@ const kindBadgeClass = (kind: string) => {
                   </div>
                   <button
                     v-if="row.kind === 'error' && row.error_id"
-                    class="w-full rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30"
+                    class="w-full rounded-control bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30"
                     @click="openErrorDetail(row.error_id)"
                   >
                     {{ t('admin.ops.requestDetails.viewError') }}
@@ -252,28 +253,28 @@ const kindBadgeClass = (kind: string) => {
               <table v-else class="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
                 <thead class="sticky top-0 z-10 bg-gray-50 dark:bg-dark-950">
                 <tr>
-                  <th class="px-4 py-3 text-left text-[11px] font-bold tracking-wider text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-500 dark:text-gray-400">
                     {{ t('admin.ops.requestDetails.table.time') }}
                   </th>
-                  <th class="px-4 py-3 text-left text-[11px] font-bold tracking-wider text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-500 dark:text-gray-400">
                     {{ t('admin.ops.requestDetails.table.kind') }}
                   </th>
-                  <th class="px-4 py-3 text-left text-[11px] font-bold tracking-wider text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-500 dark:text-gray-400">
                     {{ t('admin.ops.requestDetails.table.platform') }}
                   </th>
-                  <th class="px-4 py-3 text-left text-[11px] font-bold tracking-wider text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-500 dark:text-gray-400">
                     {{ t('admin.ops.requestDetails.table.model') }}
                   </th>
-                  <th class="px-4 py-3 text-left text-[11px] font-bold tracking-wider text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-500 dark:text-gray-400">
                     {{ t('admin.ops.requestDetails.table.duration') }}
                   </th>
-                  <th class="px-4 py-3 text-left text-[11px] font-bold tracking-wider text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-500 dark:text-gray-400">
                     {{ t('admin.ops.requestDetails.table.status') }}
                   </th>
-                  <th class="px-4 py-3 text-left text-[11px] font-bold tracking-wider text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 text-left text-xs font-bold tracking-wider text-gray-500 dark:text-gray-400">
                     {{ t('admin.ops.requestDetails.table.requestId') }}
                   </th>
-                  <th class="px-4 py-3 text-right text-[11px] font-bold tracking-wider text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 text-right text-xs font-bold tracking-wider text-gray-500 dark:text-gray-400">
                     {{ t('admin.ops.requestDetails.table.actions') }}
                   </th>
                 </tr>
@@ -284,7 +285,7 @@ const kindBadgeClass = (kind: string) => {
                     {{ formatDateTime(row.created_at) }}
                   </td>
                   <td class="whitespace-nowrap px-4 py-3">
-                    <span class="rounded-full px-2 py-1 text-[10px] font-bold" :class="kindBadgeClass(row.kind)">
+                    <span class="rounded-full px-2 py-1 text-xs font-bold" :class="kindBadgeClass(row.kind)">
                       {{ row.kind === 'error' ? t('admin.ops.requestDetails.kind.error') : t('admin.ops.requestDetails.kind.success') }}
                     </span>
                   </td>
@@ -302,11 +303,11 @@ const kindBadgeClass = (kind: string) => {
                   </td>
                   <td class="px-4 py-3">
                     <div v-if="row.request_id" class="flex items-center gap-2">
-                      <span class="max-w-[220px] truncate font-mono text-[11px] text-gray-700 dark:text-gray-200" :title="row.request_id">
+                      <span class="max-w-[220px] truncate font-mono text-xs text-gray-700 dark:text-gray-200" :title="row.request_id">
                         {{ row.request_id }}
                       </span>
                       <button
-                        class="rounded-md bg-gray-100 px-2 py-1 text-[10px] font-bold text-gray-600 hover:bg-gray-200 dark:bg-dark-950 dark:text-gray-300 dark:hover:bg-dark-800"
+                        class="rounded-control bg-gray-100 px-2 py-1 text-xs font-bold text-gray-600 hover:bg-gray-200 dark:bg-dark-950 dark:text-gray-300 dark:hover:bg-dark-800"
                         @click="handleCopyRequestId(row.request_id)"
                       >
                         {{ t('admin.ops.requestDetails.copy') }}
@@ -317,7 +318,7 @@ const kindBadgeClass = (kind: string) => {
                   <td class="whitespace-nowrap px-4 py-3 text-right">
                     <button
                       v-if="row.kind === 'error' && row.error_id"
-                      class="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30"
+                      class="rounded-control bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30"
                       @click="openErrorDetail(row.error_id)"
                     >
                       {{ t('admin.ops.requestDetails.viewError') }}

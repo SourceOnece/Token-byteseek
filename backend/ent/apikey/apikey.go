@@ -75,8 +75,8 @@ const (
 	FieldWindow1dStart = "window_1d_start"
 	// FieldWindow7dStart holds the string denoting the window_7d_start field in the database.
 	FieldWindow7dStart = "window_7d_start"
-	// FieldFallbackToDefaultGroupWhenUnavailable holds the string denoting the fallback_to_default_group_when_unavailable field in the database.
-	FieldFallbackToDefaultGroupWhenUnavailable = "fallback_to_default_group_when_unavailable"
+	// FieldFallbackWhenGroupUnavailable holds the string denoting the fallback_when_group_unavailable field in the database.
+	FieldFallbackWhenGroupUnavailable = "fallback_when_group_unavailable"
 	// FieldManagedBy holds the string denoting the managed_by field in the database.
 	FieldManagedBy = "managed_by"
 	// EdgeUser holds the string denoting the user edge name in mutations.
@@ -161,7 +161,7 @@ var Columns = []string{
 	FieldWindow5hStart,
 	FieldWindow1dStart,
 	FieldWindow7dStart,
-	FieldFallbackToDefaultGroupWhenUnavailable,
+	FieldFallbackWhenGroupUnavailable,
 	FieldManagedBy,
 }
 
@@ -227,8 +227,8 @@ var (
 	DefaultUsage1d float64
 	// DefaultUsage7d holds the default value on creation for the "usage_7d" field.
 	DefaultUsage7d float64
-	// DefaultFallbackToDefaultGroupWhenUnavailable holds the default value on creation for the "fallback_to_default_group_when_unavailable" field.
-	DefaultFallbackToDefaultGroupWhenUnavailable bool
+	// DefaultFallbackWhenGroupUnavailable holds the default value on creation for the "fallback_when_group_unavailable" field.
+	DefaultFallbackWhenGroupUnavailable bool
 	// ManagedByValidator is a validator for the "managed_by" field. It is called by the builders before save.
 	ManagedByValidator func(string) error
 )
@@ -376,9 +376,9 @@ func ByWindow7dStart(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldWindow7dStart, opts...).ToFunc()
 }
 
-// ByFallbackToDefaultGroupWhenUnavailable orders the results by the fallback_to_default_group_when_unavailable field.
-func ByFallbackToDefaultGroupWhenUnavailable(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldFallbackToDefaultGroupWhenUnavailable, opts...).ToFunc()
+// ByFallbackWhenGroupUnavailable orders the results by the fallback_when_group_unavailable field.
+func ByFallbackWhenGroupUnavailable(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFallbackWhenGroupUnavailable, opts...).ToFunc()
 }
 
 // ByManagedBy orders the results by the managed_by field.

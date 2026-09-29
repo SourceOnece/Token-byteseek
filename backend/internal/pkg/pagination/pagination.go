@@ -24,15 +24,6 @@ type PaginationResult struct {
 	Pages    int
 }
 
-// DefaultPagination 默认分页参数
-func DefaultPagination() PaginationParams {
-	return PaginationParams{
-		Page:      1,
-		PageSize:  20,
-		SortOrder: SortOrderDesc,
-	}
-}
-
 // Offset 计算偏移量
 func (p PaginationParams) Offset() int {
 	if p.Page < 1 {
@@ -74,4 +65,18 @@ func NormalizeSortOrder(order string, defaultOrder string) string {
 // NormalizedSortOrder returns the normalized sort order using defaultOrder as fallback.
 func (p PaginationParams) NormalizedSortOrder(defaultOrder string) string {
 	return NormalizeSortOrder(p.SortOrder, defaultOrder)
+}
+
+// ResultFromTotal 保留存储分页的总页数计算。
+func ResultFromTotal(total int64, params PaginationParams) *PaginationResult {
+	pages := int(total) / params.Limit()
+	if int(total)%params.Limit() > 0 {
+		pages++
+	}
+	return &PaginationResult{
+		Total:    total,
+		Page:     params.Page,
+		PageSize: params.Limit(),
+		Pages:    pages,
+	}
 }

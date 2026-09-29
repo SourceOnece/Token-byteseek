@@ -11,14 +11,14 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/TokenFlux/TokenRouter/ent/account"
 	"github.com/TokenFlux/TokenRouter/ent/apikey"
 	"github.com/TokenFlux/TokenRouter/ent/group"
+	"github.com/TokenFlux/TokenRouter/ent/provider"
 	"github.com/TokenFlux/TokenRouter/ent/team"
 	"github.com/TokenFlux/TokenRouter/ent/usagelog"
 	"github.com/TokenFlux/TokenRouter/ent/user"
 	"github.com/TokenFlux/TokenRouter/ent/usersubscription"
-	"github.com/TokenFlux/TokenRouter/internal/domain"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
 // UsageLogCreate is the builder for creating a UsageLog entity.
@@ -69,9 +69,23 @@ func (_c *UsageLogCreate) SetAPIKeyID(v int64) *UsageLogCreate {
 	return _c
 }
 
-// SetAccountID sets the "account_id" field.
-func (_c *UsageLogCreate) SetAccountID(v int64) *UsageLogCreate {
-	_c.mutation.SetAccountID(v)
+// SetProviderID sets the "provider_id" field.
+func (_c *UsageLogCreate) SetProviderID(v int64) *UsageLogCreate {
+	_c.mutation.SetProviderID(v)
+	return _c
+}
+
+// SetPlatform sets the "platform" field.
+func (_c *UsageLogCreate) SetPlatform(v string) *UsageLogCreate {
+	_c.mutation.SetPlatform(v)
+	return _c
+}
+
+// SetNillablePlatform sets the "platform" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillablePlatform(v *string) *UsageLogCreate {
+	if v != nil {
+		_c.SetPlatform(*v)
+	}
 	return _c
 }
 
@@ -115,16 +129,16 @@ func (_c *UsageLogCreate) SetNillableUpstreamModel(v *string) *UsageLogCreate {
 	return _c
 }
 
-// SetChannelID sets the "channel_id" field.
-func (_c *UsageLogCreate) SetChannelID(v int64) *UsageLogCreate {
-	_c.mutation.SetChannelID(v)
+// SetPricingConfigID sets the "pricing_config_id" field.
+func (_c *UsageLogCreate) SetPricingConfigID(v int64) *UsageLogCreate {
+	_c.mutation.SetPricingConfigID(v)
 	return _c
 }
 
-// SetNillableChannelID sets the "channel_id" field if the given value is not nil.
-func (_c *UsageLogCreate) SetNillableChannelID(v *int64) *UsageLogCreate {
+// SetNillablePricingConfigID sets the "pricing_config_id" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillablePricingConfigID(v *int64) *UsageLogCreate {
 	if v != nil {
-		_c.SetChannelID(*v)
+		_c.SetPricingConfigID(*v)
 	}
 	return _c
 }
@@ -410,7 +424,7 @@ func (_c *UsageLogCreate) SetNillableBalanceAmountUsd(v *float64) *UsageLogCreat
 }
 
 // SetBillingAllocations sets the "billing_allocations" field.
-func (_c *UsageLogCreate) SetBillingAllocations(v []domain.BillingAllocation) *UsageLogCreate {
+func (_c *UsageLogCreate) SetBillingAllocations(v []billing.BillingAllocation) *UsageLogCreate {
 	_c.mutation.SetBillingAllocations(v)
 	return _c
 }
@@ -443,16 +457,16 @@ func (_c *UsageLogCreate) SetNillableLongContextBillingApplied(v *bool) *UsageLo
 	return _c
 }
 
-// SetAccountRateMultiplier sets the "account_rate_multiplier" field.
-func (_c *UsageLogCreate) SetAccountRateMultiplier(v float64) *UsageLogCreate {
-	_c.mutation.SetAccountRateMultiplier(v)
+// SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
+func (_c *UsageLogCreate) SetProviderRateMultiplier(v float64) *UsageLogCreate {
+	_c.mutation.SetProviderRateMultiplier(v)
 	return _c
 }
 
-// SetNillableAccountRateMultiplier sets the "account_rate_multiplier" field if the given value is not nil.
-func (_c *UsageLogCreate) SetNillableAccountRateMultiplier(v *float64) *UsageLogCreate {
+// SetNillableProviderRateMultiplier sets the "provider_rate_multiplier" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableProviderRateMultiplier(v *float64) *UsageLogCreate {
 	if v != nil {
-		_c.SetAccountRateMultiplier(*v)
+		_c.SetProviderRateMultiplier(*v)
 	}
 	return _c
 }
@@ -697,9 +711,9 @@ func (_c *UsageLogCreate) SetAPIKey(v *APIKey) *UsageLogCreate {
 	return _c.SetAPIKeyID(v.ID)
 }
 
-// SetAccount sets the "account" edge to the Account entity.
-func (_c *UsageLogCreate) SetAccount(v *Account) *UsageLogCreate {
-	return _c.SetAccountID(v.ID)
+// SetProvider sets the "provider" edge to the Provider entity.
+func (_c *UsageLogCreate) SetProvider(v *Provider) *UsageLogCreate {
+	return _c.SetProviderID(v.ID)
 }
 
 // SetGroup sets the "group" edge to the Group entity.
@@ -752,6 +766,10 @@ func (_c *UsageLogCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *UsageLogCreate) defaults() {
+	if _, ok := _c.mutation.Platform(); !ok {
+		v := usagelog.DefaultPlatform
+		_c.mutation.SetPlatform(v)
+	}
 	if _, ok := _c.mutation.InputTokens(); !ok {
 		v := usagelog.DefaultInputTokens
 		_c.mutation.SetInputTokens(v)
@@ -850,8 +868,16 @@ func (_c *UsageLogCreate) check() error {
 	if _, ok := _c.mutation.APIKeyID(); !ok {
 		return &ValidationError{Name: "api_key_id", err: errors.New(`ent: missing required field "UsageLog.api_key_id"`)}
 	}
-	if _, ok := _c.mutation.AccountID(); !ok {
-		return &ValidationError{Name: "account_id", err: errors.New(`ent: missing required field "UsageLog.account_id"`)}
+	if _, ok := _c.mutation.ProviderID(); !ok {
+		return &ValidationError{Name: "provider_id", err: errors.New(`ent: missing required field "UsageLog.provider_id"`)}
+	}
+	if _, ok := _c.mutation.Platform(); !ok {
+		return &ValidationError{Name: "platform", err: errors.New(`ent: missing required field "UsageLog.platform"`)}
+	}
+	if v, ok := _c.mutation.Platform(); ok {
+		if err := usagelog.PlatformValidator(v); err != nil {
+			return &ValidationError{Name: "platform", err: fmt.Errorf(`ent: validator failed for field "UsageLog.platform": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.RequestID(); !ok {
 		return &ValidationError{Name: "request_id", err: errors.New(`ent: missing required field "UsageLog.request_id"`)}
@@ -1006,8 +1032,8 @@ func (_c *UsageLogCreate) check() error {
 	if len(_c.mutation.APIKeyIDs()) == 0 {
 		return &ValidationError{Name: "api_key", err: errors.New(`ent: missing required edge "UsageLog.api_key"`)}
 	}
-	if len(_c.mutation.AccountIDs()) == 0 {
-		return &ValidationError{Name: "account", err: errors.New(`ent: missing required edge "UsageLog.account"`)}
+	if len(_c.mutation.ProviderIDs()) == 0 {
+		return &ValidationError{Name: "provider", err: errors.New(`ent: missing required edge "UsageLog.provider"`)}
 	}
 	return nil
 }
@@ -1040,6 +1066,10 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 		_spec.SetField(usagelog.FieldBillingUserID, field.TypeInt64, value)
 		_node.BillingUserID = value
 	}
+	if value, ok := _c.mutation.Platform(); ok {
+		_spec.SetField(usagelog.FieldPlatform, field.TypeString, value)
+		_node.Platform = value
+	}
 	if value, ok := _c.mutation.RequestID(); ok {
 		_spec.SetField(usagelog.FieldRequestID, field.TypeString, value)
 		_node.RequestID = value
@@ -1056,9 +1086,9 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 		_spec.SetField(usagelog.FieldUpstreamModel, field.TypeString, value)
 		_node.UpstreamModel = &value
 	}
-	if value, ok := _c.mutation.ChannelID(); ok {
-		_spec.SetField(usagelog.FieldChannelID, field.TypeInt64, value)
-		_node.ChannelID = &value
+	if value, ok := _c.mutation.PricingConfigID(); ok {
+		_spec.SetField(usagelog.FieldPricingConfigID, field.TypeInt64, value)
+		_node.PricingConfigID = &value
 	}
 	if value, ok := _c.mutation.ResponseModel(); ok {
 		_spec.SetField(usagelog.FieldResponseModel, field.TypeString, value)
@@ -1144,9 +1174,9 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 		_spec.SetField(usagelog.FieldLongContextBillingApplied, field.TypeBool, value)
 		_node.LongContextBillingApplied = value
 	}
-	if value, ok := _c.mutation.AccountRateMultiplier(); ok {
-		_spec.SetField(usagelog.FieldAccountRateMultiplier, field.TypeFloat64, value)
-		_node.AccountRateMultiplier = &value
+	if value, ok := _c.mutation.ProviderRateMultiplier(); ok {
+		_spec.SetField(usagelog.FieldProviderRateMultiplier, field.TypeFloat64, value)
+		_node.ProviderRateMultiplier = &value
 	}
 	if value, ok := _c.mutation.BillingType(); ok {
 		_spec.SetField(usagelog.FieldBillingType, field.TypeInt8, value)
@@ -1250,21 +1280,21 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 		_node.APIKeyID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.AccountIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.ProviderIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   usagelog.AccountTable,
-			Columns: []string{usagelog.AccountColumn},
+			Table:   usagelog.ProviderTable,
+			Columns: []string{usagelog.ProviderColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.AccountID = nodes[0]
+		_node.ProviderID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.GroupIDs(); len(nodes) > 0 {
@@ -1436,15 +1466,27 @@ func (u *UsageLogUpsert) UpdateAPIKeyID() *UsageLogUpsert {
 	return u
 }
 
-// SetAccountID sets the "account_id" field.
-func (u *UsageLogUpsert) SetAccountID(v int64) *UsageLogUpsert {
-	u.Set(usagelog.FieldAccountID, v)
+// SetProviderID sets the "provider_id" field.
+func (u *UsageLogUpsert) SetProviderID(v int64) *UsageLogUpsert {
+	u.Set(usagelog.FieldProviderID, v)
 	return u
 }
 
-// UpdateAccountID sets the "account_id" field to the value that was provided on create.
-func (u *UsageLogUpsert) UpdateAccountID() *UsageLogUpsert {
-	u.SetExcluded(usagelog.FieldAccountID)
+// UpdateProviderID sets the "provider_id" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateProviderID() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldProviderID)
+	return u
+}
+
+// SetPlatform sets the "platform" field.
+func (u *UsageLogUpsert) SetPlatform(v string) *UsageLogUpsert {
+	u.Set(usagelog.FieldPlatform, v)
+	return u
+}
+
+// UpdatePlatform sets the "platform" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdatePlatform() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldPlatform)
 	return u
 }
 
@@ -1508,27 +1550,27 @@ func (u *UsageLogUpsert) ClearUpstreamModel() *UsageLogUpsert {
 	return u
 }
 
-// SetChannelID sets the "channel_id" field.
-func (u *UsageLogUpsert) SetChannelID(v int64) *UsageLogUpsert {
-	u.Set(usagelog.FieldChannelID, v)
+// SetPricingConfigID sets the "pricing_config_id" field.
+func (u *UsageLogUpsert) SetPricingConfigID(v int64) *UsageLogUpsert {
+	u.Set(usagelog.FieldPricingConfigID, v)
 	return u
 }
 
-// UpdateChannelID sets the "channel_id" field to the value that was provided on create.
-func (u *UsageLogUpsert) UpdateChannelID() *UsageLogUpsert {
-	u.SetExcluded(usagelog.FieldChannelID)
+// UpdatePricingConfigID sets the "pricing_config_id" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdatePricingConfigID() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldPricingConfigID)
 	return u
 }
 
-// AddChannelID adds v to the "channel_id" field.
-func (u *UsageLogUpsert) AddChannelID(v int64) *UsageLogUpsert {
-	u.Add(usagelog.FieldChannelID, v)
+// AddPricingConfigID adds v to the "pricing_config_id" field.
+func (u *UsageLogUpsert) AddPricingConfigID(v int64) *UsageLogUpsert {
+	u.Add(usagelog.FieldPricingConfigID, v)
 	return u
 }
 
-// ClearChannelID clears the value of the "channel_id" field.
-func (u *UsageLogUpsert) ClearChannelID() *UsageLogUpsert {
-	u.SetNull(usagelog.FieldChannelID)
+// ClearPricingConfigID clears the value of the "pricing_config_id" field.
+func (u *UsageLogUpsert) ClearPricingConfigID() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldPricingConfigID)
 	return u
 }
 
@@ -1893,7 +1935,7 @@ func (u *UsageLogUpsert) AddBalanceAmountUsd(v float64) *UsageLogUpsert {
 }
 
 // SetBillingAllocations sets the "billing_allocations" field.
-func (u *UsageLogUpsert) SetBillingAllocations(v []domain.BillingAllocation) *UsageLogUpsert {
+func (u *UsageLogUpsert) SetBillingAllocations(v []billing.BillingAllocation) *UsageLogUpsert {
 	u.Set(usagelog.FieldBillingAllocations, v)
 	return u
 }
@@ -1940,27 +1982,27 @@ func (u *UsageLogUpsert) UpdateLongContextBillingApplied() *UsageLogUpsert {
 	return u
 }
 
-// SetAccountRateMultiplier sets the "account_rate_multiplier" field.
-func (u *UsageLogUpsert) SetAccountRateMultiplier(v float64) *UsageLogUpsert {
-	u.Set(usagelog.FieldAccountRateMultiplier, v)
+// SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
+func (u *UsageLogUpsert) SetProviderRateMultiplier(v float64) *UsageLogUpsert {
+	u.Set(usagelog.FieldProviderRateMultiplier, v)
 	return u
 }
 
-// UpdateAccountRateMultiplier sets the "account_rate_multiplier" field to the value that was provided on create.
-func (u *UsageLogUpsert) UpdateAccountRateMultiplier() *UsageLogUpsert {
-	u.SetExcluded(usagelog.FieldAccountRateMultiplier)
+// UpdateProviderRateMultiplier sets the "provider_rate_multiplier" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateProviderRateMultiplier() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldProviderRateMultiplier)
 	return u
 }
 
-// AddAccountRateMultiplier adds v to the "account_rate_multiplier" field.
-func (u *UsageLogUpsert) AddAccountRateMultiplier(v float64) *UsageLogUpsert {
-	u.Add(usagelog.FieldAccountRateMultiplier, v)
+// AddProviderRateMultiplier adds v to the "provider_rate_multiplier" field.
+func (u *UsageLogUpsert) AddProviderRateMultiplier(v float64) *UsageLogUpsert {
+	u.Add(usagelog.FieldProviderRateMultiplier, v)
 	return u
 }
 
-// ClearAccountRateMultiplier clears the value of the "account_rate_multiplier" field.
-func (u *UsageLogUpsert) ClearAccountRateMultiplier() *UsageLogUpsert {
-	u.SetNull(usagelog.FieldAccountRateMultiplier)
+// ClearProviderRateMultiplier clears the value of the "provider_rate_multiplier" field.
+func (u *UsageLogUpsert) ClearProviderRateMultiplier() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldProviderRateMultiplier)
 	return u
 }
 
@@ -2380,17 +2422,31 @@ func (u *UsageLogUpsertOne) UpdateAPIKeyID() *UsageLogUpsertOne {
 	})
 }
 
-// SetAccountID sets the "account_id" field.
-func (u *UsageLogUpsertOne) SetAccountID(v int64) *UsageLogUpsertOne {
+// SetProviderID sets the "provider_id" field.
+func (u *UsageLogUpsertOne) SetProviderID(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.SetAccountID(v)
+		s.SetProviderID(v)
 	})
 }
 
-// UpdateAccountID sets the "account_id" field to the value that was provided on create.
-func (u *UsageLogUpsertOne) UpdateAccountID() *UsageLogUpsertOne {
+// UpdateProviderID sets the "provider_id" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateProviderID() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateAccountID()
+		s.UpdateProviderID()
+	})
+}
+
+// SetPlatform sets the "platform" field.
+func (u *UsageLogUpsertOne) SetPlatform(v string) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetPlatform(v)
+	})
+}
+
+// UpdatePlatform sets the "platform" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdatePlatform() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdatePlatform()
 	})
 }
 
@@ -2464,31 +2520,31 @@ func (u *UsageLogUpsertOne) ClearUpstreamModel() *UsageLogUpsertOne {
 	})
 }
 
-// SetChannelID sets the "channel_id" field.
-func (u *UsageLogUpsertOne) SetChannelID(v int64) *UsageLogUpsertOne {
+// SetPricingConfigID sets the "pricing_config_id" field.
+func (u *UsageLogUpsertOne) SetPricingConfigID(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.SetChannelID(v)
+		s.SetPricingConfigID(v)
 	})
 }
 
-// AddChannelID adds v to the "channel_id" field.
-func (u *UsageLogUpsertOne) AddChannelID(v int64) *UsageLogUpsertOne {
+// AddPricingConfigID adds v to the "pricing_config_id" field.
+func (u *UsageLogUpsertOne) AddPricingConfigID(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.AddChannelID(v)
+		s.AddPricingConfigID(v)
 	})
 }
 
-// UpdateChannelID sets the "channel_id" field to the value that was provided on create.
-func (u *UsageLogUpsertOne) UpdateChannelID() *UsageLogUpsertOne {
+// UpdatePricingConfigID sets the "pricing_config_id" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdatePricingConfigID() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateChannelID()
+		s.UpdatePricingConfigID()
 	})
 }
 
-// ClearChannelID clears the value of the "channel_id" field.
-func (u *UsageLogUpsertOne) ClearChannelID() *UsageLogUpsertOne {
+// ClearPricingConfigID clears the value of the "pricing_config_id" field.
+func (u *UsageLogUpsertOne) ClearPricingConfigID() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.ClearChannelID()
+		s.ClearPricingConfigID()
 	})
 }
 
@@ -2913,7 +2969,7 @@ func (u *UsageLogUpsertOne) UpdateBalanceAmountUsd() *UsageLogUpsertOne {
 }
 
 // SetBillingAllocations sets the "billing_allocations" field.
-func (u *UsageLogUpsertOne) SetBillingAllocations(v []domain.BillingAllocation) *UsageLogUpsertOne {
+func (u *UsageLogUpsertOne) SetBillingAllocations(v []billing.BillingAllocation) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetBillingAllocations(v)
 	})
@@ -2968,31 +3024,31 @@ func (u *UsageLogUpsertOne) UpdateLongContextBillingApplied() *UsageLogUpsertOne
 	})
 }
 
-// SetAccountRateMultiplier sets the "account_rate_multiplier" field.
-func (u *UsageLogUpsertOne) SetAccountRateMultiplier(v float64) *UsageLogUpsertOne {
+// SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
+func (u *UsageLogUpsertOne) SetProviderRateMultiplier(v float64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.SetAccountRateMultiplier(v)
+		s.SetProviderRateMultiplier(v)
 	})
 }
 
-// AddAccountRateMultiplier adds v to the "account_rate_multiplier" field.
-func (u *UsageLogUpsertOne) AddAccountRateMultiplier(v float64) *UsageLogUpsertOne {
+// AddProviderRateMultiplier adds v to the "provider_rate_multiplier" field.
+func (u *UsageLogUpsertOne) AddProviderRateMultiplier(v float64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.AddAccountRateMultiplier(v)
+		s.AddProviderRateMultiplier(v)
 	})
 }
 
-// UpdateAccountRateMultiplier sets the "account_rate_multiplier" field to the value that was provided on create.
-func (u *UsageLogUpsertOne) UpdateAccountRateMultiplier() *UsageLogUpsertOne {
+// UpdateProviderRateMultiplier sets the "provider_rate_multiplier" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateProviderRateMultiplier() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateAccountRateMultiplier()
+		s.UpdateProviderRateMultiplier()
 	})
 }
 
-// ClearAccountRateMultiplier clears the value of the "account_rate_multiplier" field.
-func (u *UsageLogUpsertOne) ClearAccountRateMultiplier() *UsageLogUpsertOne {
+// ClearProviderRateMultiplier clears the value of the "provider_rate_multiplier" field.
+func (u *UsageLogUpsertOne) ClearProviderRateMultiplier() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.ClearAccountRateMultiplier()
+		s.ClearProviderRateMultiplier()
 	})
 }
 
@@ -3627,17 +3683,31 @@ func (u *UsageLogUpsertBulk) UpdateAPIKeyID() *UsageLogUpsertBulk {
 	})
 }
 
-// SetAccountID sets the "account_id" field.
-func (u *UsageLogUpsertBulk) SetAccountID(v int64) *UsageLogUpsertBulk {
+// SetProviderID sets the "provider_id" field.
+func (u *UsageLogUpsertBulk) SetProviderID(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.SetAccountID(v)
+		s.SetProviderID(v)
 	})
 }
 
-// UpdateAccountID sets the "account_id" field to the value that was provided on create.
-func (u *UsageLogUpsertBulk) UpdateAccountID() *UsageLogUpsertBulk {
+// UpdateProviderID sets the "provider_id" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateProviderID() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateAccountID()
+		s.UpdateProviderID()
+	})
+}
+
+// SetPlatform sets the "platform" field.
+func (u *UsageLogUpsertBulk) SetPlatform(v string) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetPlatform(v)
+	})
+}
+
+// UpdatePlatform sets the "platform" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdatePlatform() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdatePlatform()
 	})
 }
 
@@ -3711,31 +3781,31 @@ func (u *UsageLogUpsertBulk) ClearUpstreamModel() *UsageLogUpsertBulk {
 	})
 }
 
-// SetChannelID sets the "channel_id" field.
-func (u *UsageLogUpsertBulk) SetChannelID(v int64) *UsageLogUpsertBulk {
+// SetPricingConfigID sets the "pricing_config_id" field.
+func (u *UsageLogUpsertBulk) SetPricingConfigID(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.SetChannelID(v)
+		s.SetPricingConfigID(v)
 	})
 }
 
-// AddChannelID adds v to the "channel_id" field.
-func (u *UsageLogUpsertBulk) AddChannelID(v int64) *UsageLogUpsertBulk {
+// AddPricingConfigID adds v to the "pricing_config_id" field.
+func (u *UsageLogUpsertBulk) AddPricingConfigID(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.AddChannelID(v)
+		s.AddPricingConfigID(v)
 	})
 }
 
-// UpdateChannelID sets the "channel_id" field to the value that was provided on create.
-func (u *UsageLogUpsertBulk) UpdateChannelID() *UsageLogUpsertBulk {
+// UpdatePricingConfigID sets the "pricing_config_id" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdatePricingConfigID() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateChannelID()
+		s.UpdatePricingConfigID()
 	})
 }
 
-// ClearChannelID clears the value of the "channel_id" field.
-func (u *UsageLogUpsertBulk) ClearChannelID() *UsageLogUpsertBulk {
+// ClearPricingConfigID clears the value of the "pricing_config_id" field.
+func (u *UsageLogUpsertBulk) ClearPricingConfigID() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.ClearChannelID()
+		s.ClearPricingConfigID()
 	})
 }
 
@@ -4160,7 +4230,7 @@ func (u *UsageLogUpsertBulk) UpdateBalanceAmountUsd() *UsageLogUpsertBulk {
 }
 
 // SetBillingAllocations sets the "billing_allocations" field.
-func (u *UsageLogUpsertBulk) SetBillingAllocations(v []domain.BillingAllocation) *UsageLogUpsertBulk {
+func (u *UsageLogUpsertBulk) SetBillingAllocations(v []billing.BillingAllocation) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.SetBillingAllocations(v)
 	})
@@ -4215,31 +4285,31 @@ func (u *UsageLogUpsertBulk) UpdateLongContextBillingApplied() *UsageLogUpsertBu
 	})
 }
 
-// SetAccountRateMultiplier sets the "account_rate_multiplier" field.
-func (u *UsageLogUpsertBulk) SetAccountRateMultiplier(v float64) *UsageLogUpsertBulk {
+// SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
+func (u *UsageLogUpsertBulk) SetProviderRateMultiplier(v float64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.SetAccountRateMultiplier(v)
+		s.SetProviderRateMultiplier(v)
 	})
 }
 
-// AddAccountRateMultiplier adds v to the "account_rate_multiplier" field.
-func (u *UsageLogUpsertBulk) AddAccountRateMultiplier(v float64) *UsageLogUpsertBulk {
+// AddProviderRateMultiplier adds v to the "provider_rate_multiplier" field.
+func (u *UsageLogUpsertBulk) AddProviderRateMultiplier(v float64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.AddAccountRateMultiplier(v)
+		s.AddProviderRateMultiplier(v)
 	})
 }
 
-// UpdateAccountRateMultiplier sets the "account_rate_multiplier" field to the value that was provided on create.
-func (u *UsageLogUpsertBulk) UpdateAccountRateMultiplier() *UsageLogUpsertBulk {
+// UpdateProviderRateMultiplier sets the "provider_rate_multiplier" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateProviderRateMultiplier() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateAccountRateMultiplier()
+		s.UpdateProviderRateMultiplier()
 	})
 }
 
-// ClearAccountRateMultiplier clears the value of the "account_rate_multiplier" field.
-func (u *UsageLogUpsertBulk) ClearAccountRateMultiplier() *UsageLogUpsertBulk {
+// ClearProviderRateMultiplier clears the value of the "provider_rate_multiplier" field.
+func (u *UsageLogUpsertBulk) ClearProviderRateMultiplier() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.ClearAccountRateMultiplier()
+		s.ClearProviderRateMultiplier()
 	})
 }
 

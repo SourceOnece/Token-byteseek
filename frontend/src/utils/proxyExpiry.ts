@@ -1,4 +1,4 @@
-// 代理有效期展示逻辑(ProxiesView 与 AccountsView 共用)。
+// 代理有效期展示逻辑(ProxiesView 与 ProvidersView 共用)。
 // 到期紧迫度固定两档:剩余 ≤3 天红、≤7 天黄(不读 per-proxy expiry_warn_days)。
 export const EXPIRY_WARN_DAYS = 7
 export const EXPIRY_DANGER_DAYS = 3

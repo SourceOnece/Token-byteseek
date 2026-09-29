@@ -17,7 +17,7 @@ describe('Admin UI request marker', () => {
     '/admin',
     '/admin/users',
     '/api/v1/admin',
-    '/api/v1/admin/accounts?status=active',
+    '/api/v1/admin/providers?status=active',
     'https://api.example.test/api/v1/admin/dashboard',
   ])('marks Admin API request %s before page navigation', (requestURL) => {
     expect(shouldMarkAdminUIRequest(requestURL, '/login')).toBe(true)

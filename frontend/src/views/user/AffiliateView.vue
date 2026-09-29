@@ -9,7 +9,7 @@
 
       <template v-else-if="detail">
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div class="card p-5">
+          <div class="card p-4">
             <p class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-dark-400">
               <Icon name="gift" size="sm" class="text-primary-500" />
               {{ t('affiliate.stats.rebateRate') }}
@@ -21,19 +21,19 @@
               {{ t('affiliate.stats.rebateRateHint') }}
             </p>
           </div>
-          <div class="card p-5">
+          <div class="card p-4">
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.invitedUsers') }}</p>
             <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">
               {{ formatCount(detail.aff_count) }}
             </p>
           </div>
-          <div class="card p-5">
+          <div class="card p-4">
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.availableQuota') }}</p>
             <p class="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
               {{ formatAffiliateAmount(detail.aff_quota) }}
             </p>
           </div>
-          <div class="card p-5">
+          <div class="card p-4">
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.stats.totalQuota') }}</p>
             <p class="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">
               {{ formatAffiliateAmount(detail.aff_history_quota) }}
@@ -52,7 +52,7 @@
           <div class="mt-5 grid min-w-0 gap-4 md:grid-cols-2">
             <div class="min-w-0 space-y-2">
               <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('affiliate.yourCode') }}</p>
-              <div data-testid="affiliate-code-row" class="flex min-w-0 flex-col items-stretch gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-dark-700 dark:bg-dark-900 sm:flex-row sm:items-center">
+              <div data-testid="affiliate-code-row" class="flex min-w-0 flex-col items-stretch gap-2 rounded-surface border border-gray-200 bg-gray-50 px-3 py-2 dark:border-dark-700 dark:bg-dark-900 sm:flex-row sm:items-center">
                 <code data-testid="affiliate-code" class="min-w-0 break-all text-sm font-semibold text-gray-900 dark:text-white sm:flex-1 sm:truncate">{{ detail.aff_code }}</code>
                 <button data-testid="affiliate-copy-code" class="btn btn-secondary btn-sm w-full sm:w-auto sm:shrink-0" @click="copyCode">
                   <Icon name="copy" size="sm" />
@@ -63,7 +63,7 @@
 
             <div class="min-w-0 space-y-2">
               <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('affiliate.inviteLink') }}</p>
-              <div data-testid="affiliate-link-row" class="flex min-w-0 flex-col items-stretch gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-dark-700 dark:bg-dark-900 sm:flex-row sm:items-center">
+              <div data-testid="affiliate-link-row" class="flex min-w-0 flex-col items-stretch gap-2 rounded-surface border border-gray-200 bg-gray-50 px-3 py-2 dark:border-dark-700 dark:bg-dark-900 sm:flex-row sm:items-center">
                 <code data-testid="affiliate-link" class="min-w-0 break-all text-sm text-gray-700 dark:text-gray-300 sm:flex-1 sm:truncate">{{ inviteLink }}</code>
                 <button data-testid="affiliate-copy-link" class="btn btn-secondary btn-sm w-full sm:w-auto sm:shrink-0" @click="copyInviteLink">
                   <Icon name="copy" size="sm" />
@@ -73,7 +73,7 @@
             </div>
           </div>
 
-          <div class="mt-5 rounded-xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-900/40 dark:bg-primary-900/20">
+          <div class="mt-5 rounded-surface border border-primary-200 bg-primary-50 p-4 dark:border-primary-900/40 dark:bg-primary-900/20">
             <p class="text-sm font-medium text-primary-800 dark:text-primary-200">{{ t('affiliate.tips.title') }}</p>
             <ul class="mt-2 space-y-1 text-sm text-primary-700 dark:text-primary-300">
               <li>1. {{ t('affiliate.tips.line1') }}</li>
@@ -107,7 +107,7 @@
 
         <div class="card p-6">
           <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('affiliate.invitees.title') }}</h3>
-          <div v-if="detail.invitees.length === 0" class="mt-4 rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-dark-700 dark:text-dark-400">
+          <div v-if="detail.invitees.length === 0" class="mt-4 rounded-surface border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-dark-700 dark:text-dark-400">
             {{ t('affiliate.invitees.empty') }}
           </div>
           <div v-else class="mt-4 overflow-x-auto">
@@ -174,8 +174,8 @@ const inviteLink = computed(() => {
 // 去掉多余尾零，让页面展示更清爽，例如 20.00 展示为 20。
 const formattedRebateRate = computed(() => {
   const v = detail.value?.effective_rebate_rate_percent ?? 0
-  const rounded = Math.round(v * 100) / 100
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toString()
+  const roundedValue = Math.round(v * 100) / 100
+  return Number.isInteger(roundedValue) ? String(roundedValue) : roundedValue.toString()
 })
 
 function formatCount(value: number): string {

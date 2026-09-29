@@ -1,4 +1,4 @@
-.PHONY: build generate test test-unit test-integration test-e2e
+.PHONY: build generate test test-architecture test-unit test-integration test-e2e test-e2e-local
 
 VERSION ?= $(shell ./scripts/resolve-version.sh)
 LDFLAGS ?= -s -w -X main.Version=$(VERSION)
@@ -10,18 +10,23 @@ generate:
 	go generate ./ent
 	go generate ./cmd/server
 
-test:
+test: test-architecture
 	go test ./...
-	golangci-lint run ./...
+	bash ../tools/golangci-lint.sh config verify
+	bash ../tools/golangci-lint.sh run ./...
+
+# 架构检查读取模块外的后端文件，关闭测试缓存以保证每次检查当前源码。
+test-architecture:
+	cd ../tools/architecture && GOWORK=off go test -count=1 ./...
 
 test-unit:
 	go test -tags=unit ./...
 
 test-integration:
-	go test -tags=integration ./...
+	# 限制包级并发，避免本地和 CI 同时启动过多 PostgreSQL/Redis 测试容器。
+	go test -tags=integration -p=4 ./...
 
-test-e2e:
-	./scripts/e2e-test.sh
+test-e2e: test-e2e-local
 
 test-e2e-local:
-	go test -tags=e2e -v -timeout=300s ./internal/integration/...
+	go test -tags=e2e -v -timeout=300s ./tests/integration/...

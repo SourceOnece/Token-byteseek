@@ -11,7 +11,9 @@
       :aria-label="ariaLabel ?? 'Select option'"
       :aria-describedby="ariaDescribedby"
       :class="[
-        'select-trigger',
+        'input input-trigger',
+        // 触发器文字色沿用选择器既有的中性灰(比 .input 默认色略浅),保持现状视觉。
+        'text-gray-900 dark:text-gray-100',
         isOpen && 'select-trigger-open',
         error && 'select-trigger-error',
         disabled && 'select-trigger-disabled'
@@ -47,7 +49,7 @@
 
     <!-- Teleport dropdown to body to escape stacking context -->
     <Teleport to="body">
-      <Transition name="select-dropdown">
+      <Transition name="dropdown-fade">
         <div
           v-if="isOpen"
           ref="dropdownRef"
@@ -125,6 +127,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
+import { SELECT_PANEL_MAX_HEIGHT, Z_INDEX } from '@/constants/overlay'
 
 const { t } = useI18n()
 
@@ -211,7 +214,7 @@ const dropdownStyle = computed(() => {
     left: `${dropdownLeft.value ?? fallbackLeft}px`,
     minWidth: `${rect.width}px`,
     maxWidth: `${maxDropdownWidth}px`,
-    zIndex: '100000020'
+    zIndex: String(Z_INDEX.TELEPORT_DROPDOWN)
   }
 
   if (dropdownPosition.value === 'top') {
@@ -355,15 +358,19 @@ const updateDropdownLeft = () => {
 
 const updateDropdownDirection = () => {
   if (!dropdownRef.value || !triggerRect.value) return
-  const dropdownHeight = dropdownRef.value.offsetHeight || 240
-  const spaceBelow = window.innerHeight - triggerRect.value.bottom
-  const spaceAbove = triggerRect.value.top
+  nextTick(() => {
+    if (!dropdownRef.value || !triggerRect.value) return
+    updateDropdownLeft()
+    const dropdownHeight = dropdownRef.value.offsetHeight || SELECT_PANEL_MAX_HEIGHT
+    const spaceBelow = window.innerHeight - triggerRect.value.bottom
+    const spaceAbove = triggerRect.value.top
 
-  if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
-    dropdownPosition.value = 'top'
-  } else {
-    dropdownPosition.value = 'bottom'
-  }
+    if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+      dropdownPosition.value = 'top'
+    } else {
+      dropdownPosition.value = 'bottom'
+    }
+  })
 }
 
 const calculateDropdownPosition = () => { updateTriggerRect() }
@@ -493,22 +500,8 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.select-trigger {
-  @apply flex w-full items-center justify-between gap-2;
-  @apply rounded-none px-4 py-2.5 text-sm font-semibold;
-  @apply min-h-11;
-  @apply bg-white dark:bg-dark-800;
-  @apply text-gray-950 dark:text-dark-50;
-  @apply transition-all duration-150;
-  @apply focus:outline-none;
-  @apply cursor-pointer;
-  border: 2px solid var(--bh-ink);
-}
-
-.select-trigger:hover:not(.select-trigger-disabled) {
-  background: rgba(255, 204, 0, 0.16);
-}
-
+/* 基线配方(h-9/px-4/py-1.5/边框/焦点环)已与 .input 同源,模板以 input input-trigger 组合;
+   这里只保留展开/错误/禁用三个状态增量。 */
 .select-trigger-open {
   border-color: var(--bh-blue) !important;
   box-shadow: 3px 3px 0 0 var(--bh-blue);
@@ -537,8 +530,8 @@ onUnmounted(() => {
 
 .select-clear {
   @apply flex flex-shrink-0 cursor-pointer items-center justify-center;
-  @apply text-gray-500 transition-colors;
-  @apply hover:text-gray-950 dark:hover:text-gray-200;
+  @apply rounded-compact text-gray-400 transition-colors;
+  @apply hover:text-gray-600 dark:hover:text-gray-200;
 }
 </style>
 
@@ -606,10 +599,9 @@ onUnmounted(() => {
 
 .select-dropdown-portal .select-option-group {
   @apply cursor-default select-none;
-  @apply text-[11px] font-extrabold uppercase tracking-widest;
-  background: var(--bh-ink) !important;
-  color: var(--bh-paper) !important;
-  border-left: none;
+  @apply bg-gray-50 dark:bg-dark-900;
+  @apply text-xs font-bold uppercase tracking-wider;
+  @apply text-primary-900/90 dark:text-gray-400;
 }
 
 .select-dropdown-portal .select-option-group:hover {
@@ -626,15 +618,4 @@ onUnmounted(() => {
   @apply text-gray-600 dark:text-dark-300;
 }
 
-.select-dropdown-enter-active,
-.select-dropdown-leave-active {
-  /* 下拉层会在打开时根据触发器位置更新 left/top，只动画透明度和位移，避免定位值被过渡成侧向飞入。 */
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.select-dropdown-enter-from,
-.select-dropdown-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
 </style>

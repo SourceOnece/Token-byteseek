@@ -137,7 +137,6 @@ export interface SubscriptionPlan {
   groups_restricted?: boolean
   applicable_groups?: Array<{ id: number; name: string }>
   group_rate_multipliers?: Record<string, number> | Record<number, number>
-  group_platform?: string
   group_name?: string
   rate_multiplier?: number
   peak_rate_enabled?: boolean

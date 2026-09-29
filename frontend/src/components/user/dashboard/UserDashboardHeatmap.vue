@@ -10,7 +10,7 @@
       <!-- 色阶图例 -->
       <div class="flex shrink-0 items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
         <span>{{ t('dashboard.heatmapLess') }}</span>
-        <span v-for="level in 5" :key="level" class="h-3 w-3 rounded-sm" :class="levelClass(level - 1)" />
+        <span v-for="level in 5" :key="level" class="heatmap-cell h-3 w-3" :class="levelClass(level - 1)" />
         <span>{{ t('dashboard.heatmapMore') }}</span>
       </div>
     </div>
@@ -35,7 +35,7 @@
         <div
           v-for="m in monthItems"
           :key="`m-${m.weekIndex}`"
-          class="overflow-visible whitespace-nowrap text-[10px] leading-4 text-gray-400 dark:text-gray-500"
+          class="overflow-visible whitespace-nowrap text-xs leading-4 text-gray-400 dark:text-gray-500"
           :style="{ gridColumn: m.weekIndex + 2, gridRow: 1 }"
         >{{ m.label }}</div>
 
@@ -43,7 +43,7 @@
         <div
           v-for="w in weekdayLabels"
           :key="`w-${w.row}`"
-          class="flex items-center pr-1 text-[10px] leading-none text-gray-400 dark:text-gray-500"
+          class="flex items-center pr-1 text-xs leading-none text-gray-400 dark:text-gray-500"
           :style="{ gridColumn: 1, gridRow: w.row + 2 }"
         >{{ w.label }}</div>
 
@@ -52,7 +52,7 @@
           v-for="day in visibleDays"
           :key="day.date"
           data-testid="heatmap-cell"
-          class="h-3 w-3 rounded-sm"
+          class="heatmap-cell h-3 w-3"
           :class="day.future ? 'invisible' : levelClass(day.level)"
           :style="{ gridColumn: day.weekIndex + 2, gridRow: day.dayOfWeek + 2 }"
           @mouseenter="onCellHover(day, $event)"
@@ -67,7 +67,7 @@
     <div
       ref="tooltipRef"
       data-testid="heatmap-tooltip"
-      class="pointer-events-none absolute z-20 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white shadow-lg dark:bg-dark-600"
+      class="pointer-events-none absolute z-20 whitespace-nowrap rounded-control bg-gray-900 px-2 py-1 text-xs text-white shadow-lg dark:bg-dark-600"
       :style="tooltipStyle"
       :aria-hidden="hoveredDay ? 'false' : 'true'"
     >
@@ -349,3 +349,12 @@ onBeforeUnmount(() => {
 // 供仪表盘刷新按钮联动调用
 defineExpose({ reload: load })
 </script>
+
+<style scoped>
+/* 格子只有 12px,全局最小档 compact(6px)已达边长一半、近似椭圆;
+   保持迁移前 sm 尺度的 4px,用组件级局部变量承载,不占用全局档位。 */
+.heatmap-cell {
+  --radius-cell: 4px;
+  border-radius: var(--radius-cell);
+}
+</style>

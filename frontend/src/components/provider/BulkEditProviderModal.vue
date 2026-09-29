@@ -1,0 +1,2530 @@
+<template>
+  <BaseDialog
+    :show="show"
+    :title="t('admin.providers.bulkEdit.title')"
+    width="wide"
+    @close="handleClose"
+  >
+    <form id="bulk-edit-provider-form" class="space-y-5" @submit.prevent="() => handleSubmit()">
+      <!-- Info -->
+      <div class="rounded-control bg-blue-50 p-4 dark:bg-blue-900/20">
+        <p class="text-sm text-blue-700 dark:text-blue-400">
+          <svg class="mr-1.5 inline h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          {{ t('admin.providers.bulkEdit.selectionInfo', { count: targetMode === 'filtered' ? targetPreviewCount : providerIds.length }) }}
+        </p>
+      </div>
+
+      <!-- Mixed platform warning -->
+      <div v-if="isMixedPlatform" class="rounded-control bg-amber-50 p-4 dark:bg-amber-900/20">
+        <p class="text-sm text-amber-700 dark:text-amber-400">
+          <svg class="mr-1.5 inline h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          {{ t('admin.providers.bulkEdit.mixedPlatformWarning', { platforms: targetSelectedPlatforms.join(', ') }) }}
+        </p>
+      </div>
+
+      <!-- OpenAI passthrough -->
+      <div
+        v-if="allOpenAIPassthroughCapable"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+      >
+        <div class="mb-3 flex items-center justify-between">
+          <div class="flex-1 pr-4">
+            <label
+              id="bulk-edit-openai-passthrough-label"
+              class="input-label mb-0"
+              for="bulk-edit-openai-passthrough-enabled"
+            >
+              {{ t('admin.providers.openai.oauthPassthrough') }}
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.providers.openai.oauthPassthroughDesc') }}
+            </p>
+          </div>
+          <input
+            v-model="enableOpenAIPassthrough"
+            id="bulk-edit-openai-passthrough-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-openai-passthrough-body"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-openai-passthrough-body"
+          :class="!enableOpenAIPassthrough && 'pointer-events-none opacity-50'"
+          role="group"
+          aria-labelledby="bulk-edit-openai-passthrough-label"
+        >
+          <Toggle v-model="openaiPassthroughEnabled" variant="flush" off-tone="soft" id="bulk-edit-openai-passthrough-toggle" />
+        </div>
+      </div>
+
+      <!-- OpenAI Codex namespace 工具摊平兼容开关，仅 OAuth 可用 -->
+      <div
+        v-if="allOpenAIOAuth"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+      >
+        <div class="mb-3 flex items-center justify-between">
+          <div class="flex-1 pr-4">
+            <label
+              id="bulk-edit-openai-flatten-namespaces-label"
+              class="input-label mb-0"
+              for="bulk-edit-openai-flatten-namespaces-enabled"
+            >
+              {{ t('admin.providers.openai.flattenNamespaces') }}
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.providers.openai.flattenNamespacesDesc') }}
+            </p>
+          </div>
+          <input
+            v-model="enableOpenAIFlattenNamespaces"
+            id="bulk-edit-openai-flatten-namespaces-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-openai-flatten-namespaces-body"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-openai-flatten-namespaces-body"
+          :class="!enableOpenAIFlattenNamespaces && 'pointer-events-none opacity-50'"
+          role="group"
+          aria-labelledby="bulk-edit-openai-flatten-namespaces-label"
+        >
+          <Toggle v-model="openaiFlattenNamespacesEnabled" variant="flush" off-tone="soft" id="bulk-edit-openai-flatten-namespaces-toggle" />
+        </div>
+      </div>
+
+      <!-- OpenAI Codex 图片工具策略 -->
+      <div
+        v-if="allOpenAIPassthroughCapable"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+      >
+        <div class="mb-3 flex items-center justify-end gap-2">
+          <input
+            v-model="enableCodexImageToolMode"
+            id="bulk-edit-codex-image-tool-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-codex-image-tool"
+            :aria-label="t('admin.providers.openai.codexImageTool')"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-codex-image-tool"
+          :class="!enableCodexImageToolMode && 'pointer-events-none opacity-50'"
+        >
+          <CodexImageToolModeSelector
+            v-model="codexImageToolMode"
+            test-id-prefix="bulk-edit-codex-image-tool"
+          />
+        </div>
+      </div>
+
+      <div v-if="targetSelectedPlatforms.length === 1 && targetSelectedTypes.length === 1">
+        <label class="flex items-center gap-2 text-sm"><input id="bulk-native-protocols-enabled" v-model="enableUpstreamProtocols" type="checkbox" />{{ t('admin.protocols.nativeTitle') }}</label>
+        <ProviderProtocolSelector v-if="enableUpstreamProtocols" v-model="upstreamProtocols" :platform="targetSelectedPlatforms[0] ?? ''" :type="targetSelectedTypes[0] ?? ''" auth-mode="*" />
+      </div>
+
+      <!-- OpenAI API Key HTTP continuation 能力 -->
+      <div v-if="allOpenAIAPIKey" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between gap-4">
+          <div class="flex-1">
+            <label
+              id="bulk-edit-openai-continuation-supported-label"
+              class="input-label mb-0"
+              for="bulk-edit-openai-continuation-supported-enabled"
+            >
+              {{ t('admin.providers.openai.responsesContinuationSupported') }}
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.providers.openai.responsesContinuationSupportedDesc') }}
+            </p>
+          </div>
+          <input
+            id="bulk-edit-openai-continuation-supported-enabled"
+            v-model="enableOpenAIResponsesContinuationSupported"
+            type="checkbox"
+            aria-controls="bulk-edit-openai-continuation-supported-body"
+            data-testid="bulk-edit-openai-continuation-supported-apply"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-openai-continuation-supported-body"
+          class="flex items-center justify-end"
+          role="group"
+          aria-labelledby="bulk-edit-openai-continuation-supported-label"
+        >
+          <Select v-if="isBlank(openAIResponsesContinuationSupported)" v-model="openAIResponsesContinuationSupported" :options="[{value:true,label:t('common.enabled')},{value:false,label:t('common.disabled')}]" :placeholder="' '" :disabled="!enableOpenAIResponsesContinuationSupported" />
+          <Toggle v-else
+            v-model="openAIResponsesContinuationSupported"
+            :disabled="!enableOpenAIResponsesContinuationSupported"
+            data-testid="bulk-edit-openai-continuation-supported"
+            :aria-label="t('admin.providers.openai.responsesContinuationSupportedEnabled')"
+          />
+        </div>
+      </div>
+
+      <!-- Base URL (API Key only) -->
+      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <label
+            id="bulk-edit-base-url-label"
+            class="input-label mb-0"
+            for="bulk-edit-base-url-enabled"
+          >
+            {{ t('admin.providers.baseUrl') }}
+          </label>
+          <input
+            v-model="enableBaseUrl"
+            id="bulk-edit-base-url-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-base-url"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <input
+          v-model="baseUrl"
+          id="bulk-edit-base-url"
+          type="text"
+          :disabled="!enableBaseUrl"
+          class="input"
+          :class="!enableBaseUrl && 'cursor-not-allowed opacity-50'"
+          :placeholder="t('admin.providers.bulkEdit.baseUrlPlaceholder')"
+          aria-labelledby="bulk-edit-base-url-label"
+        />
+        <GrokBaseUrlPresets
+          v-if="allTargetsGrok"
+          class="mt-2"
+          @select="baseUrl = $event; enableBaseUrl = true"
+        />
+        <p class="input-hint">
+          {{ t('admin.providers.bulkEdit.baseUrlNotice') }}
+        </p>
+      </div>
+
+      <!-- Model restriction -->
+      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <label
+            id="bulk-edit-model-restriction-label"
+            class="input-label mb-0"
+            for="bulk-edit-model-restriction-enabled"
+          >
+            {{ t('admin.providers.modelRestriction') }}
+          </label>
+          <input
+            v-model="enableModelRestriction"
+            id="bulk-edit-model-restriction-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-model-restriction-body"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+
+        <div
+          id="bulk-edit-model-restriction-body"
+          :class="!enableModelRestriction && 'pointer-events-none opacity-50'"
+          role="group"
+          aria-labelledby="bulk-edit-model-restriction-label"
+        >
+
+            <!-- Mode Toggle -->
+            <div class="mb-4 flex gap-2">
+              <button
+                type="button"
+                :class="[
+                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                  modelRestrictionMode === 'whitelist'
+                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                ]"
+                @click="modelRestrictionMode = 'whitelist'"
+              >
+                <svg
+                  class="mr-1.5 inline h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                {{ t('admin.providers.modelWhitelist') }}
+              </button>
+              <button
+                type="button"
+                :class="[
+                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                  modelRestrictionMode === 'mapping'
+                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                ]"
+                @click="modelRestrictionMode = 'mapping'"
+              >
+                <svg
+                  class="mr-1.5 inline h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                  />
+                </svg>
+                {{ t('admin.providers.modelMapping') }}
+              </button>
+            </div>
+            <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.providers.modelRestrictionCombinedHint') }}
+            </p>
+
+            <!-- Whitelist Mode -->
+            <div v-if="modelRestrictionMode === 'whitelist'">
+              <div class="mb-3 rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
+                <p class="text-xs text-blue-700 dark:text-blue-400">
+                  <svg
+                    class="mr-1 inline h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  {{ t('admin.providers.selectAllowedModels') }}
+                </p>
+              </div>
+
+              <ModelWhitelistSelector
+                v-model="allowedModels"
+                :platforms="targetSelectedPlatforms"
+              />
+
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.providers.selectedModels', { count: allowedModels.length }) }}
+                <span v-if="allowedModels.length === 0">{{
+                  t('admin.providers.supportsAllModels')
+                }}</span>
+              </p>
+            </div>
+
+            <!-- Mapping Mode -->
+            <div v-else>
+              <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
+                <p class="text-xs text-purple-700 dark:text-purple-400">
+                  <svg
+                    class="mr-1 inline h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  {{ t('admin.providers.mapRequestModels') }}
+                </p>
+              </div>
+
+              <!-- Model Mapping List -->
+              <div v-if="modelMappings.length > 0" class="mb-3 space-y-2">
+                <div
+                  v-for="(mapping, index) in modelMappings"
+                  :key="index"
+                  class="flex items-center gap-2"
+                >
+                  <input
+                    v-model="mapping.from"
+                    type="text"
+                    class="input flex-1"
+                    :placeholder="t('admin.providers.requestModel')"
+                  />
+                  <svg
+                    class="h-4 w-4 flex-shrink-0 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M14 5l7 7m0 0l-7 7m7-7H3"
+                    />
+                  </svg>
+                  <input
+                    v-model="mapping.to"
+                    type="text"
+                    class="input flex-1"
+                    :placeholder="t('admin.providers.actualModel')"
+                  />
+                  <button
+                    type="button"
+                    class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                    @click="removeModelMapping(index)"
+                  >
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
+                @click="addModelMapping"
+              >
+                <svg
+                  class="mr-1 inline h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                {{ t('admin.providers.addMapping') }}
+              </button>
+
+              <!-- Quick Add Buttons -->
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="preset in filteredPresets"
+                  :key="preset.label"
+                  type="button"
+                  :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
+                  @click="addPresetMapping(preset.from, preset.to)"
+                >
+                  + {{ preset.label }}
+                </button>
+              </div>
+            </div>
+
+        </div>
+      </div>
+
+      <!-- Custom error codes -->
+      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <div>
+            <label
+              id="bulk-edit-custom-error-codes-label"
+              class="input-label mb-0"
+              for="bulk-edit-custom-error-codes-enabled"
+            >
+              {{ t('admin.providers.customErrorCodes') }}
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.providers.customErrorCodesHint') }}
+            </p>
+          </div>
+          <input
+            v-model="enableCustomErrorCodes"
+            id="bulk-edit-custom-error-codes-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-custom-error-codes-body"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+
+        <div v-if="enableCustomErrorCodes" id="bulk-edit-custom-error-codes-body" class="space-y-3">
+          <div class="rounded-control bg-amber-50 p-3 dark:bg-amber-900/20">
+            <p class="text-xs text-amber-700 dark:text-amber-400">
+              <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
+              {{ t('admin.providers.customErrorCodesWarning') }}
+            </p>
+          </div>
+
+          <!-- Error Code Buttons -->
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="code in commonErrorCodes"
+              :key="code.value"
+              type="button"
+              :class="[
+                'rounded-control px-3 py-1.5 text-sm font-medium transition-colors',
+                selectedErrorCodes.includes(code.value)
+                  ? 'bg-red-100 text-red-700 ring-1 ring-red-500 dark:bg-red-900/30 dark:text-red-400'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+              ]"
+              @click="toggleErrorCode(code.value)"
+            >
+              {{ code.value }} {{ code.label }}
+            </button>
+          </div>
+
+          <!-- Manual input -->
+          <div class="flex items-center gap-2">
+            <input
+              v-model="customErrorCodeInput"
+              id="bulk-edit-custom-error-code-input"
+              type="number"
+              min="100"
+              max="599"
+              class="input flex-1"
+              :placeholder="t('admin.providers.enterErrorCode')"
+              aria-labelledby="bulk-edit-custom-error-codes-label"
+              @keyup.enter="addCustomErrorCode"
+            />
+            <button type="button" class="btn btn-secondary px-3" @click="addCustomErrorCode">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Selected codes summary -->
+          <div class="flex flex-wrap gap-1.5">
+            <span
+              v-for="code in selectedErrorCodes.sort((a, b) => a - b)"
+              :key="code"
+              class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
+            >
+              {{ code }}
+              <button
+                type="button"
+                class="hover:text-red-900 dark:hover:text-red-300"
+                @click="removeErrorCode(code)"
+              >
+                <Icon name="x" size="xs" class="h-3.5 w-3.5" :stroke-width="2" />
+              </button>
+            </span>
+            <span v-if="selectedErrorCodes.length === 0" class="text-xs text-gray-400">
+              {{ t('admin.providers.noneSelectedUsesDefault') }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Intercept warmup requests (Anthropic only) -->
+      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="flex items-center justify-between">
+          <div class="flex-1 pr-4">
+            <label
+              id="bulk-edit-intercept-warmup-label"
+              class="input-label mb-0"
+              for="bulk-edit-intercept-warmup-enabled"
+            >
+              {{ t('admin.providers.interceptWarmupRequests') }}
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.providers.interceptWarmupRequestsDesc') }}
+            </p>
+          </div>
+          <input
+            v-model="enableInterceptWarmup"
+            id="bulk-edit-intercept-warmup-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-intercept-warmup-body"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div v-if="enableInterceptWarmup" id="bulk-edit-intercept-warmup-body" class="mt-3">
+          <Toggle v-model="interceptWarmupRequests" variant="flush" off-tone="soft" />
+        </div>
+      </div>
+
+      <!-- 请求头覆写（支持的平台 API Key 与 Grok OAuth） -->
+      <div v-if="allHeaderOverrideCapable" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="flex items-center justify-between">
+          <div class="flex-1 pr-4">
+            <label
+              id="bulk-edit-header-override-label"
+              class="input-label mb-0"
+              for="bulk-edit-header-override-enabled"
+            >
+              {{ t('admin.providers.headerOverride.title') }}
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.providers.headerOverride.hint') }}
+            </p>
+          </div>
+          <input
+            v-model="enableHeaderOverride"
+            id="bulk-edit-header-override-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-header-override-body"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div v-if="enableHeaderOverride" id="bulk-edit-header-override-body" class="mt-3 space-y-3">
+          <Toggle v-model="headerOverrideEnabled" variant="flush" off-tone="soft" />
+
+          <div v-if="headerOverrideEnabled" class="space-y-3">
+            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
+              <p class="text-xs text-blue-700 dark:text-blue-400">
+                <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
+                {{ t('admin.providers.headerOverride.info') }}
+              </p>
+            </div>
+
+            <p class="text-xs text-amber-600 dark:text-amber-400">
+              {{ t('admin.providers.headerOverride.bulkReplaceHint') }}
+            </p>
+
+            <HeaderOverrideEditor
+              :rows="headerOverrideRows"
+              @update:rows="headerOverrideRows = $event"
+            />
+          </div>
+          <p v-else class="text-xs text-gray-500 dark:text-gray-400">
+            {{ t('admin.providers.headerOverride.bulkDisableHint') }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Proxy -->
+      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <label
+            id="bulk-edit-proxy-label"
+            class="input-label mb-0"
+            for="bulk-edit-proxy-enabled"
+          >
+            {{ t('admin.providers.proxy') }}
+          </label>
+          <input
+            v-model="enableProxy"
+            id="bulk-edit-proxy-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-proxy-body"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div id="bulk-edit-proxy-body" :class="!enableProxy && 'pointer-events-none opacity-50'">
+          <ProxySelector
+            v-model="proxyId"
+            :proxies="proxies"
+            aria-labelledby="bulk-edit-proxy-label"
+          />
+        </div>
+      </div>
+
+      <!-- Concurrency & Priority -->
+      <div class="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4 dark:border-dark-600 lg:grid-cols-4">
+        <div>
+          <div class="mb-3 flex items-center justify-between">
+            <label
+              id="bulk-edit-concurrency-label"
+              class="input-label mb-0"
+              for="bulk-edit-concurrency-enabled"
+            >
+              {{ t('admin.providers.concurrency') }}
+            </label>
+            <input
+              v-model="enableConcurrency"
+              id="bulk-edit-concurrency-enabled"
+              type="checkbox"
+              aria-controls="bulk-edit-concurrency"
+              class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+          </div>
+          <input
+            v-model.number="concurrency"
+            id="bulk-edit-concurrency"
+            type="number"
+            min="1"
+            :disabled="!enableConcurrency"
+            class="input"
+            :class="!enableConcurrency && 'cursor-not-allowed opacity-50'"
+            aria-labelledby="bulk-edit-concurrency-label"
+            @input="concurrency = Math.max(1, concurrency || 1)"
+          />
+        </div>
+        <div>
+          <div class="mb-3 flex items-center justify-between">
+            <label
+              id="bulk-edit-load-factor-label"
+              class="input-label mb-0"
+              for="bulk-edit-load-factor-enabled"
+            >
+              {{ t('admin.providers.loadFactor') }}
+            </label>
+            <input
+              v-model="enableLoadFactor"
+              id="bulk-edit-load-factor-enabled"
+              type="checkbox"
+              aria-controls="bulk-edit-load-factor"
+              class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+          </div>
+          <input
+            v-model.number="loadFactor"
+            id="bulk-edit-load-factor"
+            type="number"
+            min="1"
+            :disabled="!enableLoadFactor"
+            class="input"
+            :class="!enableLoadFactor && 'cursor-not-allowed opacity-50'"
+            aria-labelledby="bulk-edit-load-factor-label"
+            @input="loadFactor = (loadFactor &amp;&amp; loadFactor >= 1) ? loadFactor : null"
+          />
+          <p class="input-hint">{{ t('admin.providers.loadFactorHint') }}</p>
+        </div>
+        <div>
+          <div class="mb-3 flex items-center justify-between">
+            <label
+              id="bulk-edit-priority-label"
+              class="input-label mb-0"
+              for="bulk-edit-priority-enabled"
+            >
+              {{ t('admin.providers.priority') }}
+            </label>
+            <input
+              v-model="enablePriority"
+              id="bulk-edit-priority-enabled"
+              type="checkbox"
+              aria-controls="bulk-edit-priority"
+              class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+          </div>
+          <input
+            v-model.number="priority"
+            id="bulk-edit-priority"
+            type="number"
+            min="1"
+            :disabled="!enablePriority"
+            class="input"
+            :class="!enablePriority && 'cursor-not-allowed opacity-50'"
+            aria-labelledby="bulk-edit-priority-label"
+          />
+        </div>
+        <div>
+          <div class="mb-3 flex items-center justify-between">
+            <label
+              id="bulk-edit-rate-multiplier-label"
+              class="input-label mb-0"
+              for="bulk-edit-rate-multiplier-enabled"
+            >
+              {{ t('admin.providers.billingRateMultiplier') }}
+            </label>
+            <input
+              v-model="enableRateMultiplier"
+              id="bulk-edit-rate-multiplier-enabled"
+              type="checkbox"
+              aria-controls="bulk-edit-rate-multiplier"
+              class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+          </div>
+          <input
+            v-model.number="rateMultiplier"
+            id="bulk-edit-rate-multiplier"
+            type="number"
+            min="0"
+            step="0.01"
+            :disabled="!enableRateMultiplier"
+            class="input"
+            :class="!enableRateMultiplier && 'cursor-not-allowed opacity-50'"
+            aria-labelledby="bulk-edit-rate-multiplier-label"
+          />
+          <p class="input-hint">{{ t('admin.providers.billingRateMultiplierHint') }}</p>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <label
+            id="bulk-edit-status-label"
+            class="input-label mb-0"
+            for="bulk-edit-status-enabled"
+          >
+            {{ t('common.status') }}
+          </label>
+          <input
+            v-model="enableStatus"
+            id="bulk-edit-status-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-status"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div id="bulk-edit-status" :class="!enableStatus && 'pointer-events-none opacity-50'">
+          <Select
+            v-model="status"
+            :options="statusOptions"
+            aria-labelledby="bulk-edit-status-label"
+          />
+        </div>
+      </div>
+
+      <!-- OpenAI OAuth WS mode -->
+      <div v-if="allOpenAIOAuth" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <label
+            id="bulk-edit-openai-ws-mode-label"
+            class="input-label mb-0"
+            for="bulk-edit-openai-ws-mode-enabled"
+          >
+            {{ t('admin.providers.openai.wsMode') }}
+          </label>
+          <input
+            v-model="enableOpenAIWSMode"
+            id="bulk-edit-openai-ws-mode-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-openai-ws-mode"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-openai-ws-mode"
+          :class="!enableOpenAIWSMode && 'pointer-events-none opacity-50'"
+        >
+          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            {{ t('admin.providers.openai.wsModeDesc') }}
+          </p>
+          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            {{ t(openAIWSModeConcurrencyHintKey) }}
+          </p>
+          <Select
+            v-model="openaiOAuthResponsesWebSocketV2Mode"
+            data-testid="bulk-edit-openai-ws-mode-select"
+            :options="openAIWSModeOptions"
+            aria-labelledby="bulk-edit-openai-ws-mode-label"
+          />
+        </div>
+      </div>
+
+      <!-- OpenAI OAuth 客户端访问策略 -->
+      <div v-if="allOpenAIOAuth" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <label
+            id="bulk-edit-openai-codex-cli-only-label"
+            class="input-label mb-0"
+            for="bulk-edit-openai-codex-cli-only-enabled"
+          >
+            {{ t('admin.providers.openai.clientPolicy') }}
+          </label>
+          <input
+            v-model="enableCodexCLIOnly"
+            id="bulk-edit-openai-codex-cli-only-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-openai-codex-cli-only"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-openai-codex-cli-only"
+          :class="!enableCodexCLIOnly && 'pointer-events-none opacity-50'"
+        >
+          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            {{ t('admin.providers.openai.clientPolicyDesc') }}
+          </p>
+          <Select
+            v-model="openAIOAuthClientPolicy"
+            data-testid="bulk-edit-openai-client-policy-select"
+            :options="openAIOAuthClientPolicyOptions"
+            aria-labelledby="bulk-edit-openai-codex-cli-only-label"
+          />
+        </div>
+      </div>
+
+      <!-- OpenAI OAuth: 额外放行 Claude Code 的 Codex 插件 -->
+      <div v-if="allOpenAIOAuth" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <label
+            id="bulk-edit-openai-codex-allow-claude-code-label"
+            class="input-label mb-0"
+            for="bulk-edit-openai-codex-allow-claude-code-enabled"
+          >
+            {{ t('admin.providers.openai.codexCLIOnlyAllowClaudeCode') }}
+          </label>
+          <input
+            v-model="enableCodexCLIOnlyAllowClaudeCode"
+            id="bulk-edit-openai-codex-allow-claude-code-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-openai-codex-allow-claude-code"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-openai-codex-allow-claude-code"
+          :class="[
+            (!enableCodexCLIOnlyAllowClaudeCode ||
+              (enableCodexCLIOnly && openAIOAuthClientPolicy !== 'codex_only')) &&
+              'pointer-events-none opacity-50'
+          ]"
+        >
+          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            {{ t('admin.providers.openai.codexCLIOnlyAllowClaudeCodeDesc') }}
+          </p>
+          <Toggle v-model="codexCLIOnlyAllowClaudeCodeEnabled" variant="flush" off-tone="soft" id="bulk-edit-openai-codex-allow-claude-code-toggle" />
+        </div>
+        <p
+          v-if="enableCodexCLIOnly && openAIOAuthClientPolicy !== 'codex_only'"
+          class="mt-2 text-xs text-gray-500 dark:text-gray-400"
+        >
+          {{ t('admin.providers.openai.clientPolicyClaudeCodeHint') }}
+        </p>
+      </div>
+
+      <!-- Codex 指纹收敛模式（仅 OpenAI OAuth） -->
+      <div v-if="allOpenAIOAuth" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+            <label class="input-label mb-0">{{ t('admin.providers.openai.codexFingerprintMode') }}</label>
+            <input
+              v-model="enableCodexFingerprintMode"
+              id="bulk-edit-codex-fingerprint-mode-enabled"
+            type="checkbox"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div :class="!enableCodexFingerprintMode && 'pointer-events-none opacity-50'">
+          <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">
+            {{ t('admin.providers.openai.codexFingerprintModeDesc') }}
+          </p>
+          <Select
+            v-model="codexFingerprintMode"
+            data-testid="bulk-codex-fingerprint-mode-select"
+            :options="codexFingerprintModeOptions"
+          />
+        </div>
+      </div>
+
+      <!-- OpenAI OAuth: 5h/7d 配额自动暂停 -->
+      <div v-if="allOpenAIOAuth" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3">
+          <div class="text-sm font-medium text-gray-900 dark:text-white">
+            {{ t('admin.providers.quotaControl.title') }}
+          </div>
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {{ t('admin.providers.autoPauseThresholdHint') }}
+          </p>
+        </div>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <label
+                id="bulk-edit-openai-auto-pause-5h-disabled-label"
+                class="input-label mb-0"
+                for="bulk-edit-openai-auto-pause-5h-disabled-enabled"
+              >
+                {{ t('admin.providers.autoPause5hDisabled') }}
+              </label>
+              <input
+                v-model="enableAutoPause5hDisabled"
+                id="bulk-edit-openai-auto-pause-5h-disabled-enabled"
+                type="checkbox"
+                aria-controls="bulk-edit-openai-auto-pause-5h-disabled"
+                class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+            </div>
+            <div
+              id="bulk-edit-openai-auto-pause-5h-disabled"
+              :class="!enableAutoPause5hDisabled && 'pointer-events-none opacity-50'"
+            >
+              <Toggle v-model="autoPause5hDisabled" variant="flush" off-tone="soft" id="bulk-edit-openai-auto-pause-5h-disabled-toggle" />
+              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.providers.autoPauseDisabledHint') }}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <label
+                id="bulk-edit-openai-auto-pause-5h-threshold-label"
+                class="input-label mb-0"
+                for="bulk-edit-openai-auto-pause-5h-threshold-enabled"
+              >
+                {{ t('admin.providers.autoPause5hThreshold') }}
+              </label>
+              <input
+                v-model="enableAutoPause5hThreshold"
+                id="bulk-edit-openai-auto-pause-5h-threshold-enabled"
+                type="checkbox"
+                aria-controls="bulk-edit-openai-auto-pause-5h-threshold"
+                class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+            </div>
+            <input
+              v-model.number="autoPause5hThreshold"
+              id="bulk-edit-openai-auto-pause-5h-threshold"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              :disabled="!enableAutoPause5hThreshold"
+              class="input"
+              :class="!enableAutoPause5hThreshold && 'cursor-not-allowed opacity-50'"
+              aria-labelledby="bulk-edit-openai-auto-pause-5h-threshold-label"
+              @input="autoPause5hThreshold = normalizeAutoPauseThresholdInput(autoPause5hThreshold)"
+            />
+          </div>
+
+          <div>
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <label
+                id="bulk-edit-openai-auto-pause-7d-disabled-label"
+                class="input-label mb-0"
+                for="bulk-edit-openai-auto-pause-7d-disabled-enabled"
+              >
+                {{ t('admin.providers.autoPause7dDisabled') }}
+              </label>
+              <input
+                v-model="enableAutoPause7dDisabled"
+                id="bulk-edit-openai-auto-pause-7d-disabled-enabled"
+                type="checkbox"
+                aria-controls="bulk-edit-openai-auto-pause-7d-disabled"
+                class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+            </div>
+            <div
+              id="bulk-edit-openai-auto-pause-7d-disabled"
+              :class="!enableAutoPause7dDisabled && 'pointer-events-none opacity-50'"
+            >
+              <Toggle v-model="autoPause7dDisabled" variant="flush" off-tone="soft" id="bulk-edit-openai-auto-pause-7d-disabled-toggle" />
+              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.providers.autoPauseDisabledHint') }}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <label
+                id="bulk-edit-openai-auto-pause-7d-threshold-label"
+                class="input-label mb-0"
+                for="bulk-edit-openai-auto-pause-7d-threshold-enabled"
+              >
+                {{ t('admin.providers.autoPause7dThreshold') }}
+              </label>
+              <input
+                v-model="enableAutoPause7dThreshold"
+                id="bulk-edit-openai-auto-pause-7d-threshold-enabled"
+                type="checkbox"
+                aria-controls="bulk-edit-openai-auto-pause-7d-threshold"
+                class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+            </div>
+            <input
+              v-model.number="autoPause7dThreshold"
+              id="bulk-edit-openai-auto-pause-7d-threshold"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              :disabled="!enableAutoPause7dThreshold"
+              class="input"
+              :class="!enableAutoPause7dThreshold && 'cursor-not-allowed opacity-50'"
+              aria-labelledby="bulk-edit-openai-auto-pause-7d-threshold-label"
+              @input="autoPause7dThreshold = normalizeAutoPauseThresholdInput(autoPause7dThreshold)"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- OpenAI API Key WS mode -->
+      <div v-if="allOpenAIAPIKey" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <label
+            id="bulk-edit-openai-apikey-ws-mode-label"
+            class="input-label mb-0"
+            for="bulk-edit-openai-apikey-ws-mode-enabled"
+          >
+            {{ t('admin.providers.openai.wsMode') }}
+          </label>
+          <input
+            v-model="enableOpenAIAPIKeyWSMode"
+            id="bulk-edit-openai-apikey-ws-mode-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-openai-apikey-ws-mode"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-openai-apikey-ws-mode"
+          :class="!enableOpenAIAPIKeyWSMode && 'pointer-events-none opacity-50'"
+        >
+          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            {{ t('admin.providers.openai.wsModeDesc') }}
+          </p>
+          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            {{ t(openAIAPIKeyWSModeConcurrencyHintKey) }}
+          </p>
+          <Select
+            v-model="openaiAPIKeyResponsesWebSocketV2Mode"
+            data-testid="bulk-edit-openai-apikey-ws-mode-select"
+            :options="openAIWSModeOptions"
+            aria-labelledby="bulk-edit-openai-apikey-ws-mode-label"
+          />
+        </div>
+      </div>
+
+      <!-- OpenAI 原生 V2 压缩模式 -->
+      <div v-if="allOpenAIPassthroughCapable" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <div class="flex-1 pr-4">
+            <label
+              id="bulk-edit-openai-native-compaction-v2-mode-label"
+              class="input-label mb-0"
+              for="bulk-edit-openai-native-compaction-v2-mode-enabled"
+            >
+              {{ t('admin.providers.openai.nativeCompactV2Mode') }}
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.providers.openai.nativeCompactV2ModeDesc') }}
+            </p>
+          </div>
+          <input
+            v-model="enableOpenAINativeCompactionV2Mode"
+            id="bulk-edit-openai-native-compaction-v2-mode-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-openai-native-compaction-v2-mode"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-openai-native-compaction-v2-mode"
+          :class="!enableOpenAINativeCompactionV2Mode && 'pointer-events-none opacity-50'"
+        >
+          <OpenAICompactionCheckbox
+            v-model="openAINativeCompactionV2Mode"
+            data-testid="bulk-edit-openai-native-compaction-v2-mode-select"
+            :label="t('admin.providers.openai.nativeCompactV2Mode')" :disabled="!enableOpenAINativeCompactionV2Mode"
+            aria-labelledby="bulk-edit-openai-native-compaction-v2-mode-label"
+          />
+        </div>
+      </div>
+
+      <!-- OpenAI 旧版 Compact 端点模式 -->
+      <div v-if="allOpenAIPassthroughCapable" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <div class="flex-1 pr-4">
+            <label
+              id="bulk-edit-openai-compact-mode-label"
+              class="input-label mb-0"
+              for="bulk-edit-openai-compact-mode-enabled"
+            >
+              {{ t('admin.providers.openai.compactMode') }}
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.providers.openai.compactModeDesc') }}
+            </p>
+          </div>
+          <input
+            v-model="enableOpenAICompactMode"
+            id="bulk-edit-openai-compact-mode-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-openai-compact-mode"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-openai-compact-mode"
+          :class="!enableOpenAICompactMode && 'pointer-events-none opacity-50'"
+        >
+          <OpenAICompactionCheckbox
+            v-model="openAICompactMode"
+            data-testid="bulk-edit-openai-compact-mode-select"
+            :label="t('admin.providers.openai.compactMode')" :disabled="!enableOpenAICompactMode"
+            aria-labelledby="bulk-edit-openai-compact-mode-label"
+          />
+        </div>
+      </div>
+
+      <!-- OpenAI 旧版 Compact 专属模型映射 -->
+      <div v-if="allOpenAIPassthroughCapable && enableOpenAICompactMode && openAICompactMode !== 'force_off'" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <div class="flex-1 pr-4">
+            <label
+              id="bulk-edit-openai-compact-model-mapping-label"
+              class="input-label mb-0"
+              for="bulk-edit-openai-compact-model-mapping-enabled"
+            >
+              {{ t('admin.providers.openai.compactModelMapping') }}
+            </label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.providers.openai.compactModelMappingDesc') }}
+            </p>
+          </div>
+          <input
+            v-model="enableOpenAICompactModelMapping"
+            id="bulk-edit-openai-compact-model-mapping-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-openai-compact-model-mapping"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-openai-compact-model-mapping"
+          :class="!enableOpenAICompactModelMapping && 'pointer-events-none opacity-50'"
+        >
+          <div v-if="openAICompactModelMappings.length > 0" class="mb-3 space-y-2">
+            <div
+              v-for="(mapping, index) in openAICompactModelMappings"
+              :key="index"
+              class="flex items-center gap-2"
+            >
+              <input
+                v-model="mapping.from"
+                type="text"
+                class="input flex-1"
+                :placeholder="t('admin.providers.fromModel')"
+                data-testid="bulk-edit-openai-compact-model-mapping-input"
+              />
+              <span class="text-gray-400">→</span>
+              <input
+                v-model="mapping.to"
+                type="text"
+                class="input flex-1"
+                :placeholder="t('admin.providers.toModel')"
+                data-testid="bulk-edit-openai-compact-model-mapping-input"
+              />
+              <button
+                type="button"
+                class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                @click="removeOpenAICompactModelMapping(index)"
+              >
+                <Icon name="trash" size="sm" />
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
+            data-testid="bulk-edit-openai-compact-model-mapping-add"
+            @click="addOpenAICompactModelMapping"
+          >
+            + {{ t('admin.providers.addMapping') }}
+          </button>
+        </div>
+      </div>
+
+      <!-- RPM Limit (仅全部为 Anthropic OAuth/SetupToken 时显示) -->
+      <div v-if="allAnthropicOAuthOrSetupToken" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <label
+            id="bulk-edit-rpm-limit-label"
+            class="input-label mb-0"
+            for="bulk-edit-rpm-limit-enabled"
+          >
+            {{ t('admin.providers.quotaControl.rpmLimit.label') }}
+          </label>
+          <input
+            v-model="enableRpmLimit"
+            id="bulk-edit-rpm-limit-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-rpm-limit-body"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+
+        <div
+          id="bulk-edit-rpm-limit-body"
+          :class="!enableRpmLimit && 'pointer-events-none opacity-50'"
+          role="group"
+          aria-labelledby="bulk-edit-rpm-limit-label"
+        >
+          <div class="mb-3 flex items-center justify-between">
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('admin.providers.quotaControl.rpmLimit.hint') }}</span>
+            <Toggle v-model="rpmLimitEnabled" variant="flush" off-tone="soft" />
+          </div>
+
+          <div v-if="rpmLimitEnabled" class="space-y-3">
+            <div>
+              <label class="input-label text-xs">{{ t('admin.providers.quotaControl.rpmLimit.baseRpm') }}</label>
+              <input
+                v-model.number="bulkBaseRpm"
+                type="number"
+                min="1"
+                max="1000"
+                step="1"
+                class="input"
+                :placeholder="t('admin.providers.quotaControl.rpmLimit.baseRpmPlaceholder')"
+              />
+              <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.baseRpmHint') }}</p>
+            </div>
+
+            <div>
+              <label class="input-label text-xs">{{ t('admin.providers.quotaControl.rpmLimit.strategy') }}</label>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  @click="bulkRpmStrategy = 'tiered'"
+                  :class="[
+                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition-all',
+                    bulkRpmStrategy === 'tiered'
+                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                  ]"
+                >
+                  {{ t('admin.providers.quotaControl.rpmLimit.strategyTiered') }}
+                </button>
+                <button
+                  type="button"
+                  @click="bulkRpmStrategy = 'sticky_exempt'"
+                  :class="[
+                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition-all',
+                    bulkRpmStrategy === 'sticky_exempt'
+                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                  ]"
+                >
+                  {{ t('admin.providers.quotaControl.rpmLimit.strategyStickyExempt') }}
+                </button>
+              </div>
+            </div>
+
+            <div v-if="bulkRpmStrategy === 'tiered'">
+              <label class="input-label text-xs">{{ t('admin.providers.quotaControl.rpmLimit.stickyBuffer') }}</label>
+              <input
+                v-model.number="bulkRpmStickyBuffer"
+                type="number"
+                min="1"
+                step="1"
+                class="input"
+                :placeholder="t('admin.providers.quotaControl.rpmLimit.stickyBufferPlaceholder')"
+              />
+              <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.stickyBufferHint') }}</p>
+            </div>
+
+            </div>
+          </div>
+
+        <!-- 用户消息限速模式（独立于 RPM 开关，始终可见） -->
+        <div class="mt-4">
+          <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.userMsgQueue') }}</label>
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
+            {{ t('admin.providers.quotaControl.rpmLimit.userMsgQueueHint') }}
+          </p>
+          <div class="flex space-x-2">
+            <button type="button" v-for="opt in umqModeOptions" :key="opt.value"
+              :disabled="!enableUserMsgQueue" @click="userMsgQueueMode = opt.value"
+              :class="[
+                'px-3 py-1.5 text-sm rounded-control border transition-colors',
+                userMsgQueueMode === opt.value
+                  ? 'bg-primary-600 text-white border-primary-600'
+                  : 'bg-white dark:bg-dark-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-dark-500 hover:bg-gray-50 dark:hover:bg-dark-600'
+              ]">
+              {{ opt.label }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TLS 指纹伪装 -->
+      <div v-if="allTLSFingerprintCapable" class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <label
+            id="bulk-edit-tls-fingerprint-label"
+            class="input-label mb-0"
+            for="bulk-edit-tls-fingerprint-enabled"
+          >
+            {{ t('admin.providers.quotaControl.tlsFingerprint.label') }}
+          </label>
+          <input
+            v-model="enableTLSFingerprint"
+            id="bulk-edit-tls-fingerprint-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-tls-fingerprint-body"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div
+          id="bulk-edit-tls-fingerprint-body"
+          :class="!enableTLSFingerprint && 'pointer-events-none opacity-50'"
+          role="group"
+          aria-labelledby="bulk-edit-tls-fingerprint-label"
+        >
+          <div class="mb-3 flex items-center justify-between">
+            <span class="text-sm text-gray-700 dark:text-gray-300">
+              {{ t('admin.providers.quotaControl.tlsFingerprint.hint') }}
+            </span>
+            <Toggle v-model="tlsFingerprintEnabled" variant="flush" off-tone="soft" id="bulk-edit-tls-fingerprint-toggle" />
+          </div>
+
+          <Select
+            v-if="tlsFingerprintEnabled"
+            v-model="tlsFingerprintProfileId"
+            id="bulk-edit-tls-fingerprint-profile"
+            data-testid="bulk-edit-tls-fingerprint-profile"
+            :options="tlsFingerprintProfileOptions"
+          />
+          <div v-if="tlsFingerprintEnabled && allOpenAIOAuth" class="mt-3">
+            <Select
+              v-model="tlsFingerprintRouterId"
+              id="bulk-edit-tls-fingerprint-router"
+              data-testid="bulk-edit-tls-fingerprint-router"
+              :options="tlsFingerprintRouterOptions"
+            />
+            <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Groups -->
+      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+        <div class="mb-3 flex items-center justify-between">
+          <label
+            id="bulk-edit-groups-label"
+            class="input-label mb-0"
+            for="bulk-edit-groups-enabled"
+          >
+            {{ t('nav.groups') }}
+          </label>
+          <input
+            v-model="enableGroups"
+            id="bulk-edit-groups-enabled"
+            type="checkbox"
+            aria-controls="bulk-edit-groups"
+            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+        </div>
+        <div id="bulk-edit-groups" :class="!enableGroups && 'pointer-events-none opacity-50'">
+          <GroupSelector
+            v-model="groupIds"
+            :groups="groups"
+            aria-labelledby="bulk-edit-groups-label"
+          />
+        </div>
+      </div>
+      <!-- 工作台随原批量按钮统一保存，下层字段仍逐项勾选。 -->
+      <CodexTicketAccountSettings v-if="show && targetMode === 'selected' && ticketTargetsEligible" ref="ticketSettings" :ids="providerIds" :busy="submitting" bulk />
+      </fieldset>
+    </form>
+
+    <template #footer>
+      <div class="flex justify-end gap-3">
+        <button type="button" class="btn btn-secondary" @click="handleClose">
+          {{ t('common.cancel') }}
+        </button>
+        <button
+          type="submit"
+          form="bulk-edit-provider-form"
+          :disabled="submitting"
+          class="btn btn-primary"
+        >
+          <svg
+            v-if="submitting"
+            class="-ml-1 mr-2 h-4 w-4 animate-spin"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            />
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          {{
+            submitting ? t('admin.providers.bulkEdit.updating') : t('admin.providers.bulkEdit.submit')
+          }}
+        </button>
+      </div>
+    </template>
+  </BaseDialog>
+
+
+</template>
+
+<script setup lang="ts">
+import CodexTicketAccountSettings from '@/components/admin/provider/CodexTicketAccountSettings.vue'
+import ProviderProtocolSelector from './ProviderProtocolSelector.vue'
+import type { ProtocolID } from '@/types'
+import OpenAICompactionCheckbox from './OpenAICompactionCheckbox.vue'
+import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useAppStore } from '@/stores/app'
+import { adminAPI } from '@/api/admin'
+import type {
+  Proxy as ProxyConfig,
+  AdminGroup,
+  ProviderPlatform,
+  ProviderType,
+  Provider,
+  OpenAICompactMode,
+  OpenAIOAuthClientPolicy,
+} from '@/types'
+import BaseDialog from '@/components/common/BaseDialog.vue'
+import Select from '@/components/common/Select.vue'
+import Toggle from '@/components/common/Toggle.vue'
+import ProxySelector from '@/components/common/ProxySelector.vue'
+import GroupSelector from '@/components/common/GroupSelector.vue'
+import CodexImageToolModeSelector from '@/components/provider/CodexImageToolModeSelector.vue'
+import ModelWhitelistSelector from '@/components/provider/ModelWhitelistSelector.vue'
+import Icon from '@/components/icons/Icon.vue'
+import {
+  buildModelMappingObject,
+  buildPersistedModelRestriction,
+  getPresetMappingsByPlatform,
+  normalizeModelWhitelist,
+  splitQoderPersistedModelRestriction,
+  splitModelMappingObject,
+  splitPersistedModelRestriction
+} from '@/composables/useModelWhitelist'
+import HeaderOverrideEditor from '@/components/provider/HeaderOverrideEditor.vue'
+import {
+  buildHeaderOverridesObject,
+  isHeaderOverrideCapable,
+  validateHeaderOverrideRows,
+  HEADER_OVERRIDE_ENABLED_CREDENTIAL_KEY,
+  HEADER_OVERRIDES_CREDENTIAL_KEY,
+  type HeaderOverrideRow
+} from '@/components/provider/credentialsBuilder'
+import GrokBaseUrlPresets from '@/components/provider/GrokBaseUrlPresets.vue'
+import {
+  OPENAI_WS_MODE_CTX_POOL,
+  OPENAI_WS_MODE_HTTP_BRIDGE,
+  OPENAI_WS_MODE_OFF,
+  OPENAI_WS_MODE_PASSTHROUGH,
+  isOpenAIWSModeEnabled,
+  resolveOpenAIWSModeConcurrencyHintKey
+} from '@/utils/openaiWsMode'
+import type { OpenAIWSMode } from '@/utils/openaiWsMode'
+import {
+  applyCodexImageToolMode,
+  type CodexImageToolMode
+} from '@/utils/codexImageToolMode'
+interface Props {
+  show: boolean
+  providerIds: number[]
+  selectedPlatforms: ProviderPlatform[]
+  selectedTypes: ProviderType[]
+  target?: {
+    mode: 'selected' | 'filtered'
+    filters?: Record<string, unknown>
+    previewCount?: number
+    selectedPlatforms?: ProviderPlatform[]
+    selectedTypes?: ProviderType[]
+  }
+  proxies: ProxyConfig[]
+  groups: AdminGroup[]
+}
+
+const props = defineProps<Props>()
+const emit = defineEmits<{
+  close: []
+  updated: []
+}>()
+
+const { t } = useI18n()
+const appStore = useAppStore()
+const ticketSettings = ref<InstanceType<typeof CodexTicketAccountSettings>>()
+const ticketTargetsEligible = ref(false)
+const isBlank=(v:unknown)=>v===''||v===null||v===undefined
+const prefillLoading=ref(false),prefillFailed=ref(false)
+
+// Platform awareness
+const targetMode = computed(() => props.target?.mode ?? 'selected')
+const targetPreviewCount = computed(() => props.target?.previewCount ?? props.providerIds.length)
+const targetSelectedPlatforms = computed(() => props.target?.selectedPlatforms ?? props.selectedPlatforms)
+const targetSelectedTypes = computed(() => props.target?.selectedTypes ?? props.selectedTypes)
+// Grok 快捷端点仅在所选提供商全部为 grok 平台时展示（其他平台不显示）
+const allTargetsGrok = computed(
+  () =>
+    targetSelectedPlatforms.value.length > 0 &&
+    targetSelectedPlatforms.value.every((p) => p === 'grok')
+)
+const isMixedPlatform = computed(() => targetSelectedPlatforms.value.length > 1)
+
+const allOpenAIPassthroughCapable = computed(() => {
+  return (
+    targetSelectedPlatforms.value.length === 1 &&
+    targetSelectedPlatforms.value[0] === 'openai' &&
+    targetSelectedTypes.value.length > 0 &&
+    targetSelectedTypes.value.every(t => t === 'oauth' || t === 'apikey')
+  )
+})
+
+const allOpenAIOAuth = computed(() => {
+  return (
+    targetSelectedPlatforms.value.length === 1 &&
+    targetSelectedPlatforms.value[0] === 'openai' &&
+    targetSelectedTypes.value.length > 0 &&
+    targetSelectedTypes.value.every(t => t === 'oauth')
+  )
+})
+
+const allOpenAIAPIKey = computed(() => {
+  return (
+    targetSelectedPlatforms.value.length === 1 &&
+    targetSelectedPlatforms.value[0] === 'openai' &&
+    targetSelectedTypes.value.length > 0 &&
+    targetSelectedTypes.value.every(t => t === 'apikey')
+  )
+})
+
+// 是否全部为支持请求头覆写的平台/提供商类型
+// 所选平台 × 所选类型的全组合均需具备覆写资格（实际选中提供商是该组合的子集，
+// 按交叉积判定偏保守但绝不放行不合资格的提供商）
+const allHeaderOverrideCapable = computed(() => {
+  return (
+    targetSelectedPlatforms.value.length > 0 &&
+    targetSelectedTypes.value.length > 0 &&
+    targetSelectedPlatforms.value.every(p =>
+      targetSelectedTypes.value.every(ty => isHeaderOverrideCapable(p, ty))
+    )
+  )
+})
+
+// 是否全部为 Anthropic OAuth/SetupToken（RPM 配置仅在此条件下显示）
+const allAnthropicOAuthOrSetupToken = computed(() => {
+  return (
+    targetSelectedPlatforms.value.length === 1 &&
+    targetSelectedPlatforms.value[0] === 'anthropic' &&
+    targetSelectedTypes.value.every(t => t === 'oauth' || t === 'setup-token')
+  )
+})
+
+const isTLSFingerprintCapableTarget = (platform: ProviderPlatform, type: ProviderType) => {
+  // TLS 指纹伪装支持 Anthropic OAuth/SetupToken、OpenAI OAuth 与 Qoder COSY，OpenAI API Key 不开放。
+  return (
+    (platform === 'anthropic' && (type === 'oauth' || type === 'setup-token')) ||
+    (platform === 'openai' && type === 'oauth') ||
+    (platform === 'qoder' && type === 'cosy')
+  )
+}
+
+const allTLSFingerprintCapable = computed(() => {
+  const platforms = targetSelectedPlatforms.value
+  const types = targetSelectedTypes.value
+  if (platforms.length === 0 || types.length === 0) return false
+  if (!platforms.every(platform => platform === 'anthropic' || platform === 'openai' || platform === 'qoder')) return false
+  if (!types.every(type => type === 'oauth' || type === 'setup-token' || type === 'cosy')) return false
+  if (platforms.length === 1) {
+    return types.every(type => isTLSFingerprintCapableTarget(platforms[0], type))
+  }
+  return platforms.every(platform => platform === 'anthropic' || platform === 'openai') &&
+    platforms.includes('openai') &&
+    platforms.includes('anthropic') &&
+    types.every(type => type === 'oauth' || type === 'setup-token')
+})
+
+const filteredPresets = computed(() => {
+  if (targetSelectedPlatforms.value.length === 0) return []
+
+  const dedupedPresets = new Map<string, ReturnType<typeof getPresetMappingsByPlatform>[number]>()
+  for (const platform of targetSelectedPlatforms.value) {
+    for (const preset of getPresetMappingsByPlatform(platform)) {
+      const key = `${preset.from}=>${preset.to}`
+      if (!dedupedPresets.has(key)) {
+        dedupedPresets.set(key, preset)
+      }
+    }
+  }
+
+  return Array.from(dedupedPresets.values())
+})
+
+// Model mapping type
+interface ModelMapping {
+  from: string
+  to: string
+}
+
+type OptionalNumberInputValue = number | null | ''
+
+interface ParsedModelRestrictionState {
+  mode: 'whitelist' | 'mapping'
+  allowedModels: string[]
+  modelMappings: ModelMapping[]
+}
+
+// State - field enable flags
+const enableBaseUrl = ref(false)
+const enableModelRestriction = ref(false)
+const enableCustomErrorCodes = ref(false)
+const enableInterceptWarmup = ref(false)
+const enableHeaderOverride = ref(false)
+const enableProxy = ref(false)
+const enableConcurrency = ref(false)
+const enableLoadFactor = ref(false)
+const enablePriority = ref(false)
+const enableRateMultiplier = ref(false)
+const enableStatus = ref(false)
+const enableGroups = ref(false)
+const enableOpenAIPassthrough = ref(false)
+const enableOpenAIFlattenNamespaces = ref(false)
+const enableCodexImageToolMode = ref(false)
+const enableUpstreamProtocols = ref(false)
+const upstreamProtocols = ref<ProtocolID[] | undefined>(undefined)
+watch(() => [targetSelectedPlatforms.value.join(','), targetSelectedTypes.value.join(',')], () => { enableUpstreamProtocols.value = false; upstreamProtocols.value = undefined })
+const enableOpenAIResponsesContinuationSupported = ref(false)
+const enableOpenAIWSMode = ref(false)
+const enableOpenAIAPIKeyWSMode = ref(false)
+const enableCodexCLIOnly = ref(false)
+const enableCodexCLIOnlyAllowClaudeCode = ref(false)
+const enableAutoPause5hThreshold = ref(false)
+const enableAutoPause7dThreshold = ref(false)
+const enableAutoPause5hDisabled = ref(false)
+const enableAutoPause7dDisabled = ref(false)
+const enableOpenAICompactMode = ref(false)
+const enableOpenAINativeCompactionV2Mode = ref(false)
+const enableOpenAICompactModelMapping = ref(false)
+const enableRpmLimit = ref(false)
+const enableTLSFingerprint = ref(false)
+
+// State - field values
+const submitting = ref(false)
+const baseUrl = ref('')
+const modelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
+const allowedModels = ref<string[]>([])
+const modelMappings = ref<ModelMapping[]>([])
+const selectedErrorCodes = ref<number[]>([])
+const customErrorCodeInput = ref<number | null>(null)
+const interceptWarmupRequests = ref(false)
+const headerOverrideEnabled = ref(false)
+const headerOverrideRows = ref<HeaderOverrideRow[]>([])
+const proxyId = ref<number | null>(null)
+const concurrency = ref(1)
+const loadFactor = ref<number | null>(null)
+const priority = ref(1)
+const rateMultiplier = ref(1)
+const status = ref<'active' | 'inactive'>('active')
+const groupIds = ref<number[]>([])
+const openaiPassthroughEnabled = ref(false)
+// OpenAI OAuth namespace 工具摊平兼容开关，缺省关闭即原样保留。
+const openaiFlattenNamespacesEnabled = ref(false)
+const codexImageToolMode = ref<CodexImageToolMode>('inherit')
+// 批量修改默认不触碰 continuation，避免未勾选时覆盖目标提供商已有设置。
+const openAIResponsesContinuationSupported = ref(false)
+const openaiOAuthResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
+const openaiAPIKeyResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
+const openAIOAuthClientPolicy = ref<OpenAIOAuthClientPolicy>('any')
+const codexCLIOnlyAllowClaudeCodeEnabled = ref(false)
+const autoPause5hThreshold = ref<OptionalNumberInputValue>(null)
+const autoPause7dThreshold = ref<OptionalNumberInputValue>(null)
+const autoPause5hDisabled = ref(false)
+const autoPause7dDisabled = ref(false)
+type CodexFingerprintMode = 'off' | 'device' | 'session' | 'full'
+const enableCodexFingerprintMode = ref(false)
+const codexFingerprintMode = ref<CodexFingerprintMode>('off')
+const codexFingerprintModeOptions = computed(() => [
+  { value: 'off' as CodexFingerprintMode, label: t('admin.providers.openai.codexFingerprintOff') },
+  { value: 'device' as CodexFingerprintMode, label: t('admin.providers.openai.codexFingerprintDevice') },
+  { value: 'session' as CodexFingerprintMode, label: t('admin.providers.openai.codexFingerprintSession') },
+  { value: 'full' as CodexFingerprintMode, label: t('admin.providers.openai.codexFingerprintFull') },
+])
+const openAICompactMode = ref<OpenAICompactMode>('force_on')
+const openAINativeCompactionV2Mode = ref<OpenAICompactMode>('force_on')
+const openAICompactModelMappings = ref<ModelMapping[]>([])
+const rpmLimitEnabled = ref(false)
+const bulkBaseRpm = ref<number | null>(null)
+const bulkRpmStrategy = ref<'tiered' | 'sticky_exempt'>('tiered')
+const bulkRpmStickyBuffer = ref<number | null>(null)
+const userMsgQueueMode = ref<string | null>(null)
+const enableUserMsgQueue=ref(false)
+const tlsFingerprintEnabled = ref(false)
+const tlsFingerprintProfileId = ref(0)
+const tlsFingerprintProfiles = ref<{ id: number; name: string }[]>([])
+const tlsFingerprintRouterId = ref<number | null>(null)
+const tlsFingerprintRouters = ref<{ id: number; name: string }[]>([])
+const tlsFingerprintProfileOptions = computed(() => [
+  { value: 0, label: t('admin.providers.quotaControl.tlsFingerprint.defaultProfile') },
+  ...(tlsFingerprintProfiles.value.length > 0
+    ? [{ value: -1, label: t('admin.providers.quotaControl.tlsFingerprint.randomProfile') }]
+    : []),
+  ...tlsFingerprintProfiles.value.map((profile) => ({ value: profile.id, label: profile.name }))
+])
+const tlsFingerprintRouterOptions = computed(() => [
+  { value: null, label: t('admin.providers.quotaControl.tlsFingerprint.noRouter') },
+  ...tlsFingerprintRouters.value.map((router) => ({ value: router.id, label: router.name }))
+])
+const modelRestrictionPrefillSeq = ref(0)
+const umqModeOptions = computed(() => [
+  { value: '', label: t('admin.providers.quotaControl.rpmLimit.umqModeOff') },
+  { value: 'throttle', label: t('admin.providers.quotaControl.rpmLimit.umqModeThrottle') },
+  { value: 'serialize', label: t('admin.providers.quotaControl.rpmLimit.umqModeSerialize') },
+])
+
+// Common HTTP error codes
+const commonErrorCodes = [
+  { value: 401, label: 'Unauthorized' },
+  { value: 403, label: 'Forbidden' },
+  { value: 429, label: 'Rate Limit' },
+  { value: 500, label: 'Server Error' },
+  { value: 502, label: 'Bad Gateway' },
+  { value: 503, label: 'Unavailable' },
+  { value: 529, label: 'Overloaded' }
+]
+
+const statusOptions = computed(() => [
+  { value: 'active', label: t('common.active') },
+  { value: 'inactive', label: t('common.inactive') }
+])
+
+const openAIWSModeOptions = computed(() => [
+  { value: OPENAI_WS_MODE_OFF, label: t('admin.providers.openai.wsModeOff') },
+  { value: OPENAI_WS_MODE_CTX_POOL, label: t('admin.providers.openai.wsModeCtxPool') },
+  { value: OPENAI_WS_MODE_PASSTHROUGH, label: t('admin.providers.openai.wsModePassthrough') },
+  { value: OPENAI_WS_MODE_HTTP_BRIDGE, label: t('admin.providers.openai.wsModeHttpBridge') }
+])
+const openAIOAuthClientPolicyOptions = computed(() => [
+  { value: 'any', label: t('admin.providers.openai.clientPolicyAny') },
+  { value: 'codex_only', label: t('admin.providers.openai.clientPolicyCodexOnly') },
+  { value: 'tls_router_matched_only', label: t('admin.providers.openai.clientPolicyTLSRouterMatchedOnly') }
+])
+const openAIWSModeConcurrencyHintKey = computed(() =>
+  resolveOpenAIWSModeConcurrencyHintKey(openaiOAuthResponsesWebSocketV2Mode.value)
+)
+const openAIAPIKeyWSModeConcurrencyHintKey = computed(() =>
+  resolveOpenAIWSModeConcurrencyHintKey(openaiAPIKeyResponsesWebSocketV2Mode.value)
+)
+
+const cloneModelMappings = (mappings: ModelMapping[]) =>
+  mappings.map(({ from, to }) => ({ from, to }))
+
+const normalizeModelMappings = (mappings: ModelMapping[]) => {
+  return cloneModelMappings(mappings)
+    .map(({ from, to }) => ({
+      from: from.trim(),
+      to: to.trim()
+    }))
+    .filter(({ from, to }) => from.length > 0 && to.length > 0)
+    .sort((a, b) => {
+      const fromCmp = a.from.localeCompare(b.from)
+      if (fromCmp !== 0) {
+        return fromCmp
+      }
+      return a.to.localeCompare(b.to)
+    })
+}
+
+const resetModelRestrictionDraft = () => {
+  modelRestrictionMode.value = 'whitelist'
+  allowedModels.value = []
+  modelMappings.value = []
+}
+
+const isModelRestrictionDraftPristine = () =>
+  modelRestrictionMode.value === 'whitelist' &&
+  allowedModels.value.length === 0 &&
+  modelMappings.value.length === 0
+
+const getModelRestrictionSignature = (state: ParsedModelRestrictionState) => {
+  return JSON.stringify({
+    mode: state.mode,
+    allowedModels: state.allowedModels,
+    modelMappings: state.modelMappings
+  })
+}
+
+const parseProviderModelRestriction = (provider: Provider): ParsedModelRestrictionState => {
+  const credentials = (provider.credentials as Record<string, unknown>) || {}
+
+  let allowedModels: string[] = []
+  let modelMappings: ModelMapping[] = []
+
+  if (provider.platform === 'antigravity') {
+    const rawMapping = credentials.model_mapping as Record<string, string> | undefined
+    if (rawMapping && typeof rawMapping === 'object') {
+      const parsed = splitModelMappingObject(rawMapping)
+      allowedModels = parsed.allowedModels
+      modelMappings = parsed.modelMappings
+    } else {
+      allowedModels = normalizeModelWhitelist(credentials.model_whitelist)
+    }
+  } else if (provider.platform === 'qoder') {
+    const parsed = splitQoderPersistedModelRestriction(
+      credentials.model_mapping as Record<string, string> | undefined,
+      credentials.model_whitelist
+    )
+    allowedModels = parsed.allowedModels
+    modelMappings = parsed.modelMappings
+  } else {
+    const parsed = splitPersistedModelRestriction(
+      credentials.model_mapping as Record<string, string> | undefined,
+      credentials.model_whitelist
+    )
+    allowedModels = parsed.allowedModels
+    modelMappings = parsed.modelMappings
+  }
+
+  const normalizedAllowedModels = Array.from(
+    new Set(
+      allowedModels
+        .map((model) => model.trim())
+        .filter((model) => model.length > 0)
+    )
+  ).sort((a, b) => a.localeCompare(b))
+  const normalizedModelMappings = normalizeModelMappings(modelMappings)
+
+  return {
+    mode: normalizedModelMappings.length > 0 ? 'mapping' : 'whitelist',
+    allowedModels: normalizedAllowedModels,
+    modelMappings: normalizedModelMappings
+  }
+}
+
+const hydrateModelRestrictionDraftFromProviders = (providers: Provider[]) => {
+  if (props.selectedPlatforms.length !== 1 || providers.length === 0) {
+    resetModelRestrictionDraft()
+    return
+  }
+
+  const parsedStates = providers.map(parseProviderModelRestriction)
+  const firstState = parsedStates[0]
+  const firstSignature = getModelRestrictionSignature(firstState)
+
+  if (!parsedStates.every((state) => getModelRestrictionSignature(state) === firstSignature)) {
+    resetModelRestrictionDraft()
+    return
+  }
+
+  modelRestrictionMode.value = firstState.mode
+  allowedModels.value = [...firstState.allowedModels]
+  modelMappings.value = cloneModelMappings(firstState.modelMappings)
+}
+
+const loadTLSFingerprintProfiles = async () => {
+  try {
+    const profiles = await adminAPI.tlsFingerprintProfiles.list()
+    tlsFingerprintProfiles.value = profiles.map(p => ({ id: p.id, name: p.name }))
+  } catch {
+    tlsFingerprintProfiles.value = []
+  }
+}
+
+const loadTLSFingerprintRouters = async () => {
+  try {
+    const routers = await adminAPI.tlsFingerprintRouters.list()
+    tlsFingerprintRouters.value = routers.map(router => ({ id: router.id, name: router.name }))
+  } catch {
+    tlsFingerprintRouters.value = []
+  }
+}
+
+const loadSelectedProviderDefaults = async () => {
+  const requestSeq = ++modelRestrictionPrefillSeq.value
+  if (!props.show || props.providerIds.length === 0) {
+    return
+  }
+  prefillLoading.value=true;prefillFailed.value=false
+  try {
+    const providers = await Promise.all(props.providerIds.map((id) => adminAPI.providers.getById(id)))
+    if (requestSeq !== modelRestrictionPrefillSeq.value || !props.show) {
+      return
+    }
+    ticketTargetsEligible.value = providers.length > 0 && providers.every(account => account.platform === 'openai' && account.type === 'oauth' && account.parent_provider_id == null && String(account.credentials?.auth_mode || '').trim().toLowerCase() !== 'agentidentity')
+    if (!isModelRestrictionDraftPristine()) {
+      return
+    }
+    hydrateModelRestrictionDraftFromProviders(providers)
+  } catch (error) {
+    if (requestSeq !== modelRestrictionPrefillSeq.value) {
+      return
+    }
+    if (!isModelRestrictionDraftPristine()) {
+      return
+    }
+    resetModelRestrictionDraft()
+    console.error('Failed to load bulk edit provider defaults:', error)
+  }
+}
+
+// Model mapping helpers
+const addModelMapping = () => {
+  modelMappings.value.push({ from: '', to: '' })
+}
+
+const removeModelMapping = (index: number) => {
+  modelMappings.value.splice(index, 1)
+}
+
+const addOpenAICompactModelMapping = () => {
+  openAICompactModelMappings.value.push({ from: '', to: '' })
+}
+
+const removeOpenAICompactModelMapping = (index: number) => {
+  openAICompactModelMappings.value.splice(index, 1)
+}
+
+const addPresetMapping = (from: string, to: string) => {
+  const exists = modelMappings.value.some((m) => m.from === from)
+  if (exists) {
+    appStore.showInfo(t('admin.providers.mappingExists', { model: from }))
+    return
+  }
+  modelMappings.value.push({ from, to })
+}
+
+// Error code helpers
+const toggleErrorCode = (code: number) => {
+  const index = selectedErrorCodes.value.indexOf(code)
+  if (index === -1) {
+    // Adding code - check for 429/529 warning
+    if (code === 429) {
+      if (!confirm(t('admin.providers.customErrorCodes429Warning'))) {
+        return
+      }
+    } else if (code === 529) {
+      if (!confirm(t('admin.providers.customErrorCodes529Warning'))) {
+        return
+      }
+    }
+    selectedErrorCodes.value.push(code)
+  } else {
+    selectedErrorCodes.value.splice(index, 1)
+  }
+}
+
+const addCustomErrorCode = () => {
+  const code = customErrorCodeInput.value
+  if (code === null || code < 100 || code > 599) {
+    appStore.showError(t('admin.providers.invalidErrorCode'))
+    return
+  }
+  if (selectedErrorCodes.value.includes(code)) {
+    appStore.showInfo(t('admin.providers.errorCodeExists'))
+    return
+  }
+  // Check for 429/529 warning
+  if (code === 429) {
+    if (!confirm(t('admin.providers.customErrorCodes429Warning'))) {
+      return
+    }
+  } else if (code === 529) {
+    if (!confirm(t('admin.providers.customErrorCodes529Warning'))) {
+      return
+    }
+  }
+  selectedErrorCodes.value.push(code)
+  customErrorCodeInput.value = null
+}
+
+const removeErrorCode = (code: number) => {
+  const index = selectedErrorCodes.value.indexOf(code)
+  if (index !== -1) {
+    selectedErrorCodes.value.splice(index, 1)
+  }
+}
+
+const buildOpenAICompactModelMapping = (): Record<string, string> | null => {
+  return buildModelMappingObject('mapping', [], openAICompactModelMappings.value)
+}
+
+const normalizeAutoPauseThresholdInput = (value: OptionalNumberInputValue): OptionalNumberInputValue => {
+  if (value === '' || value === null) {
+    return null
+  }
+
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null
+  }
+  return Math.min(parsed, 100)
+}
+
+const buildAutoPauseThresholdRatio = (value: OptionalNumberInputValue): number => {
+  // UI 使用百分比，后端 extra 字段使用 0-1；0 表示清除提供商级覆盖并回退全局默认。
+  const normalized = normalizeAutoPauseThresholdInput(value)
+  return typeof normalized === 'number' ? normalized / 100 : 0
+}
+
+const buildUpdatePayload = (): Record<string, unknown> | null => {
+  const pairs = [[enableConcurrency,concurrency],[enablePriority,priority],[enableRateMultiplier,rateMultiplier],[enableStatus,status],[enableOpenAIPassthrough,openaiPassthroughEnabled],[enableOpenAIFlattenNamespaces,openaiFlattenNamespacesEnabled],[enableOpenAIWSMode,openaiOAuthResponsesWebSocketV2Mode],[enableOpenAIAPIKeyWSMode,openaiAPIKeyResponsesWebSocketV2Mode],[enableCodexCLIOnly,openAIOAuthClientPolicy],[enableTLSFingerprint,tlsFingerprintEnabled],[enableCodexFingerprintMode,codexFingerprintMode],[enableOpenAICompactMode,openAICompactMode],[enableOpenAINativeCompactionV2Mode,openAINativeCompactionV2Mode],[enableAutoPause5hDisabled,autoPause5hDisabled],[enableAutoPause7dDisabled,autoPause7dDisabled],[enableHeaderOverride,headerOverrideEnabled],[enableInterceptWarmup,interceptWarmupRequests],[enableCodexImageToolMode,codexImageToolMode]]
+  if(pairs.some(([enabled,value])=>enabled.value&&isBlank(value.value))) throw new Error(t('admin.settings.codexTicket.invalidForm'))
+  const updates: Record<string, unknown> = {}
+  const credentials: Record<string, unknown> = {}
+  let credentialsChanged = false
+  const ensureExtra = (): Record<string, unknown> => {
+    if (!updates.extra) {
+      updates.extra = {}
+    }
+    return updates.extra as Record<string, unknown>
+  }
+
+  if (enableProxy.value) {
+    if (isBlank(proxyId.value) && proxyId.value !== null) throw new Error(t('admin.settings.codexTicket.invalidForm'))
+    // 后端期望 proxy_id: 0 表示清除代理，而不是 null
+    updates.proxy_id = proxyId.value === null ? 0 : proxyId.value
+  }
+
+  if (enableConcurrency.value) {
+    if(!Number.isFinite(Number(concurrency.value)) || Number(concurrency.value)<0)throw new Error(t('admin.settings.codexTicket.invalidForm'))
+    updates.concurrency = concurrency.value
+  }
+
+  if (enableLoadFactor.value) {
+    // 空值/NaN/0 时发送 0（后端约定 <= 0 表示清除）
+    const lf = loadFactor.value
+    updates.load_factor = (lf != null && !Number.isNaN(lf) && lf > 0) ? lf : 0
+  }
+
+  if (enablePriority.value) {
+    updates.priority = priority.value
+  }
+
+  if (enableRateMultiplier.value) {
+    updates.rate_multiplier = rateMultiplier.value
+  }
+
+  if (enableStatus.value) {
+    updates.status = status.value
+  }
+
+  if (enableGroups.value) {
+    updates.group_ids = groupIds.value
+  }
+
+  if (enableBaseUrl.value) {
+    const baseUrlValue = baseUrl.value.trim()
+    if (baseUrlValue) {
+      credentials.base_url = baseUrlValue
+      credentialsChanged = true
+    }
+  }
+
+  if (enableOpenAIPassthrough.value) {
+    const extra = ensureExtra()
+    extra.openai_passthrough = openaiPassthroughEnabled.value
+    if (!openaiPassthroughEnabled.value) {
+      extra.openai_oauth_passthrough = false
+    }
+  }
+
+  // 可见性也参与校验，防止目标筛选变更后把 OAuth 专属字段写到其他提供商。
+  if (enableOpenAIFlattenNamespaces.value && allOpenAIOAuth.value) {
+    const extra = ensureExtra()
+    extra.openai_responses_flatten_namespaces = openaiFlattenNamespacesEnabled.value
+  }
+
+  if (enableCodexImageToolMode.value) {
+    const extra = ensureExtra()
+    applyCodexImageToolMode(extra, codexImageToolMode.value, 'null')
+  }
+
+  if (enableOpenAIResponsesContinuationSupported.value && allOpenAIAPIKey.value) {
+    const extra = ensureExtra()
+    extra.openai_responses_continuation_supported = openAIResponsesContinuationSupported.value
+  }
+
+  if (enableModelRestriction.value) {
+    // 所有提供商共用独立的模型映射和最终白名单，空集合恢复默认目录。
+    const persisted = buildPersistedModelRestriction(allowedModels.value, modelMappings.value)
+    credentials.model_mapping = persisted.modelMapping ?? {}
+    credentials.model_whitelist = persisted.modelWhitelist
+    credentialsChanged = true
+  }
+
+  if (enableCustomErrorCodes.value) {
+    credentials.custom_error_codes_enabled = true
+    credentials.custom_error_codes = [...selectedErrorCodes.value]
+    credentialsChanged = true
+  }
+
+  if (enableInterceptWarmup.value) {
+    credentials.intercept_warmup_requests = interceptWarmupRequests.value
+    credentialsChanged = true
+  }
+
+  if (enableHeaderOverride.value) {
+    // 后端使用 JSONB || merge 语义：关闭时显式写入 false + 空对象以清除旧配置
+    credentials[HEADER_OVERRIDE_ENABLED_CREDENTIAL_KEY] = headerOverrideEnabled.value
+    credentials[HEADER_OVERRIDES_CREDENTIAL_KEY] = headerOverrideEnabled.value
+      ? buildHeaderOverridesObject(headerOverrideRows.value)
+      : {}
+    credentialsChanged = true
+  }
+
+  if (enableOpenAIWSMode.value) {
+    const extra = ensureExtra()
+    extra.openai_oauth_responses_websockets_v2_mode = openaiOAuthResponsesWebSocketV2Mode.value
+    extra.openai_oauth_responses_websockets_v2_enabled = isOpenAIWSModeEnabled(
+      openaiOAuthResponsesWebSocketV2Mode.value
+    )
+  }
+
+  if (enableOpenAIAPIKeyWSMode.value) {
+    const extra = ensureExtra()
+    extra.openai_apikey_responses_websockets_v2_mode = openaiAPIKeyResponsesWebSocketV2Mode.value
+    extra.openai_apikey_responses_websockets_v2_enabled = isOpenAIWSModeEnabled(
+      openaiAPIKeyResponsesWebSocketV2Mode.value
+    )
+  }
+
+  if (enableCodexCLIOnly.value) {
+    const extra = ensureExtra()
+    extra.openai_oauth_client_policy = openAIOAuthClientPolicy.value
+    // 兼容旧后端/旧提供商字段；非 codex_only 时显式写 false，避免 JSONB merge 留下旧 true。
+    extra.codex_cli_only = openAIOAuthClientPolicy.value === 'codex_only'
+    if (openAIOAuthClientPolicy.value !== 'codex_only') {
+      extra.codex_cli_only_allowed_clients = []
+    }
+  }
+
+  if (enableCodexCLIOnlyAllowClaudeCode.value) {
+    const extra = ensureExtra()
+    extra.codex_cli_only_allowed_clients =
+      (!enableCodexCLIOnly.value || openAIOAuthClientPolicy.value === 'codex_only') &&
+      codexCLIOnlyAllowClaudeCodeEnabled.value
+        ? ['claude_code']
+        : []
+  }
+
+  if (enableAutoPause5hThreshold.value) {
+    const extra = ensureExtra()
+    extra.auto_pause_5h_threshold = buildAutoPauseThresholdRatio(autoPause5hThreshold.value)
+  }
+
+  if (enableAutoPause7dThreshold.value) {
+    const extra = ensureExtra()
+    extra.auto_pause_7d_threshold = buildAutoPauseThresholdRatio(autoPause7dThreshold.value)
+  }
+
+  if (enableAutoPause5hDisabled.value) {
+    const extra = ensureExtra()
+    extra.auto_pause_5h_disabled = autoPause5hDisabled.value
+  }
+
+  if (enableAutoPause7dDisabled.value) {
+    const extra = ensureExtra()
+    extra.auto_pause_7d_disabled = autoPause7dDisabled.value
+  }
+
+  if (enableTLSFingerprint.value) {
+    const extra = ensureExtra()
+    extra.enable_tls_fingerprint = tlsFingerprintEnabled.value
+    extra.tls_fingerprint_profile_id = tlsFingerprintEnabled.value ? tlsFingerprintProfileId.value : 0
+    if (allOpenAIOAuth.value) {
+      // 0 表示清除提供商上的 TLS 路由器，避免批量关闭后旧路由器继续生效。
+      extra.tls_fingerprint_router_id = tlsFingerprintEnabled.value ? (tlsFingerprintRouterId.value ?? 0) : 0
+    }
+  }
+
+  if (enableCodexFingerprintMode.value) {
+    const extra = ensureExtra()
+    // 批量 extra 使用 JSONB merge；off 也必须显式写入，才能覆盖已有的收敛档位。
+    extra.codex_fingerprint_mode = codexFingerprintMode.value
+  }
+
+  if (enableOpenAICompactMode.value) {
+    const extra = ensureExtra()
+    extra.openai_compact_mode = openAICompactMode.value
+  }
+
+  if (enableOpenAINativeCompactionV2Mode.value) {
+    const extra = ensureExtra()
+    extra.openai_native_compaction_v2_mode = openAINativeCompactionV2Mode.value
+  }
+
+  if (enableOpenAICompactModelMapping.value && enableOpenAICompactMode.value && openAICompactMode.value !== 'force_off') {
+    credentials.compact_model_mapping = buildOpenAICompactModelMapping() ?? {}
+    credentialsChanged = true
+  }
+
+  // RPM limit settings (写入 extra 字段)
+  if (enableRpmLimit.value) {
+    const extra = ensureExtra()
+    if (rpmLimitEnabled.value && bulkBaseRpm.value != null && bulkBaseRpm.value > 0) {
+      extra.base_rpm = bulkBaseRpm.value
+      extra.rpm_strategy = bulkRpmStrategy.value
+      if (bulkRpmStickyBuffer.value != null && bulkRpmStickyBuffer.value > 0) {
+        extra.rpm_sticky_buffer = bulkRpmStickyBuffer.value
+      }
+    } else {
+      // 关闭 RPM 限制 - 设置 base_rpm 为 0，并用空值覆盖关联字段
+      // 后端使用 JSONB || merge 语义，不会删除已有 key，
+      // 所以必须显式发送空值来重置（后端读取时会 fallback 到默认值）
+      extra.base_rpm = 0
+      extra.rpm_strategy = ''
+      extra.rpm_sticky_buffer = 0
+    }
+    updates.extra = extra
+  }
+
+  // UMQ mode（独立于 RPM 保存）
+  if (enableUserMsgQueue.value && userMsgQueueMode.value !== null) {
+    const umqExtra = ensureExtra()
+    umqExtra.user_msg_queue_mode = userMsgQueueMode.value  // '' = 清除提供商级覆盖
+    umqExtra.user_msg_queue_enabled = false  // 清理旧字段（JSONB merge）
+  }
+
+  if (enableUpstreamProtocols.value && upstreamProtocols.value !== undefined) {
+    credentials.upstream_protocols = [...upstreamProtocols.value]
+    credentialsChanged = true
+  }
+
+  if (credentialsChanged) {
+    updates.credentials = credentials
+  }
+
+  return Object.keys(updates).length > 0 ? updates : null
+}
+
+const handleClose = () => {
+  emit('close')
+}
+
+const handleSubmit = async () => {
+  if (targetMode.value === 'selected' && props.providerIds.length === 0) {
+    appStore.showError(t('admin.providers.bulkEdit.noSelection'))
+    return
+  }
+
+  const hasAnyFieldEnabled =
+    enableUpstreamProtocols.value ||
+    enableBaseUrl.value ||
+    enableOpenAIPassthrough.value ||
+    enableOpenAIFlattenNamespaces.value ||
+    enableCodexImageToolMode.value ||
+    enableOpenAIResponsesContinuationSupported.value ||
+    enableModelRestriction.value ||
+    enableCustomErrorCodes.value ||
+    enableInterceptWarmup.value ||
+    enableHeaderOverride.value ||
+    enableProxy.value ||
+    enableConcurrency.value ||
+    enableLoadFactor.value ||
+    enablePriority.value ||
+    enableRateMultiplier.value ||
+    enableStatus.value ||
+    enableGroups.value ||
+    enableOpenAIWSMode.value ||
+    enableOpenAIAPIKeyWSMode.value ||
+    enableCodexCLIOnly.value ||
+    enableCodexCLIOnlyAllowClaudeCode.value ||
+    enableAutoPause5hThreshold.value ||
+    enableAutoPause7dThreshold.value ||
+    enableAutoPause5hDisabled.value ||
+    enableAutoPause7dDisabled.value ||
+    enableTLSFingerprint.value ||
+    enableCodexFingerprintMode.value ||
+    enableOpenAICompactMode.value ||
+    enableOpenAINativeCompactionV2Mode.value ||
+    enableOpenAICompactModelMapping.value ||
+    enableRpmLimit.value ||
+    enableUserMsgQueue.value
+
+  if (!hasAnyFieldEnabled) {
+    appStore.showError(t('admin.providers.bulkEdit.noFieldsSelected'))
+    return
+  }
+
+
+  // base_url 现在也会作用于 Grok OAuth 订阅提供商的转发端点；坏值会让请求期
+  // 校验失败、提供商请求全挂，因此保存前强制格式校验（与单提供商编辑一致）。
+  if (enableBaseUrl.value) {
+    const trimmedBaseUrl = baseUrl.value.trim()
+    if (trimmedBaseUrl && !/^https?:\/\//i.test(trimmedBaseUrl)) {
+      appStore.showError(t('admin.providers.grokCustomBaseUrl.invalid'))
+      return
+    }
+  }
+
+  if (enableHeaderOverride.value && headerOverrideEnabled.value) {
+    // 批量保存对 header_overrides 是整键替换：开启但没有任何有效行会把所选提供商的
+    // 既有覆写配置静默清空，必须显式拦截（清空请走关闭开关的路径，有专门提示）
+    if (!headerOverrideRows.value.some((row) => row.name.trim())) {
+      appStore.showError(t('admin.providers.headerOverride.bulkEmptyRows'))
+      return
+    }
+    const headerError = validateHeaderOverrideRows(headerOverrideRows.value)
+    if (headerError) {
+      appStore.showError(t(`admin.providers.headerOverride.${headerError}`))
+      return
+    }
+  }
+
+  const built = buildUpdatePayload()
+  if (!built && !ticketSettings.value?.hasChanges) {
+    appStore.showError(t('admin.providers.bulkEdit.noFieldsSelected'))
+    return
+  }
+
+
+  await submitBulkUpdate(built || {})
+}
+
+const submitBulkUpdate = async (baseUpdates: Record<string, unknown>) => {
+  const updates = baseUpdates
+
+  submitting.value = true
+  const targetIds = [...props.providerIds]
+  try {
+    // 票据独立校验但统一由原按钮提交；仅改票据时不发送空的普通批量更新。
+    const saveTicket = await ticketSettings.value?.prepareSave()
+    if (!props.show || targetIds.join(',') !== props.providerIds.join(',')) return
+    if (Object.keys(baseUpdates).length === 0) {
+      if (!saveTicket) throw new Error(t('admin.accounts.bulkEdit.noFieldsSelected'))
+      await saveTicket()
+      appStore.showSuccess(t('admin.accounts.bulkEdit.success', { count: props.providerIds.length }))
+      emit('updated')
+      handleClose()
+      return
+    }
+    const res = targetMode.value === 'filtered' && props.target?.filters
+      ? await adminAPI.providers.bulkUpdate({
+        filters: props.target.filters,
+        ...updates
+      })
+      : await adminAPI.providers.bulkUpdate(props.providerIds, updates)
+    const success = res.success || 0
+    const failed = res.failed || 0
+    if (saveTicket) {
+      // 普通批量存在失败时不继续全选写票据，以免把失败账号也当作保存完成。
+      if (failed > 0 || success !== props.providerIds.length) {
+        appStore.showError(t('admin.accounts.ticketPolicy.bulkSaveStopped', { success, failed }))
+        return
+      }
+      await saveTicket()
+    }
+
+    if (success > 0 && failed === 0) {
+      appStore.showSuccess(t('admin.providers.bulkEdit.success', { count: success }))
+    } else if (success > 0) {
+      appStore.showError(t('admin.providers.bulkEdit.partialSuccess', { success, failed }))
+    } else {
+      appStore.showError(t('admin.providers.bulkEdit.failed'))
+    }
+
+    if (success > 0) {
+      emit('updated')
+      handleClose()
+    }
+  } catch (error: any) {appStore.showError(error.message || t('admin.providers.bulkEdit.failed'))
+console.error('Error bulk updating providers:', error)
+  } finally {
+    submitting.value = false
+  }
+}
+
+const resetBulkEditFormState = () => {
+  enableUserMsgQueue.value=false
+  prefillFailed.value=false;prefillLoading.value=false
+  enableBaseUrl.value = false
+  enableModelRestriction.value = false
+  enableCustomErrorCodes.value = false
+  enableInterceptWarmup.value = false
+  enableHeaderOverride.value = false
+  enableProxy.value = false
+  enableConcurrency.value = false
+  enableLoadFactor.value = false
+  enablePriority.value = false
+  enableRateMultiplier.value = false
+  enableStatus.value = false
+  enableGroups.value = false
+  enableOpenAIPassthrough.value = false
+  enableOpenAIFlattenNamespaces.value = false
+  enableCodexImageToolMode.value = false
+  enableUpstreamProtocols.value = false
+  upstreamProtocols.value = undefined
+  enableOpenAIResponsesContinuationSupported.value = false
+  enableOpenAIWSMode.value = false
+  enableOpenAIAPIKeyWSMode.value = false
+  enableCodexCLIOnly.value = false
+  enableCodexCLIOnlyAllowClaudeCode.value = false
+  enableAutoPause5hThreshold.value = false
+  enableAutoPause7dThreshold.value = false
+  enableAutoPause5hDisabled.value = false
+  enableAutoPause7dDisabled.value = false
+  enableCodexFingerprintMode.value = false
+  enableOpenAICompactMode.value = false
+  enableOpenAINativeCompactionV2Mode.value = false
+  enableOpenAICompactModelMapping.value = false
+  enableRpmLimit.value = false
+  enableTLSFingerprint.value = false
+
+  baseUrl.value = ''
+  openaiPassthroughEnabled.value = false
+  openaiFlattenNamespacesEnabled.value = false
+  codexImageToolMode.value = 'inherit'
+  openAIResponsesContinuationSupported.value = false
+  resetModelRestrictionDraft()
+  selectedErrorCodes.value = []
+  customErrorCodeInput.value = null
+  interceptWarmupRequests.value = false
+  headerOverrideEnabled.value = false
+  headerOverrideRows.value = []
+  proxyId.value = null
+  concurrency.value = 1
+  loadFactor.value = null
+  priority.value = 1
+  rateMultiplier.value = 1
+  status.value = 'active'
+  groupIds.value = []
+  openaiOAuthResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
+  openaiAPIKeyResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
+  openAIOAuthClientPolicy.value = 'any'
+  codexCLIOnlyAllowClaudeCodeEnabled.value = false
+  autoPause5hThreshold.value = null
+  autoPause7dThreshold.value = null
+  autoPause5hDisabled.value = false
+  autoPause7dDisabled.value = false
+  codexFingerprintMode.value = 'off'
+  openAICompactMode.value = 'force_on'
+  openAINativeCompactionV2Mode.value = 'force_on'
+  openAICompactModelMappings.value = []
+  rpmLimitEnabled.value = false
+  bulkBaseRpm.value = null
+  bulkRpmStrategy.value = 'tiered'
+  bulkRpmStickyBuffer.value = null
+  userMsgQueueMode.value = null
+  tlsFingerprintEnabled.value = false
+  tlsFingerprintProfileId.value = 0
+  tlsFingerprintRouterId.value = null
+}
+
+watch(
+  [
+    () => props.show,
+    () => props.providerIds.join(','),
+    () => props.selectedPlatforms.join(','),
+    () => props.selectedTypes.join(',')
+  ],
+  ([newShow]) => {
+    if (newShow) {
+      if (allTLSFingerprintCapable.value) {
+        void loadTLSFingerprintProfiles()
+      }
+      if (allOpenAIOAuth.value) {
+        void loadTLSFingerprintRouters()
+      }
+      void loadSelectedProviderDefaults()
+      return
+    }
+
+    modelRestrictionPrefillSeq.value++
+    resetBulkEditFormState()
+  },
+  { immediate: true }
+)
+</script>

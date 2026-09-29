@@ -11,15 +11,15 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
-	"github.com/TokenFlux/TokenRouter/ent/account"
 	"github.com/TokenFlux/TokenRouter/ent/apikey"
 	"github.com/TokenFlux/TokenRouter/ent/group"
 	"github.com/TokenFlux/TokenRouter/ent/predicate"
+	"github.com/TokenFlux/TokenRouter/ent/provider"
 	"github.com/TokenFlux/TokenRouter/ent/team"
 	"github.com/TokenFlux/TokenRouter/ent/usagelog"
 	"github.com/TokenFlux/TokenRouter/ent/user"
 	"github.com/TokenFlux/TokenRouter/ent/usersubscription"
-	"github.com/TokenFlux/TokenRouter/internal/domain"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
 // UsageLogUpdate is the builder for updating UsageLog entities.
@@ -110,16 +110,30 @@ func (_u *UsageLogUpdate) SetNillableAPIKeyID(v *int64) *UsageLogUpdate {
 	return _u
 }
 
-// SetAccountID sets the "account_id" field.
-func (_u *UsageLogUpdate) SetAccountID(v int64) *UsageLogUpdate {
-	_u.mutation.SetAccountID(v)
+// SetProviderID sets the "provider_id" field.
+func (_u *UsageLogUpdate) SetProviderID(v int64) *UsageLogUpdate {
+	_u.mutation.SetProviderID(v)
 	return _u
 }
 
-// SetNillableAccountID sets the "account_id" field if the given value is not nil.
-func (_u *UsageLogUpdate) SetNillableAccountID(v *int64) *UsageLogUpdate {
+// SetNillableProviderID sets the "provider_id" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableProviderID(v *int64) *UsageLogUpdate {
 	if v != nil {
-		_u.SetAccountID(*v)
+		_u.SetProviderID(*v)
+	}
+	return _u
+}
+
+// SetPlatform sets the "platform" field.
+func (_u *UsageLogUpdate) SetPlatform(v string) *UsageLogUpdate {
+	_u.mutation.SetPlatform(v)
+	return _u
+}
+
+// SetNillablePlatform sets the "platform" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillablePlatform(v *string) *UsageLogUpdate {
+	if v != nil {
+		_u.SetPlatform(*v)
 	}
 	return _u
 }
@@ -192,30 +206,30 @@ func (_u *UsageLogUpdate) ClearUpstreamModel() *UsageLogUpdate {
 	return _u
 }
 
-// SetChannelID sets the "channel_id" field.
-func (_u *UsageLogUpdate) SetChannelID(v int64) *UsageLogUpdate {
-	_u.mutation.ResetChannelID()
-	_u.mutation.SetChannelID(v)
+// SetPricingConfigID sets the "pricing_config_id" field.
+func (_u *UsageLogUpdate) SetPricingConfigID(v int64) *UsageLogUpdate {
+	_u.mutation.ResetPricingConfigID()
+	_u.mutation.SetPricingConfigID(v)
 	return _u
 }
 
-// SetNillableChannelID sets the "channel_id" field if the given value is not nil.
-func (_u *UsageLogUpdate) SetNillableChannelID(v *int64) *UsageLogUpdate {
+// SetNillablePricingConfigID sets the "pricing_config_id" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillablePricingConfigID(v *int64) *UsageLogUpdate {
 	if v != nil {
-		_u.SetChannelID(*v)
+		_u.SetPricingConfigID(*v)
 	}
 	return _u
 }
 
-// AddChannelID adds value to the "channel_id" field.
-func (_u *UsageLogUpdate) AddChannelID(v int64) *UsageLogUpdate {
-	_u.mutation.AddChannelID(v)
+// AddPricingConfigID adds value to the "pricing_config_id" field.
+func (_u *UsageLogUpdate) AddPricingConfigID(v int64) *UsageLogUpdate {
+	_u.mutation.AddPricingConfigID(v)
 	return _u
 }
 
-// ClearChannelID clears the value of the "channel_id" field.
-func (_u *UsageLogUpdate) ClearChannelID() *UsageLogUpdate {
-	_u.mutation.ClearChannelID()
+// ClearPricingConfigID clears the value of the "pricing_config_id" field.
+func (_u *UsageLogUpdate) ClearPricingConfigID() *UsageLogUpdate {
+	_u.mutation.ClearPricingConfigID()
 	return _u
 }
 
@@ -634,13 +648,13 @@ func (_u *UsageLogUpdate) AddBalanceAmountUsd(v float64) *UsageLogUpdate {
 }
 
 // SetBillingAllocations sets the "billing_allocations" field.
-func (_u *UsageLogUpdate) SetBillingAllocations(v []domain.BillingAllocation) *UsageLogUpdate {
+func (_u *UsageLogUpdate) SetBillingAllocations(v []billing.BillingAllocation) *UsageLogUpdate {
 	_u.mutation.SetBillingAllocations(v)
 	return _u
 }
 
 // AppendBillingAllocations appends value to the "billing_allocations" field.
-func (_u *UsageLogUpdate) AppendBillingAllocations(v []domain.BillingAllocation) *UsageLogUpdate {
+func (_u *UsageLogUpdate) AppendBillingAllocations(v []billing.BillingAllocation) *UsageLogUpdate {
 	_u.mutation.AppendBillingAllocations(v)
 	return _u
 }
@@ -686,30 +700,30 @@ func (_u *UsageLogUpdate) SetNillableLongContextBillingApplied(v *bool) *UsageLo
 	return _u
 }
 
-// SetAccountRateMultiplier sets the "account_rate_multiplier" field.
-func (_u *UsageLogUpdate) SetAccountRateMultiplier(v float64) *UsageLogUpdate {
-	_u.mutation.ResetAccountRateMultiplier()
-	_u.mutation.SetAccountRateMultiplier(v)
+// SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
+func (_u *UsageLogUpdate) SetProviderRateMultiplier(v float64) *UsageLogUpdate {
+	_u.mutation.ResetProviderRateMultiplier()
+	_u.mutation.SetProviderRateMultiplier(v)
 	return _u
 }
 
-// SetNillableAccountRateMultiplier sets the "account_rate_multiplier" field if the given value is not nil.
-func (_u *UsageLogUpdate) SetNillableAccountRateMultiplier(v *float64) *UsageLogUpdate {
+// SetNillableProviderRateMultiplier sets the "provider_rate_multiplier" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableProviderRateMultiplier(v *float64) *UsageLogUpdate {
 	if v != nil {
-		_u.SetAccountRateMultiplier(*v)
+		_u.SetProviderRateMultiplier(*v)
 	}
 	return _u
 }
 
-// AddAccountRateMultiplier adds value to the "account_rate_multiplier" field.
-func (_u *UsageLogUpdate) AddAccountRateMultiplier(v float64) *UsageLogUpdate {
-	_u.mutation.AddAccountRateMultiplier(v)
+// AddProviderRateMultiplier adds value to the "provider_rate_multiplier" field.
+func (_u *UsageLogUpdate) AddProviderRateMultiplier(v float64) *UsageLogUpdate {
+	_u.mutation.AddProviderRateMultiplier(v)
 	return _u
 }
 
-// ClearAccountRateMultiplier clears the value of the "account_rate_multiplier" field.
-func (_u *UsageLogUpdate) ClearAccountRateMultiplier() *UsageLogUpdate {
-	_u.mutation.ClearAccountRateMultiplier()
+// ClearProviderRateMultiplier clears the value of the "provider_rate_multiplier" field.
+func (_u *UsageLogUpdate) ClearProviderRateMultiplier() *UsageLogUpdate {
+	_u.mutation.ClearProviderRateMultiplier()
 	return _u
 }
 
@@ -1047,9 +1061,9 @@ func (_u *UsageLogUpdate) SetAPIKey(v *APIKey) *UsageLogUpdate {
 	return _u.SetAPIKeyID(v.ID)
 }
 
-// SetAccount sets the "account" edge to the Account entity.
-func (_u *UsageLogUpdate) SetAccount(v *Account) *UsageLogUpdate {
-	return _u.SetAccountID(v.ID)
+// SetProvider sets the "provider" edge to the Provider entity.
+func (_u *UsageLogUpdate) SetProvider(v *Provider) *UsageLogUpdate {
+	return _u.SetProviderID(v.ID)
 }
 
 // SetGroup sets the "group" edge to the Group entity.
@@ -1084,9 +1098,9 @@ func (_u *UsageLogUpdate) ClearAPIKey() *UsageLogUpdate {
 	return _u
 }
 
-// ClearAccount clears the "account" edge to the Account entity.
-func (_u *UsageLogUpdate) ClearAccount() *UsageLogUpdate {
-	_u.mutation.ClearAccount()
+// ClearProvider clears the "provider" edge to the Provider entity.
+func (_u *UsageLogUpdate) ClearProvider() *UsageLogUpdate {
+	_u.mutation.ClearProvider()
 	return _u
 }
 
@@ -1137,6 +1151,11 @@ func (_u *UsageLogUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *UsageLogUpdate) check() error {
+	if v, ok := _u.mutation.Platform(); ok {
+		if err := usagelog.PlatformValidator(v); err != nil {
+			return &ValidationError{Name: "platform", err: fmt.Errorf(`ent: validator failed for field "UsageLog.platform": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.RequestID(); ok {
 		if err := usagelog.RequestIDValidator(v); err != nil {
 			return &ValidationError{Name: "request_id", err: fmt.Errorf(`ent: validator failed for field "UsageLog.request_id": %w`, err)}
@@ -1218,8 +1237,8 @@ func (_u *UsageLogUpdate) check() error {
 	if _u.mutation.APIKeyCleared() && len(_u.mutation.APIKeyIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "UsageLog.api_key"`)
 	}
-	if _u.mutation.AccountCleared() && len(_u.mutation.AccountIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "UsageLog.account"`)
+	if _u.mutation.ProviderCleared() && len(_u.mutation.ProviderIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UsageLog.provider"`)
 	}
 	return nil
 }
@@ -1245,6 +1264,9 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.BillingUserIDCleared() {
 		_spec.ClearField(usagelog.FieldBillingUserID, field.TypeInt64)
 	}
+	if value, ok := _u.mutation.Platform(); ok {
+		_spec.SetField(usagelog.FieldPlatform, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.RequestID(); ok {
 		_spec.SetField(usagelog.FieldRequestID, field.TypeString, value)
 	}
@@ -1263,14 +1285,14 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.UpstreamModelCleared() {
 		_spec.ClearField(usagelog.FieldUpstreamModel, field.TypeString)
 	}
-	if value, ok := _u.mutation.ChannelID(); ok {
-		_spec.SetField(usagelog.FieldChannelID, field.TypeInt64, value)
+	if value, ok := _u.mutation.PricingConfigID(); ok {
+		_spec.SetField(usagelog.FieldPricingConfigID, field.TypeInt64, value)
 	}
-	if value, ok := _u.mutation.AddedChannelID(); ok {
-		_spec.AddField(usagelog.FieldChannelID, field.TypeInt64, value)
+	if value, ok := _u.mutation.AddedPricingConfigID(); ok {
+		_spec.AddField(usagelog.FieldPricingConfigID, field.TypeInt64, value)
 	}
-	if _u.mutation.ChannelIDCleared() {
-		_spec.ClearField(usagelog.FieldChannelID, field.TypeInt64)
+	if _u.mutation.PricingConfigIDCleared() {
+		_spec.ClearField(usagelog.FieldPricingConfigID, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.ResponseModel(); ok {
 		_spec.SetField(usagelog.FieldResponseModel, field.TypeString, value)
@@ -1400,14 +1422,14 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.LongContextBillingApplied(); ok {
 		_spec.SetField(usagelog.FieldLongContextBillingApplied, field.TypeBool, value)
 	}
-	if value, ok := _u.mutation.AccountRateMultiplier(); ok {
-		_spec.SetField(usagelog.FieldAccountRateMultiplier, field.TypeFloat64, value)
+	if value, ok := _u.mutation.ProviderRateMultiplier(); ok {
+		_spec.SetField(usagelog.FieldProviderRateMultiplier, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedAccountRateMultiplier(); ok {
-		_spec.AddField(usagelog.FieldAccountRateMultiplier, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedProviderRateMultiplier(); ok {
+		_spec.AddField(usagelog.FieldProviderRateMultiplier, field.TypeFloat64, value)
 	}
-	if _u.mutation.AccountRateMultiplierCleared() {
-		_spec.ClearField(usagelog.FieldAccountRateMultiplier, field.TypeFloat64)
+	if _u.mutation.ProviderRateMultiplierCleared() {
+		_spec.ClearField(usagelog.FieldProviderRateMultiplier, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.BillingType(); ok {
 		_spec.SetField(usagelog.FieldBillingType, field.TypeInt8, value)
@@ -1566,28 +1588,28 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if _u.mutation.AccountCleared() {
+	if _u.mutation.ProviderCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   usagelog.AccountTable,
-			Columns: []string{usagelog.AccountColumn},
+			Table:   usagelog.ProviderTable,
+			Columns: []string{usagelog.ProviderColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.AccountIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ProviderIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   usagelog.AccountTable,
-			Columns: []string{usagelog.AccountColumn},
+			Table:   usagelog.ProviderTable,
+			Columns: []string{usagelog.ProviderColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -1777,16 +1799,30 @@ func (_u *UsageLogUpdateOne) SetNillableAPIKeyID(v *int64) *UsageLogUpdateOne {
 	return _u
 }
 
-// SetAccountID sets the "account_id" field.
-func (_u *UsageLogUpdateOne) SetAccountID(v int64) *UsageLogUpdateOne {
-	_u.mutation.SetAccountID(v)
+// SetProviderID sets the "provider_id" field.
+func (_u *UsageLogUpdateOne) SetProviderID(v int64) *UsageLogUpdateOne {
+	_u.mutation.SetProviderID(v)
 	return _u
 }
 
-// SetNillableAccountID sets the "account_id" field if the given value is not nil.
-func (_u *UsageLogUpdateOne) SetNillableAccountID(v *int64) *UsageLogUpdateOne {
+// SetNillableProviderID sets the "provider_id" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableProviderID(v *int64) *UsageLogUpdateOne {
 	if v != nil {
-		_u.SetAccountID(*v)
+		_u.SetProviderID(*v)
+	}
+	return _u
+}
+
+// SetPlatform sets the "platform" field.
+func (_u *UsageLogUpdateOne) SetPlatform(v string) *UsageLogUpdateOne {
+	_u.mutation.SetPlatform(v)
+	return _u
+}
+
+// SetNillablePlatform sets the "platform" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillablePlatform(v *string) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetPlatform(*v)
 	}
 	return _u
 }
@@ -1859,30 +1895,30 @@ func (_u *UsageLogUpdateOne) ClearUpstreamModel() *UsageLogUpdateOne {
 	return _u
 }
 
-// SetChannelID sets the "channel_id" field.
-func (_u *UsageLogUpdateOne) SetChannelID(v int64) *UsageLogUpdateOne {
-	_u.mutation.ResetChannelID()
-	_u.mutation.SetChannelID(v)
+// SetPricingConfigID sets the "pricing_config_id" field.
+func (_u *UsageLogUpdateOne) SetPricingConfigID(v int64) *UsageLogUpdateOne {
+	_u.mutation.ResetPricingConfigID()
+	_u.mutation.SetPricingConfigID(v)
 	return _u
 }
 
-// SetNillableChannelID sets the "channel_id" field if the given value is not nil.
-func (_u *UsageLogUpdateOne) SetNillableChannelID(v *int64) *UsageLogUpdateOne {
+// SetNillablePricingConfigID sets the "pricing_config_id" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillablePricingConfigID(v *int64) *UsageLogUpdateOne {
 	if v != nil {
-		_u.SetChannelID(*v)
+		_u.SetPricingConfigID(*v)
 	}
 	return _u
 }
 
-// AddChannelID adds value to the "channel_id" field.
-func (_u *UsageLogUpdateOne) AddChannelID(v int64) *UsageLogUpdateOne {
-	_u.mutation.AddChannelID(v)
+// AddPricingConfigID adds value to the "pricing_config_id" field.
+func (_u *UsageLogUpdateOne) AddPricingConfigID(v int64) *UsageLogUpdateOne {
+	_u.mutation.AddPricingConfigID(v)
 	return _u
 }
 
-// ClearChannelID clears the value of the "channel_id" field.
-func (_u *UsageLogUpdateOne) ClearChannelID() *UsageLogUpdateOne {
-	_u.mutation.ClearChannelID()
+// ClearPricingConfigID clears the value of the "pricing_config_id" field.
+func (_u *UsageLogUpdateOne) ClearPricingConfigID() *UsageLogUpdateOne {
+	_u.mutation.ClearPricingConfigID()
 	return _u
 }
 
@@ -2301,13 +2337,13 @@ func (_u *UsageLogUpdateOne) AddBalanceAmountUsd(v float64) *UsageLogUpdateOne {
 }
 
 // SetBillingAllocations sets the "billing_allocations" field.
-func (_u *UsageLogUpdateOne) SetBillingAllocations(v []domain.BillingAllocation) *UsageLogUpdateOne {
+func (_u *UsageLogUpdateOne) SetBillingAllocations(v []billing.BillingAllocation) *UsageLogUpdateOne {
 	_u.mutation.SetBillingAllocations(v)
 	return _u
 }
 
 // AppendBillingAllocations appends value to the "billing_allocations" field.
-func (_u *UsageLogUpdateOne) AppendBillingAllocations(v []domain.BillingAllocation) *UsageLogUpdateOne {
+func (_u *UsageLogUpdateOne) AppendBillingAllocations(v []billing.BillingAllocation) *UsageLogUpdateOne {
 	_u.mutation.AppendBillingAllocations(v)
 	return _u
 }
@@ -2353,30 +2389,30 @@ func (_u *UsageLogUpdateOne) SetNillableLongContextBillingApplied(v *bool) *Usag
 	return _u
 }
 
-// SetAccountRateMultiplier sets the "account_rate_multiplier" field.
-func (_u *UsageLogUpdateOne) SetAccountRateMultiplier(v float64) *UsageLogUpdateOne {
-	_u.mutation.ResetAccountRateMultiplier()
-	_u.mutation.SetAccountRateMultiplier(v)
+// SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
+func (_u *UsageLogUpdateOne) SetProviderRateMultiplier(v float64) *UsageLogUpdateOne {
+	_u.mutation.ResetProviderRateMultiplier()
+	_u.mutation.SetProviderRateMultiplier(v)
 	return _u
 }
 
-// SetNillableAccountRateMultiplier sets the "account_rate_multiplier" field if the given value is not nil.
-func (_u *UsageLogUpdateOne) SetNillableAccountRateMultiplier(v *float64) *UsageLogUpdateOne {
+// SetNillableProviderRateMultiplier sets the "provider_rate_multiplier" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableProviderRateMultiplier(v *float64) *UsageLogUpdateOne {
 	if v != nil {
-		_u.SetAccountRateMultiplier(*v)
+		_u.SetProviderRateMultiplier(*v)
 	}
 	return _u
 }
 
-// AddAccountRateMultiplier adds value to the "account_rate_multiplier" field.
-func (_u *UsageLogUpdateOne) AddAccountRateMultiplier(v float64) *UsageLogUpdateOne {
-	_u.mutation.AddAccountRateMultiplier(v)
+// AddProviderRateMultiplier adds value to the "provider_rate_multiplier" field.
+func (_u *UsageLogUpdateOne) AddProviderRateMultiplier(v float64) *UsageLogUpdateOne {
+	_u.mutation.AddProviderRateMultiplier(v)
 	return _u
 }
 
-// ClearAccountRateMultiplier clears the value of the "account_rate_multiplier" field.
-func (_u *UsageLogUpdateOne) ClearAccountRateMultiplier() *UsageLogUpdateOne {
-	_u.mutation.ClearAccountRateMultiplier()
+// ClearProviderRateMultiplier clears the value of the "provider_rate_multiplier" field.
+func (_u *UsageLogUpdateOne) ClearProviderRateMultiplier() *UsageLogUpdateOne {
+	_u.mutation.ClearProviderRateMultiplier()
 	return _u
 }
 
@@ -2714,9 +2750,9 @@ func (_u *UsageLogUpdateOne) SetAPIKey(v *APIKey) *UsageLogUpdateOne {
 	return _u.SetAPIKeyID(v.ID)
 }
 
-// SetAccount sets the "account" edge to the Account entity.
-func (_u *UsageLogUpdateOne) SetAccount(v *Account) *UsageLogUpdateOne {
-	return _u.SetAccountID(v.ID)
+// SetProvider sets the "provider" edge to the Provider entity.
+func (_u *UsageLogUpdateOne) SetProvider(v *Provider) *UsageLogUpdateOne {
+	return _u.SetProviderID(v.ID)
 }
 
 // SetGroup sets the "group" edge to the Group entity.
@@ -2751,9 +2787,9 @@ func (_u *UsageLogUpdateOne) ClearAPIKey() *UsageLogUpdateOne {
 	return _u
 }
 
-// ClearAccount clears the "account" edge to the Account entity.
-func (_u *UsageLogUpdateOne) ClearAccount() *UsageLogUpdateOne {
-	_u.mutation.ClearAccount()
+// ClearProvider clears the "provider" edge to the Provider entity.
+func (_u *UsageLogUpdateOne) ClearProvider() *UsageLogUpdateOne {
+	_u.mutation.ClearProvider()
 	return _u
 }
 
@@ -2817,6 +2853,11 @@ func (_u *UsageLogUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *UsageLogUpdateOne) check() error {
+	if v, ok := _u.mutation.Platform(); ok {
+		if err := usagelog.PlatformValidator(v); err != nil {
+			return &ValidationError{Name: "platform", err: fmt.Errorf(`ent: validator failed for field "UsageLog.platform": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.RequestID(); ok {
 		if err := usagelog.RequestIDValidator(v); err != nil {
 			return &ValidationError{Name: "request_id", err: fmt.Errorf(`ent: validator failed for field "UsageLog.request_id": %w`, err)}
@@ -2898,8 +2939,8 @@ func (_u *UsageLogUpdateOne) check() error {
 	if _u.mutation.APIKeyCleared() && len(_u.mutation.APIKeyIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "UsageLog.api_key"`)
 	}
-	if _u.mutation.AccountCleared() && len(_u.mutation.AccountIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "UsageLog.account"`)
+	if _u.mutation.ProviderCleared() && len(_u.mutation.ProviderIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "UsageLog.provider"`)
 	}
 	return nil
 }
@@ -2942,6 +2983,9 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	if _u.mutation.BillingUserIDCleared() {
 		_spec.ClearField(usagelog.FieldBillingUserID, field.TypeInt64)
 	}
+	if value, ok := _u.mutation.Platform(); ok {
+		_spec.SetField(usagelog.FieldPlatform, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.RequestID(); ok {
 		_spec.SetField(usagelog.FieldRequestID, field.TypeString, value)
 	}
@@ -2960,14 +3004,14 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	if _u.mutation.UpstreamModelCleared() {
 		_spec.ClearField(usagelog.FieldUpstreamModel, field.TypeString)
 	}
-	if value, ok := _u.mutation.ChannelID(); ok {
-		_spec.SetField(usagelog.FieldChannelID, field.TypeInt64, value)
+	if value, ok := _u.mutation.PricingConfigID(); ok {
+		_spec.SetField(usagelog.FieldPricingConfigID, field.TypeInt64, value)
 	}
-	if value, ok := _u.mutation.AddedChannelID(); ok {
-		_spec.AddField(usagelog.FieldChannelID, field.TypeInt64, value)
+	if value, ok := _u.mutation.AddedPricingConfigID(); ok {
+		_spec.AddField(usagelog.FieldPricingConfigID, field.TypeInt64, value)
 	}
-	if _u.mutation.ChannelIDCleared() {
-		_spec.ClearField(usagelog.FieldChannelID, field.TypeInt64)
+	if _u.mutation.PricingConfigIDCleared() {
+		_spec.ClearField(usagelog.FieldPricingConfigID, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.ResponseModel(); ok {
 		_spec.SetField(usagelog.FieldResponseModel, field.TypeString, value)
@@ -3097,14 +3141,14 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	if value, ok := _u.mutation.LongContextBillingApplied(); ok {
 		_spec.SetField(usagelog.FieldLongContextBillingApplied, field.TypeBool, value)
 	}
-	if value, ok := _u.mutation.AccountRateMultiplier(); ok {
-		_spec.SetField(usagelog.FieldAccountRateMultiplier, field.TypeFloat64, value)
+	if value, ok := _u.mutation.ProviderRateMultiplier(); ok {
+		_spec.SetField(usagelog.FieldProviderRateMultiplier, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedAccountRateMultiplier(); ok {
-		_spec.AddField(usagelog.FieldAccountRateMultiplier, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedProviderRateMultiplier(); ok {
+		_spec.AddField(usagelog.FieldProviderRateMultiplier, field.TypeFloat64, value)
 	}
-	if _u.mutation.AccountRateMultiplierCleared() {
-		_spec.ClearField(usagelog.FieldAccountRateMultiplier, field.TypeFloat64)
+	if _u.mutation.ProviderRateMultiplierCleared() {
+		_spec.ClearField(usagelog.FieldProviderRateMultiplier, field.TypeFloat64)
 	}
 	if value, ok := _u.mutation.BillingType(); ok {
 		_spec.SetField(usagelog.FieldBillingType, field.TypeInt8, value)
@@ -3263,28 +3307,28 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if _u.mutation.AccountCleared() {
+	if _u.mutation.ProviderCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   usagelog.AccountTable,
-			Columns: []string{usagelog.AccountColumn},
+			Table:   usagelog.ProviderTable,
+			Columns: []string{usagelog.ProviderColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.AccountIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ProviderIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   usagelog.AccountTable,
-			Columns: []string{usagelog.AccountColumn},
+			Table:   usagelog.ProviderTable,
+			Columns: []string{usagelog.ProviderColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

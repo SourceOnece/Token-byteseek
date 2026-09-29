@@ -59,7 +59,7 @@
             <div class="space-y-1.5">
               <div
                 v-if="isUnlimited(subscription)"
-                class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 px-2.5 py-1.5 dark:from-emerald-900/20 dark:to-teal-900/20"
+                class="flex items-center gap-2 rounded-control bg-gradient-to-r from-emerald-50 to-teal-50 px-2.5 py-1.5 dark:from-emerald-900/20 dark:to-teal-900/20"
               >
                 <span class="text-lg text-emerald-600 dark:text-emerald-400">∞</span>
                 <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300">
@@ -73,7 +73,7 @@
                   :key="window.key"
                   class="flex items-center gap-2"
                 >
-                  <span class="w-8 flex-shrink-0 text-[10px] text-gray-500">
+                  <span class="w-8 flex-shrink-0 text-xs text-gray-500">
                     {{ window.label }}
                   </span>
                   <div class="h-1.5 min-w-0 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
@@ -83,7 +83,7 @@
                       :style="{ width: getProgressWidth(window.used, window.limit) }"
                     />
                   </div>
-                  <span class="w-24 flex-shrink-0 text-right text-[10px] text-gray-500">
+                  <span class="w-24 flex-shrink-0 text-right text-xs text-gray-500">
                     {{ formatUsage(window.used, window.limit) }}
                   </span>
                 </div>
@@ -135,7 +135,7 @@ const shouldShow = computed(() => variant.value === 'status' || hasActiveSubscri
 const statusCount = computed(() => activeSubscriptions.value.length)
 const triggerClass = computed(() => {
   if (variant.value === 'status') {
-    return 'bh-pressable flex h-8 min-w-[50px] items-center justify-center gap-1.5 rounded-lg border border-primary-200/70 bg-primary-100/80 px-2.5 transition-colors hover:bg-primary-100 disabled:cursor-default disabled:hover:bg-primary-100/80 dark:border-transparent dark:bg-dark-800/80 dark:hover:bg-dark-700 dark:disabled:hover:bg-dark-800/80'
+    return 'flex h-8 min-w-[50px] items-center justify-center gap-1.5 rounded-control border border-primary-200/70 bg-primary-100/80 px-2.5 shadow-sm transition-colors hover:bg-primary-100 disabled:cursor-default disabled:hover:bg-primary-100/80 dark:border-transparent dark:bg-dark-800/80 dark:shadow-none dark:hover:bg-dark-700 dark:disabled:hover:bg-dark-800/80'
   }
   return 'bh-pressable flex cursor-pointer items-center gap-2 rounded-control bg-primary-50 px-3 py-1.5 transition-colors hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/30'
 })

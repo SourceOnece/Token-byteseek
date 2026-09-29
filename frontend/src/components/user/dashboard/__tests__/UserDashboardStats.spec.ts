@@ -48,7 +48,6 @@ describe('UserDashboardStats', () => {
       props: {
         stats,
         balance: 8215.03,
-        isSimple: false,
       },
       global: {
         stubs: {

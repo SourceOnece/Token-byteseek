@@ -1,3 +1,4 @@
+import { useProtocolCatalogFixture } from '@/__tests__/helpers/protocolCatalog'
 import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -44,7 +45,7 @@ vi.mock('@/api/admin', () => ({
       delete: vi.fn(),
       updateSortOrder: vi.fn()
     },
-    accounts: {
+    providers: {
       list: vi.fn(),
       getById: vi.fn()
     }
@@ -86,18 +87,10 @@ const sourceGroup: AdminGroup = {
   monthly_limit_usd: null,
   allow_image_generation: false,
   allow_batch_image_generation: false,
-  image_rate_independent: false,
-  image_rate_multiplier: 1,
+
   batch_image_discount_multiplier: 0.5,
   batch_image_hold_multiplier: 0.6,
-  image_price_1k: null,
-  image_price_2k: null,
-  image_price_4k: null,
-  video_rate_independent: false,
-  video_rate_multiplier: 1,
-  video_price_480p: null,
-  video_price_720p: null,
-  video_price_1080p: null,
+
   web_search_price_per_call: null,
   peak_rate_enabled: false,
   peak_start: '',
@@ -109,7 +102,6 @@ const sourceGroup: AdminGroup = {
   allow_messages_dispatch: false,
   allow_live: false,
   default_mapped_model: '',
-  messages_dispatch_model_config: undefined,
   require_oauth_only: false,
   require_privacy_set: false,
   created_at: '2026-07-16T00:00:00Z',
@@ -118,9 +110,9 @@ const sourceGroup: AdminGroup = {
   model_routing_enabled: false,
   mcp_xml_inject: true,
   supported_model_scopes: [],
-  account_count: 1,
-  active_account_count: 1,
-  rate_limited_account_count: 0,
+  provider_count: 1,
+  active_provider_count: 1,
+  rate_limited_provider_count: 0,
   models_list_config: undefined,
   sort_order: 10
 }
@@ -320,3 +312,5 @@ describe('GroupsView duplicate action', () => {
     wrapper.unmount()
   })
 })
+
+useProtocolCatalogFixture()

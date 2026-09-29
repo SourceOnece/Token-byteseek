@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/api/admin/accounts', () => ({
+vi.mock('@/api/admin/providers', () => ({
   getAntigravityDefaultModelMapping: vi.fn()
 }))
 
@@ -75,7 +75,7 @@ describe('useModelWhitelist', () => {
     expect(models).toContain('gemini-3-pro-image')
   })
 
-  it('qoder 模型列表提供创建账号快捷候选且不暴露旧 route key', () => {
+  it('qoder 模型列表提供创建提供商快捷候选且不暴露旧 route key', () => {
     const models = getModelsByPlatform('qoder')
 
     expect(models).toEqual([
@@ -87,7 +87,7 @@ describe('useModelWhitelist', () => {
       'qwen3.8-max',
       'qwen3.7-max',
       'qwen3.7-plus',
-      // 新旧 Kimi 模型应同时作为创建账号的快捷候选。
+      // 新旧 Kimi 模型应同时作为创建提供商的快捷候选。
       'kimi-k3',
       'kimi-k2.7-code',
       'glm-5.3',
@@ -108,7 +108,7 @@ describe('useModelWhitelist', () => {
     expect(models).not.toContain('glm-5.1')
   })
 
-  it('qoder 默认账号未触碰模型限制时不会生成限制配置', () => {
+  it('qoder 默认提供商未触碰模型限制时不会生成限制配置', () => {
     expect(buildPersistedModelRestriction([], [])).toEqual({
       modelMapping: null,
       modelWhitelist: []
@@ -181,7 +181,7 @@ describe('useModelWhitelist', () => {
     expect(qoderModelKeyByPublicAlias('qwen3.8-max-preview')).toBeUndefined()
   })
 
-  it('qoder 公开别名到上游 route key 仅用于创建账号快捷填充', () => {
+  it('qoder 公开别名到上游 route key 仅用于创建提供商快捷填充', () => {
     expect(qoderModelKeyByPublicAlias('claude-opus-4-6')).toBe('ultimate')
     expect(qoderModelKeyByPublicAlias('glm-5.3')).toBe('gmodel')
     expect(qoderModelKeyByPublicAlias('glm-5.2')).toBe('gm51model')
@@ -240,7 +240,7 @@ describe('useModelWhitelist', () => {
       'claude-opus-4-5-thinking': 'us.anthropic.claude-opus-4-5-20251101-v1:0'
     }
 
-    // 预设会直接写入账号配置，逐项核对实际保存的目标 ID。
+    // 预设会直接写入提供商配置，逐项核对实际保存的目标 ID。
     for (const [from, to] of Object.entries(expected)) {
       expect(presets.find(preset => preset.from === from)?.to).toBe(to)
     }

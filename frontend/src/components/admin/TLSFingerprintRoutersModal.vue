@@ -39,7 +39,7 @@
         </p>
       </div>
 
-      <div v-else class="max-h-96 overflow-auto rounded-lg border border-gray-200 dark:border-dark-600">
+      <div v-else class="max-h-96 overflow-auto rounded-control border border-gray-200 dark:border-dark-600">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
           <thead class="sticky top-0 bg-gray-50 dark:bg-dark-700">
             <tr>
@@ -172,28 +172,14 @@
           </div>
         </div>
 
-        <div class="flex items-center justify-between rounded-lg border border-gray-200 p-3 dark:border-dark-600">
+        <div class="flex items-center justify-between rounded-control border border-gray-200 p-3 dark:border-dark-600">
           <div>
             <label class="input-label mb-0">{{ t('admin.tlsFingerprintRouters.form.enabled') }}</label>
           </div>
-          <button
-            type="button"
-            :class="[
-              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-              form.enabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
-            ]"
-            @click="form.enabled = !form.enabled"
-          >
-            <span
-              :class="[
-                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                form.enabled ? 'translate-x-5' : 'translate-x-0'
-              ]"
-            />
-          </button>
+          <Toggle v-model="form.enabled" variant="flush" off-tone="soft" />
         </div>
 
-        <div class="space-y-3 rounded-lg border border-gray-200 p-3 dark:border-dark-600">
+        <div class="space-y-3 rounded-control border border-gray-200 p-3 dark:border-dark-600">
           <div>
             <label class="input-label mb-0">{{ t('admin.tlsFingerprintRouters.form.chatgptOAuthTokenSettings') }}</label>
             <p class="input-hint">
@@ -222,7 +208,7 @@
           </div>
         </div>
 
-        <div class="space-y-3 rounded-lg border border-gray-200 p-3 dark:border-dark-600">
+        <div class="space-y-3 rounded-control border border-gray-200 p-3 dark:border-dark-600">
           <div>
             <label class="input-label mb-0">{{ t('admin.tlsFingerprintRouters.form.codexInviteResetSettings') }}</label>
             <p class="input-hint">
@@ -260,14 +246,14 @@
             </button>
           </div>
 
-          <div v-if="form.rules.length === 0" class="rounded-lg border border-dashed border-gray-300 px-3 py-6 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
+          <div v-if="form.rules.length === 0" class="rounded-control border border-dashed border-gray-300 px-3 py-6 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
             {{ t('admin.tlsFingerprintRouters.form.noRules') }}
           </div>
 
           <div
             v-for="(rule, index) in form.rules"
             :key="index"
-            class="space-y-3 rounded-lg border border-gray-200 p-3 dark:border-dark-600"
+            class="space-y-3 rounded-control border border-gray-200 p-3 dark:border-dark-600"
           >
             <div class="flex items-start justify-between gap-3">
               <div class="text-sm font-medium text-gray-900 dark:text-white">
@@ -325,11 +311,11 @@
 
             <div class="flex flex-wrap items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
               <label class="inline-flex items-center gap-2">
-                <input v-model="rule.enabled" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                <input v-model="rule.enabled" type="checkbox" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" />
                 <span>{{ t('admin.tlsFingerprintRouters.form.ruleEnabled') }}</span>
               </label>
               <label class="inline-flex items-center gap-2">
-                <input v-model="rule.case_sensitive" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                <input v-model="rule.case_sensitive" type="checkbox" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" />
                 <span>{{ t('admin.tlsFingerprintRouters.form.caseSensitive') }}</span>
               </label>
             </div>
@@ -364,6 +350,7 @@
 </template>
 
 <script setup lang="ts">
+import Toggle from '@/components/common/Toggle.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -418,9 +405,9 @@ const form = reactive({
 })
 
 const profileOptions = computed<SelectOption[]>(() => [
-  { value: 0, label: t('admin.accounts.quotaControl.tlsFingerprint.defaultProfile') },
+  { value: 0, label: t('admin.providers.quotaControl.tlsFingerprint.defaultProfile') },
   ...(profiles.value.length > 0
-    ? [{ value: -1, label: t('admin.accounts.quotaControl.tlsFingerprint.randomProfile') }]
+    ? [{ value: -1, label: t('admin.providers.quotaControl.tlsFingerprint.randomProfile') }]
     : []),
   ...profiles.value.map((profile) => ({ value: profile.id, label: profile.name }))
 ])

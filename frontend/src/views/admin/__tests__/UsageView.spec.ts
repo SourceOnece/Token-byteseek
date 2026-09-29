@@ -627,7 +627,7 @@ describe('admin UsageView errors tab filter forwarding', () => {
     vi.useRealTimers()
   })
 
-  it('forwards model/account_id/group_id to listErrorLogs on the errors tab', async () => {
+  it('forwards model/provider_id/group_id to listErrorLogs on the errors tab', async () => {
     const wrapper = mount(UsageView, {
       global: { stubs: {
         AppLayout: AppLayoutStub, UsageStatsCards: true, UsageFilters: UsageFiltersStub,
@@ -641,10 +641,10 @@ describe('admin UsageView errors tab filter forwarding', () => {
     vi.advanceTimersByTime(120)
     await flushPromises()
 
-    // 模拟用户在过滤器里选择了模型/账户/分组
+    // 模拟用户在过滤器里选择了模型/提供商/分组
     const vm = wrapper.vm as any
     vm.filters.model = 'gpt-5.3-codex'
-    vm.filters.account_id = 7
+    vm.filters.provider_id = 7
     vm.filters.group_id = 3
     await flushPromises()
 
@@ -656,7 +656,7 @@ describe('admin UsageView errors tab filter forwarding', () => {
     expect(listErrorLogs).toHaveBeenCalledWith(expect.objectContaining({
       view: 'all',
       model: 'gpt-5.3-codex',
-      account_id: 7,
+      provider_id: 7,
       group_id: 3,
     }))
   })

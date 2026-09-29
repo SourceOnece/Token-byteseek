@@ -9,7 +9,7 @@
         <div class="card overflow-hidden">
           <div class="px-6 py-8 text-center">
             <div
-              class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-100 dark:bg-primary-500/15"
+              class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-surface bg-primary-100 dark:bg-primary-500/15"
             >
               <BalanceIcon size="xl" class="text-primary-600 dark:text-primary-400" />
             </div>
@@ -42,7 +42,7 @@
                     required
                     :placeholder="t('redeem.redeemCodePlaceholder')"
                     :disabled="submitting"
-                    class="input h-9 py-0 pl-12 text-lg"
+                    class="input py-0 pl-12 text-lg"
                   />
                 </div>
               </div>
@@ -50,7 +50,7 @@
               <button
                 type="submit"
                 :disabled="!redeemCode || submitting"
-                class="btn btn-primary h-9 w-full py-1.5"
+                class="btn btn-primary w-full py-1.5"
               >
                 <svg
                   v-if="submitting"
@@ -80,7 +80,7 @@
         </div>
 
         <!-- Success Message -->
-        <transition name="fade">
+        <transition name="fade-slow">
           <div
             v-if="redeemResult"
             class="card border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark:bg-emerald-900/20"
@@ -88,7 +88,7 @@
             <div class="p-6">
               <div class="flex items-start gap-4">
                 <div
-                  class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30"
+                  class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-surface bg-emerald-100 dark:bg-emerald-900/30"
                 >
                   <Icon name="checkCircle" size="md" class="text-emerald-600 dark:text-emerald-400" />
                 </div>
@@ -134,7 +134,7 @@
         </transition>
 
         <!-- Error Message -->
-        <transition name="fade">
+        <transition name="fade-slow">
           <div
             v-if="errorMessage"
             class="card border-red-200 bg-red-50 dark:border-red-800/50 dark:bg-red-900/20"
@@ -142,7 +142,7 @@
             <div class="p-6">
               <div class="flex items-start gap-4">
                 <div
-                  class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/30"
+                  class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-surface bg-red-100 dark:bg-red-900/30"
                 >
                   <Icon
                     name="exclamationCircle"
@@ -197,12 +197,12 @@
             <div
               v-for="item in history"
               :key="item.id"
-              class="flex items-center justify-between rounded-xl bg-gray-50 p-4 dark:bg-dark-800"
+              class="flex items-center justify-between rounded-surface bg-gray-50 p-4 dark:bg-dark-800"
             >
               <div class="flex items-center gap-4">
                 <div
                   :class="[
-                    'flex h-10 w-10 items-center justify-center rounded-xl',
+                    'flex h-10 w-10 items-center justify-center rounded-surface',
                     isBalanceType(item.type)
                       ? item.value >= 0
                         ? 'bg-emerald-100 dark:bg-emerald-900/30'
@@ -293,7 +293,7 @@
           <!-- Empty State -->
           <div v-else class="empty-state py-8">
             <div
-              class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-dark-800"
+              class="mb-4 flex h-16 w-16 items-center justify-center rounded-surface bg-gray-100 dark:bg-dark-800"
             >
               <Icon name="clock" size="xl" class="text-gray-400 dark:text-dark-500" />
             </div>
@@ -477,14 +477,4 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: all 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
 </style>

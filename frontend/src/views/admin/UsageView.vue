@@ -97,7 +97,7 @@
               <button
                 type="button"
                 @click="showColumnDropdown = !showColumnDropdown"
-                class="btn btn-secondary h-9 w-9 shrink-0 p-0"
+                class="btn btn-secondary shrink-0 btn-icon"
                 :aria-label="t('admin.users.columnSettings')"
                 :title="t('admin.users.columnSettings')"
               >
@@ -106,13 +106,13 @@
               </button>
               <div
                 v-if="showColumnDropdown"
-                class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+                class="dropdown right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto"
               >
                 <button
                   v-for="col in currentToggleableColumns"
                   :key="col.key"
                   @click="toggleCurrentColumn(col.key)"
-                  class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                  class="dropdown-item justify-between"
                 >
                   <span>{{ col.label }}</span>
                   <Icon
@@ -251,7 +251,7 @@ const breakdownFilters = computed(() => {
   const f: Record<string, any> = {}
   if (filters.value.user_id) f.user_id = filters.value.user_id
   if (filters.value.api_key_id) f.api_key_id = filters.value.api_key_id
-  if (filters.value.account_id) f.account_id = filters.value.account_id
+  if (filters.value.provider_id) f.provider_id = filters.value.provider_id
   if (filters.value.group_id) f.group_id = filters.value.group_id
   if (filters.value.team_id) f.team_id = filters.value.team_id
   if (filters.value.request_type != null) f.request_type = filters.value.request_type
@@ -462,7 +462,7 @@ const loadModelStats = async (source: ModelDistributionSource, force = false) =>
       user_id: filters.value.user_id,
       model: filters.value.model,
       api_key_id: filters.value.api_key_id,
-      account_id: filters.value.account_id,
+      provider_id: filters.value.provider_id,
       group_id: filters.value.group_id,
       team_id: filters.value.team_id,
       request_type: requestType,
@@ -513,7 +513,7 @@ const loadChartData = async () => {
       user_id: filters.value.user_id,
       model: filters.value.model,
       api_key_id: filters.value.api_key_id,
-      account_id: filters.value.account_id,
+      provider_id: filters.value.provider_id,
       group_id: filters.value.group_id,
       team_id: filters.value.team_id,
       request_type: requestType,
@@ -591,7 +591,7 @@ const formatDetailedTimingForExport = (row: AdminUsageLog): string => {
   const timing = row.detailed_timing
   if (!timing) return ''
   const stages: Array<[string, number | null | undefined]> = [
-    ['slot', timing.account_slot_acquired_ms],
+    ['slot', timing.provider_slot_acquired_ms],
     ['get_conn', timing.upstream_get_conn_ms],
     ['got_conn', timing.upstream_got_conn_ms],
     ['write', timing.upstream_wrote_request_ms],
@@ -616,14 +616,14 @@ const exportToExcel = async () => {
     const XLSX = await import('xlsx')
     const headers = [
       t('usage.time'), t('admin.usage.user'), t('usage.apiKeyFilter'),
-      t('admin.usage.account'), t('usage.model'), t('usage.upstreamModel'), t('usage.requestedReasoningEffort'), t('usage.reasoningEffort'), t('admin.usage.group'),
+      t('admin.usage.provider'), t('usage.model'), t('usage.upstreamModel'), t('usage.requestedReasoningEffort'), t('usage.reasoningEffort'), t('admin.usage.group'),
       t('usage.inboundEndpoint'), t('usage.upstreamEndpoint'),
       t('usage.type'),
       t('admin.usage.inputTokens'), t('admin.usage.outputTokens'),
       t('admin.usage.cacheReadTokens'), t('admin.usage.cacheCreationTokens'),
       t('admin.usage.inputCost'), t('admin.usage.outputCost'),
       t('admin.usage.cacheReadCost'), t('admin.usage.cacheCreationCost'),
-      t('usage.rate'), t('usage.accountMultiplier'), t('usage.original'), t('usage.userBilled'), t('usage.accountBilled'),
+      t('usage.rate'), t('usage.providerMultiplier'), t('usage.original'), t('usage.userBilled'), t('usage.providerBilled'),
       t('usage.firstToken'), t('usage.duration'), t('usage.detailedTiming'),
       t('admin.usage.requestId'), t('admin.usage.upstreamRequestId'), t('usage.userAgent'), t('admin.usage.ipAddress')
     ]
@@ -635,15 +635,15 @@ const exportToExcel = async () => {
       )
       if (c.signal.aborted) break; if (p === 1) { total = res.total; exportProgress.total = total }
       const rows = (res.items || []).map((log: AdminUsageLog) => [
-        log.created_at, log.user?.email || '', log.api_key?.name || '', log.account?.name || '', log.model,
+        log.created_at, log.user?.email || '', log.api_key?.name || '', log.provider?.name || '', log.model,
         log.upstream_model || '', formatReasoningEffort(log.requested_reasoning_effort || log.reasoning_effort), formatReasoningEffort(log.reasoning_effort), log.group?.name || '',
         log.inbound_endpoint || '', log.upstream_endpoint || '', getRequestTypeLabel(log),
         log.input_tokens, log.output_tokens, log.cache_read_tokens, log.cache_creation_tokens,
         log.input_cost?.toFixed(6) || '0.000000', log.output_cost?.toFixed(6) || '0.000000',
         log.cache_read_cost?.toFixed(6) || '0.000000', log.cache_creation_cost?.toFixed(6) || '0.000000',
-        log.rate_multiplier?.toPrecision(4) || '1.00', (log.account_rate_multiplier ?? 1).toPrecision(4),
+        log.rate_multiplier?.toPrecision(4) || '1.00', (log.provider_rate_multiplier ?? 1).toPrecision(4),
         log.total_cost?.toFixed(6) || '0.000000', log.actual_cost?.toFixed(6) || '0.000000',
-        ((log.account_stats_cost ?? log.total_cost) * (log.account_rate_multiplier ?? 1)).toFixed(6), log.first_token_ms ?? '', log.duration_ms,
+        ((log.provider_stats_cost ?? log.total_cost) * (log.provider_rate_multiplier ?? 1)).toFixed(6), log.first_token_ms ?? '', log.duration_ms,
         formatDetailedTimingForExport(log),
         log.request_id || '', log.upstream_request_id || '', log.user_agent || '', log.ip_address || ''
       ])
@@ -677,7 +677,7 @@ const HIDDEN_COLUMNS_CURRENT_VERSION = 'upstream-request-id-hidden-by-default'
 const allColumns = computed(() => [
   { key: 'user', label: t('admin.usage.user'), sortable: false, class: 'w-36 min-w-36 max-w-36' },
   { key: 'api_key', label: t('usage.apiKeyFilter'), sortable: false },
-  { key: 'account', label: t('admin.usage.account'), sortable: false },
+  { key: 'provider', label: t('admin.usage.provider'), sortable: false },
   { key: 'model', label: t('usage.model'), sortable: true },
   { key: 'reasoning_effort', label: t('usage.reasoningEffort'), sortable: false },
   { key: 'endpoint', label: t('usage.endpoint'), sortable: false },
@@ -731,7 +731,7 @@ const ERR_HIDDEN_COLUMNS_KEY = 'usage-error-hidden-columns'
 const errAllColumns = computed(() => [
   { key: 'user', label: t('admin.ops.errorLog.user') },
   { key: 'api_key', label: t('admin.ops.errorLog.apiKey') },
-  { key: 'account', label: t('admin.ops.errorLog.account') },
+  { key: 'provider', label: t('admin.ops.errorLog.provider') },
   { key: 'platform', label: t('admin.ops.errorLog.platform') },
   { key: 'model', label: t('admin.ops.errorLog.model') },
   { key: 'endpoint', label: t('admin.ops.errorLog.endpoint') },
@@ -864,7 +864,7 @@ const loadAdminErrors = async () => {
       end_time: toRFC3339(filters.value.end_date, true),
       user_id: filters.value.user_id ?? undefined,
       api_key_id: filters.value.api_key_id ?? undefined,
-      account_id: filters.value.account_id ?? undefined,
+      provider_id: filters.value.provider_id ?? undefined,
       group_id: filters.value.group_id ?? undefined,
       model: filters.value.model || undefined,
       phase: filters.value.error_phase || undefined,

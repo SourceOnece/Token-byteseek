@@ -26,10 +26,10 @@
 
       <div v-else-if="!teamContext" class="mx-auto max-w-xl py-10">
         <div class="mb-8 text-center">
-          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-md bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400">
+          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-control bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400">
             <Icon name="users" size="xl" />
           </div>
-          <h1 class="mt-5 text-2xl font-semibold text-gray-900 dark:text-white">{{ t('team.createTitle') }}</h1>
+          <h1 class="mt-5 page-title">{{ t('team.createTitle') }}</h1>
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ t('team.createDescription') }}</p>
           <button class="btn btn-secondary mt-5" type="button" @click="startTeamGuide">
             <Icon name="questionCircle" size="sm" />
@@ -52,7 +52,7 @@
         <header class="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div class="flex flex-wrap items-center gap-3">
-              <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ teamContext.team.name }}</h1>
+              <h1 class="page-title">{{ teamContext.team.name }}</h1>
               <span class="badge" :class="teamContext.team.status === 'active' ? 'badge-success' : 'badge-danger'">
                 {{ teamContext.team.status === 'active' ? t('team.statusActive') : t('team.statusSuspended') }}
               </span>
@@ -90,7 +90,7 @@
         </nav>
 
         <section v-if="activeTab === 'overview'" class="space-y-6">
-          <div v-if="!isOwner" class="card p-5" data-tour="team-limit-progress">
+          <div v-if="!isOwner" class="card p-6" data-tour="team-limit-progress">
             <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.limitProgress') }}</h2>
             <div class="mt-5 grid gap-5 md:grid-cols-3">
               <div v-for="limit in memberLimits" :key="limit.label">
@@ -196,11 +196,11 @@
         </section>
 
         <section v-else class="space-y-6">
-          <div v-if="isOwner" class="card p-5">
+          <div v-if="isOwner" class="card p-6">
             <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.name') }}</h2>
             <form class="mt-4 flex flex-col gap-3 sm:flex-row" @submit.prevent="renameTeam"><input v-model.trim="renameName" class="input flex-1" required maxlength="100" /><button class="btn btn-primary" :disabled="submitting">{{ t('team.rename') }}</button></form>
           </div>
-          <div v-if="isOwner" class="card p-5">
+          <div v-if="isOwner" class="card p-6">
             <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.defaultMemberLimits') }}</h2>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('team.defaultMemberLimitsDescription') }}</p>
             <form class="mt-5" @submit.prevent="saveDefaultMemberLimits">
@@ -226,7 +226,7 @@
             <div v-if="isOwner" class="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
               <div class="flex min-w-0 items-start gap-3">
                 <div
-                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md"
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-control"
                   :class="teamContext.team.status === 'active'
                     ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
                     : 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'"
@@ -253,7 +253,7 @@
               :class="isOwner ? 'border-t border-gray-200 dark:border-dark-700' : ''"
             >
               <div class="flex min-w-0 items-start gap-3">
-                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
                   <Icon :name="isOwner ? 'exclamationTriangle' : 'arrowRight'" size="md" />
                 </div>
                 <div class="min-w-0">
@@ -292,7 +292,7 @@
     <BaseDialog :show="Boolean(limitTarget)" :title="t('team.editLimits')" width="narrow" @close="limitTarget = null">
       <form id="team-limit-form" class="space-y-4" @submit.prevent="saveLimits">
         <div v-for="field in limitFields" :key="field.key"><label class="input-label">{{ field.label }}</label><input v-model.number="limitForm[field.key]" type="number" min="0" step="0.01" class="input" /></div>
-        <div class="border-t border-gray-200 pt-4 dark:border-dark-700"><p class="input-label">{{ t('team.resetUsage') }}</p><div class="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-300"><label v-for="period in resetPeriods" :key="period.key" class="flex items-center gap-2"><input v-model="resetForm[period.key]" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600" />{{ period.label }}</label></div></div>
+        <div class="border-t border-gray-200 pt-4 dark:border-dark-700"><p class="input-label">{{ t('team.resetUsage') }}</p><div class="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-300"><label v-for="period in resetPeriods" :key="period.key" class="flex items-center gap-2"><input v-model="resetForm[period.key]" type="checkbox" class="h-4 w-4 rounded-compact border-gray-300 text-primary-600" />{{ period.label }}</label></div></div>
       </form>
       <template #footer><div class="flex justify-end gap-3"><button class="btn btn-secondary" @click="limitTarget = null">{{ t('common.cancel') }}</button><button form="team-limit-form" type="submit" class="btn btn-primary">{{ t('team.saveLimits') }}</button></div></template>
     </BaseDialog>

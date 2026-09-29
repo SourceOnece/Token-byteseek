@@ -329,9 +329,6 @@ export async function bindUserAuthIdentity(
   return data
 }
 
-/**
- * Platform quota types
- */
 export type PlatformQuotaPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity' | 'qoder' | 'grok' | 'kimi' | 'zhipu' | 'deepseek' | 'minimax' | 'opencode_go'
 export type PlatformQuotaWindow = 'daily' | 'weekly' | 'monthly'
 
@@ -362,9 +359,7 @@ export interface PlatformQuotasResponse {
   platform_quotas: PlatformQuotaItem[]
 }
 
-/**
- * Get user's platform quotas
- */
+// 管理员平台额度接口保留既有字段与窗口语义。
 export async function getPlatformQuotas(id: number): Promise<PlatformQuotasResponse> {
   const { data } = await apiClient.get<PlatformQuotasResponse>(
     `/admin/users/${id}/platform-quotas`
@@ -372,9 +367,7 @@ export async function getPlatformQuotas(id: number): Promise<PlatformQuotasRespo
   return data
 }
 
-/**
- * Replace user's platform quotas (全量替换)
- */
+// 管理员平台额度接口保留既有字段与窗口语义。
 export async function updatePlatformQuotas(
   id: number,
   quotas: PlatformQuotaUpdateItem[]
@@ -386,9 +379,7 @@ export async function updatePlatformQuotas(
   return data
 }
 
-/**
- * Reset a single (platform, window) usage immediately
- */
+// 管理员平台额度接口保留既有字段与窗口语义。
 export async function resetPlatformQuotaWindow(
   id: number,
   platform: PlatformQuotaPlatform,
@@ -402,6 +393,9 @@ export async function resetPlatformQuotaWindow(
 }
 
 export const usersAPI = {
+  getPlatformQuotas,
+  updatePlatformQuotas,
+  resetPlatformQuotaWindow,
   list,
   getById,
   create,
@@ -416,9 +410,6 @@ export const usersAPI = {
   getUserBalanceHistory,
   replaceGroup,
   bindUserAuthIdentity,
-  getPlatformQuotas,
-  updatePlatformQuotas,
-  resetPlatformQuotaWindow,
 }
 
 export default usersAPI

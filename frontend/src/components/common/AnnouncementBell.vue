@@ -23,10 +23,10 @@
 
     <!-- 公告列表弹窗与公告详情共用同一套轻量卡片风格。 -->
     <Teleport to="body">
-      <Transition name="modal-fade">
+      <Transition name="pop-fade">
         <div
           v-if="isModalOpen"
-          class="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/55 p-3 backdrop-blur-sm sm:p-6"
+          class="fixed inset-0 z-announcement flex items-center justify-center overflow-y-auto bg-[var(--overlay-bg)] p-3 backdrop-blur-sm sm:p-6"
           @click.self="closeModal"
         >
           <section
@@ -51,7 +51,7 @@
                 <span
                   v-if="unreadCount > 0"
                   data-testid="announcement-list-unread-count"
-                  class="shrink-0 rounded-md bg-primary-50 px-2 py-1 text-[11px] font-medium leading-none text-primary-700 dark:bg-primary-500/10 dark:text-primary-300"
+                  class="shrink-0 rounded-compact bg-primary-50 px-2 py-1 text-xs font-medium leading-none text-primary-700 dark:bg-primary-500/10 dark:text-primary-300"
                 >
                   {{ unreadCount }} {{ t('announcements.unread') }}
                 </span>
@@ -63,7 +63,7 @@
                   type="button"
                   data-testid="announcement-list-mark-all-read"
                   :disabled="loading"
-                  class="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-dark-300 dark:hover:bg-dark-700 dark:hover:text-white dark:focus-visible:ring-primary-500/50"
+                  class="inline-flex h-8 items-center gap-1.5 rounded-compact px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-dark-300 dark:hover:bg-dark-700 dark:hover:text-white dark:focus-visible:ring-primary-500/50"
                   @click="markAllAsRead"
                 >
                   <Icon name="checkCircle" size="sm" :stroke-width="1.75" />
@@ -72,7 +72,7 @@
                 <button
                   type="button"
                   data-testid="announcement-list-close"
-                  class="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 dark:text-dark-400 dark:hover:bg-dark-700 dark:hover:text-dark-100 dark:focus-visible:ring-primary-500/50"
+                  class="flex rounded-control text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 dark:text-dark-400 dark:hover:bg-dark-700 dark:hover:text-dark-100 dark:focus-visible:ring-primary-500/50 btn-icon-sm"
                   :aria-label="t('common.close')"
                   @click="closeModal"
                 >
@@ -108,7 +108,7 @@
                     <span
                       v-if="!item.read_at"
                       data-testid="announcement-list-status-unread"
-                      class="relative flex h-9 w-9 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400"
+                      class="relative flex h-9 w-9 items-center justify-center rounded-control bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400"
                     >
                       <Icon name="bell" size="sm" :stroke-width="1.75" />
                       <span class="absolute -right-0.5 -top-0.5 flex h-2 w-2" aria-hidden="true">
@@ -122,7 +122,7 @@
                     <span
                       v-else
                       data-testid="announcement-list-status-read"
-                      class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-gray-400 dark:bg-dark-800 dark:text-dark-400"
+                      class="flex h-9 w-9 items-center justify-center rounded-control bg-gray-100 text-gray-400 dark:bg-dark-800 dark:text-dark-400"
                     >
                       <Icon name="checkCircle" size="sm" :stroke-width="1.75" />
                     </span>
@@ -153,7 +153,7 @@
               </ul>
 
               <div v-else class="flex flex-col items-center justify-center px-6 py-12 text-center">
-                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-400 dark:bg-dark-800 dark:text-dark-400">
+                <div class="flex h-10 w-10 items-center justify-center rounded-control bg-gray-100 text-gray-400 dark:bg-dark-800 dark:text-dark-400">
                   <Icon name="inbox" size="md" :stroke-width="1.75" />
                 </div>
                 <p class="mt-3 text-sm font-medium text-gray-900 dark:text-white">{{ t('announcements.empty') }}</p>
@@ -207,7 +207,7 @@ const triggerClass = computed(() => {
   if (props.variant === 'status') {
     return 'relative flex h-9 w-9 items-center justify-center rounded-control text-primary-900/70 transition-colors hover:bg-primary-100 hover:text-primary-900 dark:text-dark-100/80 dark:hover:bg-dark-800 dark:hover:text-white'
   }
-  return 'relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition-all hover:bg-gray-100 hover:scale-105 dark:text-gray-400 dark:hover:bg-dark-800'
+  return 'relative flex h-9 w-9 items-center justify-center rounded-control text-gray-600 transition-all hover:bg-gray-100 hover:scale-105 dark:text-gray-400 dark:hover:bg-dark-800'
 })
 
 // 列表弹窗和详情弹窗分别维护显示状态。
@@ -278,31 +278,7 @@ watch(
 </script>
 
 <style scoped>
-/* 列表弹窗沿用详情弹窗的轻微缩放和位移动效。 */
-.modal-fade-enter-active {
-  transition: opacity 0.18s ease;
-}
-
-.modal-fade-leave-active {
-  transition: opacity 0.14s ease;
-}
-
-.modal-fade-enter-active > section,
-.modal-fade-leave-active > section {
-  transition: transform 0.18s ease, opacity 0.18s ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-.modal-fade-enter-from > section,
-.modal-fade-leave-to > section {
-  transform: scale(0.98) translateY(4px);
-  opacity: 0;
-}
-
+/* 过渡配方用全局 pop-fade(数值与原 scoped 拷贝逐字一致),reduced-motion 也由全局收敛。 */
 /* 滚动条使用中性色，避免列表区域产生额外强调。 */
 .announcement-list-scrollbar::-webkit-scrollbar {
   width: 8px;
@@ -323,14 +299,5 @@ watch(
   background: var(--bh-scrollbar);
   border: 2px solid transparent;
   background-clip: padding-box;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .modal-fade-enter-active,
-  .modal-fade-leave-active,
-  .modal-fade-enter-active > section,
-  .modal-fade-leave-active > section {
-    transition: none;
-  }
 }
 </style>

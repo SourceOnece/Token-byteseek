@@ -23,10 +23,20 @@ describe('TablePageLayout responsive table scrolling', () => {
     const tableFrame = wrapper.get('.table-scroll-container')
     expect(tableFrame.get('[data-test="table-content"]').exists()).toBe(true)
     expect(tableFrame.get('.table-pagination-footer [data-test="pagination-content"]').exists()).toBe(true)
-    expect(componentSource).toContain('height: 2.25rem;')
-    expect(componentSource).toContain('width: 1.75rem;')
-    expect(componentSource).toContain('justify-content: center;')
+    // 分页控件与全站 36px 基线一致,表格页脚不再压缩尺寸。
+    expect(componentSource).not.toContain('--pagination-control-height')
+    expect(componentSource).toContain('table-pagination-footer')
     wrapper.unmount()
+  })
+
+  it('高度由 AppLayout flex 链分配,不再维护视口差值与镜像内边距变量', () => {
+    // 桌面模式:flex-1 占满主区剩余空间;移动模式:自然高度。
+    expect(componentSource).toContain('@apply flex flex-1 flex-col gap-4 min-h-0;')
+    expect(componentSource).not.toContain('--main-pad-top')
+    expect(componentSource).not.toContain('--main-pad-bottom')
+    expect(componentSource).not.toContain('--page-heading-space')
+    expect(componentSource).not.toContain('calc(100dvh')
+    expect(componentSource).not.toContain('calc(100vh')
   })
 
   it('keeps shared sticky table headers opaque and free of blur filters', () => {

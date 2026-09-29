@@ -4,10 +4,7 @@ TokenRouter 通过统一 API 提供异步 Gemini 批量图片生成，底层由 
 
 本文覆盖公共资源形状、持久化作业生命周期、队列协调、计费预留、提供商执行、清理、安全边界、配置和验证。不定义生产价格、特定部署的 Google Cloud IAM 策略或普通同步图片生成。
 
-支持的提供商：
-
-- `gemini_api`
-- `vertex`
+支持 `gemini_api` 和 `vertex` 两类提供商。
 
 API 用户不会看到 Gemini 文件名、Vertex 作业名、GCS 路径、签名 URL、API Key 或服务账号材料。当前实现通过 TokenRouter 代理下载。
 
@@ -24,6 +21,8 @@ API 用户不会看到 Gemini 文件名、Vertex 作业名、GCS 路径、签名
 
 ## API 路由
 
+创建入口由分组 `allowed_protocols` 的 `image_batches` 控制，API Key/Vertex 提供商须分别启用 `gemini_batch_generate_content`/`vertex_batch_prediction`。提交执行器再次检查协议；已有作业的查询、下载、取消和清理由原 provider 与资源绑定处理，不依赖新建入口开关。
+
 ```text
 POST   /v1/images/batches
 GET    /v1/images/batches/{id}
@@ -39,7 +38,7 @@ DELETE /v1/images/batches/{id}/outputs
 ```json
 {
   "model": "gemini-2.5-flash-image",
-  "provider": "gemini_api",
+  "platform": "gemini_api",
   "items": [
     {
       "custom_id": "cover_001",
@@ -87,7 +86,7 @@ DELETE /v1/images/batches/{id}/outputs
   "object": "image.batch",
   "status": "queued",
   "model": "gemini-2.5-flash-image",
-  "provider": "gemini_api",
+  "platform": "gemini_api",
   "item_count": 1,
   "success_count": 0,
   "fail_count": 0,
@@ -150,7 +149,9 @@ output_deleted             -> output_deleted
 
 手工删除输出或 TTL 清理后，状态从 `completed` 变为 `output_deleted`。
 
-任务提交时必须同时快照三种模型身份：`requested_model` 保存客户端提交值（复合 Key 场景包含自定义分组前缀），`internal_model` 保存复合 Key 选组和 API Key 模型重定向完成后、渠道与账号映射前的内部模型，`model` 保存最终提交给提供商的上游模型。异步结算写使用记录时以 `internal_model` 作为 `usage_logs.model`，并把 `model` 写入 `upstream_model`；迁移前任务没有内部模型快照时，才兼容回退到上游模型。
+任务提交时已固定 platform 和执行提供商，轮询、查询、下载、取消与结算沿用该绑定，不因分组成员变化重新选择。使用记录的平台从作业 platform 映射得到，不查询分组平台。
+
+任务提交时必须同时快照三种模型身份：`requested_model` 保存客户端提交值（复合 Key 场景包含自定义分组前缀），`internal_model` 保存复合 Key 选组和 API Key 模型重定向完成后、渠道与提供商映射前的内部模型，`model` 保存最终提交给提供商的上游模型。异步结算写使用记录时以 `internal_model` 作为 `usage_logs.model`，并把 `model` 写入 `upstream_model`；迁移前任务没有内部模型快照时，才兼容回退到上游模型。
 
 批量提交在原有分组批量图片开关外也检查可选 `model_allowlist`，发生在提供商上传与资金预占前；Key 重定向场景使用去复合前缀后的公开模型名。模型列表仍在 Key 别名投影后、加复合前缀前过滤，不能以内部模型名提前删除可调用别名。已经提交的作业继续按已有快照轮询和结算，不因之后的准入变更重写历史。
 
@@ -170,19 +171,25 @@ Redis 结构：
 - 队列幂等键：`batch_image.idempotency_key_prefix`
 - 由下载限流器管理的下载限制键
 
-worker 必须从 Redis 预留作业，不应以数据库扫描循环方式运行。只有 Redis 队列预留返回具体批量作业 ID 后才读取数据库。
+`batchimage.Public` 拥有提交、目录、查询及取消，`PipelineProcessor` 在轮询/索引与结算之间推进，`Cleanup` 和 `Download` 分别拥有清理及输出读取。HTTP 位于 `batchimage/httpapi`，元数据与队列位于 PostgreSQL/Redis Adapter，平台操作位于 `batchimage/provider`。app 直接构造原生 Gemini/Vertex provider，并将唯一 `batchimage.Registry` 注入提交、轮询、下载及清理；Vertex 配置投影也由 app 完成。
+
+下载与清理也由 app 直接构造原生用例，ResultAccess 在原操作时点从提供商存储读取已绑定提供商，每次供应商操作得到独立凭据副本；下载保留提供商资格及脱敏错误，清理保留原错误传播差异。处理、索引、结算及失活资金恢复由 app 直接组合原生实例，读取同一提供商存储、billing.Funds、usage 存储和报价器；worker 配置只在 app 投影。提交、目录、查询及取消也已直接绑定原生 Public；候选通过 provider.Candidates 在原查询时点从 ProviderStore 投影，复用 provider 模型规则和 routing 的逐候选协议解析。套餐读取仍按资金模式触发，指定订阅不会回退。
+
+worker 必须从 Redis 预留作业，不应以数据库扫描循环方式运行。只有 Redis 队列预留返回具体批量作业 ID 后才读取数据库。队列由 `batchimage/rediscache` 唯一实现；取得任务锁后，心跳、ACK 和重排通过持有者句柄原子比较现有锁 token。续期不匹配或无法确认所有权时取消本轮推进，旧 worker 不得清除接管者的活动记录。数据键、字符串 token 与 TTL 不变，也不构成 Redis/PostgreSQL 的分布式事务。
 
 ## 计费
 
+作业资金调用 `billing.Funds` 的 `Reserve/Capture/Release`，与创作台共用唯一资金实现。任务表投影由所属模块的 PostgreSQL 参与者提供，billing 通过 app 登记的工厂在同一 SQL 事务调用，资金分配和 allowance 标记仍一次提交；任务状态机与供应商执行由 batchimage 及其 provider 唯一拥有。v1/v2/v3 快照、原请求 ID、指纹以及删除 Key/退出成员后的释放规则保持兼容。
+
 计费规则：
 
-- 提交时可以估算费用。
+- 提交时按所选分组、渠道计费模型来源和图片尺寸解析单张价：使用关联的有效价格配置价卡，未配置、或未命中尺寸且缺少默认单价时使用内置按张默认价，显式零价保留。token 价卡不能把每 token 单价作为单张价格，仍回退内置按张价；模型列表使用同一解析规则。
 - 提交时冻结 API Key 的 `billing_mode` 和可选 `preferred_subscription_id`，后续冻结、捕获和释放都使用该任务快照，不能读取后来编辑后的 Key 配置。
 - `auto` 模式提交时先预留适用的订阅额度，只冻结未被订阅覆盖部分所需的钱包余额；`subscription` 模式只预留指定订阅且必须完整覆盖，不能改扣余额或其它订阅；`balance` 模式跳过订阅预留。
+- 生成任务定价快照时读取分组基础倍率与关联价格配置的单价、批量折扣和预扣倍率，固定到任务后用于预占及最终结算；已经提交的任务不读取后续编辑后的价格。
 - 定价快照遵循普通图片计费：每份订阅分配使用其套餐分组倍率；订阅覆盖后剩余的基础成本使用快照中的用户专属按量倍率。
-- 结果索引完成后执行结算。
-- 只对成功图片计费。
-- 失败条目不计费。
+- 结果索引完成后执行结算；已提交任务保留原价格和资金快照，即使升级清除了旧分组价格和独立倍率也不重算。
+- 按成功图片数量计费，失败条目不计费。
 - 结算按提交时预留的订阅和余额快照捕获；只有 `auto` 的预留允许同时包含两种来源。失败或取消时通过幂等路径释放所有未使用预留。
 - 参考图片作为输入发送给 Gemini，可能产生少量上游输入 Token 和临时存储成本。`output_count > 1` 时，每个展开后的输出请求都会计算一次参考图，但公共计费模型不额外收取参考图费用。用户可见的估算、冻结和结算金额仍根据输出图片数量和已配置的批量图片单价计算。
 - 结算请求 ID 为 `batch_image_settlement:{batch_id}`。
@@ -192,6 +199,8 @@ worker 必须从 Redis 预留作业，不应以数据库扫描循环方式运行
 生产环境准确价格通过模型定价配置解析，本文不定义价格数值。
 
 ## 清理
+
+批量 worker 与清理分别使用 `batchimage.Runtime` 管理运行 context 和固定完成信号；清理直接运行所属模块的 Cleanup.Run，由 app 绑定唯一运行实例；Stop 不可逆，重复停止共享结果，并按应用剩余预算报告未完成工作。
 
 默认值：
 
@@ -218,21 +227,20 @@ DELETE /v1/images/batches/{id}/outputs
 `gemini_api`：
 
 - 使用 JSONL 文件模式的 Gemini Batch API。
-- 支持配置了 API Key 的 Gemini `apikey` 上游账号。
+- 支持配置了 API Key 的 Gemini `apikey` 上游提供商。
 - 结果文件引用只在内部使用。
 - 永不返回 API Key。
-- 管理员配置符合条件的 Gemini API Key 上游账号后，可以通过 TokenRouter 选择并提交该提供商。
+- 管理员配置符合条件的 Gemini API Key 上游提供商后，可以通过 TokenRouter 选择并提交该提供商。
 
 `vertex`：
 
 - 使用基于受管 GCS JSONL 的 Vertex `BatchPredictionJob`。
-- 支持包含有效服务账号 JSON 的 Gemini `service_account` 上游账号。
+- 支持包含有效服务账号 JSON 的 Gemini `service_account` 上游提供商。
 - GCS 存储桶和前缀由服务端管理。
 - Vertex 作业名和 GCS 路径只在内部使用。
-- 当前实现中的批量图片输出只能按 `1K` 或默认值处理。
-- 不得承诺 `2K` 或 `4K`。
+- 当前输出只支持 `1K` 或默认值，不支持 `2K`、`4K`。
 
-其他 Gemini 账号或登录类型不会被当前批量图片提供商选择，除非它们通过相同提供商流程公开等价的 API Key 或服务账号凭据。
+其他 Gemini 提供商或登录类型不会被当前批量图片提供商选择，除非它们通过相同提供商流程公开等价的 API Key 或服务账号凭据。
 
 ## 启用 Google 官方能力
 
@@ -244,15 +252,15 @@ DELETE /v1/images/batches/{id}/outputs
 - 为项目启用相应 Gemini API 或 Vertex AI API。
 - TokenRouter 运行时使用服务账号或应用默认凭据。
 - 为批量图片输入输出创建固定 Cloud Storage 存储桶，并向运行时和 Vertex 服务代理授予最低必要存储桶权限。
-- 在 TokenRouter 中配置项目 ID、区域、受管存储桶、提供商账号、模型白名单和价格。
-- 全局启用 `BATCH_IMAGE_ENABLED`，在目标 Gemini 分组上启用图片生成，再为该分组启用 `allow_batch_image_generation`。非 Gemini 分组不支持批量图片；只有 Gemini 分组先启用图片生成后，管理界面才显示批量图片开关。
+- 在 TokenRouter 中配置项目 ID、区域、受管存储桶、提供商、模型白名单和价格。
+- 全局启用 `BATCH_IMAGE_ENABLED`，在目标分组的 `allowed_protocols` 中开启 `image_batches`。分组可混合任意平台，但新作业只选择组内具备 Gemini 或 Vertex 批处理能力的提供商；未绑定分组时拒绝提交，不从全局提供商池补选。
 
 API Key 路径：
 
 - Google API Key 适合 Gemini API 开发和受支持的 Gemini 方法。
 - TokenRouter 的 `x-goog-api-key` 兼容请求头仍要求 TokenRouter Key，而不是普通 Google Key。
 - 不应把普通 Google API Key 记录为 Vertex 服务账号批量作业的默认生产凭据。
-- 管理员配置 Gemini API Key 上游账号后，应在 Google 账号具备必要结算或预付状态时执行一次低成本批量图片验证。没有预付时，只能记录提供商可被选择和调用，以及提交失败会释放预留，不应推断更多能力。
+- 管理员配置 Gemini API Key 上游提供商后，应在 Google 账号具备必要结算或预付状态时执行一次低成本批量图片验证。没有预付时，只能记录提供商可被选择和调用，以及提交失败会释放预留，不应推断更多能力。
 
 官方参考：
 
@@ -326,7 +334,7 @@ batch_image:
 - 启用 `batch_image.enabled`。
 - 配置 Redis。
 - 需要 worker 消费队列作业时启用 `batch_image.queue_enabled`。
-- 配置提供商账号。
+- 配置提供商。
 - 使用 Vertex 时配置受管 GCS 存储桶。
 - 确认存储桶权限正确。
 - 关闭或妥善管理 GCS 软删除。
@@ -338,15 +346,10 @@ batch_image:
 
 ## 安全检查清单
 
-- 公共响应不包含提供商引用。
-- 不暴露 GCS URI。
-- 不暴露签名 URL。
-- 不暴露服务账号。
-- 不暴露 API Key。
+- 公共响应不包含提供商引用、GCS URI、签名 URL、服务账号材料或 API Key。
 - PostgreSQL 不保存图片字节或 Base64。
 - 日志不记录 Base64。
-- 状态、条目、下载、取消和删除路由都受所有者范围约束。
-- 输出删除受所有者范围约束。
+- 状态、条目、下载、取消和删除路由都校验所有者，输出删除也遵守同一边界。
 - 清理路径只能由服务端生成。
 
 ## 测试命令
@@ -354,9 +357,9 @@ batch_image:
 核心冒烟和编译命令：
 
 ```bash
-go test -tags=unit ./internal/service -run 'BatchImage' -count=1
-go test -tags=unit ./internal/config ./internal/service ./internal/repository -count=1
-go test ./internal/config ./internal/service ./internal/repository ./internal/handler ./internal/server/routes -run '^$'
+go test -tags=unit ./internal/batchimage/... ./internal/upstream/gemini/... ./internal/upstream/vertex/... -run 'Test(BatchImage|GeminiProvider|VertexProvider|BuildGeminiBatchJSONL|BuildVertexBatchJSONL)' -count=1
+go test -tags=unit ./internal/config ./internal/batchimage/... ./internal/creative/... ./internal/billing/... -count=1
+go test ./internal/config ./internal/batchimage/... ./internal/creative/... ./internal/billing/... ./internal/app -run '^$'
 go test ./... -run '^$'
 ```
 

@@ -17,15 +17,15 @@
 
 ## Overview
 
-TokenRouter is a self-hosted AI API gateway and management platform for unified access to multiple upstream AI services. Users send requests with platform-issued API keys, while TokenRouter handles authentication, routing, account scheduling, request forwarding, usage tracking, and billing.
+TokenRouter is a self-hosted AI API gateway and management platform for unified access to multiple upstream AI services. Users send requests with platform-issued API keys, while TokenRouter handles authentication, routing, provider scheduling, request forwarding, usage tracking, and billing.
 
-The project provides user and administration web interfaces for individuals and teams that need to manage upstream accounts, distribute API quotas, and operate AI services in one place.
+The project provides user and administration web interfaces for individuals and teams that need to manage upstream providers, distribute API quotas, and operate AI services in one place.
 
 TokenRouter builds on [Sub2API](https://github.com/Wei-Shaw/sub2api). Thanks to the upstream project and all contributors.
 
 ## Core Features
 
-- Unified management for multiple upstreams and accounts
+- Unified management for multiple upstreams and providers
 - API key, user, team, and group management
 - Model mapping, request routing, and failover
 - Concurrency, rate, and quota controls
@@ -34,7 +34,7 @@ TokenRouter builds on [Sub2API](https://github.com/Wei-Shaw/sub2api). Thanks to 
 
 ## Supported Platforms
 
-TokenRouter currently includes adapters for Anthropic, OpenAI, Gemini, Antigravity, Grok / xAI, and Qoder. See the [upstream account capability matrix (Chinese)](docs/interfaces/upstream_account_matrix.md) for the detailed support scope.
+TokenRouter currently includes adapters for Anthropic, OpenAI, Gemini, Antigravity, Grok / xAI, and Qoder. See the [upstream provider capability matrix (Chinese)](docs/interfaces/upstream_provider_matrix.md) for the detailed support scope.
 
 ## Deployment
 

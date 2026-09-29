@@ -1,16 +1,12 @@
 <template>
-  <!-- 构成式搜索框：黄色图标格 + 输入格，共享 2px 墨线 -->
-  <div class="flex w-full">
-    <span
-      class="flex h-11 w-11 flex-shrink-0 items-center justify-center border-2 border-gray-950 bg-bh-yellow text-gray-950 dark:border-dark-100"
-      aria-hidden="true"
-    >
-      <Icon name="search" size="md" :stroke-width="2.5" />
-    </span>
+  <div class="input-icon-wrap w-full">
+    <div class="input-icon">
+      <Icon name="search" size="md" class="text-gray-400" />
+    </div>
     <input
       :value="modelValue"
       type="text"
-      class="input -ml-[2px] flex-1"
+      class="input input-has-icon"
       :placeholder="placeholder"
       @input="handleInput"
     />
@@ -19,6 +15,7 @@
 
 <script setup lang="ts">
 import { useDebounceFn } from '@vueuse/core'
+import { SEARCH_DEBOUNCE_MS } from '@/constants/ui'
 import Icon from '@/components/icons/Icon.vue'
 
 const props = withDefaults(defineProps<{
@@ -27,7 +24,7 @@ const props = withDefaults(defineProps<{
   debounceMs?: number
 }>(), {
   placeholder: 'Search...',
-  debounceMs: 300
+  debounceMs: SEARCH_DEBOUNCE_MS
 })
 
 const emit = defineEmits<{

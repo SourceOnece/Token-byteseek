@@ -1,7 +1,7 @@
 <template>
   <div class="inline-flex flex-col gap-0.5 text-xs font-medium">
     <!-- Row 1: Platform + Type -->
-    <div class="inline-flex items-center overflow-hidden rounded-md">
+    <div class="inline-flex items-center overflow-hidden rounded-compact">
       <span :class="['inline-flex items-center gap-1 px-2 py-1', platformClass]">
         <PlatformIcon :platform="platform" size="xs" />
         <span>{{ platformLabel }}</span>
@@ -31,7 +31,7 @@
       </span>
     </div>
     <!-- Row 2: Plan type + Privacy mode (only if either exists) -->
-    <div v-if="planLabel || privacyBadge" class="inline-flex items-center overflow-hidden rounded-md">
+    <div v-if="planLabel || privacyBadge" class="inline-flex items-center overflow-hidden rounded-compact">
       <span v-if="planLabel" :class="['inline-flex items-center gap-1 px-1.5 py-1', planBadgeClass]">
         <GrokFreeIcon
           v-if="isGrokFreePlan"
@@ -57,8 +57,8 @@
         <span>{{ privacyBadge.label }}</span>
       </span>
     </div>
-    <!-- Row 3: Subscription expiration (non-free paid accounts only) -->
-    <div v-if="expiresLabel" class="text-[10px] leading-tight text-gray-400 dark:text-gray-500 pl-0.5" :title="subscriptionExpiresAt">
+    <!-- Row 3: Subscription expiration (non-free paid providers only) -->
+    <div v-if="expiresLabel" class="text-xs leading-tight text-gray-400 dark:text-gray-500 pl-0.5" :title="subscriptionExpiresAt">
       {{ expiresLabel }}
     </div>
   </div>
@@ -67,7 +67,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { AccountPlatform, AccountType } from '@/types'
+import type { ProviderPlatform, ProviderType } from '@/types'
 import PlatformIcon from './PlatformIcon.vue'
 import GrokFreeIcon from './GrokFreeIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -75,8 +75,8 @@ import Icon from '@/components/icons/Icon.vue'
 const { t } = useI18n()
 
 interface Props {
-  platform: AccountPlatform
-  type: AccountType
+  platform: ProviderPlatform
+  type: ProviderType
   authMode?: string
   planType?: string
   privacyMode?: string
@@ -156,7 +156,7 @@ const planLabel = computed(() => {
     case 'xbasic':
       return 'X Basic'
     case 'abnormal':
-      return t('admin.accounts.subscriptionAbnormal')
+      return t('admin.providers.subscriptionAbnormal')
     default:
       return props.planType
   }
@@ -293,7 +293,7 @@ const expiresLabel = computed(() => {
     const yyyy = d.getFullYear()
     const mm = String(d.getMonth() + 1).padStart(2, '0')
     const dd = String(d.getDate()).padStart(2, '0')
-    return `${t('admin.accounts.subscriptionExpires')} ${yyyy}-${mm}-${dd}`
+    return `${t('admin.providers.subscriptionExpires')} ${yyyy}-${mm}-${dd}`
   } catch {
     return ''
   }
@@ -310,16 +310,16 @@ const privacyBadge = computed(() => {
   switch (props.privacyMode) {
     // OpenAI states
     case 'training_off':
-      return { label: 'Private', icon: shieldCheck, title: t('admin.accounts.privacyTrainingOff'), class: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' }
+      return { label: 'Private', icon: shieldCheck, title: t('admin.providers.privacyTrainingOff'), class: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' }
     case 'training_set_cf_blocked':
-      return { label: 'CF', icon: shieldX, title: t('admin.accounts.privacyCfBlocked'), class: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400' }
+      return { label: 'CF', icon: shieldX, title: t('admin.providers.privacyCfBlocked'), class: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400' }
     case 'training_set_failed':
-      return { label: 'Fail', icon: shieldX, title: t('admin.accounts.privacyFailed'), class: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' }
+      return { label: 'Fail', icon: shieldX, title: t('admin.providers.privacyFailed'), class: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' }
     // Antigravity states
     case 'privacy_set':
-      return { label: 'Private', icon: shieldCheck, title: t('admin.accounts.privacyAntigravitySet'), class: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' }
+      return { label: 'Private', icon: shieldCheck, title: t('admin.providers.privacyAntigravitySet'), class: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' }
     case 'privacy_set_failed':
-      return { label: 'Fail', icon: shieldX, title: t('admin.accounts.privacyAntigravityFailed'), class: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' }
+      return { label: 'Fail', icon: shieldX, title: t('admin.providers.privacyAntigravityFailed'), class: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' }
     default:
       return null
   }

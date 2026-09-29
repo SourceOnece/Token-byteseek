@@ -13,7 +13,7 @@
 
       <!-- Success State -->
       <div v-if="isSubmitted" class="space-y-6">
-        <div class="rounded-xl border border-green-200 bg-green-50 p-6 dark:border-green-800/50 dark:bg-green-900/20">
+        <div class="rounded-surface border border-green-200 bg-green-50 p-6 dark:border-green-800/50 dark:bg-green-900/20">
           <div class="flex flex-col items-center gap-4 text-center">
             <div class="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-800/50">
               <Icon name="checkCircle" size="lg" class="text-green-600 dark:text-green-400" />
@@ -47,8 +47,8 @@
           <label for="email" class="input-label">
             {{ t('auth.emailLabel') }}
           </label>
-          <div class="relative">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+          <div class="input-icon-wrap input-icon-lg">
+            <div class="input-icon">
               <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
             <input
@@ -59,7 +59,7 @@
               autofocus
               autocomplete="email"
               :disabled="isLoading"
-              class="input pl-11"
+              class="input input-has-icon"
               :class="{ 'input-error': errors.email }"
               :placeholder="t('auth.emailPlaceholder')"
             />
@@ -333,14 +333,4 @@ async function handleSubmit(): Promise<void> {
 </script>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: all 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
 </style>

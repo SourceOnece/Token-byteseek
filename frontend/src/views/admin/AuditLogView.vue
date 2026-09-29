@@ -7,7 +7,7 @@
             <div ref="filterPanelRef" class="relative shrink-0">
               <button
                 type="button"
-                class="btn btn-secondary relative h-9 w-9 p-0"
+                class="btn btn-secondary relative btn-icon"
                 :aria-expanded="showFilterDropdown"
                 :aria-label="t('common.filter')"
                 :title="t('common.filter')"
@@ -19,21 +19,21 @@
                 </span>
               </button>
 
-              <div v-show="showFilterDropdown" class="absolute -left-4 top-full z-[60] mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0" @click.stop>
+              <div v-show="showFilterDropdown" class="absolute -left-4 top-full z-modal-nested mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0" @click.stop>
                 <div class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
                 <div class="flex flex-wrap items-end gap-4">
               <div class="w-full sm:w-auto sm:min-w-[240px]">
                 <label class="input-label">{{ t('admin.audit.filters.q') }}</label>
-                <div class="relative">
+                <div class="input-icon-wrap">
                   <Icon
                     name="search"
                     size="md"
-                    class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    class="input-icon text-gray-400"
                   />
                   <input
                     v-model.trim="filters.q"
                     type="text"
-                    class="input pl-10"
+                    class="input input-has-icon"
                     :placeholder="t('admin.audit.filters.qPlaceholder')"
                     @keyup.enter="search"
                   />
@@ -83,10 +83,10 @@
             </div>
 
             <div class="flex flex-wrap items-center justify-end gap-2">
-              <button type="button" class="btn btn-primary h-9 whitespace-nowrap px-3 sm:px-4" :disabled="loading" @click="search">
+              <button type="button" class="btn btn-primary whitespace-nowrap px-3 sm:px-4" :disabled="loading" @click="search">
                 {{ t('common.search') }}
               </button>
-              <button type="button" class="btn btn-danger h-9 whitespace-nowrap px-3 sm:px-4" @click="openClearDialog">
+              <button type="button" class="btn btn-danger whitespace-nowrap px-3 sm:px-4" @click="openClearDialog">
                 <Icon name="trash" size="sm" class="mr-1.5" />
                 {{ t('admin.audit.clearAll') }}
               </button>
@@ -188,7 +188,7 @@
 
       <div v-else-if="detail" class="space-y-5 py-2">
         <!-- 操作与结果概览 -->
-        <div class="rounded-lg border border-gray-200 bg-gray-50/60 p-5 dark:border-dark-700 dark:bg-dark-900/60">
+        <div class="rounded-surface border border-gray-200 bg-gray-50/60 p-5 dark:border-dark-700 dark:bg-dark-900/60">
           <div class="flex flex-wrap items-center gap-3">
             <span :class="statusBadgeClass(detail.status_code)">
               <span class="h-1.5 w-1.5 rounded-full" :class="statusDotClass(detail.status_code)"></span>
@@ -199,8 +199,8 @@
             </span>
           </div>
 
-          <div class="mt-3 flex items-center gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-gray-200 dark:bg-dark-800 dark:ring-dark-600">
-            <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px] font-bold text-gray-700 dark:bg-dark-700 dark:text-gray-200">
+          <div class="mt-3 flex items-center gap-2 rounded-control bg-white px-3 py-2 ring-1 ring-gray-200 dark:bg-dark-800 dark:ring-dark-600">
+            <span class="rounded-compact bg-gray-100 px-1.5 py-0.5 font-mono text-xs font-bold text-gray-700 dark:bg-dark-700 dark:text-gray-200">
               {{ detail.method }}
             </span>
             <span class="break-all font-mono text-xs text-gray-600 dark:text-gray-300">{{ detail.path }}</span>
@@ -221,7 +221,7 @@
 
         <!-- 操作者、认证方式与来源 -->
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div class="rounded-lg bg-gray-50 p-4 dark:bg-dark-900">
+          <div class="rounded-control bg-gray-50 p-4 dark:bg-dark-900">
             <div class="text-xs font-bold uppercase tracking-wider text-gray-400">
               {{ t('admin.audit.columns.actor') }}
             </div>
@@ -231,7 +231,7 @@
             <div class="mt-0.5 text-xs text-gray-400">{{ detail.actor_role }}</div>
           </div>
 
-          <div class="rounded-lg bg-gray-50 p-4 dark:bg-dark-900">
+          <div class="rounded-control bg-gray-50 p-4 dark:bg-dark-900">
             <div class="text-xs font-bold uppercase tracking-wider text-gray-400">
               {{ t('admin.audit.filters.authMethod') }}
             </div>
@@ -243,7 +243,7 @@
             </div>
           </div>
 
-          <div class="rounded-lg bg-gray-50 p-4 dark:bg-dark-900">
+          <div class="rounded-control bg-gray-50 p-4 dark:bg-dark-900">
             <div class="text-xs font-bold uppercase tracking-wider text-gray-400">
               {{ t('admin.audit.columns.clientIp') }}
             </div>
@@ -258,7 +258,7 @@
           <h4 class="mb-1.5 text-xs font-bold uppercase tracking-wider text-gray-400">
             {{ t('admin.audit.detail.userAgent') }}
           </h4>
-          <div class="break-all rounded-lg bg-gray-50 p-3 font-mono text-xs leading-relaxed text-gray-600 dark:bg-dark-900 dark:text-gray-400">
+          <div class="break-all rounded-control bg-gray-50 p-3 font-mono text-xs leading-relaxed text-gray-600 dark:bg-dark-900 dark:text-gray-400">
             {{ detail.user_agent || '—' }}
           </div>
         </section>
@@ -268,7 +268,7 @@
           <h4 class="mb-1.5 text-xs font-bold uppercase tracking-wider text-gray-400">
             {{ t('admin.audit.detail.requestBody') }}
           </h4>
-          <pre class="max-h-72 overflow-auto rounded-lg bg-gray-50 p-4 font-mono text-xs leading-relaxed text-gray-600 dark:bg-dark-900 dark:text-gray-400">{{ prettyBody(detail.request_body) }}</pre>
+          <pre class="max-h-72 overflow-auto rounded-control bg-gray-50 p-4 font-mono text-xs leading-relaxed text-gray-600 dark:bg-dark-900 dark:text-gray-400">{{ prettyBody(detail.request_body) }}</pre>
         </section>
 
         <!-- 附加信息 -->
@@ -276,7 +276,7 @@
           <h4 class="mb-1.5 text-xs font-bold uppercase tracking-wider text-gray-400">
             {{ t('admin.audit.detail.extra') }}
           </h4>
-          <pre class="max-h-48 overflow-auto rounded-lg bg-gray-50 p-4 font-mono text-xs leading-relaxed text-gray-600 dark:bg-dark-900 dark:text-gray-400">{{ JSON.stringify(detail.extra, null, 2) }}</pre>
+          <pre class="max-h-48 overflow-auto rounded-control bg-gray-50 p-4 font-mono text-xs leading-relaxed text-gray-600 dark:bg-dark-900 dark:text-gray-400">{{ JSON.stringify(detail.extra, null, 2) }}</pre>
         </section>
       </div>
     </BaseDialog>

@@ -1,6 +1,7 @@
 export default {
 // Common
   common: {
+    retry: '重试',
     loading: '加载中...',
     justNow: '刚刚',
     peakRateTooltip: '高峰倍率：{window}',
@@ -123,9 +124,9 @@ export default {
     profile: '个人资料',
     users: '用户管理',
     groups: '分组管理',
-    channels: '渠道管理',
+    pricing: '价格管理',
     subscriptions: '订阅管理',
-    accounts: '账号管理',
+    providers: '提供商管理',
     proxies: 'IP管理',
     redeemCodes: '兑换码',
     ops: '运维监控',
@@ -156,6 +157,7 @@ export default {
     welcomeBack: '欢迎回来',
     signInToAccount: '登录您的账户以继续',
     signIn: '登录',
+    agreementRequired: '请先阅读并勾选同意使用政策、服务条款及支持的国家和地区后再继续。',
     signingIn: '登录中...',
     passkeySignIn: '使用 Passkey 登录',
     passkeySigningIn: '正在等待 Passkey...',

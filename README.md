@@ -17,15 +17,15 @@
 
 ## 项目简介
 
-TokenRouter 是一个自托管的 AI API 网关与管理平台，用于统一接入和管理多个上游 AI 服务。用户通过平台生成的 API Key 发起请求，平台负责鉴权、路由、账号调度、请求转发、用量统计和计费。
+TokenRouter 是一个自托管的 AI API 网关与管理平台，用于统一接入和管理多个上游 AI 服务。用户通过平台生成的 API Key 发起请求，平台负责鉴权、路由、提供商调度、请求转发、用量统计和计费。
 
-项目同时提供用户端和管理端 Web 界面，适合需要集中管理上游账号、分发 API 配额并统一运营 AI 服务的个人或团队。
+项目同时提供用户端和管理端 Web 界面，适合需要集中管理上游提供商、分发 API 配额并统一运营 AI 服务的个人或团队。
 
 TokenRouter 基于 [Sub2API](https://github.com/Wei-Shaw/sub2api) 持续开发，感谢上游项目及所有贡献者。
 
 ## 核心功能
 
-- 多上游、多账号统一管理
+- 多上游、多提供商统一管理
 - API Key、用户、团队和分组管理
 - 模型映射、请求路由与故障转移
 - 并发、速率和配额控制
@@ -34,7 +34,7 @@ TokenRouter 基于 [Sub2API](https://github.com/Wei-Shaw/sub2api) 持续开发�
 
 ## 支持平台
 
-TokenRouter 当前包含 Anthropic、OpenAI、Gemini、Antigravity、Grok / xAI 和 Qoder 六个平台适配器，详细支持范围见[上游账号能力矩阵](docs/interfaces/upstream_account_matrix.md)。
+TokenRouter 当前包含 Anthropic、OpenAI、Gemini、Antigravity、Grok / xAI 和 Qoder 六个平台适配器，详细支持范围见[上游提供商能力矩阵](docs/interfaces/upstream_provider_matrix.md)。
 
 ## 部署
 

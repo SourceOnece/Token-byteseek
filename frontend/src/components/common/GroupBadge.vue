@@ -1,13 +1,12 @@
 <template>
   <span
     :class="[
-      'inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium transition-colors',
+      'inline-flex items-center gap-1.5 rounded-compact px-2 py-0.5 text-xs font-medium transition-colors',
       badgeClass
     ]"
   >
-    <!-- 分组 platform 是上游平台；有展示品牌时优先按品牌渲染图标和配色。 -->
+    <!-- 分组使用管理员配置的展示品牌。 -->
     <ProviderIcon v-if="brandName" :brand="brandName" size="14px" />
-    <PlatformIcon v-else-if="platform" :platform="platform" size="sm" />
     <!-- Group name -->
     <span class="truncate">{{ name }}</span>
     <!-- Right side label -->
@@ -30,15 +29,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { GroupPlatform } from '@/types'
 import { currentServerTimezoneLabel, formatPeakRateWindow } from '@/utils/peak-rate'
-import PlatformIcon from './PlatformIcon.vue'
 import ProviderIcon from './ProviderIcon.vue'
 import { resolveProviderBrand } from '@/utils/providerBrand'
 
 interface Props {
   name: string
-  platform?: GroupPlatform
   displayBrand?: string | null
   rateMultiplier?: number
   userRateMultiplier?: number | null // 用户专属倍率
@@ -111,7 +107,7 @@ const labelText = computed(() => {
 
 // Label style based on type and days remaining
 const labelClass = computed(() => {
-  const base = 'px-1.5 py-0.5 rounded text-[10px] font-semibold'
+  const base = 'px-1.5 py-0.5 rounded-compact text-xs font-semibold'
 
   if (props.daysRemaining === null || props.daysRemaining === undefined) {
     return `${base} bg-black/10 dark:bg-white/10`
@@ -124,69 +120,17 @@ const labelClass = computed(() => {
     return `${base} bg-amber-200/80 text-amber-800 dark:bg-amber-800/50 dark:text-amber-300`
   }
 
-  if (props.platform === 'anthropic') {
-    return `${base} bg-orange-200/60 text-orange-800 dark:bg-orange-800/40 dark:text-orange-300`
-  }
-  if (props.platform === 'openai') {
-    return `${base} bg-emerald-200/60 text-emerald-800 dark:bg-emerald-800/40 dark:text-emerald-300`
-  }
-  if (props.platform === 'gemini') {
-    return `${base} bg-blue-200/60 text-blue-800 dark:bg-blue-800/40 dark:text-blue-300`
-  }
-  if (props.platform === 'antigravity') {
-    return `${base} bg-purple-200/60 text-purple-800 dark:bg-purple-800/40 dark:text-purple-300`
-  }
-  if (props.platform === 'grok') {
-    return `${base} bg-zinc-300/70 text-zinc-800 dark:bg-zinc-700/60 dark:text-zinc-200`
-  }
-  if (props.platform === 'kimi') {
-    return `${base} bg-pink-200/60 text-pink-800 dark:bg-pink-800/40 dark:text-pink-300`
-  }
-  if (props.platform === 'zhipu') {
-    return `${base} bg-indigo-200/60 text-indigo-800 dark:bg-indigo-800/40 dark:text-indigo-300`
-  }
-  if (props.platform === 'deepseek') {
-    return `${base} bg-teal-200/60 text-teal-800 dark:bg-teal-800/40 dark:text-teal-300`
-  }
-  if (props.platform === 'minimax') return `${base} bg-red-50 text-bh-red dark:bg-red-950/20 dark:text-red-300`
-  if (props.platform === 'opencode_go') return `${base} bg-blue-50 text-bh-blue dark:bg-blue-950/20 dark:text-blue-300`
   return `${base} bg-violet-200/60 text-violet-800 dark:bg-violet-800/40 dark:text-violet-300`
 })
 
 const peakRateClass = computed(() => {
-  return 'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+  return 'px-1.5 py-0.5 rounded-compact text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
 })
 
 const badgeClass = computed(() => {
   if (brandName.value) {
     return `ring-1 ring-inset ${resolveProviderBrand(brandName.value).badgeClass}`
   }
-  if (props.platform === 'anthropic') {
-    return 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
-  }
-  if (props.platform === 'openai') {
-    return 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-  }
-  if (props.platform === 'gemini') {
-    return 'bg-sky-50 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400'
-  }
-  if (props.platform === 'antigravity') {
-    return 'bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-900/20 dark:text-fuchsia-400'
-  }
-  if (props.platform === 'grok') {
-    return 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
-  }
-  if (props.platform === 'kimi') {
-    return 'bg-pink-50 text-pink-700 dark:bg-pink-900/20 dark:text-pink-400'
-  }
-  if (props.platform === 'zhipu') {
-    return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400'
-  }
-  if (props.platform === 'deepseek') {
-    return 'bg-teal-50 text-teal-700 dark:bg-teal-900/20 dark:text-teal-400'
-  }
-  if (props.platform === 'minimax') return 'bg-red-50 text-bh-red dark:bg-red-950/20 dark:text-red-300'
-  if (props.platform === 'opencode_go') return 'bg-blue-50 text-bh-blue dark:bg-blue-950/20 dark:text-blue-300'
   return 'bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-400'
 })
 </script>

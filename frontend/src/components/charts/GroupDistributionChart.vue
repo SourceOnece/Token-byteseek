@@ -79,7 +79,7 @@
                   {{ balanceUnitSymbol }}{{ formatCost(group.actual_cost) }}
                 </td>
                 <td v-if="showAccountCost" class="py-1.5 text-right text-orange-500 dark:text-orange-400">
-                  {{ usdUnitSymbol }}{{ formatCost(group.account_cost) }}
+                  {{ usdUnitSymbol }}{{ formatCost(group.provider_cost) }}
                 </td>
                 <td v-if="showStandardCost" class="py-1.5 text-right text-gray-400 dark:text-gray-500">
                   {{ usdUnitSymbol }}{{ formatCost(group.cost) }}

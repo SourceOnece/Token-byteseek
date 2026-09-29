@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -76,28 +77,6 @@ func TestLoadServerTimingConfig(t *testing.T) {
 		cfg, err := Load()
 		require.NoError(t, err)
 		require.True(t, cfg.Server.EnableServerTiming)
-	})
-}
-
-func TestLoadRejectsLegacyAdvancedSchedulerConfig(t *testing.T) {
-	t.Run("legacy YAML key", func(t *testing.T) {
-		resetViperWithJWTSecret(t)
-		configFile := filepath.Join(t.TempDir(), "config.yaml")
-		require.NoError(t, os.WriteFile(configFile, []byte("gateway:\n  openai_ws:\n    lb_top_k: 3\n"), 0o600))
-		t.Setenv("CONFIG_FILE", configFile)
-
-		_, err := Load()
-		require.ErrorContains(t, err, "gateway.openai_ws.lb_top_k")
-		require.ErrorContains(t, err, "gateway.advanced_scheduler.lb_top_k")
-	})
-
-	t.Run("legacy environment variable", func(t *testing.T) {
-		resetViperWithJWTSecret(t)
-		t.Setenv("GATEWAY_OPENAI_SCHEDULER_STICKY_ESCAPE_ENABLED", "false")
-
-		_, err := Load()
-		require.ErrorContains(t, err, "GATEWAY_OPENAI_SCHEDULER_STICKY_ESCAPE_ENABLED")
-		require.ErrorContains(t, err, "GATEWAY_ADVANCED_SCHEDULER_STICKY_ESCAPE_ENABLED")
 	})
 }
 
@@ -442,26 +421,6 @@ func TestLoadForBootstrapAllowsMissingJWTSecret(t *testing.T) {
 	}
 }
 
-func TestNormalizeRunMode(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"simple", "simple"},
-		{"SIMPLE", "simple"},
-		{"standard", "standard"},
-		{"invalid", "standard"},
-		{"", "standard"},
-	}
-
-	for _, tt := range tests {
-		result := NormalizeRunMode(tt.input)
-		if result != tt.expected {
-			t.Errorf("NormalizeRunMode(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
-	}
-}
-
 func TestLoadDefaultSchedulingConfig(t *testing.T) {
 	resetViperWithJWTSecret(t)
 
@@ -538,8 +497,8 @@ func TestLoadDefaultOpenAIWSConfig(t *testing.T) {
 	if cfg.Gateway.OpenAIWS.ResponsesWebsockets {
 		t.Fatalf("Gateway.OpenAIWS.ResponsesWebsockets = true, want false")
 	}
-	if !cfg.Gateway.OpenAIWS.DynamicMaxConnsByAccountConcurrencyEnabled {
-		t.Fatalf("Gateway.OpenAIWS.DynamicMaxConnsByAccountConcurrencyEnabled = false, want true")
+	if !cfg.Gateway.OpenAIWS.DynamicMaxConnsByProviderConcurrencyEnabled {
+		t.Fatalf("Gateway.OpenAIWS.DynamicMaxConnsByProviderConcurrencyEnabled = false, want true")
 	}
 	if cfg.Gateway.OpenAIWS.OAuthMaxConnsFactor != 1.0 {
 		t.Fatalf("Gateway.OpenAIWS.OAuthMaxConnsFactor = %v, want 1.0", cfg.Gateway.OpenAIWS.OAuthMaxConnsFactor)
@@ -576,9 +535,6 @@ func TestLoadDefaultOpenAIWSConfig(t *testing.T) {
 	}
 	if cfg.Gateway.OpenAIWS.StickyResponseIDTTLSeconds != 3600 {
 		t.Fatalf("Gateway.OpenAIWS.StickyResponseIDTTLSeconds = %d, want 3600", cfg.Gateway.OpenAIWS.StickyResponseIDTTLSeconds)
-	}
-	if cfg.Gateway.OpenAIWS.FallbackCooldownSeconds != 30 {
-		t.Fatalf("Gateway.OpenAIWS.FallbackCooldownSeconds = %d, want 30", cfg.Gateway.OpenAIWS.FallbackCooldownSeconds)
 	}
 	if cfg.Gateway.OpenAIWS.EventFlushBatchSize != 1 {
 		t.Fatalf("Gateway.OpenAIWS.EventFlushBatchSize = %d, want 1", cfg.Gateway.OpenAIWS.EventFlushBatchSize)
@@ -1486,8 +1442,8 @@ func TestValidateConcurrencyPingInterval(t *testing.T) {
 
 func TestProvideConfig(t *testing.T) {
 	resetViperWithJWTSecret(t)
-	if _, err := ProvideConfig(); err != nil {
-		t.Fatalf("ProvideConfig() error: %v", err)
+	if _, err := LoadForBootstrap(); err != nil {
+		t.Fatalf("LoadForBootstrap() error: %v", err)
 	}
 }
 
@@ -1672,16 +1628,6 @@ func TestValidateConfigErrors(t *testing.T) {
 			name:    "jwt secret min bytes",
 			mutate:  func(c *Config) { c.JWT.Secret = strings.Repeat("a", 31) },
 			wantErr: "jwt.secret must be at least 32 bytes",
-		},
-		{
-			name:    "subscription maintenance worker_count non-negative",
-			mutate:  func(c *Config) { c.SubscriptionMaintenance.WorkerCount = -1 },
-			wantErr: "subscription_maintenance.worker_count",
-		},
-		{
-			name:    "subscription maintenance queue_size non-negative",
-			mutate:  func(c *Config) { c.SubscriptionMaintenance.QueueSize = -1 },
-			wantErr: "subscription_maintenance.queue_size",
 		},
 		{
 			name:    "jwt expire hour positive",
@@ -2254,9 +2200,9 @@ func TestValidateConfig_OpenAIWSRules(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:    "max_conns_per_account 必须为正数",
-			mutate:  func(c *Config) { c.Gateway.OpenAIWS.MaxConnsPerAccount = 0 },
-			wantErr: "gateway.openai_ws.max_conns_per_account",
+			name:    "max_conns_per_provider 必须为正数",
+			mutate:  func(c *Config) { c.Gateway.OpenAIWS.MaxConnsPerProvider = 0 },
+			wantErr: "gateway.openai_ws.max_conns_per_provider",
 		},
 		{
 			name:    "client_first_message_timeout_seconds 必须为正数",
@@ -2279,31 +2225,31 @@ func TestValidateConfig_OpenAIWSRules(t *testing.T) {
 			wantErr: "gateway.openai_ws.max_ingress_connections_per_api_key",
 		},
 		{
-			name:    "min_idle_per_account 不能为负数",
-			mutate:  func(c *Config) { c.Gateway.OpenAIWS.MinIdlePerAccount = -1 },
-			wantErr: "gateway.openai_ws.min_idle_per_account",
+			name:    "min_idle_per_provider 不能为负数",
+			mutate:  func(c *Config) { c.Gateway.OpenAIWS.MinIdlePerProvider = -1 },
+			wantErr: "gateway.openai_ws.min_idle_per_provider",
 		},
 		{
-			name:    "max_idle_per_account 不能为负数",
-			mutate:  func(c *Config) { c.Gateway.OpenAIWS.MaxIdlePerAccount = -1 },
-			wantErr: "gateway.openai_ws.max_idle_per_account",
+			name:    "max_idle_per_provider 不能为负数",
+			mutate:  func(c *Config) { c.Gateway.OpenAIWS.MaxIdlePerProvider = -1 },
+			wantErr: "gateway.openai_ws.max_idle_per_provider",
 		},
 		{
-			name: "min_idle_per_account 不能大于 max_idle_per_account",
+			name: "min_idle_per_provider 不能大于 max_idle_per_provider",
 			mutate: func(c *Config) {
-				c.Gateway.OpenAIWS.MinIdlePerAccount = 3
-				c.Gateway.OpenAIWS.MaxIdlePerAccount = 2
+				c.Gateway.OpenAIWS.MinIdlePerProvider = 3
+				c.Gateway.OpenAIWS.MaxIdlePerProvider = 2
 			},
-			wantErr: "gateway.openai_ws.min_idle_per_account must be <= max_idle_per_account",
+			wantErr: "gateway.openai_ws.min_idle_per_provider must be <= max_idle_per_provider",
 		},
 		{
-			name: "max_idle_per_account 不能大于 max_conns_per_account",
+			name: "max_idle_per_provider 不能大于 max_conns_per_provider",
 			mutate: func(c *Config) {
-				c.Gateway.OpenAIWS.MaxConnsPerAccount = 2
-				c.Gateway.OpenAIWS.MinIdlePerAccount = 1
-				c.Gateway.OpenAIWS.MaxIdlePerAccount = 3
+				c.Gateway.OpenAIWS.MaxConnsPerProvider = 2
+				c.Gateway.OpenAIWS.MinIdlePerProvider = 1
+				c.Gateway.OpenAIWS.MaxIdlePerProvider = 3
 			},
-			wantErr: "gateway.openai_ws.max_idle_per_account must be <= max_conns_per_account",
+			wantErr: "gateway.openai_ws.max_idle_per_provider must be <= max_conns_per_provider",
 		},
 		{
 			name:    "dial_timeout_seconds 必须为正数",
@@ -2329,11 +2275,6 @@ func TestValidateConfig_OpenAIWSRules(t *testing.T) {
 			name:    "queue_limit_per_conn 必须为正数",
 			mutate:  func(c *Config) { c.Gateway.OpenAIWS.QueueLimitPerConn = 0 },
 			wantErr: "gateway.openai_ws.queue_limit_per_conn",
-		},
-		{
-			name:    "fallback_cooldown_seconds 不能为负数",
-			mutate:  func(c *Config) { c.Gateway.OpenAIWS.FallbackCooldownSeconds = -1 },
-			wantErr: "gateway.openai_ws.fallback_cooldown_seconds",
 		},
 		{
 			name:    "store_disabled_conn_mode 必须为 strict|adaptive|off",
@@ -2686,5 +2627,88 @@ func TestLoad_DefaultGatewayImageStreamConfig(t *testing.T) {
 	}
 	if cfg.Gateway.ImageStreamDataIntervalTimeout <= cfg.Gateway.StreamDataIntervalTimeout {
 		t.Fatalf("image stream timeout = %d, want greater than ordinary stream timeout %d", cfg.Gateway.ImageStreamDataIntervalTimeout, cfg.Gateway.StreamDataIntervalTimeout)
+	}
+}
+
+// 旧部署参数作为未知键忽略，不改变任何启动配置。
+func TestLoadIgnoresLegacyRunMode(t *testing.T) {
+	for _, legacy := range []struct{ name, env, yaml string }{
+		{name: "未设置"},
+		{name: "旧环境变量", env: "simple"},
+		{name: "旧配置文件", yaml: "run_mode: simple\n"},
+		{name: "旧配置组合", env: "simple", yaml: "run_mode: standard\n"},
+	} {
+		t.Run(legacy.name, func(t *testing.T) {
+			resetViperWithJWTSecret(t)
+			t.Setenv("RUN_MODE", "")
+			file := filepath.Join(t.TempDir(), "config.yaml")
+			require.NoError(t, os.WriteFile(file, []byte("timezone: UTC\n"), 0o600))
+			t.Setenv("CONFIG_FILE", file)
+			t.Setenv("TOTP_ENCRYPTION_KEY", strings.Repeat("a", 64))
+			baseline, err := Load()
+			require.NoError(t, err)
+			viper.Reset()
+			t.Setenv("RUN_MODE", legacy.env)
+			require.NoError(t, os.WriteFile(file, []byte("timezone: UTC\n"+legacy.yaml), 0o600))
+			actual, err := Load()
+			require.NoError(t, err)
+			// 配置内含原子缓存指针，只比较对外配置值。
+			before, err := json.Marshal(baseline)
+			require.NoError(t, err)
+			after, err := json.Marshal(actual)
+			require.NoError(t, err)
+			require.JSONEq(t, string(before), string(after))
+		})
+	}
+}
+
+// TestLoadIgnoresRetiredSubscriptionMaintenance 验证旧队列配置不会阻止正常启动。
+func TestLoadIgnoresRetiredSubscriptionMaintenance(t *testing.T) {
+	resetViperWithJWTSecret(t)
+	configFile := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(configFile, []byte("subscription_maintenance:\n  worker_count: -1\n  queue_size: -1\nserver:\n  port: 8091\n"), 0o600))
+	t.Setenv("CONFIG_FILE", configFile)
+	t.Setenv("SUBSCRIPTION_MAINTENANCE_WORKER_COUNT", "-2")
+	t.Setenv("SUBSCRIPTION_MAINTENANCE_QUEUE_SIZE", "-2")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, 8091, cfg.Server.Port)
+	cfg.JWT.ExpireHour = 0
+	require.ErrorContains(t, cfg.Validate(), "jwt.expire_hour")
+}
+
+// TestLoadIgnoresRetiredOpenAIWSFallbackCooldown 验证旧冷却键被忽略，重试配置仍按原规则读取和校验。
+func TestLoadIgnoresRetiredOpenAIWSFallbackCooldown(t *testing.T) {
+	cases := []struct {
+		name string
+		yaml string
+		env  string
+	}{
+		{
+			name: "YAML",
+			yaml: "gateway:\n  openai_ws:\n    fallback_cooldown_seconds: -1\n    retry_backoff_initial_ms: 137\n",
+		},
+		{
+			name: "环境变量",
+			yaml: "gateway:\n  openai_ws:\n    retry_backoff_initial_ms: 137\n",
+			env:  "-2",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resetViperWithJWTSecret(t)
+			configFile := filepath.Join(t.TempDir(), "config.yaml")
+			require.NoError(t, os.WriteFile(configFile, []byte(tc.yaml), 0o600))
+			t.Setenv("CONFIG_FILE", configFile)
+			t.Setenv("GATEWAY_OPENAI_WS_FALLBACK_COOLDOWN_SECONDS", tc.env)
+			t.Setenv("GATEWAY_OPENAI_WS_RETRY_BACKOFF_INITIAL_MS", "")
+
+			cfg, err := Load()
+			require.NoError(t, err)
+			require.Equal(t, 137, cfg.Gateway.OpenAIWS.RetryBackoffInitialMS)
+
+			cfg.Gateway.OpenAIWS.RetryBackoffInitialMS = -1
+			require.ErrorContains(t, cfg.Validate(), "gateway.openai_ws.retry_backoff_initial_ms")
+		})
 	}
 }

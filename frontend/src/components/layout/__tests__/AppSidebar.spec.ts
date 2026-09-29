@@ -16,9 +16,10 @@ describe('AppSidebar layout controls', () => {
     // 同时约束侧栏和内容偏移，避免宽度修改后出现空白或遮挡。
     expect(componentSource).not.toContain('@click="toggleTheme"')
     expect(componentSource).not.toContain('@click="toggleSidebar"')
-    expect(componentSource).toContain("sidebarCollapsed ? 'w-[72px]' : 'w-56'")
-    expect(layoutSource).toContain("sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-56'")
-    expect(styleSource).toMatch(/\.sidebar\s*\{[\s\S]*?@apply w-56;/)
+    expect(componentSource).toContain("sidebarCollapsed ? 'w-[var(--sidebar-w-collapsed)]' : 'w-[var(--sidebar-w)]'")
+    expect(layoutSource).toContain("'lg:ml-[var(--sidebar-w-collapsed)]'")
+    expect(layoutSource).toContain("'lg:ml-[var(--sidebar-w)]'")
+    expect(styleSource).toContain('width: var(--sidebar-w);')
   })
 
   it('renders the site logo without an outer glow', () => {
@@ -88,30 +89,28 @@ describe('global header and sidebar hierarchy', () => {
 
   it('starts the mobile overlay below the global header', () => {
     // 遮罩不能位于半透明顶栏下方，否则 glass 背景会透出黑色并使顶栏变灰。
-    expect(componentSource).toContain('fixed inset-x-0 bottom-0 top-14 z-30 bg-black/50 lg:hidden')
-    expect(componentSource).not.toContain('fixed inset-0 z-30 bg-black/50 lg:hidden')
+    expect(componentSource).toContain('fixed inset-x-0 bottom-0 top-[var(--header-h)] z-sidebar-overlay bg-black/50 lg:hidden')
+    expect(componentSource).not.toContain('fixed inset-0 z-sidebar-overlay bg-black/50 lg:hidden')
   })
 
   it('keeps the scrolling content below the fixed global header', () => {
     // 主内容不能与顶栏使用同级 z-index，否则滚动时后渲染内容会盖住顶栏。
-    expect(layoutSource).toContain('class="relative z-10 min-w-0 pt-14 transition-all duration-300"')
+    expect(layoutSource).toContain('class="relative z-10 flex min-w-0 flex-col pt-[var(--header-h)] transition-all duration-300"')
     expect(layoutSource).toContain("fullViewport ? 'h-full min-h-0' : 'min-h-screen'")
     expect(layoutSource).not.toContain('lg:z-50')
   })
 
   it('fades the mobile overlay in and out', () => {
     // 遮罩应渐进显示和隐藏，避免打开侧栏时页面突然变暗。
-    expect(componentSource).toContain('.fade-enter-active')
-    expect(componentSource).toContain('transition: opacity 200ms ease-out;')
-    expect(componentSource).toContain('.fade-leave-active')
-    expect(componentSource).toContain('transition: opacity 150ms ease-in;')
-    expect(componentSource).toContain('.fade-enter-from,')
-    expect(componentSource).toContain('.fade-leave-to')
+    // 配方已收敛为全局 fade,本组件只用 --fade-duration-* 覆盖进/退时长。
+    expect(componentSource).toContain('<transition name="fade">')
+    expect(componentSource).toContain('--fade-duration-enter: 200ms;')
+    expect(componentSource).toContain('--fade-duration-leave: 150ms;')
   })
 })
 
 describe('AppSidebar admin personal menu', () => {
-  it('shows the regular dashboard under My Account for admins', () => {
+  it('shows the regular dashboard under My Provider for admins', () => {
     const personalNavItemsBlockMatch = componentSource.match(
       /const personalNavItems = computed\(\(\): NavItem\[\] => \{[\s\S]*?const adminNavItems = computed/
     )
@@ -141,9 +140,9 @@ describe('AppSidebar admin personal menu', () => {
   })
 })
 
-describe('AppSidebar simple mode', () => {
+describe('AppSidebar risk control', () => {
   it('keeps enabled risk control visible to administrators', () => {
-    // 风控路由和设置入口在简单模式下可用，侧栏不能单独隐藏同一功能。
+    // 风控入口遵守独立功能开关。
     const start = componentSource.indexOf("path: '/admin/risk-control'")
     const end = componentSource.indexOf("path: '/admin/redeem'", start)
     const riskControlItem = componentSource.slice(start, end)
@@ -151,6 +150,5 @@ describe('AppSidebar simple mode', () => {
     expect(start).toBeGreaterThanOrEqual(0)
     expect(end).toBeGreaterThan(start)
     expect(riskControlItem).toContain('risk_control_enabled')
-    expect(riskControlItem).not.toContain('hideInSimpleMode')
   })
 })

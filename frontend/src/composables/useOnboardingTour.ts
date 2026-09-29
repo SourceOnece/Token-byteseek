@@ -102,10 +102,9 @@ export function useOnboardingTour(options: OnboardingOptions) {
   const startTour = async (startIndex = 0, flow: 'default' | 'team' = 'default', teamOptions?: TeamGuideOptions) => {
     // 动态获取当前用户角色和步骤
     const isAdmin = userStore.user?.role === 'admin'
-    const isSimpleMode = userStore.isSimpleMode
     const steps: RoutedDriveStep[] = flow === 'team'
       ? getTeamSteps(t, teamOptions?.isOwner ?? false, teamOptions?.hasTeam ?? false)
-      : (isAdmin ? getAdminSteps(t, isSimpleMode) : getUserSteps(t))
+      : (isAdmin ? getAdminSteps(t) : getUserSteps(t))
     const driverSteps = steps.map(({ route: _route, ...step }) => step)
     const markCurrentTourAsSeen = flow === 'team' ? markTeamGuideAsSeen : markAsSeen
 
@@ -488,12 +487,7 @@ export function useOnboardingTour(options: OnboardingOptions) {
       return
     }
 
-    // 简易模式下禁用新手引导
-    if (userStore.isSimpleMode) {
-      return
-    }
-
-    // 只在管理员+标准模式下自动启动
+    // 只为管理员自动启动引导
     const isAdmin = userStore.user?.role === 'admin'
     if (!isAdmin) {
       return

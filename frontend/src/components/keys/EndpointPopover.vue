@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useClipboard } from '@/composables/useClipboard'
+import { COPY_FEEDBACK_MS } from '@/constants/ui'
 import type { CustomEndpoint } from '@/types'
 
 const props = defineProps<{
@@ -43,7 +44,7 @@ async function copy(url: string) {
     if (copiedEndpoint.value === url) {
       copiedEndpoint.value = null
     }
-  }, 1800)
+  }, COPY_FEEDBACK_MS)
 }
 
 function tooltipHint(endpoint: string): string {
@@ -68,12 +69,12 @@ onBeforeUnmount(() => {
     <div
       v-for="(item, index) in allEndpoints"
       :key="index"
-      class="flex items-center gap-1.5 rounded-none border-2 border-bh-blue bg-bh-blue/10 px-2.5 py-1.5 text-xs transition-colors hover:bg-bh-blue/15 dark:border-blue-300 dark:bg-bh-blue/20 dark:hover:bg-bh-blue/30"
+      class="flex items-center gap-1.5 rounded-control border border-gray-200 bg-white px-2.5 py-1.5 text-xs transition-colors hover:border-black/20 dark:border-dark-600 dark:bg-dark-800 dark:hover:border-primary-700"
     >
       <span class="font-extrabold text-bh-blue dark:text-blue-200">{{ item.name }}</span>
       <span
         v-if="item.isDefault"
-        class="rounded bg-primary-50 px-1 py-px text-[10px] font-medium leading-tight text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
+        class="rounded-compact bg-primary-50 px-1 py-px text-xs font-medium leading-tight text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
       >{{ t('keys.endpoints.default') }}</span>
 
       <span class="text-gray-300 dark:text-dark-500">|</span>
@@ -89,7 +90,7 @@ onBeforeUnmount(() => {
             {{ item.description }}
           </p>
           <p
-            class="flex items-center gap-1.5 text-[11px] leading-4 text-primary-600 dark:text-primary-300"
+            class="flex items-center gap-1.5 text-xs leading-4 text-primary-600 dark:text-primary-300"
             :class="item.description ? 'mt-1.5' : ''"
           >
             <span class="h-1.5 w-1.5 rounded-full bg-primary-500 dark:bg-primary-300"></span>
@@ -109,7 +110,7 @@ onBeforeUnmount(() => {
 
         <button
           type="button"
-          class="rounded p-0.5 transition-colors"
+          class="rounded-compact p-0.5 transition-colors"
           :class="copiedEndpoint === item.endpoint
             ? 'text-emerald-500 dark:text-emerald-400'
             : 'text-gray-400 hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400'"
@@ -128,7 +129,7 @@ onBeforeUnmount(() => {
           :href="speedTestUrl(item.endpoint)"
           target="_blank"
           rel="noopener noreferrer"
-          class="rounded p-0.5 text-gray-400 transition-colors hover:text-amber-500 dark:text-gray-500 dark:hover:text-amber-400"
+          class="rounded-compact p-0.5 text-gray-400 transition-colors hover:text-amber-500 dark:text-gray-500 dark:hover:text-amber-400"
           :title="t('keys.endpoints.speedTest')"
         >
           <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

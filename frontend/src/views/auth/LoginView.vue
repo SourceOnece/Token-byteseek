@@ -18,14 +18,14 @@
       </div>
 
       <!-- Login Form -->
-      <form @submit.prevent="handleLogin" class="space-y-5">
+      <form @submit.prevent="handleLogin" :novalidate="agreementGateActive" class="space-y-5">
         <!-- Email Input -->
         <div>
           <label for="email" class="input-label">
             {{ t('auth.emailLabel') }}
           </label>
-          <div class="relative">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+          <div class="input-icon-wrap input-icon-lg">
+            <div class="input-icon">
               <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
             <input
@@ -36,7 +36,7 @@
               autofocus
               autocomplete="email"
               :disabled="authActionDisabled"
-              class="input pl-11"
+              class="input input-has-icon"
               :class="{ 'input-error': errors.email }"
               :placeholder="t('auth.emailPlaceholder')"
             />
@@ -48,8 +48,8 @@
           <label for="password" class="input-label">
             {{ t('auth.passwordLabel') }}
           </label>
-          <div class="relative">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+          <div class="input-icon-wrap input-icon-lg">
+            <div class="input-icon">
               <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
             <input
@@ -59,7 +59,7 @@
               required
               autocomplete="current-password"
               :disabled="authActionDisabled"
-              class="input pl-11 pr-11"
+              class="input input-has-icon input-has-icon-right"
               :class="{ 'input-error': errors.password }"
               :placeholder="t('auth.passwordPlaceholder')"
             />
@@ -67,7 +67,7 @@
               type="button"
               @click="showPassword = !showPassword"
               :disabled="authActionDisabled"
-              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
+              class="input-icon-right text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
               <Icon v-if="showPassword" name="eyeOff" size="md" />
               <Icon v-else name="eye" size="md" />
@@ -111,6 +111,7 @@
           :mode="loginAgreementMode"
           :updated-at="loginAgreementUpdatedAt"
           :visible="showAgreementModal"
+          v-model:hint-visible="showAgreementHint"
           @accept="acceptLoginAgreement"
           @reject="rejectLoginAgreement"
           @open="showAgreementModal = true"
@@ -119,7 +120,7 @@
         <!-- 提交按钮 -->
         <button
           type="submit"
-          :disabled="authActionDisabled || (turnstileEnabled && !turnstileToken)"
+          :disabled="authActionDisabled || (!agreementGateActive && turnstileEnabled && !turnstileToken)"
           class="btn btn-primary w-full"
         >
           <svg
@@ -308,6 +309,7 @@ const loginAgreementRevision = ref<string>('')
 const loginAgreementDocuments = ref<LoginAgreementDocument[]>([])
 const agreementAccepted = ref<boolean>(false)
 const showAgreementModal = ref<boolean>(false)
+const showAgreementHint = ref(false)
 
 // Turnstile
 const turnstileRef = ref<InstanceType<typeof TurnstileWidget> | null>(null)
@@ -357,7 +359,9 @@ const agreementGateActive = computed(
 )
 
 const authActionDisabled = computed(
-  () => isLoading.value || passkeyLoading.value || !publicSettingsLoaded.value || agreementGateActive.value
+  // 弹窗模式保持原有门禁；复选框模式允许填写，在触发认证动作时校验同意状态。
+  () => isLoading.value || passkeyLoading.value || !publicSettingsLoaded.value ||
+    (agreementGateActive.value && loginAgreementMode.value !== 'checkbox')
 )
 
 const showPasskeyLogin = computed(
@@ -487,6 +491,7 @@ function acceptLoginAgreement(): void {
     )
   }
   agreementAccepted.value = true
+  showAgreementHint.value = false
   showAgreementModal.value = false
 }
 
@@ -494,7 +499,8 @@ function rejectLoginAgreement(): void {
   localStorage.removeItem(LOGIN_AGREEMENT_STORAGE_KEY)
   agreementAccepted.value = false
   showAgreementModal.value = false
-  appStore.showWarning('未同意最新条款前，无法输入账号密码或使用快捷登录。')
+  showAgreementHint.value = false
+  if (loginAgreementMode.value !== 'checkbox') appStore.showWarning(t('auth.agreementRequired'))
 }
 
 // ==================== Turnstile Handlers ====================
@@ -535,6 +541,17 @@ async function acquireActionProof(): Promise<boolean> {
   return true
 }
 
+// 所有认证入口共享同一门禁，未同意时不能触发验证码、网络请求或第三方跳转。
+function ensureAgreementAccepted(): boolean {
+  if (!agreementGateActive.value) return true
+  if (loginAgreementMode.value === 'checkbox') {
+    showAgreementHint.value = true
+  } else {
+    showAgreementModal.value = true
+  }
+  return false
+}
+
 // ==================== Validation ====================
 
 function validateForm(): boolean {
@@ -545,13 +562,7 @@ function validateForm(): boolean {
 
   let isValid = true
 
-  if (agreementGateActive.value) {
-    appStore.showWarning('请先阅读并同意最新条款后再登录。')
-    if (loginAgreementMode.value !== 'checkbox') {
-      showAgreementModal.value = true
-    }
-    return false
-  }
+  if (!ensureAgreementAccepted()) return false
 
   // Email validation
   if (!formData.email.trim()) {
@@ -583,6 +594,7 @@ function validateForm(): boolean {
 // ==================== Form Handlers ====================
 
 async function handleLogin(): Promise<void> {
+  if (authActionDisabled.value) return
   googleOneTapRef.value?.cancelPrompt()
   // Clear previous error
   errorMessage.value = ''
@@ -642,13 +654,7 @@ async function handleLogin(): Promise<void> {
 
 async function handlePasskeyLogin(): Promise<void> {
   googleOneTapRef.value?.cancelPrompt()
-  if (agreementGateActive.value) {
-    appStore.showWarning(t('legal.loginAgreementPrompt.loginRequiredWarning'))
-    if (loginAgreementMode.value !== 'checkbox') {
-      showAgreementModal.value = true
-    }
-    return
-  }
+  if (authActionDisabled.value || !ensureAgreementAccepted()) return
 
   passkeyLoading.value = true
   try {
@@ -685,7 +691,7 @@ async function handlePasskeyLogin(): Promise<void> {
 
 async function handleOAuthStart(request: OAuthLoginStart): Promise<void> {
   googleOneTapRef.value?.cancelPrompt()
-  if (authActionDisabled.value) return
+  if (authActionDisabled.value || !ensureAgreementAccepted()) return
 
   if (!actionCaptchaEnabled.value) {
     window.location.href = buildOAuthLoginStartURL(request)
@@ -757,14 +763,4 @@ function handle2FACancel(): void {
 </script>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: all 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
 </style>

@@ -331,8 +331,8 @@ describe('user UsageView', () => {
     expect(csvContent).toContain('Billed Cost')
     expect(csvContent).toContain('Original Cost')
     expect(csvContent).not.toContain('Upstream Endpoint')
-    expect(csvContent).not.toContain('account_cost')
-    expect(csvContent).not.toContain('account_rate_multiplier')
+    expect(csvContent).not.toContain('provider_cost')
+    expect(csvContent).not.toContain('provider_rate_multiplier')
 
     window.URL.createObjectURL = originalCreateObjectURL
     window.URL.revokeObjectURL = originalRevokeObjectURL

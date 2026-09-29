@@ -14,7 +14,7 @@ const messages: Record<string, string> = {
   'usage.cacheCreationTokensLabel': 'Cache Creation',
   'usage.cacheReadTokensLabel': 'Cache Read',
   'usage.totalCost': 'Total Cost',
-  'usage.accountCost': 'Cost',
+  'usage.providerCost': 'Cost',
   'usage.standardCost': 'Standard',
   'usage.avgDuration': 'Avg Duration',
 }
@@ -46,7 +46,7 @@ const stats = {
   total_tokens: 184,
   total_cost: 0.001,
   total_actual_cost: 0.001,
-  total_account_cost: 0.001,
+  total_provider_cost: 0.001,
   average_duration_ms: 250,
 }
 

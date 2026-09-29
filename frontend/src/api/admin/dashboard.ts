@@ -18,7 +18,7 @@ import type {
 
 /**
  * Get dashboard statistics
- * @returns Dashboard statistics including users, keys, accounts, and token usage
+ * @returns Dashboard statistics including users, keys, providers, and token usage
  */
 export async function getStats(): Promise<DashboardStats> {
   const { data } = await apiClient.get<DashboardStats>('/admin/dashboard/stats')
@@ -51,7 +51,7 @@ export interface TrendParams {
   user_id?: number
   api_key_id?: number
   model?: string
-  account_id?: number
+  provider_id?: number
   group_id?: number
   team_id?: number
   request_type?: UsageRequestType
@@ -84,7 +84,7 @@ export interface ModelStatsParams {
   api_key_id?: number
   model?: string
   model_source?: 'requested' | 'upstream' | 'mapping'
-  account_id?: number
+  provider_id?: number
   group_id?: number
   team_id?: number
   request_type?: UsageRequestType
@@ -114,7 +114,7 @@ export interface GroupStatsParams {
   end_date?: string
   user_id?: number
   api_key_id?: number
-  account_id?: number
+  provider_id?: number
   group_id?: number
   team_id?: number
   request_type?: UsageRequestType
@@ -178,7 +178,7 @@ export interface UserBreakdownParams {
   // Additional filter conditions
   user_id?: number
   api_key_id?: number
-  account_id?: number
+  provider_id?: number
   request_type?: UsageRequestType
   stream?: boolean
   billing_type?: number | null

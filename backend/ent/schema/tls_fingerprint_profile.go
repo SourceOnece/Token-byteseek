@@ -15,7 +15,7 @@ import (
 //
 // TLS 指纹模板用于模拟特定客户端（如 Claude Code / Node.js）的 TLS 握手特征。
 // 每个模板包含完整的 ClientHello 参数：加密套件、曲线、扩展等。
-// 通过 Account.Extra.tls_fingerprint_profile_id 绑定到具体账号。
+// 通过 Provider.Extra.tls_fingerprint_profile_id 绑定到具体提供商。
 type TLSFingerprintProfile struct {
 	ent.Schema
 }

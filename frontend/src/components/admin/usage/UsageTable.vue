@@ -9,7 +9,7 @@
       </span>
       <button
         type="button"
-        class="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-400 dark:hover:bg-primary-900/30"
+        class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-400 dark:hover:bg-primary-900/30"
         :disabled="ipGeoBatchLoading || pendingIpCount === 0"
         @click="handleBatchFetchIpGeo"
       >
@@ -53,7 +53,7 @@
               {{ usageUserDisplayName(row) }}
             </span>
             <span v-else class="font-medium text-gray-900 dark:text-white">-</span>
-            <span v-if="row.user?.deleted_at" class="ml-1 inline-flex shrink-0 items-center rounded px-1 py-px text-[10px] font-medium leading-tight bg-rose-100 text-rose-600 ring-1 ring-inset ring-rose-200 dark:bg-rose-500/20 dark:text-rose-400 dark:ring-rose-500/30">
+            <span v-if="row.user?.deleted_at" class="ml-1 inline-flex shrink-0 items-center rounded-compact px-1 py-px text-xs font-medium leading-tight bg-rose-100 text-rose-600 ring-1 ring-inset ring-rose-200 dark:bg-rose-500/20 dark:text-rose-400 dark:ring-rose-500/30">
               {{ t('admin.usage.userDeletedBadge') }}
             </span>
             <span class="ml-1 shrink-0 text-gray-500 dark:text-gray-400">#{{ row.user_id }}</span>
@@ -64,8 +64,8 @@
           <span class="text-sm text-gray-900 dark:text-white">{{ row.api_key?.name || '-' }}</span>
         </template>
 
-        <template #cell-account="{ row }">
-          <span class="text-sm text-gray-900 dark:text-white">{{ row.account?.name || '-' }}</span>
+        <template #cell-provider="{ row }">
+          <span class="text-sm text-gray-900 dark:text-white">{{ row.provider?.name || '-' }}</span>
         </template>
 
         <template #cell-model="{ row }">
@@ -109,7 +109,7 @@
         </template>
 
         <template #cell-group="{ row }">
-          <span v-if="row.group" class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+          <span v-if="row.group" class="inline-flex items-center rounded-compact px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
             {{ row.group.name }}
           </span>
           <span v-else class="text-sm text-gray-400 dark:text-gray-500">-</span>
@@ -117,17 +117,17 @@
 
         <template #cell-stream="{ row }">
           <div class="flex flex-wrap items-center gap-1">
-            <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium" :class="getRequestTypeBadgeClass(row)">
+            <span class="inline-flex items-center rounded-compact px-2 py-0.5 text-xs font-medium" :class="getRequestTypeBadgeClass(row)">
               {{ getRequestTypeLabel(row) }}
             </span>
-            <span v-if="row.native_compaction_v2" class="badge badge-primary">
+            <span v-if="row.native_compaction_v2" class="inline-flex items-center rounded-compact bg-fuchsia-100 px-2 py-0.5 text-xs font-medium text-fuchsia-800 dark:bg-fuchsia-900 dark:text-fuchsia-200">
               {{ t('usage.nativeCompactionV2') }}
             </span>
           </div>
         </template>
 
         <template #cell-billing_mode="{ row }">
-          <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium" :class="getBillingModeBadgeClass(getDisplayBillingMode(row))">
+          <span class="inline-flex items-center rounded-compact px-2 py-0.5 text-xs font-medium" :class="getBillingModeBadgeClass(getDisplayBillingMode(row))">
             {{ getBillingModeLabel(getDisplayBillingMode(row), t) }}
           </span>
         </template>
@@ -174,8 +174,8 @@
                 <div v-if="row.cache_creation_tokens > 0" class="inline-flex items-center gap-1">
                   <svg class="h-3.5 w-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   <span class="font-medium text-amber-600 dark:text-amber-400">{{ formatCacheTokens(row.cache_creation_tokens) }}</span>
-                  <span v-if="row.cache_creation_1h_tokens > 0" class="inline-flex items-center rounded px-1 py-px text-[10px] font-medium leading-tight bg-orange-100 text-orange-600 ring-1 ring-inset ring-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:ring-orange-500/30">1h</span>
-                  <span v-if="row.cache_ttl_overridden" :title="t('usage.cacheTtlOverriddenHint')" class="inline-flex items-center rounded px-1 py-px text-[10px] font-medium leading-tight bg-rose-100 text-rose-600 ring-1 ring-inset ring-rose-200 dark:bg-rose-500/20 dark:text-rose-400 dark:ring-rose-500/30 cursor-help">R</span>
+                  <span v-if="row.cache_creation_1h_tokens > 0" class="inline-flex items-center rounded-compact px-1 py-px text-xs font-medium leading-tight bg-orange-100 text-orange-600 ring-1 ring-inset ring-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:ring-orange-500/30">1h</span>
+                  <span v-if="row.cache_ttl_overridden" :title="t('usage.cacheTtlOverriddenHint')" class="inline-flex items-center rounded-compact px-1 py-px text-xs font-medium leading-tight bg-rose-100 text-rose-600 ring-1 ring-inset ring-rose-200 dark:bg-rose-500/20 dark:text-rose-400 dark:ring-rose-500/30 cursor-help">R</span>
                 </div>
               </div>
             </div>
@@ -200,7 +200,7 @@
               <span
                 v-if="row.long_context_billing_applied"
                 data-testid="long-context-billing-marker"
-                class="inline-flex items-center rounded px-1 py-px text-[10px] font-semibold leading-tight bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:ring-amber-500/30"
+                class="inline-flex items-center rounded-compact px-1 py-px text-xs font-semibold leading-tight bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:ring-amber-500/30"
               >L</span>
               <!-- 费用明细提示 -->
               <div
@@ -213,8 +213,8 @@
                 </div>
               </div>
             </div>
-            <div v-if="showAccountBilling && row.account_rate_multiplier != null" class="mt-0.5 text-[11px] text-orange-500 dark:text-orange-400">
-              A {{ formatDetailedUsdAmount(accountBilled(row)) }}
+            <div v-if="showProviderBilling && row.provider_rate_multiplier != null" class="mt-0.5 text-xs text-orange-500 dark:text-orange-400">
+              A {{ formatDetailedUsdAmount(providerBilled(row)) }}
             </div>
           </div>
         </template>
@@ -262,7 +262,7 @@
             </span>
             <button
               type="button"
-              class="shrink-0 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-300"
+              class="shrink-0 rounded-compact p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-300"
               :class="copiedRequestId === row.request_id ? 'text-green-500 hover:text-green-500' : ''"
               :title="copiedRequestId === row.request_id ? t('keys.copied') : t('keys.copyToClipboard')"
               @click="copyRequestId(row.request_id)"
@@ -280,7 +280,7 @@
             </span>
             <button
               type="button"
-              class="shrink-0 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-300"
+              class="shrink-0 rounded-compact p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-300"
               :class="copiedRequestId === row.upstream_request_id ? 'text-green-500 hover:text-green-500' : ''"
               :title="copiedRequestId === row.upstream_request_id ? t('keys.copied') : t('keys.copyToClipboard')"
               @click="copyUpstreamRequestId(row.upstream_request_id)"
@@ -315,14 +315,14 @@
       v-if="tokenTooltipVisible"
       ref="tokenTooltipRef"
       data-testid="token-detail-tooltip"
-      class="pointer-events-none fixed z-[9999]"
+      class="pointer-events-none fixed z-teleport-tooltip"
       :class="{ invisible: !tokenTooltipReady }"
       :style="{
         left: tokenTooltipPosition.x + 'px',
         top: tokenTooltipPosition.y + 'px'
       }"
     >
-      <div class="w-max max-w-[calc(100vw-1.5rem)] break-words whitespace-normal rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 text-xs text-white shadow-xl dark:border-gray-600 dark:bg-gray-800 md:whitespace-nowrap">
+      <div class="w-max max-w-[calc(100vw-1.5rem)] break-words whitespace-normal rounded-control border border-gray-700 bg-gray-900 px-3 py-2.5 text-xs text-white shadow-xl dark:border-gray-600 dark:bg-gray-800 md:whitespace-nowrap">
         <div class="space-y-1.5">
           <div>
             <div class="text-xs font-semibold text-gray-300 mb-1">{{ t('usage.tokenDetails') }}</div>
@@ -356,14 +356,14 @@
                 <div v-if="tokenTooltipData.cache_creation_5m_tokens > 0" class="flex items-center justify-between gap-4">
                   <span class="text-gray-400 flex items-center gap-1.5">
                     {{ t('admin.usage.cacheCreation5mTokens') }}
-                    <span class="inline-flex items-center rounded px-1 py-px text-[10px] font-medium leading-tight bg-amber-500/20 text-amber-400 ring-1 ring-inset ring-amber-500/30">5m</span>
+                    <span class="inline-flex items-center rounded-compact px-1 py-px text-xs font-medium leading-tight bg-amber-500/20 text-amber-400 ring-1 ring-inset ring-amber-500/30">5m</span>
                   </span>
                   <span class="font-medium text-white">{{ tokenTooltipData.cache_creation_5m_tokens.toLocaleString() }}</span>
                 </div>
                 <div v-if="tokenTooltipData.cache_creation_1h_tokens > 0" class="flex items-center justify-between gap-4">
                   <span class="text-gray-400 flex items-center gap-1.5">
                     {{ t('admin.usage.cacheCreation1hTokens') }}
-                    <span class="inline-flex items-center rounded px-1 py-px text-[10px] font-medium leading-tight bg-orange-500/20 text-orange-400 ring-1 ring-inset ring-orange-500/30">1h</span>
+                    <span class="inline-flex items-center rounded-compact px-1 py-px text-xs font-medium leading-tight bg-orange-500/20 text-orange-400 ring-1 ring-inset ring-orange-500/30">1h</span>
                   </span>
                   <span class="font-medium text-white">{{ tokenTooltipData.cache_creation_1h_tokens.toLocaleString() }}</span>
                 </div>
@@ -377,7 +377,7 @@
             <div v-if="tokenTooltipData && tokenTooltipData.cache_ttl_overridden" class="flex items-center justify-between gap-4">
               <span class="text-gray-400 flex items-center gap-1.5">
                 {{ t('usage.cacheTtlOverriddenLabel') }}
-                <span class="inline-flex items-center rounded px-1 py-px text-[10px] font-medium leading-tight bg-rose-500/20 text-rose-400 ring-1 ring-inset ring-rose-500/30">R-{{ tokenTooltipData.cache_creation_1h_tokens > 0 ? '5m' : '1H' }}</span>
+                <span class="inline-flex items-center rounded-compact px-1 py-px text-xs font-medium leading-tight bg-rose-500/20 text-rose-400 ring-1 ring-inset ring-rose-500/30">R-{{ tokenTooltipData.cache_creation_1h_tokens > 0 ? '5m' : '1H' }}</span>
               </span>
               <span class="font-medium text-rose-400">{{ tokenTooltipData.cache_creation_1h_tokens > 0 ? t('usage.cacheTtlOverridden1h') : t('usage.cacheTtlOverridden5m') }}</span>
             </div>
@@ -411,20 +411,20 @@
       v-if="timingTooltipVisible"
       ref="timingTooltipRef"
       data-testid="timing-detail-tooltip"
-      class="pointer-events-none fixed z-[9999]"
+      class="pointer-events-none fixed z-teleport-tooltip"
       :class="{ invisible: !timingTooltipReady }"
       :style="{
         left: timingTooltipPosition.x + 'px',
         top: timingTooltipPosition.y + 'px'
       }"
     >
-      <div class="w-max max-w-[calc(100vw-1.5rem)] break-words whitespace-normal rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 text-xs text-white shadow-xl dark:border-gray-600 dark:bg-gray-800 md:whitespace-nowrap">
+      <div class="w-max max-w-[calc(100vw-1.5rem)] break-words whitespace-normal rounded-control border border-gray-700 bg-gray-900 px-3 py-2.5 text-xs text-white shadow-xl dark:border-gray-600 dark:bg-gray-800 md:whitespace-nowrap">
         <div class="text-xs font-semibold text-gray-300 mb-1.5">{{ t('usage.detailedTiming') }}</div>
-        <div v-if="timingTooltipData" class="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-1 text-[11px] leading-4 md:grid-cols-[max-content_minmax(0,1fr)_max-content_minmax(0,1fr)]">
+        <div v-if="timingTooltipData" class="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs leading-4 md:grid-cols-[max-content_minmax(0,1fr)_max-content_minmax(0,1fr)]">
           <span class="text-gray-400">{{ t('usage.timingRequestSize') }}</span>
           <span class="font-medium tabular-nums text-right">{{ formatRequestSize(timingTooltipData.detailed_timing?.request_content_length) }}</span>
           <span class="text-gray-400">{{ t('usage.timingSlot') }}</span>
-          <span class="font-medium tabular-nums text-right">{{ formatTimingMs(timingTooltipData.detailed_timing?.account_slot_acquired_ms) }}</span>
+          <span class="font-medium tabular-nums text-right">{{ formatTimingMs(timingTooltipData.detailed_timing?.provider_slot_acquired_ms) }}</span>
           <span class="text-gray-400">{{ t('usage.timingGetConn') }}</span>
           <span class="font-medium tabular-nums text-right">{{ formatTimingMs(timingTooltipData.detailed_timing?.upstream_get_conn_ms) }}</span>
           <span class="text-gray-400">{{ t('usage.timingGotConn') }}</span>
@@ -442,7 +442,7 @@
           <span class="text-gray-400">{{ t('usage.timingAttempts') }}</span>
           <span class="font-medium tabular-nums text-right">{{ timingTooltipData.detailed_timing?.upstream_attempt_count ?? '-' }}</span>
         </div>
-        <div v-if="timingTooltipData?.detailed_timing?.upstream_connection_reused || timingTooltipData?.detailed_timing?.upstream_wrote_request_error" class="mt-1.5 flex flex-wrap gap-x-2 text-[10px]">
+        <div v-if="timingTooltipData?.detailed_timing?.upstream_connection_reused || timingTooltipData?.detailed_timing?.upstream_wrote_request_error" class="mt-1.5 flex flex-wrap gap-x-2 text-xs">
           <span v-if="timingTooltipData.detailed_timing?.upstream_connection_reused" class="text-emerald-400">{{ t('usage.timingReused') }}</span>
           <span v-if="timingTooltipData.detailed_timing?.upstream_wrote_request_error" class="text-rose-400">{{ t('usage.timingWriteError') }}</span>
         </div>
@@ -466,14 +466,14 @@
       v-if="tooltipVisible"
       ref="tooltipRef"
       data-testid="cost-detail-tooltip"
-      class="pointer-events-none fixed z-[9999]"
+      class="pointer-events-none fixed z-teleport-tooltip"
       :class="{ invisible: !tooltipReady }"
       :style="{
         left: tooltipPosition.x + 'px',
         top: tooltipPosition.y + 'px'
       }"
     >
-      <div class="w-max max-w-[calc(100vw-1.5rem)] break-words whitespace-normal rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 text-xs text-white shadow-xl dark:border-gray-600 dark:bg-gray-800 md:whitespace-nowrap">
+      <div class="w-max max-w-[calc(100vw-1.5rem)] break-words whitespace-normal rounded-control border border-gray-700 bg-gray-900 px-3 py-2.5 text-xs text-white shadow-xl dark:border-gray-600 dark:bg-gray-800 md:whitespace-nowrap">
         <div class="space-y-1.5">
           <!-- Cost Breakdown -->
           <div class="mb-2 border-b border-gray-700 pb-1.5">
@@ -591,19 +591,19 @@
             <span class="text-gray-400">{{ t('usage.userBilled') }}</span>
             <span class="font-semibold text-green-400">{{ formatDetailedBalance(tooltipData?.actual_cost) }}</span>
           </div>
-          <!-- Account billing (separated from user billing) -->
-          <template v-if="showAccountBilling">
+          <!-- Provider billing (separated from user billing) -->
+          <template v-if="showProviderBilling">
             <div class="flex items-center justify-between gap-6 border-t border-gray-700 pt-1.5">
-              <span class="text-gray-400">{{ t('usage.accountMultiplier') }}</span>
-              <span class="font-semibold text-blue-400">{{ formatMultiplier(tooltipData?.account_rate_multiplier ?? 1) }}x</span>
+              <span class="text-gray-400">{{ t('usage.providerMultiplier') }}</span>
+              <span class="font-semibold text-blue-400">{{ formatMultiplier(tooltipData?.provider_rate_multiplier ?? 1) }}x</span>
             </div>
             <div class="flex items-center justify-between gap-6">
-              <span class="text-gray-400">{{ t('usage.accountBilled') }}</span>
+              <span class="text-gray-400">{{ t('usage.providerBilled') }}</span>
               <span class="font-semibold text-green-400">
-                {{ formatDetailedUsdAmount(accountBilled({
+                {{ formatDetailedUsdAmount(providerBilled({
                   total_cost: tooltipData?.total_cost,
-                  account_stats_cost: tooltipData?.account_stats_cost,
-                  account_rate_multiplier: tooltipData?.account_rate_multiplier,
+                  provider_stats_cost: tooltipData?.provider_stats_cost,
+                  provider_rate_multiplier: tooltipData?.provider_rate_multiplier,
                 })) }}
               </span>
             </div>
@@ -629,6 +629,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { useClipboard } from '@/composables/useClipboard'
+import { COPY_FEEDBACK_MS } from '@/constants/ui'
 import { formatDateTime, formatReasoningEffort, reasoningEffortValuesEqual } from '@/utils/format'
 import { formatCacheTokens, formatMultiplier } from '@/utils/formatters'
 import { formatTokenPricePerMillion } from '@/utils/usagePricing'
@@ -665,10 +666,10 @@ import {
   hasImageInputCost,
 } from '@/utils/imageUsage'
 
-/** 计算账号口径展示费用：(account_stats_cost ?? total_cost) * rate_multiplier */
-function accountBilled(row: { total_cost?: number | null; account_stats_cost?: number | null; account_rate_multiplier?: number | null }): number {
-  const base = row.account_stats_cost != null ? row.account_stats_cost : (row.total_cost ?? 0)
-  const result = base * (row.account_rate_multiplier ?? 1)
+/** 计算提供商口径展示费用：(provider_stats_cost ?? total_cost) * rate_multiplier */
+function providerBilled(row: { total_cost?: number | null; provider_stats_cost?: number | null; provider_rate_multiplier?: number | null }): number {
+  const base = row.provider_stats_cost != null ? row.provider_stats_cost : (row.total_cost ?? 0)
+  const result = base * (row.provider_rate_multiplier ?? 1)
   return Number.isNaN(result) ? 0 : result
 }
 
@@ -687,7 +688,7 @@ interface Props {
   serverSideSort?: boolean
   defaultSortKey?: string
   defaultSortOrder?: 'asc' | 'desc'
-  showAccountBilling?: boolean
+  showProviderBilling?: boolean
   /** 用户端只展示实际扣费时隐藏标准费用明细。 */
   showStandardCost?: boolean
   showUpstreamEndpoint?: boolean
@@ -706,7 +707,7 @@ const props = withDefaults(defineProps<Props>(), {
   serverSideSort: false,
   defaultSortKey: '',
   defaultSortOrder: 'asc',
-  showAccountBilling: true,
+  showProviderBilling: true,
   showStandardCost: true,
   showUpstreamEndpoint: true,
   userClickable: true,
@@ -741,7 +742,7 @@ function usageResponseMismatch(row: AdminUsageLog): boolean {
 const { balanceUnitSymbol, usdUnitSymbol, formatBalanceAmount, formatUsdAmount } = useBalanceDisplay()
 const { copyToClipboard } = useClipboard()
 const copiedRequestId = ref<string | null>(null)
-const showAccountBilling = props.showAccountBilling
+const showProviderBilling = props.showProviderBilling
 const showStandardCost = props.showStandardCost
 const showUpstreamEndpoint = props.showUpstreamEndpoint
 const userClickable = props.userClickable
@@ -809,14 +810,14 @@ const copyRequestId = async (requestId: string) => {
   copiedRequestId.value = requestId
   window.setTimeout(() => {
     if (copiedRequestId.value === requestId) copiedRequestId.value = null
-  }, 2000)
+  }, COPY_FEEDBACK_MS)
 }
 const copyUpstreamRequestId = async (upstreamRequestId: string) => {
   if (!await copyToClipboard(upstreamRequestId, t('admin.usage.upstreamRequestIdCopied'))) return
   copiedRequestId.value = upstreamRequestId
   window.setTimeout(() => {
     if (copiedRequestId.value === upstreamRequestId) copiedRequestId.value = null
-  }, 2000)
+  }, COPY_FEEDBACK_MS)
 }
 
 // 费用 Tooltip 状态。

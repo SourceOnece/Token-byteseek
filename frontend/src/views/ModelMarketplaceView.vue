@@ -16,7 +16,7 @@
         <div ref="filterPanelRef" class="relative shrink-0">
           <button
             type="button"
-            class="btn btn-secondary relative h-9 w-9 p-0"
+            class="btn btn-secondary relative btn-icon"
             :aria-expanded="showFilterDropdown"
             :aria-label="t('common.filter')"
             :title="t('common.filter')"
@@ -27,7 +27,7 @@
               {{ activeFilterCount }}
             </span>
           </button>
-          <div v-show="showFilterDropdown" class="absolute right-0 top-full z-[60] mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
+          <div v-show="showFilterDropdown" class="absolute right-0 top-full z-modal-nested mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
             <div class="mb-3 flex items-center justify-between">
               <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
               <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetFilters">
@@ -56,10 +56,10 @@
     <template v-if="!isAuthenticated">
       <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
 
-      <header class="relative z-20 border-b-[3px] border-gray-950 bg-bh-paper px-4 dark:border-dark-100 dark:bg-dark-900 sm:px-6">
-        <nav class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4">
+      <header class="glass relative z-20 border-b border-primary-900/10 px-4 dark:border-dark-600/80 sm:px-6">
+        <nav class="mx-auto flex h-[var(--header-h)] max-w-7xl items-center justify-between gap-4">
           <router-link to="/home" class="flex min-w-0 items-center gap-2.5">
-            <span class="h-8 w-8 shrink-0 overflow-hidden border-2 border-gray-950 bg-white dark:border-dark-100">
+            <span class="h-8 w-8 shrink-0 overflow-hidden rounded-control shadow-sm">
               <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
             </span>
             <span class="truncate text-base font-extrabold tracking-tight text-gray-950 dark:text-white">{{ siteName }}<span class="text-bh-red">.</span></span>
@@ -86,7 +86,7 @@
             <button
               type="button"
               @click="toggleTheme"
-              class="flex h-9 w-9 items-center justify-center rounded-control text-primary-900/90 transition-colors hover:bg-primary-100 hover:text-primary-900 dark:text-dark-100/80 dark:hover:bg-dark-800 dark:hover:text-white"
+              class="flex rounded-control text-primary-900/90 transition-colors hover:bg-primary-100 hover:text-primary-900 dark:text-dark-100/80 dark:hover:bg-dark-800 dark:hover:text-white btn-icon"
               :title="isDark ? t('home.switchToLight') : t('home.switchToDark')"
             >
               <Icon v-if="isDark" name="sun" size="md" />
@@ -126,7 +126,7 @@
           <div ref="filterPanelRef" class="relative shrink-0">
             <button
               type="button"
-              class="btn btn-secondary relative h-9 w-9 p-0"
+              class="btn btn-secondary relative btn-icon"
               :aria-expanded="showFilterDropdown"
               :aria-label="t('common.filter')"
               :title="t('common.filter')"
@@ -137,7 +137,7 @@
                 {{ activeFilterCount }}
               </span>
             </button>
-            <div v-show="showFilterDropdown" class="absolute right-0 top-full z-[60] mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto" @click.stop>
+            <div v-show="showFilterDropdown" class="absolute right-0 top-full z-modal-nested mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
               <div class="mb-3 flex items-center justify-between">
                 <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
                 <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetFilters">
@@ -180,7 +180,7 @@
         </div>
 
         <div v-else-if="!hasMarketplaceResults" class="card px-6 py-14">
-          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-300">
+          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-surface bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-300">
             <Icon name="inbox" size="xl" />
           </div>
           <h2 class="mt-6 text-center text-2xl font-semibold text-gray-950 dark:text-white">{{ t('marketplace.emptyTitle') }}</h2>
@@ -240,16 +240,10 @@
                       </span>
                     </template>
                   </HelpTooltip>
-                  <span
-                    v-if="hasIndependentImageRate(group)"
-                    class="rounded-none border-2 border-gray-950 bg-bh-blue px-3 py-1 text-xs font-extrabold text-white dark:border-dark-100"
-                  >
-                    {{ formatImageRateMultiplierLabel(group.image_rate_multiplier) }}
-                  </span>
                 </div>
 
                 <div class="flex items-start gap-3">
-                  <span class="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-none border-2 border-gray-950 bg-white dark:border-dark-100 dark:bg-dark-900">
+                  <span class="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-surface border border-gray-200 bg-white shadow-sm dark:border-dark-700 dark:bg-dark-950">
                     <ModelIcon :model="groupBrandIconModel(group)" size="28px" />
                   </span>
                   <div class="min-w-0">
@@ -273,15 +267,15 @@
               </div>
             </div>
 
-            <div class="grid items-start gap-3 p-4 md:grid-cols-2 lg:grid-cols-3 md:p-5">
-              <!-- 大屏固定三列展示，避免宽屏下只排两列造成右侧留白。 -->
+            <div class="grid min-w-0 grid-cols-1 items-start gap-3 p-4 md:grid-cols-2 lg:grid-cols-3 md:p-5">
+              <!-- 显式单列和可收缩卡片阻止长定价内容撑大网格；大屏保持三列。 -->
               <article
                 v-for="model in group.models"
                 :key="`${group.id}-${model.id}`"
-                class="group rounded-none border-2 border-gray-950 bg-white p-4 transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow dark:border-dark-200/60 dark:bg-dark-900"
+                class="group min-w-0 max-w-full rounded-surface border border-gray-100 bg-gray-50/80 p-4 transition hover:-translate-y-0.5 hover:border-black/20 hover:shadow-sm dark:border-dark-700 dark:bg-dark-950/80 dark:hover:border-primary-500/50"
               >
-                <div class="flex items-start justify-between gap-3">
-                  <h3 class="min-w-0 truncate text-base font-semibold text-gray-950 dark:text-white">{{ model.display_name }}</h3>
+                <div class="flex min-w-0 flex-wrap items-start justify-between gap-2">
+                  <h3 class="min-w-0 flex-1 basis-32 truncate text-base font-semibold text-gray-950 dark:text-white">{{ model.display_name }}</h3>
                   <ModelCapabilityTags :model="model" />
                 </div>
                 <!-- ID 独占整行，避免跟随标题列被右侧能力图标挤窄。 -->
@@ -296,8 +290,8 @@
                         :key="row.key"
                         class="flex items-baseline justify-between gap-3 border-2 border-emerald-700 bg-emerald-50 px-2 py-1 text-sm dark:border-emerald-300 dark:bg-emerald-900/25"
                       >
-                        <dt class="shrink-0 font-extrabold text-emerald-700 dark:text-emerald-300">{{ row.label }}</dt>
-                        <dd class="min-w-0 text-right font-extrabold tabular-nums text-emerald-700 dark:text-emerald-200">{{ row.value }}</dd>
+                        <dt class="shrink-0 text-gray-500 dark:text-dark-400">{{ row.label }}</dt>
+                        <dd class="min-w-0 break-words text-right font-medium tabular-nums [overflow-wrap:anywhere] text-gray-900 dark:text-white">{{ row.value }}</dd>
                       </div>
                     </dl>
                   </template>
@@ -337,6 +331,7 @@ import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { initTheme, useTheme } from '@/composables/useTheme'
 import { getMarketplaceModels } from '@/api/marketplace'
 import { providerBrandDisplayName, providerBrandFilterKey, resolveProviderBrand, resolveProviderBrandKey } from '@/utils/providerBrand'
+import { formatCompactTokenRange } from '@/utils/formatters'
 import { sanitizeUrl } from '@/utils/url'
 import type { MarketplaceGroup, MarketplaceModelPricing, MarketplacePricingInterval } from '@/types'
 import { useAppStore, useAuthStore } from '@/stores'
@@ -475,22 +470,8 @@ function hasPositiveValue(value?: number | null): value is number {
 }
 
 function hasContextIntervalPricing(pricing: MarketplaceModelPricing): boolean {
-  return pricing.context_intervals?.some((interval) => [
-    interval.input_price_per_token,
-    interval.image_input_price_per_token,
-    interval.output_price_per_token,
-    interval.cache_write_price_per_token,
-    interval.cache_write_1h_price_per_token,
-    interval.cache_read_price_per_token,
-    interval.image_output_price_per_token,
-    interval.fast_input_price_per_token,
-    interval.fast_image_input_price_per_token,
-    interval.fast_output_price_per_token,
-    interval.fast_cache_write_price_per_token,
-    interval.fast_cache_write_1h_price_per_token,
-    interval.fast_cache_read_price_per_token,
-    interval.fast_image_output_price_per_token,
-  ].some(hasPositiveValue)) ?? false
+  // 缺价范围由后端排除，已返回的零价区间仍需展示范围标签。
+  return (pricing.context_intervals?.length ?? 0) > 0
 }
 
 function hasImagePricing(pricing: MarketplaceModelPricing): boolean {
@@ -538,9 +519,6 @@ function formatRateMultiplierLabel(multiplier: number): string {
   return t('marketplace.rateMultiplierValue', { multiplier: formatMultiplier(multiplier) })
 }
 
-function hasIndependentImageRate(group: Pick<MarketplaceGroup, 'image_rate_independent'>): boolean {
-  return Boolean(group.image_rate_independent)
-}
 
 // 相对官方价的最高优惠文案（分组级），口径与首页精选卡片一致：比例缺失、非法或不低于 1（无折扣）时返回 null。
 function formatMaxDiscountOff(ratio?: number): string | null {
@@ -553,9 +531,6 @@ function formatMaxDiscountOff(ratio?: number): string | null {
   return t('marketplace.maxDiscountOff', { percent })
 }
 
-function formatImageRateMultiplierLabel(multiplier: number): string {
-  return t('marketplace.imageRateMultiplierValue', { multiplier: formatMultiplier(multiplier) })
-}
 
 function formatPrice(value: number): string {
   return `${formatPriceNumber(value)} ${balanceUnitName.value}`
@@ -582,37 +557,6 @@ function formatCompactPerMillion(value: number): string {
 
 function formatPerImage(value: number): string {
   return `${formatPrice(value)} ${t('marketplace.perImage')}`
-}
-
-function formatTokenCount(value: number): string {
-  return new Intl.NumberFormat(undefined, {
-    maximumFractionDigits: 0,
-  }).format(value)
-}
-
-function formatCompactNumber(value: number): string {
-  return new Intl.NumberFormat(undefined, {
-    maximumFractionDigits: value >= 100 ? 0 : 1,
-  }).format(value)
-}
-
-function formatCompactTokenCount(value: number): string {
-  if (value >= 1_000_000) {
-    return `${formatCompactNumber(value / 1_000_000)}m`
-  }
-  if (value >= 1_000) {
-    return `${formatCompactNumber(value / 1_000)}k`
-  }
-  return formatTokenCount(value)
-}
-
-// 最大 token 为空表示无上限，用 ∞ 和渠道配置页保持一致。
-// 卡片预览空间有限，用紧凑区间避免上下文数字换行。
-function formatCompactTokenRange(minTokens: number, maxTokens?: number | null): string {
-  if (typeof maxTokens !== 'number') {
-    return `${formatCompactTokenCount(minTokens)}+`
-  }
-  return `${formatCompactTokenCount(minTokens)}-${formatCompactTokenCount(maxTokens)}`
 }
 
 function groupBrandSource(group: Pick<MarketplaceGroup, 'display_brand' | 'name'>): string {
@@ -743,10 +687,8 @@ function zeroTokenPricingRows(): PricingRow[] {
 
 function compactContextIntervalRows(pricing: MarketplaceModelPricing): PricingRow[] {
   return pricing.context_intervals?.flatMap((interval, index) => {
-    const rows = compactIntervalTokenPricingRows(interval)
-    if (rows.length === 0) {
-      return []
-    }
+    const pricedRows = compactIntervalTokenPricingRows(interval)
+    const rows = pricedRows.length > 0 ? pricedRows : zeroTokenPricingRows()
     return [{
       key: `compact-${interval.min_tokens}-${interval.max_tokens ?? 'up'}-${index}`,
       label: formatCompactTokenRange(interval.min_tokens, interval.max_tokens),

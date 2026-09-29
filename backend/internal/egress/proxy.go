@@ -1,4 +1,3 @@
-// Package egress 拥有出站代理及传输配置的基础类型。
 package egress
 
 import (
@@ -6,8 +5,6 @@ import (
 	"net/url"
 	"strconv"
 	"time"
-
-	"github.com/TokenFlux/TokenRouter/internal/domain"
 )
 
 const (
@@ -34,7 +31,7 @@ type Proxy struct {
 }
 
 func (p *Proxy) IsActive() bool {
-	return p.Status == domain.StatusActive
+	return p.Status == StatusActive
 }
 
 // IsExpired 报告代理是否已过期（基于 expires_at，与 status 无关）。
@@ -51,4 +48,30 @@ func (p *Proxy) URL() string {
 		u.User = url.UserPassword(p.Username, p.Password)
 	}
 	return u.String()
+}
+
+type ProxyWithProviderCount struct {
+	Proxy
+	ProviderCount  int64
+	LatencyMs      *int64
+	LatencyStatus  string
+	LatencyMessage string
+	IPAddress      string
+	Country        string
+	CountryCode    string
+	Region         string
+	City           string
+	QualityStatus  string
+	QualityScore   *int
+	QualityGrade   string
+	QualitySummary string
+	QualityChecked *int64
+}
+
+type ProxyProviderSummary struct {
+	ID       int64
+	Name     string
+	Platform string
+	Type     string
+	Notes    *string
 }

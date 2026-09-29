@@ -115,7 +115,10 @@ import { useAdminSettingsStore } from '@/stores/adminSettings'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { buildApiUrl } from '@/api/client'
+import { COPY_FEEDBACK_MS } from '@/constants/ui'
 import { buildEmbeddedUrl, detectTheme } from '@/utils/embedded-url'
+import { useMediaQuery } from '@vueuse/core'
+import { MEDIA_MIN_MD, MEDIA_MAX_SM } from '@/constants/layout'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 
@@ -136,7 +139,8 @@ const pageTheme = ref<'light' | 'dark'>('light')
 const renderedHtml = ref('')
 const markdownContainer = ref<HTMLElement | null>(null)
 const tocItems = ref<TocItem[]>([])
-const tocVisible = ref(typeof window !== 'undefined' ? window.innerWidth > 768 : true)
+// 目录初始可见性按 md 断点取一次性快照;之后由用户手动开关,不随 resize 自动改。
+const tocVisible = ref(useMediaQuery(MEDIA_MIN_MD).value)
 const activeHeadingId = ref('')
 let themeObserver: MutationObserver | null = null
 let scrollRafId = 0
@@ -271,7 +275,8 @@ function scrollToHeading(id: string) {
   if (!el) return
   el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   activeHeadingId.value = id
-  if (window.innerWidth <= 640) {
+  // 小屏(低于 sm)跳转锚点后收起目录;max = min - 1px 约定,与 sm: 样式互斥。
+  if (window.matchMedia(MEDIA_MAX_SM).matches) {
     tocVisible.value = false
   }
 }
@@ -311,10 +316,10 @@ function injectCopyButtons() {
       try {
         await navigator.clipboard.writeText(code)
         btn.textContent = t('common.copied')
-        window.setTimeout(() => { btn.textContent = t('common.copy') }, 2000)
+        window.setTimeout(() => { btn.textContent = t('common.copy') }, COPY_FEEDBACK_MS)
       } catch {
         btn.textContent = t('common.copyFailed')
-        window.setTimeout(() => { btn.textContent = t('common.copy') }, 2000)
+        window.setTimeout(() => { btn.textContent = t('common.copy') }, COPY_FEEDBACK_MS)
       }
     })
     ;(pre as HTMLElement).style.position = 'relative'
@@ -367,8 +372,8 @@ onUnmounted(() => {
 
 <style scoped>
 .custom-page-layout {
-  @apply flex flex-col;
-  height: calc(100vh - 64px - 4rem);
+  /* 高度由 AppLayout 的 flex 链分配,不再手写视口差值(旧 calc 里的 64px 顶栏已过时)。 */
+  @apply flex min-h-0 flex-1 flex-col;
 }
 
 .toc-sidebar {
@@ -379,12 +384,12 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 639px) { /* 639 = BREAKPOINT_SM(640) - 1,断点数值唯一来源在 constants/layout.ts */
   .toc-sidebar {
     position: absolute;
     left: 0;
     top: 0;
-    z-index: 20;
+    z-index: 20; /* check-ui-allow: 自定义页目录抽屉局部层级 */
     width: 70%;
     max-width: 240px;
     height: 100%;
@@ -401,7 +406,7 @@ onUnmounted(() => {
 }
 
 .toc-close-btn {
-  @apply p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-dark-200 hover:bg-gray-200 dark:hover:bg-dark-600 transition-colors;
+  @apply p-1 rounded-compact text-gray-400 hover:text-gray-600 dark:hover:text-dark-200 hover:bg-gray-200 dark:hover:bg-dark-600 transition-colors;
 }
 
 .toc-nav {
@@ -409,7 +414,7 @@ onUnmounted(() => {
 }
 
 .toc-item {
-  @apply block px-2 py-1.5 text-sm rounded transition-colors truncate;
+  @apply block px-2 py-1.5 text-sm rounded-compact transition-colors truncate;
   @apply text-gray-600 dark:text-dark-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-dark-600;
 }
 
@@ -423,7 +428,7 @@ onUnmounted(() => {
 .toc-level-4 { padding-left: 44px; }
 
 .toc-toggle-btn {
-  @apply absolute left-2 top-2 z-10 flex items-center px-2 py-1.5 rounded-md text-sm;
+  @apply absolute left-2 top-2 z-10 flex items-center px-2 py-1.5 rounded-control text-sm;
   @apply bg-white dark:bg-dark-700 border border-gray-200 dark:border-dark-500;
   @apply text-gray-600 dark:text-dark-300 hover:bg-gray-100 dark:hover:bg-dark-600;
   @apply shadow-sm transition-colors cursor-pointer;
@@ -431,7 +436,7 @@ onUnmounted(() => {
 
 .custom-embed-shell {
   @apply relative;
-  @apply h-full w-full overflow-hidden rounded-2xl;
+  @apply h-full w-full overflow-hidden rounded-surface;
   @apply bg-gradient-to-b from-gray-50 to-white dark:from-dark-900 dark:to-dark-950;
   @apply p-0;
 }
@@ -468,12 +473,12 @@ onUnmounted(() => {
 .markdown-page-content li { @apply mb-1; }
 .markdown-page-content a { @apply text-primary-500 hover:text-primary-600 underline; }
 .markdown-page-content blockquote { @apply border-l-4 border-gray-300 dark:border-dark-500 pl-4 italic text-gray-600 dark:text-dark-300 my-4; }
-.markdown-page-content img { @apply max-w-full h-auto rounded-lg my-4; }
+.markdown-page-content img { @apply max-w-full h-auto rounded-control my-4; }
 .markdown-page-content table { @apply w-full border-collapse my-4; }
 .markdown-page-content th { @apply border border-gray-300 dark:border-dark-500 px-3 py-2 bg-gray-50 dark:bg-dark-700 font-semibold text-left; }
 .markdown-page-content td { @apply border border-gray-300 dark:border-dark-500 px-3 py-2; }
-.markdown-page-content code { @apply bg-gray-100 dark:bg-dark-700 px-1.5 py-0.5 rounded text-sm font-mono; }
-.markdown-page-content pre { @apply bg-gray-900 dark:bg-dark-900 text-gray-100 p-4 rounded-lg overflow-x-auto my-4 relative; }
+.markdown-page-content code { @apply bg-gray-100 dark:bg-dark-700 px-1.5 py-0.5 rounded-surface text-sm font-mono; }
+.markdown-page-content pre { @apply bg-gray-900 dark:bg-dark-900 text-gray-100 p-4 rounded-surface overflow-x-auto my-4 relative; }
 .markdown-page-content pre code { @apply bg-transparent p-0 text-inherit; }
 .markdown-page-content hr { @apply my-6 border-gray-200 dark:border-dark-600; }
 
@@ -483,7 +488,7 @@ onUnmounted(() => {
   right: 8px;
   padding: 4px 10px;
   font-size: 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-compact);
   background: rgba(255, 255, 255, 0.15);
   color: #e2e8f0;
   border: 1px solid rgba(255, 255, 255, 0.2);

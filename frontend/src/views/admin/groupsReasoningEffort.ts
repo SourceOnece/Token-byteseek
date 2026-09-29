@@ -1,5 +1,4 @@
 import type {
-  GroupPlatform,
   ReasoningEffortMapping,
   ReasoningEffortMatchType,
 } from "@/types";
@@ -13,22 +12,9 @@ const openAIReasoningEffortValues = [
   "max",
 ] as const;
 
-const anthropicReasoningEffortValues = [
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-  "max",
-] as const;
+// 映射候选覆盖全部文本执行器；各提供商仍校验实际支持的强度。
+const openAIReasoningEffortMappingValues = ["none", ...openAIReasoningEffortValues] as const;
 
-// none 不属于可排序的分组上限，但可作为映射规则的输入或输出，
-// 由分组管理员按实际上游模型的协议能力决定是否改写。
-const openAIReasoningEffortMappingValues = [
-  "none",
-  ...openAIReasoningEffortValues,
-] as const;
-
-const anthropicReasoningEffortMappingValues = anthropicReasoningEffortValues;
 
 export const reasoningEffortOverLimitDowngrade = "downgrade";
 export const reasoningEffortOverLimitDeny = "deny";
@@ -39,60 +25,19 @@ const reasoningEffortMatchTypes: readonly ReasoningEffortMatchType[] = [
   "suffix",
 ];
 
-const reasoningEffortValuesForPlatform = (
-  platform: GroupPlatform,
-): readonly string[] =>
-  platform === "anthropic"
-    ? anthropicReasoningEffortValues
-    : platform === "openai"
-      ? openAIReasoningEffortValues
-      : [];
-
-const reasoningEffortMappingValuesForPlatform = (
-  platform: GroupPlatform,
-): readonly string[] =>
-  platform === "anthropic"
-    ? anthropicReasoningEffortMappingValues
-    : platform === "openai"
-      ? openAIReasoningEffortMappingValues
-      : [];
-
-export function reasoningEffortOptionsForPlatform(platform: GroupPlatform) {
-  return reasoningEffortValuesForPlatform(platform).map((value) => ({
-    value,
-    label: value,
-  }));
+export function reasoningEffortOptionsForPlatform() {
+  return openAIReasoningEffortValues.map(value => ({ value, label: value }));
 }
-
-export function reasoningEffortMappingOptionsForPlatform(platform: GroupPlatform) {
-  return reasoningEffortMappingValuesForPlatform(platform).map((value) => ({
-    value,
-    label: value,
-  }));
+export function reasoningEffortMappingOptionsForPlatform() {
+  return openAIReasoningEffortMappingValues.map(value => ({ value, label: value }));
 }
-
-export function normalizeReasoningEffortForPlatform(
-  platform: GroupPlatform,
-  value: string | null | undefined,
-): string {
+export function normalizeReasoningEffortForPlatform(value: string | null | undefined): string {
   const normalized = value?.trim().toLowerCase() ?? "";
-  return reasoningEffortValuesForPlatform(platform).some(
-    (allowed) => allowed === normalized,
-  )
-    ? normalized
-    : "";
+  return openAIReasoningEffortValues.some(allowed => allowed === normalized) ? normalized : "";
 }
-
-export function normalizeReasoningEffortMappingForPlatform(
-  platform: GroupPlatform,
-  value: string | null | undefined,
-): string {
+export function normalizeReasoningEffortMappingForPlatform(value: string | null | undefined): string {
   const normalized = value?.trim().toLowerCase() ?? "";
-  return reasoningEffortMappingValuesForPlatform(platform).some(
-    (allowed) => allowed === normalized,
-  )
-    ? normalized
-    : "";
+  return openAIReasoningEffortMappingValues.some(allowed => allowed === normalized) ? normalized : "";
 }
 
 export function normalizeReasoningEffortOverLimit(
@@ -189,14 +134,13 @@ function mappingScopeKey(
 
 export function reasoningEffortMappingsToRows(
   mappings?: ReasoningEffortMapping[] | null,
-  platform: GroupPlatform = "openai",
 ): ReasoningEffortMappingRow[] {
   const groups: ReasoningEffortMappingRow[] = [];
   const indexByScope = new Map<string, number>();
 
   (mappings ?? []).forEach((mapping) => {
-    const from = normalizeReasoningEffortMappingForPlatform(platform, mapping.from);
-    const to = normalizeReasoningEffortMappingForPlatform(platform, mapping.to);
+    const from = normalizeReasoningEffortMappingForPlatform(mapping.from);
+    const to = normalizeReasoningEffortMappingForPlatform(mapping.to);
     if (!from || !to) return;
 
     const matchType = normalizeReasoningEffortMatchType(mapping.match_type);
@@ -245,7 +189,6 @@ export function reasoningEffortMappingsToAPI(
 
 export function validateReasoningEffortMappings(
   rows: ReasoningEffortMappingRow[],
-  platform: GroupPlatform = "openai",
 ): ReasoningEffortMappingErrors {
   const errors: ReasoningEffortMappingErrors = {};
   const scopeGroups = new Map<string, ReasoningEffortMappingRow[]>();
@@ -266,7 +209,7 @@ export function validateReasoningEffortMappings(
       const to = pair.to.trim();
       if (!from) {
         errors[pair.id] = { ...errors[pair.id], from: "fromRequired" };
-      } else if (!normalizeReasoningEffortMappingForPlatform(platform, from)) {
+      } else if (!normalizeReasoningEffortMappingForPlatform(from)) {
         errors[pair.id] = { ...errors[pair.id], from: "unsupportedFrom" };
       } else {
         const key = `${scope}\0${from.toLowerCase()}`;
@@ -274,7 +217,7 @@ export function validateReasoningEffortMappings(
       }
       if (!to) {
         errors[pair.id] = { ...errors[pair.id], to: "toRequired" };
-      } else if (!normalizeReasoningEffortMappingForPlatform(platform, to)) {
+      } else if (!normalizeReasoningEffortMappingForPlatform(to)) {
         errors[pair.id] = { ...errors[pair.id], to: "unsupportedTo" };
       }
     });

@@ -18,10 +18,6 @@ type Tx struct {
 	APIKey *APIKeyClient
 	// APIKeyCompositeGroup is the client for interacting with the APIKeyCompositeGroup builders.
 	APIKeyCompositeGroup *APIKeyCompositeGroupClient
-	// Account is the client for interacting with the Account builders.
-	Account *AccountClient
-	// AccountGroup is the client for interacting with the AccountGroup builders.
-	AccountGroup *AccountGroupClient
 	// Announcement is the client for interacting with the Announcement builders.
 	Announcement *AnnouncementClient
 	// AnnouncementRead is the client for interacting with the AnnouncementRead builders.
@@ -62,6 +58,10 @@ type Tx struct {
 	PromoCode *PromoCodeClient
 	// PromoCodeUsage is the client for interacting with the PromoCodeUsage builders.
 	PromoCodeUsage *PromoCodeUsageClient
+	// Provider is the client for interacting with the Provider builders.
+	Provider *ProviderClient
+	// ProviderGroup is the client for interacting with the ProviderGroup builders.
+	ProviderGroup *ProviderGroupClient
 	// Proxy is the client for interacting with the Proxy builders.
 	Proxy *ProxyClient
 	// RedeemCode is the client for interacting with the RedeemCode builders.
@@ -237,8 +237,6 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.APIKey = NewAPIKeyClient(tx.config)
 	tx.APIKeyCompositeGroup = NewAPIKeyCompositeGroupClient(tx.config)
-	tx.Account = NewAccountClient(tx.config)
-	tx.AccountGroup = NewAccountGroupClient(tx.config)
 	tx.Announcement = NewAnnouncementClient(tx.config)
 	tx.AnnouncementRead = NewAnnouncementReadClient(tx.config)
 	tx.AuthIdentity = NewAuthIdentityClient(tx.config)
@@ -259,6 +257,8 @@ func (tx *Tx) init() {
 	tx.PendingAuthSession = NewPendingAuthSessionClient(tx.config)
 	tx.PromoCode = NewPromoCodeClient(tx.config)
 	tx.PromoCodeUsage = NewPromoCodeUsageClient(tx.config)
+	tx.Provider = NewProviderClient(tx.config)
+	tx.ProviderGroup = NewProviderGroupClient(tx.config)
 	tx.Proxy = NewProxyClient(tx.config)
 	tx.RedeemCode = NewRedeemCodeClient(tx.config)
 	tx.RedeemCodeUsage = NewRedeemCodeUsageClient(tx.config)

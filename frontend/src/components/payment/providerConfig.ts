@@ -85,8 +85,7 @@ export const PAYMENT_CURRENCY_OPTIONS: TypeOption[] = [
 // 与后端当前集成的 stripe-go v85.0.0 的 stripe.APIVersion 保持一致。
 export const STRIPE_SDK_API_VERSION = '2026-03-25.dahlia'
 
-/** Preferred popup size for payment gateways. Alipay's standard checkout
- * (QR + account login panel) needs ~1200×900 to render without any scrolling. */
+// 支付网关弹窗的默认尺寸；支付宝二维码与账号登录面板约需 1200×900，避免出现滚动条。
 const PAYMENT_POPUP_PREFERRED_WIDTH = 1250
 const PAYMENT_POPUP_PREFERRED_HEIGHT = 900
 

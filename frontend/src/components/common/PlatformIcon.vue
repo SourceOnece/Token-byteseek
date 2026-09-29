@@ -62,12 +62,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import ProviderIcon from './ProviderIcon.vue'
-import Icon from '@/components/icons/Icon.vue'
-import type { GroupPlatform } from '@/types'
+import type { ProviderPlatform } from '@/types'
 
 interface Props {
-  platform?: GroupPlatform
+  platform?: ProviderPlatform
   size?: 'xs' | 'sm' | 'md' | 'lg'
 }
 

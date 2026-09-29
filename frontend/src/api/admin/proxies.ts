@@ -6,7 +6,7 @@
 import { apiClient } from '../client'
 import type {
   Proxy,
-  ProxyAccountSummary,
+  ProxyProviderSummary,
   ProxyQualityCheckResult,
   CreateProxyRequest,
   UpdateProxyRequest,
@@ -65,8 +65,8 @@ export async function getAll(): Promise<Proxy[]> {
 }
 
 /**
- * Get all active proxies with account count (sorted by creation time desc)
- * @returns List of all active proxies with account count
+ * Get all active proxies with provider count (sorted by creation time desc)
+ * @returns List of all active proxies with provider count
  */
 export async function getAllWithCount(): Promise<Proxy[]> {
   const { data } = await apiClient.get<Proxy[]>('/admin/proxies/all', {
@@ -171,15 +171,15 @@ export async function checkProxyQuality(id: number): Promise<ProxyQualityCheckRe
  * @returns Proxy usage statistics
  */
 export async function getStats(id: number): Promise<{
-  total_accounts: number
-  active_accounts: number
+  total_providers: number
+  active_providers: number
   total_requests: number
   success_rate: number
   average_latency: number
 }> {
   const { data } = await apiClient.get<{
-    total_accounts: number
-    active_accounts: number
+    total_providers: number
+    active_providers: number
     total_requests: number
     success_rate: number
     average_latency: number
@@ -188,12 +188,12 @@ export async function getStats(id: number): Promise<{
 }
 
 /**
- * Get accounts using a proxy
+ * Get providers using a proxy
  * @param id - Proxy ID
- * @returns List of accounts using the proxy
+ * @returns List of providers using the proxy
  */
-export async function getProxyAccounts(id: number): Promise<ProxyAccountSummary[]> {
-  const { data } = await apiClient.get<ProxyAccountSummary[]>(`/admin/proxies/${id}/accounts`)
+export async function getProxyProviders(id: number): Promise<ProxyProviderSummary[]> {
+  const { data } = await apiClient.get<ProxyProviderSummary[]>(`/admin/proxies/${id}/providers`)
   return data
 }
 
@@ -276,7 +276,7 @@ export const proxiesAPI = {
   testProxy,
   checkProxyQuality,
   getStats,
-  getProxyAccounts,
+  getProxyProviders,
   batchCreate,
   batchDelete,
   exportData,

@@ -1,9 +1,10 @@
 version: "2"
 
+# 架构依赖由 make test-architecture 单独检查。
+
 linters:
   default: none
   enable:
-    - depguard
     - errcheck
     - gosec
     - govet
@@ -11,38 +12,14 @@ linters:
     - staticcheck
     - unused
 
+  exclusions:
+    rules:
+      # gofumpt 由改动文件格式检查负责，避免全量 lint 要求历史文件重新排版。
+      - linters:
+          - gofumpt
+        path: '.*'
+
   settings:
-    depguard:
-      rules:
-        # Enforce: service must not depend on repository.
-        service-no-repository:
-          list-mode: original
-          files:
-            - "**/internal/service/**"
-            - "!**/internal/service/ops_aggregation_service.go"
-            - "!**/internal/service/ops_alert_evaluator_service.go"
-            - "!**/internal/service/ops_cleanup_service.go"
-            - "!**/internal/service/ops_metrics_collector.go"
-            - "!**/internal/service/ops_scheduled_report_service.go"
-            - "!**/internal/service/wire.go"
-          deny:
-            - pkg: github.com/TokenFlux/TokenRouter/internal/repository
-              desc: "service must not import repository"
-            - pkg: gorm.io/gorm
-              desc: "service must not import gorm"
-            - pkg: github.com/redis/go-redis/v9
-              desc: "service must not import redis"
-        handler-no-repository:
-          list-mode: original
-          files:
-            - "**/internal/handler/**"
-          deny:
-            - pkg: github.com/TokenFlux/TokenRouter/internal/repository
-              desc: "handler must not import repository"
-            - pkg: gorm.io/gorm
-              desc: "handler must not import gorm"
-            - pkg: github.com/redis/go-redis/v9
-              desc: "handler must not import redis"
     gosec:
       excludes:
         - G101
@@ -128,6 +105,10 @@ linters:
 formatters:
   enable:
     - gofmt
+    # 使用内置 gofumpt 默认规则，不开启 extra；版本随 golangci-lint 固定。
+    - gofumpt
+  exclusions:
+    generated: strict
   settings:
     gofmt:
       # Simplify code: gofmt with `-s` option.

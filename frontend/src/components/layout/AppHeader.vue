@@ -1,7 +1,7 @@
 <template>
-  <header class="bh-header fixed inset-x-0 top-0 z-50">
-    <div class="bh-stripe absolute inset-x-0 top-0 !h-1" aria-hidden="true"><i></i><i></i><i></i></div>
-    <div class="flex h-14 items-center justify-between gap-3 px-3 pt-1 max-[359px]:gap-1 max-[359px]:px-2 sm:px-5 md:px-7">
+  <header class="glass fixed inset-x-0 top-0 z-header border-b border-primary-900/10 dark:border-dark-600/80">
+    <!-- 水平内边距与主内容区保持同一条链，两侧边缘在所有断点对齐。 -->
+    <div class="flex h-[var(--header-h)] items-center justify-between gap-3 px-4 md:px-6 lg:px-8">
       <!-- 品牌固定在全局顶栏，避免与侧栏和页面标题争夺层级。 -->
       <div class="flex min-w-0 shrink-0 items-center gap-2 max-[359px]:gap-1 sm:gap-4">
         <button
@@ -17,7 +17,7 @@
         <div class="header-brand flex min-w-0 items-center gap-2.5 px-1.5 py-1">
           <router-link
             :to="homePath"
-            class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden border-2 border-gray-950 bg-white dark:border-dark-100 dark:bg-dark-800"
+            class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-control bg-primary-100 dark:bg-dark-800"
             :aria-label="siteName"
           >
             <img v-if="settingsLoaded" :src="siteLogo || '/logo.svg'" :alt="siteName" class="h-full w-full object-contain" />
@@ -32,7 +32,7 @@
         </div>
       </div>
 
-      <!-- 右侧状态项保持紧凑，作为全局账户工具区。 -->
+      <!-- 右侧状态项保持紧凑，作为全局提供商工具区。 -->
       <div class="header-status-actions">
         <div class="header-status-icon-group">
           <!-- 手机也保留模型广场入口，复用本站路由、硬阴影和按压样式。 -->
@@ -119,7 +119,7 @@
 
           <!-- Dropdown Menu -->
           <transition name="dropdown">
-            <div v-if="dropdownOpen" class="dropdown right-0 mt-2 w-64">
+            <div v-if="dropdownOpen" class="dropdown right-0 z-50 mt-2 w-64 origin-top-right animate-scale-in">
               <!-- User Info -->
               <div class="border-b border-primary-900/10 px-4 py-3 dark:border-dark-600">
                 <div class="text-sm font-medium text-gray-900 dark:text-white">
@@ -142,12 +142,12 @@
               </div>
 
               <div class="py-1">
-                <router-link to="/profile" @click="closeDropdown" class="dropdown-item">
+                <router-link to="/profile" @click="closeDropdown" class="dropdown-item dropdown-item-brand">
                   <Icon name="user" size="sm" />
                   {{ t('nav.profile') }}
                 </router-link>
 
-                <router-link to="/keys" @click="closeDropdown" class="dropdown-item">
+                <router-link to="/keys" @click="closeDropdown" class="dropdown-item dropdown-item-brand">
                   <Icon name="key" size="sm" />
                   {{ t('nav.apiKeys') }}
                 </router-link>
@@ -158,7 +158,7 @@
                   target="_blank"
                   rel="noopener noreferrer"
                   @click="closeDropdown"
-                  class="dropdown-item"
+                  class="dropdown-item dropdown-item-brand"
                 >
                   <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                     <path
@@ -216,7 +216,7 @@
               </div>
 
               <div v-if="showOnboardingButton" class="border-t border-primary-900/10 py-1 dark:border-dark-600">
-                <button @click="handleReplayGuide" class="dropdown-item w-full">
+                <button @click="handleReplayGuide" class="dropdown-item dropdown-item-brand w-full">
                   <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                     <path
                       d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 14a1 1 0 110 2 1 1 0 010-2zm1.07-7.75c0-.6-.49-1.25-1.32-1.25-.7 0-1.22.4-1.43 1.02a1 1 0 11-1.9-.62A3.41 3.41 0 0111.8 5c2.02 0 3.25 1.4 3.25 2.9 0 2-1.83 2.55-2.43 3.12-.43.4-.47.75-.47 1.23a1 1 0 01-2 0c0-1 .16-1.82 1.1-2.7.69-.64 1.82-1.05 1.82-2.06z"
@@ -331,9 +331,9 @@ const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))
 const balanceFrozenText = computed(() => t('common.frozenBalance') === 'common.frozenBalance' ? '冻结金额' : t('common.frozenBalance'))
 const balanceFrozenLabel = computed(() => `${balanceFrozenText.value} ${formatHeaderMoney(frozenBalance.value)}`)
 
-// 只在标准模式的管理员下显示新手引导按钮
+// 只向管理员显示新手引导按钮
 const showOnboardingButton = computed(() => {
-  return !authStore.isSimpleMode && user.value?.role === 'admin'
+  return user.value?.role === 'admin'
 })
 
 const displayName = computed(() => {

@@ -521,15 +521,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/admin/channels',
-    name: 'AdminChannels',
-    component: () => import('@/views/admin/ChannelsView.vue'),
+    path: '/admin/pricing',
+    name: 'AdminPricing',
+    component: () => import('@/views/admin/PricingView.vue'),
     meta: {
       requiresAuth: true,
       requiresAdmin: true,
-      title: 'Channel Management',
-      titleKey: 'admin.channels.title',
-      descriptionKey: 'admin.channels.description'
+      title: 'Price Management',
+      titleKey: 'admin.pricing.title',
+      descriptionKey: 'admin.pricing.description'
     }
   },
   {
@@ -545,15 +545,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/admin/accounts',
-    name: 'AdminAccounts',
-    component: () => import('@/views/admin/AccountsView.vue'),
+    path: '/admin/providers',
+    name: 'AdminProviders',
+    component: () => import('@/views/admin/ProvidersView.vue'),
     meta: {
       requiresAuth: true,
       requiresAdmin: true,
-      title: 'Account Management',
-      titleKey: 'admin.accounts.title',
-      descriptionKey: 'admin.accounts.description'
+      title: 'Provider Management',
+      titleKey: 'admin.providers.title',
+      descriptionKey: 'admin.providers.description'
     }
   },
   {
@@ -690,7 +690,6 @@ const routes: RouteRecordRaw[] = [
       requiresAffiliate: true
     }
   },
-
 
   // ==================== Payment Admin Routes ====================
   {
@@ -879,7 +878,6 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
-
   // 公共设置可能尚未加载（App.vue 的 onMounted 异步拉取晚于首次导航，且纯静态部署
   // 无 __APP_CONFIG__ 注入）。此时 cachedPublicSettings 为空会把页面功能开关
   // 误判为“未启用”而错误拦截，故这里先确保设置加载完成。
@@ -947,26 +945,6 @@ router.beforeEach(async (to, _from, next) => {
     const affiliateEnabled = appStore.cachedPublicSettings?.affiliate_enabled === true
     if (!affiliateEnabled) {
       next(authStore.isAdmin ? '/admin/settings' : '/dashboard')
-      return
-    }
-  }
-
-  // 简易模式下限制访问某些页面
-  if (authStore.isSimpleMode) {
-    const restrictedPaths = [
-      '/admin/groups',
-      '/admin/subscriptions',
-      '/admin/redeem',
-      '/admin/affiliates',
-      '/subscriptions',
-      '/redeem',
-      '/affiliate',
-      '/creative'
-    ]
-
-    if (restrictedPaths.some((path) => to.path.startsWith(path))) {
-      // 简易模式下访问受限页面,重定向到仪表板
-      next(authStore.isAdmin ? '/admin/dashboard' : '/dashboard')
       return
     }
   }

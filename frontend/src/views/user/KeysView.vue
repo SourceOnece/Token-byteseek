@@ -8,13 +8,13 @@
               <SearchInput
                 v-model="filterSearch"
                 :placeholder="t('keys.searchPlaceholder')"
-                class="min-w-0 flex-1 sm:w-56 sm:flex-none lg:w-48 xl:w-64 [&>input]:h-9 [&>input]:min-h-0"
+                class="min-w-0 flex-1 sm:w-56 sm:flex-none lg:w-48 xl:w-64"
                 @search="onFilterChange"
               />
               <div ref="filterDropdownRef" class="relative shrink-0">
                 <button
                   type="button"
-                  class="btn btn-secondary relative h-9 w-9 p-0"
+                  class="btn btn-secondary relative btn-icon"
                   :aria-expanded="showFilterDropdown"
                   :aria-label="t('common.filter')"
                   :title="t('common.filter')"
@@ -25,7 +25,7 @@
                     {{ activeFilterCount }}
                   </span>
                 </button>
-                <div v-show="showFilterDropdown" class="absolute left-0 right-auto top-full z-[60] mt-2 w-[min(32rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 max-[639px]:left-auto max-[639px]:right-0" @click.stop>
+                <div v-show="showFilterDropdown" class="absolute left-0 right-auto top-full z-modal-nested mt-2 w-[min(32rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 max-[639px]:left-auto max-[639px]:right-0" @click.stop>
                   <div class="mb-3 flex items-center justify-between">
                     <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
                     <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetKeyFilters">
@@ -49,7 +49,7 @@
               <button
                 @click="loadApiKeys"
                 :disabled="loading"
-                class="btn btn-secondary h-9 w-9 shrink-0 p-0"
+                class="btn btn-secondary shrink-0 btn-icon"
                 :title="t('common.refresh')"
               >
                 <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
@@ -57,20 +57,20 @@
               <div class="relative" ref="columnDropdownRef">
                 <button
                   @click.stop="showColumnDropdown = !showColumnDropdown"
-                  class="btn btn-secondary h-9 w-9 shrink-0 p-0"
+                  class="btn btn-secondary shrink-0 btn-icon"
                   :title="t('keys.columnSettings')"
                 >
                   <Icon name="grid" size="md" />
                 </button>
                 <div
                   v-if="showColumnDropdown"
-                  class="absolute right-0 top-full z-50 mt-2 max-h-80 w-52 overflow-y-auto rounded-lg border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                  class="absolute right-0 top-full z-50 mt-2 max-h-80 w-52 overflow-y-auto rounded-control border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-800"
                 >
                   <button
                     v-for="column in toggleableColumns"
                     :key="column.key"
                     @click="toggleColumn(column.key)"
-                    class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                    class="dropdown-item-sm justify-between rounded-control"
                   >
                     <span>{{ column.label }}</span>
                     <Icon
@@ -84,7 +84,7 @@
                 </div>
               </div>
               <ScopeDropdown v-if="teamFeatureEnabled" v-model="scope" @change="onScopeChange" />
-              <button @click="openCreateModal" class="btn btn-primary h-9" data-tour="keys-create-btn">
+              <button @click="openCreateModal" class="btn btn-primary" data-tour="keys-create-btn">
                 <Icon name="plus" size="md" class="mr-2" />
                 {{ t('keys.createKey') }}
               </button>
@@ -131,7 +131,7 @@
               </code>
               <button
                 @click="copyToClipboard(value, row.id)"
-                class="rounded-lg p-1 transition-colors hover:bg-gray-100 dark:hover:bg-dark-700"
+                class="rounded-control p-1 transition-colors hover:bg-gray-100 dark:hover:bg-dark-700"
                 :class="
                   copiedKeyId === row.id
                     ? 'text-green-500'
@@ -168,14 +168,14 @@
               v-if="row.is_composite"
               type="button"
               data-test="composite-group-summary"
-              class="flex max-w-[22rem] flex-wrap items-center gap-1.5 rounded-md px-1 py-1 text-left hover:bg-gray-100 dark:hover:bg-dark-700"
+              class="flex max-w-[22rem] flex-wrap items-center gap-1.5 rounded-control px-1 py-1 text-left hover:bg-gray-100 dark:hover:bg-dark-700"
               :title="t('keys.composite.editMappings')"
               @click="editKey(row)"
             >
               <span
                 v-for="binding in row.composite_groups"
                 :key="`${row.id}-${binding.group_id}`"
-                class="inline-flex min-w-0 items-center gap-1 rounded border border-gray-200 bg-gray-50 px-1.5 py-1 dark:border-dark-600 dark:bg-dark-800"
+                class="inline-flex min-w-0 items-center gap-1 rounded-compact border border-gray-200 bg-gray-50 px-1.5 py-1 dark:border-dark-600 dark:bg-dark-800"
               >
                 <span class="max-w-24 truncate font-mono text-xs font-semibold text-primary-700 dark:text-primary-300">{{ binding.prefix }}</span>
                 <span class="text-gray-300 dark:text-dark-500">/</span>
@@ -186,20 +186,15 @@
               <button
                 :ref="(el) => setGroupButtonRef(row.id, el)"
                 @click="openGroupSelector(row)"
-                class="-mx-2 -my-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-dark-700"
+                class="-mx-2 -my-1 flex cursor-pointer items-center gap-2 rounded-control px-2 py-1 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-dark-700"
                 :title="t('keys.clickToChangeGroup')"
               >
                 <GroupBadge
                   v-if="row.group"
                   :name="row.group.name"
-                  :platform="row.group.platform"
                   :display-brand="row.group.display_brand"
                   :rate-multiplier="row.group.rate_multiplier"
                   :user-rate-multiplier="userGroupRates[row.group.id]"
-                  :peak-rate-enabled="row.group.peak_rate_enabled"
-                  :peak-start="row.group.peak_start"
-                  :peak-end="row.group.peak_end"
-                  :peak-rate-multiplier="row.group.peak_rate_multiplier"
                 />
                 <span v-else class="text-sm text-gray-400 dark:text-dark-500">{{
                   t('keys.noGroup')
@@ -224,7 +219,7 @@
           <template #cell-current_concurrency="{ value }">
             <span
               :class="[
-                'inline-flex min-w-8 items-center justify-center rounded px-2 py-1 text-sm font-semibold tabular-nums',
+                'inline-flex min-w-8 items-center justify-center rounded-compact px-2 py-1 text-sm font-semibold tabular-nums',
                 (value ?? 0) > 0
                   ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/25 dark:text-emerald-300 dark:ring-emerald-800'
                   : 'bg-gray-100 text-gray-500 dark:bg-dark-700 dark:text-dark-400'
@@ -308,7 +303,7 @@
                     :style="{ width: Math.min((row.usage_5h / row.rate_limit_5h) * 100, 100) + '%' }"
                   />
                 </div>
-                <div v-if="row.reset_5h_at && formatResetTime(row.reset_5h_at)" class="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums">
+                <div v-if="row.reset_5h_at && formatResetTime(row.reset_5h_at)" class="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
                   ⟳ {{ formatResetTime(row.reset_5h_at) }}
                 </div>
               </div>
@@ -336,7 +331,7 @@
                     :style="{ width: Math.min((row.usage_1d / row.rate_limit_1d) * 100, 100) + '%' }"
                   />
                 </div>
-                <div v-if="row.reset_1d_at && formatResetTime(row.reset_1d_at)" class="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums">
+                <div v-if="row.reset_1d_at && formatResetTime(row.reset_1d_at)" class="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
                   ⟳ {{ formatResetTime(row.reset_1d_at) }}
                 </div>
               </div>
@@ -364,7 +359,7 @@
                     :style="{ width: Math.min((row.usage_7d / row.rate_limit_7d) * 100, 100) + '%' }"
                   />
                 </div>
-                <div v-if="row.reset_7d_at && formatResetTime(row.reset_7d_at)" class="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums">
+                <div v-if="row.reset_7d_at && formatResetTime(row.reset_7d_at)" class="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
                   ⟳ {{ formatResetTime(row.reset_7d_at) }}
                 </div>
               </div>
@@ -372,7 +367,7 @@
               <button
                 v-if="row.usage_5h > 0 || row.usage_1d > 0 || row.usage_7d > 0"
                 @click.stop="confirmResetRateLimitFromTable(row)"
-                class="mt-0.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
+                class="mt-0.5 inline-flex items-center gap-1 rounded-compact px-1.5 py-0.5 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
                 :title="t('keys.resetRateLimitUsage')"
               >
                 <Icon name="refresh" size="xs" />
@@ -429,7 +424,7 @@
               <!-- 高频操作固定展示，低频和危险操作收进更多菜单。 -->
               <button
                 @click="editKey(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
+                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
               >
                 <Icon name="edit" size="sm" />
                 <span class="text-xs">{{ t('common.edit') }}</span>
@@ -437,7 +432,7 @@
               <!-- Owner 锁定由团队管理员控制，成员侧不再提供无效的恢复入口。 -->
               <span
                 v-if="row.team_owner_disabled"
-                class="flex cursor-not-allowed flex-col items-center gap-0.5 rounded-lg p-1.5 text-amber-600 dark:text-amber-400"
+                class="flex cursor-not-allowed flex-col items-center gap-0.5 rounded-control p-1.5 text-amber-600 dark:text-amber-400"
                 :title="t('keys.teamOwnerDisabledHint')"
               >
                 <Icon name="lock" size="sm" />
@@ -448,7 +443,7 @@
                 v-else
                 @click="toggleKeyStatus(row)"
                 :class="[
-                  'flex flex-col items-center gap-0.5 rounded-lg p-1.5 transition-colors',
+                  'flex flex-col items-center gap-0.5 rounded-control p-1.5 transition-colors',
                   row.status === 'active'
                     ? 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400'
                     : 'text-gray-500 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400'
@@ -459,7 +454,7 @@
                 <span class="text-xs">{{ row.status === 'active' ? t('keys.disable') : t('keys.enable') }}</span>
               </button>
               <button
-                class="key-action-menu-trigger flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-dark-700 dark:hover:text-white"
+                class="key-action-menu-trigger flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-dark-700 dark:hover:text-white"
                 :class="{ 'bg-gray-100 text-gray-900 dark:bg-dark-700 dark:text-white': actionMenuKey?.id === row.id }"
                 aria-haspopup="menu"
                 :aria-expanded="actionMenuKey?.id === row.id"
@@ -554,7 +549,7 @@
         </div>
 
         <fieldset v-if="showCreateModal && !formData.is_composite" data-tour="key-form-provider">
-          <legend class="input-label">{{ t('keys.providerLabel') }}</legend>
+          <legend class="input-label">{{ t('admin.groups.protocols.title', 'API 协议') }}</legend>
           <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <label v-for="provider in createProviderOptions" :key="provider.value" class="min-w-0">
               <input
@@ -568,7 +563,7 @@
               />
               <span class="flex h-16 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 border-2 border-[color:var(--bh-border)] bg-[var(--bh-surface)] px-1 text-sm font-bold text-[var(--bh-ink)] shadow-[var(--bh-shadow-sm)] peer-checked:bg-[var(--bh-blue)] peer-checked:text-white peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--bh-blue)] peer-disabled:pointer-events-none peer-disabled:cursor-not-allowed peer-disabled:opacity-40 motion-safe:transition-transform active:translate-x-0.5 active:translate-y-0.5 active:shadow-none">
                 <span class="flex items-center gap-1" aria-hidden="true">
-                  <PlatformIcon v-for="platform in KEY_GROUP_PROVIDER_ICONS[provider.value]" :key="platform" :platform="platform" size="sm" />
+                  <PlatformIcon v-for="platform in KEY_GROUP_PROTOCOL_ICONS[provider.value]" :key="platform" :platform="platform" size="sm" />
                 </span>
                 <span>{{ provider.label }}</span>
               </span>
@@ -591,28 +586,18 @@
               <GroupBadge
                 v-if="option"
                 :name="(option as unknown as GroupOption).label"
-                :platform="(option as unknown as GroupOption).platform"
                 :display-brand="(option as unknown as GroupOption).displayBrand"
                 :rate-multiplier="(option as unknown as GroupOption).rate"
                 :user-rate-multiplier="(option as unknown as GroupOption).userRate"
-                :peak-rate-enabled="(option as unknown as GroupOption).peakRateEnabled"
-                :peak-start="(option as unknown as GroupOption).peakStart"
-                :peak-end="(option as unknown as GroupOption).peakEnd"
-                :peak-rate-multiplier="(option as unknown as GroupOption).peakRateMultiplier"
               />
               <span v-else class="text-gray-400">{{ t('keys.selectGroup') }}</span>
             </template>
             <template #option="{ option, selected }">
               <GroupOptionItem
                 :name="(option as unknown as GroupOption).label"
-                :platform="(option as unknown as GroupOption).platform"
                 :display-brand="(option as unknown as GroupOption).displayBrand"
                 :rate-multiplier="(option as unknown as GroupOption).rate"
                 :user-rate-multiplier="(option as unknown as GroupOption).userRate"
-                :peak-rate-enabled="(option as unknown as GroupOption).peakRateEnabled"
-                :peak-start="(option as unknown as GroupOption).peakStart"
-                :peak-end="(option as unknown as GroupOption).peakEnd"
-                :peak-rate-multiplier="(option as unknown as GroupOption).peakRateMultiplier"
                 :description="(option as unknown as GroupOption).description"
                 :selected="selected"
               />
@@ -624,7 +609,7 @@
           <div
             v-for="(binding, index) in formData.composite_groups"
             :key="binding.local_id"
-            class="grid min-w-0 grid-cols-1 items-start gap-2 rounded-md border border-gray-200 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(7rem,0.65fr)_auto] dark:border-dark-600"
+            class="grid min-w-0 grid-cols-1 items-start gap-2 rounded-control border border-gray-200 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(7rem,0.65fr)_auto] dark:border-dark-600"
           >
             <Select
               v-model="binding.group_id"
@@ -648,13 +633,13 @@
               </p>
             </div>
             <div class="flex items-center justify-end gap-1 sm:justify-start">
-              <button type="button" class="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-700" :disabled="index === 0" :title="t('keys.composite.moveUp')" @click="moveCompositeBinding(index, -1)">
+              <button type="button" class="rounded-compact p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-700" :disabled="index === 0" :title="t('keys.composite.moveUp')" @click="moveCompositeBinding(index, -1)">
                 <Icon name="arrowUp" size="sm" />
               </button>
-              <button type="button" class="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-700" :disabled="index === formData.composite_groups.length - 1" :title="t('keys.composite.moveDown')" @click="moveCompositeBinding(index, 1)">
+              <button type="button" class="rounded-compact p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-700" :disabled="index === formData.composite_groups.length - 1" :title="t('keys.composite.moveDown')" @click="moveCompositeBinding(index, 1)">
                 <Icon name="arrowDown" size="sm" />
               </button>
-              <button type="button" class="rounded p-1.5 text-red-500 hover:bg-red-50 disabled:opacity-30 dark:hover:bg-red-900/20" :disabled="formData.composite_groups.length <= 1" :title="t('common.delete')" @click="removeCompositeBinding(index)">
+              <button type="button" class="rounded-compact p-1.5 text-red-500 hover:bg-red-50 disabled:opacity-30 dark:hover:bg-red-900/20" :disabled="formData.composite_groups.length <= 1" :title="t('common.delete')" @click="removeCompositeBinding(index)">
                 <Icon name="trash" size="sm" />
               </button>
             </div>
@@ -683,8 +668,8 @@
 
         <!-- 分组停用时的请求级自动降级开关。 -->
         <div class="flex items-center justify-between">
-          <label class="input-label mb-0">{{ t('keys.fallbackToDefaultGroupWhenUnavailable') }}</label>
-          <Toggle v-model="formData.fallback_to_default_group_when_unavailable" size="sm" />
+          <label class="input-label mb-0">{{ t('keys.fallbackWhenGroupUnavailable') }}</label>
+          <Toggle v-model="formData.fallback_when_group_unavailable" size="sm" />
         </div>
 
         <!-- 模型重定向按行编辑，删除全部行会在更新时提交空对象。 -->
@@ -711,7 +696,7 @@
 
           <p
             v-if="formData.model_mapping_rows.length === 0"
-            class="rounded-md border border-dashed border-gray-200 px-3 py-4 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-dark-400"
+            class="rounded-control border border-dashed border-gray-200 px-3 py-4 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-dark-400"
           >
             {{ t('keys.modelRedirect.empty') }}
           </p>
@@ -753,7 +738,7 @@
             </div>
             <button
               type="button"
-              class="flex h-9 w-9 items-center justify-center rounded text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              class="flex rounded-compact text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 btn-icon"
               :title="t('common.delete')"
               :aria-label="t('common.delete')"
               :data-test="`model-mapping-remove-${index}`"
@@ -768,21 +753,7 @@
         <div v-if="!showEditModal" class="space-y-3">
           <div class="flex items-center justify-between">
             <label class="input-label mb-0">{{ t('keys.customKeyLabel') }}</label>
-            <button
-              type="button"
-              @click="formData.use_custom_key = !formData.use_custom_key"
-              :class="[
-                'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
-                formData.use_custom_key ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
-              ]"
-            >
-              <span
-                :class="[
-                  'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                  formData.use_custom_key ? 'translate-x-4' : 'translate-x-0'
-                ]"
-              />
-            </button>
+            <Toggle v-model="formData.use_custom_key" size="sm" off-tone="soft" />
           </div>
           <div v-if="formData.use_custom_key">
             <input
@@ -812,7 +783,7 @@
           <p
             v-if="selectedKey?.team_owner_disabled"
             id="team-owner-disabled-hint"
-            class="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-900/20 dark:text-amber-300"
+            class="mt-2 flex items-start gap-2 rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-900/20 dark:text-amber-300"
           >
             <Icon name="lock" size="sm" class="mt-0.5 shrink-0" />
             <span>{{ t('keys.teamOwnerDisabledHint') }}</span>
@@ -823,21 +794,7 @@
         <div class="space-y-3">
           <div class="flex items-center justify-between">
             <label class="input-label mb-0">{{ t('keys.ipRestriction') }}</label>
-            <button
-              type="button"
-              @click="formData.enable_ip_restriction = !formData.enable_ip_restriction"
-              :class="[
-                'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
-                formData.enable_ip_restriction ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
-              ]"
-            >
-              <span
-                :class="[
-                  'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                  formData.enable_ip_restriction ? 'translate-x-4' : 'translate-x-0'
-                ]"
-              />
-            </button>
+            <Toggle v-model="formData.enable_ip_restriction" size="sm" off-tone="soft" />
           </div>
 
           <div v-if="formData.enable_ip_restriction" class="space-y-4 pt-2">
@@ -871,34 +828,20 @@
           <!-- Switch commented out - always show input, 0 = unlimited
           <div class="flex items-center justify-between">
             <label class="input-label mb-0">{{ t('keys.quotaLimit') }}</label>
-            <button
-              type="button"
-              @click="formData.enable_quota = !formData.enable_quota"
-              :class="[
-                'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
-                formData.enable_quota ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
-              ]"
-            >
-              <span
-                :class="[
-                  'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                  formData.enable_quota ? 'translate-x-4' : 'translate-x-0'
-                ]"
-              />
-            </button>
+            <Toggle v-model="formData.enable_quota" size="sm" off-tone="soft" />
           </div>
           -->
 
           <div class="space-y-4">
             <div>
               <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{{ balanceUnitSymbol }}</span>
+                <span class="input-icon text-gray-500">{{ balanceUnitSymbol }}</span>
                 <input
                   v-model.number="formData.quota"
                   type="number"
                   step="0.01"
                   min="0"
-                  class="input pl-7"
+                  class="input input-has-icon input-icon-text"
                   :placeholder="t('keys.quotaAmountPlaceholder')"
                 />
               </div>
@@ -909,7 +852,7 @@
             <div v-if="showEditModal && selectedKey && selectedKey.quota > 0">
               <label class="input-label">{{ t('keys.quotaUsed') }}</label>
               <div class="flex items-center gap-2">
-                <div class="flex-1 h-9 rounded-lg bg-gray-100 px-3 py-1.5 dark:bg-dark-700">
+                <div class="flex-1 h-9 rounded-control bg-gray-100 px-3 py-1.5 dark:bg-dark-700">
                   <span class="font-medium text-gray-900 dark:text-white">
                     {{ formatBalanceAmount(selectedKey.quota_used, { fractionDigits: 4 }) }}
                   </span>
@@ -935,21 +878,7 @@
         <div class="space-y-3">
           <div class="flex items-center justify-between">
             <label class="input-label mb-0">{{ t('keys.rateLimitSection') }}</label>
-            <button
-              type="button"
-              @click="formData.enable_rate_limit = !formData.enable_rate_limit"
-              :class="[
-                'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
-                formData.enable_rate_limit ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
-              ]"
-            >
-              <span
-                :class="[
-                  'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                  formData.enable_rate_limit ? 'translate-x-4' : 'translate-x-0'
-                ]"
-              />
-            </button>
+            <Toggle v-model="formData.enable_rate_limit" size="sm" off-tone="soft" />
           </div>
 
           <div v-if="formData.enable_rate_limit" class="space-y-4 pt-2">
@@ -958,20 +887,20 @@
             <div>
               <label class="input-label">{{ t('keys.rateLimit5h') }}</label>
               <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{{ balanceUnitSymbol }}</span>
+                <span class="input-icon text-gray-500">{{ balanceUnitSymbol }}</span>
                 <input
                   v-model.number="formData.rate_limit_5h"
                   type="number"
                   step="0.01"
                   min="0"
-                  class="input pl-7"
+                  class="input input-has-icon input-icon-text"
                   :placeholder="'0'"
                 />
               </div>
               <!-- Usage info (edit mode only) -->
               <div v-if="showEditModal && selectedKey && selectedKey.rate_limit_5h > 0" class="mt-2">
                 <div class="flex items-center gap-2">
-                  <div class="flex-1 h-9 rounded-lg bg-gray-100 px-3 py-1.5 text-sm dark:bg-dark-700">
+                  <div class="flex-1 h-9 rounded-control bg-gray-100 px-3 py-1.5 text-sm dark:bg-dark-700">
                     <span :class="[
                       'font-medium',
                       selectedKey.usage_5h >= selectedKey.rate_limit_5h ? 'text-red-500' :
@@ -1004,20 +933,20 @@
             <div>
               <label class="input-label">{{ t('keys.rateLimit1d') }}</label>
               <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{{ balanceUnitSymbol }}</span>
+                <span class="input-icon text-gray-500">{{ balanceUnitSymbol }}</span>
                 <input
                   v-model.number="formData.rate_limit_1d"
                   type="number"
                   step="0.01"
                   min="0"
-                  class="input pl-7"
+                  class="input input-has-icon input-icon-text"
                   :placeholder="'0'"
                 />
               </div>
               <!-- Usage info (edit mode only) -->
               <div v-if="showEditModal && selectedKey && selectedKey.rate_limit_1d > 0" class="mt-2">
                 <div class="flex items-center gap-2">
-                  <div class="flex-1 h-9 rounded-lg bg-gray-100 px-3 py-1.5 text-sm dark:bg-dark-700">
+                  <div class="flex-1 h-9 rounded-control bg-gray-100 px-3 py-1.5 text-sm dark:bg-dark-700">
                     <span :class="[
                       'font-medium',
                       selectedKey.usage_1d >= selectedKey.rate_limit_1d ? 'text-red-500' :
@@ -1050,20 +979,20 @@
             <div>
               <label class="input-label">{{ t('keys.rateLimit7d') }}</label>
               <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">{{ balanceUnitSymbol }}</span>
+                <span class="input-icon text-gray-500">{{ balanceUnitSymbol }}</span>
                 <input
                   v-model.number="formData.rate_limit_7d"
                   type="number"
                   step="0.01"
                   min="0"
-                  class="input pl-7"
+                  class="input input-has-icon input-icon-text"
                   :placeholder="'0'"
                 />
               </div>
               <!-- Usage info (edit mode only) -->
               <div v-if="showEditModal && selectedKey && selectedKey.rate_limit_7d > 0" class="mt-2">
                 <div class="flex items-center gap-2">
-                  <div class="flex-1 h-9 rounded-lg bg-gray-100 px-3 py-1.5 text-sm dark:bg-dark-700">
+                  <div class="flex-1 h-9 rounded-control bg-gray-100 px-3 py-1.5 text-sm dark:bg-dark-700">
                     <span :class="[
                       'font-medium',
                       selectedKey.usage_7d >= selectedKey.rate_limit_7d ? 'text-red-500' :
@@ -1109,21 +1038,7 @@
         <div class="space-y-3">
           <div class="flex items-center justify-between">
             <label class="input-label mb-0">{{ t('keys.expiration') }}</label>
-            <button
-              type="button"
-              @click="formData.enable_expiration = !formData.enable_expiration"
-              :class="[
-                'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
-                formData.enable_expiration ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
-              ]"
-            >
-              <span
-                :class="[
-                  'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                  formData.enable_expiration ? 'translate-x-4' : 'translate-x-0'
-                ]"
-              />
-            </button>
+            <Toggle v-model="formData.enable_expiration" size="sm" off-tone="soft" />
           </div>
 
           <div v-if="formData.enable_expiration" class="space-y-4 pt-2">
@@ -1135,7 +1050,7 @@
                 type="button"
                 @click="setExpirationDays(parseInt(days))"
                 :class="[
-                  'rounded-lg px-3 py-1.5 text-sm transition-colors',
+                  'rounded-control px-3 py-1.5 text-sm transition-colors',
                   formData.expiration_preset === days
                     ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-700 dark:text-gray-400 dark:hover:bg-dark-600'
@@ -1147,7 +1062,7 @@
                 type="button"
                 @click="formData.expiration_preset = 'custom'"
                 :class="[
-                  'rounded-lg px-3 py-1.5 text-sm transition-colors',
+                  'rounded-control px-3 py-1.5 text-sm transition-colors',
                   formData.expiration_preset === 'custom'
                     ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-700 dark:text-gray-400 dark:hover:bg-dark-600'
@@ -1180,14 +1095,14 @@
       </form>
       <template #footer>
         <div class="flex justify-end gap-3">
-          <button @click="closeModals" type="button" class="btn btn-secondary h-9 py-1.5">
+          <button @click="closeModals" type="button" class="btn btn-secondary py-1.5">
             {{ t('common.cancel') }}
           </button>
           <button
             form="key-form"
             type="submit"
             :disabled="submitting"
-            class="btn btn-primary h-9 py-1.5"
+            class="btn btn-primary py-1.5"
             data-tour="key-form-submit"
           >
             <svg
@@ -1265,9 +1180,8 @@
       :show="showUseKeyModal"
       :api-key="selectedKey?.key || ''"
       :base-url="publicSettings?.api_base_url || ''"
-      :platform="selectedKey?.group?.platform || null"
-      :allowed-client-protocols="selectedKey?.group?.allowed_client_protocols"
-      :composite-groups="selectedKey?.composite_groups || []"
+      :group="selectedKeyGroup"
+      :composite-groups="selectedCompositeGroups"
       @close="closeUseKeyModal"
     />
 
@@ -1289,7 +1203,7 @@
       @delete="confirmDelete"
     />
 
-    <!-- CCS Client Selection Dialog for Antigravity -->
+    <!-- 按可用协议选择客户端和模型。 -->
     <BaseDialog
       :show="showCcsClientSelect"
       :title="t('keys.ccsClientSelect.title')"
@@ -1297,36 +1211,12 @@
       @close="closeCcsClientSelect"
     >
       <div class="space-y-4">
-        <p class="text-sm text-gray-600 dark:text-gray-400">
-          {{ t('keys.ccsClientSelect.description') }}
-	        </p>
-	        <div class="grid grid-cols-2 gap-3">
-	          <button
-	            @click="handleCcsClientSelect('claude')"
-	            class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200 dark:border-dark-600 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all"
-	          >
-	            <Icon name="terminal" size="xl" class="text-gray-600 dark:text-gray-400" />
-	            <span class="font-medium text-gray-900 dark:text-white">{{
-	              t('keys.ccsClientSelect.claudeCode')
-	            }}</span>
-	            <span class="text-xs text-gray-500 dark:text-gray-400">{{
-	              t('keys.ccsClientSelect.claudeCodeDesc')
-	            }}</span>
-	          </button>
-	          <button
-	            @click="handleCcsClientSelect('gemini')"
-	            class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200 dark:border-dark-600 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all"
-	          >
-	            <Icon name="sparkles" size="xl" class="text-gray-600 dark:text-gray-400" />
-	            <span class="font-medium text-gray-900 dark:text-white">{{
-	              t('keys.ccsClientSelect.geminiCli')
-	            }}</span>
-	            <span class="text-xs text-gray-500 dark:text-gray-400">{{
-	              t('keys.ccsClientSelect.geminiCliDesc')
-	            }}</span>
-	          </button>
-	        </div>
-	      </div>
+        <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('keys.ccsClientSelect.description') }}</p>
+        <Select v-model="ccClient" :options="ccClientOptions" />
+        <Select v-model="ccModel" :options="ccModelOptions" searchable :placeholder="t('keys.useKeyModal.selectModel')" />
+        <p v-if="!ccModelOptions.length" class="input-hint">{{ t('keys.useKeyModal.noModels') }}</p>
+        <button type="button" class="btn btn-primary" :disabled="!ccModel" @click="handleCcsClientSelect(ccClient)">{{ t('common.confirm') }}</button>
+      </div>
       <template #footer>
         <div class="flex justify-end">
           <button @click="closeCcsClientSelect" class="btn btn-secondary">
@@ -1341,7 +1231,7 @@
       <div
         v-if="groupSelectorKeyId !== null && dropdownPosition"
         ref="dropdownRef"
-        class="animate-in fade-in slide-in-from-top-2 fixed z-[100000020] w-max max-w-[calc(100vw-16px)] overflow-hidden rounded-control bg-white shadow-lg ring-1 ring-black/5 duration-200 sm:min-w-[380px] dark:bg-dark-800 dark:ring-white/10"
+        class="animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-max max-w-[calc(100vw-16px)] overflow-hidden rounded-control bg-white shadow-lg ring-1 ring-black/5 duration-200 sm:min-w-[380px] dark:bg-dark-800 dark:ring-white/10"
         style="pointer-events: auto !important;"
         :style="{
           top: dropdownPosition.top !== undefined ? dropdownPosition.top + 'px' : undefined,
@@ -1358,7 +1248,7 @@
             <input
               v-model="groupSearchQuery"
               type="text"
-              class="w-full rounded-lg border border-primary-900/10 bg-gray-50 py-1.5 pl-8 pr-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary-900/10 focus:ring-2 focus:ring-black/10 dark:border-dark-600 dark:bg-dark-700 dark:text-white dark:placeholder-gray-500 dark:focus:border-primary-600 dark:focus:ring-primary-600"
+              class="w-full rounded-control border border-primary-900/10 bg-gray-50 py-1.5 pl-8 pr-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary-900/10 focus:ring-2 focus:ring-black/10 dark:border-dark-600 dark:bg-dark-700 dark:text-white dark:placeholder-gray-500 dark:focus:border-primary-600 dark:focus:ring-primary-600"
               :placeholder="t('keys.searchGroup')"
               @click.stop
             />
@@ -1371,7 +1261,7 @@
             :key="option.value ?? 'null'"
             @click="changeGroup(selectedKeyForGroup!, option.value)"
             :class="[
-              'flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors',
+              'flex w-full items-center justify-between rounded-control px-3 py-2.5 text-sm transition-colors',
               'border-b border-gray-100 last:border-0 dark:border-dark-700',
               selectedKeyForGroup?.group_id === option.value ||
               (!selectedKeyForGroup?.group_id && option.value === null)
@@ -1382,14 +1272,9 @@
           >
             <GroupOptionItem
               :name="option.label"
-              :platform="option.platform"
               :display-brand="option.displayBrand"
               :rate-multiplier="option.rate"
               :user-rate-multiplier="option.userRate"
-              :peak-rate-enabled="option.peakRateEnabled"
-              :peak-start="option.peakStart"
-              :peak-end="option.peakEnd"
-              :peak-rate-multiplier="option.peakRateMultiplier"
               :description="option.description"
               :selected="
                 selectedKeyForGroup?.group_id === option.value ||
@@ -1408,12 +1293,14 @@
 </template>
 
 <script setup lang="ts">
-	import { ref, reactive, computed, watch, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
+import { getKeyGroupProtocols, KEY_GROUP_PROTOCOLS, KEY_GROUP_PROTOCOL_LABELS, KEY_GROUP_PROTOCOL_ICONS, type KeyGroupProtocol } from '@/utils/keyGroupProviders'
+	import { watch, ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useRoute } from 'vue-router'
 	import { useAppStore } from '@/stores/app'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { useClipboard } from '@/composables/useClipboard'
+import { COPY_FEEDBACK_MS } from '@/constants/ui'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 
@@ -1446,19 +1333,18 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	  CreateApiKeyRequest,
 	  Group,
 	  PublicSettings,
-	  GroupPlatform,
 	  UpdateApiKeyRequest
 	} from '@/types'
 import type { Column } from '@/components/common/types'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import { formatDateTime } from '@/utils/format'
-import PlatformIcon from '@/components/common/PlatformIcon.vue'
-import { KEY_GROUP_PROVIDERS, KEY_GROUP_PROVIDER_ICONS, getKeyGroupProvider, type KeyGroupProvider } from '@/utils/keyGroupProviders'
+import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import {
   buildCcSwitchImportDeeplink,
   buildCcSwitchUsageScript,
   type CcSwitchClientType
 } from '@/utils/ccswitchImport'
+import { availableClients, CLIENT_LABELS, clientProtocol, modelsForProtocol, groupForKeyConfig } from '@/utils/clientConfig'
 
 // Helper to format date for datetime-local input
 const formatDateTimeLocal = (isoDate: string): string => {
@@ -1474,11 +1360,6 @@ interface GroupOption {
   displayBrand: string | null
   rate: number
   userRate: number | null
-  peakRateEnabled: boolean
-  peakStart: string
-  peakEnd: string
-  peakRateMultiplier: number
-  platform: GroupPlatform
 }
 
 const appStore = useAppStore()
@@ -1724,7 +1605,7 @@ const formData = ref({
   enable_expiration: false,
   expiration_preset: '30' as '7' | '30' | '90' | 'custom',
   expiration_date: '',
-  fallback_to_default_group_when_unavailable: true
+  fallback_when_group_unavailable: true
 })
 
 type ModelMappingRowError = { source?: string; target?: string }
@@ -1919,31 +1800,27 @@ const buildGroupOptions = (source: Group[]) =>
     label: group.name,
     description: group.description,
     displayBrand: group.display_brand?.trim() || null,
+    protocols: getKeyGroupProtocols(group.allowed_protocols),
     rate: group.rate_multiplier,
     userRate: userGroupRates.value[group.id] ?? null,
-    peakRateEnabled: group.peak_rate_enabled,
-    peakStart: group.peak_start,
-    peakEnd: group.peak_end,
-    peakRateMultiplier: group.peak_rate_multiplier,
-    platform: group.platform
   }))
 
 // 指定订阅时仅使用服务端返回的权限与套餐分组交集。
 const formGroupOptions = computed(() => buildGroupOptions(formGroups.value))
 const allGroupOptions = computed(() => buildGroupOptions(groups.value))
 
-const createProvider = ref<KeyGroupProvider>('anthropic')
+const createProvider = ref<KeyGroupProtocol>('anthropic')
 // 先沿用服务端的用户/团队/指定套餐交集，再按供应商收窄；不改变复合 Key 的多平台映射。
-const createProviderOptions = computed(() => KEY_GROUP_PROVIDERS.map((value) => ({
+const createProviderOptions = computed(() => KEY_GROUP_PROTOCOLS.map((value) => ({
   value,
-  label: t(`keys.providers.${value}`),
-  count: formGroups.value.filter((group) => getKeyGroupProvider(group.platform) === value).length
+  label: KEY_GROUP_PROTOCOL_LABELS[value],
+  count: formGroups.value.filter((group) => getKeyGroupProtocols(group.allowed_protocols).includes(value)).length
 })))
 const singleFormGroupOptions = computed(() => showCreateModal.value
-  ? formGroupOptions.value.filter((group) => getKeyGroupProvider(group.platform) === createProvider.value)
+  ? formGroupOptions.value.filter((group) => group.protocols.includes(createProvider.value))
   : formGroupOptions.value
 )
-const selectCreateProvider = (provider: KeyGroupProvider) => {
+const selectCreateProvider = (provider: KeyGroupProtocol) => {
   if (createProvider.value === provider) return
   createProvider.value = provider
   formData.value.group_id = null
@@ -1954,7 +1831,7 @@ watch([showCreateModal, createProviderOptions, () => formData.value.is_composite
   if (!open || composite) return
   if (!wasOpen || !providers.some((provider) => provider.value === createProvider.value && provider.count > 0)) {
     const selected = formGroups.value.find((group) => group.id === formData.value.group_id)
-    createProvider.value = selected ? getKeyGroupProvider(selected.platform) : providers.find((provider) => provider.count > 0)?.value ?? 'anthropic'
+    createProvider.value = (selected ? getKeyGroupProtocols(selected.allowed_protocols)[0] : undefined) ?? providers.find((provider) => provider.count > 0)?.value ?? 'anthropic'
   }
   if (!singleFormGroupOptions.value.some((group) => group.value === formData.value.group_id)) formData.value.group_id = null
 })
@@ -2079,7 +1956,7 @@ const copyToClipboard = async (text: string, keyId: number) => {
     copiedKeyId.value = keyId
     setTimeout(() => {
       copiedKeyId.value = null
-    }, 800)
+    }, COPY_FEEDBACK_MS)
   }
 }
 
@@ -2316,7 +2193,7 @@ const editKey = (key: ApiKey) => {
     enable_expiration: hasExpiration,
     expiration_preset: 'custom',
     expiration_date: key.expires_at ? formatDateTimeLocal(key.expires_at) : '',
-    fallback_to_default_group_when_unavailable: key.fallback_to_default_group_when_unavailable ?? false
+    fallback_when_group_unavailable: key.fallback_when_group_unavailable ?? false
   }
   formGroups.value = []
   showEditModal.value = true
@@ -2356,14 +2233,17 @@ const openKeyActionMenu = (key: ApiKey, event: MouseEvent) => {
   const target = event.currentTarget as HTMLElement | null
   if (!target) return
   const rect = target.getBoundingClientRect()
-  const width = 192
-  const height = publicSettings.value?.hide_ccs_import_button ? 138 : 178
-  const padding = 8
-  const left = Math.max(padding, Math.min(rect.right - width, window.innerWidth - width - padding))
-  let top = rect.bottom + 4
-  if (top + height > window.innerHeight - padding) top = Math.max(padding, rect.top - height - 4)
+  // 固定高菜单(高度随 CCS 导入项显隐):下方放不下即整体上翻;窄屏保持右缘对齐触发器。
+  const position = getFloatingPanelPosition(rect, window.innerWidth, window.innerHeight, {
+    maxWidth: 192,
+    fixedHeight: publicSettings.value?.hide_ccs_import_button ? 138 : 178,
+    viewportPadding: 8,
+    gap: 4,
+    pinLeftOnMobile: false
+  })
+  // fixedHeight 模式下 top 恒非空。
+  actionMenuPosition.value = { top: position.top ?? 8, left: position.left }
   actionMenuKey.value = key
-  actionMenuPosition.value = { top, left }
 }
 
 const closeKeyActionMenu = () => {
@@ -2383,25 +2263,21 @@ const openGroupSelector = (key: ApiKey) => {
     const buttonEl = groupButtonRefs.value.get(key.id)
     if (buttonEl) {
       const rect = buttonEl.getBoundingClientRect()
-      const dropdownEstHeight = 400 // 预估下拉框最大高度
-      const dropdownEstWidth = Math.min(380, window.innerWidth - 16)
-      const spaceBelow = window.innerHeight - rect.bottom
-      const spaceAbove = rect.top
-      // 夹取 left，避免窄屏下浮层超出视口右缘
-      const left = Math.max(8, Math.min(rect.left, window.innerWidth - dropdownEstWidth - 8))
-
-      if (spaceBelow < dropdownEstHeight && spaceAbove > spaceBelow) {
+      // 面板左缘对齐触发器,预估最大高度 400 决定翻转;窄屏面板近满宽,钉到视口左缘。
+      const position = getFloatingPanelPosition(rect, window.innerWidth, window.innerHeight, {
+        align: 'left',
+        maxWidth: 380,
+        viewportPadding: 8,
+        gap: 4,
+        maxHeightRatio: 1,
+        minComfortableHeight: 400
+      })
+      if (position.bottom !== null) {
         // 下方空间不足时向上弹出。
-        dropdownPosition.value = {
-          bottom: window.innerHeight - rect.top + 4,
-          left
-        }
+        dropdownPosition.value = { bottom: position.bottom, left: position.left }
       } else {
         // 默认向下弹出。
-        dropdownPosition.value = {
-          top: rect.bottom + 4,
-          left
-        }
+        dropdownPosition.value = { top: position.top ?? undefined, left: position.left }
       }
     }
     groupSelectorKeyId.value = key.id
@@ -2518,7 +2394,7 @@ const submitKeyForm = async () => {
         rate_limit_5h: rateLimitData.rate_limit_5h,
         rate_limit_1d: rateLimitData.rate_limit_1d,
         rate_limit_7d: rateLimitData.rate_limit_7d,
-        fallback_to_default_group_when_unavailable: formData.value.fallback_to_default_group_when_unavailable
+        fallback_when_group_unavailable: formData.value.fallback_when_group_unavailable
       }
       const originalBillingMode = selectedKey.value.billing_mode ?? 'auto'
       const originalPreferredSubscriptionID = selectedKey.value.preferred_subscription_id ?? null
@@ -2563,7 +2439,7 @@ const submitKeyForm = async () => {
         rate_limit_5h: rateLimitData.rate_limit_5h,
         rate_limit_1d: rateLimitData.rate_limit_1d,
         rate_limit_7d: rateLimitData.rate_limit_7d,
-        fallback_to_default_group_when_unavailable: formData.value.fallback_to_default_group_when_unavailable
+        fallback_when_group_unavailable: formData.value.fallback_when_group_unavailable
       }
       await keysAPI.createWithPayload(payload)
       appStore.showSuccess(t('keys.keyCreatedSuccess'))
@@ -2684,7 +2560,7 @@ const closeModals = () => {
     enable_expiration: false,
     expiration_preset: '30',
     expiration_date: '',
-    fallback_to_default_group_when_unavailable: true
+    fallback_when_group_unavailable: true
   }
 }
 
@@ -2754,29 +2630,39 @@ const resetRateLimitUsage = async () => {
   }
 }
 
+// Key 内嵌分组未带目录时复用当前已加载的可见分组，避免逐行请求。
+const groupWithModels = (key: ApiKey | null): Group | undefined => {
+  if (!key?.group_id) return undefined
+  const available = groups.value.find(group => group.id === key.group_id)
+  return groupForKeyConfig(available ? { ...key.group, ...available } : key.group ?? undefined, key.model_mapping)
+}
+const selectedKeyGroup = computed(() => groupWithModels(selectedKey.value))
+const selectedCompositeGroups = computed(() => (selectedKey.value?.composite_groups ?? []).map(binding => ({
+  ...binding, group: groupForKeyConfig(groups.value.find(group => group.id === binding.group_id) ?? binding.group, selectedKey.value?.model_mapping),
+})))
+const ccClient = ref<CcSwitchClientType>('claude')
+const ccModel = ref('')
+const ccGroup = computed(() => groupWithModels(pendingCcsRow.value))
+const ccClientOptions = computed(() => availableClients(ccGroup.value?.allowed_protocols ?? []).filter(client => client !== 'opencode').map(client => ({ value: client, label: CLIENT_LABELS[client] })))
+const ccModelOptions = computed(() => {
+  const protocol = clientProtocol(ccClient.value, ccGroup.value?.allowed_protocols ?? [])
+  return protocol ? modelsForProtocol(ccGroup.value, protocol).map(model => ({ value: model, label: model })) : []
+})
+watch(ccClientOptions, options => { if (!options.some(option => option.value === ccClient.value)) ccClient.value = options[0]?.value as CcSwitchClientType ?? 'claude' })
+watch(ccModelOptions, options => { if (!options.some(option => option.value === ccModel.value)) ccModel.value = options[0]?.value ?? '' })
 const importToCcswitch = (row: ApiKey) => {
-  const platform = row.group?.platform || 'anthropic'
-
-  // Antigravity 平台需要先选择客户端。
-  if (platform === 'antigravity') {
-    pendingCcsRow.value = row
-    showCcsClientSelect.value = true
-    return
-  }
-
-  // 其他平台直接执行导入。
-  executeCcsImport(row, platform === 'gemini' ? 'gemini' : 'claude')
+  pendingCcsRow.value = row
+  showCcsClientSelect.value = true
 }
 
 const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
   const baseUrl = publicSettings.value?.api_base_url || window.location.origin
-  const platform = row.group?.platform || 'anthropic'
 
   const usageScript = buildCcSwitchUsageScript(baseUrl, balanceUnitName.value)
   const providerName = (publicSettings.value?.site_name || 'sub2api').trim() || 'sub2api'
   const deeplink = buildCcSwitchImportDeeplink({
     baseUrl,
-    platform,
+    model: ccModel.value,
     clientType,
     providerName,
     apiKey: row.key,
@@ -2799,7 +2685,7 @@ const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
 }
 
 const handleCcsClientSelect = (clientType: CcSwitchClientType) => {
-  if (pendingCcsRow.value) {
+  if (pendingCcsRow.value && ccModelOptions.value.some(option => option.value === ccModel.value)) {
     executeCcsImport(pendingCcsRow.value, clientType)
   }
   showCcsClientSelect.value = false
@@ -2841,9 +2727,9 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 创建密钥弹窗的单行控件统一为 36px，多行文本域保留自然高度。 */
+/* 创建密钥弹窗的单行控件统一为 36px，多行文本域保留自然高度。
+   下拉触发器已由 .input 基线(min-h-9、py-1.5)提供同一尺寸，不再单列。 */
 .key-form-controls :deep(input.input),
-.key-form-controls :deep(.select-trigger),
 .key-form-controls :deep(.btn) {
   height: 2.25rem;
   min-height: 0;
@@ -2851,11 +2737,6 @@ onUnmounted(() => {
 
 .key-form-controls :deep(input.input),
 .key-form-controls :deep(.btn) {
-  padding-top: 0.375rem;
-  padding-bottom: 0.375rem;
-}
-
-.key-form-controls :deep(.select-trigger) {
   padding-top: 0.375rem;
   padding-bottom: 0.375rem;
 }

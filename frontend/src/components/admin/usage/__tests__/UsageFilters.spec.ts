@@ -14,8 +14,8 @@ const messages: Record<string, string> = {
   'admin.usage.searchApiKeyPlaceholder': 'Search API key...',
   'usage.model': 'Model',
   'admin.usage.allModels': 'All Models',
-  'admin.usage.account': 'Account',
-  'admin.usage.searchAccountPlaceholder': 'Search account...',
+  'admin.usage.provider': 'Provider',
+  'admin.usage.searchProviderPlaceholder': 'Search provider...',
   'usage.type': 'Type',
   'admin.usage.allTypes': 'All Types',
   'usage.ws': 'WS',
@@ -56,7 +56,7 @@ const mockSearchApiKeys = vi.fn().mockResolvedValue([])
 const mockGroupsList = vi.fn().mockResolvedValue({ items: [] })
 const mockTeamsList = vi.fn().mockResolvedValue([])
 const mockGetModelStats = vi.fn().mockResolvedValue({ models: [] })
-const mockAccountsList = vi.fn().mockResolvedValue({ items: [] })
+const mockProvidersList = vi.fn().mockResolvedValue({ items: [] })
 
 vi.mock('@/api/admin', () => ({
   adminAPI: {
@@ -67,7 +67,7 @@ vi.mock('@/api/admin', () => ({
     groups: { list: (...args: any[]) => mockGroupsList(...args) },
     teams: { list: (...args: any[]) => mockTeamsList(...args) },
     dashboard: { getModelStats: (...args: any[]) => mockGetModelStats(...args) },
-    accounts: { list: (...args: any[]) => mockAccountsList(...args) },
+    providers: { list: (...args: any[]) => mockProvidersList(...args) },
   },
 }))
 
@@ -75,7 +75,7 @@ vi.mock('@/api/admin', () => ({
 const defaultFilters = () => ({
   user_id: undefined,
   api_key_id: undefined,
-  account_id: undefined,
+  provider_id: undefined,
   model: null,
   request_type: null,
   billing_type: null,
@@ -124,7 +124,7 @@ describe('UsageFilters — user search dropdown', () => {
     mockGetModelStats.mockClear()
     mockGroupsList.mockClear()
     mockTeamsList.mockClear()
-    mockAccountsList.mockClear()
+    mockProvidersList.mockClear()
   })
 
   afterEach(() => {

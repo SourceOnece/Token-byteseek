@@ -46,11 +46,11 @@ func TestPaymentOrdersOutTradeNoPartialUniqueIndex(t *testing.T) {
 	require.Equal(t, (&entsql.IndexAnnotation{Where: "out_trade_no <> ''"}).Where, idx.Annotation.Where)
 }
 
-func TestAccountsParentAccountForeignKey(t *testing.T) {
-	fk := findForeignKeyByColumn(t, AccountsTable, "parent_account_id")
+func TestProvidersParentProviderForeignKey(t *testing.T) {
+	fk := findForeignKeyByColumn(t, ProvidersTable, "parent_provider_id")
 	require.Len(t, fk.Columns, 1)
-	require.Equal(t, "parent_account_id", fk.Columns[0].Name)
-	require.False(t, fk.Columns[0].Unique, "active-shadow uniqueness is enforced by the partial uq_accounts_spark_shadow_per_parent index")
+	require.Equal(t, "parent_provider_id", fk.Columns[0].Name)
+	require.False(t, fk.Columns[0].Unique, "active-shadow uniqueness is enforced by the partial uq_providers_spark_shadow_per_parent index")
 	require.Len(t, fk.RefColumns, 1)
 	require.Equal(t, "id", fk.RefColumns[0].Name)
 	require.Equal(t, entschema.Restrict, fk.OnDelete)

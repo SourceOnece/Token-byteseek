@@ -7,7 +7,7 @@
       <button
         @click="goToPage(page - 1)"
         :disabled="page === 1"
-        class="pagination-control bh-page-btn px-4"
+        class="pagination-control relative inline-flex h-9 items-center rounded-control border border-gray-300 bg-white px-4 py-0 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-200 dark:hover:bg-dark-800"
       >
         {{ t('pagination.previous') }}
       </button>
@@ -17,7 +17,7 @@
       <button
         @click="goToPage(page + 1)"
         :disabled="page === totalPages"
-        class="pagination-control bh-page-btn ml-3 px-4"
+        class="pagination-control relative ml-3 inline-flex h-9 items-center rounded-control border border-gray-300 bg-white px-4 py-0 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-200 dark:hover:bg-dark-800"
       >
         {{ t('pagination.next') }}
       </button>
@@ -26,7 +26,7 @@
     <div class="pagination-desktop hidden lg:flex lg:flex-1 lg:flex-wrap lg:items-center lg:justify-between lg:gap-x-4 lg:gap-y-2">
       <!-- Desktop pagination info -->
       <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <p class="pagination-summary text-sm font-semibold text-gray-700 dark:text-dark-200">
+        <p class="pagination-summary text-sm text-gray-700 dark:text-gray-300">
           {{ t('pagination.showing') }}
           <span class="font-mono font-bold text-gray-950 dark:text-white">{{ fromItem }}</span>
           {{ t('pagination.to') }}
@@ -41,8 +41,8 @@
           <span class="text-sm font-semibold text-gray-700 dark:text-dark-200"
             >{{ t('pagination.perPage') }}:</span
           >
-          <!-- 三位数页容量和图标均留足空间，窄桌面允许整组换行。 -->
-          <div class="page-size-select w-24 shrink-0">
+          <!-- 96px 宽度:px-4 触发器内 padding + 下拉图标占 60px,给三位数页容量留足文本空间。 -->
+          <div class="page-size-select w-24">
             <Select
               :model-value="pageSize"
               :options="pageSizeSelectOptions"
@@ -62,7 +62,7 @@
             :placeholder="t('pagination.jumpPlaceholder')"
             @keyup.enter="submitJump"
           />
-          <button type="button" class="pagination-jump-button btn btn-ghost btn-sm" @click="submitJump">
+          <button type="button" class="pagination-jump-button btn btn-ghost btn-sm h-9" @click="submitJump">
             {{ t('pagination.jumpAction') }}
           </button>
         </div>
@@ -70,14 +70,14 @@
 
       <!-- Desktop pagination buttons：方块页码组 -->
       <nav
-        class="pagination-nav relative z-0 inline-flex"
+        class="pagination-nav relative z-0 inline-flex -space-x-px rounded-control shadow-sm"
         aria-label="Pagination"
       >
         <!-- Previous button -->
         <button
           @click="goToPage(page - 1)"
           :disabled="page === 1"
-          class="pagination-control bh-page-btn px-2"
+          class="pagination-control relative inline-flex h-9 items-center rounded-l-control border border-gray-300 bg-white px-2 py-0 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800"
           :aria-label="t('pagination.previous')"
         >
           <Icon name="chevronLeft" size="md" :stroke-width="2.5" />
@@ -90,8 +90,10 @@
           @click="typeof pageNum === 'number' && goToPage(pageNum)"
           :disabled="typeof pageNum !== 'number'"
           :class="[
-            'pagination-control pagination-page-button bh-page-btn min-w-9 justify-center px-2 font-mono',
-            pageNum === page && 'bh-page-btn-active',
+            'pagination-control pagination-page-button relative inline-flex h-9 min-w-9 items-center justify-center border px-2 py-0 text-sm font-medium',
+            pageNum === page
+              ? 'z-10 border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400'
+              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-300 dark:hover:bg-dark-800',
             typeof pageNum !== 'number' && 'cursor-default'
           ]"
           :aria-label="
@@ -106,7 +108,7 @@
         <button
           @click="goToPage(page + 1)"
           :disabled="page === totalPages"
-          class="pagination-control bh-page-btn px-2"
+          class="pagination-control relative inline-flex h-9 items-center rounded-r-control border border-gray-300 bg-white px-2 py-0 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800"
           :aria-label="t('pagination.next')"
         >
           <Icon name="chevronRight" size="md" :stroke-width="2.5" />
@@ -238,72 +240,3 @@ const submitJump = () => {
   goToPage(nextPage)
 }
 </script>
-
-<style scoped>
-.pagination-control,
-.pagination-jump-input,
-.pagination-jump-button {
-  height: var(--pagination-control-height, 2.25rem);
-  min-height: var(--pagination-control-height, 2.25rem);
-}
-
-.page-size-select :deep(.select-trigger) {
-  height: 2.25rem;
-  height: var(--pagination-control-height, 2.25rem);
-  min-height: 0;
-  @apply px-3 py-1.5 text-sm;
-}
-
-/* 方块页码：相邻共享 2px 边框，当前页黄底红杠 */
-.bh-page-btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-  margin-left: -2px;
-  border: 2px solid var(--bh-ink);
-  background: var(--bh-surface);
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--bh-ink);
-  transition: background 0.12s ease;
-}
-
-.bh-page-btn:first-child {
-  margin-left: 0;
-}
-
-.bh-page-btn:hover:not(:disabled):not(.bh-page-btn-active) {
-  background: rgba(255, 204, 0, 0.35);
-  z-index: 1;
-}
-
-.bh-page-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.bh-page-btn-active {
-  z-index: 2;
-  background: var(--bh-yellow) !important;
-  color: #141414 !important;
-  box-shadow: inset 0 -4px 0 0 var(--bh-red);
-  font-weight: 800;
-}
-
-.dark .bh-page-btn-active {
-  border-color: rgba(244, 240, 230, 0.85);
-}
-
-/* 总数芯片 */
-.bh-total-chip {
-  display: inline-block;
-  padding: 0 6px;
-  border: 2px solid var(--bh-ink);
-  background: var(--bh-yellow);
-  color: #141414;
-  font-family: 'Geist Mono Variable', ui-monospace, monospace;
-  font-weight: 800;
-}
-</style>

@@ -176,7 +176,7 @@ collection_pause_reason/collection_resume_at解释账号**当前**暂停，区�
 <a id="ticket_runtime"></a>
 ## 迁移运行边界
 
-bh.065 开始将票据接入迁移到独立边界：规则/稀疏补丁校验由 `internal/codexticket` 唯一拥有，旧 service 名称用类型别名继续保持 JSON 字段和调用兼容。`CodexTicketRuntime` 提供账号读取、完整快照、令牌、工作区头、并发和候选/复验两类传输；当前仍由旧网关适配器实现，复用原连接池、TLS、并发与凭据缓存。`NewCodexTicketService` 只构造不启动，现行组合根继续在绑定网关后显式启动。此步不是 TokenRouter 原生执行链已接通的证明；原账号隔离、票据键、长度调度和业务代理约束均保持。
+票据规则/稀疏补丁校验由 `internal/codexticket` 唯一拥有，`CodexTicketRuntime` 通过原生 provider、scheduler、egress 和 gateway 端口提供账号快照、令牌、并发、候选/复验传输。`NewCodexTicketService` 只构造不启动，由 app 生命周期显式启动；旧 service 目录只作迁移对照。
 
 <a id="validation_rollback"></a>
 ## 验证及回退

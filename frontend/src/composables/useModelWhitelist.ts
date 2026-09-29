@@ -35,7 +35,6 @@ export const claudeModels = [
   'claude-opus-4-6',
   'claude-opus-4-7',
   'claude-opus-4-8',
-  'claude-opus-5-5',
   'claude-opus-5',
   'claude-sonnet-4-6',
   'claude-sonnet-5',
@@ -98,8 +97,8 @@ const antigravityModels = [
   'tab_flash_lite_preview'
 ]
 
-// Qoder 上游模型变化较快。账号级 model_mapping 的 key 才是 Qoder
-// 前端/客户端应展示的请求模型；这里仅保留创建账号时的快捷候选。
+// Qoder 上游模型变化较快。提供商级 model_mapping 的 key 才是 Qoder
+// 前端/客户端应展示的请求模型；这里仅保留创建提供商时的快捷候选。
 export type QoderSite = 'global' | 'cn'
 
 const qoderGlobalModels = [
@@ -135,7 +134,7 @@ const qoderCNModels = [
   'minimax-m2.7'
 ]
 
-// 无账号上下文按国际站优先合并两站模型。
+// 无提供商上下文按国际站优先合并两站模型。
 const qoderModels = [...new Set([...qoderGlobalModels, ...qoderCNModels])]
 
 // 智谱 GLM
@@ -486,7 +485,7 @@ const bedrockPresetMappings = [
 
 // Antigravity 默认映射（从后端 API 获取，与 constants.go 保持一致）
 // 使用 fetchAntigravityDefaultMappings() 异步获取
-import { getAntigravityDefaultModelMapping } from '@/api/admin/accounts'
+import { getAntigravityDefaultModelMapping } from '@/api/admin/providers'
 
 let _antigravityDefaultMappingsCache: { from: string; to: string }[] | null = null
 
@@ -716,7 +715,7 @@ export function splitPersistedModelRestriction(
 }
 
 // buildPersistedModelRestriction 将白名单与映射分别持久化。
-// 普通账号使用 model_mapping 表示请求侧映射，model_whitelist 表示映射后的最终白名单。
+// 普通提供商使用 model_mapping 表示请求侧映射，model_whitelist 表示映射后的最终白名单。
 // 注意：即使白名单为空，也要显式返回空数组，作为“无白名单限制”的新格式信号，
 // 避免后端回退到 legacy 的“自映射即白名单”兼容分支。
 export function buildPersistedModelRestriction(

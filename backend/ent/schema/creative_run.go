@@ -1,15 +1,14 @@
 package schema
 
 import (
-	"github.com/TokenFlux/TokenRouter/ent/schema/mixins"
-	"github.com/TokenFlux/TokenRouter/internal/domain"
-
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
+	"github.com/TokenFlux/TokenRouter/ent/schema/mixins"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
 // CreativeRun 定义创作台异步任务的数据结构。
@@ -42,8 +41,10 @@ func (CreativeRun) Fields() []ent.Field {
 		field.Int64("group_id"),
 		// api_key_id 指向创作台隐藏执行 Key（managed_by = 'creative_studio'）。
 		field.Int64("api_key_id"),
-		// account_id 由 worker 执行阶段回填。
-		field.Int64("account_id").Optional().Nillable(),
+		// provider_id 由 worker 执行阶段回填。
+		field.Int64("provider_id").Optional().Nillable(),
+		// provider 随执行提供商固化，分组和提供商调整不会改写已提交任务的执行类型。
+		field.String("platform").MaxLen(32).Default(""),
 		field.String("model").MaxLen(128),
 		// requested_model 记录客户端提交值，model 记录计费/路由模型。
 		field.String("requested_model").MaxLen(128).Default(""),
@@ -63,8 +64,8 @@ func (CreativeRun) Fields() []ent.Field {
 		field.Float("actual_cost").Optional().Nillable().SchemaType(map[string]string{dialect.Postgres: "decimal(20,10)"}),
 		// 计费预占快照，仿 batch_image_jobs：先占订阅、再冻结余额。
 		field.Float("balance_hold_amount").SchemaType(map[string]string{dialect.Postgres: "decimal(20,10)"}).Default(0),
-		field.JSON("subscription_hold_allocations", []domain.BillingAllocation{}).
-			Default(func() []domain.BillingAllocation { return []domain.BillingAllocation{} }).
+		field.JSON("subscription_hold_allocations", []billing.BillingAllocation{}).
+			Default(func() []billing.BillingAllocation { return []billing.BillingAllocation{} }).
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
 		// 定价快照：基础单价与订阅/余额来源倍率。
 		field.Float("base_unit_price").SchemaType(map[string]string{dialect.Postgres: "decimal(20,10)"}).Default(0),

@@ -103,7 +103,7 @@
             <div class="space-y-4 p-6">
               <!-- Security Warning -->
               <div
-                class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20"
+                class="rounded-control border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20"
               >
                 <div class="flex items-start">
                   <Icon
@@ -180,7 +180,7 @@
                       {{ t("admin.settings.adminApiKey.currentKey") }}
                     </label>
                     <code
-                      class="rounded bg-gray-100 px-2 py-1 font-mono text-sm text-gray-900 dark:bg-dark-700 dark:text-gray-100"
+                      class="rounded-compact bg-gray-100 px-2 py-1 font-mono text-sm text-gray-900 dark:bg-dark-700 dark:text-gray-100"
                     >
                       {{ adminApiKeyMasked }}
                     </code>
@@ -212,7 +212,7 @@
                 <!-- Newly Generated Key Display -->
                 <div
                   v-if="newAdminApiKey"
-                  class="space-y-3 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20"
+                  class="space-y-3 rounded-control border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20"
                 >
                   <p
                     class="text-sm font-medium text-green-700 dark:text-green-300"
@@ -221,7 +221,7 @@
                   </p>
                   <div class="flex items-center gap-2">
                     <code
-                      class="flex-1 select-all break-all rounded border border-green-300 bg-white px-3 py-2 font-mono text-sm dark:border-green-700 dark:bg-dark-800"
+                      class="flex-1 select-all break-all rounded-compact border border-green-300 bg-white px-3 py-2 font-mono text-sm dark:border-green-700 dark:bg-dark-800"
                     >
                       {{ newAdminApiKey }}
                     </code>
@@ -1018,7 +1018,7 @@
                 <div
                   v-for="rule in betaPolicyForm.rules"
                   :key="rule.beta_token"
-                  class="rounded-lg border border-gray-200 p-4 dark:border-dark-600"
+                  class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
                 >
                   <div class="mb-3 flex items-center gap-2">
                     <span
@@ -1027,7 +1027,7 @@
                       {{ getBetaDisplayName(rule.beta_token) }}
                     </span>
                     <span
-                      class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-dark-700 dark:text-gray-400"
+                      class="rounded-compact bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-dark-700 dark:text-gray-400"
                     >
                       {{ rule.beta_token }}
                     </span>
@@ -1095,7 +1095,7 @@
                         v-for="preset in betaPresets[rule.beta_token]"
                         :key="preset.label"
                         type="button"
-                        class="inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100 dark:border-primary-800 dark:bg-primary-900/30 dark:text-primary-300 dark:hover:bg-primary-900/50"
+                        class="inline-flex items-center gap-1 rounded-compact border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100 dark:border-primary-800 dark:bg-primary-900/30 dark:text-primary-300 dark:hover:bg-primary-900/50"
                         @click="applyBetaPreset(rule, preset)"
                         :title="preset.description"
                       >
@@ -1131,7 +1131,7 @@
                       <button
                         type="button"
                         @click="rule.model_whitelist!.splice(index, 1)"
-                        class="shrink-0 rounded p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                        class="shrink-0 rounded-compact p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                       >
                         <svg
                           class="h-4 w-4"
@@ -1183,7 +1183,7 @@
                         v-for="pattern in commonModelPatterns"
                         :key="pattern"
                         type="button"
-                        class="rounded border border-gray-200 px-2 py-0.5 text-xs text-gray-600 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-700 dark:hover:bg-primary-900/30 dark:hover:text-primary-300"
+                        class="rounded-compact border border-gray-200 px-2 py-0.5 text-xs text-gray-600 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-700 dark:hover:bg-primary-900/30 dark:hover:text-primary-300"
                         @click="addQuickPattern(rule, pattern)"
                       >
                         {{ pattern }}
@@ -1288,7 +1288,7 @@
               <!-- Empty state -->
               <div
                 v-if="openaiFastPolicyForm.rules.length === 0"
-                class="rounded-lg border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
+                class="rounded-control border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
               >
                 {{ t("admin.settings.openaiFastPolicy.empty") }}
               </div>
@@ -1297,7 +1297,7 @@
               <div
                 v-for="(rule, ruleIndex) in openaiFastPolicyForm.rules"
                 :key="ruleIndex"
-                class="rounded-lg border border-gray-200 p-4 dark:border-dark-600"
+                class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
               >
                 <div class="mb-3 flex items-center justify-between">
                   <span
@@ -1312,7 +1312,7 @@
                   <button
                     type="button"
                     @click="removeOpenAIFastPolicyRule(ruleIndex)"
-                    class="rounded p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                    class="rounded-compact p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                     :title="t('admin.settings.openaiFastPolicy.removeRule')"
                   >
                     <svg
@@ -1346,7 +1346,7 @@
                   </span>
                   <span aria-hidden="true">→</span>
                   <span
-                    class="inline-flex items-center rounded bg-primary-50 px-2 py-0.5 font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                    class="inline-flex items-center rounded-compact bg-primary-50 px-2 py-0.5 font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
                   >
                     {{ openaiFastPolicyActionSummary(rule.action) }}
                   </span>
@@ -1361,7 +1361,7 @@
                     </span>
                     <span aria-hidden="true">→</span>
                     <span
-                      class="inline-flex items-center rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-700 dark:bg-dark-600 dark:text-gray-300"
+                      class="inline-flex items-center rounded-compact bg-gray-100 px-2 py-0.5 font-medium text-gray-700 dark:bg-dark-600 dark:text-gray-300"
                     >
                       {{
                         openaiFastPolicyActionSummary(
@@ -1387,7 +1387,7 @@
                           | 'all'
                           | 'priority'
                           | 'flex'
-                          | 'missing'
+                          | 'ultrafast'
                       "
                       :options="openaiFastPolicyTierOptions"
                     />
@@ -1408,6 +1408,7 @@
                           | 'filter'
                           | 'block'
                           | 'force_priority'
+                          | 'force_ultrafast'
                       "
                       :options="openaiFastPolicyActionOptions"
                     />
@@ -1513,7 +1514,7 @@
                       @click="
                         removeOpenAIFastPolicyModelPattern(rule, patternIdx)
                       "
-                      class="shrink-0 rounded p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                      class="shrink-0 rounded-compact p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                     >
                       <svg
                         class="h-4 w-4"
@@ -1570,6 +1571,7 @@
                         | 'filter'
                         | 'block'
                         | 'force_priority'
+                          | 'force_ultrafast'
                     "
                     :options="openaiFastPolicyActionOptions"
                   />
@@ -1680,13 +1682,13 @@
                   }}
                 </p>
                 <div
-                  class="mt-3 rounded-lg border border-gray-300 bg-white p-2 dark:border-dark-500 dark:bg-dark-700"
+                  class="mt-3 rounded-control border border-gray-300 bg-white p-2 dark:border-dark-500 dark:bg-dark-700"
                 >
                   <div class="flex flex-wrap items-center gap-2">
                     <span
                       v-for="suffix in registrationEmailSuffixWhitelistTags"
                       :key="suffix"
-                      class="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 dark:bg-dark-600 dark:text-gray-200"
+                      class="inline-flex items-center gap-1 rounded-compact bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 dark:bg-dark-600 dark:text-gray-200"
                     >
                       <span>{{ suffix }}</span>
                       <button
@@ -1706,7 +1708,7 @@
                     </span>
 
                     <div
-                      class="flex min-w-[220px] flex-1 items-center gap-1 rounded border border-transparent px-2 py-1 focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:focus-within:border-primary-700 dark:focus-within:ring-0"
+                      class="flex min-w-[220px] flex-1 items-center gap-1 rounded-compact border border-transparent px-2 py-1 focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:focus-within:border-primary-700 dark:focus-within:ring-0"
                     >
                       <input
                         v-model="registrationEmailSuffixWhitelistDraft"
@@ -1971,14 +1973,14 @@
                   {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeadersHint") }}
                 </p>
                 <div
-                  class="mt-3 rounded-lg border border-gray-300 bg-white p-2 dark:border-dark-500 dark:bg-dark-700"
+                  class="mt-3 rounded-control border border-gray-300 bg-white p-2 dark:border-dark-500 dark:bg-dark-700"
                 >
                   <div class="flex flex-wrap items-center gap-2">
                     <span
                       v-for="header in form.forwarded_client_ip_headers"
                       :key="header"
                       data-testid="forwarded-client-ip-header-tag"
-                      class="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 dark:bg-dark-600 dark:text-gray-200"
+                      class="inline-flex items-center gap-1 rounded-compact bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 dark:bg-dark-600 dark:text-gray-200"
                     >
                       <span>{{ header }}</span>
                       <button
@@ -1996,7 +1998,7 @@
                       </button>
                     </span>
                     <div
-                      class="flex min-w-[220px] flex-1 items-center gap-1 rounded border border-transparent px-2 py-1 focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:focus-within:border-primary-700 dark:focus-within:ring-0"
+                      class="flex min-w-[220px] flex-1 items-center gap-1 rounded-compact border border-transparent px-2 py-1 focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:focus-within:border-primary-700 dark:focus-within:ring-0"
                     >
                       <input
                         id="forwarded-client-ip-headers"
@@ -2050,9 +2052,9 @@
               </div>
 
               <template v-else>
-                <!-- 计数维度说明：按账号计数，反代部署无误伤 -->
+                <!-- 计数维度说明：按用户 ID 计数，反代部署无误伤 -->
                 <div
-                  class="rounded-lg border border-sky-200 bg-sky-50 p-4 dark:border-sky-800 dark:bg-sky-900/20"
+                  class="rounded-control border border-sky-200 bg-sky-50 p-4 dark:border-sky-800 dark:bg-sky-900/20"
                 >
                   <div class="flex items-start">
                     <Icon
@@ -2252,12 +2254,12 @@
                     {{ t("admin.settings.captcha.provider") }}
                   </label>
                   <div
-                    class="grid grid-cols-3 gap-2 rounded-lg bg-gray-100 p-1 dark:bg-dark-700"
+                    class="grid grid-cols-3 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700"
                   >
                     <button
                       type="button"
                       data-testid="captcha-provider-turnstile"
-                      class="inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
+                      class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
                       :class="
                         captchaProviderSelection === 'turnstile'
                           ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
@@ -2270,7 +2272,7 @@
                     <button
                       type="button"
                       data-testid="captcha-provider-tencent"
-                      class="inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
+                      class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
                       :class="
                         captchaProviderSelection === 'tencent'
                           ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
@@ -2283,7 +2285,7 @@
                     <button
                       type="button"
                       data-testid="captcha-provider-aliyun"
-                      class="inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
+                      class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
                       :class="
                         captchaProviderSelection === 'aliyun'
                           ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
@@ -2355,11 +2357,11 @@
                     <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                       {{ t("admin.settings.tencentCaptcha.region") }}
                     </label>
-                    <div class="grid grid-cols-2 gap-2 rounded-lg bg-gray-100 p-1 dark:bg-dark-700">
+                    <div class="grid grid-cols-2 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700">
                       <button
                         type="button"
                         data-testid="tencent-captcha-region-cn"
-                        class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition"
+                        class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
                         :class="
                           form.tencent_captcha_region !== 'intl'
                             ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
@@ -2372,7 +2374,7 @@
                       <button
                         type="button"
                         data-testid="tencent-captcha-region-intl"
-                        class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition"
+                        class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
                         :class="
                           form.tencent_captcha_region === 'intl'
                             ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
@@ -2506,11 +2508,11 @@
                         {{ t("admin.settings.aliyunCaptcha.region") }}
                       </label>
                       <div
-                        class="grid grid-cols-2 gap-2 rounded-lg bg-gray-100 p-1 dark:bg-dark-700"
+                        class="grid grid-cols-2 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700"
                       >
                         <button
                           type="button"
-                          class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition"
+                          class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
                           :class="
                             form.aliyun_captcha_region !== 'sgp'
                               ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
@@ -2522,7 +2524,7 @@
                         </button>
                         <button
                           type="button"
-                          class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition"
+                          class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
                           :class="
                             form.aliyun_captcha_region === 'sgp'
                               ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
@@ -2718,7 +2720,7 @@
                       </button>
                       <code
                         v-if="linuxdoRedirectUrlSuggestion"
-                        class="select-all break-all rounded bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
+                        class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
                       >
                         {{ linuxdoRedirectUrlSuggestion }}
                       </code>
@@ -2751,7 +2753,7 @@
             </div>
             <div class="space-y-6 p-6">
               <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                <div class="rounded-lg border border-gray-200 p-4 dark:border-dark-700">
+                <div class="rounded-control border border-gray-200 p-4 dark:border-dark-700">
                   <div class="flex items-start justify-between gap-4">
                     <div>
                       <h3 class="font-medium text-gray-900 dark:text-white">
@@ -2770,7 +2772,7 @@
                   </div>
 
                   <div v-if="form.github_oauth_enabled" class="mt-4 space-y-4">
-                    <div class="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
+                    <div class="rounded-control bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
                       <template v-if="isZhLocale">
                         开通引导：GitHub Settings → Developer settings →
                         <a
@@ -2840,7 +2842,7 @@
                         </button>
                         <code
                           v-if="githubOAuthRedirectUrlSuggestion"
-                          class="select-all break-all rounded bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
+                          class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
                         >
                           {{ githubOAuthRedirectUrlSuggestion }}
                         </code>
@@ -2861,7 +2863,7 @@
                   </div>
                 </div>
 
-                <div class="rounded-lg border border-gray-200 p-4 dark:border-dark-700">
+                <div class="rounded-control border border-gray-200 p-4 dark:border-dark-700">
                   <div class="flex items-start justify-between gap-4">
                     <div>
                       <h3 class="font-medium text-gray-900 dark:text-white">
@@ -2880,7 +2882,7 @@
                   </div>
 
                   <div v-if="form.google_oauth_enabled" class="mt-4 space-y-4">
-                    <div class="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
+                    <div class="rounded-control bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
                       {{
                         localText(
                           "开通引导：Google Cloud Console → APIs & Services → OAuth consent screen 完成同意屏幕；Credentials → Create Credentials → OAuth client ID，类型选择 Web application，并把下面地址加入 Authorized redirect URIs。",
@@ -2912,7 +2914,7 @@
                           Authorized JavaScript origin
                         </label>
                         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                          <code class="min-w-0 flex-1 select-all break-all rounded bg-gray-50 px-2 py-1.5 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
+                          <code class="min-w-0 flex-1 select-all break-all rounded-compact bg-gray-50 px-2 py-1.5 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
                             {{ googleOneTapOriginSuggestion }}
                           </code>
                           <button
@@ -2981,7 +2983,7 @@
                         </button>
                         <code
                           v-if="googleOAuthRedirectUrlSuggestion"
-                          class="select-all break-all rounded bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
+                          class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
                         >
                           {{ googleOAuthRedirectUrlSuggestion }}
                         </code>
@@ -3039,7 +3041,7 @@
               >
                 <div class="space-y-4">
                   <div
-                    class="rounded-lg border border-gray-200 p-4 dark:border-dark-700"
+                    class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
                   >
                     <div class="flex items-start justify-between gap-4">
                       <div>
@@ -3112,7 +3114,7 @@
                   </div>
 
                   <div
-                    class="rounded-lg border border-gray-200 p-4 dark:border-dark-700"
+                    class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
                   >
                     <div class="flex items-start justify-between gap-4">
                       <div>
@@ -3190,7 +3192,7 @@
                   </div>
 
                   <div
-                    class="rounded-lg border border-gray-200 p-4 dark:border-dark-700"
+                    class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
                   >
                     <div class="flex items-start justify-between gap-4">
                       <div>
@@ -3269,11 +3271,11 @@
                     (form.wechat_connect_mp_enabled ||
                       form.wechat_connect_mobile_enabled)
                   "
-                  class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/10 dark:text-amber-300"
+                  class="rounded-control border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/10 dark:text-amber-300"
                 >
                   {{
                     localText(
-                      "如果同时启用 PC 应用和公众号/移动应用，这些应用需要挂在同一个微信开放平台主体下，否则 UnionID 无法稳定归并账号。",
+                      "如果同时启用 PC 应用和公众号/移动应用，这些应用需要挂在同一个微信开放平台主体下，否则 UnionID 无法稳定归并用户身份。",
                       "When PC App is enabled together with Official Account or Mobile App, they should belong to the same WeChat Open Platform account so UnionID can merge identities reliably.",
                     )
                   }}
@@ -3318,7 +3320,7 @@
                       </button>
                       <code
                         v-if="wechatRedirectUrlSuggestion"
-                        class="select-all break-all rounded bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
+                        class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
                       >
                         {{ wechatRedirectUrlSuggestion }}
                       </code>
@@ -3865,7 +3867,7 @@
                       </button>
                       <code
                         v-if="oidcRedirectUrlSuggestion"
-                        class="select-all break-all rounded bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
+                        class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
                       >
                         {{ oidcRedirectUrlSuggestion }}
                       </code>
@@ -3943,7 +3945,7 @@
 
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                   <div
-                    class="flex items-center justify-between rounded border border-gray-200 px-4 py-3 dark:border-dark-700"
+                    class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
                   >
                     <div>
                       <label class="font-medium text-gray-900 dark:text-white">
@@ -3957,7 +3959,7 @@
                   </div>
 
                   <div
-                    class="flex items-center justify-between rounded border border-gray-200 px-4 py-3 dark:border-dark-700"
+                    class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
                   >
                     <div>
                       <label class="font-medium text-gray-900 dark:text-white">
@@ -3971,7 +3973,7 @@
                   </div>
 
                   <div
-                    class="flex items-center justify-between rounded border border-gray-200 px-4 py-3 dark:border-dark-700"
+                    class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
                   >
                     <div>
                       <label class="font-medium text-gray-900 dark:text-white">
@@ -4154,7 +4156,7 @@
 
                 <div
                   v-if="form.default_subscriptions.length === 0"
-                  class="rounded border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
+                  class="rounded-compact border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
                 >
                   {{ t("admin.settings.defaults.defaultSubscriptionsEmpty") }}
                 </div>
@@ -4163,7 +4165,7 @@
                   <div
                     v-for="(item, index) in form.default_subscriptions"
                     :key="`default-sub-${index}`"
-                    class="grid grid-cols-1 gap-3 rounded border border-gray-200 p-3 md:grid-cols-[1fr_auto] dark:border-dark-600"
+                    class="grid grid-cols-1 gap-3 rounded-compact border border-gray-200 p-3 md:grid-cols-[1fr_auto] dark:border-dark-600"
                   >
                     <div>
                       <label
@@ -4173,7 +4175,7 @@
                       </label>
                       <Select
                         v-model="item.plan_id"
-                        class="default-sub-group-select"
+
                         :options="defaultSubscriptionPlanOptions"
                         :placeholder="
                           t('admin.settings.defaults.subscriptionGroup')
@@ -4183,7 +4185,7 @@
                     <div class="flex items-end">
                       <button
                         type="button"
-                        class="btn btn-secondary default-sub-delete-btn w-full text-red-600 hover:text-red-700 dark:text-red-400"
+                        class="btn btn-secondary w-full text-red-600 hover:text-red-700 dark:text-red-400"
                         @click="removeDefaultSubscription(index)"
                       >
                         {{ t("common.delete") }}
@@ -4192,71 +4194,6 @@
                   </div>
                 </div>
               </div>
-
-              <!-- ★ 新增：系统全局默认平台限额矩阵 -->
-              <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
-                <div class="mb-3">
-                  <label class="font-medium text-gray-900 dark:text-white">
-                    {{ t("admin.settings.defaults.defaultPlatformQuotas") }}
-                  </label>
-                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.defaults.defaultPlatformQuotasHint") }}
-                  </p>
-                  <p class="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
-                    {{ t("admin.settings.defaults.platformQuotaNotice") }}
-                  </p>
-                </div>
-                <div class="overflow-x-auto">
-                  <table class="min-w-full text-sm">
-                    <thead>
-                      <tr class="text-left text-xs text-gray-500 dark:text-gray-400">
-                        <th class="pb-2 pr-4 font-medium">{{ t("admin.settings.platformQuota.platform") }}</th>
-                        <th class="pb-2 pr-4 font-medium">{{ t("admin.settings.platformQuota.daily") }}</th>
-                        <th class="pb-2 pr-4 font-medium">{{ t("admin.settings.platformQuota.weekly") }}</th>
-                        <th class="pb-2 font-medium">{{ t("admin.settings.platformQuota.monthly") }}</th>
-                      </tr>
-                    </thead>
-                    <tbody class="space-y-2">
-                      <tr v-for="p in (['anthropic', 'openai', 'gemini', 'antigravity', 'qoder', 'grok', 'kimi', 'zhipu', 'deepseek', 'minimax', 'opencode_go'] as const)" :key="p" class="align-top">
-                        <td class="pr-4 py-1">
-                          <span class="font-mono text-xs text-gray-700 dark:text-gray-300">{{ p }}</span>
-                        </td>
-                        <td class="pr-4 py-1">
-                          <input
-                            v-model.number="form.default_platform_quotas[p]!.daily"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            class="input h-8 w-28 text-sm"
-                            :placeholder="t('admin.settings.platformQuota.placeholder')"
-                          />
-                        </td>
-                        <td class="pr-4 py-1">
-                          <input
-                            v-model.number="form.default_platform_quotas[p]!.weekly"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            class="input h-8 w-28 text-sm"
-                            :placeholder="t('admin.settings.platformQuota.placeholder')"
-                          />
-                        </td>
-                        <td class="py-1">
-                          <input
-                            v-model.number="form.default_platform_quotas[p]!.monthly"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            class="input h-8 w-28 text-sm"
-                            :placeholder="t('admin.settings.platformQuota.placeholder')"
-                          />
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <!-- /全局平台限额矩阵 -->
             </div>
           </div>
 
@@ -4273,7 +4210,7 @@
             </div>
             <div class="space-y-6 p-6">
               <div
-                class="flex items-center justify-between rounded border border-gray-200 px-4 py-3 dark:border-dark-700"
+                class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
               >
                 <div>
                   <label class="font-medium text-gray-900 dark:text-white">
@@ -4290,7 +4227,7 @@
                 <div
                   v-for="authSource in authSourceDefaultsMeta"
                   :key="authSource.source"
-                  class="rounded-xl border border-gray-200 p-4 dark:border-dark-700"
+                  class="rounded-surface border border-gray-200 p-4 dark:border-dark-700"
                 >
                   <div class="flex items-center justify-between gap-4">
                     <div>
@@ -4355,7 +4292,7 @@
                     </div>
 
                     <div
-                      class="flex items-center justify-between rounded border border-gray-200 px-4 py-3 dark:border-dark-700"
+                      class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
                     >
                       <div>
                         <label
@@ -4407,7 +4344,7 @@
                         authSourceDefaults[authSource.source].subscriptions
                           .length === 0
                       "
-                      class="rounded border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
+                      class="rounded-compact border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
                     >
                       {{ t("admin.settings.authSourceDefaults.noSourceSubscriptions") }}
                     </div>
@@ -4418,7 +4355,7 @@
                           authSource.source
                         ].subscriptions"
                         :key="`${authSource.source}-sub-${index}`"
-                        class="grid grid-cols-1 gap-3 rounded border border-gray-200 p-3 md:grid-cols-[1fr_auto] dark:border-dark-600"
+                        class="grid grid-cols-1 gap-3 rounded-compact border border-gray-200 p-3 md:grid-cols-[1fr_auto] dark:border-dark-600"
                       >
                         <div>
                           <label
@@ -4428,7 +4365,7 @@
                           </label>
                           <Select
                             v-model="item.plan_id"
-                            class="default-sub-group-select"
+
                             :options="defaultSubscriptionPlanOptions"
                             :placeholder="
                               t('admin.settings.defaults.subscriptionGroup')
@@ -4451,68 +4388,6 @@
                         </div>
                       </div>
                     </div>
-
-                    <!-- ★ 新增：auth source 平台限额覆盖区块 -->
-                    <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
-                      <div class="mb-3">
-                        <label class="font-medium text-gray-900 dark:text-white">
-                          {{ t("admin.settings.authSourceDefaults.platformQuotasOverride") }}
-                        </label>
-                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.authSourceDefaults.platformQuotasOverrideHint") }}
-                        </p>
-                      </div>
-                      <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
-                          <thead>
-                            <tr class="text-left text-xs text-gray-500 dark:text-gray-400">
-                              <th class="pb-2 pr-4 font-medium">{{ t("admin.settings.platformQuota.platform") }}</th>
-                              <th class="pb-2 pr-4 font-medium">{{ t("admin.settings.platformQuota.daily") }}</th>
-                              <th class="pb-2 pr-4 font-medium">{{ t("admin.settings.platformQuota.weekly") }}</th>
-                              <th class="pb-2 font-medium">{{ t("admin.settings.platformQuota.monthly") }}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr v-for="p in (['anthropic', 'openai', 'gemini', 'antigravity', 'qoder', 'grok', 'kimi', 'zhipu', 'deepseek', 'minimax', 'opencode_go'] as const)" :key="`${authSource.source}-pq-${p}`" class="align-top">
-                              <td class="pr-4 py-1">
-                                <span class="font-mono text-xs text-gray-700 dark:text-gray-300">{{ p }}</span>
-                              </td>
-                              <td class="pr-4 py-1">
-                                <input
-                                  v-model.number="authSourceDefaults[authSource.source].platform_quotas[p]!.daily"
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  class="input h-8 w-28 text-sm"
-                                  :placeholder="t('admin.settings.platformQuota.placeholder')"
-                                />
-                              </td>
-                              <td class="pr-4 py-1">
-                                <input
-                                  v-model.number="authSourceDefaults[authSource.source].platform_quotas[p]!.weekly"
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  class="input h-8 w-28 text-sm"
-                                  :placeholder="t('admin.settings.platformQuota.placeholder')"
-                                />
-                              </td>
-                              <td class="py-1">
-                                <input
-                                  v-model.number="authSourceDefaults[authSource.source].platform_quotas[p]!.monthly"
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  class="input h-8 w-28 text-sm"
-                                  :placeholder="t('admin.settings.platformQuota.placeholder')"
-                                />
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    <!-- /auth source 平台限额覆盖区块 -->
                   </div>
                 </div>
               </div>
@@ -4703,50 +4578,35 @@
                 v-show="activeGatewaySection === 'general'"
                 data-testid="gateway-scheduling-general"
               >
-                <div class="flex items-center justify-between">
-                  <div>
-                    <label
-                      class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.scheduling.allowUngroupedKey") }}
-                    </label>
-                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.scheduling.allowUngroupedKeyHint") }}
-                    </p>
-                  </div>
-                  <Toggle
-                    v-model="form.allow_ungrouped_key_scheduling"
-                    data-testid="gateway-allow-ungrouped-key"
-                  />
-                </div>
+
 
                 <div class="mt-5 border-t border-gray-100 pt-5 dark:border-dark-700">
                   <div class="mb-3">
                     <label class="font-medium text-gray-900 dark:text-white">
                       {{
                         t(
-                          "admin.settings.scheduling.accountSchedulingThresholdsTitle",
+                          "admin.settings.scheduling.providerSchedulingThresholdsTitle",
                         )
                       }}
                     </label>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                       {{
                         t(
-                          "admin.settings.scheduling.accountSchedulingThresholdsDescription",
+                          "admin.settings.scheduling.providerSchedulingThresholdsDescription",
                         )
                       }}
                     </p>
                     <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                       {{
                         t(
-                          "admin.settings.scheduling.accountSchedulingThresholdsGlobalHint",
+                          "admin.settings.scheduling.providerSchedulingThresholdsGlobalHint",
                         )
                       }}
                     </p>
                     <p class="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
                       {{
                         t(
-                          "admin.settings.scheduling.accountSchedulingThresholdsDisabledHint",
+                          "admin.settings.scheduling.providerSchedulingThresholdsDisabledHint",
                         )
                       }}
                     </p>
@@ -4755,7 +4615,7 @@
                     <div
                       v-for="platform in schedulingThresholdPlatforms"
                       :key="platform"
-                      class="rounded-lg border border-gray-200 p-4 dark:border-dark-700"
+                      class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
                     >
                       <div class="flex items-start justify-between gap-3">
                         <div>
@@ -4767,25 +4627,25 @@
                           <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                             {{
                               t(
-                                "admin.settings.scheduling.accountSchedulingThresholdsRangeHint",
+                                "admin.settings.scheduling.providerSchedulingThresholdsRangeHint",
                               )
                             }}
                           </p>
                         </div>
                         <span
-                          class="rounded bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-dark-700 dark:text-gray-300"
+                          class="rounded-compact bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-dark-700 dark:text-gray-300"
                         >
                           %
                         </span>
                       </div>
                       <input
-                        v-model.number="form.account_scheduling_thresholds[platform]"
+                        v-model.number="form.provider_scheduling_thresholds[platform]"
                         type="number"
                         min="1"
                         max="100"
                         step="1"
                         class="input mt-3"
-                        :data-testid="`account-scheduling-threshold-${platform}`"
+                        :data-testid="`provider-scheduling-threshold-${platform}`"
                         placeholder="100"
                       />
                     </div>
@@ -4865,7 +4725,7 @@
                     <template #trigger>
                       <button
                         type="button"
-                        class="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:text-gray-500 dark:hover:bg-dark-800 dark:hover:text-primary-400"
+                        class="inline-flex h-7 w-7 items-center justify-center rounded-control text-gray-400 transition-colors hover:bg-gray-100 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:text-gray-500 dark:hover:bg-dark-800 dark:hover:text-primary-400"
                         :aria-label="t('admin.settings.scheduling.advancedHelp.trigger')"
                         :title="t('admin.settings.scheduling.advancedHelp.trigger')"
                       >
@@ -4879,7 +4739,7 @@
                       <p class="text-gray-200">
                         {{ t("admin.settings.scheduling.advancedHelp.summary") }}
                       </p>
-                      <p class="rounded-md bg-white/5 px-2 py-1.5 text-[11px] text-gray-200">
+                      <p class="rounded-control bg-white/5 px-2 py-1.5 text-xs text-gray-200">
                         {{ t("admin.settings.scheduling.advancedHelp.formula") }}
                       </p>
                       <ol class="list-decimal space-y-2 pl-4 text-gray-200">
@@ -5524,7 +5384,7 @@
 
               <div
                 v-if="form.user_prompt_replacement_config.rules.length === 0"
-                class="rounded-lg border border-dashed border-gray-300 p-4 text-center text-sm text-gray-400 dark:border-dark-600"
+                class="rounded-control border border-dashed border-gray-300 p-4 text-center text-sm text-gray-400 dark:border-dark-600"
               >
                 {{ t("admin.settings.userPromptReplacement.empty") }}
               </div>
@@ -5532,7 +5392,7 @@
               <div
                 v-for="(rule, index) in form.user_prompt_replacement_config.rules"
                 :key="rule.id || index"
-                class="rounded-lg border border-gray-200 p-4 dark:border-dark-600"
+                class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
               >
                 <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div class="flex min-w-0 flex-1 items-center gap-3">
@@ -5688,7 +5548,7 @@
 
                 <div
                   v-if="webSearchConfig.providers.length === 0"
-                  class="rounded-lg border border-dashed border-gray-300 p-4 text-center text-sm text-gray-400 dark:border-dark-600"
+                  class="rounded-control border border-dashed border-gray-300 p-4 text-center text-sm text-gray-400 dark:border-dark-600"
                 >
                   {{ t("admin.settings.webSearchEmulation.noProviders") }}
                 </div>
@@ -5696,7 +5556,7 @@
                 <div
                   v-for="(provider, pIdx) in webSearchConfig.providers"
                   :key="pIdx"
-                  class="rounded-lg border border-gray-200 dark:border-dark-600"
+                  class="rounded-control border border-gray-200 dark:border-dark-600"
                 >
                   <!-- Collapsible header -->
                   <div
@@ -5796,7 +5656,7 @@
                         >
                           <button
                             type="button"
-                            class="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            class="rounded-compact p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                             :title="
                               apiKeyVisible[pIdx]
                                 ? t(
@@ -5845,7 +5705,7 @@
                           </button>
                           <button
                             type="button"
-                            class="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            class="rounded-compact p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                             :class="{
                               'opacity-30 cursor-not-allowed':
                                 !provider.api_key,
@@ -5995,87 +5855,81 @@
           </div>
 
           <!-- Web Search Test Dialog -->
-          <div
-            v-if="wsTestDialogOpen"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-            @click.self="wsTestDialogOpen = false"
+          <BaseDialog
+            :show="wsTestDialogOpen"
+            :title="t('admin.settings.webSearchEmulation.testResultTitle')"
+            width="normal"
+            close-on-click-outside
+            @close="wsTestDialogOpen = false"
           >
-            <div
-              class="mx-4 w-full max-w-lg rounded-surface bg-white p-6 shadow-xl dark:bg-dark-800 sm:rounded-dialog"
-            >
-              <h3
-                class="mb-4 text-lg font-semibold text-gray-900 dark:text-white"
-              >
-                {{ t("admin.settings.webSearchEmulation.testResultTitle") }}
-              </h3>
-              <div class="flex items-center gap-2">
-                <input
-                  v-model="wsTestQuery"
-                  type="text"
-                  class="input flex-1 text-sm"
-                  :placeholder="
-                    t('admin.settings.webSearchEmulation.testDefaultQuery')
-                  "
-                  @keyup.enter="testWebSearchProvider()"
-                />
-                <button
-                  type="button"
-                  class="btn btn-primary btn-sm h-9"
-                  :disabled="wsTestLoading"
-                  @click="testWebSearchProvider()"
-                >
-                  {{
-                    wsTestLoading
-                      ? t("admin.settings.webSearchEmulation.testing")
-                      : t("admin.settings.webSearchEmulation.test")
-                  }}
-                </button>
-              </div>
-              <!-- Test results -->
-              <div
-                v-if="wsTestResult"
-                class="mt-4 max-h-80 overflow-y-auto rounded-lg bg-gray-50 p-4 dark:bg-dark-700"
-              >
-                <p
-                  class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{
-                    t("admin.settings.webSearchEmulation.testResultProvider")
-                  }}: {{ wsTestResult.provider }}
-                </p>
-                <div
-                  v-if="wsTestResult.results.length === 0"
-                  class="text-sm text-gray-400"
-                >
-                  {{ t("admin.settings.webSearchEmulation.testNoResults") }}
-                </div>
-                <div
-                  v-for="(r, rIdx) in wsTestResult.results"
-                  :key="rIdx"
-                  class="mt-2 border-t border-gray-200 pt-2 first:mt-0 first:border-0 first:pt-0 dark:border-dark-600"
-                >
-                  <a
-                    :href="r.url"
-                    target="_blank"
-                    class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
-                    >{{ r.title }}</a
-                  >
-                  <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ r.snippet }}
-                  </p>
-                </div>
-              </div>
-              <div class="mt-4 flex justify-end">
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm h-9"
-                  @click="wsTestDialogOpen = false"
-                >
-                  {{ t("common.close") }}
-                </button>
-              </div>
-            </div>
+        <div class="flex items-center gap-2">
+          <input
+            v-model="wsTestQuery"
+            type="text"
+            class="input flex-1 text-sm"
+            :placeholder="
+              t('admin.settings.webSearchEmulation.testDefaultQuery')
+            "
+            @keyup.enter="testWebSearchProvider()"
+          />
+          <button
+            type="button"
+            class="btn btn-primary btn-sm h-9"
+            :disabled="wsTestLoading"
+            @click="testWebSearchProvider()"
+          >
+            {{
+              wsTestLoading
+                ? t("admin.settings.webSearchEmulation.testing")
+                : t("admin.settings.webSearchEmulation.test")
+            }}
+          </button>
+        </div>
+        <!-- Test results -->
+        <div
+          v-if="wsTestResult"
+          class="mt-4 max-h-80 overflow-y-auto rounded-control bg-gray-50 p-4 dark:bg-dark-700"
+        >
+          <p
+            class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            {{
+              t("admin.settings.webSearchEmulation.testResultProvider")
+            }}: {{ wsTestResult.provider }}
+          </p>
+          <div
+            v-if="wsTestResult.results.length === 0"
+            class="text-sm text-gray-400"
+          >
+            {{ t("admin.settings.webSearchEmulation.testNoResults") }}
           </div>
+          <div
+            v-for="(r, rIdx) in wsTestResult.results"
+            :key="rIdx"
+            class="mt-2 border-t border-gray-200 pt-2 first:mt-0 first:border-0 first:pt-0 dark:border-dark-600"
+          >
+            <a
+              :href="r.url"
+              target="_blank"
+              class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+              >{{ r.title }}</a
+            >
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              {{ r.snippet }}
+            </p>
+          </div>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm h-9"
+            @click="wsTestDialogOpen = false"
+          >
+            {{ t("common.close") }}
+          </button>
+        </div>
+          </BaseDialog>
+
 
         <!-- 用量记录设置 -->
         <div
@@ -6102,10 +5956,7 @@
                   {{ t('admin.settings.user_error_view.description') }}
                 </p>
               </div>
-              <label class="toggle">
-                <input v-model="form.allow_user_view_error_requests" type="checkbox" />
-                <span class="toggle-slider"></span>
-              </label>
+              <Toggle v-model="form.allow_user_view_error_requests" />
             </div>
           </div>
         </div>
@@ -6187,7 +6038,7 @@
                   </p>
                 </div>
                 <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 dark:border-dark-600">
+                  <div class="flex items-center justify-between rounded-control border border-gray-200 px-4 py-3 dark:border-dark-600">
                     <span class="text-sm text-gray-700 dark:text-gray-300">
                       {{ t("admin.settings.usageRanking.totalTokens") }}
                     </span>
@@ -6197,7 +6048,7 @@
                       :disabled="!form.usage_ranking_enabled || form.usage_ranking_sort_by === 'total_tokens'"
                     />
                   </div>
-                  <div class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 dark:border-dark-600">
+                  <div class="flex items-center justify-between rounded-control border border-gray-200 px-4 py-3 dark:border-dark-600">
                     <span class="text-sm text-gray-700 dark:text-gray-300">
                       {{ t("admin.settings.usageRanking.requests") }}
                     </span>
@@ -6207,7 +6058,7 @@
                       :disabled="!form.usage_ranking_enabled || form.usage_ranking_sort_by === 'requests'"
                     />
                   </div>
-                  <div class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 dark:border-dark-600">
+                  <div class="flex items-center justify-between rounded-control border border-gray-200 px-4 py-3 dark:border-dark-600">
                     <span class="text-sm text-gray-700 dark:text-gray-300">
                       {{ t("admin.settings.usageRanking.actualCost") }}
                     </span>
@@ -6308,13 +6159,13 @@
                 </div>
               </div>
 
-              <div class="rounded-2xl border border-primary-100 bg-primary-50/60 p-5 dark:border-primary-900/40 dark:bg-primary-900/10">
+              <div class="rounded-surface border border-primary-100 bg-primary-50/60 p-5 dark:border-primary-900/40 dark:bg-primary-900/10">
                 <p class="text-xs font-medium uppercase tracking-[0.18em] text-primary-600 dark:text-primary-300">
                   {{ t('admin.settings.balanceDisplay.previewLabel') }}
                 </p>
-                <div class="mt-4 rounded-2xl bg-white p-4 shadow-sm dark:bg-dark-800">
+                <div class="mt-4 rounded-surface bg-white p-4 shadow-sm dark:bg-dark-800">
                   <div class="flex items-center gap-3">
-                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">
+                    <div class="flex h-11 w-11 items-center justify-center rounded-surface bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">
                       <BalanceIcon
                         :svg="form.balance_icon_svg"
                         :use-global-fallback="false"
@@ -6414,7 +6265,7 @@
             <div class="space-y-6 p-6">
               <!-- Backend Mode -->
               <div
-                class="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20"
+                class="flex items-center justify-between rounded-control border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20"
               >
                 <div>
                   <h3 class="text-sm font-medium text-gray-900 dark:text-white">
@@ -6610,7 +6461,7 @@
                   <div
                     v-for="(ep, index) in form.custom_endpoints"
                     :key="index"
-                    class="rounded-lg border border-gray-200 p-4 dark:border-dark-600"
+                    class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
                   >
                     <div class="mb-3 flex items-center justify-between">
                       <span
@@ -6624,7 +6475,7 @@
                       </span>
                       <button
                         type="button"
-                        class="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                        class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                         @click="removeEndpoint(index)"
                       >
                         <svg
@@ -6706,7 +6557,7 @@
 
                 <button
                   type="button"
-                  class="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
+                  class="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 px-4 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
                   @click="addEndpoint"
                 >
                   <svg
@@ -6835,7 +6686,7 @@
               <div
                 v-for="(item, index) in form.custom_menu_items"
                 :key="item.id || index"
-                class="rounded-lg border border-gray-200 p-4 dark:border-dark-600"
+                class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
               >
                 <div class="mb-3 flex items-center justify-between">
                   <span
@@ -6850,7 +6701,7 @@
                     <button
                       v-if="index > 0"
                       type="button"
-                      class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
+                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
                       :title="t('admin.settings.customMenu.moveUp')"
                       @click="moveMenuItem(index, -1)"
                     >
@@ -6872,7 +6723,7 @@
                     <button
                       v-if="index < form.custom_menu_items.length - 1"
                       type="button"
-                      class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
+                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
                       :title="t('admin.settings.customMenu.moveDown')"
                       @click="moveMenuItem(index, 1)"
                     >
@@ -6893,7 +6744,7 @@
                     <!-- Delete -->
                     <button
                       type="button"
-                      class="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                      class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                       :title="t('admin.settings.customMenu.remove')"
                       @click="removeMenuItem(index)"
                     >
@@ -6981,7 +6832,7 @@
               <!-- Add button -->
               <button
                 type="button"
-                class="flex h-9 w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
+                class="flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
                 @click="addMenuItem"
               >
                 <svg
@@ -7045,7 +6896,7 @@
                 <button
                   v-if="mIndex > 0"
                   type="button"
-                  class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
+                  class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
                   :title="t('admin.settings.customMenu.moveUp')"
                   @click="moveHomeFeaturedModel(mIndex, -1)"
                 >
@@ -7056,7 +6907,7 @@
                 <button
                   v-if="mIndex < form.home_featured_models.length - 1"
                   type="button"
-                  class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
+                  class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
                   :title="t('admin.settings.customMenu.moveDown')"
                   @click="moveHomeFeaturedModel(mIndex, 1)"
                 >
@@ -7066,7 +6917,7 @@
                 </button>
                 <button
                   type="button"
-                  class="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                  class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                   :title="localText('删除模型', 'Remove model')"
                   @click="removeHomeFeaturedModel(mIndex)"
                 >
@@ -7079,7 +6930,7 @@
               <!-- Add model button -->
               <button
                 type="button"
-                class="flex h-9 w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
+                class="flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
                 :disabled="form.home_featured_models.length >= homeFeaturedModelsMax"
                 @click="form.home_featured_models.push('')"
               >
@@ -7128,7 +6979,7 @@
               <div
                 v-for="(group, gIndex) in form.footer_links"
                 :key="gIndex"
-                class="rounded-lg border border-gray-200 p-4 dark:border-dark-600"
+                class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
               >
                 <div class="mb-3 flex items-center justify-between gap-3">
                   <input
@@ -7141,7 +6992,7 @@
                     <button
                       v-if="gIndex > 0"
                       type="button"
-                      class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
+                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
                       :title="t('admin.settings.customMenu.moveUp')"
                       @click="moveFooterGroup(gIndex, -1)"
                     >
@@ -7152,7 +7003,7 @@
                     <button
                       v-if="gIndex < form.footer_links.length - 1"
                       type="button"
-                      class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
+                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
                       :title="t('admin.settings.customMenu.moveDown')"
                       @click="moveFooterGroup(gIndex, 1)"
                     >
@@ -7162,7 +7013,7 @@
                     </button>
                     <button
                       type="button"
-                      class="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                      class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                       :title="localText('删除分组', 'Remove group')"
                       @click="removeFooterGroup(gIndex)"
                     >
@@ -7193,7 +7044,7 @@
                     />
                     <button
                       type="button"
-                      class="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                      class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                       :title="localText('删除链接', 'Remove link')"
                       @click="group.links.splice(lIndex, 1)"
                     >
@@ -7218,7 +7069,7 @@
               <!-- Add group button -->
               <button
                 type="button"
-                class="flex h-9 w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
+                class="flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
                 @click="addFooterGroup"
               >
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -7277,10 +7128,10 @@
                   <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                     {{ localText("展示形式", "Display mode") }}
                   </label>
-                  <div class="grid grid-cols-2 gap-2 rounded-lg bg-gray-100 p-1 dark:bg-dark-700">
+                  <div class="grid grid-cols-2 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700">
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
+                      class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
                       :class="
                         form.login_agreement_mode === 'modal'
                           ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
@@ -7293,7 +7144,7 @@
                     </button>
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
+                      class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
                       :class="
                         form.login_agreement_mode === 'checkbox'
                           ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
@@ -7358,11 +7209,11 @@
                   <div
                     v-for="(doc, index) in form.login_agreement_documents"
                     :key="doc.id || index"
-                    class="rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800/60"
+                    class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800/60"
                   >
                     <div class="mb-3 flex items-center justify-between gap-3">
                       <div class="flex min-w-0 items-center gap-3">
-                        <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
+                        <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
                           <Icon
                             :name="
                               index === 1
@@ -7387,7 +7238,7 @@
                       </div>
                       <button
                         type="button"
-                        class="rounded-md p-2 text-red-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-900/20"
+                        class="rounded-control p-2 text-red-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-900/20"
                         :disabled="
                           form.login_agreement_enabled &&
                           form.login_agreement_documents.length <= 1
@@ -7414,7 +7265,7 @@
                         <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
                           {{ localText("路由标识", "Route slug") }}
                         </label>
-                        <div class="flex overflow-hidden rounded-lg border border-primary-900/10 bg-white focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:border-dark-600 dark:bg-dark-900 dark:focus-within:border-primary-500 dark:focus-within:ring-primary-500">
+                        <div class="flex overflow-hidden rounded-control border border-primary-900/10 bg-white focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:border-dark-600 dark:bg-dark-900 dark:focus-within:border-primary-500 dark:focus-within:ring-primary-500">
                           <span class="inline-flex flex-shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-400">
                             /legal/
                           </span>
@@ -7577,7 +7428,7 @@
                 <!-- 模型能力列表：列头与行共用同一网格分栏，模型选择、能力开关、删除操作对齐，避免行内松散留白。 -->
                 <div
                   v-if="form.creative_model_settings.length > 0"
-                  class="mt-4 overflow-hidden rounded-xl border border-gray-200 dark:border-dark-600"
+                  class="mt-4 overflow-hidden rounded-surface border border-gray-200 dark:border-dark-600"
                 >
                   <div
                     class="hidden items-center gap-4 border-b border-gray-100 bg-gray-50 px-4 py-2 text-xs font-medium text-gray-500 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto] dark:border-dark-700 dark:bg-dark-800/60 dark:text-dark-300"
@@ -7640,7 +7491,7 @@
                 </div>
                 <p
                   v-else
-                  class="mt-4 flex items-center justify-center gap-2 rounded-xl border border-dashed border-gray-200 px-4 py-6 text-sm text-gray-500 dark:border-dark-600 dark:text-dark-300"
+                  class="mt-4 flex items-center justify-center gap-2 rounded-surface border border-dashed border-gray-200 px-4 py-6 text-sm text-gray-500 dark:border-dark-600 dark:text-dark-300"
                 >
                   <Icon name="infoCircle" size="sm" />
                   {{ t("admin.settings.features.creative.modelSettings.empty") }}
@@ -7913,7 +7764,7 @@
                       t("admin.settings.payment.preview")
                     }}</label>
                     <div
-                      class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300"
+                      class="rounded-control border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300"
                     >
                       {{
                         (form.payment_product_name_prefix || "Sub2API") +
@@ -8089,7 +7940,7 @@
                     </p>
                   </div>
                   <div class="col-span-2 sm:col-span-5">
-                    <div class="rounded-lg border border-gray-200 dark:border-dark-700">
+                    <div class="rounded-control border border-gray-200 dark:border-dark-700">
                       <div class="border-b border-gray-100 px-4 py-3 dark:border-dark-700">
                         <p
                           class="text-sm font-semibold text-gray-900 dark:text-white"
@@ -8123,7 +7974,7 @@
                           >
                             <input
                               type="checkbox"
-                              class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                              class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
                               :checked="methodFeeEnabled(method.value)"
                               @change="setMethodFeeEnabled(method.value, ($event.target as HTMLInputElement).checked)"
                             />
@@ -8143,7 +7994,7 @@
                                 type="number"
                                 step="0.01"
                                 min="0"
-                                class="input h-9 w-full pl-8"
+                                class="input w-full pl-8"
                                 :disabled="!methodFeeEnabled(method.value)"
                                 :value="methodFeeValue(method.value, 'fixed_fee')"
                                 @input="setMethodFeeValue(method.value, 'fixed_fee', ($event.target as HTMLInputElement).value)"
@@ -8161,7 +8012,7 @@
                                 step="0.01"
                                 min="0"
                                 max="100"
-                                class="input h-9 w-full pr-8"
+                                class="input w-full pr-8"
                                 :disabled="!methodFeeEnabled(method.value)"
                                 :value="methodFeeValue(method.value, 'fee_rate')"
                                 @input="setMethodFeeValue(method.value, 'fee_rate', ($event.target as HTMLInputElement).value)"
@@ -8238,28 +8089,7 @@
                       t("admin.settings.payment.cancelRateLimit")
                     }}</label>
                     <div class="flex items-center gap-2">
-                      <button
-                        type="button"
-                        :class="[
-                          'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                          form.payment_cancel_rate_limit_enabled
-                            ? 'bg-primary-500'
-                            : 'bg-gray-300 dark:bg-dark-600',
-                        ]"
-                        @click="
-                          form.payment_cancel_rate_limit_enabled =
-                            !form.payment_cancel_rate_limit_enabled
-                        "
-                      >
-                        <span
-                          :class="[
-                            'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                            form.payment_cancel_rate_limit_enabled
-                              ? 'translate-x-5'
-                              : 'translate-x-0',
-                          ]"
-                        />
-                      </button>
+                      <Toggle v-model="form.payment_cancel_rate_limit_enabled" variant="flush" on-class="bg-primary-500" />
                       <Select
                         v-model="form.payment_cancel_rate_limit_window_mode"
                         :options="cancelRateLimitModeOptions"
@@ -8328,28 +8158,12 @@
                       t("admin.settings.payment.alipayForceQRCode")
                     }}</label>
                     <div class="flex items-center gap-2">
-                      <button
-                        type="button"
-                        :class="[
-                          'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                          form.payment_alipay_force_qrcode
-                            ? 'bg-primary-500'
-                            : 'bg-gray-300 dark:bg-dark-600',
-                        ]"
-                        @click="
-                          form.payment_alipay_force_qrcode =
-                            !form.payment_alipay_force_qrcode
-                        "
-                      >
-                        <span
-                          :class="[
-                            'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                            form.payment_alipay_force_qrcode
-                              ? 'translate-x-5'
-                              : 'translate-x-0',
-                          ]"
-                        />
-                      </button>
+                      <Toggle
+                        :model-value="!!form.payment_alipay_force_qrcode"
+                        variant="flush"
+                        on-class="bg-primary-500"
+                        @update:model-value="form.payment_alipay_force_qrcode = $event"
+                      />
                       <span class="text-sm text-gray-500 dark:text-gray-400">{{
                         t("admin.settings.payment.alipayForceQRCodeHint")
                       }}</span>
@@ -8360,28 +8174,12 @@
                       t("admin.settings.payment.alipayMobilePrecreateDeepLink")
                     }}</label>
                     <div class="flex items-center gap-2">
-                      <button
-                        type="button"
-                        :class="[
-                          'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                          form.payment_alipay_mobile_precreate_deep_link
-                            ? 'bg-primary-500'
-                            : 'bg-gray-300 dark:bg-dark-600',
-                        ]"
-                        @click="
-                          form.payment_alipay_mobile_precreate_deep_link =
-                            !form.payment_alipay_mobile_precreate_deep_link
-                        "
-                      >
-                        <span
-                          :class="[
-                            'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                            form.payment_alipay_mobile_precreate_deep_link
-                              ? 'translate-x-5'
-                              : 'translate-x-0',
-                          ]"
-                        />
-                      </button>
+                      <Toggle
+                        :model-value="!!form.payment_alipay_mobile_precreate_deep_link"
+                        variant="flush"
+                        on-class="bg-primary-500"
+                        @update:model-value="form.payment_alipay_mobile_precreate_deep_link = $event"
+                      />
                       <span class="text-sm text-gray-500 dark:text-gray-400">{{
                         t("admin.settings.payment.alipayMobilePrecreateDeepLinkHint")
                       }}</span>
@@ -8400,7 +8198,7 @@
                       type="button"
                       @click="togglePaymentType(pt.value)"
                       :class="[
-                        'rounded-lg border px-3 py-1.5 text-sm font-medium transition-all',
+                        'rounded-control border px-3 py-1.5 text-sm font-medium transition-all',
                         isPaymentTypeEnabled(pt.value)
                           ? 'border-primary-600 bg-primary-600 text-white shadow-sm'
                           : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-dark-500',
@@ -8800,14 +8598,14 @@
                 >
                 <div class="relative">
                   <span
-                    class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    class="input-icon text-gray-400"
                     >{{ previewBalanceUnitSymbol }}</span>
                   <input
                     v-model.number="form.balance_low_notify_threshold"
                     type="number"
                     min="0"
                     step="0.01"
-                    class="input pl-7"
+                    class="input input-has-icon input-icon-text"
                   />
                 </div>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -8832,7 +8630,7 @@
             </div>
           </div>
 
-          <!-- Account Quota Notification -->
+          <!-- Provider Quota Notification -->
           <div class="card">
             <div
               class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
@@ -8850,16 +8648,16 @@
                   class="mb-0 block text-sm font-medium text-gray-700 dark:text-gray-300"
                   >{{ t("admin.settings.quotaNotify.enabled") }}</label
                 >
-                <Toggle v-model="form.account_quota_notify_enabled" />
+                <Toggle v-model="form.provider_quota_notify_enabled" />
               </div>
-              <div v-if="form.account_quota_notify_enabled">
+              <div v-if="form.provider_quota_notify_enabled">
                 <label
                   class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                   >{{ t("admin.settings.quotaNotify.emails") }}</label
                 >
                 <div class="space-y-2">
                   <div
-                    v-for="(entry, index) in form.account_quota_notify_emails ||
+                    v-for="(entry, index) in form.provider_quota_notify_emails ||
                     []"
                     :key="index"
                     class="flex items-center gap-2"
@@ -8867,15 +8665,12 @@
                     <label
                       class="relative inline-flex items-center cursor-pointer shrink-0"
                     >
-                      <input
-                        type="checkbox"
-                        :checked="!entry.disabled"
-                        @change="entry.disabled = !entry.disabled"
-                        class="sr-only peer"
+                      <Toggle
+                        :model-value="!entry.disabled"
+                        size="sm"
+                        off-class="bg-gray-200 dark:bg-gray-600"
+                        @update:model-value="entry.disabled = !entry.disabled"
                       />
-                      <div
-                        class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:after:border-gray-500 peer-checked:bg-primary-600"
-                      ></div>
                     </label>
                     <input
                       v-model="entry.email"
@@ -8886,7 +8681,7 @@
                       "
                     />
                     <button
-                      @click="form.account_quota_notify_emails.splice(index, 1)"
+                      @click="form.provider_quota_notify_emails.splice(index, 1)"
                       class="btn btn-secondary px-2"
                       type="button"
                     >
@@ -8982,6 +8777,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveSiteBillingMode, billingModeToSettings, type SiteBillingMode } from "@/utils/siteBillingMode"
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
@@ -8989,10 +8785,8 @@ import { adminAPI } from "@/api";
 import {
   appendAuthSourceDefaultsToUpdateRequest,
   buildAuthSourceDefaultsState,
-  normalizeAccountSchedulingThresholdsMap,
-  normalizePlatformQuotasMap,
-  sanitizeAccountSchedulingThresholdsMap,
-  sanitizePlatformQuotasMap,
+  normalizeProviderSchedulingThresholdsMap,
+  sanitizeProviderSchedulingThresholdsMap,
   SCHEDULING_THRESHOLD_PLATFORMS,
   defaultWeChatConnectScopesForMode,
   deriveWeChatConnectStoredMode,
@@ -9005,7 +8799,6 @@ import type {
   SystemSettings,
   UpdateSettingsRequest,
   DefaultSubscriptionSetting,
-  DefaultPlatformQuotasMap,
   OpenAIFastPolicyRule,
   WeChatConnectMode,
   WebSearchEmulationConfig,
@@ -9029,7 +8822,7 @@ import Icon from "@/components/icons/Icon.vue";
 import HelpTooltip from "@/components/common/HelpTooltip.vue";
 import ProviderIcon from "@/components/common/ProviderIcon.vue";
 import Select from "@/components/common/Select.vue";
-import { resolveSiteBillingMode, billingModeToSettings, type SiteBillingMode } from "@/utils/siteBillingMode";
+import BaseDialog from "@/components/common/BaseDialog.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import PaymentProviderList from "@/components/payment/PaymentProviderList.vue";
 import PaymentProviderDialog from "@/components/payment/PaymentProviderDialog.vue";
@@ -9038,7 +8831,7 @@ import CodexTicketSettings from "@/components/admin/settings/CodexTicketSettings
 import ProxySelector from "@/components/common/ProxySelector.vue";
 import ImageUpload from "@/components/common/ImageUpload.vue";
 import BalanceIcon from "@/components/common/BalanceIcon.vue";
-import OpenAIOAuthImportDefaultsSettings from "@/components/admin/account/OpenAIOAuthImportDefaultsSettings.vue";
+import OpenAIOAuthImportDefaultsSettings from "@/components/admin/provider/OpenAIOAuthImportDefaultsSettings.vue";
 import BackupSettings from "@/views/admin/BackupView.vue";
 import { useBalanceDisplay } from "@/composables/useBalanceDisplay";
 import EmailTemplateEditor from "@/views/admin/settings/EmailTemplateEditor.vue";
@@ -9660,10 +9453,9 @@ type SettingsForm = Omit<
   advanced_scheduler_weight_quota_headroom: string;
   advanced_scheduler_weight_previous_response: string;
   advanced_scheduler_weight_session_sticky: string;
-  openai_account_quota_auto_pause: OpenAIQuotaAutoPauseSettings;
+  openai_provider_quota_auto_pause: OpenAIQuotaAutoPauseSettings;
   // 系统全局平台限额 map；form 内始终归一化为全平台对象（模板非空绑定依赖此不变量）
-  default_platform_quotas: DefaultPlatformQuotasMap;
-  account_scheduling_thresholds: ReturnType<typeof normalizeAccountSchedulingThresholdsMap>;
+  provider_scheduling_thresholds: ReturnType<typeof normalizeProviderSchedulingThresholdsMap>;
 };
 
 const schedulingThresholdPlatforms = SCHEDULING_THRESHOLD_PLATFORMS;
@@ -9689,8 +9481,7 @@ const form = reactive<SettingsForm>({
   login_agreement_documents: defaultLoginAgreementDocuments(),
   default_balance: 0,
   affiliate_enabled: false,
-  default_platform_quotas: normalizePlatformQuotasMap() as DefaultPlatformQuotasMap,
-  account_scheduling_thresholds: normalizeAccountSchedulingThresholdsMap(),
+  provider_scheduling_thresholds: normalizeProviderSchedulingThresholdsMap(),
   affiliate_rebate_rate: 20,
   affiliate_rebate_freeze_hours: 0,
   affiliate_rebate_duration_days: 0,
@@ -9911,7 +9702,6 @@ const form = reactive<SettingsForm>({
   min_claude_code_version: "",
   max_claude_code_version: "",
   // 分组隔离
-  allow_ungrouped_key_scheduling: false,
   advanced_scheduler_sticky_weighted_enabled: false,
   advanced_scheduler_subscription_priority_enabled: false,
   advanced_scheduler_ewma_error_rate_alpha: "",
@@ -9929,7 +9719,7 @@ const form = reactive<SettingsForm>({
   advanced_scheduler_weight_quota_headroom: "",
   advanced_scheduler_weight_previous_response: "",
   advanced_scheduler_weight_session_sticky: "",
-  openai_account_quota_auto_pause: {
+  openai_provider_quota_auto_pause: {
     default_threshold_5h: 0,
     default_threshold_7d: 0,
   },
@@ -9958,13 +9748,13 @@ const form = reactive<SettingsForm>({
   openai_codex_user_agent: "",
   openai_allow_claude_code_codex_plugin: false,
   user_prompt_replacement_config: defaultUserPromptReplacementConfig(),
-  // 余额、订阅到期与账号限额通知
+  // 余额、订阅到期与提供商限额通知
   balance_low_notify_enabled: false,
   balance_low_notify_threshold: 0,
   balance_low_notify_recharge_url: "",
   subscription_expiry_notify_enabled: true,
-  account_quota_notify_enabled: false,
-  account_quota_notify_emails: [] as NotifyEmailEntry[],
+  provider_quota_notify_enabled: false,
+  provider_quota_notify_emails: [] as NotifyEmailEntry[],
   allow_user_view_error_requests: false,
 });
 
@@ -10235,19 +10025,19 @@ function percentToQuotaThreshold(value: number | null): number {
 // OpenAI 配额自动暂停在后端以 0~1 存储，系统设置页按百分比展示。
 const openAIQuotaAutoPause5hPercent = computed<number | null>({
   get() {
-    return quotaThresholdToPercent(form.openai_account_quota_auto_pause?.default_threshold_5h);
+    return quotaThresholdToPercent(form.openai_provider_quota_auto_pause?.default_threshold_5h);
   },
   set(value) {
-    form.openai_account_quota_auto_pause.default_threshold_5h = percentToQuotaThreshold(value);
+    form.openai_provider_quota_auto_pause.default_threshold_5h = percentToQuotaThreshold(value);
   },
 });
 
 const openAIQuotaAutoPause7dPercent = computed<number | null>({
   get() {
-    return quotaThresholdToPercent(form.openai_account_quota_auto_pause?.default_threshold_7d);
+    return quotaThresholdToPercent(form.openai_provider_quota_auto_pause?.default_threshold_7d);
   },
   set(value) {
-    form.openai_account_quota_auto_pause.default_threshold_7d = percentToQuotaThreshold(value);
+    form.openai_provider_quota_auto_pause.default_threshold_7d = percentToQuotaThreshold(value);
   },
 });
 
@@ -10396,7 +10186,7 @@ function selectCaptchaProvider(provider: CaptchaProviderSelection): void {
   applyCaptchaSelection(provider);
 }
 
-// 天御中国站与国际站是两套独立账号体系，控制台与文档入口不通用，
+// 天御中国站与国际站是两套独立提供商体系，控制台与文档入口不通用，
 // 按当前选择的站点给出对应链接，避免管理员在错误的控制台里找不到 CaptchaAppId。
 const tencentCaptchaLinks = computed(() =>
   form.tencent_captcha_region === "intl"
@@ -10975,10 +10765,10 @@ function handleForwardedClientIpHeaderPaste(event: ClipboardEvent) {
 
 // Quota notify email helpers
 const addQuotaNotifyEmail = () => {
-  if (!form.account_quota_notify_emails) {
-    form.account_quota_notify_emails = [];
+  if (!form.provider_quota_notify_emails) {
+    form.provider_quota_notify_emails = [];
   }
-  form.account_quota_notify_emails.push({
+  form.provider_quota_notify_emails.push({
     email: "",
     disabled: false,
     verified: true,
@@ -11408,16 +11198,15 @@ async function loadSettings() {
           }))
         : defaultLoginAgreementDocuments();
     Object.assign(authSourceDefaults, buildAuthSourceDefaultsState(settings));
-    form.default_platform_quotas = normalizePlatformQuotasMap(settings.default_platform_quotas);
     form.user_prompt_replacement_config =
       normalizeUserPromptReplacementConfig(
         settings.user_prompt_replacement_config,
       );
-    form.openai_account_quota_auto_pause = {
+    form.openai_provider_quota_auto_pause = {
       default_threshold_5h:
-        settings.openai_account_quota_auto_pause?.default_threshold_5h ?? 0,
+        settings.openai_provider_quota_auto_pause?.default_threshold_5h ?? 0,
       default_threshold_7d:
-        settings.openai_account_quota_auto_pause?.default_threshold_7d ?? 0,
+        settings.openai_provider_quota_auto_pause?.default_threshold_7d ?? 0,
     };
     form.backend_mode_enabled = settings.backend_mode_enabled;
     form.default_subscriptions = normalizeDefaultSubscriptionSettings(
@@ -11734,10 +11523,10 @@ async function saveSettings() {
       return;
     }
     if (
-      form.openai_account_quota_auto_pause.default_threshold_5h < 0 ||
-      form.openai_account_quota_auto_pause.default_threshold_5h > 1 ||
-      form.openai_account_quota_auto_pause.default_threshold_7d < 0 ||
-      form.openai_account_quota_auto_pause.default_threshold_7d > 1
+      form.openai_provider_quota_auto_pause.default_threshold_5h < 0 ||
+      form.openai_provider_quota_auto_pause.default_threshold_5h > 1 ||
+      form.openai_provider_quota_auto_pause.default_threshold_7d < 0 ||
+      form.openai_provider_quota_auto_pause.default_threshold_7d > 1
     ) {
       appStore.showError(t("admin.settings.openaiQuotaAutoPause.rangeError"));
       return;
@@ -12070,7 +11859,6 @@ async function saveSettings() {
       identity_patch_prompt: form.identity_patch_prompt,
       min_claude_code_version: form.min_claude_code_version,
       max_claude_code_version: form.max_claude_code_version,
-      allow_ungrouped_key_scheduling: form.allow_ungrouped_key_scheduling,
       openai_ttft_mode:
         form.openai_ttft_mode === "visible" ? "visible" : "semantic",
       enable_fingerprint_unification: form.enable_fingerprint_unification,
@@ -12173,13 +11961,13 @@ async function saveSettings() {
         form.advanced_scheduler_weight_previous_response.trim(),
       advanced_scheduler_weight_session_sticky:
         form.advanced_scheduler_weight_session_sticky.trim(),
-      openai_account_quota_auto_pause: {
+      openai_provider_quota_auto_pause: {
         default_threshold_5h:
-          form.openai_account_quota_auto_pause.default_threshold_5h,
+          form.openai_provider_quota_auto_pause.default_threshold_5h,
         default_threshold_7d:
-          form.openai_account_quota_auto_pause.default_threshold_7d,
+          form.openai_provider_quota_auto_pause.default_threshold_7d,
       },
-      // 余额、订阅到期与账号限额通知
+      // 余额、订阅到期与提供商限额通知
       balance_low_notify_enabled: form.balance_low_notify_enabled,
       balance_low_notify_threshold:
         Number(form.balance_low_notify_threshold) || 0,
@@ -12187,9 +11975,9 @@ async function saveSettings() {
         form.balance_low_notify_recharge_url || currentOrigin),
       subscription_expiry_notify_enabled:
         form.subscription_expiry_notify_enabled,
-      account_quota_notify_enabled: form.account_quota_notify_enabled,
-      account_quota_notify_emails: (
-        form.account_quota_notify_emails || []
+      provider_quota_notify_enabled: form.provider_quota_notify_enabled,
+      provider_quota_notify_emails: (
+        form.provider_quota_notify_emails || []
       ).filter((e) => e.email.trim() !== ""),
       allow_user_view_error_requests: form.allow_user_view_error_requests,
     };
@@ -12226,9 +12014,8 @@ async function saveSettings() {
       };
     }
 
-    payload.default_platform_quotas = sanitizePlatformQuotasMap(form.default_platform_quotas);
-    payload.account_scheduling_thresholds = sanitizeAccountSchedulingThresholdsMap(
-      form.account_scheduling_thresholds,
+    payload.provider_scheduling_thresholds = sanitizeProviderSchedulingThresholdsMap(
+      form.provider_scheduling_thresholds,
     );
     appendAuthSourceDefaultsToUpdateRequest(payload, authSourceDefaults);
 
@@ -12242,12 +12029,11 @@ async function saveSettings() {
       }
     }
     Object.assign(authSourceDefaults, buildAuthSourceDefaultsState(updated));
-    form.default_platform_quotas = normalizePlatformQuotasMap(updated.default_platform_quotas);
-    form.openai_account_quota_auto_pause = {
+    form.openai_provider_quota_auto_pause = {
       default_threshold_5h:
-        updated.openai_account_quota_auto_pause?.default_threshold_5h ?? 0,
+        updated.openai_provider_quota_auto_pause?.default_threshold_5h ?? 0,
       default_threshold_7d:
-        updated.openai_account_quota_auto_pause?.default_threshold_7d ?? 0,
+        updated.openai_provider_quota_auto_pause?.default_threshold_7d ?? 0,
     };
     registrationEmailSuffixWhitelistTags.value =
       normalizeRegistrationEmailSuffixDomains(
@@ -12471,7 +12257,7 @@ async function loadOllamaCloudUsageSettings() {
   try {
     Object.assign(
       ollamaCloudUsageForm,
-      await adminAPI.accounts.getOllamaCloudUsageSettings(),
+      await adminAPI.providers.getOllamaCloudUsageSettings(),
     );
   } catch (_error: unknown) {
     // 可选设置加载失败时保留默认关闭的安全配置。
@@ -12483,7 +12269,7 @@ async function loadOllamaCloudUsageSettings() {
 async function saveOllamaCloudUsageSettings() {
   ollamaCloudUsageSaving.value = true;
   try {
-    const updated = await adminAPI.accounts.updateOllamaCloudUsageSettings({
+    const updated = await adminAPI.providers.updateOllamaCloudUsageSettings({
       ...ollamaCloudUsageForm,
     });
     Object.assign(ollamaCloudUsageForm, updated);
@@ -12829,6 +12615,7 @@ const openaiFastPolicyActionOptions = computed(() => [
     value: "force_priority",
     label: t("admin.settings.openaiFastPolicy.actionForcePriority"),
   },
+  {value:"force_ultrafast",label:t("admin.settings.openaiFastPolicy.actionForceUltrafast")},
   { value: "block", label: t("admin.settings.openaiFastPolicy.actionBlock") },
 ]);
 
@@ -13380,18 +13167,11 @@ watch(
 </script>
 
 <style scoped>
-.default-sub-group-select :deep(.select-trigger) {
-  @apply h-9 min-h-9;
-}
-
-.default-sub-delete-btn {
-  @apply h-9 min-h-9;
-}
-
 /* ============ 系统设置 Tab 导航 ============ */
 .settings-tabs-shell {
   @apply sticky z-20 -mx-1 rounded-control border border-gray-200 bg-white/90 p-1.5 backdrop-blur-xl dark:border-dark-600/70 dark:bg-dark-900/90;
-  top: 4.75rem;
+  /* 顶栏高度 + 1.25rem 间距,合成原 4.75rem;顶栏调高时吸顶位置自动跟随。 */
+  top: calc(var(--header-h) + 1.25rem);
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.9) inset;
 }
 
@@ -13464,7 +13244,7 @@ watch(
 }
 
 .settings-tab-icon {
-  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 dark:text-gray-400;
+  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-control text-gray-500 transition-colors duration-200 dark:text-gray-400;
 }
 
 .settings-tab:hover .settings-tab-icon,
@@ -13497,7 +13277,7 @@ watch(
 }
 
 .gateway-section-tab {
-  @apply flex h-9 min-w-[7.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-200 dark:text-gray-300;
+  @apply flex h-9 min-w-[7.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-control border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-200 dark:text-gray-300;
 }
 
 .gateway-section-tab:hover,
@@ -13522,7 +13302,9 @@ watch(
 }
 
 .gateway-settings-content {
-  scroll-margin-top: 12.75rem;
+  /* 锚点跳转避开顶栏 + 吸顶 tabs 块:9.25rem = tabs 偏移 1.25rem + tabs 高度与下方留白(经验值),
+     合成原 12.75rem,数值不变。 */
+  scroll-margin-top: calc(var(--header-h) + 9.25rem);
 }
 
 @media (min-width: 768px) {

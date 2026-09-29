@@ -146,7 +146,7 @@
                   {{ balanceUnitSymbol }}{{ formatCost(model.actual_cost) }}
                 </td>
                 <td v-if="showAccountCost" class="py-1.5 text-right text-orange-500 dark:text-orange-400">
-                  {{ usdUnitSymbol }}{{ formatCost(model.account_cost) }}
+                  {{ usdUnitSymbol }}{{ formatCost(model.provider_cost) }}
                 </td>
                 <td v-if="showStandardCost" class="py-1.5 text-right text-gray-400 dark:text-gray-500">
                   {{ usdUnitSymbol }}{{ formatCost(model.cost) }}

@@ -13,18 +13,22 @@
     <AppSidebar v-if="!hideSidebar" />
 
     <div
-      class="relative z-10 min-w-0 pt-14 transition-all duration-300"
+      class="relative z-10 flex min-w-0 flex-col pt-[var(--header-h)] transition-all duration-300"
       :class="[
         fullViewport ? 'h-full min-h-0' : 'min-h-screen',
-        hideSidebar ? '' : sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-56',
+        hideSidebar
+          ? ''
+          : sidebarCollapsed
+            ? 'lg:ml-[var(--sidebar-w-collapsed)]'
+            : 'lg:ml-[var(--sidebar-w)]',
       ]"
     >
-      <!-- Main Content -->
+      <!-- Main Content：布局组件统一负责空间分配,子页面不再复制父级尺寸或抵消内边距。 -->
       <main
-        class="app-main min-w-0 px-4 pb-4 pt-4 md:px-6 md:pb-6 md:pt-5 lg:px-8 lg:pb-8 lg:pt-4"
-        :class="{ 'has-page-heading': pageTitle }"
+        class="app-main flex min-w-0 flex-1 flex-col"
+        :class="fullViewport ? 'min-h-0 p-0' : 'px-4 pb-4 pt-4 md:px-6 md:pb-6 lg:px-8 lg:pb-8'"
       >
-        <div v-if="pageTitle" class="page-heading bh-page-heading mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div v-if="pageTitle" class="page-heading mb-4 flex flex-shrink-0 flex-wrap items-start justify-between gap-3">
           <div>
             <h1 class="page-title">{{ pageTitle }}</h1>
             <p v-if="pageDescription" class="page-description">{{ pageDescription }}</p>
@@ -115,30 +119,6 @@ onBeforeUnmount(() => {
 defineExpose({ replayTour })
 </script>
 
-<style scoped>
-/* 表格页需要知道内容区标题占用的固定空间，避免滚动区域向视口底部溢出。 */
-.app-main {
-  --page-heading-space: 0px;
-}
-
-.app-main.has-page-heading {
-  --page-heading-space: 5.5rem;
-}
-
-/* 页面标题区：结构性黑线收底，右端红方块端点 */
-.bh-page-heading {
-  position: relative;
-  padding-bottom: 12px;
-  border-bottom: 3px solid var(--bh-ink);
-}
-
-.bh-page-heading::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: -6.5px;
-  width: 10px;
-  height: 10px;
-  background: var(--bh-red);
-}
-</style>
+<!-- 空间分配全部经模板 flex 链完成:wrapper(flex-col, min-h-screen 或全屏锁定)
+     → app-main(flex-1) → page-heading(自然高度) + 页面内容(需要撑满时自取 flex-1)。
+     不再维护 --main-pad-* / --page-heading-space 等与模板 padding 平行的镜像变量。 -->

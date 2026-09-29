@@ -65,6 +65,8 @@ const (
 	FieldRpmLimit = "rpm_limit"
 	// FieldAPIKeyLimit holds the string denoting the api_key_limit field in the database.
 	FieldAPIKeyLimit = "api_key_limit"
+	// EdgePlatformQuotas holds the string denoting the platform_quotas edge name in mutations.
+	EdgePlatformQuotas = "platform_quotas"
 	// EdgeAPIKeys holds the string denoting the api_keys edge name in mutations.
 	EdgeAPIKeys = "api_keys"
 	// EdgeRedeemCodes holds the string denoting the redeem_codes edge name in mutations.
@@ -93,8 +95,6 @@ const (
 	EdgeAuthIdentities = "auth_identities"
 	// EdgePendingAuthSessions holds the string denoting the pending_auth_sessions edge name in mutations.
 	EdgePendingAuthSessions = "pending_auth_sessions"
-	// EdgePlatformQuotas holds the string denoting the platform_quotas edge name in mutations.
-	EdgePlatformQuotas = "platform_quotas"
 	// EdgeTeamMemberships holds the string denoting the team_memberships edge name in mutations.
 	EdgeTeamMemberships = "team_memberships"
 	// EdgeUserAllowedGroups holds the string denoting the user_allowed_groups edge name in mutations.
@@ -103,6 +103,13 @@ const (
 	EdgeUserDisabledPublicGroups = "user_disabled_public_groups"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// PlatformQuotasTable is the table that holds the platform_quotas relation/edge.
+	PlatformQuotasTable = "user_platform_quotas"
+	// PlatformQuotasInverseTable is the table name for the UserPlatformQuota entity.
+	// It exists in this package in order to avoid circular dependency with the "userplatformquota" package.
+	PlatformQuotasInverseTable = "user_platform_quotas"
+	// PlatformQuotasColumn is the table column denoting the platform_quotas relation/edge.
+	PlatformQuotasColumn = "user_id"
 	// APIKeysTable is the table that holds the api_keys relation/edge.
 	APIKeysTable = "api_keys"
 	// APIKeysInverseTable is the table name for the APIKey entity.
@@ -197,13 +204,6 @@ const (
 	PendingAuthSessionsInverseTable = "pending_auth_sessions"
 	// PendingAuthSessionsColumn is the table column denoting the pending_auth_sessions relation/edge.
 	PendingAuthSessionsColumn = "target_user_id"
-	// PlatformQuotasTable is the table that holds the platform_quotas relation/edge.
-	PlatformQuotasTable = "user_platform_quotas"
-	// PlatformQuotasInverseTable is the table name for the UserPlatformQuota entity.
-	// It exists in this package in order to avoid circular dependency with the "userplatformquota" package.
-	PlatformQuotasInverseTable = "user_platform_quotas"
-	// PlatformQuotasColumn is the table column denoting the platform_quotas relation/edge.
-	PlatformQuotasColumn = "user_id"
 	// TeamMembershipsTable is the table that holds the team_memberships relation/edge.
 	TeamMembershipsTable = "team_memberships"
 	// TeamMembershipsInverseTable is the table name for the TeamMembership entity.
@@ -469,6 +469,20 @@ func ByAPIKeyLimit(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAPIKeyLimit, opts...).ToFunc()
 }
 
+// ByPlatformQuotasCount orders the results by platform_quotas count.
+func ByPlatformQuotasCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newPlatformQuotasStep(), opts...)
+	}
+}
+
+// ByPlatformQuotas orders the results by platform_quotas terms.
+func ByPlatformQuotas(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newPlatformQuotasStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByAPIKeysCount orders the results by api_keys count.
 func ByAPIKeysCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -665,20 +679,6 @@ func ByPendingAuthSessions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOpti
 	}
 }
 
-// ByPlatformQuotasCount orders the results by platform_quotas count.
-func ByPlatformQuotasCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newPlatformQuotasStep(), opts...)
-	}
-}
-
-// ByPlatformQuotas orders the results by platform_quotas terms.
-func ByPlatformQuotas(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newPlatformQuotasStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
-
 // ByTeamMembershipsCount orders the results by team_memberships count.
 func ByTeamMembershipsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -719,6 +719,13 @@ func ByUserDisabledPublicGroups(term sql.OrderTerm, terms ...sql.OrderTerm) Orde
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newUserDisabledPublicGroupsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
+}
+func newPlatformQuotasStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(PlatformQuotasInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, PlatformQuotasTable, PlatformQuotasColumn),
+	)
 }
 func newAPIKeysStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
@@ -816,13 +823,6 @@ func newPendingAuthSessionsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PendingAuthSessionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, PendingAuthSessionsTable, PendingAuthSessionsColumn),
-	)
-}
-func newPlatformQuotasStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(PlatformQuotasInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, PlatformQuotasTable, PlatformQuotasColumn),
 	)
 }
 func newTeamMembershipsStep() *sqlgraph.Step {

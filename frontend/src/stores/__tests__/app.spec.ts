@@ -50,7 +50,7 @@ function createPublicSettings(overrides: Partial<PublicSettings> = {}): PublicSe
     backend_mode_enabled: false,
     version: '1.0.0',
     balance_low_notify_enabled: false,
-    account_quota_notify_enabled: false,
+    provider_quota_notify_enabled: false,
     balance_low_notify_threshold: 0,
     channel_monitor_enabled: true,
     channel_monitor_default_interval_seconds: 60,

@@ -9,26 +9,27 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/ctxkey"
-	"github.com/TokenFlux/TokenRouter/internal/pkg/logger"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
+
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/gin-gonic/gin"
 )
 
 type testLogSink struct {
 	mu     sync.Mutex
-	events []*logger.LogEvent
+	events []*logging.LogEvent
 }
 
-func (s *testLogSink) WriteLogEvent(event *logger.LogEvent) {
+func (s *testLogSink) WriteLogEvent(event *logging.LogEvent) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.events = append(s.events, event)
 }
 
-func (s *testLogSink) list() []*logger.LogEvent {
+func (s *testLogSink) list() []*logging.LogEvent {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	out := make([]*logger.LogEvent, len(s.events))
+	out := make([]*logging.LogEvent, len(s.events))
 	copy(out, s.events)
 	return out
 }
@@ -43,12 +44,12 @@ func initMiddlewareTestLoggerWithLevel(t *testing.T, level string) *testLogSink 
 	if level == "" {
 		level = "debug"
 	}
-	if err := logger.Init(logger.InitOptions{
+	if err := logging.Init(logging.InitOptions{
 		Level:       level,
 		Format:      "json",
 		ServiceName: "sub2api",
 		Environment: "test",
-		Output: logger.OutputOptions{
+		Output: logging.OutputOptions{
 			ToStdout: false,
 			ToFile:   false,
 		},
@@ -56,19 +57,18 @@ func initMiddlewareTestLoggerWithLevel(t *testing.T, level string) *testLogSink 
 		t.Fatalf("init logger: %v", err)
 	}
 	sink := &testLogSink{}
-	logger.SetSink(sink)
+	logging.SetSink(sink)
 	t.Cleanup(func() {
-		logger.SetSink(nil)
+		logging.SetSink(nil)
 	})
 	return sink
 }
 
 func TestRequestLogger_GenerateAndPropagateRequestID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(RequestLogger())
 	r.GET("/t", func(c *gin.Context) {
-		reqID, ok := c.Request.Context().Value(ctxkey.RequestID).(string)
+		reqID, ok := c.Request.Context().Value(telemetry.RequestID).(string)
 		if !ok || reqID == "" {
 			t.Fatalf("request_id missing in context")
 		}
@@ -90,11 +90,10 @@ func TestRequestLogger_GenerateAndPropagateRequestID(t *testing.T) {
 }
 
 func TestRequestLogger_KeepIncomingRequestID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(RequestLogger())
 	r.GET("/t", func(c *gin.Context) {
-		reqID, _ := c.Request.Context().Value(ctxkey.RequestID).(string)
+		reqID, _ := c.Request.Context().Value(telemetry.RequestID).(string)
 		if reqID != "rid-fixed" {
 			t.Fatalf("request_id=%q, want rid-fixed", reqID)
 		}
@@ -114,11 +113,10 @@ func TestRequestLogger_KeepIncomingRequestID(t *testing.T) {
 }
 
 func TestRequestLoggerBoundsIncomingRequestID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(RequestLogger())
 	r.GET("/t", func(c *gin.Context) {
-		reqID, _ := c.Request.Context().Value(ctxkey.RequestID).(string)
+		reqID, _ := c.Request.Context().Value(telemetry.RequestID).(string)
 		if len(reqID) != 36 {
 			t.Fatalf("request_id length=%d", len(reqID))
 		}
@@ -134,16 +132,15 @@ func TestRequestLoggerBoundsIncomingRequestID(t *testing.T) {
 }
 
 func TestLogger_AccessLogIncludesCoreFields(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	sink := initMiddlewareTestLogger(t)
 
 	r := gin.New()
 	r.Use(Logger())
 	r.Use(func(c *gin.Context) {
 		ctx := c.Request.Context()
-		ctx = context.WithValue(ctx, ctxkey.AccountID, int64(101))
-		ctx = context.WithValue(ctx, ctxkey.Platform, "openai")
-		ctx = context.WithValue(ctx, ctxkey.Model, "gpt-5")
+		ctx = context.WithValue(ctx, telemetry.ProviderID, int64(101))
+		ctx = context.WithValue(ctx, telemetry.Platform, "openai")
+		ctx = context.WithValue(ctx, telemetry.Model, "gpt-5")
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
@@ -180,17 +177,17 @@ func TestLogger_AccessLogIncludesCoreFields(t *testing.T) {
 		default:
 			t.Fatalf("status_code type mismatch: %T", v)
 		}
-		switch v := event.Fields["account_id"].(type) {
+		switch v := event.Fields["provider_id"].(type) {
 		case int64:
 			if v != 101 {
-				t.Fatalf("account_id field mismatch: %v", v)
+				t.Fatalf("provider_id field mismatch: %v", v)
 			}
 		case int:
 			if v != 101 {
-				t.Fatalf("account_id field mismatch: %v", v)
+				t.Fatalf("provider_id field mismatch: %v", v)
 			}
 		default:
-			t.Fatalf("account_id type mismatch: %T", v)
+			t.Fatalf("provider_id type mismatch: %T", v)
 		}
 		if event.Fields["platform"] != "openai" || event.Fields["model"] != "gpt-5" {
 			t.Fatalf("platform/model mismatch: %+v", event.Fields)
@@ -202,7 +199,6 @@ func TestLogger_AccessLogIncludesCoreFields(t *testing.T) {
 }
 
 func TestLogger_AccessLogSeparatesParentAndInternalRequestIDs(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	sink := initMiddlewareTestLogger(t)
 
 	r := gin.New()
@@ -237,18 +233,17 @@ func TestLogger_AccessLogSeparatesParentAndInternalRequestIDs(t *testing.T) {
 }
 
 func TestLogger_AccessLogIncludesRequestStageFields(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	sink := initMiddlewareTestLogger(t)
 
 	r := gin.New()
 	r.Use(Logger())
 	r.GET("/v1/responses", func(c *gin.Context) {
 		startedAt := time.Now().Add(-2 * time.Second)
-		ctx := context.WithValue(c.Request.Context(), ctxkey.RequestStartedAt, startedAt)
-		ctx = context.WithValue(ctx, ctxkey.AccountSlotAcquiredAt, startedAt.Add(100*time.Millisecond))
-		ctx = context.WithValue(ctx, ctxkey.FirstSSEDataAt, startedAt.Add(500*time.Millisecond))
-		ctx = context.WithValue(ctx, ctxkey.FirstVisibleOutputAt, startedAt.Add(700*time.Millisecond))
-		ctx = context.WithValue(ctx, ctxkey.FirstDownstreamFlushAt, startedAt.Add(800*time.Millisecond))
+		ctx := context.WithValue(c.Request.Context(), telemetry.RequestStartedAt, startedAt)
+		ctx = context.WithValue(ctx, telemetry.ProviderSlotAcquiredAt, startedAt.Add(100*time.Millisecond))
+		ctx = context.WithValue(ctx, telemetry.FirstSSEDataAt, startedAt.Add(500*time.Millisecond))
+		ctx = context.WithValue(ctx, telemetry.FirstVisibleOutputAt, startedAt.Add(700*time.Millisecond))
+		ctx = context.WithValue(ctx, telemetry.FirstDownstreamFlushAt, startedAt.Add(800*time.Millisecond))
 		c.Request = c.Request.WithContext(ctx)
 		c.Status(http.StatusOK)
 	})
@@ -264,7 +259,7 @@ func TestLogger_AccessLogIncludesRequestStageFields(t *testing.T) {
 		if event == nil || event.Message != "http request completed" {
 			continue
 		}
-		for _, field := range []string{"account_slot_acquired_ms", "upstream_first_sse_data_ms", "first_visible_output_ms", "first_downstream_flush_ms"} {
+		for _, field := range []string{"provider_slot_acquired_ms", "upstream_first_sse_data_ms", "first_visible_output_ms", "first_downstream_flush_ms"} {
 			if _, ok := event.Fields[field]; !ok {
 				t.Fatalf("stage field %q missing: %+v", field, event.Fields)
 			}
@@ -275,7 +270,6 @@ func TestLogger_AccessLogIncludesRequestStageFields(t *testing.T) {
 }
 
 func TestLogger_IngressRejectRemainsInStandardAccessLog(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	sink := initMiddlewareTestLogger(t)
 	r := gin.New()
 	r.Use(Logger())
@@ -298,13 +292,12 @@ func TestLogger_IngressRejectRemainsInStandardAccessLog(t *testing.T) {
 	if got := events[0].Fields["ingress_reject_reason"]; got != string(IngressRejectInvalidAPIKey) {
 		t.Fatalf("ingress_reject_reason=%v", got)
 	}
-	if got, _ := events[0].Fields[logger.OpsSystemLogSkipField].(bool); !got {
-		t.Fatalf("%s must be true", logger.OpsSystemLogSkipField)
+	if got, _ := events[0].Fields[logging.OpsSystemLogSkipField].(bool); !got {
+		t.Fatalf("%s must be true", logging.OpsSystemLogSkipField)
 	}
 }
 
 func TestLogger_AccessLogUsesForwardedClientIPFromTrustedProxy(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	sink := initMiddlewareTestLogger(t)
 
 	r := gin.New()
@@ -338,7 +331,6 @@ func TestLogger_AccessLogUsesForwardedClientIPFromTrustedProxy(t *testing.T) {
 }
 
 func TestLogger_HealthPathSkipped(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	sink := initMiddlewareTestLogger(t)
 
 	r := gin.New()
@@ -359,7 +351,6 @@ func TestLogger_HealthPathSkipped(t *testing.T) {
 }
 
 func TestLogger_AccessLogDroppedWhenLevelWarn(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	sink := initMiddlewareTestLoggerWithLevel(t, "warn")
 
 	r := gin.New()

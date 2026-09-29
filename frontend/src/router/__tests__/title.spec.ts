@@ -38,12 +38,12 @@ describe('resolveRouteDocumentTitle', () => {
     expect(resolveRouteDocumentTitle(route, 'EzouAPI', [
       {
         id: 'scheduler',
-        label: '账号调度器',
+        label: '提供商调度器',
         icon_svg: '',
         url: 'https://example.com',
         visibility: 'admin',
         sort_order: 0
       }
-    ])).toBe('账号调度器 - EzouAPI')
+    ])).toBe('提供商调度器 - EzouAPI')
   })
 })

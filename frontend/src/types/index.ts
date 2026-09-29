@@ -301,7 +301,7 @@ export interface PublicSettings {
   balance_unit_symbol: string
   balance_icon_svg: string
   balance_low_notify_enabled: boolean
-  account_quota_notify_enabled: boolean
+  provider_quota_notify_enabled: boolean
   risk_control_enabled: boolean
   service_quota_enabled?: boolean
   balance_low_notify_threshold: number
@@ -314,12 +314,10 @@ export interface AuthResponse {
   refresh_token?: string  // New: Refresh Token for token renewal
   expires_in?: number     // New: Access Token expiry time in seconds
   token_type: string
-  user: User & { run_mode?: 'standard' | 'simple' }
+  user: User
 }
 
-export interface CurrentUserResponse extends User {
-  run_mode?: 'standard' | 'simple'
-}
+export type CurrentUserResponse = User
 
 // ==================== Subscription Types ====================
 
@@ -558,20 +556,7 @@ export interface PaginationConfig {
 
 // ==================== API Key & Group Types ====================
 
-export type GroupPlatform =
-  | 'anthropic'
-  | 'openai'
-  | 'gemini'
-  | 'antigravity'
-  | 'qoder'
-  | 'grok'
-  | 'kimi'
-  | 'zhipu'
-  | 'deepseek'
-  | 'minimax'
-  | 'opencode_go'
 export type GroupSchedulerType = 'basic' | 'advanced'
-export type VideoModelPrices = Record<string, Record<string, number>>
 
 // 分组高级调度器的稀疏覆盖；未出现的字段继承网关通用设置。
 export interface GroupAdvancedSchedulerOverrides {
@@ -593,11 +578,32 @@ export interface GroupAdvancedSchedulerOverrides {
   weight_previous_response?: number
   weight_session_sticky?: number
 }
-export type GroupClientProtocol =
+// 提供商原生能力和分组客户端入口共用完整协议标识。
+export type ProtocolID =
   | 'anthropic_messages'
   | 'openai_responses'
   | 'openai_chat_completions'
   | 'gemini_generate_content'
+  | 'openai_embeddings'
+  | 'openai_images_generations'
+  | 'openai_images_edits'
+  | 'image_batches'
+  | 'grok_videos_generations'
+  | 'grok_videos_edits'
+  | 'grok_videos_extensions'
+  | 'grok_tts'
+  | 'grok_stt'
+  | 'grok_custom_voices'
+  | 'grok_voice_realtime'
+  | 'openai_responses_websocket'
+  | 'openai_live'
+  | 'openai_responses_compact'
+  | 'openai_alpha_search'
+  | 'grok_web_search'
+  | 'grok_x_search'
+  | 'qoder_chat'
+  | 'gemini_batch_generate_content'
+  | 'vertex_batch_prediction'
 export type MarketplacePricingMode = 'token' | 'image' | 'unknown'
 export type MarketplacePriceStatus = 'priced' | 'unpriced'
 
@@ -687,12 +693,9 @@ export interface MarketplaceGroup {
   id: number
   name: string
   description: string
-  platform: GroupPlatform
   display_brand: string
   sort_order: number
   rate_multiplier: number
-  image_rate_independent: boolean
-  image_rate_multiplier: number
   official_price_ratio?: number
   official_price_rmb_equivalent?: number
   capacity?: MarketplaceGroupCapacity
@@ -705,13 +708,6 @@ export interface MarketplaceStats {
   today_tokens: number
   total_tokens: number
   total_users: number
-}
-
-export interface OpenAIMessagesDispatchModelConfig {
-  opus_mapped_model?: string
-  sonnet_mapped_model?: string
-  haiku_mapped_model?: string
-  exact_model_mappings?: Record<string, string>
 }
 
 export interface GroupAvailabilityProbeConfig {
@@ -734,10 +730,12 @@ export interface ReasoningEffortMapping {
 }
 
 export interface Group {
+  // 后端按组内提供商能力解析的可请求模型。
+  models?: string[]
+  model_protocols?: Record<string, ProtocolID[]>
   id: number
   name: string
   description: string | null
-  platform: GroupPlatform
   display_brand?: string
   rate_multiplier: number
   capacity?: MarketplaceGroupCapacity
@@ -746,52 +744,27 @@ export interface Group {
   max_reasoning_effort_over_limit?: string // 超过上限时 downgrade 或 deny
   reasoning_effort_mappings?: ReasoningEffortMapping[]
   is_exclusive: boolean
-  is_default?: boolean
   session_isolation_enabled: boolean
   status: 'active' | 'inactive'
-  long_context_pricing_enabled: boolean
-  // 图片生成计费配置
+
+  // 图片生成权限
   allow_image_generation: boolean
   allow_batch_image_generation: boolean
-  image_rate_independent: boolean
-  image_rate_multiplier: number
-  batch_image_discount_multiplier: number
-  batch_image_hold_multiplier: number
-  image_price_1k: number | null
-  image_price_2k: number | null
-  image_price_4k: number | null
-  video_rate_independent: boolean
-  video_rate_multiplier: number
-  video_price_480p: number | null
-  video_price_720p: number | null
-  video_price_1080p: number | null
-  // 可选的 Grok 视频模型族与分辨率价格覆盖。
-  video_model_prices?: VideoModelPrices
-  // Codex 网页搜索单次价格（USD/次）；null 表示使用默认价 0.01
-  web_search_price_per_call: number | null
-  // Grok Voice 显式定价（分组级）
-  search_price_per_1k: number | null
-  audio_realtime_price_per_min: number | null
-  audio_tts_price_per_million_chars: number | null
-  audio_stt_price_per_hour: number | null
-  // 高峰时段倍率配置
-  peak_rate_enabled: boolean
-  peak_start: string
-  peak_end: string
-  peak_rate_multiplier: number
+
   // Claude Code 客户端限制
   claude_code_only: boolean
   fallback_group_id: number | null
   fallback_group_id_on_invalid_request: number | null
   unavailable_fallback_group_id: number | null
   // 分组允许客户端使用的文本生成协议，顺序由服务端固定。
-  allowed_client_protocols: GroupClientProtocol[]
-  // OpenAI Messages 调度开关（弃用兼容字段，新代码读取 allowed_client_protocols）
+  protocol_fallbacks?: Partial<Record<ProtocolID, ProtocolID[]>>
+  responses_image_policy?: 'inherit' | 'enabled' | 'disabled' | 'block'
+  allowed_protocols: ProtocolID[]
+  // OpenAI Messages 调度开关（弃用兼容字段，新代码读取 allowed_protocols）
   allow_messages_dispatch?: boolean
   // OpenAI Live 接口开关
   allow_live: boolean
   default_mapped_model?: string
-  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   availability_probe_config?: GroupAvailabilityProbeConfig
   require_oauth_only: boolean
   require_privacy_set: boolean
@@ -799,15 +772,30 @@ export interface Group {
   updated_at: string
 }
 
+// 分组加速策略，新字段优先于兼容布尔开关。
+export type GroupOpenAIFastPolicy = "follow_request" | "force_priority" | "force_ultrafast" | "force_off"
+
+export interface GroupRoutingPolicy {
+  /** 兼容历史停用策略，管理表单保存时固定为 true。 */
+  enabled: boolean
+  model_mapping: Record<string, string>
+  restrict_models: boolean
+  restriction_model_source: 'requested' | 'group_mapped' | 'upstream'
+  allowed_models: string[]
+  features: string
+  features_config: Record<string, unknown>
+}
+
 export interface AdminGroup extends Group {
+  routing_policy: GroupRoutingPolicy
   // 仅管理端可配置，公开分组接口不返回该策略。
   force_openai_fast?: boolean
+  openai_fast_policy?: GroupOpenAIFastPolicy
   // 仅管理端可配置，公开分组接口不返回该计费策略。
-  free_openai_fast?: boolean
+
   // 仅管理端可配置，公开分组接口不返回调度器模式。
   scheduler_type: GroupSchedulerType
   advanced_scheduler_overrides?: GroupAdvancedSchedulerOverrides
-  model_pricing: import('@/api/admin/channels').ChannelModelPricing[]
 
   // 模型路由配置（仅管理员可见，内部信息）
   model_routing: Record<string, number[]> | null
@@ -819,14 +807,13 @@ export interface AdminGroup extends Group {
   // 支持的模型系列（仅 antigravity 平台使用）
   supported_model_scopes?: string[]
 
-  // 分组下账号数量（仅管理员可见）
-  account_count?: number
-  active_account_count?: number
-  rate_limited_account_count?: number
+  // 分组下提供商数量（仅管理员可见）
+  provider_count?: number
+  active_provider_count?: number
+  rate_limited_provider_count?: number
 
   // OpenAI Messages 调度配置（仅 openai 平台使用）
   default_mapped_model?: string
-  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   models_list_config?: ModelsListConfig
   model_allowlist?: ModelsListConfig
 
@@ -901,7 +888,7 @@ export interface ApiKey {
   reset_5h_at: string | null
   reset_1d_at: string | null
   reset_7d_at: string | null
-  fallback_to_default_group_when_unavailable?: boolean
+  fallback_when_group_unavailable?: boolean
 }
 
 export interface CreateApiKeyRequest {
@@ -922,7 +909,7 @@ export interface CreateApiKeyRequest {
   rate_limit_5h?: number
   rate_limit_1d?: number
   rate_limit_7d?: number
-  fallback_to_default_group_when_unavailable?: boolean
+  fallback_when_group_unavailable?: boolean
 }
 
 export interface UpdateApiKeyRequest {
@@ -944,49 +931,28 @@ export interface UpdateApiKeyRequest {
   rate_limit_1d?: number
   rate_limit_7d?: number
   reset_rate_limit_usage?: boolean
-  fallback_to_default_group_when_unavailable?: boolean
+  fallback_when_group_unavailable?: boolean
 }
 
 export interface CreateGroupRequest {
   name: string
   description?: string | null
-  platform?: GroupPlatform
   scheduler_type?: GroupSchedulerType
   advanced_scheduler_overrides?: GroupAdvancedSchedulerOverrides
   display_brand?: string
   sort_order?: number
   rate_multiplier?: number
   is_exclusive?: boolean
-  is_default?: boolean
   session_isolation_enabled?: boolean
-  long_context_pricing_enabled?: boolean
+
   force_openai_fast?: boolean
-  free_openai_fast?: boolean
-  model_pricing?: import('@/api/admin/channels').ChannelModelPricing[]
+  openai_fast_policy?: GroupOpenAIFastPolicy
+
+  routing_policy?: GroupRoutingPolicy
+
   allow_image_generation?: boolean
   allow_batch_image_generation?: boolean
-  image_rate_independent?: boolean
-  image_rate_multiplier?: number
-  batch_image_discount_multiplier?: number
-  batch_image_hold_multiplier?: number
-  image_price_1k?: number | null
-  image_price_2k?: number | null
-  image_price_4k?: number | null
-  video_rate_independent?: boolean
-  video_rate_multiplier?: number
-  video_price_480p?: number | null
-  video_price_720p?: number | null
-  video_price_1080p?: number | null
-  video_model_prices?: VideoModelPrices
-  web_search_price_per_call?: number | null
-  search_price_per_1k?: number | null
-  audio_realtime_price_per_min?: number | null
-  audio_tts_price_per_million_chars?: number | null
-  audio_stt_price_per_hour?: number | null
-  peak_rate_enabled?: boolean
-  peak_start?: string
-  peak_end?: string
-  peak_rate_multiplier?: number
+
   claude_code_only?: boolean
   fallback_group_id?: number | null
   fallback_group_id_on_invalid_request?: number | null
@@ -996,11 +962,12 @@ export interface CreateGroupRequest {
   models_list_config?: ModelsListConfig
   model_allowlist?: ModelsListConfig
   availability_probe_config?: GroupAvailabilityProbeConfig
-  allowed_client_protocols?: GroupClientProtocol[]
+  protocol_fallbacks?: Partial<Record<ProtocolID, ProtocolID[]>>
+  responses_image_policy?: 'inherit' | 'enabled' | 'disabled' | 'block'
+  allowed_protocols?: ProtocolID[]
   allow_messages_dispatch?: boolean
   allow_live?: boolean
   default_mapped_model?: string
-  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   model_routing?: Record<string, number[]> | null
   model_routing_enabled?: boolean
   rpm_limit?: number
@@ -1009,51 +976,30 @@ export interface CreateGroupRequest {
   reasoning_effort_mappings?: ReasoningEffortMapping[]
   require_oauth_only?: boolean
   require_privacy_set?: boolean
-  // 从指定分组复制账号
-  copy_accounts_from_group_ids?: number[]
+  // 从指定分组复制提供商
+  copy_providers_from_group_ids?: number[]
 }
 
 export interface UpdateGroupRequest {
   name?: string
   description?: string | null
-  platform?: GroupPlatform
   scheduler_type?: GroupSchedulerType
   advanced_scheduler_overrides?: GroupAdvancedSchedulerOverrides
   display_brand?: string
   sort_order?: number
   rate_multiplier?: number
   is_exclusive?: boolean
-  is_default?: boolean
   session_isolation_enabled?: boolean
   status?: 'active' | 'inactive'
-  long_context_pricing_enabled?: boolean
+
   force_openai_fast?: boolean
-  free_openai_fast?: boolean
-  model_pricing?: import('@/api/admin/channels').ChannelModelPricing[]
+  openai_fast_policy?: GroupOpenAIFastPolicy
+
+  routing_policy?: GroupRoutingPolicy
+
   allow_image_generation?: boolean
   allow_batch_image_generation?: boolean
-  image_rate_independent?: boolean
-  image_rate_multiplier?: number
-  batch_image_discount_multiplier?: number
-  batch_image_hold_multiplier?: number
-  image_price_1k?: number | null
-  image_price_2k?: number | null
-  image_price_4k?: number | null
-  video_rate_independent?: boolean
-  video_rate_multiplier?: number
-  video_price_480p?: number | null
-  video_price_720p?: number | null
-  video_price_1080p?: number | null
-  video_model_prices?: VideoModelPrices
-  web_search_price_per_call?: number | null
-  search_price_per_1k?: number | null
-  audio_realtime_price_per_min?: number | null
-  audio_tts_price_per_million_chars?: number | null
-  audio_stt_price_per_hour?: number | null
-  peak_rate_enabled?: boolean
-  peak_start?: string
-  peak_end?: string
-  peak_rate_multiplier?: number
+
   claude_code_only?: boolean
   fallback_group_id?: number | null
   fallback_group_id_on_invalid_request?: number | null
@@ -1063,11 +1009,12 @@ export interface UpdateGroupRequest {
   models_list_config?: ModelsListConfig
   model_allowlist?: ModelsListConfig
   availability_probe_config?: GroupAvailabilityProbeConfig
-  allowed_client_protocols?: GroupClientProtocol[]
+  protocol_fallbacks?: Partial<Record<ProtocolID, ProtocolID[]>>
+  responses_image_policy?: 'inherit' | 'enabled' | 'disabled' | 'block'
+  allowed_protocols?: ProtocolID[]
   allow_messages_dispatch?: boolean
   allow_live?: boolean
   default_mapped_model?: string
-  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   model_routing?: Record<string, number[]> | null
   model_routing_enabled?: boolean
   rpm_limit?: number
@@ -1076,12 +1023,14 @@ export interface UpdateGroupRequest {
   reasoning_effort_mappings?: ReasoningEffortMapping[]
   require_oauth_only?: boolean
   require_privacy_set?: boolean
-  copy_accounts_from_group_ids?: number[]
+  copy_providers_from_group_ids?: number[]
 }
 
-// ==================== Account & Proxy Types ====================
+// ==================== Provider & Proxy Types ====================
 
-export type AccountPlatform =
+export type ProviderPlatform =
+  | 'minimax'
+  | 'opencode_go'
   | 'anthropic'
   | 'openai'
   | 'gemini'
@@ -1091,13 +1040,14 @@ export type AccountPlatform =
   | 'kimi'
   | 'zhipu'
   | 'deepseek'
-  | 'minimax'
-  | 'opencode_go'
-export type AccountType = 'oauth' | 'setup-token' | 'apikey' | 'upstream' | 'bedrock' | 'service_account' | 'cosy'
+export type ProviderType = 'oauth' | 'setup-token' | 'apikey' | 'upstream' | 'bedrock' | 'service_account' | 'cosy'
+
+// 定制组件使用同一实体；字段保持原生提供商名称。
+export type Account = Provider
 export type OAuthAddMethod = 'oauth' | 'setup-token'
 export type ProxyProtocol = 'http' | 'https' | 'socks5' | 'socks5h'
 
-// Claude Model type (returned by /v1/models and account models API)
+// Claude Model type (returned by /v1/models and provider models API)
 export interface ClaudeModel {
   id: string
   type: string
@@ -1114,7 +1064,7 @@ export interface Proxy {
   username: string | null
   password?: string | null
   status: 'active' | 'inactive' | 'expired'
-  account_count?: number // Number of accounts using this proxy
+  provider_count?: number // Number of providers using this proxy
   latency_ms?: number
   latency_status?: 'success' | 'failed'
   latency_message?: string
@@ -1136,11 +1086,11 @@ export interface Proxy {
   updated_at: string
 }
 
-export interface ProxyAccountSummary {
+export interface ProxyProviderSummary {
   id: number
   name: string
-  platform: AccountPlatform
-  type: AccountType
+  platform: ProviderPlatform
+  type: ProviderType
   notes?: string | null
 }
 
@@ -1174,7 +1124,7 @@ export interface ProxyQualityCheckResult {
 export interface GeminiCredentials {
   // API Key authentication
   api_key?: string
-  // Gemini API Key 的接入来源；缺失值兼容历史官方 AI Studio 账号。
+  // Gemini API Key 的接入来源；缺失值兼容历史官方 AI Studio 提供商。
   provider_type?: 'official' | 'third_party'
 
   // OAuth authentication
@@ -1258,7 +1208,7 @@ export interface OllamaCloudUsageSnapshot {
 }
 
 export interface OllamaCloudUsageState {
-  account_id: number
+  provider_id: number
   eligible: boolean
   configured: boolean
   auto_refresh_enabled: boolean
@@ -1274,12 +1224,12 @@ export interface OllamaCloudUsageSettings {
   debounce_minutes: number
 }
 
-export interface Account {
+export interface Provider {
   id: number
   name: string
   notes?: string | null
-  platform: AccountPlatform
-  type: AccountType
+  platform: ProviderPlatform
+  type: ProviderType
   // 后端响应里 credentials 已脱敏：access_token / refresh_token / id_token /
   // api_key / session_key / cookie / aws_secret_access_key / aws_session_token /
   // service_account_json / service_account / private_key /
@@ -1309,9 +1259,9 @@ export interface Account {
     sticky_score_infinity?: boolean
     sticky_weighted_enabled: boolean
   } | null
-  scheduler_scores?: AccountSchedulerGroupScore[] | null
+  scheduler_scores?: ProviderSchedulerGroupScore[] | null
   priority: number
-  rate_multiplier?: number // Account billing multiplier (>=0, 0 means free)
+  rate_multiplier?: number // Provider billing multiplier (>=0, 0 means free)
   status: 'active' | 'inactive' | 'error'
   error_message: string | null
   last_used_at: string | null
@@ -1320,7 +1270,7 @@ export interface Account {
   created_at: string
   updated_at: string
   proxy?: Proxy
-  group_ids?: number[] // Groups this account belongs to
+  group_ids?: number[] // Groups this provider belongs to
   groups?: Group[] // Preloaded group objects
 
   // Rate limit & scheduling fields
@@ -1337,21 +1287,21 @@ export interface Account {
   session_window_end: string | null
   session_window_status: 'allowed' | 'allowed_warning' | 'rejected' | null
 
-  // 5h窗口费用控制（仅 Anthropic OAuth/SetupToken 账号有效）
+  // 5h窗口费用控制（仅 Anthropic OAuth/SetupToken 提供商有效）
   window_cost_limit?: number | null
   window_cost_sticky_reserve?: number | null
 
-  // 会话数量控制（仅 Anthropic OAuth/SetupToken 账号有效）
+  // 会话数量控制（仅 Anthropic OAuth/SetupToken 提供商有效）
   max_sessions?: number | null
   session_idle_timeout_minutes?: number | null
 
-  // RPM 限制（仅 Anthropic OAuth/SetupToken 账号有效）
+  // RPM 限制（仅 Anthropic OAuth/SetupToken 提供商有效）
   base_rpm?: number | null
   rpm_strategy?: string | null
   rpm_sticky_buffer?: number | null
   user_msg_queue_mode?: string | null  // "serialize" | "throttle" | null
 
-  // TLS指纹伪装（仅 Anthropic OAuth/SetupToken 与 OpenAI OAuth 账号有效）
+  // TLS指纹伪装（仅 Anthropic OAuth/SetupToken 与 OpenAI OAuth 提供商有效）
   enable_tls_fingerprint?: boolean | null
   tls_fingerprint_profile_id?: number | null
   tls_fingerprint_router_id?: number | null
@@ -1359,19 +1309,19 @@ export interface Account {
   // OpenAI OAuth 客户端访问策略
   openai_oauth_client_policy?: OpenAIOAuthClientPolicy | null
 
-  // 会话ID伪装（仅 Anthropic OAuth/SetupToken 账号有效）
+  // 会话ID伪装（仅 Anthropic OAuth/SetupToken 提供商有效）
   // 启用后将在15分钟内固定 metadata.user_id 中的 session ID
   session_id_masking_enabled?: boolean | null
 
-  // 缓存 TTL 强制替换（仅 Anthropic OAuth/SetupToken 账号有效）
+  // 缓存 TTL 强制替换（仅 Anthropic OAuth/SetupToken 提供商有效）
   cache_ttl_override_enabled?: boolean | null
   cache_ttl_override_target?: string | null
 
-  // 自定义 Base URL 中继转发（仅 Anthropic OAuth/SetupToken 账号有效）
+  // 自定义 Base URL 中继转发（仅 Anthropic OAuth/SetupToken 提供商有效）
   custom_base_url_enabled?: boolean | null
   custom_base_url?: string | null
 
-  // API Key 账号配额限制
+  // API Key 提供商配额限制
   quota_limit?: number | null
   quota_used?: number | null
   quota_daily_limit?: number | null
@@ -1394,10 +1344,10 @@ export interface Account {
   active_sessions?: number | null // 当前活跃会话数
   current_rpm?: number | null // 当前分钟 RPM 计数
 
-  // 影子账号关系（spark 维度影子）
-  parent_account_id?: number | null
+  // 影子提供商关系（spark 维度影子）
+  parent_provider_id?: number | null
   quota_dimension?: string
-  // 影子账号回填的母账号信息（仅影子非空）
+  // 影子提供商回填的母提供商信息（仅影子非空）
   parent_email?: string
   parent_plan_type?: string
   parent_privacy_mode?: string
@@ -1405,7 +1355,7 @@ export interface Account {
   parent_chatgpt_account_id?: string
 }
 
-export interface AccountSchedulerGroupScore {
+export interface ProviderSchedulerGroupScore {
   group_id?: number | null
   group_name?: string
   base_score: number
@@ -1414,11 +1364,11 @@ export interface AccountSchedulerGroupScore {
   sticky_weighted_enabled: boolean
 }
 
-// Account Usage types
+// Provider Usage types
 export interface WindowStats {
   requests: number
   tokens: number
-  cost: number // Account cost (account multiplier)
+  cost: number // Provider cost (provider multiplier)
   standard_cost?: number
   user_cost?: number
 }
@@ -1481,7 +1431,7 @@ export interface GrokBillingSummary {
   failed_windows?: string[]
 }
 
-export interface AccountUsageInfo {
+export interface ProviderUsageInfo {
   source?: 'passive' | 'active'
   updated_at: string | null
   five_hour: UsageProgress | null
@@ -1557,7 +1507,7 @@ export interface AccountUsageInfo {
     } | null
     is_plan_quota_prorated?: boolean
     last_updated_at?: string | null
-    snapshot_from_account?: boolean
+    snapshot_from_provider?: boolean
   } | null
   // Antigravity 403 forbidden 状态
   is_forbidden?: boolean
@@ -1567,7 +1517,7 @@ export interface AccountUsageInfo {
 
   // 状态标记（后端自动推导）
   needs_verify?: boolean    // 需要人工验证（forbidden_type=validation）
-  is_banned?: boolean       // 账号被封（forbidden_type=violation）
+  is_banned?: boolean       // 提供商被封（forbidden_type=violation）
   needs_reauth?: boolean    // token 失效需重新授权（401）
 
   // 机器可读错误码：forbidden / unauthenticated / rate_limited / network_error
@@ -1576,7 +1526,7 @@ export interface AccountUsageInfo {
   error?: string            // usage 获取失败时的错误信息
 }
 
-// API Key 账号的上游用量查询协议配置与归一化结果。
+// API Key 提供商的上游用量查询协议配置与归一化结果。
 export type UpstreamUsageAdapter =
   | 'sub2api'
   | 'new_api'
@@ -1635,7 +1585,7 @@ export interface UpstreamUsageInfo {
 }
 
 export interface UpstreamUsageQueryResult {
-  account_id: number
+  provider_id: number
   adapter: UpstreamUsageAdapter | string
   observed_at: string
   provider?: string
@@ -1687,93 +1637,64 @@ export interface CodexUsageSnapshot {
   codex_usage_updated_at?: string // Last update timestamp
 }
 
-export type OpenAICompactMode = 'auto' | 'force_on' | 'force_off'
+export type OpenAICompactMode = 'force_on' | 'force_off'
 export type OpenAIOAuthClientPolicy = 'any' | 'codex_only' | 'tls_router_matched_only'
 export type OpenAITextRouteMode =
   | 'preserve_client_protocol'
   | 'force_responses'
   | 'force_chat_completions'
-export type OpenAIResponsesProbeStatus = 'supported' | 'unsupported' | 'unknown'
 export type OpenAIWorkloadCapability = 'text_generation' | 'embeddings'
 
 export interface OpenAICompactState {
   openai_compact_mode?: OpenAICompactMode
-  openai_compact_supported?: boolean
-  openai_compact_checked_at?: string
-  openai_compact_last_status?: number
-  openai_compact_last_error?: string
 }
 
 export interface OpenAINativeCompactionV2State {
   openai_native_compaction_v2_mode?: OpenAICompactMode
-  openai_native_compaction_v2_supported?: boolean
-  openai_native_compaction_v2_checked_at?: string
-  openai_native_compaction_v2_last_status?: number
-  openai_native_compaction_v2_last_error?: string
 }
 
 export interface OpenAITextProtocolState {
   openai_text_route_mode?: OpenAITextRouteMode
-  openai_responses_probe_status?: OpenAIResponsesProbeStatus
   openai_responses_continuation_supported?: boolean
 }
 
-export interface CreateAccountRequest {
+export type { PlatformQuotaItem, PlatformQuotaPlatform, PlatformQuotaWindow } from "@/api/admin/users"
+
+export interface CreateProviderRequest {
+	// 新号票据草稿随创建提交，现有账号导入不覆盖原规则。
   codex_ticket?: import('@/api/admin/codexTickets').TicketAccountPatch
   name: string
   notes?: string | null
-  platform: AccountPlatform
-  type: AccountType
+  platform: ProviderPlatform
+  type: ProviderType
   credentials: Record<string, unknown>
   extra?: Record<string, unknown>
   proxy_id?: number | null
   concurrency?: number
   load_factor?: number | null
   priority?: number
-  rate_multiplier?: number // Account billing multiplier (>=0, 0 means free)
+  rate_multiplier?: number // Provider billing multiplier (>=0, 0 means free)
   group_ids?: number[]
   expires_at?: number | null
   auto_pause_on_expired?: boolean
-  confirm_mixed_channel_risk?: boolean
 }
 
-export interface UpdateAccountRequest {
+export interface UpdateProviderRequest {
   name?: string
   notes?: string | null
-  type?: AccountType
+  type?: ProviderType
   credentials?: Record<string, unknown>
   extra?: Record<string, unknown>
   proxy_id?: number | null
   concurrency?: number
   load_factor?: number | null
   priority?: number
-  rate_multiplier?: number // Account billing multiplier (>=0, 0 means free)
+  rate_multiplier?: number // Provider billing multiplier (>=0, 0 means free)
   schedulable?: boolean
   status?: 'active' | 'inactive' | 'error'
   group_ids?: number[]
   expires_at?: number | null
   auto_pause_on_expired?: boolean
-  confirm_mixed_channel_risk?: boolean
-}
-
-export interface CheckMixedChannelRequest {
-  platform: AccountPlatform
-  group_ids: number[]
-  account_id?: number
-}
-
-export interface MixedChannelWarningDetails {
-  group_id: number
-  group_name: string
-  current_platform: string
-  other_platform: string
-}
-
-export interface CheckMixedChannelResponse {
-  has_risk: boolean
-  error?: string
-  message?: string
-  details?: MixedChannelWarningDetails
 }
 
 export interface CreateProxyRequest {
@@ -1808,8 +1729,8 @@ export interface AdminDataPayload {
   version?: number
   exported_at: string
   proxies: AdminDataProxy[]
-  accounts: AdminDataAccount[]
-  // 导出时被排除的 spark 影子账号数量(影子不持凭据、其调度配置不在备份范围)。
+  providers: AdminDataProvider[]
+  // 导出时被排除的 spark 影子提供商数量(影子不持凭据、其调度配置不在备份范围)。
   skipped_shadows?: number
 }
 
@@ -1824,11 +1745,11 @@ export interface AdminDataProxy {
   status: 'active' | 'inactive'
 }
 
-export interface AdminDataAccount {
+export interface AdminDataProvider {
   name: string
   notes?: string | null
-  platform: AccountPlatform
-  type: AccountType
+  platform: ProviderPlatform
+  type: ProviderType
   credentials: Record<string, unknown>
   extra?: Record<string, unknown>
   proxy_key?: string | null
@@ -1840,7 +1761,7 @@ export interface AdminDataAccount {
 }
 
 export interface AdminDataImportError {
-  kind: 'proxy' | 'account'
+  kind: 'proxy' | 'provider'
   name?: string
   proxy_key?: string
   message: string
@@ -1850,8 +1771,8 @@ export interface AdminDataImportResult {
   proxy_created: number
   proxy_reused: number
   proxy_failed: number
-  account_created: number
-  account_failed: number
+  provider_created: number
+  provider_failed: number
   errors?: AdminDataImportError[]
 }
 
@@ -1872,8 +1793,6 @@ export interface CodexSessionImportRequest {
   credential_extras?: Record<string, unknown>
   extra?: Record<string, unknown>
   update_existing?: boolean
-  skip_default_group_bind?: boolean
-  confirm_mixed_channel_risk?: boolean
 }
 
 export interface OpenAICodexPATCreateRequest {
@@ -1891,8 +1810,6 @@ export interface OpenAICodexPATCreateRequest {
   auto_pause_on_expired?: boolean
   credential_extras?: Record<string, unknown>
   extra?: Record<string, unknown>
-  skip_default_group_bind?: boolean
-  confirm_mixed_channel_risk?: boolean
 }
 
 export interface CodexSessionImportMessage {
@@ -1905,7 +1822,7 @@ export interface CodexSessionImportItem {
   index: number
   name?: string
   action: 'created' | 'updated' | 'skipped' | 'failed'
-  account_id?: number
+  provider_id?: number
   message?: string
 }
 
@@ -1935,11 +1852,13 @@ export type ImageSizeSource = 'output' | 'input' | 'default' | 'legacy'
 export type ImageSizeBreakdown = Record<string, number>
 
 export interface UsageLog {
+  // 实际执行提供商的平台快照，历史记录由迁移固化。
+  platform: string
   id: number
   user_id: number
   team_id?: number | null
   api_key_id: number
-  account_id: number | null
+  provider_id: number | null
   request_id: string
   model: string
   service_tier?: string | null
@@ -2005,7 +1924,7 @@ export interface UsageLog {
   subscription?: UserSubscription
 }
 
-export interface UsageLogAccountSummary {
+export interface UsageLogProviderSummary {
   id: number
   name: string
 }
@@ -2018,22 +1937,22 @@ export interface AdminUsageLog extends UsageLog {
   model_mapping_chain?: string | null
   upstream_request_id?: string | null
 
-  // 账号计费倍率（仅管理员可见）
-  account_rate_multiplier?: number | null
-  // 自定义定价规则计算的账号统计费用（nil 时使用 total_cost * multiplier）
-  account_stats_cost?: number | null
+  // 提供商计费倍率（仅管理员可见）
+  provider_rate_multiplier?: number | null
+  // 自定义定价规则计算的提供商统计费用（nil 时使用 total_cost * multiplier）
+  provider_stats_cost?: number | null
 
-  // 渠道 ID 和计费等级（仅管理员可见）
-  channel_id?: number | null
+  // 共享价格配置 ID 和计费等级（仅管理员可见）
+  pricing_config_id?: number | null
   billing_tier?: string | null
 
-  // 最小账号信息（仅管理员接口返回）
-  account?: UsageLogAccountSummary
+  // 最小提供商信息（仅管理员接口返回）
+  provider?: UsageLogProviderSummary
 }
 
 export interface UsageLogTiming {
   request_content_length?: number | null
-  account_slot_acquired_ms?: number | null
+  provider_slot_acquired_ms?: number | null
   upstream_get_conn_ms?: number | null
   upstream_got_conn_ms?: number | null
   upstream_wrote_request_ms?: number | null
@@ -2054,7 +1973,7 @@ export interface UsageCleanupFilters {
   end_time: string
   user_id?: number
   api_key_id?: number
-  account_id?: number
+  provider_id?: number
   group_id?: number
   model?: string | null
   request_type?: UsageRequestType | null
@@ -2144,12 +2063,12 @@ export interface DashboardStats {
   total_api_keys: number
   active_api_keys: number // 状态为 active 的 API Key 数
 
-  // 账户统计
-  total_accounts: number
-  normal_accounts: number // 正常账户数
-  error_accounts: number // 异常账户数
-  ratelimit_accounts: number // 限流账户数
-  overload_accounts: number // 过载账户数
+  // 提供商统计
+  total_providers: number
+  normal_providers: number // 正常提供商数
+  error_providers: number // 异常提供商数
+  ratelimit_providers: number // 限流提供商数
+  overload_providers: number // 过载提供商数
 
   // 累计 Token 使用统计
   total_requests: number
@@ -2160,7 +2079,7 @@ export interface DashboardStats {
   total_tokens: number
   total_cost: number // 累计标准计费
   total_actual_cost: number // 累计实际扣除
-  total_account_cost: number // 累计账号成本
+  total_provider_cost: number // 累计提供商成本
 
   // 今日 Token 使用统计
   today_requests: number
@@ -2171,7 +2090,7 @@ export interface DashboardStats {
   today_tokens: number
   today_cost: number // 今日标准计费
   today_actual_cost: number // 今日实际扣除
-  today_account_cost: number // 今日账号成本
+  today_provider_cost: number // 今日提供商成本
 
   // 系统运行统计
   average_duration_ms: number // 平均响应时间
@@ -2224,7 +2143,7 @@ export interface ModelStat {
   total_tokens: number
   cost: number // 标准计费
   actual_cost: number // 实际扣除
-  account_cost?: number // 账号成本（仅管理员接口返回）
+  provider_cost?: number // 提供商成本（仅管理员接口返回）
 }
 
 export interface EndpointStat {
@@ -2242,7 +2161,7 @@ export interface GroupStat {
   total_tokens: number
   cost: number // 标准计费
   actual_cost: number // 实际扣除
-  account_cost?: number // 账号成本（仅管理员接口返回）
+  provider_cost?: number // 提供商成本（仅管理员接口返回）
 }
 
 export interface UserBreakdownItem {
@@ -2255,7 +2174,7 @@ export interface UserBreakdownItem {
   total_tokens: number
   cost: number
   actual_cost: number
-  account_cost: number
+  provider_cost: number
 }
 
 export interface UserUsageTrendPoint {
@@ -2450,7 +2369,7 @@ export interface UsageQueryParams {
   page_size?: number
   api_key_id?: number
   user_id?: number
-  account_id?: number
+  provider_id?: number
   group_id?: number
   model?: string
   request_type?: UsageRequestType
@@ -2465,27 +2384,27 @@ export interface UsageQueryParams {
   sort_order?: 'asc' | 'desc'
 }
 
-// ==================== Account Usage Statistics ====================
+// ==================== Provider Usage Statistics ====================
 
-export interface AccountUsageHistory {
+export interface ProviderUsageHistory {
   date: string
   label: string
   requests: number
   tokens: number
   cost: number
-  actual_cost: number // Account cost (account multiplier)
+  actual_cost: number // Provider cost (provider multiplier)
   user_cost: number // User/API key billed cost (group multiplier)
 }
 
-export interface AccountUsageSummary {
+export interface ProviderUsageSummary {
   days: number
   actual_days_used: number
-  total_cost: number // Account cost (account multiplier)
+  total_cost: number // Provider cost (provider multiplier)
   total_user_cost: number
   total_standard_cost: number
   total_requests: number
   total_tokens: number
-  avg_daily_cost: number // Account cost
+  avg_daily_cost: number // Provider cost
   avg_daily_user_cost: number
   avg_daily_requests: number
   avg_daily_tokens: number
@@ -2513,9 +2432,9 @@ export interface AccountUsageSummary {
   } | null
 }
 
-export interface AccountUsageStatsResponse {
-  history: AccountUsageHistory[]
-  summary: AccountUsageSummary
+export interface ProviderUsageStatsResponse {
+  history: ProviderUsageHistory[]
+  summary: ProviderUsageSummary
   models: ModelStat[]
   endpoints: EndpointStat[]
   upstream_endpoints: EndpointStat[]
@@ -2689,7 +2608,7 @@ export interface TotpLogin2FARequest {
 
 export interface ScheduledTestPlan {
   id: number
-  account_id: number
+  provider_id: number
   model_id: string
   cron_expression: string
   enabled: boolean
@@ -2714,7 +2633,7 @@ export interface ScheduledTestResult {
 }
 
 export interface CreateScheduledTestPlanRequest {
-  account_id: number
+  provider_id: number
   model_id: string
   cron_expression: string
   enabled?: boolean
@@ -2734,9 +2653,4 @@ export interface UpdateScheduledTestPlanRequest {
 export type { SubscriptionPlan, PaymentOrder, CheckoutInfoResponse } from './payment'
 
 export type {
-  PlatformQuotaItem,
-  PlatformQuotaUpdateItem,
-  PlatformQuotaPlatform,
-  PlatformQuotaWindow,
-  PlatformQuotasResponse,
 } from '@/api/admin/users'

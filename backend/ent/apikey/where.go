@@ -190,9 +190,9 @@ func Window7dStart(v time.Time) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldWindow7dStart, v))
 }
 
-// FallbackToDefaultGroupWhenUnavailable applies equality check predicate on the "fallback_to_default_group_when_unavailable" field. It's identical to FallbackToDefaultGroupWhenUnavailableEQ.
-func FallbackToDefaultGroupWhenUnavailable(v bool) predicate.APIKey {
-	return predicate.APIKey(sql.FieldEQ(FieldFallbackToDefaultGroupWhenUnavailable, v))
+// FallbackWhenGroupUnavailable applies equality check predicate on the "fallback_when_group_unavailable" field. It's identical to FallbackWhenGroupUnavailableEQ.
+func FallbackWhenGroupUnavailable(v bool) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldFallbackWhenGroupUnavailable, v))
 }
 
 // ManagedBy applies equality check predicate on the "managed_by" field. It's identical to ManagedByEQ.
@@ -1395,14 +1395,14 @@ func Window7dStartNotNil() predicate.APIKey {
 	return predicate.APIKey(sql.FieldNotNull(FieldWindow7dStart))
 }
 
-// FallbackToDefaultGroupWhenUnavailableEQ applies the EQ predicate on the "fallback_to_default_group_when_unavailable" field.
-func FallbackToDefaultGroupWhenUnavailableEQ(v bool) predicate.APIKey {
-	return predicate.APIKey(sql.FieldEQ(FieldFallbackToDefaultGroupWhenUnavailable, v))
+// FallbackWhenGroupUnavailableEQ applies the EQ predicate on the "fallback_when_group_unavailable" field.
+func FallbackWhenGroupUnavailableEQ(v bool) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldFallbackWhenGroupUnavailable, v))
 }
 
-// FallbackToDefaultGroupWhenUnavailableNEQ applies the NEQ predicate on the "fallback_to_default_group_when_unavailable" field.
-func FallbackToDefaultGroupWhenUnavailableNEQ(v bool) predicate.APIKey {
-	return predicate.APIKey(sql.FieldNEQ(FieldFallbackToDefaultGroupWhenUnavailable, v))
+// FallbackWhenGroupUnavailableNEQ applies the NEQ predicate on the "fallback_when_group_unavailable" field.
+func FallbackWhenGroupUnavailableNEQ(v bool) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNEQ(FieldFallbackWhenGroupUnavailable, v))
 }
 
 // ManagedByEQ applies the EQ predicate on the "managed_by" field.

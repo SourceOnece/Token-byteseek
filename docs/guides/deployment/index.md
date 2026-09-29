@@ -180,13 +180,11 @@ docker compose -f docker-compose.local.yml ps
 docker compose -f docker-compose.local.yml logs -f sub2api
 ```
 
-#### 简易模式
+#### 旧部署升级
 
-简易模式适合个人开发者或内部团队快速使用，不依赖完整 SaaS 功能。
+所有部署统一执行余额、订阅、Key 配额检查和正常计费。旧环境变量 `RUN_MODE`、YAML `run_mode` 和 `SIMPLE_MODE_CONFIRM` 不再生效，遗留配置不会阻止启动，可以直接删除。升级前应为需要继续调用的用户准备余额或有效订阅；原简易部署中的请求也会执行正常计费规则。
 
-- 启用方式：设置环境变量 `RUN_MODE=simple`
-- 功能差异：隐藏 SaaS 相关功能，跳过计费流程
-- 安全注意事项：生产环境需同时设置 `SIMPLE_MODE_CONFIRM=true` 才允许启动
+已有余额、订阅、管理员并发和历史用量保持原值，不追补历史费用。新安装管理员默认并发为 5。`GET /api/v1/auth/me` 不再返回 `run_mode`，外部调用方应移除对该字段的依赖。
 
 #### 部署版本对比
 
@@ -363,8 +361,8 @@ Passkey 登录不会以不可信的 `Host` 或 `Origin` 请求头作为配置回
 
 ### OpenAI Responses WebSocket 首消息超时
 
-账号级 WS mode（包括 `http_bridge`）仅在新版 mode router 开启时生效。关闭该开关时，
-账号级 mode 会被忽略，网关继续使用 legacy `ctx_pool` 行为。可通过 YAML 开启：
+提供商级 WS mode（包括 `http_bridge`）仅在新版 mode router 开启时生效。关闭该开关时，
+提供商级 mode 会被忽略，网关继续使用 legacy `ctx_pool` 行为。可通过 YAML 开启：
 
 ```yaml
 gateway:
@@ -454,7 +452,7 @@ SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP=true
 **适用场景：**
 - ✅ 开发/测试环境的本地服务器（http://localhost）
 - ✅ 内网可信端点
-- ✅ 获取 HTTPS 前测试账号连通性
+- ✅ 获取 HTTPS 前测试提供商连通性
 - ❌ 生产环境（仅使用 HTTPS）
 
 **未设置此项时的错误示例：**

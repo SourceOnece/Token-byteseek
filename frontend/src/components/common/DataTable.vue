@@ -1,21 +1,21 @@
 <template>
   <div v-if="!isDesktopViewport" class="space-y-3">
     <template v-if="loading">
-      <div v-for="i in 5" :key="i" class="data-table-mobile-card rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900">
+      <div v-for="i in 5" :key="i" class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900">
         <div class="space-y-3">
           <div v-for="column in dataColumns" :key="column.key" class="flex justify-between">
-            <div class="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-dark-700"></div>
-            <div class="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-dark-700"></div>
+            <div class="h-4 w-20 animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>
+            <div class="h-4 w-32 animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>
           </div>
           <div v-if="hasActionsColumn" class="border-t border-gray-200 pt-3 dark:border-dark-700">
-            <div class="h-8 w-full animate-pulse rounded bg-gray-200 dark:bg-dark-700"></div>
+            <div class="h-8 w-full animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>
           </div>
         </div>
       </div>
     </template>
 
     <template v-else-if="!data || data.length === 0">
-      <div class="data-table-mobile-card rounded-lg border border-gray-200 bg-white p-12 text-center dark:border-dark-700 dark:bg-dark-900">
+      <div class="rounded-surface border border-gray-200 bg-white p-12 text-center dark:border-dark-700 dark:bg-dark-900">
         <slot name="empty">
           <div class="flex flex-col items-center">
             <Icon
@@ -36,7 +36,7 @@
         <label class="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
           <input
             type="checkbox"
-            class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
+            class="h-4 w-4 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
             :checked="allVisibleSelected"
             :indeterminate="someVisibleSelected"
             data-test="select-all-mobile"
@@ -48,7 +48,7 @@
       <div
         v-for="(row, index) in sortedData"
         :key="resolveRowKey(row, index)"
-        class="data-table-mobile-card rounded-lg border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900"
+        class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900"
         :class="{
           'cursor-pointer': clickableRows,
           'border-primary-300 bg-primary-50/40 dark:border-primary-700 dark:bg-primary-900/10': selectable && isRowSelected(row, index)
@@ -59,7 +59,7 @@
           <div v-if="selectable" class="flex justify-end">
             <input
               type="checkbox"
-              class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
+              class="h-4 w-4 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
               :checked="isRowSelected(row, index)"
               :aria-label="getRowSelectionLabel(row, index)"
               data-test="select-row"
@@ -109,7 +109,7 @@
           >
             <input
               type="checkbox"
-              class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
+              class="h-4 w-4 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
               :checked="allVisibleSelected"
               :indeterminate="someVisibleSelected"
               :aria-label="t('common.selectAll')"
@@ -169,12 +169,12 @@
       <tbody class="table-body divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900">
         <!-- Loading skeleton -->
         <tr v-if="loading" v-for="i in 5" :key="i">
-          <td v-if="selectable" class="w-11 min-w-11 px-3 py-4">
-            <div class="mx-auto h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-dark-700"></div>
+          <td v-if="selectable" class="w-11 min-w-11 px-3 py-3">
+            <div class="mx-auto h-4 w-4 animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>
           </td>
-          <td v-for="column in columns" :key="column.key" :class="['whitespace-nowrap py-4', getAdaptivePaddingClass()]">
+          <td v-for="column in columns" :key="column.key" :class="['whitespace-nowrap py-3', getAdaptivePaddingClass()]">
             <div class="animate-pulse">
-              <div class="h-4 w-3/4 rounded bg-gray-200 dark:bg-dark-700"></div>
+              <div class="h-4 w-3/4 rounded-compact bg-gray-200 dark:bg-dark-700"></div>
             </div>
           </td>
         </tr>
@@ -220,10 +220,10 @@
             }"
             @click="clickableRows && emit('rowClick', item.row)"
           >
-            <td v-if="selectable" class="w-11 min-w-11 px-3 py-4 text-center">
+            <td v-if="selectable" class="w-11 min-w-11 px-3 py-3 text-center">
               <input
                 type="checkbox"
-                class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
+                class="h-4 w-4 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
                 :checked="isRowSelected(item.row, item.index)"
                 :aria-label="getRowSelectionLabel(item.row, item.index)"
                 data-test="select-row"
@@ -235,7 +235,7 @@
               v-for="(column, colIndex) in columns"
               :key="column.key"
               :class="[
-                'whitespace-nowrap py-4 text-sm text-gray-900 dark:text-gray-100',
+                'whitespace-nowrap py-3 text-sm text-gray-900 dark:text-gray-100',
                 getAdaptivePaddingClass(),
                 getStickyColumnClass(column, colIndex),
                 column.class
@@ -978,30 +978,36 @@ defineExpose({
 .table-wrapper .table-header {
   position: sticky;
   top: 0;
-  z-index: 200;
-  background-color: var(--bh-yellow);
+  z-index: 200; /* check-ui-allow: 表格内部局部堆叠上下文(固定列/表头),不入全局阶梯 */
+  background-color: rgb(249 250 251);
+}
+
+.dark .table-wrapper .table-header {
+  background-color: rgb(31 31 35);
 }
 
 /* 表体保持在表头下方 */
 .table-body {
   position: relative;
-  z-index: 0;
+  z-index: 0; /* check-ui-allow: 局部堆叠 */
 }
 
 /* 所有表头单元格固定在顶部 */
 .sticky-header-cell {
   position: sticky;
   top: 0;
-  z-index: 210; /* 必须高于所有表体内容 */
-  background-color: var(--bh-yellow);
-  color: #141414;
-  font-weight: 800;
+  z-index: 210; /* 必须高于所有表体内容 */ /* check-ui-allow: 局部堆叠 */
+  background-color: rgb(249 250 251);
+}
+
+.dark .sticky-header-cell {
+  background-color: rgb(31 31 35);
 }
 
 /* Sticky 列基础样式 */
 .sticky-col {
   position: sticky;
-  z-index: 20; /* 表体固定列 */
+  z-index: 20; /* 表体固定列 */ /* check-ui-allow: 局部堆叠 */
 }
 
 /* 单列固定（无勾选列时） */
@@ -1026,7 +1032,7 @@ defineExpose({
 
 /* 表头 sticky 列 - 需要比普通表头单元格更高的 z-index */
 .sticky-header-cell.sticky-col {
-  z-index: 220; /* 高于普通表头单元格和表体固定列 */
+  z-index: 220; /* 高于普通表头单元格和表体固定列 */ /* check-ui-allow: 局部堆叠 */
 }
 
 /* 表体 sticky 列背景 */
@@ -1080,8 +1086,8 @@ tbody tr:hover .sticky-col {
 }
 
 .table-wrapper::-webkit-scrollbar-track {
-  background-color: transparent !important;
-  border-radius: 6px !important;
+  background-color: rgba(0, 0, 0, 0.03) !important;
+  border-radius: 9999px !important;
   margin: 0 4px !important;
 }
 .dark .table-wrapper::-webkit-scrollbar-track {
@@ -1089,8 +1095,8 @@ tbody tr:hover .sticky-col {
 }
 
 .table-wrapper::-webkit-scrollbar-thumb {
-  background-color: var(--bh-scrollbar) !important;
-  border-radius: 6px !important;
+  background-color: rgba(107, 114, 128, 0.75) !important;
+  border-radius: 9999px !important;
   border: 2px solid transparent !important;
   background-clip: padding-box !important;
   -webkit-appearance: none !important;

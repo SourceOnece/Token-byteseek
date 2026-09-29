@@ -1,0 +1,2 @@
+-- 移除 Messages 专用模型覆盖，分组映射统一使用 routing_policy.model_mapping。
+-- 新协议策略不再读取该字段，但保留原值供回退和人工迁移核对。

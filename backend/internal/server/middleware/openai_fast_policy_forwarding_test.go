@@ -10,17 +10,39 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/gateway"
+
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
+
+	"github.com/TokenFlux/TokenRouter/internal/egress"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/apikey/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
-	"github.com/TokenFlux/TokenRouter/internal/pkg/tlsfingerprint"
-	"github.com/TokenFlux/TokenRouter/internal/service"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
+
+	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
+
+	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
+	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 )
 
 func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	upstreamBodies := make(chan []byte, 2)
 	upstreamServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
@@ -34,17 +56,17 @@ func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
 	}))
 	defer upstreamServer.Close()
 
-	settings := &service.OpenAIFastPolicySettings{
-		Rules: []service.OpenAIFastPolicyRule{
+	settings := &tierpolicy.OpenAIFastPolicySettings{
+		Rules: []tierpolicy.OpenAIFastPolicyRule{
 			{
-				ServiceTier: service.OpenAIFastTierPriority,
-				Action:      service.BetaPolicyActionFilter,
-				Scope:       service.BetaPolicyScopeAll,
+				ServiceTier: tierpolicy.OpenAIFastTierPriority,
+				Action:      anthropic.BetaPolicyActionFilter,
+				Scope:       anthropic.BetaPolicyScopeAll,
 			},
 			{
-				ServiceTier: service.OpenAIFastTierPriority,
-				Action:      service.BetaPolicyActionPass,
-				Scope:       service.BetaPolicyScopeAll,
+				ServiceTier: tierpolicy.OpenAIFastTierPriority,
+				Action:      anthropic.BetaPolicyActionPass,
+				Scope:       anthropic.BetaPolicyScopeAll,
 				UserIDs:     []int64{42},
 			},
 		},
@@ -52,45 +74,55 @@ func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
 	settingsJSON, err := json.Marshal(settings)
 	require.NoError(t, err)
 
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	cfg.Security.URLAllowlist.Enabled = false
 	cfg.Security.URLAllowlist.AllowInsecureHTTP = true
 
-	settingService := service.NewSettingService(&openAIFastPolicyForwardingSettingRepo{
+	settingService := gatewaytestkit.RuntimeReaders(&openAIFastPolicyForwardingSettingRepo{
 		value: string(settingsJSON),
-	}, cfg)
-	gatewayService := service.NewOpenAIGatewayService(
-		nil, nil, nil, nil, nil, nil, nil, cfg,
-		nil, nil, nil, nil, nil, &openAIFastPolicyForwardingHTTPUpstream{client: upstreamServer.Client()},
-		nil, nil, nil, nil, nil, nil, nil, settingService, nil,
-	)
+	})
+
+	// 转发与原生选择使用同一响应归属、阻断和传输状态；本场景关闭 WS。
+	responses := session.NewOpenAIWSStateStore(nil, gatewayprovider.LogOpenAIWSModeInfo)
+	transient := providercore.NewModelTransientState(0)
+	circuit := egress.NewProxyStreamCircuit(egress.DefaultProxyStreamCircuitSettings())
+	blocks := providercore.NewRuntimeBlockState(time.Now)
+	choices := selection.NewCompatible(selection.CompatibleDependencies{Responses: responses, ModelTransient: transient, ProxyCircuit: circuit, RuntimeBlocks: blocks}, selection.Options{WS: &egress.OpenAIWSOptions{}})
+	output := &gatewayhttp.OpenAIResponseOutput{Options: gatewayhttp.OpenAIResponseOptions{Configured: true, ReadLimit: config.DefaultUpstreamResponseReadMaxBytes}, Health: &provideradapter.OpenAIResponseHealth{Runtime: blocks, ModelTransient: transient}, Corrector: openai.NewCodexToolCorrector(), ProxyCircuit: circuit, Responses: responses, ResponseTTL: choices.OpenAIHTTPResponseStickyTTL, Headers: responseHeaderFilterForTest(cfg)}
+	transport := &openAIFastPolicyForwardingHTTPUpstream{client: upstreamServer.Client()}
+	requests := &gatewayhttp.OpenAIRequests{Options: gatewayhttp.OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{AllowInsecureHTTP: true}}, Transport: transport, Readers: settingService, Credentials: &providercore.OpenAIExecutionCredentials{}, Identity: gatewayprovider.NewExecutionAgentIdentity(&providercore.OpenAITaskCoordinator{}, nil, nil, nil), ClientPolicy: &provideradapter.OpenAIProbePolicy{Available: true, DefaultBrowserUserAgent: gateway.DefaultOpenAICodexUserAgent}}
+	text := &gatewayhttp.OpenAITextExecutor{Requests: requests, Output: output, FastPolicy: &gatewayprovider.ExecutionFastPolicy{Readers: settingService}, CodexUsage: &provideradapter.CodexUsageObserver{}, ResponseTTL: choices.OpenAIHTTPResponseStickyTTL, Compact: &gatewayhttp.CompactExecutor{}}
+	executor := &gatewayhttp.OpenAIResponsesExecutor{Requests: requests, Output: output, Text: text, Lineage: &gatewayhttp.OpenAIEncryptedLineage{Store: responses, TTL: choices.SessionStickyTTL}, ImageBridge: &gatewayprovider.ResponseImagePolicy{}, ResolveTransport: choices.ResolveTransport}
 
 	groupID := int64(101)
-	group := &service.Group{
-		ID:       groupID,
-		Name:     "openai",
-		Status:   service.StatusActive,
-		Platform: service.PlatformOpenAI,
+	group := &routing.Group{
+		ID:     groupID,
+		Name:   "openai",
+		Status: billing.StatusActive,
+
 		Hydrated: true,
 	}
-	apiKeys := map[string]*service.APIKey{
+	apiKeys := map[string]*apikey.APIKey{
 		"key-user-42": newOpenAIFastPolicyForwardingAPIKey(1, "key-user-42", 42, groupID, group),
 		"key-user-43": newOpenAIFastPolicyForwardingAPIKey(2, "key-user-43", 43, groupID, group),
 	}
-	apiKeyService := service.NewAPIKeyService(&openAIFastPolicyForwardingAPIKeyRepo{apiKeys: apiKeys}, nil, nil, nil, nil, nil, cfg)
-	account := &service.Account{
-		ID:          900,
-		Name:        "openai-upstream",
-		Platform:    service.PlatformOpenAI,
-		Type:        service.AccountTypeAPIKey,
-		Status:      service.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": upstreamServer.URL,
+	apiKeyService := testkit.NewService(&openAIFastPolicyForwardingAPIKeyRepo{apiKeys: apiKeys}, nil, nil, nil, nil, nil, cfg)
+	apiKeyService.Start()
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 900,
+			Name:        "openai-upstream",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": upstreamServer.URL,
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true},
 	}
 
 	router := gin.New()
@@ -101,8 +133,8 @@ func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
 			c.Status(http.StatusBadRequest)
 			return
 		}
-		service.SetOpenAIClientTransport(c, service.OpenAIClientTransportHTTP)
-		if _, forwardErr := gatewayService.Forward(c.Request.Context(), c, account, body); forwardErr != nil {
+		gatewayhttp.SetOpenAIClientTransport(c, gatewayhttp.OpenAIClientTransportHTTP)
+		if _, forwardErr := executor.Forward(c.Request.Context(), c, provider, body); forwardErr != nil {
 			c.Status(http.StatusBadGateway)
 			return
 		}
@@ -127,21 +159,21 @@ func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
 
 	allowedUserBody := <-upstreamBodies
 	otherUserBody := <-upstreamBodies
-	require.Equal(t, service.OpenAIFastTierPriority, gjson.GetBytes(allowedUserBody, "service_tier").String())
+	require.Equal(t, tierpolicy.OpenAIFastTierPriority, gjson.GetBytes(allowedUserBody, "service_tier").String())
 	require.False(t, gjson.GetBytes(otherUserBody, "service_tier").Exists())
 }
 
-func newOpenAIFastPolicyForwardingAPIKey(id int64, key string, userID, groupID int64, group *service.Group) *service.APIKey {
-	return &service.APIKey{
+func newOpenAIFastPolicyForwardingAPIKey(id int64, key string, userID, groupID int64, group *routing.Group) *apikey.APIKey {
+	return &apikey.APIKey{
 		ID:      id,
 		UserID:  userID,
 		Key:     key,
-		Status:  service.StatusActive,
+		Status:  billing.StatusActive,
 		GroupID: &groupID,
-		User: &service.User{
+		User: &identity.User{
 			ID:          userID,
-			Role:        service.RoleUser,
-			Status:      service.StatusActive,
+			Role:        identity.RoleUser,
+			Status:      billing.StatusActive,
 			Balance:     10,
 			Concurrency: 1,
 		},
@@ -150,14 +182,14 @@ func newOpenAIFastPolicyForwardingAPIKey(id int64, key string, userID, groupID i
 }
 
 type openAIFastPolicyForwardingAPIKeyRepo struct {
-	service.APIKeyRepository
-	apiKeys map[string]*service.APIKey
+	apikey.APIKeyRepository
+	apiKeys map[string]*apikey.APIKey
 }
 
-func (r *openAIFastPolicyForwardingAPIKeyRepo) GetByKeyForAuth(_ context.Context, key string) (*service.APIKey, error) {
+func (r *openAIFastPolicyForwardingAPIKeyRepo) GetByKeyForAuth(_ context.Context, key string) (*apikey.APIKey, error) {
 	apiKey, ok := r.apiKeys[key]
 	if !ok {
-		return nil, service.ErrAPIKeyNotFound
+		return nil, apikey.ErrAPIKeyNotFound
 	}
 	clone := *apiKey
 	return &clone, nil
@@ -168,7 +200,7 @@ func (r *openAIFastPolicyForwardingAPIKeyRepo) UpdateLastUsed(context.Context, i
 }
 
 type openAIFastPolicyForwardingSettingRepo struct {
-	service.SettingRepository
+	settingscore.Repository
 	value string
 }
 
@@ -185,6 +217,6 @@ func (u *openAIFastPolicyForwardingHTTPUpstream) Do(req *http.Request, _ string,
 	return u.client.Do(req)
 }
 
-func (u *openAIFastPolicyForwardingHTTPUpstream) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
-	return u.Do(req, proxyURL, accountID, accountConcurrency)
+func (u *openAIFastPolicyForwardingHTTPUpstream) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, providerID, providerConcurrency)
 }

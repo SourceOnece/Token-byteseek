@@ -20,12 +20,12 @@
             <button
               @click="loadCodes"
               :disabled="loading"
-              class="btn btn-secondary h-9 w-9 shrink-0 p-0"
+              class="btn btn-secondary shrink-0 btn-icon"
               :title="t('common.refresh')"
             >
               <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
             </button>
-            <button @click="showCreateDialog = true" class="btn btn-primary h-9 whitespace-nowrap px-3 sm:px-4">
+            <button @click="showCreateDialog = true" class="btn btn-primary whitespace-nowrap px-3 sm:px-4">
               <Icon name="plus" size="md" class="mr-1" />
               {{ t('admin.promo.createCode') }}
             </button>
@@ -108,28 +108,28 @@
             <div class="flex items-center space-x-1">
               <button
                 @click="copyRegisterLink(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400"
+                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400"
                 :title="t('admin.promo.copyRegisterLink')"
               >
                 <Icon name="link" size="sm" />
               </button>
               <button
                 @click="handleViewUsages(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
                 :title="t('admin.promo.viewUsages')"
               >
                 <Icon name="eye" size="sm" />
               </button>
               <button
                 @click="handleEdit(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-dark-600 dark:hover:text-gray-300"
+                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-dark-600 dark:hover:text-gray-300"
                 :title="t('common.edit')"
               >
                 <Icon name="edit" size="sm" />
               </button>
               <button
                 @click="handleDelete(row)"
-                class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                 :title="t('common.delete')"
               >
                 <Icon name="trash" size="sm" />
@@ -325,7 +325,7 @@
         <div
           v-for="usage in usages"
           :key="usage.id"
-          class="flex items-center justify-between rounded-lg border border-gray-200 p-3 dark:border-dark-600"
+          class="flex items-center justify-between rounded-control border border-gray-200 p-3 dark:border-dark-600"
         >
           <div class="flex items-center gap-3">
             <div class="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
@@ -385,6 +385,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { useClipboard } from '@/composables/useClipboard'
+import { COPY_FEEDBACK_MS } from '@/constants/ui'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 import { adminAPI } from '@/api/admin'
@@ -584,7 +585,7 @@ const copyToClipboard = async (text: string) => {
     copiedCode.value = text
     setTimeout(() => {
       copiedCode.value = null
-    }, 2000)
+    }, COPY_FEEDBACK_MS)
   }
 }
 

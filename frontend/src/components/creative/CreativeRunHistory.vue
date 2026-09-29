@@ -3,7 +3,7 @@
   <button
     ref="historyButtonRef"
     type="button"
-    class="creative-history-button absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center text-gray-600 transition-colors hover:text-gray-900"
+    class="absolute right-3 top-3 z-20 flex rounded-control border border-primary-900/10 bg-white/90 text-gray-600 shadow-md backdrop-blur transition-colors hover:text-gray-900 dark:border-dark-600 dark:bg-dark-900/90 dark:text-gray-300 dark:hover:text-gray-100 btn-icon"
     :class="open && 'text-primary-700 dark:text-primary-300'"
     :title="t('creative.history.toggle')"
     :aria-expanded="open"
@@ -13,17 +13,17 @@
     <!-- 活动任务数量：保持在图标右上角，不展开历史也能感知后台进度。 -->
     <span
       v-if="props.activeRunCount > 0"
-      class="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-none text-white shadow-sm ring-2 ring-white dark:ring-dark-900"
+      class="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-xs font-semibold leading-none text-white shadow-sm ring-2 ring-white dark:ring-dark-900"
     >
       {{ props.activeRunCount > 99 ? '99+' : props.activeRunCount }}
     </span>
   </button>
 
   <!-- 悬浮历史列表：点击展开 / 收起，选择行后不自动收起 -->
-  <Transition name="history-panel">
+  <Transition name="pop-float">
     <div
       v-if="open"
-      class="creative-history-panel absolute right-3 top-14 z-20 flex max-h-[70%] w-80 flex-col overflow-hidden"
+      class="history-pop-float absolute right-3 top-14 z-20 flex max-h-[70%] w-80 flex-col overflow-hidden rounded-surface border border-primary-900/10 bg-white/95 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-900/95"
     >
     <div class="flex items-center gap-2 border-b border-primary-900/10 px-3 py-2 dark:border-dark-600">
       <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-dark-400">
@@ -58,7 +58,7 @@
         <div
           v-for="run in studio.runHistory.value"
           :key="run.id"
-          class="creative-history-item rounded-none border transition-colors"
+          class="rounded-control border border-primary-900/10 transition-colors dark:border-dark-600"
           :class="studio.currentRun.value?.id === run.id && 'border-primary-500 dark:border-primary-500'"
         >
           <!-- 行头：点击原地展开 / 收起 -->
@@ -75,7 +75,7 @@
                 :class="expandedRunId === run.id && 'rotate-180'"
               />
             </div>
-            <div class="mt-1 flex items-center gap-2 text-[11px] text-gray-400 dark:text-dark-400">
+            <div class="mt-1 flex items-center gap-2 text-xs text-gray-400 dark:text-dark-400">
               <span>{{ formatRunTime(run.created_at) }}</span>
               <span
                 v-if="formatElapsed(run)"
@@ -96,7 +96,7 @@
               <div class="min-h-0 overflow-hidden">
                 <div class="space-y-2 border-t border-primary-900/10 px-3 pb-3 pt-2 dark:border-dark-600">
                   <div v-if="isActive(run)" class="flex items-center gap-3 py-2 text-xs text-gray-500 dark:text-dark-300">
-                    <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-none border-2 border-gray-950 bg-gray-50 dark:border-dark-100 dark:bg-dark-950">
+                    <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-control border border-primary-900/10 bg-gray-50 dark:border-dark-600 dark:bg-dark-950">
                       <Icon name="refresh" size="md" class="animate-spin text-primary-500" />
                     </div>
                     <div class="min-w-0">
@@ -104,7 +104,7 @@
                       <span
                         v-if="formatElapsed(run)"
                         data-testid="creative-run-elapsed"
-                        class="mt-1 inline-flex items-center gap-1 tabular-nums text-[11px] text-gray-400 dark:text-dark-400"
+                        class="mt-1 inline-flex items-center gap-1 tabular-nums text-xs text-gray-400 dark:text-dark-400"
                         :aria-label="t('creative.history.elapsed', { time: formatElapsed(run) })"
                         :title="t('creative.history.elapsed', { time: formatElapsed(run) })"
                       >
@@ -117,7 +117,7 @@
                     <!-- 输出纵向排列：图片优先撑满弹窗宽度，操作按钮统一放在图片下方 -->
                     <div v-for="output in run.outputs" :key="output.output_index" class="flex flex-col gap-1.5">
                       <div
-                        class="flex w-full items-center justify-center overflow-hidden rounded-none border-2 border-gray-950 bg-gray-50 dark:border-dark-100 dark:bg-dark-950"
+                        class="flex w-full items-center justify-center overflow-hidden rounded-control border border-primary-900/10 bg-gray-50 dark:border-dark-600 dark:bg-dark-950"
                       >
                         <img
                           v-if="assetFor(run.id, output.output_index)"
@@ -129,13 +129,13 @@
                         />
                         <div v-else class="flex h-24 w-full flex-col items-center justify-center gap-0.5 text-gray-300 dark:text-dark-600">
                           <Icon name="modalityImage" size="sm" />
-                          <span class="scale-90 text-[10px]">{{ t('creative.result.missing') }}</span>
+                          <span class="scale-90 text-xs">{{ t('creative.result.missing') }}</span>
                         </div>
                       </div>
                       <div class="flex gap-1.5">
                         <button
                           type="button"
-                          class="flex flex-1 items-center justify-center gap-1 rounded-md border border-primary-900/10 px-2 py-1 text-[11px] text-gray-600 transition-colors hover:border-primary-500 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-dark-600 dark:text-gray-300 dark:hover:border-primary-500 dark:hover:text-primary-300"
+                          class="flex flex-1 items-center justify-center gap-1 rounded-control border border-primary-900/10 px-2 py-1 text-xs text-gray-600 transition-colors hover:border-primary-500 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-dark-600 dark:text-gray-300 dark:hover:border-primary-500 dark:hover:text-primary-300"
                           :disabled="!assetFor(run.id, output.output_index)"
                           @click="importToCanvas(run.id, output.output_index)"
                         >
@@ -144,7 +144,7 @@
                         </button>
                         <button
                           type="button"
-                          class="flex flex-1 items-center justify-center gap-1 rounded-md border border-primary-900/10 px-2 py-1 text-[11px] text-gray-600 transition-colors hover:border-primary-500 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-dark-600 dark:text-gray-300 dark:hover:border-primary-500 dark:hover:text-primary-300"
+                          class="flex flex-1 items-center justify-center gap-1 rounded-control border border-primary-900/10 px-2 py-1 text-xs text-gray-600 transition-colors hover:border-primary-500 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-dark-600 dark:text-gray-300 dark:hover:border-primary-500 dark:hover:text-primary-300"
                           :disabled="!assetFor(run.id, output.output_index)"
                           @click="downloadOutput(run.id, output.output_index, output.mime_type)"
                         >
@@ -154,7 +154,7 @@
                       </div>
                     </div>
                   </template>
-                  <p v-else class="py-1 text-[11px] text-gray-400 dark:text-dark-400">{{ t('creative.history.noOutputs') }}</p>
+                  <p v-else class="py-1 text-xs text-gray-400 dark:text-dark-400">{{ t('creative.history.noOutputs') }}</p>
                 </div>
               </div>
             </div>
@@ -399,19 +399,11 @@ async function refresh(): Promise<void> {
 }
 
 /* 历史面板从右上入口展开；条目详情使用网格轨道实现真实高度折叠。 */
-.history-panel-enter-active,
-.history-panel-leave-active {
-  transform-origin: top right;
-  transition:
-    opacity 200ms ease,
-    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity, transform;
-}
-
-.history-panel-enter-from,
-.history-panel-leave-to {
-  opacity: 0;
-  transform: translateY(-6px) scale(0.97);
+/* 历史面板动效用全局 pop-float,锚点方向(右上锚、向上收起)用局部变量表达;
+   条目详情折叠(history-details)是网格轨道动画,保留本地。 */
+.history-pop-float {
+  --pop-origin: top right;
+  --pop-shift: -6px;
 }
 
 .history-details-grid {
@@ -434,7 +426,7 @@ async function refresh(): Promise<void> {
 }
 
 .status-badge {
-  @apply inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium;
+  @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
   @apply bg-gray-100 text-gray-500 dark:bg-dark-700 dark:text-dark-300;
 }
 
@@ -469,8 +461,8 @@ async function refresh(): Promise<void> {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .history-panel-enter-active,
-  .history-panel-leave-active,
+  /* 历史面板走全局 pop-float,reduced-motion 由全局配方收敛;
+     这里只留本地 history-details 的折叠动画。 */
   .history-details-enter-active,
   .history-details-leave-active {
     transition-duration: 1ms;

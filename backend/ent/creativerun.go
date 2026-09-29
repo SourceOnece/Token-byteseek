@@ -11,7 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/TokenFlux/TokenRouter/ent/creativerun"
-	"github.com/TokenFlux/TokenRouter/internal/domain"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
 // CreativeRun is the model entity for the CreativeRun schema.
@@ -33,8 +33,10 @@ type CreativeRun struct {
 	GroupID int64 `json:"group_id,omitempty"`
 	// APIKeyID holds the value of the "api_key_id" field.
 	APIKeyID int64 `json:"api_key_id,omitempty"`
-	// AccountID holds the value of the "account_id" field.
-	AccountID *int64 `json:"account_id,omitempty"`
+	// ProviderID holds the value of the "provider_id" field.
+	ProviderID *int64 `json:"provider_id,omitempty"`
+	// Platform holds the value of the "platform" field.
+	Platform string `json:"platform,omitempty"`
 	// Model holds the value of the "model" field.
 	Model string `json:"model,omitempty"`
 	// RequestedModel holds the value of the "requested_model" field.
@@ -66,7 +68,7 @@ type CreativeRun struct {
 	// BalanceHoldAmount holds the value of the "balance_hold_amount" field.
 	BalanceHoldAmount float64 `json:"balance_hold_amount,omitempty"`
 	// SubscriptionHoldAllocations holds the value of the "subscription_hold_allocations" field.
-	SubscriptionHoldAllocations []domain.BillingAllocation `json:"subscription_hold_allocations,omitempty"`
+	SubscriptionHoldAllocations []billing.BillingAllocation `json:"subscription_hold_allocations,omitempty"`
 	// BaseUnitPrice holds the value of the "base_unit_price" field.
 	BaseUnitPrice float64 `json:"base_unit_price,omitempty"`
 	// SubscriptionRateMultiplier holds the value of the "subscription_rate_multiplier" field.
@@ -119,9 +121,9 @@ func (*CreativeRun) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case creativerun.FieldEstimatedCost, creativerun.FieldHoldAmount, creativerun.FieldActualCost, creativerun.FieldBalanceHoldAmount, creativerun.FieldBaseUnitPrice, creativerun.FieldSubscriptionRateMultiplier, creativerun.FieldBalanceRateMultiplier:
 			values[i] = new(sql.NullFloat64)
-		case creativerun.FieldID, creativerun.FieldUserID, creativerun.FieldGroupID, creativerun.FieldAPIKeyID, creativerun.FieldAccountID, creativerun.FieldRequestedOutputCount, creativerun.FieldAttemptCount, creativerun.FieldSettlementAttemptCount, creativerun.FieldReleaseAttemptCount, creativerun.FieldVersion:
+		case creativerun.FieldID, creativerun.FieldUserID, creativerun.FieldGroupID, creativerun.FieldAPIKeyID, creativerun.FieldProviderID, creativerun.FieldRequestedOutputCount, creativerun.FieldAttemptCount, creativerun.FieldSettlementAttemptCount, creativerun.FieldReleaseAttemptCount, creativerun.FieldVersion:
 			values[i] = new(sql.NullInt64)
-		case creativerun.FieldRunID, creativerun.FieldWorkspaceID, creativerun.FieldModel, creativerun.FieldRequestedModel, creativerun.FieldOperation, creativerun.FieldImageSize, creativerun.FieldAspectRatio, creativerun.FieldResponseMimeType, creativerun.FieldPromptHash, creativerun.FieldRequestFingerprint, creativerun.FieldIdempotencyKey, creativerun.FieldStatus, creativerun.FieldErrorCode, creativerun.FieldErrorMessage, creativerun.FieldReleaseTargetStatus, creativerun.FieldProvisioningPhase, creativerun.FieldLastReconcileError:
+		case creativerun.FieldRunID, creativerun.FieldWorkspaceID, creativerun.FieldPlatform, creativerun.FieldModel, creativerun.FieldRequestedModel, creativerun.FieldOperation, creativerun.FieldImageSize, creativerun.FieldAspectRatio, creativerun.FieldResponseMimeType, creativerun.FieldPromptHash, creativerun.FieldRequestFingerprint, creativerun.FieldIdempotencyKey, creativerun.FieldStatus, creativerun.FieldErrorCode, creativerun.FieldErrorMessage, creativerun.FieldReleaseTargetStatus, creativerun.FieldProvisioningPhase, creativerun.FieldLastReconcileError:
 			values[i] = new(sql.NullString)
 		case creativerun.FieldCreatedAt, creativerun.FieldUpdatedAt, creativerun.FieldProviderResultRecordedAt, creativerun.FieldNextReconcileAt, creativerun.FieldStartedAt, creativerun.FieldCompletedAt, creativerun.FieldCancelledAt:
 			values[i] = new(sql.NullTime)
@@ -189,12 +191,18 @@ func (_m *CreativeRun) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.APIKeyID = value.Int64
 			}
-		case creativerun.FieldAccountID:
+		case creativerun.FieldProviderID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field account_id", values[i])
+				return fmt.Errorf("unexpected type %T for field provider_id", values[i])
 			} else if value.Valid {
-				_m.AccountID = new(int64)
-				*_m.AccountID = value.Int64
+				_m.ProviderID = new(int64)
+				*_m.ProviderID = value.Int64
+			}
+		case creativerun.FieldPlatform:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field platform", values[i])
+			} else if value.Valid {
+				_m.Platform = value.String
 			}
 		case creativerun.FieldModel:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -478,10 +486,13 @@ func (_m *CreativeRun) String() string {
 	builder.WriteString("api_key_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.APIKeyID))
 	builder.WriteString(", ")
-	if v := _m.AccountID; v != nil {
-		builder.WriteString("account_id=")
+	if v := _m.ProviderID; v != nil {
+		builder.WriteString("provider_id=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("platform=")
+	builder.WriteString(_m.Platform)
 	builder.WriteString(", ")
 	builder.WriteString("model=")
 	builder.WriteString(_m.Model)

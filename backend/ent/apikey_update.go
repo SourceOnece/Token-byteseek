@@ -549,16 +549,16 @@ func (_u *APIKeyUpdate) ClearWindow7dStart() *APIKeyUpdate {
 	return _u
 }
 
-// SetFallbackToDefaultGroupWhenUnavailable sets the "fallback_to_default_group_when_unavailable" field.
-func (_u *APIKeyUpdate) SetFallbackToDefaultGroupWhenUnavailable(v bool) *APIKeyUpdate {
-	_u.mutation.SetFallbackToDefaultGroupWhenUnavailable(v)
+// SetFallbackWhenGroupUnavailable sets the "fallback_when_group_unavailable" field.
+func (_u *APIKeyUpdate) SetFallbackWhenGroupUnavailable(v bool) *APIKeyUpdate {
+	_u.mutation.SetFallbackWhenGroupUnavailable(v)
 	return _u
 }
 
-// SetNillableFallbackToDefaultGroupWhenUnavailable sets the "fallback_to_default_group_when_unavailable" field if the given value is not nil.
-func (_u *APIKeyUpdate) SetNillableFallbackToDefaultGroupWhenUnavailable(v *bool) *APIKeyUpdate {
+// SetNillableFallbackWhenGroupUnavailable sets the "fallback_when_group_unavailable" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableFallbackWhenGroupUnavailable(v *bool) *APIKeyUpdate {
 	if v != nil {
-		_u.SetFallbackToDefaultGroupWhenUnavailable(*v)
+		_u.SetFallbackWhenGroupUnavailable(*v)
 	}
 	return _u
 }
@@ -927,8 +927,8 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.Window7dStartCleared() {
 		_spec.ClearField(apikey.FieldWindow7dStart, field.TypeTime)
 	}
-	if value, ok := _u.mutation.FallbackToDefaultGroupWhenUnavailable(); ok {
-		_spec.SetField(apikey.FieldFallbackToDefaultGroupWhenUnavailable, field.TypeBool, value)
+	if value, ok := _u.mutation.FallbackWhenGroupUnavailable(); ok {
+		_spec.SetField(apikey.FieldFallbackWhenGroupUnavailable, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.ManagedBy(); ok {
 		_spec.SetField(apikey.FieldManagedBy, field.TypeString, value)
@@ -1648,16 +1648,16 @@ func (_u *APIKeyUpdateOne) ClearWindow7dStart() *APIKeyUpdateOne {
 	return _u
 }
 
-// SetFallbackToDefaultGroupWhenUnavailable sets the "fallback_to_default_group_when_unavailable" field.
-func (_u *APIKeyUpdateOne) SetFallbackToDefaultGroupWhenUnavailable(v bool) *APIKeyUpdateOne {
-	_u.mutation.SetFallbackToDefaultGroupWhenUnavailable(v)
+// SetFallbackWhenGroupUnavailable sets the "fallback_when_group_unavailable" field.
+func (_u *APIKeyUpdateOne) SetFallbackWhenGroupUnavailable(v bool) *APIKeyUpdateOne {
+	_u.mutation.SetFallbackWhenGroupUnavailable(v)
 	return _u
 }
 
-// SetNillableFallbackToDefaultGroupWhenUnavailable sets the "fallback_to_default_group_when_unavailable" field if the given value is not nil.
-func (_u *APIKeyUpdateOne) SetNillableFallbackToDefaultGroupWhenUnavailable(v *bool) *APIKeyUpdateOne {
+// SetNillableFallbackWhenGroupUnavailable sets the "fallback_when_group_unavailable" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableFallbackWhenGroupUnavailable(v *bool) *APIKeyUpdateOne {
 	if v != nil {
-		_u.SetFallbackToDefaultGroupWhenUnavailable(*v)
+		_u.SetFallbackWhenGroupUnavailable(*v)
 	}
 	return _u
 }
@@ -2056,8 +2056,8 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 	if _u.mutation.Window7dStartCleared() {
 		_spec.ClearField(apikey.FieldWindow7dStart, field.TypeTime)
 	}
-	if value, ok := _u.mutation.FallbackToDefaultGroupWhenUnavailable(); ok {
-		_spec.SetField(apikey.FieldFallbackToDefaultGroupWhenUnavailable, field.TypeBool, value)
+	if value, ok := _u.mutation.FallbackWhenGroupUnavailable(); ok {
+		_spec.SetField(apikey.FieldFallbackWhenGroupUnavailable, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.ManagedBy(); ok {
 		_spec.SetField(apikey.FieldManagedBy, field.TypeString, value)

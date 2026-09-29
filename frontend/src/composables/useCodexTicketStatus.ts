@@ -1,6 +1,6 @@
 import { onMounted, onBeforeUnmount, ref, watch, type Ref, type WatchStopHandle } from 'vue'
 import { getCodexTicketStatus, type TicketAccountStatus } from '@/api/admin/codexTickets'
-import { isQualityTestable } from '@/components/admin/account/codexQualityPresentation'
+import { isQualityTestable } from '@/components/admin/provider/codexQualityPresentation'
 import type { Account } from '@/types'
 
 export const supportsCodexTickets = (account: Account) => account.type === 'oauth' && isQualityTestable(account)

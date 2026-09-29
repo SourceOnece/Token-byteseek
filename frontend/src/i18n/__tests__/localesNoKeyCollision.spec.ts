@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import enAdminAccounts from '../locales/en/admin/accounts'
-import enAdminChannels from '../locales/en/admin/channels'
+import enAdminProviders from '../locales/en/admin/providers'
+import enAdminPricing from '../locales/en/admin/pricing'
 import enAdminOps from '../locales/en/admin/ops'
 import enAdminOverview from '../locales/en/admin/overview'
 import enAdminResources from '../locales/en/admin/resources'
@@ -10,8 +10,8 @@ import enCommon from '../locales/en/common'
 import enDashboard from '../locales/en/dashboard'
 import enLanding from '../locales/en/landing'
 import enMisc from '../locales/en/misc'
-import zhAdminAccounts from '../locales/zh/admin/accounts'
-import zhAdminChannels from '../locales/zh/admin/channels'
+import zhAdminProviders from '../locales/zh/admin/providers'
+import zhAdminPricing from '../locales/zh/admin/pricing'
 import zhAdminOps from '../locales/zh/admin/ops'
 import zhAdminOverview from '../locales/zh/admin/overview'
 import zhAdminResources from '../locales/zh/admin/resources'
@@ -49,16 +49,16 @@ const roots: Record<string, Modules> = {
 const admins: Record<string, Modules> = {
   zh: {
     overview: zhAdminOverview,
-    channels: zhAdminChannels,
-    accounts: zhAdminAccounts,
+    channels: zhAdminPricing,
+    providers: zhAdminProviders,
     resources: zhAdminResources,
     ops: zhAdminOps,
     settings: zhAdminSettings
   },
   en: {
     overview: enAdminOverview,
-    channels: enAdminChannels,
-    accounts: enAdminAccounts,
+    channels: enAdminPricing,
+    providers: enAdminProviders,
     resources: enAdminResources,
     ops: enAdminOps,
     settings: enAdminSettings
@@ -81,20 +81,20 @@ describe.each(Object.keys(roots))('locale %s spread assembly', (locale) => {
   })
 })
 
-// 账号阈值表单直接读取 admin.accounts.*；这些键若误放进 status，
+// 提供商阈值表单直接读取 admin.providers.*；这些键若误放进 status，
 // vue-i18n 会把键名原样显示在界面上。
-describe('account scheduling threshold locale hierarchy', () => {
+describe('provider scheduling threshold locale hierarchy', () => {
   it.each([
-    ['zh', zhAdminAccounts.accounts],
-    ['en', enAdminAccounts.accounts]
+    ['zh', zhAdminProviders.providers],
+    ['en', enAdminProviders.providers]
   ] as const)('%s keeps threshold form keys outside status', (_locale, messages) => {
     const record = messages as unknown as Record<string, unknown>
     const status = record.status as Record<string, unknown>
     const keys = [
-      'accountSchedulingThresholdOverride',
-      'accountSchedulingThresholdOverrideHint',
-      'accountSchedulingThresholdOverrideValue',
-      'accountSchedulingThresholdOverrideDisabledHint'
+      'providerSchedulingThresholdOverride',
+      'providerSchedulingThresholdOverrideHint',
+      'providerSchedulingThresholdOverrideValue',
+      'providerSchedulingThresholdOverrideDisabledHint'
     ]
 
     for (const key of keys) {
@@ -127,8 +127,8 @@ describe('advanced scheduler diagnostic locale keys', () => {
   ]
 
   it.each([
-    ['zh', zhAdminAccounts.accounts],
-    ['en', enAdminAccounts.accounts]
+    ['zh', zhAdminProviders.providers],
+    ['en', enAdminProviders.providers]
   ] as const)('%s translates every diagnostic setting', (_locale, messages) => {
     const settingNames = (messages as unknown as {
       advancedSchedulerScore: { settingNames: Record<string, unknown> }
@@ -136,7 +136,7 @@ describe('advanced scheduler diagnostic locale keys', () => {
 
     for (const key of settingKeys) {
       expect(settingNames[key], `${_locale} missing setting name ${key}`).toEqual(expect.any(String))
-      expect(settingNames[key]).not.toBe(`admin.accounts.advancedSchedulerScore.settingNames.${key}`)
+      expect(settingNames[key]).not.toBe(`admin.providers.advancedSchedulerScore.settingNames.${key}`)
     }
   })
 })

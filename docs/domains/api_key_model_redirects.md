@@ -1,8 +1,8 @@
 # API Key 模型重定向
 
-每个 API Key 可以保存一组独立的 `model_mapping`，把客户端提交的模型别名重定向到内部真实模型。规则只对当前 Key 生效，不会修改渠道、分组或账号的全局配置。
+每个 API Key 可以保存一组独立的 `model_mapping`，把客户端提交的模型别名重定向到内部目标模型。规则只对当前 Key 生效，不会修改价格配置、分组或提供商的全局配置。
 
-本文覆盖规则配置、匹配顺序、请求/响应模型链和模型列表投影，不覆盖渠道映射、账号映射或供应商自身的模型别名。
+本文覆盖规则配置、匹配顺序、请求/响应模型链和模型列表投影，不覆盖分组映射、提供商映射或供应商自身的模型别名。
 
 ## 章节导航
 
@@ -50,6 +50,8 @@ API Key 查询与列表响应会返回完整的 `model_mapping` 对象。
 <a id="redirect_order"></a>
 ## 匹配顺序
 
+`internal/routing/modelmap` 是 Key 与提供商共同使用的纯匹配实现。Key 的配置校验和别名展示由 apikey 拥有；gateway 负责请求字段读取、改写时机和响应恢复，纯匹配包不接收提供商、Key 或请求对象。
+
 每个模型在一次请求中只匹配一次，不会对映射结果继续执行下一条规则：
 
 1. 精确规则优先。
@@ -71,7 +73,7 @@ API Key 查询与列表响应会返回完整的 `model_mapping` 对象。
 
 ## 请求与响应
 
-重定向发生在 API Key 鉴权和复合 Key 选组之后、渠道与账号映射之前。JSON、multipart、Gemini URL、Responses 工具模型、异步媒体、批量图片、WebSocket 每轮模型及 Live `session.model` 使用相同规则。
+重定向发生在 API Key 鉴权和复合 Key 选组之后、分组与提供商映射之前。JSON、multipart、Gemini URL、Responses 工具模型、异步媒体、批量图片、WebSocket 每轮模型及 Live `session.model` 使用相同规则。
 
 客户端响应中的协议模型元数据会恢复为原始别名。正文中的同名文本不会被替换。用量记录中：
 
@@ -79,7 +81,7 @@ API Key 查询与列表响应会返回完整的 `model_mapping` 对象。
 - `upstream_model` 保存实际上游模型。
 - `model_mapping_chain` 保存去重后的映射链。
 
-模型权限、账号资格与计费从 Key 重定向后的目标模型开始计算，不会使用客户端别名匹配价格。
+模型权限、提供商资格与计费从 Key 重定向后的目标模型开始计算，不会使用客户端别名匹配价格。
 
 ## 复合 Key
 
@@ -87,6 +89,7 @@ API Key 查询与列表响应会返回完整的 `model_mapping` 对象。
 
 例如客户端请求 `GPT/codex-auto-review`，规则为 `codex-auto-review -> gpt-5.6-luna`，则选中 `GPT` 分组后向内部传递 `gpt-5.6-luna`，客户端响应仍展示 `GPT/codex-auto-review`。
 
+<a id="model_list_projection"></a>
 ## 模型列表
 
 `/v1/models`、`/models`、Gemini、Antigravity 与批量图片模型列表保留原有模型，并追加目标当前可请求的精确别名。
@@ -95,7 +98,8 @@ API Key 查询与列表响应会返回完整的 `model_mapping` 对象。
 - 目标当前不可请求时不展示别名。
 - 通配符来源不会被枚举为具体模型 ID。
 - 复合 Key 返回带分组前缀的别名。
+- Gemini 原生 `/v1beta/models` 从统一可请求目录筛选支持 Gemini 协议的模型，自定义列表仅取交集，再追加 Key 精确别名；别名继承目标能力元数据，原模型与顺序保留。单模型查询也使用相同的权限与可请求范围。
 
-保存规则时只校验格式，不要求目标当时已有可用渠道或账号；实际请求继续使用现有路由错误语义。
+保存规则时只校验格式，不要求目标当时已有可用分组策略或提供商；实际请求继续使用现有路由错误语义。
 
 相关文档：[路由与结算](routing_and_billing.md)、[网关请求生命周期](../architecture/gateway_request_lifecycle.md)、[领域目录](index.md)。

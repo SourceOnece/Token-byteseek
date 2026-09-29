@@ -33,30 +33,6 @@ func (f APIKeyCompositeGroupFunc) Mutate(ctx context.Context, m ent.Mutation) (e
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.APIKeyCompositeGroupMutation", m)
 }
 
-// The AccountFunc type is an adapter to allow the use of ordinary
-// function as Account mutator.
-type AccountFunc func(context.Context, *ent.AccountMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f AccountFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.AccountMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AccountMutation", m)
-}
-
-// The AccountGroupFunc type is an adapter to allow the use of ordinary
-// function as AccountGroup mutator.
-type AccountGroupFunc func(context.Context, *ent.AccountGroupMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f AccountGroupFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.AccountGroupMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AccountGroupMutation", m)
-}
-
 // The AnnouncementFunc type is an adapter to allow the use of ordinary
 // function as Announcement mutator.
 type AnnouncementFunc func(context.Context, *ent.AnnouncementMutation) (ent.Value, error)
@@ -295,6 +271,30 @@ func (f PromoCodeUsageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PromoCodeUsageMutation", m)
+}
+
+// The ProviderFunc type is an adapter to allow the use of ordinary
+// function as Provider mutator.
+type ProviderFunc func(context.Context, *ent.ProviderMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ProviderFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ProviderMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ProviderMutation", m)
+}
+
+// The ProviderGroupFunc type is an adapter to allow the use of ordinary
+// function as ProviderGroup mutator.
+type ProviderGroupFunc func(context.Context, *ent.ProviderGroupMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ProviderGroupFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ProviderGroupMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ProviderGroupMutation", m)
 }
 
 // The ProxyFunc type is an adapter to allow the use of ordinary

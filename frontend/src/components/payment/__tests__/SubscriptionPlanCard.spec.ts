@@ -18,7 +18,7 @@ import SubscriptionPlanCard from '../SubscriptionPlanCard.vue'
 
 // 统一构造套餐卡片，便于覆盖平台和币种的组合展示。
 const mountPlanCard = (
-  groupPlatform: string,
+  _groupName: string,
   currency = '',
   originalPrice?: number,
   overrides: Partial<SubscriptionPlan> = {},
@@ -28,7 +28,6 @@ const mountPlanCard = (
       plan: {
         id: 1,
         group_id: 10,
-        group_platform: groupPlatform,
         name: 'Pro',
         description: '',
         price: 10,
@@ -46,15 +45,14 @@ const mountPlanCard = (
   })
 
 describe('SubscriptionPlanCard', () => {
-  it('does not show Antigravity model scopes for OpenAI plans', () => {
-    const text = mountPlanCard('openai').text()
-
+  it('does not display scopes when no model family policy is configured', () => {
+    const text = mountPlanCard('mixed', '', undefined, { supported_model_scopes: [] }).text()
     expect(text).not.toContain('Claude')
     expect(text).not.toContain('Gemini')
     expect(text).not.toContain('Imagen')
   })
 
-  it('shows model scopes for Antigravity plans', () => {
+  it('shows configured model scopes for mixed groups', () => {
     const text = mountPlanCard('antigravity').text()
 
     expect(text).toContain('Claude')

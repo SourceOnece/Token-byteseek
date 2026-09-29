@@ -82,7 +82,7 @@ type APIKey struct {
 	// Start time of the current 7d rate limit window
 	Window7dStart *time.Time `json:"window_7d_start,omitempty"`
 	// 绑定分组不可用时自动回退到同平台默认分组
-	FallbackToDefaultGroupWhenUnavailable bool `json:"fallback_to_default_group_when_unavailable,omitempty"`
+	FallbackWhenGroupUnavailable bool `json:"fallback_when_group_unavailable,omitempty"`
 	// 托管来源标识：creative_studio 表示创作台隐藏执行 Key，NULL 表示普通用户 Key
 	ManagedBy *string `json:"managed_by,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -166,7 +166,7 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case apikey.FieldModelMapping, apikey.FieldIPWhitelist, apikey.FieldIPBlacklist:
 			values[i] = new([]byte)
-		case apikey.FieldTeamOwnerDisabled, apikey.FieldIsComposite, apikey.FieldFallbackToDefaultGroupWhenUnavailable:
+		case apikey.FieldTeamOwnerDisabled, apikey.FieldIsComposite, apikey.FieldFallbackWhenGroupUnavailable:
 			values[i] = new(sql.NullBool)
 		case apikey.FieldQuota, apikey.FieldQuotaUsed, apikey.FieldRateLimit5h, apikey.FieldRateLimit1d, apikey.FieldRateLimit7d, apikey.FieldUsage5h, apikey.FieldUsage1d, apikey.FieldUsage7d:
 			values[i] = new(sql.NullFloat64)
@@ -392,11 +392,11 @@ func (_m *APIKey) assignValues(columns []string, values []any) error {
 				_m.Window7dStart = new(time.Time)
 				*_m.Window7dStart = value.Time
 			}
-		case apikey.FieldFallbackToDefaultGroupWhenUnavailable:
+		case apikey.FieldFallbackWhenGroupUnavailable:
 			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field fallback_to_default_group_when_unavailable", values[i])
+				return fmt.Errorf("unexpected type %T for field fallback_when_group_unavailable", values[i])
 			} else if value.Valid {
-				_m.FallbackToDefaultGroupWhenUnavailable = value.Bool
+				_m.FallbackWhenGroupUnavailable = value.Bool
 			}
 		case apikey.FieldManagedBy:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -574,8 +574,8 @@ func (_m *APIKey) String() string {
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
-	builder.WriteString("fallback_to_default_group_when_unavailable=")
-	builder.WriteString(fmt.Sprintf("%v", _m.FallbackToDefaultGroupWhenUnavailable))
+	builder.WriteString("fallback_when_group_unavailable=")
+	builder.WriteString(fmt.Sprintf("%v", _m.FallbackWhenGroupUnavailable))
 	builder.WriteString(", ")
 	if v := _m.ManagedBy; v != nil {
 		builder.WriteString("managed_by=")

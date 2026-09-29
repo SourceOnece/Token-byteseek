@@ -1,6 +1,7 @@
 export default {
 // Common
   common: {
+    retry: 'Retry',
     loading: 'Loading...',
     justNow: 'just now',
     peakRateTooltip: 'Peak rate: {window}',
@@ -123,9 +124,9 @@ export default {
     profile: 'Profile',
     users: 'Users',
     groups: 'Groups',
-    channels: 'Channels',
+    pricing: 'Price Management',
     subscriptions: 'Subscriptions',
-    accounts: 'Accounts',
+    providers: 'Provider Management',
     proxies: 'Proxies',
     redeemCodes: 'Redeem Codes',
     ops: 'Ops',
@@ -156,6 +157,7 @@ export default {
     welcomeBack: 'Welcome Back',
     signInToAccount: 'Sign in to your account to continue',
     signIn: 'Sign In',
+    agreementRequired: 'Please read and agree to the usage policy, terms of service, and supported countries and regions before continuing.',
     signingIn: 'Signing in...',
     passkeySignIn: 'Sign in with a passkey',
     passkeySigningIn: 'Waiting for passkey...',

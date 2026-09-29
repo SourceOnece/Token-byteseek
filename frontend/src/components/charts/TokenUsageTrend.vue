@@ -36,9 +36,10 @@ import { Line } from 'vue-chartjs'
 import '@/utils/chartTheme'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
-import { useTheme } from '@/composables/useTheme'
+import { useChartTheme, CHART_SERIES_COLORS, CHART_TICK_FONT_SIZE, CHART_LEGEND_FONT_SIZE } from '@/composables/useChartTheme'
 import { externalTooltipHandler, hideExternalTooltip } from '@/utils/chartExternalTooltip'
 import type { TrendDataPoint } from '@/types'
+import { formatTokens } from '@/utils/format'
 
 ChartJS.register(
   CategoryScale,
@@ -55,7 +56,6 @@ onBeforeUnmount(hideExternalTooltip)
 
 const { t } = useI18n()
 const { formatBalanceAmount, formatUsdAmount } = useBalanceDisplay()
-const { isDark } = useTheme()
 
 const props = withDefaults(defineProps<{
   trendData: TrendDataPoint[]
@@ -67,15 +67,12 @@ const props = withDefaults(defineProps<{
   showStandardCost: true,
 })
 
+// 文字/网格走主题档位,序列色用共享语义色板(数值与迁移前逐项相同)。
+const { colors: themeColors } = useChartTheme()
 const chartColors = computed(() => ({
-  // 使用响应式主题状态，确保切换主题后 Chart.js 会同步刷新文字和网格颜色。
-  text: isDark.value ? '#EAE5D8' : '#403D36',
-  grid: isDark.value ? '#3A3831' : '#DDD6C4',
-  input: '#1450A3',
-  output: '#E1251B',
-  cacheCreation: '#E0A800',
-  cacheRead: '#0F7B4D',
-  cacheHitRate: isDark.value ? '#F4F0E6' : '#141414'
+  text: themeColors.value.text,
+  grid: themeColors.value.grid,
+  ...CHART_SERIES_COLORS
 }))
 
 // 小时粒度只在坐标轴展示时分，完整时间仍由 tooltip 标题保留。
@@ -166,7 +163,7 @@ const lineOptions = computed(() => ({
         pointStyle: 'circle',
         padding: 15,
         font: {
-          size: 11
+          size: CHART_LEGEND_FONT_SIZE
         }
       }
     },
@@ -208,7 +205,7 @@ const lineOptions = computed(() => ({
         maxRotation: props.granularity === 'hour' ? 0 : 50,
         minRotation: props.granularity === 'hour' ? 0 : 0,
         font: {
-          size: 10
+          size: CHART_TICK_FONT_SIZE
         }
       }
     },
@@ -219,7 +216,7 @@ const lineOptions = computed(() => ({
       ticks: {
         color: chartColors.value.text,
         font: {
-          size: 10
+          size: CHART_TICK_FONT_SIZE
         },
         callback: (value: string | number) => formatTokens(Number(value))
       }
@@ -234,24 +231,13 @@ const lineOptions = computed(() => ({
       ticks: {
         color: chartColors.value.cacheHitRate,
         font: {
-          size: 10
+          size: CHART_TICK_FONT_SIZE
         },
         callback: (value: string | number) => `${value}%`
       }
     }
   }
 }))
-
-const formatTokens = (value: number): string => {
-  if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(2)}B`
-  } else if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(2)}M`
-  } else if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(2)}K`
-  }
-  return value.toLocaleString()
-}
 
 const formatPercent = (value: number): string => {
   const displayValue = value < 100 ? Math.floor(value * 100) / 100 : value

@@ -75,7 +75,7 @@ export interface GrokSSOToOAuthItemResult {
   index: number
   name?: string
   email?: string
-  account?: unknown
+  provider?: unknown
   error?: string
 }
 
@@ -163,12 +163,12 @@ export async function refreshGrokToken(
 }
 
 export async function queryQuota(id: number): Promise<GrokQuotaProbeResult> {
-  const { data } = await apiClient.get<GrokQuotaProbeResult>(`/admin/grok/accounts/${id}/quota`)
+  const { data } = await apiClient.get<GrokQuotaProbeResult>(`/admin/grok/providers/${id}/quota`)
   return data
 }
 
 export async function resetQuota(id: number): Promise<GrokQuotaResetResult> {
-  const { data } = await apiClient.post<GrokQuotaResetResult>(`/admin/grok/accounts/${id}/reset-quota`)
+  const { data } = await apiClient.post<GrokQuotaResetResult>(`/admin/grok/providers/${id}/reset-quota`)
   return data
 }
 

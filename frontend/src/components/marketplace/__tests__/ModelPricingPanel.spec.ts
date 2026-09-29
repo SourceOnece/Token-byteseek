@@ -132,14 +132,15 @@ describe('ModelPricingPanel', () => {
     expect(wrapper.get('[data-testid="model-pricing-toggle"]').get('.icon-stub[data-icon="chevronDown"]').exists()).toBe(true)
   })
 
-  it('完整定价单列展示，标签与价格都不换行', async () => {
+  it('完整定价单列展示，窄屏允许标签和价格换行', async () => {
     const wrapper = mountPanel(marketplaceModel('m1', tokenPricing))
 
     await wrapper.get('[data-testid="model-pricing-toggle"]').trigger('click')
 
     const rows = wrapper.get('[data-testid="pricing-rows"]')
     expect(wrapper.find('.md\\:grid-cols-2').exists()).toBe(false)
-    expect(rows.findAll('.whitespace-nowrap').length).toBeGreaterThan(0)
+    expect(rows.findAll('.whitespace-nowrap')).toHaveLength(0)
+    expect(rows.findAll('span').every((span) => span.classes().includes('min-w-0'))).toBe(true)
   })
 
   it('标准价格行展示全部计费项', async () => {
@@ -194,6 +195,23 @@ describe('ModelPricingPanel', () => {
     // 第二个区间输入价 0.000003/Token，即 3.00 点/百万Token。
     expect(wrapper.text()).toContain('3.00')
     expect(wrapper.text()).not.toContain('1.00')
+  })
+
+  it('保留省略零价格字段的免费默认区间，并允许切换到收费区间', async () => {
+    const wrapper = mountPanel(marketplaceModel('free-range', {
+      pricing_mode: 'token', price_status: 'priced', context_intervals: [
+        { min_tokens: 0, max_tokens: 100 },
+        { min_tokens: 100, max_tokens: null, input_price_per_token: 0.000002 },
+      ],
+    }))
+    await wrapper.get('[data-testid="model-pricing-toggle"]').trigger('click')
+    const buttons = wrapper.get('[data-testid="pricing-interval-switch"]').findAll('button')
+    expect(buttons).toHaveLength(2)
+    expect(wrapper.get('[data-testid="pricing-rows"]').text()).toContain('0.00')
+    await buttons[1].trigger('click')
+    expect(wrapper.get('[data-testid="pricing-rows"]').text()).toContain('2.00')
+    await buttons[0].trigger('click')
+    expect(wrapper.get('[data-testid="pricing-rows"]').text()).toContain('0.00')
   })
 
   it('图片模型展示分档价格且不显示 fast 切换', async () => {

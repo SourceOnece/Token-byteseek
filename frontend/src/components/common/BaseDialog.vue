@@ -32,7 +32,11 @@
           </div>
 
           <!-- 内容区 -->
-          <div class="modal-body min-h-0 min-w-0 max-w-full">
+          <div
+            ref="modalBodyRef"
+            class="modal-body min-h-0 min-w-0 max-w-full"
+            :class="{ 'modal-body-contained': !bodyScroll }"
+          >
             <slot></slot>
           </div>
 
@@ -54,6 +58,7 @@ let openDialogCount = 0
 <script setup lang="ts">
 import { computed, watch, onMounted, onUnmounted, ref, nextTick } from 'vue'
 import Icon from '@/components/icons/Icon.vue'
+import { Z_INDEX } from '@/constants/overlay'
 
 // 生成唯一ID以避免多个对话框时ID冲突
 const dialogId = `modal-title-${++dialogIdCounter}`
@@ -70,6 +75,7 @@ interface Props {
   show: boolean
   title: string
   width?: DialogWidth
+  bodyScroll?: boolean
   closeOnEscape?: boolean
   closeOnClickOutside?: boolean
   showCloseButton?: boolean
@@ -82,17 +88,17 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   width: 'normal',
+  bodyScroll: true,
   closeOnEscape: true,
   closeOnClickOutside: false,
-  showCloseButton: true,
-  zIndex: 50
+  zIndex: Z_INDEX.MODAL
 })
 
 const emit = defineEmits<Emits>()
 
 // 自定义层级会覆盖 CSS 中默认的 z-50。
 const zIndexStyle = computed(() => {
-  return props.zIndex !== 50 ? { zIndex: props.zIndex } : undefined
+  return props.zIndex !== Z_INDEX.MODAL ? { zIndex: props.zIndex } : undefined
 })
 
 const widthClasses = computed(() => {
@@ -178,3 +184,12 @@ onUnmounted(() => {
   unlockBodyScroll()
 })
 </script>
+
+<style scoped>
+/* 分页表单自行管理滚动，外壳只分配标题和按钮之间的剩余高度。 */
+.modal-body-contained {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+</style>
