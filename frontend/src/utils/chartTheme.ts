@@ -20,24 +20,8 @@ import {
   Tooltip
 } from 'chart.js'
 
-/** 分类色板：三原色优先，其后为可区分的扩展色 */
-export const BH_CHART_PALETTE: string[] = [
-  '#E1251B', // 包豪斯红
-  '#1450A3', // 包豪斯蓝
-  '#E0A800', // 包豪斯黄（加深保证纸底对比度）
-  '#141414', // 墨
-  '#5581C2', // 浅蓝
-  '#0F7B4D', // 深翠
-  '#E55A51', // 浅红
-  '#8A6D3B', // 赭石
-  '#403D36', // 暖灰
-  '#97B7E8', // 雾蓝
-  '#B81D15', // 深红
-  '#C2A83E'  // 芥末
-]
-
-/** 中性色（未命中分类时使用） */
-export const BH_CHART_NEUTRAL = '#A39E8F'
+// 兼容现有消费者的导出；响应式主题单独读取纯色板，避免加载副作用。
+export { BH_CHART_PALETTE, BH_CHART_NEUTRAL } from '@/constants/chartTheme'
 
 const BH_FONT_FAMILY =
   '"Plus Jakarta Sans Variable", system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif'

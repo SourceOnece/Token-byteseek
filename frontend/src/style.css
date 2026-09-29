@@ -28,8 +28,7 @@
     --header-h: 3.5rem;
     --sidebar-w: 14rem;
     --sidebar-w-collapsed: 4.5rem;
-    /* 圆角 token：语义档位的唯一数值来源,raw CSS 只允许引用这些变量;
-       整体圆润取向:紧凑 6 / 控件 8 / 表面 12 / 弹窗 16。 */
+    /* 包豪斯统一直角；保留语义 token，供当前组件共享。 */
     --radius-compact: 0px;
     --radius-control: 0px;
     --radius-surface: 0px;
@@ -478,7 +477,25 @@
   .bh-page-btn:focus-visible { outline: 2px solid var(--bh-blue); outline-offset: 3px; }
   .bh-page-btn:disabled { box-shadow: none; }
 
-  /* 图标按钮两档:常规 36px(.btn-icon)与紧凑 32px(.btn-icon-sm),与控件基线同一体系。 */
+  /* 旧版页码选中态使用黄底红杠，保留现有分页与跳转交互。 */
+  .bh-page-btn-active {
+    background: var(--bh-yellow);
+    color: #141414;
+    box-shadow: inset 0 -4px 0 0 var(--bh-red), var(--bh-shadow-sm);
+    font-weight: 800;
+  }
+
+  .bh-total-chip {
+    display: inline-block;
+    padding: 0 6px;
+    border: 2px solid var(--bh-ink);
+    background: var(--bh-yellow);
+    color: #141414;
+    font-family: 'Geist Mono Variable', ui-monospace, monospace;
+    font-weight: 800;
+  }
+
+  /* 图标按钮两档：常规 44px 与紧凑 32px。 */
   .btn-icon-sm {
     @apply inline-flex h-8 w-8 items-center justify-center rounded-control p-0;
   }
@@ -532,7 +549,7 @@
   .input-trigger {
     @apply flex items-center gap-2;
     @apply cursor-pointer;
-    @apply hover:border-black/20 dark:hover:border-primary-500;
+    @apply hover:border-primary-600 dark:hover:border-primary-400;
   }
 
   /* 输入框图标区域:图标位与文本留白由同一组变量推导(留白 = inset + 图标占位 slot),
@@ -708,11 +725,11 @@
   }
 
   .table th {
-    /* 与 DataTable 统一的中性紧凑表头:py-2 + text-xs,不再使用品牌底色。 */
-    @apply px-4 py-2 text-left text-xs font-medium tracking-wider;
-    @apply text-gray-500 dark:text-dark-400;
-    @apply bg-gray-50 dark:bg-dark-950;
-    @apply border-b border-primary-900/10 dark:border-dark-600;
+    @apply px-4 py-3 text-left font-extrabold;
+    background: var(--bh-yellow);
+    color: #141414;
+    border-bottom: 2px solid var(--bh-ink);
+    letter-spacing: 0.02em;
   }
 
   .table td {
@@ -775,10 +792,10 @@
   /* 纯容器配方:定位(z-index/偏移/动画)由调用点按场景叠加。 */
   .dropdown {
     @apply absolute;
-    @apply bg-white dark:bg-dark-900;
     @apply rounded-control;
-    @apply border border-primary-900/10 dark:border-dark-600;
-    @apply shadow-lg;
+    background: var(--bh-surface);
+    border: 2px solid var(--bh-ink);
+    box-shadow: var(--bh-shadow-sm);
     @apply py-1;
   }
 
@@ -786,9 +803,9 @@
      基色是全站行动菜单的中性灰;品牌色导航菜单(AppHeader)叠加 .dropdown-item-brand。 */
   .dropdown-item,
   .dropdown-item-sm {
-    @apply flex w-full items-center gap-2 py-2 text-sm;
-    @apply text-gray-700 dark:text-gray-300;
-    @apply hover:bg-gray-100 dark:hover:bg-dark-700;
+    @apply flex w-full items-center gap-2 py-2 text-sm font-semibold;
+    color: var(--bh-ink);
+    border-left: 4px solid transparent;
     @apply cursor-pointer transition-colors;
   }
 
@@ -802,23 +819,35 @@
 
   /* 品牌色档:定义在基色之后,同优先级下覆盖文字与 hover 底色。 */
   .dropdown-item-brand {
-    @apply text-primary-900 dark:text-dark-100;
-    @apply hover:bg-primary-100 dark:hover:bg-dark-800;
+    color: var(--bh-ink);
+  }
+
+  .dropdown-item:hover:not(:disabled),
+  .dropdown-item-sm:hover:not(:disabled),
+  .dropdown-item:focus-visible,
+  .dropdown-item-sm:focus-visible {
+    background: rgba(255, 204, 0, 0.25);
+    border-left-color: var(--bh-red);
+  }
+
+  .dark .dropdown-item:hover:not(:disabled),
+  .dark .dropdown-item-sm:hover:not(:disabled) {
+    background: rgba(255, 204, 0, 0.12);
   }
 
   /* 行动菜单容器(teleport 到 body 的表格行操作浮层):宽度/滚动由调用点补充。
      action-menu-content 是外部点击关闭的 JS 钩子,迁移时保留。 */
   .action-menu {
     @apply fixed z-action-menu rounded-control;
-    @apply bg-white shadow-lg ring-1 ring-black/5;
-    @apply dark:bg-dark-800 dark:ring-white/10;
+    background: var(--bh-surface);
+    border: 2px solid var(--bh-ink);
+    box-shadow: var(--bh-shadow-sm);
   }
 
   /* ============ 模态框 ============ */
   .modal-overlay {
     @apply fixed inset-0 z-modal;
     background-color: var(--overlay-bg);
-    @apply backdrop-blur-sm;
     @apply flex items-center justify-center p-2 sm:p-4;
   }
 
@@ -1049,8 +1078,8 @@
   .sidebar {
     @apply fixed bottom-0 left-0 z-sidebar;
     width: var(--sidebar-w);
-    @apply bg-white dark:bg-dark-900/95;
-    @apply border-r border-primary-900/10 dark:border-dark-600;
+    background: var(--bh-paper);
+    border-right: 3px solid var(--bh-ink);
     @apply flex flex-col;
     @apply transition-transform duration-300;
     transition-property: width, transform;
@@ -1080,15 +1109,23 @@
   }
 
   .sidebar-link {
-    @apply flex h-9 items-center gap-3 rounded-control py-1.5;
+    @apply flex min-h-11 items-center gap-3 rounded-control py-2.5;
     /* 水平内边距落在 4px 网格上(此前的 17px/14px 是魔数);折叠态由 sidebar-link-collapsed 另行覆盖。 */
     @apply px-4;
     @apply overflow-hidden;
     @apply text-sm font-bold;
     @apply text-gray-800 dark:text-dark-100;
-    @apply transition-all duration-200;
-    @apply hover:bg-primary-100 dark:hover:bg-dark-950;
-    @apply hover:text-primary-700 dark:hover:text-primary-400;
+    @apply transition-all duration-150;
+    border: 2px solid transparent;
+  }
+
+  .sidebar-link:hover {
+    background: rgba(255, 204, 0, 0.35);
+    @apply text-gray-950 dark:text-white;
+  }
+
+  .dark .sidebar-link:hover {
+    background: rgba(255, 204, 0, 0.14);
   }
 
   .sidebar-link-active {
@@ -1214,10 +1251,16 @@
 
   /* ============ 代码块 ============ */
   .code {
-    @apply font-mono text-sm;
-    @apply bg-primary-100 dark:bg-dark-950;
+    @apply font-mono text-sm font-bold;
+    background: var(--bh-yellow);
+    color: #141414;
+    border: 1.5px solid var(--bh-ink);
     @apply rounded-compact px-1.5 py-0.5;
-    @apply text-primary-700 dark:text-primary-300;
+  }
+
+  .dark .code {
+    background: #6b5d00;
+    color: #f4f0e6;
   }
 
   .code-block {
@@ -1247,23 +1290,27 @@
   }
 
   .tour-info-box {
-    @apply rounded-control border-l-4 border-blue-500 bg-blue-50 px-3 py-2 text-xs text-blue-900;
-    @apply dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-200;
+    @apply rounded-control border-2 border-gray-950 border-l-8 bg-white px-3 py-2 text-xs font-medium text-gray-950;
+    border-left-color: var(--bh-blue) !important;
+    @apply dark:bg-dark-800 dark:text-dark-50;
   }
 
   .tour-success-box {
-    @apply rounded-control border-l-4 border-emerald-500 bg-emerald-50 px-3 py-2 text-xs text-emerald-900;
-    @apply dark:border-emerald-400 dark:bg-emerald-950/40 dark:text-emerald-200;
+    @apply rounded-control border-2 border-gray-950 border-l-8 bg-white px-3 py-2 text-xs font-medium text-gray-950;
+    border-left-color: #059669 !important;
+    @apply dark:bg-dark-800 dark:text-dark-50;
   }
 
   .tour-warning-box {
-    @apply rounded-control border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-xs text-amber-900;
-    @apply dark:border-amber-400 dark:bg-amber-950/40 dark:text-amber-200;
+    @apply rounded-control border-2 border-gray-950 border-l-8 bg-white px-3 py-2 text-xs font-medium text-gray-950;
+    border-left-color: var(--bh-yellow) !important;
+    @apply dark:bg-dark-800 dark:text-dark-50;
   }
 
   .tour-error-box {
-    @apply rounded-control border-l-4 border-red-500 bg-red-50 px-3 py-2 text-xs text-red-900;
-    @apply dark:border-red-400 dark:bg-red-950/40 dark:text-red-200;
+    @apply rounded-control border-2 border-gray-950 border-l-8 bg-white px-3 py-2 text-xs font-medium text-gray-950;
+    border-left-color: var(--bh-red) !important;
+    @apply dark:bg-dark-800 dark:text-dark-50;
   }
 
   /* ============ 表格页面布局优化 ============ */
@@ -1579,25 +1626,7 @@
     color: #57534a;
   }
 
-  .dark [class*="shadow-"] {
-    --tw-shadow: 0 0 #0000 !important;
-    --tw-shadow-colored: 0 0 #0000 !important;
-    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow) !important;
-  }
-
-  .dark .card,
-  .dark .glass-card,
-  .dark .card-glass {
-    box-shadow: none !important;
-  }
-
-  .dark .dropdown,
-  .dark .modal-content,
-  .dark .dialog-container {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.3) !important;
-  }
-
-  /* 全局背景：浅色使用纯白，深色保留微亮到纯黑的纵向渐变。 */
+  /* 深色同样保留硬阴影，背景沿用旧版纸色与几何构成。 */
   .ba-theme-shell {
     width: 100%;
     min-width: 0;
@@ -1964,17 +1993,21 @@ html :where(
   color: currentColor;
 }
 
-.rank-list {
+.rank-list,
+.ranking-list {
   overflow: hidden;
   border: 3px solid var(--bh-ink);
   background: var(--bh-surface);
   box-shadow: var(--bh-shadow-sm);
 }
 
-.rank-list-header {
+.rank-list-header,
+.ranking-list-header {
   border-bottom: 3px solid var(--bh-ink);
   background: var(--bh-yellow);
 }
+
+.ranking-list-header p { color: #57534a; }
 
 .ranking-list-title {
   position: relative;

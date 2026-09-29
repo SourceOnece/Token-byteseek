@@ -30,7 +30,7 @@
         :aria-labelledby="`${idPrefix}-tab-${tab}`"
         :data-group-tab="tab"
         tabindex="0"
-        class="group-tab-panel space-y-6"
+        class="group-tab-panel space-y-5"
       >
         <slot :name="tab" />
       </section>
@@ -159,12 +159,12 @@ defineExpose({ validate, revealField })
   background: var(--bh-red);
 }
 
-.group-tab[data-group-tab-button='platform']::before {
+.group-tab[data-group-tab-button='models']::before {
   background: var(--bh-blue);
   border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
 }
 
-.group-tab[data-group-tab-button='pricing']::before {
+.group-tab[data-group-tab-button='scheduling']::before {
   background: var(--bh-red);
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }

@@ -4,7 +4,7 @@
       <div class="fixed inset-0 z-menu-overlay" aria-hidden="true" @click="emit('close')"></div>
       <div
         :id="`key-action-menu-${apiKey.id}`"
-        class="action-menu w-48 overflow-hidden"
+        class="action-menu bh-action-menu w-48 overflow-hidden"
         :style="{ top: `${position.top}px`, left: `${position.left}px` }"
         role="menu"
         :aria-label="t('common.actions')"

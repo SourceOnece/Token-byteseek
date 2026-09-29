@@ -68,11 +68,12 @@ const props = withDefaults(defineProps<{
 })
 
 // 文字/网格走主题档位,序列色用共享语义色板(数值与迁移前逐项相同)。
-const { colors: themeColors } = useChartTheme()
+const { colors: themeColors, isDark } = useChartTheme()
 const chartColors = computed(() => ({
   text: themeColors.value.text,
   grid: themeColors.value.grid,
-  ...CHART_SERIES_COLORS
+  ...CHART_SERIES_COLORS,
+  cacheHitRate: isDark.value ? '#F4F0E6' : CHART_SERIES_COLORS.cacheHitRate
 }))
 
 // 小时粒度只在坐标轴展示时分，完整时间仍由 tooltip 标题保留。

@@ -4,7 +4,7 @@
       <div class="fixed inset-0 z-menu-overlay" aria-hidden="true" @click="emit('close')"></div>
       <div
         :id="`group-action-menu-${group.id}`"
-        class="action-menu w-48 overflow-y-auto"
+        class="action-menu bh-action-menu w-48 overflow-y-auto"
         :style="{ top: `${position.top}px`, left: `${position.left}px`, maxHeight: `calc(100dvh - ${position.top + 8}px)` }"
         role="menu"
         :aria-label="t('common.actions')"

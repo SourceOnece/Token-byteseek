@@ -28,7 +28,7 @@
         class="app-main flex min-w-0 flex-1 flex-col"
         :class="fullViewport ? 'min-h-0 p-0' : 'px-4 pb-4 pt-4 md:px-6 md:pb-6 lg:px-8 lg:pb-8'"
       >
-        <div v-if="pageTitle" class="page-heading mb-4 flex flex-shrink-0 flex-wrap items-start justify-between gap-3">
+        <div v-if="pageTitle" class="page-heading bh-page-heading mb-5 flex flex-shrink-0 flex-wrap items-start justify-between gap-3">
           <div>
             <h1 class="page-title">{{ pageTitle }}</h1>
             <p v-if="pageDescription" class="page-description">{{ pageDescription }}</p>
@@ -118,6 +118,24 @@ onBeforeUnmount(() => {
 
 defineExpose({ replayTour })
 </script>
+
+<style scoped>
+/* 标题恢复旧版墨色基线和红方块，空间仍由当前 flex 布局分配。 */
+.bh-page-heading {
+  position: relative;
+  padding-bottom: 12px;
+  border-bottom: 3px solid var(--bh-ink);
+}
+.bh-page-heading::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -6.5px;
+  width: 10px;
+  height: 10px;
+  background: var(--bh-red);
+}
+</style>
 
 <!-- 空间分配全部经模板 flex 链完成:wrapper(flex-col, min-h-screen 或全屏锁定)
      → app-main(flex-1) → page-heading(自然高度) + 页面内容(需要撑满时自取 flex-1)。

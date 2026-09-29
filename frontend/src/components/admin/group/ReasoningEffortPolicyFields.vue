@@ -1,5 +1,5 @@
 <template>
-  <div class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
+  <div class="bh-reasoning-policy space-y-4">
     <div>
       <label :for="`${idPrefix}-max-effort`" class="input-label">
         {{ t("admin.groups.form.maxReasoningEffort") }}
@@ -33,8 +33,8 @@
       <p class="input-hint">{{ t("admin.groups.form.maxReasoningEffortOverLimitHint") }}</p>
     </div>
 
-    <div class="space-y-4 border-t border-gray-200 pt-6 dark:border-dark-600 md:col-span-2">
-      <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
+      <div class="mb-3 flex items-center justify-between gap-3">
         <div>
           <label class="input-label mb-0">
             {{ t("admin.groups.form.reasoningEffortMappings") }}
@@ -45,7 +45,7 @@
         </div>
         <button
           type="button"
-          class="btn btn-secondary shrink-0 self-start"
+          class="btn btn-secondary btn-sm shrink-0"
           @click="addGroup"
         >
           <Icon name="plus" size="sm" />
@@ -57,10 +57,10 @@
         <div
           v-for="group in mappings"
           :key="group.id"
-          class="space-y-3 rounded-surface border border-gray-200 bg-gray-50/40 p-4 dark:border-dark-600 dark:bg-dark-800/40"
+          class="bh-policy-card space-y-3 p-3"
         >
           <div
-            class="grid grid-cols-[minmax(0,1fr)_2.25rem] items-start gap-3 md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)_2.25rem]"
+            class="grid grid-cols-1 items-start gap-3 md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)_2.75rem]"
           >
             <div>
               <label :for="`${idPrefix}-${group.id}-match-type`" class="input-label">
@@ -107,7 +107,7 @@
 
             <button
               type="button"
-              class="btn btn-ghost btn-icon col-start-2 row-start-2 self-end text-red-500 md:col-start-4 md:row-start-1"
+              class="bh-icon-action bh-icon-action-danger self-end"
               :title="t('admin.groups.form.removeReasoningEffortMapping')"
               :aria-label="t('admin.groups.form.removeReasoningEffortMapping')"
               @click="removeGroup(group.id)"
@@ -153,7 +153,7 @@
               </p>
             </div>
 
-            <div class="hidden h-9 items-center justify-center self-end text-gray-400 md:flex dark:text-dark-400">
+            <div class="hidden h-11 items-center justify-center self-end text-gray-400 md:flex dark:text-dark-400">
               <Icon name="arrowRight" size="sm" />
             </div>
 
@@ -194,7 +194,7 @@
 
           <button
             type="button"
-            class="btn btn-secondary"
+            class="btn btn-secondary btn-sm"
             @click="addPair(group.id)"
           >
             <Icon name="plus" size="sm" />

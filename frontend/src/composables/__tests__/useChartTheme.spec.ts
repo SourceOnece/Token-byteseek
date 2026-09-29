@@ -39,22 +39,22 @@ describe('useChartTheme', () => {
     setTheme(false)
   })
 
-  it('调色板 12 色唯一来源,前缀 10 色与原 GroupDistributionChart 拷贝逐项一致', () => {
-    // 原 10 色拷贝经 diff 前缀判定为截断,补齐 11/12 色;此处锁定防漂移。
+  it('调色板 12 色保留已发布包豪斯图表顺序', () => {
+    // 分类顺序属于视觉契约，不能因合并主题入口退回上游默认色。
     expect(CHART_PALETTE.slice(0, 10)).toEqual([
-      '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-      '#ec4899', '#00D2FF', '#f97316', '#6366f1', '#84cc16'
+      '#E1251B', '#1450A3', '#E0A800', '#141414', '#5581C2',
+      '#0F7B4D', '#E55A51', '#8A6D3B', '#403D36', '#97B7E8'
     ])
     expect(CHART_PALETTE).toHaveLength(12)
   })
 
   it('序列色锁定 token 趋势图五色语义', () => {
     expect(CHART_SERIES_COLORS).toEqual({
-      input: '#3b82f6',
-      output: '#10b981',
-      cacheCreation: '#f59e0b',
-      cacheRead: '#06b6d4',
-      cacheHitRate: '#8b5cf6'
+      input: '#1450A3',
+      output: '#E1251B',
+      cacheCreation: '#E0A800',
+      cacheRead: '#0F7B4D',
+      cacheHitRate: '#141414'
     })
   })
 })

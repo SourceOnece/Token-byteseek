@@ -44,7 +44,7 @@ describe('Bauhaus control sizing', () => {
     expect(globalStyle).toContain('@apply min-h-11;')
     expect(globalStyle).toContain('@apply inline-flex h-11 w-11 items-center justify-center rounded-control p-0;')
     expect(globalStyle).toContain('@apply w-full rounded-none px-4 py-2.5 text-sm font-medium;')
-    expect(globalStyle).toContain('@apply flex h-9 items-center gap-3 rounded-control py-1.5;')
+    expect(globalStyle).toContain('@apply flex min-h-11 items-center gap-3 rounded-control py-2.5;')
     // 三个下拉触发器以模板组合 input input-trigger 共享 36px 基线,不再各自复制配方。
     expect(selectSource).toContain("'input input-trigger'")
     expect(proxySelectorSource).toContain("'input input-trigger'")

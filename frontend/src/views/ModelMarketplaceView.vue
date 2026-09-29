@@ -56,10 +56,10 @@
     <template v-if="!isAuthenticated">
       <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
 
-      <header class="glass relative z-20 border-b border-primary-900/10 px-4 dark:border-dark-600/80 sm:px-6">
+      <header class="relative z-20 border-b-[3px] border-gray-950 bg-bh-paper px-4 dark:border-dark-100 dark:bg-dark-900 sm:px-6">
         <nav class="mx-auto flex h-[var(--header-h)] max-w-7xl items-center justify-between gap-4">
           <router-link to="/home" class="flex min-w-0 items-center gap-2.5">
-            <span class="h-8 w-8 shrink-0 overflow-hidden rounded-control shadow-sm">
+            <span class="h-8 w-8 shrink-0 overflow-hidden border-2 border-gray-950 bg-white dark:border-dark-100">
               <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
             </span>
             <span class="truncate text-base font-extrabold tracking-tight text-gray-950 dark:text-white">{{ siteName }}<span class="text-bh-red">.</span></span>
@@ -243,7 +243,7 @@
                 </div>
 
                 <div class="flex items-start gap-3">
-                  <span class="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-surface border border-gray-200 bg-white shadow-sm dark:border-dark-700 dark:bg-dark-950">
+                  <span class="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-none border-2 border-gray-950 bg-white dark:border-dark-100 dark:bg-dark-900">
                     <ModelIcon :model="groupBrandIconModel(group)" size="28px" />
                   </span>
                   <div class="min-w-0">
@@ -272,7 +272,7 @@
               <article
                 v-for="model in group.models"
                 :key="`${group.id}-${model.id}`"
-                class="group min-w-0 max-w-full rounded-surface border border-gray-100 bg-gray-50/80 p-4 transition hover:-translate-y-0.5 hover:border-black/20 hover:shadow-sm dark:border-dark-700 dark:bg-dark-950/80 dark:hover:border-primary-500/50"
+                class="group min-w-0 max-w-full rounded-surface border-2 border-gray-950 bg-white p-4 transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow dark:border-dark-200/60 dark:bg-dark-900"
               >
                 <div class="flex min-w-0 flex-wrap items-start justify-between gap-2">
                   <h3 class="min-w-0 flex-1 basis-32 truncate text-base font-semibold text-gray-950 dark:text-white">{{ model.display_name }}</h3>
@@ -290,8 +290,8 @@
                         :key="row.key"
                         class="flex items-baseline justify-between gap-3 border-2 border-emerald-700 bg-emerald-50 px-2 py-1 text-sm dark:border-emerald-300 dark:bg-emerald-900/25"
                       >
-                        <dt class="shrink-0 text-gray-500 dark:text-dark-400">{{ row.label }}</dt>
-                        <dd class="min-w-0 break-words text-right font-medium tabular-nums [overflow-wrap:anywhere] text-gray-900 dark:text-white">{{ row.value }}</dd>
+                        <dt class="shrink-0 font-extrabold text-emerald-700 dark:text-emerald-300">{{ row.label }}</dt>
+                        <dd class="min-w-0 break-words text-right font-extrabold tabular-nums [overflow-wrap:anywhere] text-emerald-700 dark:text-emerald-200">{{ row.value }}</dd>
                       </div>
                     </dl>
                   </template>

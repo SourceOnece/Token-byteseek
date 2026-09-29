@@ -4,7 +4,7 @@
       <!-- Backdrop: click anywhere outside to close -->
       <div class="fixed inset-0 z-menu-overlay" @click="emit('close')"></div>
       <div
-        class="action-menu action-menu-content max-h-[calc(100dvh-16px)] w-52 overflow-y-auto"
+        class="action-menu bh-action-menu action-menu-content max-h-[calc(100dvh-16px)] w-52 overflow-y-auto"
         :style="{ top: position.top + 'px', left: position.left + 'px' }"
         @click.stop
       >

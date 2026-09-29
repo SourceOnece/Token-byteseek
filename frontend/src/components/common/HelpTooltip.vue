@@ -212,7 +212,7 @@ onBeforeUnmount(() => {
         v-show="show"
         role="tooltip"
         :class="[
-          'fixed z-help-tooltip max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-control bg-gray-900 text-white shadow-xl ring-1 ring-white/10 dark:bg-gray-800',
+          'bh-tooltip fixed z-help-tooltip max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-control text-bh-paper',
           resolvedPlacement === 'top' ? '-translate-y-full' : 'translate-y-0',
           props.widthClass,
         ]"
@@ -229,7 +229,7 @@ onBeforeUnmount(() => {
           <button
             v-if="clickEnabled() && closable"
             type="button"
-            class="absolute right-1.5 top-1.5 rounded-compact p-1 text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+            class="absolute right-1.5 top-1.5 rounded-compact p-1 text-bh-paper transition-colors hover:bg-bh-yellow hover:text-gray-950"
             aria-label="Close"
             @click.stop="closeTooltip"
           >
@@ -240,7 +240,7 @@ onBeforeUnmount(() => {
           <slot>{{ content }}</slot>
         </div>
         <div
-          class="absolute h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-800"
+          class="absolute h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-950 dark:bg-dark-100"
           :style="{ left: caretLeft }"
           :class="resolvedPlacement === 'top' ? '-bottom-1' : '-top-1'"
         ></div>

@@ -14,16 +14,16 @@
 | `rounded-control` | 0px | 按钮、输入框、下拉框、侧栏链接、浮层面板 |
 | `rounded-surface` | 0px | 卡片、表格容器、toast、代码块 |
 | `rounded-dialog` | 0px | 桌面端弹窗（移动端弹窗仍用 surface） |
-| `rounded-full` / `rounded-none` | — | 胶囊、进度条、开关；需要直角时的覆盖 |
+| `rounded-full` / `rounded-none` | — | 圆形几何装饰/头像与直角；开关滑块、进度条保持直角 |
 
 旧尺度名（`rounded-sm/md/lg/xl/2xl/3xl`）、裸 `rounded` 和 `rounded-[...]` 任意值一律禁用——旧 key 已从配置删除，写旧类名不会生成任何样式。裸 CSS 里的 `border-radius` 只允许 `var(--radius-*)`、`0` 或 `9999px`。
 
-唯一例外：边长 ≤16px 的微型装饰元素（如用量热力图的 12px 格子），全局最小档 compact（6px）已达边长一半、视觉上近似椭圆，允许用组件级局部变量保持更小半径（如 `.heatmap-cell` 的 `--radius-cell: 4px`），不新增全局档位。
+圆形、半圆等几何装饰可在对应选择器说明例外；不能把装饰的圆角扩展到按钮、卡片或开关。表格/卡片/弹窗深浅主题均保持硬阴影，不允许用深色全局规则清除或改为模糊投影。
 
 ## 间距约定
 
-- 全部间距落在 Tailwind 4px 网格上，禁止 `mt-[2px]`、`padding-left: 17px` 这类任意值。
-- 卡片 padding 只有两档：独立卡片 `p-6`，嵌套面板、网格卡和统计卡 `p-4`。不再使用 `p-5`。
+- 新布局间距优先使用 Tailwind 4px 网格；已发布包豪斯构图的标记位置和紧凑留白按原界面保留，不借 token 整理替换设计。
+- 新卡片优先独立 `p-6`、嵌套 `p-4`；既有排行大卡片 `p-5` 等保留原层级。
 - 布局水平 padding 链在 header 与 main 之间完全一致：`px-4 md:px-6 lg:px-8`，保证两侧边缘在所有断点对齐。
 - 布局尺寸 token 只在 `style.css` 的 `:root` 定义一份：`--header-h`（3.5rem，顶栏高度）、`--sidebar-w`（14rem，侧栏展开宽）、`--sidebar-w-collapsed`（4.5rem，侧栏折叠宽）。顶栏高度、主区 `padding-top`、侧栏遮罩 `top`、侧栏宽度与主区 `lg:ml-*` 偏移一律引用变量（如 `h-[var(--header-h)]`），不写 `h-14`、`top-14`、`w-56` 这类平行字面量。吸顶偏移与锚点 `scroll-margin-top` 同样以 `calc(var(--header-h) + 余量)` 组合（参考 SettingsView 的 tabs 吸顶），余量写构成注释。
 - 垂直空间由 AppLayout 的 flex 链统一分配：wrapper（`flex-col`，普通模式 `min-h-screen` / 全屏模式 `h-full`）→ `.app-main`（`flex-1 flex-col`）→ 页头（自然高度）+ 页面内容。需要撑满剩余高度的页面容器（如 `TablePageLayout`、`CustomPageView` 根元素）自取 `flex-1 min-h-0`，禁止手写 `calc(100vh - …)` 视口差值、禁止负 margin 抵消父级内边距；`--main-pad-*`、`--page-heading-space` 这类镜像变量已删除，不得重新引入。全屏工作区（`full-viewport`）模式下 `.app-main` 无内边距，页面天然满幅。
@@ -41,7 +41,7 @@
 全站开关只有 `components/common/Toggle.vue` 一个实现，禁止手写轨道/滑块（门禁拦截 `h-6 w-11` / `h-5 w-9` 组合）。
 
 - 几何单一来源是 Toggle  scoped 样式里的 CSS 变量（`--toggle-track-w/h`、`--toggle-thumb`、`--toggle-inset`），开态位移由 `calc(轨道宽 − 滑块 − 2×边距)` 推导，改档位只调变量。
-- 档位：`size="md"`（44×24）/ `size="sm"`（36×20），`variant="inset"`（滑块内嵌，默认）/ `variant="flush"`（大滑块贴边，原 Headless 手写风）。
+- 档位：`size="md"`（44×24）/ `size="sm"`（36×20），`variant="inset"`（滑块内嵌，默认）/ `variant="flush"`（大滑块贴边）。轨道内描边、硬阴影、直角带边滑块、禁用和按压保持 ByteSeek 旧版风格，数值来源沿用当前组件变量。
 - 配色：开态默认 `toggle-active`（≡ `bg-primary-600`）；关态由 `off-tone` 选档——`default`（gray-300）/ `soft`（gray-200，手写迁移站点的原色）。个别站点的亮色开态（`bg-primary-500`）或 hover 配色用 `on-class` / `off-class` 整串透传，不新增档位。
 - 异步保存场景用 `:model-value` + `@update:model-value` 受控写法，值由处理器写回（参考 ProvidersView 的可调度开关）。
 
@@ -90,7 +90,7 @@
 
 ## 图表主题
 
-- 图表主题的唯一入口是 `composables/useChartTheme.ts`：响应式 `colors`（text/muted/grid 三档语义，zinc 体系）+ `onThemeChange` 重绘钩子。禁止 `document.documentElement.classList.contains('dark')` 快照判断（门禁拦截）——它没有响应式依赖，切主题不重算，曾导致 8 处图表切主题不换色。vue-chartjs 场景 colors 变响应式即自动重绘；Stripe Elements 等命令式场景用 watch + `elements.update({ appearance })` 重应用。
+- 图表响应式入口是 `composables/useChartTheme.ts`：`colors` 使用纸色/暖灰的 text/muted/grid 与 `onThemeChange` 重绘钩子。分类色复用 `constants/chartTheme.ts` 的迁移前包豪斯色板；`utils/chartTheme.ts` 保留 Chart.js 注册和兼容导出，读取纯颜色不触发注册。禁止 `document.documentElement.classList.contains('dark')` 快照判断——切主题后必须同步刷新。
 - 分布图调色板只有一份 `CHART_PALETTE`（12 色，按切片排名取色），"Others" 聚合切片用 `CHART_OTHER_COLOR`;token 趋势序列色用 `CHART_SERIES_COLORS`。刻度字号 `CHART_TICK_FONT_SIZE`(10)、图例字号 `CHART_LEGEND_FONT_SIZE`(11)。
 - 业务色例外留在本地：TeamMemberUsageCharts 成员固定配色（跨图表按成员稳定取色）、OpsSwitchRateTrendChart 与 DashboardView 的品牌调网格/刻度色（dark-200/primary-900 字面值）、DailyRevenueChart 的线/填充色对。
 - token 数量格式化统一 `utils/format.ts` 的 `formatTokens`（两位小数 + 千分位）与 `formatTokensK`（一位小数），语义不同不混用；ProviderTodayStatsCell 的 K1/M2 混合精度是有意的本地变体。
@@ -105,7 +105,7 @@
 
 ## 表格密度
 
-全站只有一套密度：表头 `px-4 py-2 text-xs font-medium tracking-wider`，数据单元格 `px-4 py-3 text-sm`。`.table` 组件类、`TablePageLayout` 深度样式和 `DataTable` 必须保持一致。
+表头统一黄底墨字、2px 底边、`py-3 text-sm font-extrabold`，数据单元格 `px-4 py-3 text-sm`。`.table`、`TablePageLayout` 和 `DataTable` 保持一致；手机卡片仍为独立硬边硬阴影。侧栏恢复有边框的 44px 最小高度与黄底红杠选中态。
 
 两个合法例外：
 

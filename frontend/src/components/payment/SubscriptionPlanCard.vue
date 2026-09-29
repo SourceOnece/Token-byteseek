@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'group relative flex flex-col overflow-hidden rounded-surface border transition-all',
+      'subscription-plan-card group relative flex flex-col overflow-hidden rounded-surface border transition-all',
       'hover:shadow-xl hover:-translate-y-0.5',
       borderClass,
       'bg-white dark:bg-dark-800',
@@ -82,7 +82,7 @@
       <!-- Subscribe Button -->
       <button
         type="button"
-        :class="['h-9 w-full rounded-control py-1.5 text-sm font-semibold transition-all active:scale-[0.98]', btnClass]"
+        :class="['btn btn-sm h-9 w-full', btnClass]"
         @click="emit('select', plan)"
       >
         {{ isRenewal ? t('payment.renewNow') : t('payment.subscribeNow') }}
@@ -159,3 +159,11 @@ const validitySuffix = computed(() => {
   return planValiditySuffix(props.plan, t)
 })
 </script>
+
+<style scoped>
+/* 分组已去平台，套餐卡仍使用本站硬边和按压按钮，不改套餐金额或购买事件。 */
+.subscription-plan-card {
+  border: 2px solid var(--bh-ink);
+  box-shadow: var(--bh-shadow-sm);
+}
+</style>

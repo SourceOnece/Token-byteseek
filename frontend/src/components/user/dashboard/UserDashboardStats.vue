@@ -5,8 +5,8 @@
     <!-- Balance -->
     <div class="card p-4">
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-        <div class="shrink-0 self-start rounded-control bg-emerald-100 p-2 dark:bg-emerald-900/30">
-          <BalanceIcon size="md" class="text-emerald-600 dark:text-emerald-400" />
+        <div class="shrink-0 self-start bh-plate bg-emerald-600">
+          <BalanceIcon size="md" class="text-white" />
         </div>
         <div class="min-w-0">
           <p class="bh-stat-label">{{ t('dashboard.balance') }}</p>
@@ -19,8 +19,8 @@
     <!-- API Keys -->
     <div class="card p-4">
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-        <div class="shrink-0 self-start rounded-control bg-blue-100 p-2 dark:bg-blue-900/30">
-          <Icon name="key" size="md" class="text-blue-600 dark:text-blue-400" :stroke-width="2" />
+        <div class="shrink-0 self-start bh-plate bg-bh-blue">
+          <Icon name="key" size="md" class="text-white" :stroke-width="2" />
         </div>
         <div class="min-w-0">
           <p class="bh-stat-label">{{ t('dashboard.apiKeys') }}</p>
@@ -33,8 +33,8 @@
     <!-- Today Requests -->
     <div class="card p-4">
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-        <div class="shrink-0 self-start rounded-control bg-green-100 p-2 dark:bg-green-900/30">
-          <Icon name="chart" size="md" class="text-green-600 dark:text-green-400" :stroke-width="2" />
+        <div class="shrink-0 self-start bh-plate bg-bh-red">
+          <Icon name="chart" size="md" class="text-white" :stroke-width="2" />
         </div>
         <div class="min-w-0">
           <p class="bh-stat-label">{{ t('dashboard.todayRequests') }}</p>
@@ -47,8 +47,8 @@
     <!-- Today Cost -->
     <div class="card p-4" data-testid="user-dashboard-cost">
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-        <div class="shrink-0 self-start rounded-control bg-purple-100 p-2 dark:bg-purple-900/30">
-          <BalanceIcon size="md" class="text-purple-600 dark:text-purple-400" />
+        <div class="shrink-0 self-start bh-plate bg-gray-950 dark:bg-dark-100">
+          <BalanceIcon size="md" class="text-white dark:text-gray-950" />
         </div>
         <div class="min-w-0">
           <p class="bh-stat-label">{{ t('dashboard.todayCost') }}</p>
@@ -69,11 +69,11 @@
     <!-- Today Tokens -->
     <div class="card p-4">
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-        <div class="shrink-0 self-start rounded-control bg-amber-100 p-2 dark:bg-amber-900/30">
-          <Icon name="cube" size="md" class="text-amber-600 dark:text-amber-400" :stroke-width="2" />
+        <div class="shrink-0 self-start bh-plate bg-bh-yellow">
+          <Icon name="cube" size="md" class="text-gray-950" :stroke-width="2" />
         </div>
         <div class="min-w-0">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('dashboard.todayTokens') }}</p>
+          <p class="bh-stat-label">{{ t('dashboard.todayTokens') }}</p>
           <p class="mt-0.5 whitespace-nowrap text-lg font-bold tabular-nums text-gray-900 dark:text-white lg:text-xl">{{ formatTokensK(stats?.today_tokens || 0) }}</p>
           <!-- 明细拆成 nowrap 分段，只能在分段处换行，避免窄屏下中文（如“缓存”）被从中间折断 -->
           <div class="mt-0.5 flex flex-wrap gap-x-2 text-xs text-gray-500 dark:text-gray-400">
@@ -88,11 +88,11 @@
     <!-- Total Tokens -->
     <div class="card p-4">
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-        <div class="shrink-0 self-start rounded-control bg-indigo-100 p-2 dark:bg-indigo-900/30">
-          <Icon name="database" size="md" class="text-indigo-600 dark:text-indigo-400" :stroke-width="2" />
+        <div class="shrink-0 self-start bh-plate bg-bh-blue">
+          <Icon name="database" size="md" class="text-white" :stroke-width="2" />
         </div>
         <div class="min-w-0">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('dashboard.totalTokens') }}</p>
+          <p class="bh-stat-label">{{ t('dashboard.totalTokens') }}</p>
           <p class="mt-0.5 whitespace-nowrap text-lg font-bold tabular-nums text-gray-900 dark:text-white lg:text-xl">{{ formatTokensK(stats?.total_tokens || 0) }}</p>
           <!-- 明细拆成 nowrap 分段，只能在分段处换行，避免窄屏下中文（如“缓存”）被从中间折断 -->
           <div class="mt-0.5 flex flex-wrap gap-x-2 text-xs text-gray-500 dark:text-gray-400">
@@ -107,8 +107,8 @@
     <!-- Performance (RPM/TPM) -->
     <div class="card p-4">
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-        <div class="shrink-0 self-start rounded-control bg-violet-100 p-2 dark:bg-violet-900/30">
-          <Icon name="bolt" size="md" class="text-violet-600 dark:text-violet-400" :stroke-width="2" />
+        <div class="shrink-0 self-start bh-plate bg-bh-red">
+          <Icon name="bolt" size="md" class="text-white" :stroke-width="2" />
         </div>
         <div class="min-w-0">
           <p class="bh-stat-label">{{ t('dashboard.performance') }}</p>
@@ -127,8 +127,8 @@
     <!-- Avg Response Time -->
     <div class="card p-4">
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-        <div class="shrink-0 self-start rounded-control bg-rose-100 p-2 dark:bg-rose-900/30">
-          <Icon name="clock" size="md" class="text-rose-600 dark:text-rose-400" :stroke-width="2" />
+        <div class="shrink-0 self-start bh-plate bg-gray-950 dark:bg-dark-100">
+          <Icon name="clock" size="md" class="text-white dark:text-gray-950" :stroke-width="2" />
         </div>
         <div class="min-w-0">
           <p class="bh-stat-label">{{ t('dashboard.avgResponse') }}</p>
