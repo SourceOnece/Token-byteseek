@@ -969,7 +969,7 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 	if err := validateQoderCosyCredentialsWithOptions(ctx, account, s.httpUpstream, s.tlsFPProfileService, deferQoderPATValidation); err != nil {
 		return nil, err
 	}
-	if err := s.accountRepo.Update(ctx, account); err != nil {
+	if err := s.providerWriteStore().Update(ctx, account.ProviderRecord()); err != nil {
 		return nil, err
 	}
 
@@ -1025,7 +1025,7 @@ func (s *adminServiceImpl) UpdateAccountExtra(ctx context.Context, id int64, upd
 	if len(updates) == 0 {
 		return nil
 	}
-	return s.accountRepo.UpdateExtra(ctx, id, updates)
+	return s.providerWriteStore().UpdateExtra(ctx, id, updates)
 }
 
 // BulkUpdateAccounts 在单次请求中更新多个账号。
