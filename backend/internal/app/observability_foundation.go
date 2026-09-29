@@ -47,6 +47,8 @@ func provideSystemLogSink(repo ops.OpsRepository) *ops.OpsSystemLogSink {
 // provideAuditRedactor 从实际所有者投影敏感字段，审计消费者直接共享此实例。
 func provideAuditRedactor() *audit.Redactor {
 	keys := append([]string(nil), provider.SensitiveCredentialKeys...)
+	// 票据采集的代理 URL 可能包含密码或取号密钥，审计正文必须整体脱敏。
+	keys = append(keys, "harvest_proxy_url", "extraction_url")
 	for _, fields := range payment.ConfigProviderSensitiveConfigFields {
 		for key := range fields {
 			keys = append(keys, key)

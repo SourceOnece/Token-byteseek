@@ -27,6 +27,7 @@ type LiteLLMModelPricing struct {
 	OutputCostPerImage                  float64 `json:"output_cost_per_image"`       // 图片生成模型每张图片价格
 	OutputCostPerImageToken             float64 `json:"output_cost_per_image_token"` // 图片输出 token 价格
 	InputCostPerImageToken              float64 `json:"input_cost_per_image_token"`  // 图片输入 token 价格（如 gpt-image-2 图片编辑）
+	CacheReadInputImageTokenCost        float64 `json:"cache_read_input_image_token_cost"`
 
 	// 模型能力元数据：由模型广场下发给前端展示输入/输出模态，不参与计费。
 	SupportedModalities       []string `json:"supported_modalities"`
@@ -63,6 +64,7 @@ type LiteLLMRawEntry struct {
 	OutputCostPerImage                  *float64 `json:"output_cost_per_image"`
 	OutputCostPerImageToken             *float64 `json:"output_cost_per_image_token"`
 	InputCostPerImageToken              *float64 `json:"input_cost_per_image_token"`
+	CacheReadInputImageTokenCost        *float64 `json:"cache_read_input_image_token_cost"`
 	SupportedModalities                 []string `json:"supported_modalities"`
 	SupportedInputModalities            []string `json:"supported_input_modalities"`
 	SupportedOutputModalities           []string `json:"supported_output_modalities"`

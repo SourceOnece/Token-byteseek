@@ -351,7 +351,7 @@ func (s *CodexTicketService) probeAttempt(ctx context.Context, cfg *codexTicketC
 		return false, ctx.Err() == nil
 	}
 	if resp.Body != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 	if cfg.VerifiedFlow {
 		ok, canRetry, why := s.validateTicketChain(probeCtx, cancel, cfg, fresh, model, req, body, resp, diagnostic)
@@ -502,8 +502,8 @@ func readTicketFailureDiagnostic(body io.ReadCloser, d *CodexTicketDiagnostic, c
 	var aggregate bytes.Buffer
 	for scanner.Scan() {
 		line := bytes.TrimSpace(scanner.Bytes())
-		aggregate.Write(line)
-		aggregate.WriteByte('\n')
+		_, _ = aggregate.Write(line)
+		_ = aggregate.WriteByte('\n')
 		line = bytes.TrimSpace(bytes.TrimPrefix(line, []byte("data:")))
 		classifyTicketFailureJSON(line, d)
 		if d.CompletionSeen || d.ErrorKind != "" {

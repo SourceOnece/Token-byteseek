@@ -844,6 +844,10 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			if streamEarlyErr != nil {
 				return resultWithUsage(), streamEarlyErr
 			}
+			// 完整终止帧已交付，不等上游关闭长连接才结束本轮。
+			if documentScanner.Text() == "" && sawTerminalEvent && !sawFailedEvent && !sawBareError && !eventInProgress {
+				return finalizeStream()
+			}
 		}
 		if result, err, done := handleScanErr(documentScanner.Err()); done {
 			return result, err
@@ -921,6 +925,10 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			markEventProcessed(ev)
 			if streamEarlyErr != nil {
 				return resultWithUsage(), streamEarlyErr
+			}
+			if ev.line == "" && sawTerminalEvent && !sawFailedEvent && !sawBareError && !eventInProgress {
+				_ = resp.Body.Close()
+				return finalizeStream()
 			}
 
 		case <-intervalCh:

@@ -88,9 +88,9 @@ func parseTicketCompletion(body io.Reader, expected string) ticketCompletion {
 		}
 		if strings.HasPrefix(line, "data:") {
 			if data.Len() > 0 {
-				data.WriteByte('\n')
+				_ = data.WriteByte('\n')
 			}
-			data.WriteString(strings.TrimSpace(line[5:]))
+			_, _ = data.WriteString(strings.TrimSpace(line[5:]))
 			if data.Len() > 1<<20 {
 				return ticketCompletion{Reason: "incomplete_response"}
 			}

@@ -18,7 +18,7 @@ func TestAnthropicReasoningBridgePreservesEffort(t *testing.T) {
 			require.Equal(t, effort, converted.OutputConfig.Effort)
 			var chat ChatCompletionsRequest
 			require.NoError(t, json.Unmarshal([]byte(`{"model":"claude-fable-5-1","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"`+effort+`"}`), &chat))
-			bridge, err := ChatCompletionsToResponses(&chat)
+			bridge, err := ChatCompletionsToResponses(&chat, RequestOptions{})
 			require.NoError(t, err)
 			converted, err = ResponsesToAnthropicRequest(bridge)
 			require.NoError(t, err)

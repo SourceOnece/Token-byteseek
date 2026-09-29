@@ -63,7 +63,7 @@ func TestNativeAntigravityProbeAssembly(t *testing.T) {
 	manager := lifecycle.New()
 	activity := app.NewGatewayActivityForTest(manager)
 	probe := app.NewAntigravityProbeForTest(tokens, retry, activity)
-	core := app.NewProviderTestsForTest(store, nil, nil, nil, probe, transport, cfg, nil, nil, nil, nil, manager)
+	core := app.NewProviderTestsForTest(store, nil, nil, nil, probe, transport, cfg, nil, nil, nil, nil, manager, app.NewOpenAITestExecutorForTest(store, transport, cfg, nil, nil, nil, nil))
 	require.Empty(t, transport.requests)
 
 	row, err := f.client.Provider.Create().SetName("test-antigravity-probe").SetPlatform(provider.PlatformAntigravity).SetType(provider.ProviderTypeOAuth).SetCredentials(map[string]any{

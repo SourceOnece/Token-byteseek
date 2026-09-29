@@ -110,6 +110,10 @@ func CollectOpenAIResponsesToolNameFields(reqBody map[string]any) []CodexToolNam
 		}
 	}
 	if choice, ok := reqBody["tool_choice"].(map[string]any); ok {
+		// 允许工具列表是声明的引用，别名必须同步，否则上游无法找到工具。
+		if strings.EqualFold(strings.TrimSpace(FirstNonEmptyString(choice["type"])), "allowed_tools") {
+			collectTools(choice["tools"])
+		}
 		if strings.EqualFold(strings.TrimSpace(FirstNonEmptyString(choice["type"])), "function") {
 			appendName(choice, "name")
 			if function, ok := choice["function"].(map[string]any); ok {

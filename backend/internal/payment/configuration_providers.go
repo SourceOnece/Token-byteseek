@@ -240,6 +240,9 @@ func ConfigValidateProviderRequest(providerKey, name, supportedTypes string) err
 
 var ConfigEasyPayCustomMethodCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
+// 上游渠道标识可能包含点，内部展示类型仍保持更严格的标识格式。
+var configEasyPayUpstreamTypePattern = regexp.MustCompile(`^[a-z0-9_.-]+$`)
+
 type ConfigEasyPayCustomMethodConfig struct {
 	Type         string `json:"type"`
 	UpstreamType string `json:"upstreamType"`
@@ -268,7 +271,7 @@ func ConfigValidateEasyPayCustomMethods(config map[string]string, supportedTypes
 		if !ConfigEasyPayCustomMethodCodePattern.MatchString(method.Type) {
 			return infraerrors.BadRequest("VALIDATION_ERROR", "customMethods type may only contain lowercase letters, digits, underscores, and hyphens")
 		}
-		if !ConfigEasyPayCustomMethodCodePattern.MatchString(method.UpstreamType) {
+		if !configEasyPayUpstreamTypePattern.MatchString(method.UpstreamType) {
 			return infraerrors.BadRequest("VALIDATION_ERROR", "customMethods upstreamType may only contain lowercase letters, digits, underscores, and hyphens")
 		}
 		if ConfigEasyPayCustomMethodTypeConflictsWithBuiltin(method.Type) {

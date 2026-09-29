@@ -124,6 +124,7 @@ describe.each(['login', 'register'] as const)('%s 协议提交门禁', (page) =>
     const view = await mountPage(page)
     await view.get('#email').setValue('test@example.com')
     await view.get('#password').setValue('test-password')
+    if (page === 'register') await view.get('#confirmPassword').setValue('test-password')
     await view.get('form').trigger('submit')
     expect(hintVisible()).toBe(true)
     await view.get('#login-agreement-consent').setValue(true)

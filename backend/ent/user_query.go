@@ -29,7 +29,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/ent/userallowedgroup"
 	"github.com/TokenFlux/TokenRouter/ent/userattributevalue"
 	"github.com/TokenFlux/TokenRouter/ent/userdisabledpublicgroup"
-	"github.com/TokenFlux/TokenRouter/ent/userplatformquota"
 	"github.com/TokenFlux/TokenRouter/ent/usersubscription"
 )
 
@@ -40,7 +39,6 @@ type UserQuery struct {
 	order                        []user.OrderOption
 	inters                       []Interceptor
 	predicates                   []predicate.User
-	withPlatformQuotas           *UserPlatformQuotaQuery
 	withAPIKeys                  *APIKeyQuery
 	withRedeemCodes              *RedeemCodeQuery
 	withRedeemCodeUsages         *RedeemCodeUsageQuery
@@ -93,28 +91,6 @@ func (_q *UserQuery) Unique(unique bool) *UserQuery {
 func (_q *UserQuery) Order(o ...user.OrderOption) *UserQuery {
 	_q.order = append(_q.order, o...)
 	return _q
-}
-
-// QueryPlatformQuotas chains the current query on the "platform_quotas" edge.
-func (_q *UserQuery) QueryPlatformQuotas() *UserPlatformQuotaQuery {
-	query := (&UserPlatformQuotaClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(user.Table, user.FieldID, selector),
-			sqlgraph.To(userplatformquota.Table, userplatformquota.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, user.PlatformQuotasTable, user.PlatformQuotasColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
 }
 
 // QueryAPIKeys chains the current query on the "api_keys" edge.
@@ -683,7 +659,6 @@ func (_q *UserQuery) Clone() *UserQuery {
 		order:                        append([]user.OrderOption{}, _q.order...),
 		inters:                       append([]Interceptor{}, _q.inters...),
 		predicates:                   append([]predicate.User{}, _q.predicates...),
-		withPlatformQuotas:           _q.withPlatformQuotas.Clone(),
 		withAPIKeys:                  _q.withAPIKeys.Clone(),
 		withRedeemCodes:              _q.withRedeemCodes.Clone(),
 		withRedeemCodeUsages:         _q.withRedeemCodeUsages.Clone(),
@@ -705,17 +680,6 @@ func (_q *UserQuery) Clone() *UserQuery {
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
-}
-
-// WithPlatformQuotas tells the query-builder to eager-load the nodes that are connected to
-// the "platform_quotas" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *UserQuery) WithPlatformQuotas(opts ...func(*UserPlatformQuotaQuery)) *UserQuery {
-	query := (&UserPlatformQuotaClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withPlatformQuotas = query
-	return _q
 }
 
 // WithAPIKeys tells the query-builder to eager-load the nodes that are connected to
@@ -983,8 +947,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [18]bool{
-			_q.withPlatformQuotas != nil,
+		loadedTypes = [17]bool{
 			_q.withAPIKeys != nil,
 			_q.withRedeemCodes != nil,
 			_q.withRedeemCodeUsages != nil,
@@ -1024,13 +987,6 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	}
 	if len(nodes) == 0 {
 		return nodes, nil
-	}
-	if query := _q.withPlatformQuotas; query != nil {
-		if err := _q.loadPlatformQuotas(ctx, query, nodes,
-			func(n *User) { n.Edges.PlatformQuotas = []*UserPlatformQuota{} },
-			func(n *User, e *UserPlatformQuota) { n.Edges.PlatformQuotas = append(n.Edges.PlatformQuotas, e) }); err != nil {
-			return nil, err
-		}
 	}
 	if query := _q.withAPIKeys; query != nil {
 		if err := _q.loadAPIKeys(ctx, query, nodes,
@@ -1160,36 +1116,6 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	return nodes, nil
 }
 
-func (_q *UserQuery) loadPlatformQuotas(ctx context.Context, query *UserPlatformQuotaQuery, nodes []*User, init func(*User), assign func(*User, *UserPlatformQuota)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int64]*User)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
-		}
-	}
-	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(userplatformquota.FieldUserID)
-	}
-	query.Where(predicate.UserPlatformQuota(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(user.PlatformQuotasColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		fk := n.UserID
-		node, ok := nodeids[fk]
-		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
-		}
-		assign(node, n)
-	}
-	return nil
-}
 func (_q *UserQuery) loadAPIKeys(ctx context.Context, query *APIKeyQuery, nodes []*User, init func(*User), assign func(*User, *APIKey)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[int64]*User)

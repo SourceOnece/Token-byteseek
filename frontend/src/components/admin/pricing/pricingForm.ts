@@ -11,7 +11,6 @@ type TranslateFn = (key: string, params?: Record<string, unknown>) => string
 // 分组和共享价格配置共用完整价卡转换，避免新增字段只在其中一个管理页面保存。
 export function pricingEntryFromAPI(entry: ModelPricingEntry): PricingFormEntry {
   return {
-    legacy_group_override: entry.legacy_group_override || undefined,
     models: [...(entry.models || [])],
     billing_mode: entry.billing_mode || 'token',
     price_multiplier: entry.price_multiplier ?? null,
@@ -35,7 +34,6 @@ export function pricingEntryFromAPI(entry: ModelPricingEntry): PricingFormEntry 
 // 单价按百万 token 展示、按单 token 存储；区间倍率和服务层级倍率保持原单位。
 export function pricingEntryToAPI(entry: PricingFormEntry): ModelPricingEntry {
   return {
-    legacy_group_override: entry.legacy_group_override || undefined,
     models: entry.models.map(model => model.trim()),
     billing_mode: entry.billing_mode,
     price_multiplier: toNullableNumber(entry.price_multiplier),
@@ -59,15 +57,12 @@ export function pricingEntryToAPI(entry: PricingFormEntry): ModelPricingEntry {
 // 校验使用与后端定价缓存相同的 Claude 点号归一化，不影响模型映射的匹配语义。
 export function validatePricingForm(entries: PricingFormEntry[], t: TranslateFn): string | null {
   const configured = entries.filter(entry => entry.models.length > 0)
-  // 迁移分组价与普通共享价是两个优先层，各层内部继续拒绝重叠。
-  for (const migrated of [false, true]) {
-    const models = configured.filter(entry => Boolean(entry.legacy_group_override) === migrated).flatMap(entry => entry.models.map(model => {
-      const normalized = model.trim().toLowerCase()
-      return normalized.startsWith('claude-') ? normalized.replace(/\./g, '-') : normalized
-    }))
-    const conflict = findModelConflict(models)
-    if (conflict) return t('admin.pricing.modelConflict', { model1: conflict[0], model2: conflict[1] })
-  }
+  const models = configured.flatMap(entry => entry.models.map(model => {
+    const normalized = model.trim().toLowerCase()
+    return normalized.startsWith('claude-') ? normalized.replace(/\./g, '-') : normalized
+  }))
+  const conflict = findModelConflict(models)
+  if (conflict) return t('admin.pricing.modelConflict', { model1: conflict[0], model2: conflict[1] })
   for (const entry of configured) {
     const error = validatePricingEntry(entry, t)
     if (error) return `${entry.models.join(', ')}: ${error}`

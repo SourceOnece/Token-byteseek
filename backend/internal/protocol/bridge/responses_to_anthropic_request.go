@@ -3,6 +3,7 @@ package bridge
 import (
 	"encoding/json"
 	"fmt"
+	claudewire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"strings"
 )
 
@@ -11,7 +12,11 @@ import (
 // enables Anthropic platform groups to accept OpenAI Responses API requests
 // by converting them to the native /v1/messages format before forwarding upstream.
 func ResponsesToAnthropicRequest(req *ResponsesRequest) (*AnthropicRequest, error) {
-	system, messages, err := convertResponsesInputToAnthropic(req.Instructions, req.Input)
+	if req == nil {
+		return nil, fmt.Errorf("responses request is nil")
+	}
+	claude55 := claudewire.IsOpus55(req.Model) || claudewire.IsSonnet55(req.Model)
+	system, messages, err := convertResponsesInputToAnthropic(req.Instructions, req.Input, claude55)
 	if err != nil {
 		return nil, err
 	}
@@ -57,6 +62,12 @@ func ResponsesToAnthropicRequest(req *ResponsesRequest) (*AnthropicRequest, erro
 	}
 
 	// reasoning.effort → output_config.effort + thinking
+	if claude55 {
+		if err := applyClaude55Reasoning(req, out); err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
 	if req.Reasoning != nil && req.Reasoning.Effort != "" {
 		if isUltraReasoningEffort(req.Reasoning.Effort) {
 			return nil, fmt.Errorf("reasoning effort %q is not supported", strings.TrimSpace(req.Reasoning.Effort))
@@ -69,6 +80,14 @@ func ResponsesToAnthropicRequest(req *ResponsesRequest) (*AnthropicRequest, erro
 				Type:         "enabled",
 				BudgetTokens: defaultThinkingBudget(effort),
 			}
+		}
+	}
+	if claudewire.IsSonnet55(req.Model) {
+		if req.Temperature != nil && *req.Temperature != 1 {
+			return nil, fmt.Errorf("claude-sonnet-5-5 does not support non-default temperature")
+		}
+		if req.TopP != nil && (*req.TopP < 0.99 || *req.TopP > 1) {
+			return nil, fmt.Errorf("claude-sonnet-5-5 does not support non-default top_p")
 		}
 	}
 
@@ -104,7 +123,7 @@ func mapResponsesEffortToAnthropic(effort string) string {
 
 // convertResponsesInputToAnthropic 从 Responses API 的 instructions 与 input 数组中
 // 提取系统提示和消息，并以原始 JSON 返回 Anthropic 多态 system 字段。
-func convertResponsesInputToAnthropic(instructions string, inputRaw json.RawMessage) (json.RawMessage, []AnthropicMessage, error) {
+func convertResponsesInputToAnthropic(instructions string, inputRaw json.RawMessage, preserveThinking ...bool) (json.RawMessage, []AnthropicMessage, error) {
 	var systemParts []string
 	if strings.TrimSpace(instructions) != "" {
 		systemParts = append(systemParts, strings.TrimSpace(instructions))
@@ -169,6 +188,12 @@ func convertResponsesInputToAnthropic(instructions string, inputRaw json.RawMess
 			})
 
 		case item.Type == "reasoning":
+			if len(preserveThinking) > 0 && preserveThinking[0] {
+				if block, ok := decodeAnthropicThinking(item.EncryptedContent); ok {
+					content, _ := json.Marshal([]AnthropicContentBlock{block})
+					messages = append(messages, AnthropicMessage{Role: "assistant", Content: content})
+				}
+			}
 			// Anthropic 无法摄入 OpenAI 的 reasoning：encrypted_content 是不透明的，
 			// 而 thinking 块的重放需要 Anthropic 自己签发的 signature，无法伪造。
 			// Codex 常见形态（只带 summary + encrypted_content）本来就会被丢弃，

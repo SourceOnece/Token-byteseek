@@ -26,13 +26,13 @@ type AttemptResult struct {
 	HTTPCommitted, RetryCommitted bool
 	RequestID                     string
 	// Responses 补充观测不参与平台之外的重试或资金决策。
-	ResponseID                                 string
-	SearchCount, ImageInputTokens              int
-	ImageOutputSizes                           []string
-	UpstreamHeaders                            http.Header
-	Model, UpstreamModel                       string
-	Usage                                      TokenUsage
-	HasUsage, Served, Stream, ClientDisconnect bool
+	ResponseID                                          string
+	SearchCount, ImageInputTokens, ImageCacheReadTokens int
+	ImageOutputSizes                                    []string
+	UpstreamHeaders                                     http.Header
+	Model, UpstreamModel                                string
+	Usage                                               TokenUsage
+	HasUsage, Served, Stream, ClientDisconnect          bool
 	// FailureClass 只描述技术失败，资金和重试裁决由外层拥有。
 	// EstimatedTokenCount 仅承载既有 countTokens 本地回退，不是可结算 usage。
 	EstimatedTokenCount *int

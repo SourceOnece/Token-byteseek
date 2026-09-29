@@ -13,6 +13,15 @@ func (h *ModelsHandler) WriteUnifiedModelsList(c *gin.Context, ids []string) {
 		c.JSON(http.StatusOK, gin.H{"object": "list", "data": []any{}})
 		return
 	}
+	c.JSON(http.StatusOK, gin.H{"object": "list", "data": h.unifiedModels(ids)})
+}
+
+// 单模型与列表共用元数据投影，避免新增型号仅在其中一个端点可见。
+func (h *ModelsHandler) WriteUnifiedModel(c *gin.Context, id string) {
+	c.JSON(http.StatusOK, h.unifiedModels([]string{id})[0])
+}
+
+func (h *ModelsHandler) unifiedModels(ids []string) []gin.H {
 	known := make(map[string]gin.H)
 	for _, model := range h.catalog.OpenAIModels() {
 		known[model.ID] = gin.H{"id": model.ID, "object": "model", "type": "model", "display_name": model.DisplayName, "owned_by": model.OwnedBy, "created": model.Created}
@@ -42,7 +51,7 @@ func (h *ModelsHandler) WriteUnifiedModelsList(c *gin.Context, ids []string) {
 		}
 		models = append(models, item)
 	}
-	c.JSON(http.StatusOK, gin.H{"object": "list", "data": models})
+	return models
 }
 
 // unifiedGrokModel 保留客户端识别推理强度的既有元数据。

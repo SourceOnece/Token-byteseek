@@ -29,9 +29,6 @@ const (
 	defaultSchedulerSnapshotMGetChunkSize  = 128
 	defaultSchedulerSnapshotWriteChunkSize = 256
 	schedulerLastUsedUpdateChunkSize       = 256
-	// 摘要资格字段升级时，旧缓存不能被当成完整的新投影使用。
-	schedulerMetadataVersion = 1
-
 	// snapshotGraceTTLSeconds 旧快照过期的宽限期（秒）。
 	// 替代立即 DEL，让正在读取旧版本的 reader 有足够时间完成 ZRANGE。
 	snapshotGraceTTLSeconds = 60

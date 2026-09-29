@@ -34,7 +34,7 @@ func (r *Store) SaveQualitySchedule(ctx context.Context, p *quality.CodexQuality
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if !rows.Next() {
 		return fmt.Errorf("计划不存在")
 	}
@@ -45,7 +45,7 @@ func (r *Store) ListQualitySchedules(ctx context.Context) ([]*quality.CodexQuali
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := []*quality.CodexQualitySchedule{}
 	for rows.Next() {
 		p := &quality.CodexQualitySchedule{}
@@ -112,7 +112,7 @@ func (r *Store) ClaimQualitySchedule(ctx context.Context) (*quality.CodexQuality
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if !rows.Next() {
 		return nil, rows.Err()
 	}
@@ -194,13 +194,13 @@ func (r *Store) ListQualityRuns(ctx context.Context, planID int64) ([]*quality.C
 	for rows.Next() {
 		run, err := scanQualityRun(rows)
 		if err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return nil, err
 		}
 		out = append(out, run)
 	}
 	err = rows.Err()
-	rows.Close()
+	_ = rows.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +210,7 @@ func (r *Store) ListQualityRuns(ctx context.Context, planID int64) ([]*quality.C
 	if err != nil {
 		return nil, err
 	}
-	defer counts.Close()
+	defer func() { _ = counts.Close() }()
 	byID := map[int64]*quality.CodexQualityRun{}
 	for _, run := range out {
 		byID[run.ID] = run
@@ -233,7 +233,7 @@ func (r *Store) GetQualityRun(ctx context.Context, id int64) (*quality.CodexQual
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if !rows.Next() {
 		return nil, fmt.Errorf("检测轮次不存在")
 	}
@@ -245,7 +245,7 @@ func (r *Store) ListQualityRunResults(ctx context.Context, id int64, status stri
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := []*quality.CodexQualityResult{}
 	total := 0
 	for rows.Next() {

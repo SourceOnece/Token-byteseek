@@ -1507,9 +1507,7 @@ func TestHandleClaudeStreamingResponse_NormalComplete(t *testing.T) {
 // "\ndata" 而报 invalid stream chunk（Antigravity CLI 每条流都在第二个事件中断）。
 func TestHandleGeminiStreamingResponse_EventSeparatorIsExactlyOneBlankLine(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	svc := newAntigravityTestService(&config.Config{
-		Gateway: config.GatewayConfig{MaxLineSize: defaultMaxLineSize},
-	})
+	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -1528,7 +1526,7 @@ func TestHandleGeminiStreamingResponse_EventSeparatorIsExactlyOneBlankLine(t *te
 		fmt.Fprintf(pw, "data: %s\r\n\r\n", second)
 	}()
 
-	result, err := svc.handleGeminiStreamingResponse(c, resp, time.Now())
+	result, err := googleforward.AntigravityResponseForTest(svc, &googleforward.AttemptForTest{Output: gatewayhttp.NewGoogleBoundary(c, svc.Options, true)}).HandleGeminiStreamingResponse(upstream.NewOutputContext(gatewayhttp.NewGoogleBoundary(c, svc.Options, true).Sink()), resp, time.Now())
 	_ = pr.Close()
 
 	require.NoError(t, err)

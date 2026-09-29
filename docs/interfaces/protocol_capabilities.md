@@ -13,9 +13,9 @@
 
 | ID | 界面名称 | 主要入口 | 候选提供商适配器范围 |
 | --- | --- | --- | --- |
-| `anthropic_messages` | Anthropic Messages | `POST /v1/messages` | 现有九个平台 |
-| `openai_responses` | OpenAI Responses | `POST /v1/responses` | 现有九个平台 |
-| `openai_chat_completions` | Chat Completions | `POST /v1/chat/completions` | 现有九个平台 |
+| `anthropic_messages` | Anthropic Messages | `POST /v1/messages` | 现有十一个平台 |
+| `openai_responses` | OpenAI Responses | `POST /v1/responses` | 现有十一个平台 |
+| `openai_chat_completions` | Chat Completions | `POST /v1/chat/completions` | 现有十一个平台 |
 | `gemini_generate_content` | Gemini GenerateContent | `POST /v1beta/models/{model}:generateContent`、`:streamGenerateContent` | Gemini、Antigravity |
 | `openai_embeddings` | Embeddings | `POST /v1/embeddings` | OpenAI |
 | `openai_images_generations` | Images 图片生成 | `POST /v1/images/generations` | OpenAI、Grok |
@@ -77,7 +77,7 @@ Grok 的 HTTP Responses、Chat、Images、视频、Voice 是原生项，WebSocke
 
 分组返回 `allowed_protocols`、`protocol_fallbacks` 和 `responses_image_policy`。空准入集合关闭全部新入口。`protocol_fallbacks` 的值为有序协议数组：入口未配置时自动匹配目录中的转换路线，入口值为 `[]` 时仅允许原生，非空数组则限定允许的目标及尝试顺序。每个候选提供商先尝试已启用的原生协议，再选择第一个能够执行的允许转换目标；目标必须在该提供商启用，且存在对应平台/认证方式的单步转换器。目标无需作为客户端入口开放。没有可行路线的候选在评分之前排除，切号重新解析；转换不能绕过模型、额度、媒体资格、WebSocket 模式和会话约束。
 
-支持的转换及自动模式顺序以目录的 `fallback_targets` 为准；管理员可以缩小目标集合、调整顺序或关闭转换，不支持多跳转换。文本可使用现有平台适配；OpenAI OAuth Images 转 Responses，Grok WebSocket 转 HTTP Responses，Grok 搜索/Compact 转 Responses，PAT Alpha Search 转 hosted web search。批量图片由既有 provider 绑定选择 Gemini Batch 或 Vertex Batch，不提供文本式转换下拉。
+支持的转换及自动模式顺序以目录的 `fallback_targets` 为准；管理员可以缩小目标集合、调整顺序或关闭转换，不支持多跳转换。文本可使用现有平台适配；OpenAI OAuth Images 仍按 Responses 能力路线准入，执行器对 Image 1.5/2/2.5 选择原生图片后端，旧 `gpt-image-1` 使用 Responses 工具。Grok WebSocket 转 HTTP Responses，Grok 搜索/Compact 转 Responses，PAT Alpha Search 转 hosted web search。批量图片由既有 provider 绑定选择 Gemini Batch 或 Vertex Batch，不提供文本式转换下拉。
 
 同组各候选可以解析出不同的目标协议。例如客户端发送 Chat 请求，OpenAI 提供商可原生处理，Anthropic 提供商可使用 Messages 转换，Gemini 提供商可使用 GenerateContent 转换。协议路线在选中提供商后用于实际执行，切号后重新验证模型与路线。`previous_response_id`、WebSocket/Live 会话、签名及已开始的流继续限制跨提供商切换。
 

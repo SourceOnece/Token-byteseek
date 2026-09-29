@@ -64,6 +64,7 @@ func BuildCountTokensRequestPassthrough(ctx context.Context, body []byte, token 
 
 	// 提供商级请求头覆写（最终生效，覆盖上面所有来源的同名头）
 	options.ApplyOverrides(req.Header)
+	FilterSonnet55ToolsetBetaHeader(req.Header, body, gjson.GetBytes(body, "model").String())
 
 	return req, nil
 }
@@ -120,6 +121,7 @@ func BuildCountTokensRequest(ctx context.Context, body []byte, token, tokenType,
 	}
 
 	// 能力维度 body sanitize：与最终 anthropic-beta header 对称
+	finalBetaHeader = FilterSonnet55ToolsetBeta(finalBetaHeader, body, modelID)
 	if sanitized, changed := SanitizeAnthropicBodyForBetaTokens(body, finalBetaHeader); changed {
 		body = sanitized
 	}
@@ -186,6 +188,7 @@ func BuildCountTokensRequest(ctx context.Context, body []byte, token, tokenType,
 
 	// 提供商级请求头覆写（仅 anthropic/openai api_key 提供商启用时生效；OAuth 路径 no-op）
 	options.ApplyOverrides(req.Header)
+	FilterSonnet55ToolsetBetaHeader(req.Header, body, modelID)
 
 	if options.Capture != nil {
 		options.Capture(req, body)

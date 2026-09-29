@@ -20,7 +20,7 @@ func TestBufferedResponseAccumulator_DoneUsesCallIDBeforePosition(t *testing.T) 
 
 // 工具完成只读对应协议字段，终态之后的迟到事件不应新增 delta。
 func TestResponsesChatToolDoneFinalizedIsNoop(t *testing.T) {
-	s := NewResponsesEventToChatState()
+	s := NewResponsesEventToChatState(testRuntime())
 	s.OutputIndexToToolIndex[0] = 0
 	s.Finalized = true
 	require.Empty(t, ResponsesEventToChatChunks(&ResponsesStreamEvent{Type: "response.function_call_arguments.done", Arguments: "{}"}, s))

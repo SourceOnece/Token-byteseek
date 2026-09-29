@@ -905,7 +905,7 @@ func TestBufferedResponseAccumulator_ToolCalls(t *testing.T) {
 }
 
 func TestResponsesEventToChatChunks_FunctionArgumentsDoneWithoutDeltas(t *testing.T) {
-	state := NewResponsesEventToChatState()
+	state := NewResponsesEventToChatState(testRuntime())
 	state.Model = "gpt-5-codex"
 	state.SentRole = true
 
@@ -934,7 +934,7 @@ func TestResponsesEventToChatChunks_FunctionArgumentsDoneWithoutDeltas(t *testin
 }
 
 func TestResponsesEventToChatChunks_FunctionArgumentsDoneDoesNotDuplicateDeltas(t *testing.T) {
-	state := NewResponsesEventToChatState()
+	state := NewResponsesEventToChatState(testRuntime())
 	state.Model = "gpt-5-codex"
 	state.SentRole = true
 

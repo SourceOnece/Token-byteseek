@@ -2,7 +2,6 @@ package codexticket
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 )
@@ -42,5 +41,3 @@ func (s *CodexTicketService) ticketAccounts() CodexTicketAccountStore {
 	}
 	return s.runtime.TicketAccountStore()
 }
-
-var errTicketRuntimeUnavailable = errors.New("票据运行服务不可用")

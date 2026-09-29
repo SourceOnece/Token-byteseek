@@ -73,11 +73,11 @@ func TestGatewayEnsureForwardErrorResponse_SkipsCanceledClient(t *testing.T) {
 	c.Request = httptest.NewRequest(http.MethodPost, EndpointMessages, nil).WithContext(ctx)
 	cancel()
 
-	h := &GatewayHandler{}
-	wrote := h.ensureForwardErrorResponse(c, false)
+	h := MessagesErrorOutput{}
+	wrote := h.EnsureResponse(c, false)
 
 	require.False(t, wrote)
-	require.Equal(t, statusClientClosedRequest, c.Writer.Status())
+	require.Equal(t, StatusClientClosedRequest, c.Writer.Status())
 	require.Empty(t, w.Body.String())
 }
 
@@ -92,13 +92,13 @@ func TestGatewayEnsureForwardErrorResponse_CanceledClientAfterStreamStartedAppen
 	_, _ = c.Writer.WriteString(":\n\n")
 	cancel()
 
-	h := &GatewayHandler{}
-	wrote := h.ensureForwardErrorResponse(c, true)
+	h := MessagesErrorOutput{}
+	wrote := h.EnsureResponse(c, true)
 
 	require.False(t, wrote)
 	require.Equal(t, http.StatusOK, c.Writer.Status())
 	require.Equal(t, ":\n\n", w.Body.String())
-	require.Empty(t, service.GetOpsStreamErrors(c))
+	require.Empty(t, GetOpsStreamErrors(c))
 }
 
 // case B 回归：Anthropic-backed /responses，Writer 已被写过时

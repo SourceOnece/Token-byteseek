@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CodexTicketSettings from '../CodexTicketSettings.vue'
-import CodexTicketProxyEditor from '@/components/admin/account/CodexTicketProxyEditor.vue'
+import CodexTicketProxyEditor from '@/components/admin/provider/CodexTicketProxyEditor.vue'
 const { get, put, showSuccess } = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), showSuccess: vi.fn() }))
 vi.mock('@/api/client', () => ({ apiClient: { get, put, post: vi.fn() } }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showSuccess }) }))

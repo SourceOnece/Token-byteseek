@@ -5,6 +5,7 @@ package openai
 type ForwardUsage struct {
 	InputTokens              int `json:"input_tokens"`
 	ImageInputTokens         int `json:"image_input_tokens,omitempty"`
+	ImageCacheReadTokens     int `json:"image_cache_read_tokens,omitempty"`
 	OutputTokens             int `json:"output_tokens"`
 	CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
 	CacheReadInputTokens     int `json:"cache_read_input_tokens,omitempty"`
@@ -31,6 +32,7 @@ func AddForwardUsage(dst *ForwardUsage, usage ForwardUsage) {
 	}
 	dst.InputTokens += usage.InputTokens
 	dst.ImageInputTokens += usage.ImageInputTokens
+	dst.ImageCacheReadTokens += usage.ImageCacheReadTokens
 	dst.OutputTokens += usage.OutputTokens
 	dst.CacheCreationInputTokens += usage.CacheCreationInputTokens
 	dst.CacheReadInputTokens += usage.CacheReadInputTokens

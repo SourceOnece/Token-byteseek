@@ -257,6 +257,7 @@ func MultiplyModelPricing(pricing *ModelPricing, multiplier float64) *ModelPrici
 	scaled.InputPricePerToken *= multiplier
 	scaled.InputPricePerTokenPriority *= multiplier
 	scaled.ImageInputPricePerToken *= multiplier
+	scaled.ImageCacheReadPricePerToken *= multiplier
 	scaled.OutputPricePerToken *= multiplier
 	scaled.OutputPricePerTokenPriority *= multiplier
 	scaled.CacheCreationPricePerToken *= multiplier

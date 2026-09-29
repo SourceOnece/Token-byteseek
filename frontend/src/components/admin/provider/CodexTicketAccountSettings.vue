@@ -14,7 +14,7 @@
       <div class="flex shrink-0 flex-col items-end gap-3">
         <label v-if="bulk" class="flex items-center gap-2 text-sm font-bold">
           {{ t('common.edit') }}
-          <input v-model="fields.mode" type="checkbox" :disabled="locked" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" :aria-label="t('admin.accounts.ticketPolicy.mode')" data-testid="ticket-edit-mode" />
+          <input v-model="fields.mode" type="checkbox" :disabled="locked" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" :aria-label="t('admin.accounts.ticketPolicy.mode')" data-testid="ticket-edit-mode" />
         </label>
         <div :class="!fields.mode && 'pointer-events-none opacity-50'" data-testid="ticket-bulk-body-mode">
           <!-- 不同值先留空，明确选择后才显示对应的开关状态。 -->
@@ -36,7 +36,7 @@
         <div v-for="item in childChoices" :key="item.key" class="min-w-0">
           <div class="mb-2 flex items-center justify-between gap-3">
             <label :id="uid + '-' + item.key + '-label'" :for="uid + '-' + item.key" class="input-label mb-0">{{ t(item.label) }}</label>
-            <input v-if="bulk" v-model="fields[item.key]" type="checkbox" :disabled="locked || (item.key === 'guard' && dualFlowInForm)" :aria-labelledby="uid + '-' + item.key + '-label'" :aria-controls="uid + '-' + item.key" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" :data-testid="'ticket-edit-' + item.key" />
+            <input v-if="bulk" v-model="fields[item.key]" type="checkbox" :disabled="locked || (item.key === 'guard' && dualFlowInForm)" :aria-labelledby="uid + '-' + item.key + '-label'" :aria-controls="uid + '-' + item.key" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" :data-testid="'ticket-edit-' + item.key" />
           </div>
           <div :class="!fields[item.key] && 'pointer-events-none opacity-50'" :data-testid="'ticket-bulk-body-' + item.key">
             <Select v-if="item.key === 'flow'" :id="uid + '-flow'" v-model="bulkFlow" :options="flowOptions" :disabled="locked || !fields.flow" :placeholder="' '" data-testid="ticket-verified-flow" />
@@ -49,7 +49,7 @@
       <div>
         <div class="mb-2 flex items-center justify-between gap-3">
           <label :id="uid + '-models-label'" :for="uid + '-models'" class="input-label mb-0">{{ t('admin.settings.codexTicket.models') }}</label>
-          <input v-if="bulk" v-model="ruleFields.models" type="checkbox" :disabled="locked" :aria-labelledby="uid + '-models-label'" :aria-controls="uid + '-models'" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" data-testid="ticket-edit-models" />
+          <input v-if="bulk" v-model="ruleFields.models" type="checkbox" :disabled="locked" :aria-labelledby="uid + '-models-label'" :aria-controls="uid + '-models'" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" data-testid="ticket-edit-models" />
         </div>
         <textarea :id="uid + '-models'" v-model="modelText" rows="3" class="input w-full font-mono" :disabled="locked || !ruleFields.models" :class="!ruleFields.models && 'cursor-not-allowed opacity-50'" data-testid="ticket-bulk-models" />
       </div>
@@ -59,7 +59,7 @@
           <div v-for="field in group.fields" :key="field.key" class="min-w-0">
             <div class="mb-2 flex items-center justify-between gap-3">
               <label :id="uid + '-' + field.key + '-label'" :for="uid + '-' + field.key" class="input-label mb-0">{{ t('admin.accounts.ticketWorkbench.fields.' + field.key) }}</label>
-              <input v-if="bulk" v-model="ruleFields[field.key]" type="checkbox" :disabled="locked" :aria-labelledby="uid + '-' + field.key + '-label'" :aria-controls="uid + '-' + field.key" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" :data-testid="'ticket-edit-' + field.key" />
+              <input v-if="bulk" v-model="ruleFields[field.key]" type="checkbox" :disabled="locked" :aria-labelledby="uid + '-' + field.key + '-label'" :aria-controls="uid + '-' + field.key" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" :data-testid="'ticket-edit-' + field.key" />
             </div>
             <!-- 长度配置使用固定字段语义色；批量未勾选仍虚化，不改变0关闭与实际判定。 -->
             <input :id="uid + '-' + field.key" v-model.number="rules[field.key]" type="number" :min="field.min" :max="field.max" step="1" class="input w-full" :disabled="locked || !ruleFields[field.key]" :class="[
@@ -74,7 +74,7 @@
       <div class="space-y-4 border-t-2 border-[color:var(--bh-ink)] pt-4">
         <div class="flex items-center justify-between gap-3">
           <label :id="uid + '-proxy-label'" :for="uid + '-proxy-edit'" class="text-lg font-extrabold text-bh-blue dark:text-blue-300">{{ t('admin.accounts.ticketPolicy.proxy') }}</label>
-          <input :id="uid + '-proxy-edit'" v-model="fields.proxy" type="checkbox" :disabled="locked" :aria-controls="uid + '-proxy'" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" data-testid="ticket-edit-proxy" />
+          <input :id="uid + '-proxy-edit'" v-model="fields.proxy" type="checkbox" :disabled="locked" :aria-controls="uid + '-proxy'" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" data-testid="ticket-edit-proxy" />
         </div>
         <div :id="uid + '-proxy'" :class="!fields.proxy && 'opacity-50'" data-testid="ticket-bulk-body-proxy">
           <CodexTicketProxyEditor ref="proxyEditor" :value="policy" :blank="proxyMixed" :template-source="templateMode || draft" :account-id="ids[0]" allow-inherit :inherited="source === 'gateway'" :locked="locked || !fields.proxy" :test-disabled="locked || (bulk && !fields.proxy)" />

@@ -4,7 +4,7 @@ import CodexQualitySchedulesModal from '../CodexQualitySchedulesModal.vue'
 
 const { list, save, accounts, trigger, setEnabled, remove } = vi.hoisted(() => ({ list: vi.fn(), save: vi.fn(), accounts: vi.fn(), trigger: vi.fn(), setEnabled: vi.fn(), remove: vi.fn() }))
 vi.mock('@/api/admin/codexQuality', () => ({ qualitySchedulesAPI: { list, save, trigger, setEnabled, remove, runs: vi.fn().mockResolvedValue([]) } }))
-vi.mock('@/api/admin', () => ({ adminAPI: { accounts: { list: accounts } } }))
+vi.mock('@/api/admin', () => ({ adminAPI: { providers: { list: accounts } } }))
 vi.mock('vue-i18n', async () => ({ ...await vi.importActual<typeof import('vue-i18n')>('vue-i18n'), useI18n: () => ({ t: (key: string) => key }) }))
 
 describe('Scheduled quality tests', () => {
@@ -44,7 +44,7 @@ describe('Scheduled quality tests', () => {
     expect(wrapper.get('[data-testid="quality-plan-delete-confirm"]').attributes('disabled')).toBeUndefined()
     wrapper.unmount()
   })
-  beforeEach(() => { vi.clearAllMocks(); list.mockResolvedValue([]); save.mockResolvedValue({ id: 1 }); accounts.mockResolvedValue({ items: [{ id: 1, platform: 'openai', type: 'oauth', name: 'one' }, { id: 2, platform: 'openai', type: 'oauth', parent_account_id: 1 }, { id: 3, platform: 'openai', type: 'apikey', name: 'API upstream' }], total: 3 }) })
+  beforeEach(() => { vi.clearAllMocks(); list.mockResolvedValue([]); save.mockResolvedValue({ id: 1 }); accounts.mockResolvedValue({ items: [{ id: 1, platform: 'openai', type: 'oauth', name: 'one' }, { id: 2, platform: 'openai', type: 'oauth', parent_provider_id: 1 }, { id: 3, platform: 'openai', type: 'apikey', name: 'API upstream' }], total: 3 }) })
   it('全选排除影子，默认120秒并要求明确确认', async () => {
     const wrapper = mount(CodexQualitySchedulesModal, {
       props: { show: false, accountIds: [] }, global: { stubs: { BaseDialog: { template: '<div><slot/></div>' }, Select: true, Pagination: true } }

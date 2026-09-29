@@ -77,7 +77,8 @@ END $$;
 
 UPDATE pricing_configs SET billing_model_source = 'group_mapped' WHERE billing_model_source = 'channel_mapped';
 ALTER TABLE pricing_configs ALTER COLUMN billing_model_source SET DEFAULT 'group_mapped';
--- 路由字段已复制到 groups.routing_policy；旧列暂保留供回退/对账，避免升级丢失管理员配置。
+ALTER TABLE pricing_configs DROP COLUMN IF EXISTS model_mapping, DROP COLUMN IF EXISTS restrict_models,
+    DROP COLUMN IF EXISTS features, DROP COLUMN IF EXISTS features_config;
 COMMENT ON TABLE pricing_configs IS '共享价格配置：仅定义价格与计费口径';
 COMMENT ON COLUMN groups.routing_policy IS '分组独立模型映射、白名单和功能策略';
 COMMENT ON COLUMN usage_logs.pricing_config_id IS '请求使用的共享价格配置 ID，历史记录保留原 ID';

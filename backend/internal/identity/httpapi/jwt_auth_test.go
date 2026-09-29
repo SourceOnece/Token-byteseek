@@ -35,7 +35,7 @@ type stubJWTUserRepo struct {
 func (r *stubJWTUserRepo) GetByID(_ context.Context, id int64) (*identity.User, error) {
 	u, ok := r.users[id]
 	if !ok {
-		return nil, service.ErrUserNotFound
+		return nil, identity.ErrUserNotFound
 	}
 	return u, nil
 }
@@ -240,8 +240,8 @@ func TestJWTAuth_TamperedToken(t *testing.T) {
 func TestJWTAuth_UserLookupErrors(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cfg := &config.Config{JWT: config.JWTConfig{Secret: "test-secret", ExpireHour: 1}}
-	authSvc := service.NewAuthService(nil, nil, nil, nil, cfg, nil, nil, nil, nil, nil, nil, nil, nil)
-	token, err := authSvc.GenerateToken(context.Background(), &service.User{ID: 1, Role: service.RoleAdmin})
+	authSvc := identity.NewSessionService(identity.SessionOptions{Secret: cfg.JWT.Secret, ExpireHour: cfg.JWT.ExpireHour}, nil, nil, nil, nil)
+	token, err := authSvc.GenerateToken(context.Background(), &identity.User{ID: 1, Role: identity.RoleAdmin})
 	require.NoError(t, err)
 
 	for _, tc := range []struct {
@@ -250,23 +250,23 @@ func TestJWTAuth_UserLookupErrors(t *testing.T) {
 		status int
 		code   string
 	}{
-		{"missing user", service.ErrUserNotFound, http.StatusUnauthorized, "USER_NOT_FOUND"},
+		{"missing user", identity.ErrUserNotFound, http.StatusUnauthorized, "USER_NOT_FOUND"},
 		{"database timeout", context.DeadlineExceeded, http.StatusInternalServerError, "INTERNAL_ERROR"},
 		{"database failure", errors.New("database unavailable"), http.StatusInternalServerError, "INTERNAL_ERROR"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			userRepo := &stubUserRepo{getByID: func(context.Context, int64) (*service.User, error) {
+			userRepo := &stubUserRepo{getByID: func(context.Context, int64) (*identity.User, error) {
 				return nil, tc.err
 			}}
-			userSvc := service.NewUserService(userRepo, nil, nil, nil)
+			userSvc := identity.NewUserService(userRepo, nil, nil, nil, nil)
 			for _, route := range []struct {
 				name      string
 				handler   gin.HandlerFunc
 				websocket bool
 			}{
-				{"user", gin.HandlerFunc(NewJWTAuthMiddleware(authSvc, userSvc, nil, nil)), false},
-				{"admin", gin.HandlerFunc(NewAdminAuthMiddleware(authSvc, userSvc, nil, nil)), false},
-				{"admin websocket", gin.HandlerFunc(NewAdminAuthMiddleware(authSvc, userSvc, nil, nil)), true},
+				{"user", gin.HandlerFunc(identityhttp.JWTAuth(authSvc, userSvc, userSvc, nil, nil)), false},
+				{"admin", gin.HandlerFunc(identityhttp.AdminAuth(authSvc, userSvc, nil, nil)), false},
+				{"admin websocket", gin.HandlerFunc(identityhttp.AdminAuth(authSvc, userSvc, nil, nil)), true},
 			} {
 				t.Run(route.name, func(t *testing.T) {
 					called := false
@@ -288,7 +288,7 @@ func TestJWTAuth_UserLookupErrors(t *testing.T) {
 					router.ServeHTTP(w, req)
 
 					require.Equal(t, tc.status, w.Code)
-					var body ErrorResponse
+					var body httpx.ErrorResponse
 					require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 					require.Equal(t, tc.code, body.Code)
 					require.False(t, called)

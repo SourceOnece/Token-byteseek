@@ -41,6 +41,7 @@ type dashboardModelGroupCacheKey struct {
 }
 
 type dashboardEntityTrendCacheKey struct {
+	Metric      string `json:"metric,omitempty"`
 	StartTime   string `json:"start_time"`
 	EndTime     string `json:"end_time"`
 	Granularity string `json:"granularity"`
@@ -195,15 +196,20 @@ func (h *DashboardService) GetAPIKeyUsageTrendCached(ctx context.Context, startT
 	return trend, hit, err
 }
 
-func (h *DashboardService) GetUserUsageTrendCached(ctx context.Context, startTime, endTime time.Time, granularity string, limit int) ([]UserUsageTrendPoint, bool, error) {
+func (h *DashboardService) GetUserUsageTrendCached(ctx context.Context, startTime, endTime time.Time, granularity string, limit int, metric ...string) ([]UserUsageTrendPoint, bool, error) {
+	selected := ""
+	if len(metric) > 0 && metric[0] == "actual_cost" {
+		selected = "actual_cost"
+	}
 	key := mustMarshalDashboardCacheKey(dashboardEntityTrendCacheKey{
+		Metric:      selected,
 		StartTime:   startTime.UTC().Format(time.RFC3339),
 		EndTime:     endTime.UTC().Format(time.RFC3339),
 		Granularity: granularity,
 		Limit:       limit,
 	})
 	entry, hit, err := h.queryCaches.dashboardUsersTrendCache.GetOrLoad(key, func() (any, error) {
-		return h.GetUserUsageTrend(ctx, startTime, endTime, granularity, limit)
+		return h.GetUserUsageTrend(ctx, startTime, endTime, granularity, limit, selected)
 	})
 	if err != nil {
 		return nil, hit, err

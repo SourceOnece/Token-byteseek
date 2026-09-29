@@ -58,7 +58,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/ent/userattributedefinition"
 	"github.com/TokenFlux/TokenRouter/ent/userattributevalue"
 	"github.com/TokenFlux/TokenRouter/ent/userdisabledpublicgroup"
-	"github.com/TokenFlux/TokenRouter/ent/userplatformquota"
 	"github.com/TokenFlux/TokenRouter/ent/usersubscription"
 
 	stdsql "database/sql"
@@ -155,8 +154,6 @@ type Client struct {
 	UserAttributeValue *UserAttributeValueClient
 	// UserDisabledPublicGroup is the client for interacting with the UserDisabledPublicGroup builders.
 	UserDisabledPublicGroup *UserDisabledPublicGroupClient
-	// UserPlatformQuota is the client for interacting with the UserPlatformQuota builders.
-	UserPlatformQuota *UserPlatformQuotaClient
 	// UserSubscription is the client for interacting with the UserSubscription builders.
 	UserSubscription *UserSubscriptionClient
 }
@@ -213,7 +210,6 @@ func (c *Client) init() {
 	c.UserAttributeDefinition = NewUserAttributeDefinitionClient(c.config)
 	c.UserAttributeValue = NewUserAttributeValueClient(c.config)
 	c.UserDisabledPublicGroup = NewUserDisabledPublicGroupClient(c.config)
-	c.UserPlatformQuota = NewUserPlatformQuotaClient(c.config)
 	c.UserSubscription = NewUserSubscriptionClient(c.config)
 }
 
@@ -350,7 +346,6 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		UserAttributeDefinition:  NewUserAttributeDefinitionClient(cfg),
 		UserAttributeValue:       NewUserAttributeValueClient(cfg),
 		UserDisabledPublicGroup:  NewUserDisabledPublicGroupClient(cfg),
-		UserPlatformQuota:        NewUserPlatformQuotaClient(cfg),
 		UserSubscription:         NewUserSubscriptionClient(cfg),
 	}, nil
 }
@@ -414,7 +409,6 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		UserAttributeDefinition:  NewUserAttributeDefinitionClient(cfg),
 		UserAttributeValue:       NewUserAttributeValueClient(cfg),
 		UserDisabledPublicGroup:  NewUserDisabledPublicGroupClient(cfg),
-		UserPlatformQuota:        NewUserPlatformQuotaClient(cfg),
 		UserSubscription:         NewUserSubscriptionClient(cfg),
 	}, nil
 }
@@ -456,7 +450,7 @@ func (c *Client) Use(hooks ...Hook) {
 		c.TLSFingerprintRouter, c.Team, c.TeamInvitation, c.TeamMembership,
 		c.TeamOwnershipTransfer, c.UsageCleanupTask, c.UsageLog, c.User,
 		c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
-		c.UserDisabledPublicGroup, c.UserPlatformQuota, c.UserSubscription,
+		c.UserDisabledPublicGroup, c.UserSubscription,
 	} {
 		n.Use(hooks...)
 	}
@@ -477,7 +471,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.TLSFingerprintRouter, c.Team, c.TeamInvitation, c.TeamMembership,
 		c.TeamOwnershipTransfer, c.UsageCleanupTask, c.UsageLog, c.User,
 		c.UserAllowedGroup, c.UserAttributeDefinition, c.UserAttributeValue,
-		c.UserDisabledPublicGroup, c.UserPlatformQuota, c.UserSubscription,
+		c.UserDisabledPublicGroup, c.UserSubscription,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -572,8 +566,6 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.UserAttributeValue.mutate(ctx, m)
 	case *UserDisabledPublicGroupMutation:
 		return c.UserDisabledPublicGroup.mutate(ctx, m)
-	case *UserPlatformQuotaMutation:
-		return c.UserPlatformQuota.mutate(ctx, m)
 	case *UserSubscriptionMutation:
 		return c.UserSubscription.mutate(ctx, m)
 	default:
@@ -6728,22 +6720,6 @@ func (c *UserClient) GetX(ctx context.Context, id int64) *User {
 	return obj
 }
 
-// QueryPlatformQuotas queries the platform_quotas edge of a User.
-func (c *UserClient) QueryPlatformQuotas(_m *User) *UserPlatformQuotaQuery {
-	query := (&UserPlatformQuotaClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(user.Table, user.FieldID, id),
-			sqlgraph.To(userplatformquota.Table, userplatformquota.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, user.PlatformQuotasTable, user.PlatformQuotasColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
 // QueryAPIKeys queries the api_keys edge of a User.
 func (c *UserClient) QueryAPIKeys(_m *User) *APIKeyQuery {
 	query := (&APIKeyClient{config: c.config}).Query()
@@ -7591,157 +7567,6 @@ func (c *UserDisabledPublicGroupClient) mutate(ctx context.Context, m *UserDisab
 	}
 }
 
-// UserPlatformQuotaClient is a client for the UserPlatformQuota schema.
-type UserPlatformQuotaClient struct {
-	config
-}
-
-// NewUserPlatformQuotaClient returns a client for the UserPlatformQuota from the given config.
-func NewUserPlatformQuotaClient(c config) *UserPlatformQuotaClient {
-	return &UserPlatformQuotaClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `userplatformquota.Hooks(f(g(h())))`.
-func (c *UserPlatformQuotaClient) Use(hooks ...Hook) {
-	c.hooks.UserPlatformQuota = append(c.hooks.UserPlatformQuota, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `userplatformquota.Intercept(f(g(h())))`.
-func (c *UserPlatformQuotaClient) Intercept(interceptors ...Interceptor) {
-	c.inters.UserPlatformQuota = append(c.inters.UserPlatformQuota, interceptors...)
-}
-
-// Create returns a builder for creating a UserPlatformQuota entity.
-func (c *UserPlatformQuotaClient) Create() *UserPlatformQuotaCreate {
-	mutation := newUserPlatformQuotaMutation(c.config, OpCreate)
-	return &UserPlatformQuotaCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of UserPlatformQuota entities.
-func (c *UserPlatformQuotaClient) CreateBulk(builders ...*UserPlatformQuotaCreate) *UserPlatformQuotaCreateBulk {
-	return &UserPlatformQuotaCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *UserPlatformQuotaClient) MapCreateBulk(slice any, setFunc func(*UserPlatformQuotaCreate, int)) *UserPlatformQuotaCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &UserPlatformQuotaCreateBulk{err: fmt.Errorf("calling to UserPlatformQuotaClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*UserPlatformQuotaCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &UserPlatformQuotaCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for UserPlatformQuota.
-func (c *UserPlatformQuotaClient) Update() *UserPlatformQuotaUpdate {
-	mutation := newUserPlatformQuotaMutation(c.config, OpUpdate)
-	return &UserPlatformQuotaUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *UserPlatformQuotaClient) UpdateOne(_m *UserPlatformQuota) *UserPlatformQuotaUpdateOne {
-	mutation := newUserPlatformQuotaMutation(c.config, OpUpdateOne, withUserPlatformQuota(_m))
-	return &UserPlatformQuotaUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *UserPlatformQuotaClient) UpdateOneID(id int64) *UserPlatformQuotaUpdateOne {
-	mutation := newUserPlatformQuotaMutation(c.config, OpUpdateOne, withUserPlatformQuotaID(id))
-	return &UserPlatformQuotaUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for UserPlatformQuota.
-func (c *UserPlatformQuotaClient) Delete() *UserPlatformQuotaDelete {
-	mutation := newUserPlatformQuotaMutation(c.config, OpDelete)
-	return &UserPlatformQuotaDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *UserPlatformQuotaClient) DeleteOne(_m *UserPlatformQuota) *UserPlatformQuotaDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *UserPlatformQuotaClient) DeleteOneID(id int64) *UserPlatformQuotaDeleteOne {
-	builder := c.Delete().Where(userplatformquota.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &UserPlatformQuotaDeleteOne{builder}
-}
-
-// Query returns a query builder for UserPlatformQuota.
-func (c *UserPlatformQuotaClient) Query() *UserPlatformQuotaQuery {
-	return &UserPlatformQuotaQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeUserPlatformQuota},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a UserPlatformQuota entity by its id.
-func (c *UserPlatformQuotaClient) Get(ctx context.Context, id int64) (*UserPlatformQuota, error) {
-	return c.Query().Where(userplatformquota.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *UserPlatformQuotaClient) GetX(ctx context.Context, id int64) *UserPlatformQuota {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// QueryUser queries the user edge of a UserPlatformQuota.
-func (c *UserPlatformQuotaClient) QueryUser(_m *UserPlatformQuota) *UserQuery {
-	query := (&UserClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(userplatformquota.Table, userplatformquota.FieldID, id),
-			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, userplatformquota.UserTable, userplatformquota.UserColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// Hooks returns the client hooks.
-func (c *UserPlatformQuotaClient) Hooks() []Hook {
-	hooks := c.hooks.UserPlatformQuota
-	return append(hooks[:len(hooks):len(hooks)], userplatformquota.Hooks[:]...)
-}
-
-// Interceptors returns the client interceptors.
-func (c *UserPlatformQuotaClient) Interceptors() []Interceptor {
-	inters := c.inters.UserPlatformQuota
-	return append(inters[:len(inters):len(inters)], userplatformquota.Interceptors[:]...)
-}
-
-func (c *UserPlatformQuotaClient) mutate(ctx context.Context, m *UserPlatformQuotaMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&UserPlatformQuotaCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&UserPlatformQuotaUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&UserPlatformQuotaUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&UserPlatformQuotaDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown UserPlatformQuota mutation op: %q", m.Op())
-	}
-}
-
 // UserSubscriptionClient is a client for the UserSubscription schema.
 type UserSubscriptionClient struct {
 	config
@@ -7953,7 +7778,7 @@ type (
 		Setting, SubscriptionPlan, TLSFingerprintProfile, TLSFingerprintRouter, Team,
 		TeamInvitation, TeamMembership, TeamOwnershipTransfer, UsageCleanupTask,
 		UsageLog, User, UserAllowedGroup, UserAttributeDefinition, UserAttributeValue,
-		UserDisabledPublicGroup, UserPlatformQuota, UserSubscription []ent.Hook
+		UserDisabledPublicGroup, UserSubscription []ent.Hook
 	}
 	inters struct {
 		APIKey, APIKeyCompositeGroup, Announcement, AnnouncementRead, AuthIdentity,
@@ -7965,7 +7790,7 @@ type (
 		Setting, SubscriptionPlan, TLSFingerprintProfile, TLSFingerprintRouter, Team,
 		TeamInvitation, TeamMembership, TeamOwnershipTransfer, UsageCleanupTask,
 		UsageLog, User, UserAllowedGroup, UserAttributeDefinition, UserAttributeValue,
-		UserDisabledPublicGroup, UserPlatformQuota, UserSubscription []ent.Interceptor
+		UserDisabledPublicGroup, UserSubscription []ent.Interceptor
 	}
 )
 

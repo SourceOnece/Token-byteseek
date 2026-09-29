@@ -5,6 +5,10 @@ import { flushPromises, mount, DOMWrapper } from "@vue/test-utils";
 import SettingsView from "../SettingsView.vue";
 import BaseDialog from "@/components/common/BaseDialog.vue";
 
+// 工作台有独立测试；全局设置夹具不加载它的账号存储和代理查询。
+vi.mock('@/components/admin/settings/CodexTicketSettings.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('@/components/admin/provider/CodexTicketAccountSettings.vue', () => ({ default: { template: '<div />', methods: { prepareSave: async () => null } } }));
+
 const {
   getSettings,
   getCreativeModelCandidates,

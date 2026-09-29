@@ -2,6 +2,8 @@ package messageforward
 
 import (
 	"context"
+	claudewire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
+	"net/http"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -12,6 +14,13 @@ import (
 // @project-doc docs/architecture/gateway_request_lifecycle.md#protocol_conversion_boundary
 func (r *Runtime) Execute(ctx context.Context, output HTTPBoundary, target *gatewayadapter.ExecutionProvider, parsed *requeststate.ParsedRequest) (*forward.MessagesResult, error) {
 	adapter := newAttempt(r, output, target)
+	// 先按实际映射模型检查原始参数，不能让后续客户端适配掩盖不支持的请求。
+	if parsed != nil && parsed.Body != nil {
+		if err := claudewire.ValidateClaude55Request(parsed.Body.Bytes(), adapter.MappedModel(parsed.Model)); err != nil {
+			output.MessageError(http.StatusBadRequest, "invalid_request_error", err.Error())
+			return nil, err
+		}
+	}
 	result, err := forward.Messages(ctx, adapter, adapter.input(), parsed)
 	return messagesResult(result), err
 }

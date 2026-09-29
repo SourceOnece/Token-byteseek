@@ -16,7 +16,7 @@ async function openSelector() {
     } as Proxy)) },
     global: { stubs: { Icon: true } }
   })
-  await wrapper.get('.select-trigger').trigger('click')
+  await wrapper.get('.input-trigger').trigger('click')
   return wrapper
 }
 

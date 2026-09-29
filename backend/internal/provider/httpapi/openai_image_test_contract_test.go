@@ -52,7 +52,8 @@ func TestProviderTestService_OpenAIImageOAuthHandlesOutputItemDoneFallback(t *te
 	require.NoError(t, err)
 	require.NotNil(t, upstream.lastReq)
 	require.Equal(t, upstreamcore.HTTPUpstreamProfileOpenAI, upstreamcore.HTTPUpstreamProfileFromContext(upstream.lastReq.Context()))
-	require.Contains(t, rec.Body.String(), "Calling Codex /responses image tool")
+	require.Equal(t, "application/json", upstream.lastReq.Header.Get("Accept"))
+	require.Contains(t, rec.Body.String(), "Calling Codex image API")
 	require.Contains(t, rec.Body.String(), "data:image/png;base64,aGVsbG8=")
 	require.Contains(t, rec.Body.String(), "\"success\":true")
 }

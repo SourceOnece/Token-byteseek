@@ -55,7 +55,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/ent/userattributedefinition"
 	"github.com/TokenFlux/TokenRouter/ent/userattributevalue"
 	"github.com/TokenFlux/TokenRouter/ent/userdisabledpublicgroup"
-	"github.com/TokenFlux/TokenRouter/ent/userplatformquota"
 	"github.com/TokenFlux/TokenRouter/ent/usersubscription"
 )
 
@@ -160,7 +159,6 @@ func checkColumn(t, c string) error {
 			userattributedefinition.Table:  userattributedefinition.ValidColumn,
 			userattributevalue.Table:       userattributevalue.ValidColumn,
 			userdisabledpublicgroup.Table:  userdisabledpublicgroup.ValidColumn,
-			userplatformquota.Table:        userplatformquota.ValidColumn,
 			usersubscription.Table:         usersubscription.ValidColumn,
 		})
 	})

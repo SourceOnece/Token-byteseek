@@ -2,7 +2,6 @@ package provider
 
 import (
 	"fmt"
-	"net/url"
 	"strings"
 
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
@@ -13,7 +12,6 @@ import (
 // 额度窗口为 rolling(5h) / weekly / monthly。
 
 const (
-	openCodeGoUsagePath = "/usage"
 	// 未指定测试模型时使用 Chat Completions 模型，不默认调用更贵的模型。
 	DefaultOpenCodeGoTestModel = "glm-5.3"
 
@@ -315,20 +313,6 @@ func (a *Record) IsMultiProtocolAPIKey() bool {
 	return a != nil && IsCNProvider(a.Platform)
 }
 
-// openCodeGoNativeProtocol 返回 OpenCode Go 实际上游协议。
-// 规则未命中、空值或未知协议一律兜底 Chat Completions，避免落入 Responses 转换链。
-func openCodeGoNativeProtocol(account *Record, model string) string {
-	if account == nil {
-		return APIProtocolChatCompletions
-	}
-	switch proto := account.ResolveOpenCodeGoUpstreamProtocol(model); proto {
-	case APIProtocolAnthropic, APIProtocolResponses:
-		return proto
-	default:
-		return APIProtocolChatCompletions
-	}
-}
-
 // ResolveOpenCodeGoUpstreamProtocol 按账号协议配置与模型规则决定上游协议。
 // 显式 pinned 协议优先；adaptive（默认）先走 credentials.protocol_rules，
 // 未配置时回落内置默认表；已配置但未命中则走 Chat Completions。
@@ -346,23 +330,4 @@ func (a *Record) ResolveOpenCodeGoUpstreamProtocol(model string) string {
 		}
 		return matchOpenCodeGoProtocolRules(model, defaultOpenCodeProtocolRules(a.GetOpenCodeAccountMode()))
 	}
-}
-
-func openCodeGoQuotaURL(baseURL string) string {
-	base := strings.TrimRight(strings.TrimSpace(baseURL), "/")
-	if base == "" {
-		base = DefaultOpenCodeGoBaseURL
-	}
-	parsed, err := url.Parse(base)
-	if err != nil || parsed.Host == "" {
-		return ""
-	}
-	if !strings.HasSuffix(parsed.Path, "/v1") {
-		parsed.Path = strings.TrimRight(parsed.Path, "/") + "/v1"
-	}
-	parsed.Path = strings.TrimRight(parsed.Path, "/") + openCodeGoUsagePath
-	parsed.RawPath = ""
-	parsed.RawQuery = ""
-	parsed.Fragment = ""
-	return parsed.String()
 }

@@ -2,7 +2,7 @@ package httpapi
 
 import (
 	"context"
-	"errors"
+	coderws "github.com/coder/websocket"
 	"strings"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -32,21 +32,32 @@ func (s *OpenAIWebSocketExecutor) BeginOpenAIWSIngressSessionPreemption(
 	provider *gatewayprovider.ExecutionProvider,
 	firstClientMessage []byte,
 ) (context.Context, func(), bool) {
+	return s.BeginOpenAIWSIngressSessionPreemptionWithClient(ctx, c, provider, firstClientMessage, nil)
+}
+
+func (s *OpenAIWebSocketExecutor) BeginOpenAIWSIngressSessionPreemptionWithClient(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, firstClientMessage []byte, client interface {
+	Close(coderws.StatusCode, string) error
+}) (context.Context, func(), bool) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	if armed, _ := ctx.Value(openAIWSSessionPreemptContextKey{}).(bool); armed {
 		return ctx, func() {}, true
 	}
-	if s != nil && s.Options != nil && s.Options.ModeRouterV2Enabled &&
-		provider != nil && provider.View().ResolveOpenAIResponsesWebSocketV2Mode(s.Options.IngressModeDefault) == providercore.OpenAIWSIngressModePassthrough {
-		return ctx, func() {}, false
+	if client != nil {
+		ctx = gatewayws.WithPreemptionNotifier(ctx, func() { _ = client.Close(coderws.StatusTryAgainLater, gatewayws.PreemptCloseReason) })
+	}
+	if s != nil && s.Options != nil && s.Options.ModeRouterV2Enabled && provider != nil {
+		mode := provider.View().ResolveOpenAIResponsesWebSocketV2Mode(s.Options.IngressModeDefault)
+		if mode == providercore.OpenAIWSIngressModePassthrough || mode == providercore.OpenAIWSIngressModeHTTPBridge {
+			return ctx, func() {}, false
+		}
 	}
 
 	preemptSessionHash := ""
 	preemptGroupID := OpenAIResponseGroupID(c)
 	if provider != nil && provider.Record.Platform == capability.PlatformOpenAI && provider.Record.Type == capability.ProviderTypeOAuth {
-		preemptSessionHash = GenerateOpenAISessionHash(c, firstClientMessage)
+		preemptSessionHash, _ = resolveOpenAIWSExecutionScope(c, firstClientMessage, APIKeyIDFromContext(c))
 	}
 	preemptCtx, cleanup, armed, preemptedPrevious := s.beginOpenAIWSSessionPreemptContext(
 		ctx,
@@ -119,5 +130,5 @@ func (s *OpenAIWebSocketExecutor) wsPreemption() *gatewayws.Preemption {
 }
 
 func isOpenAIWSSessionPreempted(ctx context.Context) bool {
-	return ctx != nil && errors.Is(context.Cause(ctx), gatewayws.ErrSessionPreempted)
+	return gatewayws.ContextPreempted(ctx)
 }

@@ -11,7 +11,7 @@ const styleCss = readFileSync(
   'utf8'
 )
 
-describe('OpenRouter 圆角主题', () => {
+describe('ByteSeek 包豪斯直角主题', () => {
   const radius = tailwindConfig.theme.borderRadius
 
   it('提供紧凑、控件、表面和弹窗四级语义令牌(经 CSS 变量引用)', () => {
@@ -23,11 +23,11 @@ describe('OpenRouter 圆角主题', () => {
     })
   })
 
-  it(':root 变量承载唯一数值(圆润取向 6/8/12/16)', () => {
-    expect(styleCss).toContain('--radius-compact: 6px')
-    expect(styleCss).toContain('--radius-control: 8px')
-    expect(styleCss).toContain('--radius-surface: 12px')
-    expect(styleCss).toContain('--radius-dialog: 16px')
+  it(':root 保持四级语义令牌，包豪斯统一直角', () => {
+    expect(styleCss).toContain('--radius-compact: 0px')
+    expect(styleCss).toContain('--radius-control: 0px')
+    expect(styleCss).toContain('--radius-surface: 0px')
+    expect(styleCss).toContain('--radius-dialog: 0px')
   })
 
   it('旧尺度兼容 key 已删除(由 check:ui 门禁阻止复活)', () => {

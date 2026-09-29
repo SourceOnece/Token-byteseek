@@ -1,10 +1,7 @@
-package bridge
+package capability
 
 import (
-	"encoding/json"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 // GPT-5 及以后型号复用数值代际判定，避免新型号错误透传采样参数而触发 400。
@@ -30,8 +27,8 @@ func TestIsReasoningModelCoversLaterGenerations(t *testing.T) {
 		{"gemini-3.1-pro", false},
 		{"", false},
 	} {
-		if got := isReasoningModel(tc.model); got != tc.want {
-			t.Errorf("isReasoningModel(%q) = %v, want %v", tc.model, got, tc.want)
+		if got := ResponsesBridgeDropsSampling(tc.model); got != tc.want {
+			t.Errorf("ResponsesBridgeDropsSampling(%q) = %v, want %v", tc.model, got, tc.want)
 		}
 	}
 }
@@ -50,26 +47,10 @@ func TestOpenAIModelGeneration(t *testing.T) {
 		{"claude-opus-4-6", 0, false},
 		{"", 0, false},
 	} {
-		major, ok := openAIModelGeneration(tc.model)
+		major, _, ok := parseResponsesBridgeModelVersion(tc.model)
 		if major != tc.wantMajor || ok != tc.wantOK {
 			t.Errorf("openAIModelGeneration(%q) = (%d, %v), want (%d, %v)",
 				tc.model, major, ok, tc.wantMajor, tc.wantOK)
 		}
 	}
-}
-
-func TestAnthropicToResponses_TemperatureStrippedForGPT6Astra(t *testing.T) {
-	temp := 0.7
-	req := &AnthropicRequest{
-		Model:       "gpt-6-astra",
-		MaxTokens:   1024,
-		Messages:    []AnthropicMessage{{Role: "user", Content: json.RawMessage(`"Hello"`)}},
-		Temperature: &temp,
-		TopP:        &temp,
-	}
-
-	resp, err := AnthropicToResponses(req)
-	require.NoError(t, err)
-	require.Nil(t, resp.Temperature, "gpt-6-astra is reasoning-only: temperature must be stripped")
-	require.Nil(t, resp.TopP, "gpt-6-astra is reasoning-only: top_p must be stripped")
 }

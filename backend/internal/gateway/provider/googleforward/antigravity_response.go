@@ -23,7 +23,7 @@ func (s *Antigravity) antigravityResponseAdapter(c *attempt) *antigravity.Respon
 		IsFailover:    func(err error) bool { var value *forwardcore.UpstreamFailoverError; return errors.As(err, &value) },
 		MarkCommitted: func() { c.Commit() },
 	}
-	if c != nil {
+	if c != nil && c.Output != nil {
 		hint := strings.ToLower(c.GetHeader("User-Agent") + " " + c.GetHeader("X-Goog-Api-Client"))
 		opts.SuppressSSEComments = strings.Contains(hint, "google-genai-sdk/") && (strings.Contains(hint, "gl-go/") || strings.Contains(hint, "gl-python/"))
 	}

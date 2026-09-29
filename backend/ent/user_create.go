@@ -24,7 +24,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/ent/usagelog"
 	"github.com/TokenFlux/TokenRouter/ent/user"
 	"github.com/TokenFlux/TokenRouter/ent/userattributevalue"
-	"github.com/TokenFlux/TokenRouter/ent/userplatformquota"
 	"github.com/TokenFlux/TokenRouter/ent/usersubscription"
 )
 
@@ -368,21 +367,6 @@ func (_c *UserCreate) SetNillableAPIKeyLimit(v *int) *UserCreate {
 		_c.SetAPIKeyLimit(*v)
 	}
 	return _c
-}
-
-// AddPlatformQuotaIDs adds the "platform_quotas" edge to the UserPlatformQuota entity by IDs.
-func (_c *UserCreate) AddPlatformQuotaIDs(ids ...int64) *UserCreate {
-	_c.mutation.AddPlatformQuotaIDs(ids...)
-	return _c
-}
-
-// AddPlatformQuotas adds the "platform_quotas" edges to the UserPlatformQuota entity.
-func (_c *UserCreate) AddPlatformQuotas(v ...*UserPlatformQuota) *UserCreate {
-	ids := make([]int64, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddPlatformQuotaIDs(ids...)
 }
 
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by IDs.
@@ -944,22 +928,6 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.APIKeyLimit(); ok {
 		_spec.SetField(user.FieldAPIKeyLimit, field.TypeInt, value)
 		_node.APIKeyLimit = value
-	}
-	if nodes := _c.mutation.PlatformQuotasIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   user.PlatformQuotasTable,
-			Columns: []string{user.PlatformQuotasColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(userplatformquota.FieldID, field.TypeInt64),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.APIKeysIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

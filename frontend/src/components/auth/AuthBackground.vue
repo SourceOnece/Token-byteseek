@@ -44,7 +44,7 @@
   right: 10%;
   width: 200px;
   height: 200px;
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   background: var(--bh-red);
   animation: bh-float 6s ease-in-out infinite;
 }
@@ -54,7 +54,7 @@
   left: 7%;
   width: 130px;
   height: 130px;
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   border: 16px solid var(--bh-blue);
   animation: bh-float 7s 0.8s ease-in-out infinite;
 }
@@ -94,7 +94,7 @@
   left: 42%;
   width: 120px;
   height: 60px;
-  border-radius: 120px 120px 0 0;
+  border-radius: 120px 120px 0 0; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   background: var(--bh-red);
   opacity: 0.85;
 }

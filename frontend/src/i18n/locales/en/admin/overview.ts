@@ -53,6 +53,7 @@ export default {
       standardDescription: 'The standard billed cost. Calculated from the current model or shared configuration base pricing, and is not affected by group multipliers, user-specific multipliers, or provider billing multipliers.',
       noDataAvailable: 'No data available',
       recentUsage: 'Recent Usage',
+      actualSpending: 'Actual spending',
       viewModelDistribution: 'Model Distribution',
       viewSpendingRanking: 'User Spending Ranking',
       spendingRankingTitle: 'User Spending Ranking',

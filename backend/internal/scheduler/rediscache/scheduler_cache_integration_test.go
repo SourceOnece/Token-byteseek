@@ -4,7 +4,6 @@ package rediscache
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"

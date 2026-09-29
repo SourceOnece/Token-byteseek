@@ -47,9 +47,9 @@ func (s *OpenAIImagesExecutor) ForwardImages(
 		return nil, err
 	}
 	if oauth {
-		return s.forwardOpenAIImagesOAuth(ctx, c, provider, parsed, groupMappedModel)
+		return s.forwardOpenAIImagesOAuth(ctx, c, provider, parsed, groupMappedModel, tlsRouterMatch...)
 	}
-	return s.forwardOpenAIImagesAPIKey(ctx, c, provider, body, parsed, groupMappedModel)
+	return s.forwardOpenAIImagesAPIKey(ctx, c, provider, body, parsed, groupMappedModel, tlsRouterMatch...)
 }
 
 func (s *OpenAIImagesExecutor) forwardOpenAIImagesAPIKey(

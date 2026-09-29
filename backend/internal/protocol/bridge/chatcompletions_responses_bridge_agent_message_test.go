@@ -27,7 +27,7 @@ func TestResponsesToChatCompletionsRequest_AgentMessageBecomesUserMessage(t *tes
 		]`),
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	require.Len(t, out.Messages, 4)
 
@@ -51,7 +51,7 @@ func TestResponsesToChatCompletionsRequest_AgentMessageWithoutTextIsSkipped(t *t
 		]`),
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	require.Len(t, out.Messages, 1, "没有文本正文的 agent_message 不产生消息")
 	require.Equal(t, "user", out.Messages[0].Role)

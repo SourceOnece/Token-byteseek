@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"net/http"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
@@ -74,6 +75,11 @@ func (s *OpenAIWebSocketExecutor) proxyResponsesWebSocketV2Passthrough(
 }
 
 func openAIWSPassthroughRelayClientClose(exit openaiwsv2.RelayExit, completedTurns int) (coderws.StatusCode, string, bool) {
+	// 已完成首轮后不能回放首条请求换号；后续轮次限流应明确通知客户端重连。
+	var failover *forwardcore.UpstreamFailoverError
+	if completedTurns > 0 && errors.As(exit.Err, &failover) && failover.StatusCode == http.StatusTooManyRequests {
+		return coderws.StatusTryAgainLater, "upstream rate limit exceeded; please reconnect", true
+	}
 	var closeErr *OpenAIWSClientCloseError
 	if errors.As(exit.Err, &closeErr) {
 		return closeErr.StatusCode(), closeErr.Reason(), true

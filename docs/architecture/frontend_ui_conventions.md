@@ -10,10 +10,10 @@
 
 | token | 值 | 用途 |
 |---|---|---|
-| `rounded-compact` | 6px | 徽章、chip、tab 项、骨架屏、行内代码、小图标块 |
-| `rounded-control` | 8px | 按钮、输入框、下拉框、侧栏链接、浮层面板 |
-| `rounded-surface` | 12px | 卡片、表格容器、toast、代码块 |
-| `rounded-dialog` | 16px | 桌面端弹窗（移动端弹窗仍用 surface） |
+| `rounded-compact` | 0px | 徽章、chip、tab 项、骨架屏、行内代码、小图标块 |
+| `rounded-control` | 0px | 按钮、输入框、下拉框、侧栏链接、浮层面板 |
+| `rounded-surface` | 0px | 卡片、表格容器、toast、代码块 |
+| `rounded-dialog` | 0px | 桌面端弹窗（移动端弹窗仍用 surface） |
 | `rounded-full` / `rounded-none` | — | 胶囊、进度条、开关；需要直角时的覆盖 |
 
 旧尺度名（`rounded-sm/md/lg/xl/2xl/3xl`）、裸 `rounded` 和 `rounded-[...]` 任意值一律禁用——旧 key 已从配置删除，写旧类名不会生成任何样式。裸 CSS 里的 `border-radius` 只允许 `var(--radius-*)`、`0` 或 `9999px`。
@@ -31,8 +31,8 @@
 
 ## 控件尺寸
 
-- 按钮、输入框、下拉触发器共用 36px 基线（`.btn` / `.input` 均为 `min-h-9`），分页器控件同为 36px——表格页脚不再压缩分页尺寸。基线之上再写 `h-9` 属冗余（门禁拦截）；紧凑档要 36px 时用 `btn-sm/md/lg + h-9` 显式提挡。
-- 图标按钮两档：`.btn-icon`（h-9 w-9）与 `.btn-icon-sm`（h-8 w-8），自带 `rounded-control` 与居中布局，站点只补 hover/颜色类；`.btn-sm` 用于表格行内等紧凑场景。
+- ByteSeek 按钮、输入框和下拉触发器采用 44px 触控基线（`.btn` / `.input` 为 `min-h-11`），分页保留 36px 紧凑高度。紧凑控件显式使用 `btn-sm/md/lg + h-9`。
+- 图标按钮两档：`.btn-icon`（h-11 w-11）与 `.btn-icon-sm`（h-8 w-8），保留直角、居中和统一硬阴影；`.btn-sm` 用于表格行内。颜色、几何和交互以[包豪斯契约](../operations/bauhaus_design_contract.md)为准。
 - 下拉触发器（Select、DateRangePicker）模板组合 `input input-trigger` + 各自状态类，不复制基线配方。
 - 输入框图标/字符前后缀统一走 `input-icon-*` 机制（`style.css`）：容器 `input-icon-wrap`，图标位 `input-icon` / `input-icon-right`（可点击内容加 `input-icon-action`），输入框按侧加 `input-has-icon` / `input-has-icon-right`；文本留白由变量推导（`留白 = inset + slot`）。档位：默认（inset 0.75rem、留白 2.5rem）、`input-icon-lg`（auth 表单，inset 0.875rem、留白 2.75rem）、`input-icon-text`（`$` 等窄字符前缀，留白 2rem），紧凑搜索框内联 `--input-icon-slot:1.5rem`（留白 2.25rem）。
 

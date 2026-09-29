@@ -110,7 +110,7 @@ defineEmits(['action'])
   top: 18px;
   width: 34px;
   height: 34px;
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   background: var(--bh-red);
   opacity: 0.9;
 }

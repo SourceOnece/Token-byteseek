@@ -40,14 +40,14 @@ func TestClaudeCodeValidator_ProbeBypassRequiresUA(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestClaudeCodeValidator_MessagesWithoutProbeStillNeedStrictValidation(t *testing.T) {
+func TestClaudeCodeValidator_OrdinaryMessagesStillNeedStrictValidation(t *testing.T) {
 	validator := clientmeta.NewClaudeCodeValidator()
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/v1/messages", nil)
 	req.Header.Set("User-Agent", "claude-cli/1.2.3 (darwin; arm64)")
 
 	ok := validator.Validate(claudeCodeInputFixture(req), map[string]any{
 		"model":      "claude-haiku-4-5",
-		"max_tokens": 1,
+		"max_tokens": 1024,
 	})
 	require.False(t, ok)
 }

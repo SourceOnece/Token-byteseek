@@ -100,7 +100,7 @@
             <button type="button" class="btn btn-primary btn-sm" :disabled="loading" data-test="bulk-edit-keys" @click="showBulkEditModal = true">
               <Icon name="edit" size="sm" class="mr-2" />{{ t('keys.bulkEdit.title') }}
             </button>
-            <button type="button" class="btn btn-secondary h-9 w-9 p-0" :title="t('keys.bulkEdit.clearSelection')" @click="selectedIds = []"><Icon name="x" size="sm" /></button>
+            <button type="button" class="btn btn-secondary btn-sm h-9 w-9 p-0" :title="t('keys.bulkEdit.clearSelection')" @click="selectedIds = []"><Icon name="x" size="sm" /></button>
           </div>
         </div>
       </template>

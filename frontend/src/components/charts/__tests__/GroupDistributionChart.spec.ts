@@ -126,7 +126,7 @@ describe('GroupDistributionChart', () => {
     const wrapper = mount(GroupDistributionChart, {
       props: {
         groupStats,
-        showProviderCost: false,
+        showAccountCost: false,
       },
       global: {
         stubs: {

@@ -705,12 +705,12 @@ describe('user KeysView column settings', () => {
     expect(form.classes()).toEqual(expect.arrayContaining(['min-w-0', 'max-w-full']))
   })
 
-  it('创建密钥按真实平台分类，切换清除旧选择，复合模式仍允许跨平台', async () => {
+  it('创建密钥按准入协议分类，切换清除旧选择，复合模式仍允许跨平台', async () => {
     getAvailableGroups.mockResolvedValue([
-      { id: 1, name: 'OpenAI display name', platform: 'anthropic' },
-      { id: 2, name: 'Claude display name', platform: 'openai' },
-      { id: 3, name: 'MiniMax', platform: 'minimax' },
-      { id: 4, name: 'Qoder', platform: 'qoder' }
+      { id: 1, name: 'OpenAI display name', allowed_protocols: ['anthropic_messages'] },
+      { id: 2, name: 'Claude display name', allowed_protocols: ['openai_responses', 'openai_chat_completions'] },
+      { id: 3, name: 'MiniMax', allowed_protocols: ['gemini_generate_content'] },
+      { id: 4, name: 'Qoder', allowed_protocols: ['openai_images_generations'] }
     ])
     const wrapper = await mountView()
     await getButtonByText(wrapper, 'Create API Key').trigger('click')
@@ -721,7 +721,7 @@ describe('user KeysView column settings', () => {
     await wrapper.get('input[name="key-provider"][value="openai"]').setValue(true)
     expect(select().props('modelValue')).toBeNull()
     expect(select().props('options').map((group: { value: number }) => group.value)).toEqual([2])
-    await wrapper.get('input[name="key-provider"][value="domestic"]').setValue(true)
+    await wrapper.get('input[name="key-provider"][value="gemini"]').setValue(true)
     expect(select().props('options').map((group: { value: number }) => group.value)).toEqual([3])
     await wrapper.get('[data-test="composite-key-toggle"]').trigger('click')
     expect(wrapper.find('[data-tour="key-form-provider"]').exists()).toBe(false)
@@ -732,8 +732,8 @@ describe('user KeysView column settings', () => {
 
   it('供应商筛选不越过指定订阅范围，编辑已有密钥不增加分类限制', async () => {
     getAvailableGroups.mockImplementation((_scope, subscriptionID?: number) => Promise.resolve(subscriptionID === 71
-      ? [{ id: 2, name: 'Allowed', platform: 'openai' }]
-      : [{ id: 1, name: 'Claude', platform: 'anthropic' }, { id: 2, name: 'Allowed', platform: 'openai' }]
+      ? [{ id: 2, name: 'Allowed', allowed_protocols: ['openai_responses', 'openai_chat_completions'] }]
+      : [{ id: 1, name: 'Claude', allowed_protocols: ['anthropic_messages'] }, { id: 2, name: 'Allowed', allowed_protocols: ['openai_responses', 'openai_chat_completions'] }]
     ))
     const wrapper = await mountView()
     await getButtonByText(wrapper, 'Create API Key').trigger('click')
@@ -768,7 +768,7 @@ describe('user KeysView column settings', () => {
       peak_start: '',
       peak_end: '',
       peak_rate_multiplier: 1,
-      platform: 'openai',
+      allowed_protocols: ['openai_responses', 'openai_chat_completions'],
       capacity: {
         concurrency_used: 25,
         concurrency_max: 144,
@@ -802,10 +802,10 @@ describe('user KeysView column settings', () => {
     })
     getAvailableGroups.mockImplementation((_scope, subscriptionID?: number) => Promise.resolve(
       subscriptionID === 71
-        ? [{ id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 }]
+        ? [{ id: 42, name: 'OpenAI', allowed_protocols: ['openai_responses', 'openai_chat_completions'], rate_multiplier: 1 }]
         : [
-            { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 },
-            { id: 43, name: 'Claude', platform: 'anthropic', rate_multiplier: 1 },
+            { id: 42, name: 'OpenAI', allowed_protocols: ['openai_responses', 'openai_chat_completions'], rate_multiplier: 1 },
+            { id: 43, name: 'Claude', allowed_protocols: ['anthropic_messages'], rate_multiplier: 1 },
           ]
     ))
     getBillingOptions.mockResolvedValue([{
@@ -894,7 +894,7 @@ describe('user KeysView column settings', () => {
       peak_start: '',
       peak_end: '',
       peak_rate_multiplier: 1,
-      platform: 'openai',
+      allowed_protocols: ['openai_responses', 'openai_chat_completions'],
     }])
     const wrapper = await mountView()
 
@@ -930,7 +930,7 @@ describe('user KeysView column settings', () => {
       peak_start: '',
       peak_end: '',
       peak_rate_multiplier: 1,
-      platform: 'openai',
+      allowed_protocols: ['openai_responses', 'openai_chat_completions'],
     }])
     createKey.mockRejectedValueOnce({
       reason: 'API_KEY_LIMIT_REACHED',
@@ -953,8 +953,8 @@ describe('user KeysView column settings', () => {
 
   it('creates a composite key with ordered group prefix mappings', async () => {
     getAvailableGroups.mockResolvedValueOnce([
-      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 },
-      { id: 43, name: 'Claude', platform: 'anthropic', rate_multiplier: 1 },
+      { id: 42, name: 'OpenAI', allowed_protocols: ['openai_responses', 'openai_chat_completions'], rate_multiplier: 1 },
+      { id: 43, name: 'Claude', allowed_protocols: ['anthropic_messages'], rate_multiplier: 1 },
     ])
     const wrapper = await mountView()
 
@@ -992,8 +992,8 @@ describe('user KeysView column settings', () => {
         ...createApiKey(),
         is_composite: true,
         composite_groups: [
-          { group_id: 42, prefix: 'GPT', group: { id: 42, name: 'OpenAI', platform: 'openai' } },
-          { group_id: 43, prefix: 'Claude', group: { id: 43, name: 'Claude', platform: 'anthropic' } },
+          { group_id: 42, prefix: 'GPT', group: { id: 42, name: 'OpenAI', allowed_protocols: ['openai_responses', 'openai_chat_completions'] } },
+          { group_id: 43, prefix: 'Claude', group: { id: 43, name: 'Claude', allowed_protocols: ['anthropic_messages'] } },
         ],
       }],
       total: 1,
@@ -1014,8 +1014,8 @@ describe('user KeysView column settings', () => {
 
   it('blocks case-insensitive duplicate composite prefixes', async () => {
     getAvailableGroups.mockResolvedValueOnce([
-      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 },
-      { id: 43, name: 'Claude', platform: 'anthropic', rate_multiplier: 1 },
+      { id: 42, name: 'OpenAI', allowed_protocols: ['openai_responses', 'openai_chat_completions'], rate_multiplier: 1 },
+      { id: 43, name: 'Claude', allowed_protocols: ['anthropic_messages'], rate_multiplier: 1 },
     ])
     const wrapper = await mountView()
 
@@ -1039,7 +1039,7 @@ describe('user KeysView column settings', () => {
 
   it('blocks duplicate groups in composite mappings', async () => {
     getAvailableGroups.mockResolvedValueOnce([
-      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 },
+      { id: 42, name: 'OpenAI', allowed_protocols: ['openai_responses', 'openai_chat_completions'], rate_multiplier: 1 },
     ])
     const wrapper = await mountView()
 
@@ -1063,7 +1063,7 @@ describe('user KeysView column settings', () => {
 
   it('requires an explicit target group when converting composite to ordinary', async () => {
     getAvailableGroups.mockResolvedValueOnce([
-      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 },
+      { id: 42, name: 'OpenAI', allowed_protocols: ['openai_responses', 'openai_chat_completions'], rate_multiplier: 1 },
     ])
     listKeys.mockResolvedValueOnce({
       items: [{
@@ -1071,7 +1071,7 @@ describe('user KeysView column settings', () => {
         group_id: null,
         is_composite: true,
         composite_groups: [
-          { group_id: 42, prefix: 'GPT', group: { id: 42, name: 'OpenAI', platform: 'openai' } },
+          { group_id: 42, prefix: 'GPT', group: { id: 42, name: 'OpenAI', allowed_protocols: ['openai_responses', 'openai_chat_completions'] } },
         ],
       }],
       total: 1,
@@ -1105,7 +1105,7 @@ describe('user KeysView column settings', () => {
 
   it('creates a key with a trimmed model redirect rule', async () => {
     getAvailableGroups.mockResolvedValueOnce([
-      { id: 42, name: 'OpenAI', platform: 'openai', rate_multiplier: 1 },
+      { id: 42, name: 'OpenAI', allowed_protocols: ['openai_responses', 'openai_chat_completions'], rate_multiplier: 1 },
     ])
     const wrapper = await mountView()
 

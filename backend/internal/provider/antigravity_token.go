@@ -212,9 +212,6 @@ func (p *AntigravityTokenState) markBackfillAttempted(providerID int64) {
 }
 
 func AntigravityTokenCacheKey(provider *Record) string {
-	projectID := strings.TrimSpace(provider.GetCredential("project_id"))
-	if projectID != "" {
-		return "ag:" + projectID
-	}
+	// 不同账号可能共享 project_id，令牌必须按提供商隔离；沿用新架构的键前缀。
 	return "ag:provider:" + strconv.FormatInt(provider.ID, 10)
 }

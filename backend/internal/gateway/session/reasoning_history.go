@@ -3,6 +3,8 @@ package session
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"strings"
 	"time"
@@ -16,6 +18,23 @@ import (
 type ReasoningHistory struct {
 	Cache ReasoningContentCache
 	Warn  func(string, error)
+	scope string
+}
+
+// Scoped 每次请求生成独立作用域，不能改写共享缓存对象的账号身份。
+func (s *ReasoningHistory) Scoped(scope string) *ReasoningHistory {
+	if s == nil {
+		return &ReasoningHistory{}
+	}
+	return &ReasoningHistory{Cache: s.Cache, Warn: s.Warn, scope: scope}
+}
+
+func ScopedReasoningKey(scope, itemID string) string {
+	if scope == "" || strings.TrimSpace(itemID) == "" {
+		return ""
+	}
+	hash := sha256.Sum256([]byte(scope + "\x00" + itemID))
+	return "scoped-v2:" + hex.EncodeToString(hash[:])
 }
 
 const responsesReasoningCacheTTL = 7 * 24 * time.Hour
@@ -26,10 +45,14 @@ func (s *ReasoningHistory) Lookup(itemID string) string {
 	if s == nil || s.Cache == nil {
 		return ""
 	}
+	key := ScopedReasoningKey(s.scope, itemID)
+	if key == "" {
+		return ""
+	}
 	cache := s.Cache
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	content, err := cache.GetReasoningContent(ctx, itemID)
+	content, err := cache.GetReasoningContent(ctx, key)
 	if err != nil {
 		return ""
 	}
@@ -95,10 +118,14 @@ func (s *ReasoningHistory) Store(itemID, content string) {
 	if s == nil || s.Cache == nil {
 		return
 	}
+	key := ScopedReasoningKey(s.scope, itemID)
+	if key == "" {
+		return
+	}
 	cache := s.Cache
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if err := cache.SetReasoningContent(ctx, itemID, content, responsesReasoningCacheTTL); err != nil {
+	if err := cache.SetReasoningContent(ctx, key, content, responsesReasoningCacheTTL); err != nil {
 		if s.Warn != nil {
 			s.Warn(itemID, err)
 		}

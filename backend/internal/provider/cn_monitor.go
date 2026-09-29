@@ -176,7 +176,7 @@ func (s *CNUsageMonitor) RunOnce(parents ...context.Context) {
 
 func (s *CNUsageMonitor) monitorCandidates(ctx context.Context) []Record {
 	result := make([]Record, 0)
-	for _, platform := range []string{PlatformKimi, PlatformZhipu, PlatformDeepseek} {
+	for _, platform := range []string{PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformOpenCodeGo} {
 		if ctx.Err() != nil {
 			return result
 		}
@@ -414,6 +414,10 @@ func CNUsageOfficialHost(platform, host string) bool {
 		return host == "open.bigmodel.cn" || host == "api.z.ai"
 	case PlatformDeepseek:
 		return host == "api.deepseek.com"
+	case PlatformMiniMax:
+		return host == "api.minimaxi.com" || host == "api.minimax.io" || host == "api.minimax.com"
+	case PlatformOpenCodeGo:
+		return host == "opencode.ai"
 	default:
 		return false
 	}

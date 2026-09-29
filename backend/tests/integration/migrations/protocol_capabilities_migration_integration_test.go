@@ -23,7 +23,7 @@ func TestUnifiedProtocolMigration(t *testing.T) {
  INSERT INTO groups VALUES(1,'openai','["openai_responses"]',false,false,false),(2,'grok','[]',true,false,false),(3,'gemini','["gemini_generate_content"]',true,true,false);
  INSERT INTO video_jobs VALUES(8,2);`)
 	require.NoError(t, err)
-	sql, err := migrations.FS.ReadFile("273_unify_protocol_capabilities.sql")
+	sql, err := migrations.FS.ReadFile("281_unify_protocol_capabilities.sql")
 	require.NoError(t, err)
 	_, err = tx.Exec(string(sql))
 	require.NoError(t, err)

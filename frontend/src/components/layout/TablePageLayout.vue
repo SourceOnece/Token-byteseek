@@ -87,7 +87,10 @@ onUnmounted(() => {
 
 .table-scroll-container :deep(th) {
   /* 表头与 DataTable、.table 保持同一密度:py-2 + text-xs,给数据行留出可视空间。 */
-  @apply px-4 py-2 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-dark-400 border-b border-gray-200 dark:border-dark-700;
+  @apply px-4 py-2 text-left text-xs font-bold tracking-wider;
+  color: #141414;
+  background: var(--bh-yellow);
+  border-bottom: 2px solid #141414;
 }
 
 .table-scroll-container :deep(td) {

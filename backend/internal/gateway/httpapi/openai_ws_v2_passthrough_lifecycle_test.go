@@ -223,11 +223,9 @@ func TestPassthroughLifecycle_LaterTurnPreOutputRateLimitRequestsReconnect(t *te
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	upstream := newStagedPassthroughConn()
-	account := passthroughLifecycleAccount()
-	repo := &openAIWSRateLimitSignalRepo{stubOpenAIAccountRepo: stubOpenAIAccountRepo{accounts: []Account{*account}}}
-	svc := newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream)
-	svc.accountRepo = repo
-	svc.rateLimitService = &RateLimitService{accountRepo: repo}
+	account := passthroughLifecycleProvider()
+	repo := &openAIWSRateLimitSignalRepo{wsFixtureProviderStore: wsFixtureProviderStore{providers: []gatewayprovider.ExecutionProvider{*account}}}
+	svc := newWSFixture(wsFixtureInputs{options: passthroughLifecycleConfig(), providers: repo, health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil), transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), dialer: &stagedPassthroughDialer{conn: upstream}})
 
 	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, svc, account)
 	defer server.Close()

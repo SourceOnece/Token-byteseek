@@ -53,7 +53,6 @@ type updatePricingConfigRequest struct {
 }
 
 type modelPricingRequest struct {
-	LegacyGroupOverride          bool                     `json:"legacy_group_override"`
 	Models                       []string                 `json:"models" binding:"required,min=1,max=100"`
 	BillingMode                  string                   `json:"billing_mode" binding:"omitempty,oneof=token per_request image video"`
 	PriceMultiplier              *float64                 `json:"price_multiplier" binding:"omitempty,min=0"`
@@ -127,7 +126,6 @@ type pricingConfigResponse struct {
 }
 
 type modelPricingResponse struct {
-	LegacyGroupOverride          bool                      `json:"legacy_group_override,omitempty"`
 	ID                           int64                     `json:"id"`
 	Models                       []string                  `json:"models"`
 	BillingMode                  string                    `json:"billing_mode"`
@@ -261,8 +259,7 @@ func pricingToResponse(p *routing.ModelPricingEntry) modelPricingResponse {
 		intervals = append(intervals, intervalToResponse(iv))
 	}
 	return modelPricingResponse{
-		LegacyGroupOverride: p.LegacyGroupOverride,
-		ID:                  p.ID,
+		ID: p.ID,
 
 		Models:                       models,
 		BillingMode:                  billingMode,
@@ -350,7 +347,6 @@ func pricingRequestToService(reqs []modelPricingRequest) []routing.ModelPricingE
 			})
 		}
 		result = append(result, routing.ModelPricingEntry{
-			LegacyGroupOverride:          r.LegacyGroupOverride,
 			Models:                       r.Models,
 			BillingMode:                  billingMode,
 			PriceMultiplier:              r.PriceMultiplier,

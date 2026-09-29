@@ -105,7 +105,7 @@ internal/routing/httpapi/dto internal/routing/modelmap internal/scheduler intern
 internal/server/httpx internal/settings internal/upstream internal/upstream/anthropic
 internal/upstream/anthropic/oauth internal/upstream/antigravity internal/upstream/bedrock
 internal/upstream/deepseek internal/upstream/gemini internal/upstream/gemini/codeassist
-internal/upstream/grok internal/upstream/kimi internal/upstream/ollama internal/upstream/openai
+internal/upstream/grok internal/upstream/kimi internal/upstream/minimax internal/upstream/opencode internal/upstream/ollama internal/upstream/openai
 internal/upstream/qoder internal/upstream/usagecontract internal/upstream/usageprovider
 internal/upstream/usageview internal/upstream/vertex internal/upstream/zhipu internal/usage`, Tests: `internal/config internal/gateway internal/gateway/forward internal/gateway/media
 internal/gateway/provider/modelidentity internal/gateway/requeststate internal/gateway/session
@@ -132,7 +132,7 @@ internal/testutil/postgrescontainer internal/testutil/rediscontainer`},
 	"internal/billing": {Production: `ent/... internal/billing/... internal/egress internal/gateway/provider
 internal/gateway/provider/modelidentity internal/idempotency/httpapi internal/identity/contact
 internal/identity/httpapi/authctx internal/infra/httpclient/... internal/infra/postgres/...
-internal/infra/telemetry/... internal/notification/contract internal/pkg/ internal/protocol
+internal/infra/telemetry/... internal/notification/contract internal/pkg/ internal/protocol internal/protocol/anthropic
 internal/protocol/openai internal/routing internal/routing/capability internal/routing/testkit
 internal/server/httpx internal/server/middleware internal/settings`, Tests: `internal/batchimage internal/batchimage/postgres internal/config internal/gateway/media
 internal/testutil/rediscontainer internal/testutil/sqlite internal/upstream/grok
@@ -276,7 +276,7 @@ internal/identity/postgres internal/infra/crypto internal/infra/postgres interna
 internal/infra/telemetry/logging internal/pkg/timezone internal/routing/postgres migrations`, Tests: "ent/enttest ent/group ent/runtime internal/billing internal/routing/capability"},
 	"internal/app/lifecycle":       {Production: "internal/app/lifecycle", Tests: ""},
 	"internal/billing/httpapi/dto": {Production: "internal/billing internal/billing/httpapi/dto", Tests: ""},
-	"internal/billing/pricing":     {Production: "internal/billing/pricing internal/protocol internal/protocol/openai internal/routing/capability", Tests: ""},
+	"internal/billing/pricing":     {Production: "internal/billing/pricing internal/protocol internal/protocol/openai internal/protocol/anthropic internal/routing/capability", Tests: ""},
 	"internal/egress/httpapi/dto":  {Production: "internal/egress internal/egress/httpapi/dto", Tests: ""},
 	"internal/egress/urlpolicy":    {Production: "internal/egress/urlpolicy internal/pkg/ipmatch", Tests: ""},
 	"internal/gateway/clientmeta":  {Production: "internal/gateway/clientmeta internal/protocol/anthropic internal/protocol/openai", Tests: "internal/gateway/requeststate"},
@@ -349,6 +349,9 @@ internal/upstream internal/upstream/grok/... internal/upstream/usageview`, Tests
 	"internal/upstream/kimi": {Production: `internal/upstream/internal/usageclient internal/upstream/kimi/... internal/upstream/usagecontract
 internal/upstream/usageview`, Tests: ""},
 	"internal/upstream/ollama": {Production: "internal/protocol/openai internal/upstream/ollama/... internal/upstream/usageview", Tests: ""},
+	// MiniMax 的只读额度解析与其他 CN 供应商采用同一窄技术依赖。
+	"internal/upstream/minimax":  {Production: "internal/upstream/internal/usageclient internal/upstream/usagecontract internal/upstream/usageview internal/upstream/minimax/...", Tests: ""},
+	"internal/upstream/opencode": {Production: "internal/upstream/internal/usageclient internal/upstream/usagecontract internal/upstream/usageview internal/upstream/opencode/...", Tests: ""},
 	"internal/upstream/openai": {Production: `internal/egress/urlpolicy internal/gateway/clientmeta internal/infra/httpclient/...
 internal/infra/telemetry/... internal/pkg/ internal/protocol internal/protocol/anthropic
 internal/protocol/bridge internal/protocol/openai internal/protocol/wirejson internal/upstream

@@ -88,7 +88,7 @@ func (p *openAIChatExecutionAdapter) Reject(status int, kind, message string) {
 }
 
 func (p *openAIChatExecutionAdapter) ResponsesToChat(r *protocolopenai.ResponsesRequest) (*protocolopenai.ChatCompletionsRequest, error) {
-	return protocolbridge.ResponsesToChatCompletionsRequestWithOptions(r, &protocolbridge.ResponsesToChatOptions{ReasoningContentByID: p.s.Output.Reasoning.Lookup})
+	return protocolbridge.ResponsesToChatCompletionsRequestWithOptions(r, &protocolbridge.ResponsesToChatOptions{ReasoningContentByID: p.s.Output.Reasoning.Scoped(responsesReasoningScope(p.c, p.provider)).Lookup})
 }
 
 func (p *openAIChatExecutionAdapter) GrokBridgeEligible(body []byte) (bool, string) {

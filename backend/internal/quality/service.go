@@ -16,8 +16,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const codexQualityContextKey accountTestContextKey = "codex_quality_test"
-
 // CodexQualityRequest 是专用批量题目测试配置，不改变原连接测试接口。
 type CodexQualityRequest struct {
 	AccountIDs        []int64 `json:"account_ids"`
@@ -127,12 +125,6 @@ func (s *Service) BeginCodexQualityBatch() bool {
 	return s.qualityBatchActive.CompareAndSwap(false, true)
 }
 func (s *Service) EndCodexQualityBatch() { s.qualityBatchActive.Store(false) }
-
-// qualityTestOptions 仅通过服务端上下文启用，不能由普通测试请求误触发。
-func qualityTestOptions(ctx context.Context) *CodexQualityRequest {
-	r, _ := ctx.Value(codexQualityContextKey).(*CodexQualityRequest)
-	return r
-}
 
 // IsOpenAIQualityTestable 统一限定质量检测的账号边界，兼容 OAuth 与 API Key 上游。
 // 影子账号和 Agent Identity 没有独立可验证的凭据，仍由主账号/专用流程处理。
@@ -292,7 +284,7 @@ func qualityStreamText(event map[string]any) (string, bool, error) {
 				content, _ := rawContent.(map[string]any)
 				if content["type"] == "output_text" {
 					value, _ := content["text"].(string)
-					text.WriteString(value)
+					_, _ = text.WriteString(value)
 				}
 			}
 		}
@@ -339,7 +331,7 @@ func (s *Service) processQualitySSE(c *qualitySink, body io.Reader, decode func(
 		if done && text != "" {
 			answer.Reset()
 		}
-		answer.WriteString(strings.ReplaceAll(text, "\x00", ""))
+		_, _ = answer.WriteString(strings.ReplaceAll(text, "\x00", ""))
 		if answer.Len() > 128*1024 {
 			return false, errors.New("回答超过 128 KiB 测试上限")
 		}

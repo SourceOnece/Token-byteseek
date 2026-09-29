@@ -63,8 +63,8 @@ func TestGetModelPricing_DeepseekUsesOfficialRatesForStaleEntries(t *testing.T) 
 	}
 	for _, tt := range tests {
 		t.Run(tt.model, func(t *testing.T) {
-			// 旧价断言固定在 Pro 切换前，不能随运行日期变化。
-			pricing, err := bs.getModelPricingAt(tt.model, time.Date(2026, 9, 13, 12, 0, 0, 0, time.UTC))
+			// 价格入口使用 TokenFlux 当前统一计算器。
+			pricing, err := bs.GetModelPricing(tt.model)
 			require.NoError(t, err)
 			require.InDelta(t, tt.input, pricing.InputPricePerToken, 1e-15)
 			require.InDelta(t, tt.output, pricing.OutputPricePerToken, 1e-15)

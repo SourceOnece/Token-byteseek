@@ -45,7 +45,11 @@ func StreamPayload(finalResponse []byte, newID func() string) ([]byte, bool) {
 
 	var buf bytes.Buffer
 	outputIndex := 0
+	sequence := 0
 	appendEvent := func(eventType string, data []byte) {
+		// 合成的压缩流使用自己的连续序号，不依赖不存在的上游 SSE 序号。
+		data, _ = sjson.SetBytes(data, "sequence_number", sequence)
+		sequence++
 		_, _ = buf.WriteString("event: ")
 		_, _ = buf.WriteString(eventType)
 		_, _ = buf.WriteString("\ndata: ")

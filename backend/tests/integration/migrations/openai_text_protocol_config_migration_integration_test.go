@@ -13,7 +13,7 @@ import (
 )
 
 func TestMigration247NormalizesOpenAITextProtocolConfigIdempotently(t *testing.T) {
-	tx := historicalTx(t, "282_")
+	tx := historicalTx(t, "290_")
 	ctx := context.Background()
 	migrationSQL, err := dbmigrations.FS.ReadFile("247_migrate_openai_text_protocol_config.sql")
 	require.NoError(t, err)

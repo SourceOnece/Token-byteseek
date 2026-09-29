@@ -83,7 +83,7 @@ func TestPlatformIndependentGroupsMigration(t *testing.T) {
 
 	through280 := fstest.MapFS{}
 	for _, entry := range entries {
-		if entry.Name() >= "281_" {
+		if entry.Name() >= "289_" {
 			continue
 		}
 		data, readErr := migrations.FS.ReadFile(entry.Name())

@@ -26,7 +26,7 @@ func (r *Store) AppendTicketEvent(ctx context.Context, id string, e *codexticket
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if !rows.Next() {
 		return errors.New("采集批次已结束")
 	}
@@ -67,7 +67,7 @@ func (r *Store) ListTicketRuns(ctx context.Context, page int) ([]codexticket.Cod
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := []codexticket.CodexTicketManualRun{}
 	for rows.Next() {
 		var run codexticket.CodexTicketManualRun
@@ -90,7 +90,7 @@ func (r *Store) GetTicketRun(ctx context.Context, id string) (*codexticket.Codex
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if !rows.Next() {
 		return nil, errors.New("采集批次不存在")
 	}
@@ -121,7 +121,7 @@ func (r *Store) ListTicketEvents(ctx context.Context, id, kind, status string, a
 	if rows.Next() {
 		err = rows.Scan(&total)
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -129,7 +129,7 @@ func (r *Store) ListTicketEvents(ctx context.Context, id, kind, status string, a
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := []codexticket.CodexTicketAttempt{}
 	for rows.Next() {
 		var e codexticket.CodexTicketAttempt
@@ -158,7 +158,7 @@ func (r *Store) DeleteTicketHistory(ctx context.Context, runID string, eventID i
 		if err != nil {
 			return 0, err
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		var n int64
 		if !rows.Next() {
 			return 0, rows.Err()
@@ -181,7 +181,7 @@ func (r *Store) DeleteTicketHistory(ctx context.Context, runID string, eventID i
 	if err != nil {
 		return 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var exists, active bool
 	var n int64
 	if !rows.Next() {

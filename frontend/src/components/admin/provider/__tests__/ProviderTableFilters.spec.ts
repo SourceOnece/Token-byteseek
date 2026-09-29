@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import ProviderTableFilters from '../ProviderTableFilters.vue'
 import type { AdminGroup } from '@/types'

@@ -108,6 +108,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		// 兼容平台保留原处理路径。
 		gateway.POST("/messages/count_tokens", countTokensProtocolGate, countTokensHandler)
 		gateway.GET("/models", modelsHTTP.Models)
+		gateway.GET("/models/*model", modelsHTTP.RetrieveModel)
 		gateway.GET("/usage", endpoints.PublicUsage)
 		gateway.POST("/live", liveHTTP.Live)
 		gateway.GET("/live/:call_id", liveHTTP.LiveSideband)
@@ -208,6 +209,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 	r.GET("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, responsesWebSocketHandler)
 	// Codex 客户端会访问不带 v1 前缀的模型列表，保持与 /v1/models 相同的本地模型语义。
 	r.GET("/models", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, modelsHTTP.Models)
+	r.GET("/models/*model", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, modelsHTTP.RetrieveModel)
 	r.POST("/messages/count_tokens", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, countTokensProtocolGate, countTokensHandler)
 	r.GET(
 		"/backend-api/codex/:call_id",

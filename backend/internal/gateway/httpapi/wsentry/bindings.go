@@ -158,7 +158,7 @@ func (p *openAIWSEntryAdapter) ValidateModels(body []byte) error {
 		return nil
 	}
 	gatewayhttp.MarkOpsClientBusinessLimited(p.c, "local_model_configuration")
-	return fmt.Errorf("Model %q is not available for this group", blocked)
+	return fmt.Errorf("model %q is not available for this group", blocked)
 }
 
 func (p *openAIWSEntryAdapter) BindContext(ctx context.Context) {

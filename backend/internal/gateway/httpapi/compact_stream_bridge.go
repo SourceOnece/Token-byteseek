@@ -137,8 +137,9 @@ type CompactStreamErrorObserver func(*gin.Context, string, string, int)
 
 // 明确的终止帧字段保留 created_at、空 output 及原 JSON 键顺序。
 type compactFailedEvent struct {
-	Response compactFailedResponse `json:"response"`
-	Type     string                `json:"type"`
+	SequenceNumber int                   `json:"sequence_number"`
+	Response       compactFailedResponse `json:"response"`
+	Type           string                `json:"type"`
 }
 type compactFailedResponse struct {
 	CreatedAt int64              `json:"created_at"`

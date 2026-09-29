@@ -159,6 +159,7 @@
                 <p class="input-hint">{{ t('admin.providers.autoPauseThresholdHint') }}</p>
               </div>
             </div>
+            </div>
             <OpenAICompactionCheckbox v-model="nativeCompactV2Mode" test-id="openai-oauth-default-native-compaction-v2-mode"
               :label="t('admin.providers.openai.nativeCompactV2Mode')" :hint="t('admin.providers.openai.nativeCompactV2ModeDesc')" />
             <OpenAICompactionCheckbox v-model="compactMode" test-id="openai-oauth-default-compact-mode"
@@ -195,14 +196,16 @@
           </div>
         </section>
 
-        <section class="space-y-3 border-t border-gray-100 pt-5 dark:border-dark-700">
+        <!-- 白名单与映射并排，与新增账号表单保持相同层级。 -->
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2" data-testid="import-defaults-model-grid">
+        <section class="space-y-3 border-t border-gray-100 pt-5 dark:border-dark-700" data-testid="import-defaults-models">
           <div class="text-sm font-medium text-gray-900 dark:text-white">
             {{ t('admin.providers.modelWhitelist') }}
           </div>
           <ModelWhitelistSelector v-model="defaultAllowedModels" platform="openai" />
         </section>
 
-        <section class="space-y-3 border-t border-gray-100 pt-5 dark:border-dark-700">
+        <section class="space-y-3 border-t border-gray-100 pt-5 dark:border-dark-700" data-testid="import-defaults-mappings">
           <div class="text-sm font-medium text-gray-900 dark:text-white">
             {{ t('admin.providers.modelMapping') }}
           </div>

@@ -1,7 +1,6 @@
 <template>
   <!-- 跨页校验定位价格字段时，先展开条目以便聚焦并显示错误。 -->
   <div class="rounded-surface border border-gray-200 bg-gray-50 p-3 dark:border-dark-600 dark:bg-dark-800" @form-field-reveal="collapsed = false">
-    <span v-if="entry.legacy_group_override" class="mb-2 inline-block border-l-4 border-bh-blue pl-2 text-sm font-bold text-bh-blue dark:text-blue-300">{{ t('admin.pricing.legacyGroupOverride', '迁移分组价 · 优先') }}</span>
     <!-- Collapsed summary header (clickable) -->
     <div
       class="flex cursor-pointer select-none items-center gap-2"

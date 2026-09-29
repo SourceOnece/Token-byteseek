@@ -9,7 +9,7 @@ import (
 
 // 使用同一转换状态消费一组上游事件。
 func feedResponsesEvents(events ...*ResponsesStreamEvent) []AnthropicStreamEvent {
-	state := NewResponsesEventToAnthropicState()
+	state := NewResponsesEventToAnthropicState(testRuntime())
 	var out []AnthropicStreamEvent
 	for _, evt := range events {
 		out = append(out, ResponsesEventToAnthropicEvents(evt, state)...)
@@ -419,7 +419,7 @@ func TestResponsesEventToAnthropicEvents_PreservesThinkingSignatureWhenRecoverin
 
 // 缺少正式终态时，合成结束逻辑仍须关闭恢复文本的块。
 func TestResponsesEventToAnthropicEvents_RecoveredTextSurvivesTheSyntheticFinalizer(t *testing.T) {
-	state := NewResponsesEventToAnthropicState()
+	state := NewResponsesEventToAnthropicState(testRuntime())
 	var events []AnthropicStreamEvent
 	for _, evt := range []*ResponsesStreamEvent{
 		responsesCreated(),

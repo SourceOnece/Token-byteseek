@@ -27,7 +27,7 @@ func TestSupplementResponseOutput_RecoversTextWhenTerminalMessageIsEmpty(t *test
 
 	acc.SupplementResponseOutput(resp)
 
-	chat := ResponsesToChatCompletions(resp, "gpt-5.5")
+	chat := ResponsesToChatCompletions(testRuntime(), resp, "gpt-5.5")
 	require.Len(t, chat.Choices, 1)
 	require.NotNil(t, chat.Choices[0].Message.Content, "the client must not receive an empty reply")
 
@@ -51,7 +51,7 @@ func TestSupplementResponseOutput_RecoversTextWhenTerminalTextIsBlank(t *testing
 
 	acc.SupplementResponseOutput(resp)
 
-	chat := ResponsesToChatCompletions(resp, "m")
+	chat := ResponsesToChatCompletions(testRuntime(), resp, "m")
 	var got string
 	require.NotNil(t, chat.Choices[0].Message.Content)
 	require.NoError(t, json.Unmarshal(chat.Choices[0].Message.Content, &got))

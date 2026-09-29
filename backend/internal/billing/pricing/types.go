@@ -5,6 +5,7 @@ type ModelPricing struct {
 	InputPricePerToken                 float64  // 每token输入价格 (USD)
 	InputPricePerTokenPriority         float64  // priority service tier 下每token输入价格 (USD)
 	ImageInputPricePerToken            float64  // 图片输入 token 价格 (USD)，为 0 时回退到普通输入价格
+	ImageCacheReadPricePerToken        float64  // 图片缓存命中价格，仅使用明确的图片缓存数量
 	OutputPricePerToken                float64  // 每token输出价格 (USD)
 	OutputPricePerTokenPriority        float64  // priority service tier 下每token输出价格 (USD)
 	CacheCreationPricePerToken         float64  // 缓存创建每token价格 (USD)
@@ -34,6 +35,7 @@ type ModelPricing struct {
 type UsageTokens struct {
 	InputTokens           int
 	ImageInputTokens      int
+	ImageCacheReadTokens  int
 	OutputTokens          int
 	CacheCreationTokens   int
 	CacheReadTokens       int

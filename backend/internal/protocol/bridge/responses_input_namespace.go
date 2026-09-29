@@ -11,9 +11,6 @@ import (
 
 func HasOpenAIResponsesNamespaceToolDeclaration(body []byte) bool {
 	tools := gjson.GetBytes(body, "tools")
-	if !tools.IsArray() {
-		return false
-	}
 	found := false
 	tools.ForEach(func(_, tool gjson.Result) bool {
 		if strings.EqualFold(strings.TrimSpace(tool.Get("type").String()), "namespace") {
@@ -22,6 +19,22 @@ func HasOpenAIResponsesNamespaceToolDeclaration(body []byte) bool {
 		}
 		return true
 	})
+	// Codex lite 在 input 的 additional_tools 中声明工具；同样属于调用目标。
+	if !found {
+		gjson.GetBytes(body, "input").ForEach(func(_, item gjson.Result) bool {
+			if item.Get("type").String() != "additional_tools" {
+				return true
+			}
+			item.Get("tools").ForEach(func(_, tool gjson.Result) bool {
+				if strings.EqualFold(strings.TrimSpace(tool.Get("type").String()), "namespace") {
+					found = true
+					return false
+				}
+				return true
+			})
+			return !found
+		})
+	}
 	return found
 }
 

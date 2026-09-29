@@ -119,7 +119,7 @@ func (r *codexTicketReceipt) observeJSON(raw []byte, eventName string, model str
 		return
 	}
 	status := response.Get("status").String()
-	if status != "completed" && !(completed && status == "") {
+	if status != "completed" && (!completed || status != "") {
 		return
 	}
 	actual := response.Get("model")

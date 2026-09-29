@@ -20,7 +20,6 @@ export interface IntervalFormEntry {
 }
 
 export interface PricingFormEntry {
-  legacy_group_override?: boolean
   models: string[]
   billing_mode: BillingMode
   // 空值保留“未配置”语义，0 表示显式免费。

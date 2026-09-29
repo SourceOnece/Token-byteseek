@@ -14,7 +14,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Toggle from '@/components/common/Toggle.vue'
-import CodexTicketProxyEditor from '@/components/admin/account/CodexTicketProxyEditor.vue'
+import CodexTicketProxyEditor from '@/components/admin/provider/CodexTicketProxyEditor.vue'
 import { apiClient } from '@/api/client'
 import type { TicketSettings, TicketProxyPolicy } from '@/api/admin/codexTickets'
 import { useAppStore } from '@/stores/app'

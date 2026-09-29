@@ -161,7 +161,7 @@ defineExpose({ validate, revealField })
 
 .group-tab[data-group-tab-button='platform']::before {
   background: var(--bh-blue);
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
 }
 
 .group-tab[data-group-tab-button='pricing']::before {

@@ -250,8 +250,8 @@ describe('admin UsageTable tooltip', () => {
       cache_read_cost: 0.00000006,
       total_cost: 0.00000022,
       actual_cost: 0.00000042,
-      account_stats_cost: 0.00000012,
-      account_rate_multiplier: 1.5,
+      provider_stats_cost: 0.00000012,
+      provider_rate_multiplier: 1.5,
     }
     const wrapper = mount(UsageTable, {
       props: { data: [row], loading: false, columns: [] },

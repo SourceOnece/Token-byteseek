@@ -68,11 +68,14 @@ import GroupBadge from './GroupBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
 import type { AdminGroup } from '@/types'
 
+// 选择器只需要展示字段，不要求账号详情补造管理员路由配置。
+type SelectableGroup = Pick<AdminGroup, 'id' | 'name' | 'description' | 'display_brand' | 'rate_multiplier' | 'status'> & { provider_count?: number }
+
 const { t } = useI18n()
 
 interface Props {
   modelValue: number[]
-  groups: AdminGroup[]
+  groups: SelectableGroup[]
   searchable?: boolean | 'auto'
 }
 
@@ -92,7 +95,7 @@ const isSearchable = computed(() => {
 
 // 提供商可以关联任意分组，搜索仅按名称和描述过滤。
 const filteredGroups = computed(() => {
-  let result: AdminGroup[] = props.groups
+  let result: SelectableGroup[] = props.groups
   if (isSearchable.value && searchText.value) {
     const q = searchText.value.toLowerCase()
     result = result.filter(

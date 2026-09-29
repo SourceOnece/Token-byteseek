@@ -70,7 +70,6 @@ type pricingConfigCache struct {
 	// 热路径查找
 	pricingByGroupModel map[pricingModelKey]*ModelPricingEntry // (groupID, model) → 定价
 	wildcardByGroup     map[int64][]*wildcardPricingEntry      // (groupID) → 通配符定价（按配置顺序，先匹配先使用）
-	legacyGroupPrices   map[int64][]ModelPricingEntry
 
 	pricingConfigByGroupID map[int64]*PricingConfig // groupID → 价格配置
 
@@ -190,7 +189,6 @@ func newEmptyPricingConfigCache() *pricingConfigCache {
 	return &pricingConfigCache{
 		pricingByGroupModel: make(map[pricingModelKey]*ModelPricingEntry),
 		wildcardByGroup:     make(map[int64][]*wildcardPricingEntry),
-		legacyGroupPrices:   make(map[int64][]ModelPricingEntry),
 
 		pricingConfigByGroupID: make(map[int64]*PricingConfig),
 		byID:                   make(map[int64]*PricingConfig),
@@ -201,10 +199,6 @@ func newEmptyPricingConfigCache() *pricingConfigCache {
 func expandPricingToCache(cache *pricingConfigCache, config *PricingConfig, groupID int64) {
 	for i := range config.ModelPricing {
 		entry := &config.ModelPricing[i]
-		if entry.LegacyGroupOverride {
-			cache.legacyGroupPrices[groupID] = append(cache.legacyGroupPrices[groupID], entry.Clone())
-			continue
-		}
 		for _, model := range entry.Models {
 			if strings.HasSuffix(model, "*") {
 				cache.wildcardByGroup[groupID] = append(cache.wildcardByGroup[groupID], &wildcardPricingEntry{prefix: normalizePriceModelName(strings.TrimSuffix(model, "*")), pricing: entry})
@@ -286,14 +280,6 @@ func (s *PricingConfigService) invalidateCache() {
 // lookupPricing 优先精确匹配，再查配置顺序中的通配符；有效价查询跳过空条目。
 func lookupPricing(cache *pricingConfigCache, groupID int64, model string, effective bool) *ModelPricingEntry {
 	model = normalizePriceModelName(model)
-	// 旧分组价先于任何共享价卡匹配；保留旧 token 价忽略区间的既有行为。
-	if entry := pricing.FindPricingForModelByPredicate(cache.legacyGroupPrices[groupID], model, nil); entry != nil {
-		copy := entry.Clone()
-		if copy.BillingMode == "" || copy.BillingMode == BillingModeToken {
-			copy.Intervals = nil
-		}
-		return &copy
-	}
 	matches := func(entry *ModelPricingEntry) bool {
 		return entry != nil && (!effective || entry.HasEffectivePricing())
 	}
@@ -874,18 +860,11 @@ func toPricingModelEntry(pattern string) modelEntry {
 
 // validateNoConflictingModels 在整张价表内检查重复模型及重叠匹配范围。
 func validateNoConflictingModels(pricingList []ModelPricingEntry) error {
-	var entries, migrated []modelEntry
+	var entries []modelEntry
 	for _, price := range pricingList {
 		for _, model := range price.Models {
-			if price.LegacyGroupOverride {
-				migrated = append(migrated, toPricingModelEntry(model))
-			} else {
-				entries = append(entries, toPricingModelEntry(model))
-			}
+			entries = append(entries, toPricingModelEntry(model))
 		}
-	}
-	if err := detectConflicts(migrated, "MODEL_PATTERN_CONFLICT", "migrated group patterns"); err != nil {
-		return err
 	}
 	return detectConflicts(entries, "MODEL_PATTERN_CONFLICT", "model patterns")
 }

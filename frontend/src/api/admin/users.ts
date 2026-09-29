@@ -329,73 +329,7 @@ export async function bindUserAuthIdentity(
   return data
 }
 
-export type PlatformQuotaPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity' | 'qoder' | 'grok' | 'kimi' | 'zhipu' | 'deepseek' | 'minimax' | 'opencode_go'
-export type PlatformQuotaWindow = 'daily' | 'weekly' | 'monthly'
-
-export interface PlatformQuotaItem {
-  platform: PlatformQuotaPlatform
-  daily_limit_usd: number | null
-  weekly_limit_usd: number | null
-  monthly_limit_usd: number | null
-  daily_usage_usd: number
-  weekly_usage_usd: number
-  monthly_usage_usd: number
-  daily_window_start?: string | null
-  weekly_window_start?: string | null
-  monthly_window_start?: string | null
-  daily_window_resets_at?: string | null
-  weekly_window_resets_at?: string | null
-  monthly_window_resets_at?: string | null
-}
-
-export interface PlatformQuotaUpdateItem {
-  platform: PlatformQuotaPlatform
-  daily_limit_usd: number | null
-  weekly_limit_usd: number | null
-  monthly_limit_usd: number | null
-}
-
-export interface PlatformQuotasResponse {
-  platform_quotas: PlatformQuotaItem[]
-}
-
-// 管理员平台额度接口保留既有字段与窗口语义。
-export async function getPlatformQuotas(id: number): Promise<PlatformQuotasResponse> {
-  const { data } = await apiClient.get<PlatformQuotasResponse>(
-    `/admin/users/${id}/platform-quotas`
-  )
-  return data
-}
-
-// 管理员平台额度接口保留既有字段与窗口语义。
-export async function updatePlatformQuotas(
-  id: number,
-  quotas: PlatformQuotaUpdateItem[]
-): Promise<PlatformQuotasResponse> {
-  const { data } = await apiClient.put<PlatformQuotasResponse>(
-    `/admin/users/${id}/platform-quotas`,
-    { quotas }
-  )
-  return data
-}
-
-// 管理员平台额度接口保留既有字段与窗口语义。
-export async function resetPlatformQuotaWindow(
-  id: number,
-  platform: PlatformQuotaPlatform,
-  window: PlatformQuotaWindow
-): Promise<PlatformQuotasResponse> {
-  const { data } = await apiClient.post<PlatformQuotasResponse>(
-    `/admin/users/${id}/platform-quotas/reset`,
-    { platform, window }
-  )
-  return data
-}
-
 export const usersAPI = {
-  getPlatformQuotas,
-  updatePlatformQuotas,
-  resetPlatformQuotaWindow,
   list,
   getById,
   create,

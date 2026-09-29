@@ -95,14 +95,14 @@ func TestOpenAIGatewayService_APIKeyPreservesLiteDeclaredNamespaceToolCalls(t *t
 			]}
 		]
 	}`)
-	upstream := &httpUpstreamRecorder{responses: []*http.Response{
+	upstream := &auxiliaryHTTPRecorder{responses: []*http.Response{
 		newOpenAIRejectedFieldTestResponse(http.StatusOK, namespaceForwardOKResponse),
 	}}
 	c := newOpenAIRejectedFieldTestContext(body)
-	c.Request.Header.Set(responsesLiteHeader, "true")
+	c.Request.Header.Set("x-openai-internal-codex-responses-lite", "true")
 
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
-		context.Background(), c, newOpenAIRejectedFieldTestAccount(), body,
+		context.Background(), c, newOpenAIRejectedFieldTestProvider(), body,
 	)
 
 	require.NoError(t, err)

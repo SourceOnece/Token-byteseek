@@ -14,7 +14,9 @@
         "qoder",
         "kimi",
         "zhipu",
-        "deepseek"
+        "deepseek",
+        "minimax",
+        "opencode_go"
       ]
     },
     {
@@ -31,7 +33,9 @@
         "qoder",
         "kimi",
         "zhipu",
-        "deepseek"
+        "deepseek",
+        "minimax",
+        "opencode_go"
       ]
     },
     {
@@ -48,7 +52,9 @@
         "qoder",
         "kimi",
         "zhipu",
-        "deepseek"
+        "deepseek",
+        "minimax",
+        "opencode_go"
       ]
     },
     {
@@ -719,6 +725,98 @@
       "type": "cosy",
       "auth_mode": "",
       "protocols": []
+    },
+    {
+      "platform": "minimax",
+      "type": "oauth",
+      "auth_mode": "",
+      "protocols": []
+    },
+    {
+      "platform": "minimax",
+      "type": "setup-token",
+      "auth_mode": "",
+      "protocols": []
+    },
+    {
+      "platform": "minimax",
+      "type": "apikey",
+      "auth_mode": "",
+      "protocols": [
+        "anthropic_messages",
+        "openai_responses",
+        "openai_chat_completions"
+      ]
+    },
+    {
+      "platform": "minimax",
+      "type": "upstream",
+      "auth_mode": "",
+      "protocols": []
+    },
+    {
+      "platform": "minimax",
+      "type": "bedrock",
+      "auth_mode": "",
+      "protocols": []
+    },
+    {
+      "platform": "minimax",
+      "type": "service_account",
+      "auth_mode": "",
+      "protocols": []
+    },
+    {
+      "platform": "minimax",
+      "type": "cosy",
+      "auth_mode": "",
+      "protocols": []
+    },
+    {
+      "platform": "opencode_go",
+      "type": "oauth",
+      "auth_mode": "",
+      "protocols": []
+    },
+    {
+      "platform": "opencode_go",
+      "type": "setup-token",
+      "auth_mode": "",
+      "protocols": []
+    },
+    {
+      "platform": "opencode_go",
+      "type": "apikey",
+      "auth_mode": "",
+      "protocols": [
+        "anthropic_messages",
+        "openai_responses",
+        "openai_chat_completions"
+      ]
+    },
+    {
+      "platform": "opencode_go",
+      "type": "upstream",
+      "auth_mode": "",
+      "protocols": []
+    },
+    {
+      "platform": "opencode_go",
+      "type": "bedrock",
+      "auth_mode": "",
+      "protocols": []
+    },
+    {
+      "platform": "opencode_go",
+      "type": "service_account",
+      "auth_mode": "",
+      "protocols": []
+    },
+    {
+      "platform": "opencode_go",
+      "type": "cosy",
+      "auth_mode": "",
+      "protocols": []
     }
   ],
   "groups": [
@@ -753,9 +851,9 @@
       ],
       "fallback_targets": {
         "anthropic_messages": [
+          "gemini_generate_content",
           "openai_responses",
           "openai_chat_completions",
-          "gemini_generate_content",
           "qoder_chat"
         ],
         "gemini_generate_content": [],
@@ -777,9 +875,9 @@
           "openai_responses"
         ],
         "openai_chat_completions": [
-          "openai_responses",
           "anthropic_messages",
           "gemini_generate_content",
+          "openai_responses",
           "qoder_chat"
         ],
         "openai_embeddings": [],
@@ -791,9 +889,9 @@
         ],
         "openai_live": [],
         "openai_responses": [
-          "openai_chat_completions",
           "anthropic_messages",
           "gemini_generate_content",
+          "openai_chat_completions",
           "qoder_chat"
         ],
         "openai_responses_compact": [

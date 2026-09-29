@@ -21,6 +21,7 @@ import (
 )
 
 func (p *OpenAIResponseOutput) RawOptions(c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider, billingModel, upstreamModel string, serviceTier *string, writeError func(*gin.Context, int, string, string)) openai.RawResponseOptions {
+	reasoning := p.Reasoning.Scoped(responsesReasoningScope(c, provider))
 	options := openai.RawResponseOptions{
 		Runtime: bridge.Runtime{Now: time.Now, ReadRandom: rand.Read},
 		Scanner: p.Scanner,
@@ -61,8 +62,8 @@ func (p *OpenAIResponseOutput) RawOptions(c *gin.Context, resp *http.Response, p
 		SilentRefusal: func() error {
 			return NewOpenAISilentRefusalFailoverError(c, ExecutionErrorProvider(provider), resp.Header.Get("x-request-id"))
 		},
-		CacheOutput: p.Reasoning.FromOutput,
-		CacheEvents: p.Reasoning.FromEvents,
+		CacheOutput: reasoning.FromOutput,
+		CacheEvents: reasoning.FromEvents,
 	}
 	if provider != nil {
 		options.ProviderID = provider.Record.ID

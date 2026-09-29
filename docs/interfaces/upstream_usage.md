@@ -64,7 +64,7 @@ Zhipu payg 没有公开余额协议，DeepSeek coding 也不是合法提供商�
 <a id="native_usage_adapters"></a>
 ## 原生查询与提供商编排
 
-Sub2API、New API、Zivv 的固定查询及归一化位于 `upstream/usageprovider`，Kimi、Zhipu、DeepSeek 分别进入对应的 `upstream` 包。`provider/provider.UpstreamUsageExecution` 持有唯一适配器注册表，`NewUpstreamUsageHTTPExecution` 从原生提供商记录构造凭据、代理、TLS 和 Header 技术快照。app 只投影出站配置与共享传输端口，直接绑定唯一 `provider.UpstreamUsageService`。
+Sub2API、New API、Zivv 的固定查询及归一化位于 `upstream/usageprovider`，Kimi、Zhipu、DeepSeek、MiniMax、OpenCode 分别进入对应的 `upstream` 包。`provider/provider.UpstreamUsageExecution` 持有唯一适配器注册表，`NewUpstreamUsageHTTPExecution` 从原生提供商记录构造凭据、代理、TLS 和 Header 技术快照。app 只投影出站配置与共享传输端口，直接绑定唯一 `provider.UpstreamUsageService`。OpenCode Go 根路径统一补 `/v1/usage`，已含版本段时不重复；Zen 不发送该查询。
 
 `upstream/usageview` 保存归一化值、错误和验证规则，provider 通过类型别名复用这些值。`upstream/usagecontract.Request` 是本次查询的技术快照，敏感字段不参与 JSON 或普通字符串格式化；共享 `upstream/internal/usageclient` 保留固定读取上限、请求头覆盖顺序、状态映射和响应体关闭。原生包不读取提供商仓储，不写健康、调度或资金。
 

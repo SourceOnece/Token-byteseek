@@ -20,7 +20,7 @@
             {{ t('keys.importToTf') }}
           </button>
           <button v-if="allowImport" type="button" class="dropdown-item" role="menuitem" @click="emitAction('import')">
-            <Icon name="upload" size="sm" class="text-violet-500" :stroke-width="2" />
+            <Icon name="upload" size="sm" class="text-amber-700 dark:text-amber-300" :stroke-width="2" />
             {{ t('keys.importToCcSwitch') }}
           </button>
           <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>

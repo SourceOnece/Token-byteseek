@@ -17,7 +17,7 @@ func TestOpenAIImportCapabilityCleanupMigration(t *testing.T) {
 	_, err := tx.ExecContext(ctx, `CREATE SCHEMA import_capability_test; SET LOCAL search_path TO import_capability_test;
 CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMPTZ DEFAULT NOW());`)
 	require.NoError(t, err)
-	migration, err := dbmigrations.FS.ReadFile("271_clean_openai_import_capability_state.sql")
+	migration, err := dbmigrations.FS.ReadFile("279_clean_openai_import_capability_state.sql")
 	require.NoError(t, err)
 	_, err = tx.ExecContext(ctx, string(migration))
 	require.NoError(t, err, "缺失模板不得创建新设置")

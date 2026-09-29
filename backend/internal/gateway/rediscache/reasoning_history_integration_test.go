@@ -15,7 +15,7 @@ import (
 func (s *GatewayCacheSuite) TestReasoningHistoryNativeRoundTrip() {
 	store, ok := s.cache.(session.ReasoningContentCache)
 	require.True(s.T(), ok)
-	history := &session.ReasoningHistory{Cache: store}
+	history := (&session.ReasoningHistory{Cache: store}).Scoped("fixture-user-key-provider")
 	history.FromInput(json.RawMessage(`[{"type":"reasoning","id":"ri_request","summary":[{"type":"summary_text","text":"request history"}]}]`))
 	require.Equal(s.T(), "request history", history.Lookup("ri_request"))
 
@@ -24,9 +24,12 @@ func (s *GatewayCacheSuite) TestReasoningHistoryNativeRoundTrip() {
 	history.FromOutput(output)
 	require.Equal(s.T(), "response history", history.Lookup("ri_response"))
 	for _, id := range []string{"ri_request", "ri_response"} {
-		ttl, err := s.RDB.TTL(s.Ctx, "reasoning_content:"+id).Result()
+		ttl, err := s.RDB.TTL(s.Ctx, "reasoning_content:"+session.ScopedReasoningKey("fixture-user-key-provider", id)).Result()
 		require.NoError(s.T(), err)
 		s.AssertTTLWithin(ttl, time.Second, 7*24*time.Hour)
 	}
 	require.Empty(s.T(), history.Lookup("missing_reasoning"))
+	// 相同条目 ID 不得跨用户、Key 或提供商读取。
+	require.Empty(s.T(), history.Scoped("other-user-key-provider").Lookup("ri_request"))
+	require.Empty(s.T(), (&session.ReasoningHistory{Cache: store}).Lookup("ri_request"))
 }

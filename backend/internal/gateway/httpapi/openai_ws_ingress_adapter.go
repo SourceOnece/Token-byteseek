@@ -16,25 +16,26 @@ import (
 
 // wsIngressAdapter 绑定单个技术操作，不拥有会话循环或恢复决策。
 type wsIngressAdapter struct {
-	RecoverAcquireFn func(context.Context) error
-	ParseFn          func(raw []byte, replace bool, turn int) (gatewayws.ClientPayload, error)
-	ReadFn           func() ([]byte, error)
-	GenerateHashFn   func(body []byte) string
-	StoreDisabledFn  func(body []byte) bool
-	ShouldBridgeFn   func(payload gatewayws.ClientPayload) bool
-	InvalidFn        func(groupID int64, hash string) map[string]struct{}
-	StripFn          func(body []byte, digests map[string]struct{}, key string, id int64, turn int) ([]byte, int)
-	BridgeIdentityFn func(body []byte, model string) (string, error)
-	BridgeFn         func(ctx context.Context, input gatewayws.ClientPayload, body []byte, identity string, turn int) (*gatewayws.ForwardResult, error)
-	SetStateFn       func(state, hash string)
-	OpenPoolFn       func(payload gatewayws.ClientPayload) error
-	AcquireFn        func(turn int, preferred string, force bool, allowRecovery bool) (gatewayws.ConnLease, error)
-	RelayFn          func(turn int, lease gatewayws.ConnLease, payload gatewayws.ClientPayload) (*gatewayws.ForwardResult, error)
-	PinFn            func(id int64, conn string) bool
-	UnpinFn          func(id int64, conn string)
-	HeaderFn         func(key string) string
-	UpdateHeadersFn  func(payload gatewayws.ClientPayload, state string)
-	BindOwnerFn      func(ctx context.Context, responseID string)
+	RecoverAcquireFn    func(context.Context) error
+	ParseFn             func(raw []byte, replace bool, turn int) (gatewayws.ClientPayload, error)
+	ReadFn              func() ([]byte, error)
+	GenerateHashFn      func(body []byte) string
+	StoreDisabledFn     func(body []byte) bool
+	ShouldBridgeFn      func(payload gatewayws.ClientPayload) bool
+	InvalidFn           func(groupID int64, hash string) map[string]struct{}
+	StripFn             func(body []byte, digests map[string]struct{}, key string, id int64, turn int) ([]byte, int)
+	BridgeIdentityFn    func(body []byte, model string) (string, error)
+	BridgeFn            func(ctx context.Context, input gatewayws.ClientPayload, body []byte, identity string, turn int) (*gatewayws.ForwardResult, error)
+	SetStateFn          func(state, hash string)
+	ResetBridgeWindowFn func()
+	OpenPoolFn          func(payload gatewayws.ClientPayload) error
+	AcquireFn           func(turn int, preferred string, force bool, allowRecovery bool) (gatewayws.ConnLease, error)
+	RelayFn             func(turn int, lease gatewayws.ConnLease, payload gatewayws.ClientPayload) (*gatewayws.ForwardResult, error)
+	PinFn               func(id int64, conn string) bool
+	UnpinFn             func(id int64, conn string)
+	HeaderFn            func(key string) string
+	UpdateHeadersFn     func(payload gatewayws.ClientPayload, state string)
+	BindOwnerFn         func(ctx context.Context, responseID string)
 }
 
 func (p *wsIngressAdapter) Parse(raw []byte, replace bool, turn int) (gatewayws.ClientPayload, error) {
@@ -63,6 +64,13 @@ func (p *wsIngressAdapter) Bridge(ctx context.Context, input gatewayws.ClientPay
 	return p.BridgeFn(ctx, input, body, identity, turn)
 }
 func (p *wsIngressAdapter) SetRequestState(state, hash string) { p.SetStateFn(state, hash) }
+
+// 新上下文窗口不能沿用上一窗口的工具声明与调用映射。
+func (p *wsIngressAdapter) ResetBridgeWindow() {
+	if p.ResetBridgeWindowFn != nil {
+		p.ResetBridgeWindowFn()
+	}
+}
 func (p *wsIngressAdapter) OpenPool(payload gatewayws.ClientPayload) error {
 	return p.OpenPoolFn(payload)
 }

@@ -5,6 +5,9 @@ package app
 // NewProviderTestsForTest 仅供外部集成测试调用真实组合根，不扩大生产 API。
 var NewProviderTestsForTest = provideProviderTests
 
+// 定制检测与原生管理测试复用实际 OpenAI 执行器。
+var NewOpenAITestExecutorForTest = provideOpenAITestExecutor
+
 // 以下入口仅在集成测试中组合真实平台探测与应用关闭屏障。
 var (
 	NewAntigravityRetryForTest = provideAntigravityRetry

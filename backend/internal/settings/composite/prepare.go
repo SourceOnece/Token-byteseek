@@ -196,7 +196,16 @@ func Prepare(ctx context.Context, settings *Snapshot, options PrepareOptions) (m
 		updates["ops_advanced_settings"] = string(raw)
 	}
 
-	_, teamValues, teamErr := team.PrepareAdminSettings(team.AdminSettings{TeamEnabled: settings.TeamEnabled, TeamInvitationCooldownSeconds: &settings.TeamInvitationCooldownSeconds, TeamInvitationHourlyLimit: &settings.TeamInvitationHourlyLimit})
+	// 内部快照的零值表示未提供该项；HTTP 层仍严格拒绝显式提交的 0。
+	// 避免更新其他设置时将未提供的团队限制写回为默认值。
+	teamInput := team.AdminSettings{TeamEnabled: settings.TeamEnabled}
+	if settings.TeamInvitationCooldownSeconds != 0 {
+		teamInput.TeamInvitationCooldownSeconds = &settings.TeamInvitationCooldownSeconds
+	}
+	if settings.TeamInvitationHourlyLimit != 0 {
+		teamInput.TeamInvitationHourlyLimit = &settings.TeamInvitationHourlyLimit
+	}
+	_, teamValues, teamErr := team.PrepareAdminSettings(teamInput)
 	if teamErr != nil {
 		return nil, teamErr
 	}

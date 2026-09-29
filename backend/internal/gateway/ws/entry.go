@@ -564,7 +564,8 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 			)
 		}
 
-		if preemptCtx, cleanupPreempt, armed := selection.Target.BeginPreemption(ctx, wsFirstMessage); armed {
+		preemptInput := WithPreemptionNotifier(ctx, func() { p.Close(1013, PreemptCloseReason) })
+		if preemptCtx, cleanupPreempt, armed := selection.Target.BeginPreemption(preemptInput, wsFirstMessage); armed {
 			ctx = preemptCtx
 			defer cleanupPreempt()
 		}

@@ -67,7 +67,6 @@ BEGIN
             AND (NOT COALESCE(credentials, '{}') ? 'model_whitelist'
                 OR credentials->'model_whitelist' IN ('null'::jsonb, '[]'::jsonb));
 
-        -- 已归档完整旧分组；原生结构不再有平台列，重放不能再次转换已扁平化的规则。
         ALTER TABLE groups DROP COLUMN platform;
         ALTER TABLE groups DROP COLUMN IF EXISTS is_default;
     END IF;
@@ -81,7 +80,7 @@ BEGIN
         INSERT INTO removed_platform_quota_archive (source_table, source_id, original_record)
         SELECT 'user_platform_quotas', id::text, to_jsonb(q) FROM user_platform_quotas q
         ON CONFLICT (source_table, source_id) DO NOTHING;
-        -- ByteSeek 保留用户平台额度；分组跨平台后按实际执行提供商归属核验和累计。
+        DROP TABLE user_platform_quotas;
     END IF;
 END $$;
 
@@ -94,7 +93,12 @@ SELECT 'settings', key, to_jsonb(s) FROM settings s WHERE key IN (
     'auth_source_default_wechat_platform_quotas', 'auth_source_default_github_platform_quotas',
     'auth_source_default_google_platform_quotas', 'auth_source_default_dingtalk_platform_quotas'
 ) ON CONFLICT (source_table, source_id) DO NOTHING;
--- 额度默认值与授权来源默认值继续由 ByteSeek 额度扩展拥有，不因去掉 groups.platform 清空。
+DELETE FROM settings WHERE key IN (
+    'default_platform_quotas', 'auth_source_default_email_platform_quotas',
+    'auth_source_default_linuxdo_platform_quotas', 'auth_source_default_oidc_platform_quotas',
+    'auth_source_default_wechat_platform_quotas', 'auth_source_default_github_platform_quotas',
+    'auth_source_default_google_platform_quotas', 'auth_source_default_dingtalk_platform_quotas'
+);
 
 UPDATE accounts SET extra = extra - 'mixed_scheduling' WHERE extra ? 'mixed_scheduling';
 

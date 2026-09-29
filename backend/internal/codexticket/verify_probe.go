@@ -135,7 +135,7 @@ func (s *CodexTicketService) validateTicketChain(ctx context.Context, cancel con
 		return false, reason == "timeout" || ctx.Err() == nil, reason
 	}
 	if response != nil && response.Body != nil {
-		defer response.Body.Close()
+		defer func() { _ = response.Body.Close() }()
 	}
 	return check("verify", response)
 }

@@ -16,6 +16,11 @@ import (
 
 func (p *OpenAIResponseOutput) ImageOptions(c *gin.Context) upstreamopenai.ImageResponseOptions {
 	return upstreamopenai.ImageResponseOptions{
+		ObserveResponseModel: func(model string) {
+			if observer := UpstreamResponseModelObserverFromContext(c); observer != nil {
+				observer.Observe(model, true)
+			}
+		},
 		PreserveContentType: p.Options.Configured && !p.Options.ResponseHeadersEnabled,
 
 		ReadLimit: func() int64 { return p.Options.ReadLimit },

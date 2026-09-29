@@ -4,7 +4,6 @@ import (
 	"context"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 type codexTicketFilterKey struct{}
@@ -13,7 +12,6 @@ type codexTicketMatchedIDsKey struct{}
 // 仅同一个管理员请求复用匹配ID，不跨请求缓存账号凭据或实时票据状态。
 type codexTicketFilterRequest struct {
 	value   string
-	mu      sync.Mutex
 	matches map[string][]int64
 }
 

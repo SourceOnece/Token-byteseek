@@ -5,9 +5,9 @@
         <button type="button" class="min-w-0 break-all border-2 border-current px-1 py-0.5 text-left font-bold text-bh-blue [box-shadow:var(--bh-shadow-sm)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none focus-visible:outline focus-visible:outline-2 dark:text-blue-300" :aria-label="t('admin.accounts.tickets.openDetails', { model: row.model })" data-testid="ticket-model-detail" @click="selectedModel = row.model">{{ modelLabel(row.model) }}</button>
         <span class="break-words font-semibold tabular-nums" :class="row.latest && !failed ? latestColor(row) : color(row)" :data-testid="row.latest && !failed ? 'ticket-latest' : undefined">{{ row.latest && !failed ? latestLabel(row) : label(row) }}</span>
       </div>
-      <p v-if="row.latest && !failed" class="mt-0.5 break-words text-[10px] tabular-nums" :class="color(row)" data-testid="ticket-current">{{ t('admin.accounts.tickets.currentTicket') }}：{{ label(row) }}</p>
+      <p v-if="row.latest && !failed" class="mt-0.5 break-words text-xs tabular-nums" :class="color(row)" data-testid="ticket-current">{{ t('admin.accounts.tickets.currentTicket') }}：{{ label(row) }}</p>
       <p v-if="!failed && (row.attempts || row.latest?.diagnostic?.attempt)" class="mt-1 font-bold text-bh-blue dark:text-blue-300" data-testid="ticket-attempt-count">{{ t((row.latest ? row.latest.state : row.state) === 'ready' ? 'admin.accounts.ticketWorkbench.successRound' : 'admin.accounts.ticketWorkbench.currentRound', { count: row.latest?.diagnostic?.attempt || row.attempts }) }}<span v-if="row.max_attempts === 0"> · ∞</span></p>
-      <p v-if="!failed && displayDiagnostic(row)?.http_status" class="mt-1 break-words text-[10px] text-gray-500 dark:text-gray-400" data-testid="ticket-diagnostic">
+      <p v-if="!failed && displayDiagnostic(row)?.http_status" class="mt-1 break-words text-xs text-gray-500 dark:text-gray-400" data-testid="ticket-diagnostic">
         HTTP {{ displayDiagnostic(row)?.http_status }} ·
         <CodexTicketLength v-if="displayDiagnostic(row)?.header_present" :actual="displayDiagnostic(row)!.header_length" :target="row.target_length || 292" :signal="displayDiagnostic(row)?.degraded_signal" />
         <span v-else>{{ t('admin.accounts.tickets.noHeader') }}</span>

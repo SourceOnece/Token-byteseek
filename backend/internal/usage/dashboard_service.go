@@ -476,7 +476,15 @@ func (s *DashboardService) GetAPIKeyUsageTrend(ctx context.Context, startTime, e
 	return trend, nil
 }
 
-func (s *DashboardService) GetUserUsageTrend(ctx context.Context, startTime, endTime time.Time, granularity string, limit int) ([]UserUsageTrendPoint, error) {
+func (s *DashboardService) GetUserUsageTrend(ctx context.Context, startTime, endTime time.Time, granularity string, limit int, metric ...string) ([]UserUsageTrendPoint, error) {
+	if len(metric) > 0 && metric[0] == "actual_cost" {
+		if reader, ok := s.usageRepo.(interface {
+			GetUserUsageTrendMetric(context.Context, time.Time, time.Time, string, int, string) ([]UserUsageTrendPoint, error)
+		}); ok {
+			return reader.GetUserUsageTrendMetric(ctx, startTime, endTime, granularity, limit, "actual_cost")
+		}
+		return nil, fmt.Errorf("spending trend query unavailable")
+	}
 	trend, err := s.usageRepo.GetUserUsageTrend(ctx, startTime, endTime, granularity, limit)
 	if err != nil {
 		return nil, fmt.Errorf("get user usage trend: %w", err)

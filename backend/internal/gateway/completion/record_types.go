@@ -33,9 +33,9 @@ type Result struct {
 
 // TokenUsage 在完成边界区分普通输入与供应商返回的总输入，具体桶转换由对应入口执行。
 type TokenUsage struct {
-	InputTokens, OutputTokens, CacheCreationInputTokens, CacheReadInputTokens         int
-	CacheCreation5mTokens, CacheCreation1hTokens, ImageInputTokens, ImageOutputTokens int
-	Speed                                                                             string
+	InputTokens, OutputTokens, CacheCreationInputTokens, CacheReadInputTokens                               int
+	CacheCreation5mTokens, CacheCreation1hTokens, ImageInputTokens, ImageCacheReadTokens, ImageOutputTokens int
+	Speed                                                                                                   string
 }
 type AudioUsage struct {
 	Mode            string

@@ -21,6 +21,8 @@ var DefaultBedrockModelMapping = map[string]string{
 	"claude-opus-4-1":          "us.anthropic.claude-opus-4-1-20250805-v1:0",
 	"claude-opus-4-20250514":   "us.anthropic.claude-opus-4-20250514-v1:0",
 	// Claude Sonnet
+	// sub2api v0.2.10 的 Sonnet 5.5 仅有全局推理 ID，不生成地域前缀。
+	"claude-sonnet-5-5":          "global.anthropic.claude-sonnet-5-5",
 	"claude-sonnet-5":            "us.anthropic.claude-sonnet-5",
 	"claude-sonnet-4-6-thinking": "us.anthropic.claude-sonnet-4-6",
 	"claude-sonnet-4-6":          "us.anthropic.claude-sonnet-4-6",

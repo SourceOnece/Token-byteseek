@@ -39,7 +39,6 @@ export interface TimePricingConfig {
 }
 
 export interface ModelPricingEntry {
-  legacy_group_override?: boolean
   id?: number
   models: string[]
   billing_mode: BillingMode

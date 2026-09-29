@@ -22,6 +22,7 @@ func ImagesForwardResult(result upstream.AttemptResult, parsed *media.ImageReque
 			CacheReadInputTokens:     result.Usage.CacheReadInputTokens,
 			CacheCreationInputTokens: result.Usage.CacheCreationInputTokens,
 			ImageInputTokens:         result.ImageInputTokens,
+			ImageCacheReadTokens:     result.ImageCacheReadTokens,
 			ImageOutputTokens:        result.Usage.ImageOutputTokens,
 		},
 

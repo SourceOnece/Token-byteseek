@@ -70,6 +70,10 @@
           </div>
         </div>
 
+        <div v-if="hasPositiveValue(model.pricing?.max_reasoning_effort_multiplier)" class="mb-2 flex flex-wrap items-baseline justify-between gap-2 border-2 px-2 py-1 text-sm" :class="[pricingRowClass, pricingTextClass]" data-testid="pricing-max-multiplier">
+          <span>{{ t('admin.pricing.maxReasoningEffortMultiplier') }}</span>
+          <strong :class="pricingTextClass">Max × {{ model.pricing.max_reasoning_effort_multiplier }}</strong>
+        </div>
         <!-- 完整定价允许在窄卡片内换行，避免隐藏的抽屉也撑大父网格。 -->
         <div v-if="activeRows.length > 0" class="space-y-2.5" data-testid="pricing-rows">
           <div

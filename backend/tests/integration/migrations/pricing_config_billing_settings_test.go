@@ -17,7 +17,7 @@ import (
 // 新配置字段采用默认值，旧分组价格不搬迁；价卡和关联保持原样。
 func TestMigration281MovesSettingsWithoutCopyingGroupValues(t *testing.T) {
 	ctx := context.Background()
-	tx := historicalTx(t, "281_")
+	tx := historicalTx(t, "289_")
 	_, err := tx.ExecContext(ctx, `INSERT INTO groups(id,name,rate_multiplier,free_openai_fast,long_context_pricing_enabled,web_search_price_per_call,model_pricing) VALUES(98101,'priced',2,true,false,8,'[{"models":["old"],"input_price":9}]')`)
 	require.NoError(t, err)
 	_, err = tx.ExecContext(ctx, `INSERT INTO pricing_configs(id,name) VALUES(98101,'shared')`)
@@ -26,7 +26,7 @@ func TestMigration281MovesSettingsWithoutCopyingGroupValues(t *testing.T) {
 	require.NoError(t, err)
 	_, err = tx.ExecContext(ctx, `INSERT INTO pricing_config_model_pricing(pricing_config_id,models,billing_mode,input_price) VALUES(98101,'["shared-model"]','token',0.125)`)
 	require.NoError(t, err)
-	migration, err := migrations.FS.ReadFile("281_pricing_config_billing_settings.sql")
+	migration, err := migrations.FS.ReadFile("289_pricing_config_billing_settings.sql")
 	require.NoError(t, err)
 	for range 2 {
 		_, err = tx.ExecContext(ctx, string(migration))

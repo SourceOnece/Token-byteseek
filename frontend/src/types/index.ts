@@ -1658,7 +1658,6 @@ export interface OpenAITextProtocolState {
   openai_responses_continuation_supported?: boolean
 }
 
-export type { PlatformQuotaItem, PlatformQuotaPlatform, PlatformQuotaWindow } from "@/api/admin/users"
 
 export interface CreateProviderRequest {
 	// 新号票据草稿随创建提交，现有账号导入不覆盖原规则。

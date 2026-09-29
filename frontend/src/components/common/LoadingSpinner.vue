@@ -64,7 +64,7 @@ const colorClass = computed(() => {
 .bh-loader-circle {
   width: 1.6em;
   height: 1.6em;
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   background: var(--bh-red);
 }
 

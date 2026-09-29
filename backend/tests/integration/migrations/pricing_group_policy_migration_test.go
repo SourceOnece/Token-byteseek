@@ -12,7 +12,7 @@ import (
 )
 
 func TestMigration274PreservesPricesAndCopiesPolicies(t *testing.T) {
-	tx := historicalTx(t, "274_")
+	tx := historicalTx(t, "282_")
 	ctx := context.Background()
 	_, err := tx.ExecContext(ctx, `
 INSERT INTO groups (id,name,platform) VALUES (91001,'migration274-a','openai'),(91002,'migration274-b','openai'),(91003,'migration274-c','anthropic');
@@ -32,7 +32,7 @@ INSERT INTO api_keys(id,user_id,key,name) VALUES (95001,95001,'migration274-key'
 INSERT INTO usage_logs(user_id,api_key_id,account_id,model,channel_id,total_cost,actual_cost) VALUES (95001,95001,95001,'real',92001,1.23,2.34);
 `)
 	require.NoError(t, err)
-	sql, err := migrations.FS.ReadFile("274_split_pricing_configs_and_group_policy.sql")
+	sql, err := migrations.FS.ReadFile("282_split_pricing_configs_and_group_policy.sql")
 	require.NoError(t, err)
 	_, err = tx.ExecContext(ctx, string(sql))
 	require.NoError(t, err)

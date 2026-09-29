@@ -9,10 +9,10 @@ describe('useChartTheme', () => {
     const theme = scope.run(() => useChartTheme())!
 
     setTheme(false)
-    expect(theme.colors.value).toEqual({ text: '#3F3F46', muted: '#71717A', grid: '#E4E4E7' })
+    expect(theme.colors.value).toEqual({ text: '#403D36', muted: '#6B655A', grid: '#D8D1C2' })
 
     setTheme(true)
-    expect(theme.colors.value).toEqual({ text: '#E4E4E7', muted: '#A1A1AA', grid: '#3F3F46' })
+    expect(theme.colors.value).toEqual({ text: '#EAE5D8', muted: '#B7B1A4', grid: '#514D43' })
 
     scope.stop()
     setTheme(false)

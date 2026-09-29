@@ -103,6 +103,9 @@ func ParsePricingEntries(rawData map[string]json.RawMessage) (map[string]*LiteLL
 		if entry.InputCostPerImageToken != nil {
 			pricing.InputCostPerImageToken = *entry.InputCostPerImageToken
 		}
+		if entry.CacheReadInputImageTokenCost != nil {
+			pricing.CacheReadInputImageTokenCost = *entry.CacheReadInputImageTokenCost
+		}
 
 		// 显式 long_context 字段（包括显式 0）优先于目录中的 above 绝对价字段。
 		hasExplicitLongContext := entry.LongContextInputTokenThreshold != nil ||

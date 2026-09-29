@@ -49,7 +49,7 @@ func TestGatewayBackgroundTasksUseApplicationOwner(t *testing.T) {
 	for _, name := range []string{"messages", "openai"} {
 		t.Run(name, func(t *testing.T) {
 			tasks := lifecycle.NewTasks()
-			openai := provideOpenAITextExecutor(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, provideAnthropicPromptCache(), selection.NewCompatible(selection.CompatibleDependencies{}, selection.DefaultOptions()), nil, tasks)
+			openai := provideOpenAITextExecutor(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, provideAnthropicPromptCache(), selection.NewCompatible(selection.CompatibleDependencies{}, selection.DefaultOptions()), nil, tasks, nil)
 			run := gatewayCommitEffects(nil, nil, nil, nil, tasks, nil).Funds.Background
 			if name == "openai" {
 				run = openai.CodexUsage.Go

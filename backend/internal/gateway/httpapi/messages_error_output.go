@@ -49,6 +49,13 @@ func (h MessagesErrorOutput) EnsureResponse(c *gin.Context, streamStarted bool) 
 	if c == nil || c.Writer == nil {
 		return false
 	}
+	// 客户端已离开时不再写错误帧，避免把主动取消算作上游失败。
+	if c.Request != nil && c.Request.Context().Err() != nil {
+		if !c.Writer.Written() {
+			c.Status(StatusClientClosedRequest)
+		}
+		return false
+	}
 	if IsResponseCommitted(c) {
 		return false
 	}

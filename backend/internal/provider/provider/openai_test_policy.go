@@ -107,6 +107,10 @@ func (p *OpenAIProbePolicy) ApplyUserAgent(ctx context.Context, value *provider.
 	if req == nil {
 		return
 	}
+	// Live/WS 先构造独立 Header，此时尚无目标 URL。
+	if req.URL != nil {
+		ApplyCompatibleClientUserAgent(value, req.URL.String(), req.Header)
+	}
 	if match.Matched {
 		if agent := strings.TrimSpace(match.UpstreamUserAgent); agent != "" {
 			req.Header.Set("user-agent", agent)

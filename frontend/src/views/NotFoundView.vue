@@ -110,7 +110,7 @@ function goBack(): void {
 
 /* 中间的 0 用圆形（圆也是基本形） */
 .bh-404-digit-circle {
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   height: clamp(84px, 18vw, 130px);
   margin-bottom: clamp(10px, 2vw, 15px);
 }
@@ -135,7 +135,7 @@ function goBack(): void {
   left: 8%;
   width: 120px;
   height: 120px;
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   border: 15px solid var(--bh-blue);
   opacity: 0.85;
   animation: bh-404-float 6s ease-in-out infinite;

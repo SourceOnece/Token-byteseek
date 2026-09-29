@@ -32,10 +32,11 @@ type ResponsesFailedBody struct {
 }
 
 // ResponsesFailedEvent 是写入 SSE data 行的顶层结构。
-// 故意不带 sequence_number：spec 标记可选，且本函数被调用时无法可靠拿到 last seq。
+// 合成错误流从 0 编号；严格客户端要求终止帧包含该字段。
 type ResponsesFailedEvent struct {
-	Type     string              `json:"type"`
-	Response ResponsesFailedBody `json:"response"`
+	SequenceNumber int                 `json:"sequence_number"`
+	Type           string              `json:"type"`
+	Response       ResponsesFailedBody `json:"response"`
 }
 
 // WriteResponsesFailedSSE 在流已经开始后，按 OpenAI Responses 协议写出 response.failed SSE 事件。

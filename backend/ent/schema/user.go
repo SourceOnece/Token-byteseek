@@ -123,8 +123,6 @@ func (User) Fields() []ent.Field {
 
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
-		// 兼容现有用户的平台额度，原生跨平台分组不能在升级时清空用户限额。
-		edge.To("platform_quotas", UserPlatformQuota.Type),
 		edge.To("api_keys", APIKey.Type),
 		edge.To("redeem_codes", RedeemCode.Type),
 		edge.To("redeem_code_usages", RedeemCodeUsage.Type),

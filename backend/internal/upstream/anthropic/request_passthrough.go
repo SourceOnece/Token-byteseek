@@ -4,6 +4,7 @@ package anthropic
 import (
 	"bytes"
 	"context"
+	claudewire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"net/http"
 	"strings"
 
@@ -18,6 +19,9 @@ func BuildRequestPassthrough(ctx context.Context, body []byte, token string, opt
 	}
 	clientHeaders := options.ClientHeaders
 	model := strings.TrimSpace(gjson.GetBytes(body, "model").String())
+	if err := claudewire.ValidateClaude55Request(body, model); err != nil {
+		return nil, nil, err
+	}
 	filterSet, err := options.OriginalPolicy(ctx, GetHeaderRaw(clientHeaders, "anthropic-beta"), model)
 	if err != nil {
 		return nil, nil, err
@@ -36,6 +40,7 @@ func BuildRequestPassthrough(ctx context.Context, body []byte, token string, opt
 			return nil, nil, blockErr
 		}
 	}
+	clientBeta = FilterSonnet55ToolsetBeta(clientBeta, body, model)
 	if sanitized, changed := SanitizeAnthropicBodyForBetaTokens(body, clientBeta); changed {
 		body = sanitized
 	}
@@ -77,6 +82,7 @@ func BuildRequestPassthrough(ctx context.Context, body []byte, token string, opt
 
 	// 提供商级请求头覆写（最终生效，覆盖上面所有来源的同名头）
 	options.ApplyOverrides(req.Header)
+	FilterSonnet55ToolsetBetaHeader(req.Header, body, model)
 
 	return req, body, nil
 }

@@ -325,6 +325,8 @@ function mountModal(provider = buildProvider()) {
     },
     global: {
       stubs: {
+        // 工作台自身的加载与持久化由独立测试覆盖，这里只断言原生账号字段。
+        CodexTicketAccountSettings: { template: '<div />', methods: { prepareSave: async () => null } },
         BaseDialog: BaseDialogStub,
         Select: SelectStub,
         Icon: true,

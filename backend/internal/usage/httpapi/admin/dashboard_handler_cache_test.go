@@ -18,6 +18,13 @@ type dashboardUsageRepoCacheProbe struct {
 	usage.UsageLogRepository
 	trendCalls      atomic.Int32
 	usersTrendCalls atomic.Int32
+	spendingCalls   atomic.Int32
+}
+
+// 金额排行使用不同候选数据，用来检查指标间不能共享缓存。
+func (r *dashboardUsageRepoCacheProbe) GetUserUsageTrendMetric(ctx context.Context, start, end time.Time, granularity string, limit int, metric string) ([]usage.UserUsageTrendPoint, error) {
+	r.spendingCalls.Add(1)
+	return []usage.UserUsageTrendPoint{{Date: "2026-03-11", UserID: 9, ActualCost: 100}}, nil
 }
 
 func (r *dashboardUsageRepoCacheProbe) GetUsageTrendWithFilters(
@@ -130,4 +137,16 @@ func TestDashboardHandler_GetUserUsageTrend_UsesCache(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec2.Code)
 	require.Equal(t, "hit", rec2.Header().Get("X-Snapshot-Cache"))
 	require.Equal(t, int32(1), repo.usersTrendCalls.Load())
+	for index := range 2 {
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/dashboard/users-trend?start_date=2026-03-01&end_date=2026-03-07&granularity=day&limit=8&metric=actual_cost", nil))
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.Contains(t, rec.Body.String(), `"user_id":9`)
+		if index == 0 {
+			require.Equal(t, "miss", rec.Header().Get("X-Snapshot-Cache"))
+		} else {
+			require.Equal(t, "hit", rec.Header().Get("X-Snapshot-Cache"))
+		}
+	}
+	require.Equal(t, int32(1), repo.spendingCalls.Load())
 }

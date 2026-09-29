@@ -53,14 +53,12 @@ type ProviderStatsPricingRule struct {
 
 // ModelPricingEntry 价卡模型定价条目
 type ModelPricingEntry struct {
-	// 迁移的旧分组价保持优先级，管理员修改价卡时原样带回此标记。
-	LegacyGroupOverride bool        `json:"legacy_group_override,omitempty"`
-	ID                  int64       `json:"id,omitempty"`
-	PricingConfigID     int64       `json:"pricing_config_id,omitempty"`
-	Models              []string    `json:"models"`
-	BillingMode         BillingMode `json:"billing_mode"`
-	PriceMultiplier     *float64    `json:"price_multiplier"`     // 最终定价倍率；nil 表示不调整价格
-	FastModeMultiplier  *float64    `json:"fast_mode_multiplier"` // OpenAI Fast 模式收费倍率；nil 表示沿用模型默认 Fast 定价
+	ID                 int64       `json:"id,omitempty"`
+	PricingConfigID    int64       `json:"pricing_config_id,omitempty"`
+	Models             []string    `json:"models"`
+	BillingMode        BillingMode `json:"billing_mode"`
+	PriceMultiplier    *float64    `json:"price_multiplier"`     // 最终定价倍率；nil 表示不调整价格
+	FastModeMultiplier *float64    `json:"fast_mode_multiplier"` // OpenAI Fast 模式收费倍率；nil 表示沿用模型默认 Fast 定价
 	// FastMultiplier 是新的通用 Fast/priority 倍率；为空时兼容旧字段。
 	FastMultiplier *float64 `json:"fast_multiplier,omitempty"`
 	// FlexMultiplier 是价卡级 Flex 倍率；为空时使用系统默认 0.5。

@@ -149,7 +149,7 @@ func (r *Store) CodexQualityCounts(ctx context.Context) (map[string]int, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	counts := map[string]int{"full": 0, "degraded": 0, "failed": 0, "untested": 0, "cancelled": 0, "stale": 0, "skipped": 0}
 	for rows.Next() {
 		var status string

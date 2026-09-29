@@ -1,6 +1,6 @@
 # 上游提供商能力矩阵
 
-本文统一记录 TokenRouter 九个平台、七类提供商和公开网关协议的当前支持边界。它是提供商能力的路由入口，不替代各平台专题中的认证、转换、限流和诊断细节，也不把数据导入器能够保存的历史组合视为正式支持。
+本文统一记录 TokenRouter 十一个平台、七类提供商和公开网关协议的当前支持边界。它是提供商能力的路由入口，不替代各平台专题中的认证、转换、限流和诊断细节，也不把数据导入器能够保存的历史组合视为正式支持。
 
 ## 章节导航
 
@@ -12,7 +12,7 @@
 
 ## 判定口径
 
-后端常量定义九个平台 `anthropic`、`openai`、`gemini`、`antigravity`、`grok`、`qoder`、`kimi`、`zhipu`、`deepseek`，以及七类提供商 `oauth`、`setup-token`、`apikey`、`upstream`、`bedrock`、`service_account`、`cosy`。矩阵使用以下等级：
+后端常量定义十一个平台 `anthropic`、`openai`、`gemini`、`antigravity`、`grok`、`qoder`、`kimi`、`zhipu`、`deepseek`、`minimax`、`opencode_go`，以及七类提供商 `oauth`、`setup-token`、`apikey`、`upstream`、`bedrock`、`service_account`、`cosy`。矩阵使用以下等级：
 
 - 正式支持：管理端有创建或授权流程，平台运行时也有对应凭据、转发和维护契约。
 - 兼容保留：通用创建/导入层可以保存，或旧运行路径仍会识别，但管理端不推荐该组合；不能据此推导完整平台能力。
@@ -34,6 +34,8 @@
 | Kimi | 不支持 | 不支持 | 正式支持 | 不支持 | 不支持 | 不支持 | 不支持 |
 | Zhipu | 不支持 | 不支持 | 正式支持 | 不支持 | 不支持 | 不支持 | 不支持 |
 | DeepSeek | 不支持 | 不支持 | 正式支持 | 不支持 | 不支持 | 不支持 | 不支持 |
+| MiniMax | 不支持 | 不支持 | 正式支持 | 不支持 | 不支持 | 不支持 | 不支持 |
+| OpenCode Zen/Go | 不支持 | 不支持 | 正式支持 | 不支持 | 不支持 | 不支持 | 不支持 |
 
 API Key 提供商可以在管理员列表配置并手动查询上游用量。普通兼容上游缺省使用 Sub2API 适配器，New API 和 Zivv 必须显式选择；Kimi、Zhipu、DeepSeek 则由平台与 `provider_mode` 自动选择固定只读适配器，Zhipu payg 因没有公开余额协议而明确不支持。手动查询协议错误只影响展示，不改变转发资格。API Key 行同时保留 TokenRouter 本地今日统计/本地配额和上游余额/周期限额两个来源；只有显式开启的 CN 周期监控可以把同一查询结果写入统一快照并形成身份绑定的临时停调，详见[API Key 上游用量查询](upstream_usage.md)。
 
@@ -64,7 +66,7 @@ Kimi、Zhipu、DeepSeek 的提供商类型、模式与协议矩阵由本页和[A
 | --- | --- | --- |
 | Anthropic Messages：`/v1/messages` | 分组允许 Messages 后，从组内筛出可处理模型的提供商，再按实际提供商转换或原生转发 | 各平台契约；共同链路见[网关请求生命周期](../architecture/gateway_request_lifecycle.md) |
 | Anthropic token count：`/v1/messages/count_tokens`、`/messages/count_tokens` | Anthropic、OpenAI、Gemini 进入各自统计路径，Grok 与三个 CN 平台使用本地估算；Antigravity、Qoder 明确返回 `404`，Anthropic Bedrock 提供商也不支持 | 各平台契约；客户端仍应保留本地估算回退 |
-| OpenAI Responses：`/v1/responses`、`/responses` 及允许的子路径 | 最终分组允许 Responses 时，按选中提供商进入九个平台的既有适配；Kimi/Zhipu 不要求提供商拥有上游原生 Responses，DeepSeek 可显式使用其 `/responses`；Qoder 不支持 Responses 子路径和 WebSocket | 各平台契约；WebSocket/Realtime 重点见 [OpenAI 上游](openai_upstream.md) |
+| OpenAI Responses：`/v1/responses`、`/responses` 及允许的子路径 | 最终分组允许 Responses 时，按选中提供商进入十一个平台的既有适配；Kimi/Zhipu 不要求提供商拥有上游原生 Responses，DeepSeek 可显式使用其 `/responses`；Qoder 不支持 Responses 子路径和 WebSocket | 各平台契约；WebSocket/Realtime 重点见 [OpenAI 上游](openai_upstream.md) |
 | OpenAI Chat Completions：`/v1/chat/completions`、`/chat/completions` | 最终分组允许 Chat 后按组内候选的原生能力和允许转换路线选择提供商 | 各平台契约 |
 | 模型与用量：`/v1/models`、`/models`、`/v1/usage` | 按 Key、分组和提供商解析可请求模型与本地额度；不是上游模型列表或账单的原样代理 | [模型目录与市场](model_catalog_and_marketplace.md)及各平台专题 |
 | Embeddings：`/v1/embeddings`、`/embeddings` | 分组允许 Embeddings，候选提供商具备 OpenAI Embeddings 能力 | [OpenAI 上游](openai_upstream.md) |

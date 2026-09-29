@@ -677,7 +677,7 @@ func TestOpenAIResponseFlush_TerminalEventEndsStreamWithoutEOF(t *testing.T) {
 	body := "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":7,\"output_tokens\":5}}}\n\n"
 	reader := &hangingOpenAISSEAfterTerminal{payload: []byte(body), release: make(chan struct{})}
 	recorder := newOpenAIResponseFlushRecorder()
-	resultCh, errCh := runOpenAIResponseFlushTestAsync(recorder, reader, config.GatewayConfig{StreamKeepaliveInterval: 1, StreamDataIntervalTimeout: 30})
+	resultCh, errCh := runOpenAIResponseFlushTestAsync(recorder, reader, OpenAIResponseOptions{StreamKeepaliveInterval: 1, StreamDataIntervalTimeout: 30})
 	t.Cleanup(func() { _ = reader.Close() })
 
 	select {
@@ -685,8 +685,8 @@ func TestOpenAIResponseFlush_TerminalEventEndsStreamWithoutEOF(t *testing.T) {
 		require.NoError(t, err)
 		result := <-resultCh
 		require.NotNil(t, result)
-		require.Equal(t, 7, result.usage.InputTokens)
-		require.Equal(t, 5, result.usage.OutputTokens)
+		require.Equal(t, 7, result.Usage.InputTokens)
+		require.Equal(t, 5, result.Usage.OutputTokens)
 	case <-time.After(3 * time.Second):
 		t.Fatal("stream did not end after terminal event; still waiting for upstream EOF")
 	}

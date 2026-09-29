@@ -12,7 +12,7 @@ import (
 
 // 迁移只清除退役配置，分组协议、其他功能和价格规则保持原值；重复执行安全。
 func TestMigration275RemovesRedundantPricingControls(t *testing.T) {
-	tx := historicalTx(t, "275_")
+	tx := historicalTx(t, "283_")
 	ctx := context.Background()
 	_, err := tx.ExecContext(ctx, `
 INSERT INTO pricing_configs(id,name,apply_pricing_to_account_stats) VALUES (97501,'migration275',true);
@@ -22,7 +22,7 @@ INSERT INTO pricing_config_groups(pricing_config_id,group_id) VALUES (97501,9750
 INSERT INTO pricing_config_model_pricing(id,pricing_config_id,platform,models,input_price) VALUES (97501,97501,'openai','["gpt-test"]',0);
 `)
 	require.NoError(t, err)
-	data, err := migrations.FS.ReadFile("275_remove_redundant_pricing_controls.sql")
+	data, err := migrations.FS.ReadFile("283_remove_redundant_pricing_controls.sql")
 	require.NoError(t, err)
 	for range 2 {
 		_, err = tx.ExecContext(ctx, string(data))

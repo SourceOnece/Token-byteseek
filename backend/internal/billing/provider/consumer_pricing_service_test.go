@@ -768,8 +768,8 @@ func TestPricingService_Gemini37FlashThinkingTiersUseBasePricing(t *testing.T) {
 }
 
 func TestBillingService_Gemini37FlashThinkingTierFallbacksAreBillable(t *testing.T) {
-	svc := NewBillingService(&config.Config{}, nil)
-	tokens := UsageTokens{InputTokens: 1_000_000, OutputTokens: 1_000_000, CacheReadTokens: 1_000_000}
+	svc := newBillingFixture(nil)
+	tokens := billingpricing.UsageTokens{InputTokens: 1_000_000, OutputTokens: 1_000_000, CacheReadTokens: 1_000_000}
 
 	for _, model := range []string{
 		"gemini-3.7-flash",
@@ -813,8 +813,8 @@ func TestPricingService_Gemini38FlashThinkingTiersUseBasePricing(t *testing.T) {
 }
 
 func TestBillingService_Gemini38FlashThinkingTierFallbacksAreBillable(t *testing.T) {
-	svc := NewBillingService(&config.Config{}, nil)
-	tokens := UsageTokens{InputTokens: 1_000_000, OutputTokens: 1_000_000, CacheReadTokens: 1_000_000}
+	svc := newBillingFixture(nil)
+	tokens := billingpricing.UsageTokens{InputTokens: 1_000_000, OutputTokens: 1_000_000, CacheReadTokens: 1_000_000}
 
 	for _, model := range []string{
 		"gemini-3.8-flash",

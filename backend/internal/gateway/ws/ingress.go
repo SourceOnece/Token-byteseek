@@ -62,7 +62,24 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 		bridgeReplayInputExists := false
 		var bridgeProviderFailoverInput []json.RawMessage
 		bridgeProviderFailoverInputExists := false
+		lastBridgeWindowID := ""
 		for turn := 1; ; turn++ {
+			next, boundary, err := NormalizeContextWindowBoundary(currentBridgePayload.PayloadRaw, lastBridgeWindowID)
+			if err != nil {
+				return err
+			}
+			if boundary.Changed {
+				currentBridgePayload.PayloadRaw, currentBridgePayload.PayloadBytes = next, len(next)
+				currentBridgePayload.PreviousResponseID = ""
+				bridgeReplayInput, bridgeProviderFailoverInput = nil, nil
+				bridgeReplayInputExists, bridgeProviderFailoverInputExists = false, false
+				if reset, ok := p.(interface{ ResetBridgeWindow() }); ok {
+					reset.ResetBridgeWindow()
+				}
+			}
+			if boundary.WindowID != "" {
+				lastBridgeWindowID = boundary.WindowID
+			}
 			turnStartedAt := time.Now()
 			if hooks != nil && hooks.TurnStarted != nil {
 				hooks.TurnStarted(turn, turnStartedAt)
@@ -446,7 +463,22 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 		skipBeforeTurn = true
 		return true
 	}
+	lastTurnWindowID := ""
 	for {
+		next, boundary, err := NormalizeContextWindowBoundary(currentPayload, lastTurnWindowID)
+		if err != nil {
+			return err
+		}
+		if boundary.Changed {
+			currentPayload, currentPayloadBytes = next, len(next)
+			lastTurnResponseID, lastTurnPayload, lastTurnStrictState = "", nil, nil
+			lastTurnReplayInput, currentTurnReplayInput = nil, nil
+			lastTurnReplayInputExists, currentTurnReplayInputExists = false, false
+			turnPrevRecoveryTried = false
+		}
+		if boundary.WindowID != "" {
+			lastTurnWindowID = boundary.WindowID
+		}
 		turnStartedAt := time.Now()
 		if hooks != nil && hooks.TurnStarted != nil {
 			hooks.TurnStarted(turn, turnStartedAt)

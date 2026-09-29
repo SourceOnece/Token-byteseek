@@ -11,7 +11,7 @@ import (
 )
 
 func TestMigration203EnforcesOpenAILongContextBillingWriteInvariant(t *testing.T) {
-	tx := historicalTx(t, "282_")
+	tx := historicalTx(t, "290_")
 	ctx := context.Background()
 	migrationSQL, err := dbmigrations.FS.ReadFile("203_default_openai_long_context_billing.sql")
 	require.NoError(t, err)

@@ -32,7 +32,7 @@ func TestPlatformIndependentPricingMigration(t *testing.T) {
 	files, err := fs.ReadDir(migrations.FS, ".")
 	require.NoError(t, err)
 	for _, file := range files {
-		if file.Name() >= "276_" {
+		if file.Name() >= "284_" {
 			continue
 		}
 		data, err := migrations.FS.ReadFile(file.Name())

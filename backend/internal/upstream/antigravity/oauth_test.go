@@ -572,7 +572,7 @@ func TestConstants_值正确(t *testing.T) {
 	if RedirectURI != "http://localhost:8085/callback" {
 		t.Errorf("RedirectURI 不匹配: got %s", RedirectURI)
 	}
-	if GetUserAgentForContext(context.Background()) != "antigravity/1.23.2 windows/amd64" {
+	if GetUserAgentForContext(context.Background()) != "antigravity/2.9.1 windows/amd64" {
 		t.Errorf("UserAgent 不匹配: got %s", GetUserAgentForContext(context.Background()))
 	}
 	if SessionTTL != 30*time.Minute {

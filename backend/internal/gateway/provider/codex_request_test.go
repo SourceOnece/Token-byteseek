@@ -505,7 +505,7 @@ func TestApplyCodexOAuthTransform_PreservesAllowedTools(t *testing.T) {
 				before, err := json.Marshal(reqBody)
 				require.NoError(t, err)
 				reqBody["model"] = "gpt-6-astra"
-				result := applyCodexOAuthTransform(reqBody, true, false)
+				result := gatewayprovider.ApplyCodexOAuthTransform(reqBody, true, false)
 				require.NoError(t, result.Error)
 				after, err := json.Marshal(map[string]any{
 					"tools": reqBody["tools"], "input": reqBody["input"], "tool_choice": reqBody["tool_choice"],
@@ -525,7 +525,7 @@ func TestNormalizeCodexToolChoice_InvalidAllowedToolsNeverBecomesAuto(t *testing
 		{"type": "allowed_tools", "mode": "required", "tools": []any{map[string]any{"type": "function", "name": "missing"}}},
 	} {
 		reqBody := map[string]any{"tool_choice": choice}
-		require.False(t, normalizeCodexToolChoice(reqBody))
+		require.False(t, openai.NormalizeCodexToolChoice(reqBody))
 		// The upstream owns schema validation. A malformed restriction must never
 		// silently become permission to call every supplied tool.
 		require.Equal(t, choice, reqBody["tool_choice"])
@@ -539,12 +539,12 @@ func TestApplyCodexOAuthTransform_AllowedToolsKeepsReservedNameReferences(t *tes
 	reqBody := map[string]any{
 		"model": "gpt-6-astra", "tools": []any{declaration}, "tool_choice": choice,
 	}
-	result := applyCodexOAuthTransform(reqBody, true, false)
+	result := gatewayprovider.ApplyCodexOAuthTransform(reqBody, true, false)
 	require.NoError(t, result.Error)
 	require.Equal(t, choice, reqBody["tool_choice"])
-	require.Equal(t, codexPythonToolAlias, declaration["name"])
-	require.Equal(t, codexPythonToolAlias, reference["name"])
-	require.Equal(t, "python", result.ToolNameReverse[codexPythonToolAlias])
+	require.Equal(t, openai.CodexPythonToolAlias, declaration["name"])
+	require.Equal(t, openai.CodexPythonToolAlias, reference["name"])
+	require.Equal(t, "python", result.ToolNameReverse[openai.CodexPythonToolAlias])
 }
 
 func TestApplyCodexOAuthTransform_DowngradesUnknownToolChoice(t *testing.T) {
@@ -1598,7 +1598,7 @@ func TestApplyCodexOAuthTransform_GPT6AstraSuppliesModelSpecificInstructions(t *
 		"model": "gpt-6-astra",
 	}
 
-	result := applyCodexOAuthTransform(reqBody, true, false)
+	result := gatewayprovider.ApplyCodexOAuthTransform(reqBody, true, false)
 
 	instructions, ok := reqBody["instructions"].(string)
 	require.True(t, ok)

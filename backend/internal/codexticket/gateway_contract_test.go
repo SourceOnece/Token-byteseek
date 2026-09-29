@@ -92,7 +92,9 @@ func TestTicketHTTPInjectsAndObservesWithoutRewriting(t *testing.T) {
 	read, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, body, string(read))
-	require.Equal(t, []string{"model_mismatch"}, s.cache.(*gatewayTicketCache).observations)
+	cache, ok := s.cache.(*gatewayTicketCache)
+	require.True(t, ok)
+	require.Equal(t, []string{"model_mismatch"}, cache.observations)
 	require.True(t, s.Blocks(context.Background(), a, "gpt-6-astra"))
 }
 
@@ -147,7 +149,8 @@ func TestLateTicketResponseDoesNotRevokeReplacement(t *testing.T) {
 	req := ticketRequest(t)
 	require.NoError(t, s.ApplyRequest(context.Background(), a, "gpt-6-astra", req))
 	key := codexTicketKey(cfg, a, "gpt-6-astra", "synthetic-a")
-	cache := s.cache.(*gatewayTicketCache)
+	cache, ok := s.cache.(*gatewayTicketCache)
+	require.True(t, ok)
 	cache.values[key] = "replacement"
 	resp := &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"object":"response","status":"completed","model":"different"}`))}
 	s.ObserveResponse(req, resp)

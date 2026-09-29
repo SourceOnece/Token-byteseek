@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/tidwall/gjson"
 	"io"
 	"log/slog"
 	"net/http"
@@ -737,7 +738,7 @@ func (s *OpenAIProviderTest) ExecuteImageAPIKey(c *TestRun, ctx context.Context,
 	return nil
 }
 
-// ExecuteImageOAuth 使用 OAuth 的 Codex Responses 图片工具。
+// ExecuteImageOAuth 与业务转发共用模型分流，原生图片接口使用非流式 JSON。
 func (s *OpenAIProviderTest) ExecuteImageOAuth(c *TestRun, ctx context.Context, value *providercore.Record, modelID, prompt string) error {
 	credentialProvider := value
 	if value.IsShadow() {
@@ -759,7 +760,7 @@ func (s *OpenAIProviderTest) ExecuteImageOAuth(c *TestRun, ctx context.Context, 
 	c.Begin(true)
 
 	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "test_start", Model: modelID})
-	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "content", Text: "Calling Codex /responses image tool...\n"})
+	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "content", Text: "Calling Codex image API...\n"})
 
 	parsed := &upstream.ImageRequest{
 		Endpoint: upstream.OpenAIImagesGenerationsEndpoint,
@@ -768,12 +769,12 @@ func (s *OpenAIProviderTest) ExecuteImageOAuth(c *TestRun, ctx context.Context, 
 	}
 	upstream.ApplyOpenAIImagesDefaults(parsed)
 
-	responsesBody, err := openai.BuildOpenAIImagesResponsesRequest(parsed, parsed.Model)
+	responsesBody, targetURL, err := openai.BuildImagesOAuthPayload(parsed, parsed.Model)
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Failed to build image request: %s", err.Error()))
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://chatgpt.com/backend-api/codex/responses", bytes.NewReader(responsesBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, targetURL, bytes.NewReader(responsesBody))
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, "Failed to create request")
 	}
@@ -796,6 +797,9 @@ func (s *OpenAIProviderTest) ExecuteImageOAuth(c *TestRun, ctx context.Context, 
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("OpenAI-Beta", "responses=experimental")
 	req.Header.Set("originator", openai.ResolveCodexOutboundIdentity("").Originator)
+	if openai.UsesCodexDirectImages(parsed.Model) {
+		req.Header.Set("Accept", "application/json")
+	}
 	if customUA := strings.TrimSpace(credentialProvider.GetOpenAIUserAgent()); customUA != "" {
 		req.Header.Set("User-Agent", customUA)
 	} else {
@@ -835,7 +839,12 @@ func (s *OpenAIProviderTest) ExecuteImageOAuth(c *TestRun, ctx context.Context, 
 	}
 	body = RedactAgentIdentityBody(ctx, s.read, credentialProvider, body)
 
-	results, _, _, _, _, err := openai.CollectOpenAIImagesFromResponsesBody(body, time.Now)
+	var results []openai.OpenAIResponsesImageResult
+	if openai.UsesCodexDirectImages(parsed.Model) && gjson.ValidBytes(body) {
+		results, err = openai.ParseDirectImagesResponse(body)
+	} else {
+		results, _, _, _, _, err = openai.CollectOpenAIImagesFromResponsesBody(body, time.Now)
+	}
 	if err != nil {
 		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Failed to parse image response: %s", err.Error()))
 	}

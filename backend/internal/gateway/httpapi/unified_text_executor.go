@@ -85,6 +85,7 @@ func (e *UnifiedTextExecutor) Chat(ctx context.Context, c *gin.Context, target *
 
 // prepare 在提供商确定后裁决其能表达的推理策略，每次切号均从该次输入重新计算。
 func (e *UnifiedTextExecutor) prepare(c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, source protocol.ProtocolID) ([]byte, error) {
+	rememberOpenCodeInboundSession(c, body)
 	SetOpsSelectedProvider(c, target.Record.ID, target.Record.Platform)
 	key, _ := EffectiveAPIKey(c)
 	var result []byte

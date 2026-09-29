@@ -91,7 +91,7 @@ func TestAntigravityTokenCacheKey(t *testing.T) {
 			provider: &Record{
 				ID: 200,
 			},
-			expected: "ag:account:200",
+			expected: "ag:provider:200",
 		},
 		{
 			name: "project_id_with_whitespace",
@@ -101,7 +101,7 @@ func TestAntigravityTokenCacheKey(t *testing.T) {
 					"project_id": "aicode-consumers",
 				},
 			},
-			expected: "ag:account:201",
+			expected: "ag:provider:201",
 		},
 		{
 			name: "empty_project_id_fallback_to_provider_id",

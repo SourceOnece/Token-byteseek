@@ -6,6 +6,8 @@
     @close="handleClose"
   >
     <form id="bulk-edit-provider-form" class="space-y-5" @submit.prevent="() => handleSubmit()">
+	  <!-- 保存时冻结整张表单，票据设置与其他字段共用一个提交入口。 -->
+      <fieldset :disabled="submitting" class="min-w-0 space-y-5">
       <!-- Info -->
       <div class="rounded-control bg-blue-50 p-4 dark:bg-blue-900/20">
         <p class="text-sm text-blue-700 dark:text-blue-400">
@@ -2334,7 +2336,7 @@ const handleSubmit = async () => {
     enableRpmLimit.value ||
     enableUserMsgQueue.value
 
-  if (!hasAnyFieldEnabled) {
+  if (!hasAnyFieldEnabled && !ticketSettings.value?.hasChanges) {
     appStore.showError(t('admin.providers.bulkEdit.noFieldsSelected'))
     return
   }
@@ -2379,6 +2381,7 @@ const submitBulkUpdate = async (baseUpdates: Record<string, unknown>) => {
 
   submitting.value = true
   const targetIds = [...props.providerIds]
+  let generalSettingsSaved = false
   try {
     // 票据独立校验但统一由原按钮提交；仅改票据时不发送空的普通批量更新。
     const saveTicket = await ticketSettings.value?.prepareSave()
@@ -2399,6 +2402,7 @@ const submitBulkUpdate = async (baseUpdates: Record<string, unknown>) => {
       : await adminAPI.providers.bulkUpdate(props.providerIds, updates)
     const success = res.success || 0
     const failed = res.failed || 0
+    generalSettingsSaved = success > 0
     if (saveTicket) {
       // 普通批量存在失败时不继续全选写票据，以免把失败账号也当作保存完成。
       if (failed > 0 || success !== props.providerIds.length) {
@@ -2420,8 +2424,12 @@ const submitBulkUpdate = async (baseUpdates: Record<string, unknown>) => {
       emit('updated')
       handleClose()
     }
-  } catch (error: any) {appStore.showError(error.message || t('admin.providers.bulkEdit.failed'))
-console.error('Error bulk updating providers:', error)
+  } catch (error: any) {
+    // 两阶段保存无法回滚已写入的普通配置，错误必须明确告知实际结果。
+    appStore.showError(generalSettingsSaved
+      ? t('admin.accounts.ticketPolicy.partialSave', { error: error.message })
+      : error.message || t('admin.providers.bulkEdit.failed'))
+    console.error('Error bulk updating providers:', error)
   } finally {
     submitting.value = false
   }

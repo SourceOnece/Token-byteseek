@@ -147,18 +147,28 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesOAuth(
 		return nil, err
 	}
 
-	responsesBody, err := buildOpenAIImagesResponsesRequest(parsed, upstreamModel)
+	responsesBody, targetURL, err := openai.BuildImagesOAuthPayload(gatewaymedia.NativeImageRequest(parsed), upstreamModel)
 	if err != nil {
 		return nil, err
 	}
 	upstreamCtx = openai.WithOpenAIImagesSelfBuiltRequest(upstreamCtx)
-	upstreamReq, err := s.Requests.Build(upstreamCtx, c, provider, responsesBody, token, true, parsed.StickySessionSeed(), false, tlsRouterMatch...)
+	direct := openai.UsesCodexDirectImages(upstreamModel)
+	var upstreamReq *http.Request
+	if direct {
+		// 复用新架构认证、隔离与指纹规则，只将图片负载送到原生 Images 端点。
+		upstreamReq, err = openai.BuildResponsesRequest(upstreamCtx, responsesBody, parsed.StickySessionSeed(), s.Requests.ResponseOptions(upstreamCtx, c, provider, token, targetURL, true, tlsRouterMatch...))
+	} else {
+		upstreamReq, err = s.Requests.Build(upstreamCtx, c, provider, responsesBody, token, true, parsed.StickySessionSeed(), false, tlsRouterMatch...)
+	}
 	if err != nil {
 		return nil, err
 	}
 	upstreamReq.Header.Set("Content-Type", "application/json")
 	upstreamReq.Header.Set("Accept", "text/event-stream")
 	upstreamReq.Header.Set("OpenAI-Beta", "responses=experimental")
+	if direct && !parsed.Stream {
+		upstreamReq.Header.Set("Accept", "application/json")
+	}
 
 	proxyURL := ""
 	if provider.Record.ProxyID != nil && provider.Record.Proxy != nil {
@@ -166,6 +176,12 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesOAuth(
 	}
 
 	options := s.Output.ImageOptions(c)
+	if direct {
+		options.DirectModel = requestModel
+		options.DirectFormat = parsed.ResponseFormat
+		options.DirectOutputFormat = parsed.OutputFormat
+		options.ExpectedImages = max(parsed.N, 1)
+	}
 	var legacyHTTPResult *forwardcore.OpenAIResult
 	httpFailure := false
 	retryAgent := false
@@ -287,7 +303,7 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesOAuth(
 	}
 	result, err := (mediaprovider.Images{Options: *target}).Execute(upstreamCtx, upstream.AttemptInput{Protocol: protocolID, ResponseModel: requestModel, Stream: parsed.Stream}, ResponseSink{Writer: c.Writer})
 	if retryAgent {
-		return s.forwardOpenAIImagesOAuth(requeststate.WithAgentTaskRecovery(ctx), c, provider, parsed, groupMappedModel)
+		return s.forwardOpenAIImagesOAuth(requeststate.WithAgentTaskRecovery(ctx), c, provider, parsed, groupMappedModel, tlsRouterMatch...)
 	}
 	if httpFailure {
 		return legacyHTTPResult, err

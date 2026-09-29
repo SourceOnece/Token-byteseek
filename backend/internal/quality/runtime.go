@@ -11,7 +11,6 @@ import (
 
 type Account = provider.Record
 type TestEvent = provider.TestEvent
-type accountTestContextKey string
 
 const PlatformOpenAI = "openai"
 const AccountTypeOAuth = "oauth"

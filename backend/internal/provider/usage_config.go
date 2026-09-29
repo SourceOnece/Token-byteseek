@@ -159,12 +159,17 @@ func CNUpstreamUsageAdapterName(provider *Record) string {
 	if provider == nil || !provider.IsCNProvider() {
 		return ""
 	}
+	if provider.IsOpenCodeGoPlan() {
+		return UpstreamUsageAdapterOpenCodeGo
+	}
 	if provider.IsCodingPlan() {
 		switch provider.Platform {
 		case PlatformKimi:
 			return UpstreamUsageAdapterKimiCoding
 		case PlatformZhipu:
 			return UpstreamUsageAdapterZhipuCoding
+		case PlatformMiniMax:
+			return UpstreamUsageAdapterMiniMaxCoding
 		default:
 			return ""
 		}

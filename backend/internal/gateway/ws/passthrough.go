@@ -721,6 +721,12 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 	))
 
 	relayErr := relayExit.Err
+	// 已向客户端通知后续轮次重连，返回值也必须是会话关闭，不能再次回放首轮换号。
+	if turnCount > 0 {
+		if status, reason, ok := p.RelayClose(*relayExit, turnCount); ok && status == 1013 {
+			relayErr = p.CloseError(status, reason, relayErr)
+		}
+	}
 	var firstOutputTimeoutErr *FirstOutputTimeoutError
 	if errors.As(relayErr, &firstOutputTimeoutErr) {
 		deadline := firstOutputTimeoutErr.Deadline

@@ -30,7 +30,7 @@
         <Select v-model="row.protocol" class="min-w-0" :options="protocolOptions" :data-testid="`opencode-go-protocol-select-${index}`" :aria-label="t('admin.accounts.cnProviders.apiProtocol.title')" />
         <button
           type="button"
-          class="btn btn-danger h-9 w-9 p-0"
+          class="btn btn-danger btn-sm h-9 w-9 p-0"
           :title="t('admin.accounts.opencodeGo.protocolRules.remove')"
           :aria-label="t('admin.accounts.opencodeGo.protocolRules.remove')"
           @click="removeRow(index)"
@@ -40,7 +40,7 @@
       </div>
     </div>
     <div
-      class="mb-2 flex items-center gap-2 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:border-dark-600 dark:bg-dark-800/60 dark:text-gray-400"
+      class="mb-2 flex items-center gap-2 rounded-control border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:border-dark-600 dark:bg-dark-800/60 dark:text-gray-400"
       data-testid="opencode-go-protocol-fallback"
     >
       <span class="flex-1 font-mono">*</span>

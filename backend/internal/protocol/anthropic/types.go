@@ -59,6 +59,8 @@ type AnthropicContentBlock struct {
 	// Signature 携带提供方的加密推理（例如 xAI encrypted_content），使 Claude 多轮
 	// 客户端可以在后续轮次中原样回传。
 	Signature string `json:"signature,omitempty"`
+	// redacted_thinking 只回放上游签发的不透明数据。
+	Data string `json:"data,omitempty"`
 
 	// type=image
 	Source *AnthropicImageSource `json:"source,omitempty"`

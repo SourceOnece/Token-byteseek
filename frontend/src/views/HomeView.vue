@@ -154,7 +154,7 @@
               :title="t('home.exploreMarketplace')"
             >
               <div class="flex items-center justify-between border-b-2 border-gray-950 pb-3 dark:border-dark-100">
-                <span class="font-mono text-[10px] font-extrabold uppercase tracking-[0.24em] text-gray-600 dark:text-dark-200">LIVE ROUTE</span>
+                <span class="font-mono text-xs font-extrabold uppercase tracking-[0.24em] text-gray-600 dark:text-dark-200">LIVE ROUTE</span>
                 <span class="home-stage-live-dot"></span>
               </div>
               <p class="mt-4 truncate font-mono text-sm font-extrabold text-gray-950 dark:text-white">{{ homeRouteLabel }}</p>
@@ -1538,7 +1538,7 @@ onUnmounted(() => {
   width: 150px;
   height: 150px;
   border: 3px solid var(--bh-ink);
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   background: var(--bh-yellow);
   animation: bh-stage-pulse 4.5s ease-in-out infinite;
 }
@@ -1546,7 +1546,7 @@ onUnmounted(() => {
 .home-stage-ring {
   position: absolute;
   border: 3px solid var(--bh-blue);
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   pointer-events: none;
 }
 
@@ -1577,7 +1577,7 @@ onUnmounted(() => {
   right: 5px;
   width: 282px;
   height: 282px;
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   pointer-events: none;
   animation: bh-stage-spin 22s linear infinite;
 }
@@ -1585,7 +1585,7 @@ onUnmounted(() => {
 .home-stage-geometry-orbit {
   top: 69px;
   right: 48px;
-  z-index: 2;
+  z-index: 2; /* check-ui-allow: 本地几何层叠，不属于全局浮层。 */
   width: 194px;
   height: 194px;
   animation-duration: 12s;
@@ -1623,12 +1623,12 @@ onUnmounted(() => {
   width: 21px;
   height: 21px;
   border: 2px solid var(--bh-ink);
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   background: var(--bh-blue);
 }
 
 .home-stage-icon-cloud {
-  z-index: 2;
+  z-index: 2; /* check-ui-allow: 本地几何层叠，不属于全局浮层。 */
 }
 
 .home-stage-icon-node {
@@ -1692,7 +1692,7 @@ onUnmounted(() => {
   position: absolute;
   bottom: 28px;
   left: 28px;
-  z-index: 3;
+  z-index: 3; /* check-ui-allow: 本地几何层叠，不属于全局浮层。 */
   width: min(250px, calc(100% - 56px));
   padding: 18px;
   border: 3px solid var(--bh-ink);
@@ -1724,7 +1724,7 @@ onUnmounted(() => {
   width: 10px;
   height: 10px;
   border: 2px solid var(--bh-ink);
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   background: #10b981;
   animation: bh-stage-blink 1.8s ease-in-out infinite;
 }
@@ -1762,7 +1762,7 @@ onUnmounted(() => {
   position: absolute;
   top: 22px;
   left: 24px;
-  z-index: 3;
+  z-index: 3; /* check-ui-allow: 本地几何层叠，不属于全局浮层。 */
   padding: 4px 8px;
   border: 2px solid var(--bh-ink);
   background: var(--bh-red);

@@ -64,11 +64,11 @@ func (p *openAIRawFallbackAdapter) FastFallback(ctx context.Context, m string, b
 }
 
 func (p *openAIRawFallbackAdapter) RecacheInput(b json.RawMessage) {
-	p.s.Output.Reasoning.FromInput(b)
+	p.s.Output.Reasoning.Scoped(responsesReasoningScope(p.c, p.provider)).FromInput(b)
 }
 
 func (p *openAIRawFallbackAdapter) ReasoningContent(id string) string {
-	return p.s.Output.Reasoning.Lookup(id)
+	return p.s.Output.Reasoning.Scoped(responsesReasoningScope(p.c, p.provider)).Lookup(id)
 }
 
 func (p *openAIRawFallbackAdapter) EffectiveEffort(b, original []byte, models ...string) *string {
@@ -98,7 +98,7 @@ func (p *openAIRawFallbackAdapter) ResponsesError(ctx context.Context, r *http.R
 }
 
 func (p *openAIRawFallbackAdapter) RawOptions(r *http.Response, billing, model string, tier *string) openai.RawResponseOptions {
-	return p.s.Output.RawOptions(p.c, r, nil, billing, model, tier, p.errorWriter())
+	return p.s.Output.RawOptions(p.c, r, p.provider, billing, model, tier, p.errorWriter())
 }
 
 func (p *openAIRawFallbackAdapter) AnthropicToChat(r *protocolanthropic.AnthropicRequest) (*protocolopenai.ChatCompletionsRequest, error) {

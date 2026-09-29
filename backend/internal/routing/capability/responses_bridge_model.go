@@ -89,7 +89,8 @@ func normalizeResponsesBridgeModel(model string) string {
 }
 
 // ResponsesBridgeDropsSampling 判断模型是否为 Responses API 下不支持 temperature/top_p 的推理模型。
-// 当前所有 gpt-5.x 模型都按推理模型处理。
+// GPT-5 及后续数字代际保持同一约束，不能用字符串前缀漏掉 GPT-6。
 func ResponsesBridgeDropsSampling(model string) bool {
-	return strings.HasPrefix(model, "gpt-5")
+	major, _, ok := parseResponsesBridgeModelVersion(model)
+	return ok && major >= 5
 }

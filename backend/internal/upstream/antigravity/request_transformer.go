@@ -420,11 +420,6 @@ func buildGenerationConfig(req *ClaudeRequest) *GeminiGenerationConfig {
 // hasWebSearchTool 委托显式选用的内部 Gemini 工具方言。
 func hasWebSearchTool(tools []ClaudeTool) bool { return bridge.InternalHasWebSearchTool(tools) }
 
-// hasMixedToolInvocations 委托显式选用的内部 Gemini 工具方言。
-func hasMixedToolInvocations(declarations []GeminiToolDeclaration) bool {
-	return bridge.InternalHasMixedToolInvocations(declarations)
-}
-
 // buildTools 输出纯转换产生的诊断，保持原有工具处理行为。
 func buildTools(tools []ClaudeTool) []GeminiToolDeclaration {
 	result, diagnostics := bridge.BuildInternalGeminiTools(tools)

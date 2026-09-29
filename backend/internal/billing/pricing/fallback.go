@@ -1,12 +1,25 @@
 package pricing
 
 import (
+	claudewire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"strings"
 )
 
 // getFallbackPricing 根据模型系列获取回退价格
 func LookupFallbackPrice(prices map[string]*ModelPricing, model string, policy ModelPolicy) *ModelPricing {
 	modelLower := strings.ToLower(model)
+	for _, imageModel := range []string{"gpt-image-2.5-flare", "gpt-image-2.5-sunburst"} {
+		if modelLower == imageModel || modelLower == imageModel+"-2026-09-08" {
+			return prices[imageModel]
+		}
+	}
+	// 5.5 必须早于旧 Opus/Sonnet 家族兜底，避免使用旧模型价格。
+	if claudewire.IsOpus55(model) {
+		return prices["claude-opus-5-5"]
+	}
+	if claudewire.IsSonnet55(model) {
+		return prices["claude-sonnet-5-5"]
+	}
 
 	// 按模型系列匹配
 	// Fable 5.1 的别名必须先于 Fable 5，避免降级到旧缓存读取价。
@@ -59,6 +72,13 @@ func LookupFallbackPrice(prices map[string]*ModelPricing, model string, policy M
 	}
 	if strings.Contains(modelLower, "gemini-3.6-flash") || strings.Contains(modelLower, "gemini-3-6-flash") {
 		return prices["gemini-3.6-flash"]
+	}
+
+	for _, version := range []string{"3.7", "3.8"} {
+		name := "gemini-" + version + "-flash"
+		if strings.Contains(modelLower, name) || strings.Contains(modelLower, strings.ReplaceAll(name, ".", "-")) {
+			return prices[name]
+		}
 	}
 
 	// DeepSeek 官方模型按专属价卡，版本化名称和其它 deepseek-* 按 Flash 价卡兜底。

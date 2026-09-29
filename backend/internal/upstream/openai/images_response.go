@@ -17,21 +17,25 @@ import (
 
 // ImageResponseOptions 只提供本次输出和观测，不保存提供商或配置。
 type ImageResponseOptions struct {
-	PreserveContentType bool
-	Backfill            func([]byte) []byte
-	ReadLimit           func() int64
-	ReadBody            func(io.Reader) ([]byte, error)
-	ClassifyReadError   func(error) error
-	ResponseHeaders     func(http.Header, http.Header)
-	ObserveError        func(int, string, string)
-	WriteHTTPError      func(*OpenAIImagesUpstreamError) bool
-	EmptyOutput         func([]byte) error
-	Summary             func([]byte) string
-	AdjustedWrittenSize func() int
-	WrittenSize         func() int
-	StreamInterval      func() time.Duration
-	KeepaliveInterval   func() time.Duration
-	Logf                func(string, ...any)
+	// 原生 Images 分支复用图片交付、健康与计费状态机。
+	DirectModel, DirectFormat, DirectOutputFormat string
+	ExpectedImages                                int
+	ObserveResponseModel                          func(string)
+	PreserveContentType                           bool
+	Backfill                                      func([]byte) []byte
+	ReadLimit                                     func() int64
+	ReadBody                                      func(io.Reader) ([]byte, error)
+	ClassifyReadError                             func(error) error
+	ResponseHeaders                               func(http.Header, http.Header)
+	ObserveError                                  func(int, string, string)
+	WriteHTTPError                                func(*OpenAIImagesUpstreamError) bool
+	EmptyOutput                                   func([]byte) error
+	Summary                                       func([]byte) string
+	AdjustedWrittenSize                           func() int
+	WrittenSize                                   func() int
+	StreamInterval                                func() time.Duration
+	KeepaliveInterval                             func() time.Duration
+	Logf                                          func(string, ...any)
 }
 
 // WriteImagesStreamEvent 保留原图片事件、读取和断开收尾时序。
@@ -88,6 +92,9 @@ func ReadImagesOAuthNonStreaming(
 	if err != nil {
 		err = options.ClassifyReadError(err)
 		return wire.ForwardUsage{}, 0, nil, err
+	}
+	if options.DirectModel != "" && gjson.ValidBytes(body) {
+		return WriteDirectImagesJSON(resp, sink, options, body)
 	}
 
 	var usage wire.ForwardUsage
@@ -205,6 +212,45 @@ func ReadImagesOAuthStreaming(
 			appendFallbackText(gjson.GetBytes(dataBytes, "delta").String())
 		}
 		switch gjson.GetBytes(dataBytes, "type").String() {
+		case "image_generation.partial_image", "image_edit.partial_image", "image_generation.completed", "image_edit.completed":
+			if options.DirectModel == "" {
+				return
+			}
+			root := gjson.ParseBytes(dataBytes)
+			if options.ObserveResponseModel != nil {
+				options.ObserveResponseModel(root.Get("model").String())
+			}
+			if observed, ok := DirectImagesUsage(dataBytes); ok {
+				usage = observed
+			}
+			img := directImageMeta(root, root, options.DirectModel)
+			partial := strings.HasSuffix(root.Get("type").String(), ".partial_image")
+			if img.Result == "" && partial {
+				img.Result = root.Get("partial_image_b64").String()
+			}
+			if img.Result == "" {
+				processDataErr = options.EmptyOutput(dataBytes)
+				return
+			}
+			event := streamPrefix + ".completed"
+			var payload []byte
+			if partial {
+				event = streamPrefix + ".partial_image"
+				payload = BuildOpenAIImagesStreamPartialPayload(event, img.Result, root.Get("partial_image_index").Int(), format, root.Get("created_at").Int(), img, time.Now)
+			} else {
+				key := OpenAIResponsesImageResultKey("", img)
+				if _, exists := emitted[key]; exists {
+					return
+				}
+				emitted[key] = struct{}{}
+				imageCount = len(emitted)
+				if img.Size != "" {
+					imageOutputSizes = append(imageOutputSizes, img.Size)
+				}
+				payload = BuildOpenAIImagesStreamCompletedPayload(event, img, format, root.Get("created_at").Int(), []byte(root.Get("usage").Raw), time.Now)
+				processDataDone = imageCount >= max(options.ExpectedImages, 1)
+			}
+			TryWriteImagesStreamEvent(c, options, flusher, &clientDisconnected, &lastDownstreamWriteAt, event, payload)
 		case "response.image_generation_call.partial_image":
 			b64 := strings.TrimSpace(gjson.GetBytes(dataBytes, "partial_image_b64").String())
 			if b64 == "" {

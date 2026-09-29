@@ -167,6 +167,11 @@ func GetPassthroughOrDefault(upstreamMsg, defaultMsg string) string {
 
 // CleanGeminiRequest 清理 Gemini 请求体中的 Schema
 func CleanGeminiRequest(body []byte) ([]byte, error) {
+	var err error
+	body, err = NormalizeInternalGeminiTools(body)
+	if err != nil {
+		return nil, err
+	}
 	var payload map[string]any
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return nil, err
@@ -230,7 +235,8 @@ func PreserveChatCompletionTokenLimit(request *protocolopenai.ChatCompletionsReq
 	}
 }
 
-func EnableMixedGeminiToolInvocations(body []byte) ([]byte, error) {
+// NormalizeInternalGeminiTools 清除 v1internal 不接受的混合内置工具，仅影响此平台。
+func NormalizeInternalGeminiTools(body []byte) ([]byte, error) {
 	var request map[string]any
 	if err := json.Unmarshal(body, &request); err != nil {
 		return nil, err
@@ -244,8 +250,9 @@ func EnableMixedGeminiToolInvocations(body []byte) ([]byte, error) {
 				continue
 			}
 			_, hasSearch := tool["googleSearch"]
+			_, hasCode := tool["codeExecution"]
 			declarations, hasFunctions := tool["functionDeclarations"].([]any)
-			hasGoogleSearch = hasGoogleSearch || hasSearch
+			hasGoogleSearch = hasGoogleSearch || hasSearch || hasCode
 			hasFunctionDeclarations = hasFunctionDeclarations || hasFunctions && len(declarations) > 0
 		}
 	}
@@ -253,11 +260,23 @@ func EnableMixedGeminiToolInvocations(body []byte) ([]byte, error) {
 		return body, nil
 	}
 
-	toolConfig, _ := request["toolConfig"].(map[string]any)
-	if toolConfig == nil {
-		toolConfig = make(map[string]any)
-		request["toolConfig"] = toolConfig
+	tools, _ := request["tools"].([]any)
+	filtered := make([]any, 0, len(tools))
+	for _, raw := range tools {
+		tool, ok := raw.(map[string]any)
+		if !ok {
+			filtered = append(filtered, raw)
+			continue
+		}
+		delete(tool, "googleSearch")
+		delete(tool, "codeExecution")
+		if len(tool) > 0 {
+			filtered = append(filtered, tool)
+		}
 	}
-	toolConfig["includeServerSideToolInvocations"] = true
+	request["tools"] = filtered
+	if toolConfig, ok := request["toolConfig"].(map[string]any); ok {
+		delete(toolConfig, "includeServerSideToolInvocations")
+	}
 	return json.Marshal(request)
 }

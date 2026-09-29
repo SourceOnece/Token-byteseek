@@ -356,7 +356,7 @@ func (s *Antigravity) buildAntigravityCompatGeminiBody(
 		if err != nil {
 			return nil, err
 		}
-		body, err = antigravity.EnableMixedGeminiToolInvocations(body)
+		body, err = antigravity.NormalizeInternalGeminiTools(body)
 		if err != nil {
 			return nil, err
 		}

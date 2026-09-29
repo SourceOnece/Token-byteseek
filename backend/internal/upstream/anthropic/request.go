@@ -4,6 +4,7 @@ package anthropic
 import (
 	"bytes"
 	"context"
+	claudewire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"net/http"
 	"strconv"
 	"strings"
@@ -40,6 +41,9 @@ func SetAPIKeyAuthHeader(header http.Header, bearer bool, token string) {
 }
 
 func BuildRequest(ctx context.Context, body []byte, token, tokenType, modelID string, reqStream, mimicClaudeCode bool, options RequestOptions) (*http.Request, []byte, error) {
+	if err := claudewire.ValidateClaude55Request(body, modelID); err != nil {
+		return nil, nil, err
+	}
 	body = StripDeferredToolCacheControl(body)
 	targetURL, err := options.URL()
 	if err != nil {
@@ -114,6 +118,7 @@ func BuildRequest(ctx context.Context, body []byte, token, tokenType, modelID st
 	}
 
 	// 能力维度 body sanitize：与最终 anthropic-beta header 对称
+	finalBetaHeader = FilterSonnet55ToolsetBeta(finalBetaHeader, body, modelID)
 	if sanitized, changed := SanitizeAnthropicBodyForBetaTokens(body, finalBetaHeader); changed {
 		body = sanitized
 	}
@@ -189,6 +194,7 @@ func BuildRequest(ctx context.Context, body []byte, token, tokenType, modelID st
 	// 提供商级请求头覆写（仅 anthropic/openai api_key 提供商启用时生效；OAuth 路径 no-op）。
 	// 放在所有 header 逻辑之后，确保配置值对同名头拥有最终决定权。
 	options.ApplyOverrides(req.Header)
+	FilterSonnet55ToolsetBetaHeader(req.Header, body, modelID)
 
 	if options.Debug != nil {
 		options.Debug(req, body, map[string]string{"url": req.URL.String(), "token_type": tokenType, "mimic_claude_code": strconv.FormatBool(mimicClaudeCode), "fingerprint_applied": strconv.FormatBool(fingerprint != nil), "enable_fp": strconv.FormatBool(enableFP), "enable_mpt": strconv.FormatBool(enableMPT)})

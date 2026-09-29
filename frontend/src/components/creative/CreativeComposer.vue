@@ -421,7 +421,7 @@ function autosize(): void {
 
 .bh-creative-send {
   border: 2px solid var(--bh-ink);
-  border-radius: 50%;
+  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
   background: var(--bh-red);
   color: #fff;
   box-shadow: 3px 3px 0 var(--bh-ink);

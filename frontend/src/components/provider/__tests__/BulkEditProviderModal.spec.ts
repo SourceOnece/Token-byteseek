@@ -5,7 +5,7 @@ import BulkEditProviderModal from '../BulkEditProviderModal.vue'
 import ModelWhitelistSelector from '../ModelWhitelistSelector.vue'
 import { adminAPI } from '@/api/admin'
 import { ticketAccountAPI } from '@/api/admin/codexTickets'
-import { ticketSettingsFixture } from '@/components/admin/account/__tests__/ticketSettingsFixture'
+import { ticketSettingsFixture } from '@/components/admin/provider/__tests__/ticketSettingsFixture'
 
 vi.mock('@/api/admin/codexTickets', () => ({ ticketAccountAPI: { get: vi.fn(), update: vi.fn() }, testTicketProxy: vi.fn() }))
 vi.mock('@/api/admin/proxies', () => ({ getAll: vi.fn().mockResolvedValue([]) }))
@@ -131,8 +131,16 @@ function createProvider(overrides: Record<string, unknown> = {}) {
   } as any
 }
 
+// 工作台测试加载真实组件，并按账号返回同一配置快照。
+function ticketModal() {
+  vi.mocked(adminAPI.providers.getById).mockImplementation(async id => createProvider({ id, platform: 'openai', type: 'oauth' }))
+  return mountModal({ selectedPlatforms: ['openai'], selectedTypes: ['oauth'] })
+}
+
 describe('BulkEditProviderModal', () => {
   beforeEach(() => {
+    vi.mocked(ticketAccountAPI.get).mockReset().mockImplementation(async id => ticketSettingsFixture(id))
+    vi.mocked(ticketAccountAPI.update).mockReset().mockResolvedValue([{ ...ticketSettingsFixture(), revision: 'r2' }])
     vi.mocked(adminAPI.providers.getById).mockReset()
     vi.mocked(adminAPI.providers.bulkUpdate).mockReset()
     vi.mocked(adminAPI.providers.checkMixedChannelRisk).mockReset()
@@ -165,14 +173,14 @@ describe('BulkEditProviderModal', () => {
     await w.get('[data-testid="ticket-rule-target_length"]').setValue('356')
     await w.get('form').trigger('submit')
     await flushPromises()
-    expect(adminAPI.accounts.bulkUpdate).not.toHaveBeenCalled()
+    expect(adminAPI.providers.bulkUpdate).not.toHaveBeenCalled()
     expect(ticketAccountAPI.update).toHaveBeenCalledWith([1, 2], { mode: 'on', rules: { target_length: 356 } }, undefined)
     expect(w.emitted('close')).toHaveLength(1)
     w.unmount()
   })
-  it.each([{ parent_account_id:9 },{ credentials:{auth_mode:' AgentIdentity '} }])('批量混入不支持票据的账号时隐藏工作台：%s', async extra => {
+  it.each([{ parent_provider_id:9 },{ credentials:{auth_mode:' AgentIdentity '} }])('批量混入不支持票据的账号时隐藏工作台：%s', async extra => {
     const w=ticketModal()
-    vi.mocked(adminAPI.accounts.getById).mockImplementation(async id=>createAccount({id,platform:'openai',type:'oauth',...(id===2?extra:{})}))
+    vi.mocked(adminAPI.providers.getById).mockImplementation(async id=>createProvider({id,platform:'openai',type:'oauth',...(id===2?extra:{})}))
     await w.setProps({show:false});await w.setProps({show:true});await flushPromises()
     expect(w.find('[data-testid="ticket-account-settings"]').exists()).toBe(false)
     expect(ticketAccountAPI.get).not.toHaveBeenCalled()
@@ -184,11 +192,11 @@ describe('BulkEditProviderModal', () => {
     await flushPromises()
     await w.get('#bulk-edit-concurrency-enabled').setValue(true)
     await w.get('[data-testid="ticket-edit-mode"]').setValue(true)
-    if (outcome === 'partial') vi.mocked(adminAPI.accounts.bulkUpdate).mockResolvedValueOnce({ success: 1, failed: 1, results: [] } as any)
+    if (outcome === 'partial') vi.mocked(adminAPI.providers.bulkUpdate).mockResolvedValueOnce({ success: 1, failed: 1, results: [] } as any)
     if (outcome === 'ticket_failure') vi.mocked(ticketAccountAPI.update).mockRejectedValueOnce(new Error('ticket failed'))
     await w.get('form').trigger('submit')
     await flushPromises()
-    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledTimes(1)
+    expect(adminAPI.providers.bulkUpdate).toHaveBeenCalledTimes(1)
     expect(ticketAccountAPI.update).toHaveBeenCalledTimes(outcome === 'partial' ? 0 : 1)
     if (outcome === 'success') expect(w.emitted('close')).toHaveLength(1)
     else expect(w.emitted('close')).toBeUndefined()

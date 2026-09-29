@@ -138,7 +138,7 @@ func TestResponsesInputToChatMessages_MidConversationDeveloperBecomesUser(t *tes
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"continue"}]}
 	]`)
 
-	messages, err := responsesInputToChatMessages("", input)
+	messages, err := responsesInputToChatMessagesWithOptions("", input, nil)
 	require.NoError(t, err)
 	require.Len(t, messages, 5)
 

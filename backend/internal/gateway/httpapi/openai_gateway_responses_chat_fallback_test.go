@@ -5,6 +5,7 @@ package httpapi
 import (
 	"bytes"
 	"context"
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -254,7 +255,9 @@ func TestForwardResponsesChatFallbackRestoresEncryptedReasoningFromCache(t *test
 		Header:     http.Header{"Content-Type": []string{"application/json"}},
 		Body:       io.NopCloser(strings.NewReader(`{"id":"chatcmpl_restore","object":"chat.completion","model":"deepseek-reasoner","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}}`)),
 	}}
-	cache := &reasoningCacheStub{getResp: map[string]string{"item_enc": "cached thinking"}}
+	c.Set("api_key", &apikey.APIKey{ID: 41, UserID: 101})
+	scope := responsesReasoningScope(c, forceChatResponsesFallbackProvider())
+	cache := &reasoningCacheStub{getResp: map[string]string{session.ScopedReasoningKey(scope, "item_enc"): "cached thinking"}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream, cache: cache})
 
 	result, err := svc.Forward(context.Background(), c, forceChatResponsesFallbackProvider(), body)
@@ -262,5 +265,5 @@ func TestForwardResponsesChatFallbackRestoresEncryptedReasoningFromCache(t *test
 	require.NotNil(t, result)
 	require.Equal(t, "plain thinking", gjson.GetBytes(upstream.lastBody, "messages.0.reasoning_content").String())
 	require.Equal(t, "cached thinking", gjson.GetBytes(upstream.lastBody, "messages.2.reasoning_content").String())
-	require.Equal(t, "plain thinking", cache.sets[scopedResponsesReasoningKey(scope, "item_plain")])
+	require.Equal(t, "plain thinking", cache.sets[session.ScopedReasoningKey(scope, "item_plain")])
 }

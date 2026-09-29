@@ -39,6 +39,8 @@ app 分别装配原生文本、Responses、WS、Images 和辅助执行器，复�
 
 图片入口由 `gateway/httpapi.OpenAIImagesExecutor` 组合原生请求和输出能力，app 将同一实例直接绑定到媒体运行时。API Key 与 OAuth 分支保留各自的协议转换、实际产出计数和失败资格。图片请求在原位置脱离客户端取消，读取完成后才交付已观测用量；JSON 心跳不视为真实图片输出。URL 回填复用原传输与逐跳目标校验，不改变返回格式选择和计费元数据。结构化图片工具不可用事件由 provider/provider.ImageToolCooldown 写模型级冷却，模型文字兜底不触发该写入。
 
+ByteSeek OAuth 图片 1.5、2、2.5 Flare/Sunburst 及本批明确日期版本采用 sub2api 原生 `/backend-api/codex/images/generations`、`images/edits`。正式转发与后台账号测试共用该选择；旧 `gpt-image-1` 保留 Responses 工具方式，未知未来型号不自动套用直调。原生 JSON 与图片 SSE 接入 TokenFlux 单次执行、健康、故障转移和账单完成器，保留多图、遮罩、实际尺寸、URL 格式与断开后计费。图片缓存只采信明确明细，与普通图片输入分别计费；客户端看到请求模型，管理员日志记录观测到的响应模型。
+
 OAuth 补全提供商元数据时，ID token 中的个人 `chatgpt_plan_type` 是个人套餐的权威来源。`accounts/check` 可能按 access token 的 `poid` 命中另一个 workspace；仅当该记录的账户 ID 与个人 `chatgpt_account_id` 一致时，才能把它的 `entitlement.expires_at` 与个人套餐组合。账户不一致时，到期时间必须改从个人 `/backend-api/subscriptions` 的 `active_until` 获取；若套餐本身来自 `accounts/check`，套餐和到期时间仍保持来自同一条记录。
 
 OAuth 提供商可受 Codex CLI-only、允许客户端、agent identity、privacy status 和 OAuth passthrough 策略限制。OAuth 出站的 `originator` 必须与最终 User-Agent 首段配对；客户端未提供可识别官方身份或身份修复失败时统一回退 `codex-tui`，PAT、模型/额度探测、Alpha Search、HTTP 与 WebSocket 走同一默认身份。
@@ -145,7 +147,7 @@ OpenAI 兼容非流式响应的 usage 按 `usage`、`response.usage`、`data.usa
 
 工具和命名空间的请求改写由 `protocol/bridge` 唯一执行；`gateway/provider` 根据提供商、传输和 Compact 端点决定是否启用。HTTP Adapter 持有 `requeststate.ResponseTools`，分别保存当前尝试的 OpenAI/Grok 映射、namespace 与 Codex 名称；WS 的会话更新和当前 turn 名称分开，HTTP bridge 的下一轮声明保持原字节副本。非流、SSE 和 WS 使用同一恢复路径，未知字段、工具 ID、大数和原恢复次序保持。Codex 工具修正与统计继续使用原生唯一修正器，usage 与终态解析直接调用 `protocol/openai`。
 
-推理历史的读取、请求回填与响应缓存由 `gateway/session.ReasoningHistory` 使用同一可选缓存能力完成，保留原 reasoning item ID、七天 TTL、两秒独立操作预算及读失败放行、写失败只记日志的规则。没有新增缓存实例或持久恢复保证。
+推理历史由 `gateway/session.ReasoningHistory` 使用同一可选缓存完成。缓存键将 reasoning item ID 与用户、API Key、团队、分组、提供商及凭据版本哈希组合；原始凭据不进入键或日志，无认证作用域时禁用读写。保留七天 TTL、两秒独立预算、读失败放行及写失败仅记日志。没有新增缓存实例。
 
 ### 远程压缩协议
 

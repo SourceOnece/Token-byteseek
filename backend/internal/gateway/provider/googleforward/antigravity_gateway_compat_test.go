@@ -365,7 +365,7 @@ func TestBuildAntigravityCompatGeminiBody_ConfiguresMixedToolInvocations(t *test
 
 			tools: `[{"name":"get_weather","input_schema":{"type":"object"}},{"type":"web_search_20250305","name":"web_search"}]`,
 
-			wantField: true,
+			wantFuncs: true,
 		},
 
 		{
@@ -457,7 +457,7 @@ func TestAntigravityCompatChatMixedBuiltInToolsEnableServerSideInvocations(t *te
 func TestAntigravityCompatResponsesCodexWebSearchMixedWithFunctionsDropsBuiltins(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	upstream := &queuedHTTPUpstreamStub{responses: []*http.Response{antigravityCompatSuccessResponse()}}
-	svc := newAntigravityCompatService(config.GatewayConfig{MaxLineSize: defaultMaxLineSize}, upstream)
+	svc := newAntigravityCompatibilityFixture(googleforward.Options{MaxLineSize: 500 * 1024 * 1024}, upstream)
 	body := []byte(`{
 		"model":"claude-sonnet-4-6",
 		"input":"Reply with exactly: pong",
@@ -469,7 +469,7 @@ func TestAntigravityCompatResponsesCodexWebSearchMixedWithFunctionsDropsBuiltins
 	}`)
 	c, _ := newAntigravityCompatContext(http.MethodPost, "/v1/responses", body)
 
-	result, err := svc.ForwardAsResponses(context.Background(), c, newAntigravityCompatAccount(AccountTypeOAuth), body, nil)
+	result, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), newAntigravityCompatProvider(capability.ProviderTypeOAuth), body, nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)

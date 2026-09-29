@@ -63,7 +63,8 @@ func usageHTTPRequest(value *provider.Record, query provider.UpstreamUsageQueryC
 		profile = options.ResolveTLS(egress.TLSSelection{Enabled: value.IsTLSFingerprintEnabled(), DirectProfileID: value.GetTLSFingerprintProfileID()})
 	}
 	return &usagecontract.Request{
-		BaseURL: validated, APIKey: apiKey,
+		OpenCodeGo: value.IsOpenCodeGoPlan(),
+		BaseURL:    validated, APIKey: apiKey,
 		WalletToken:       value.GetCredential(provider.NewAPIUserAccessTokenCredentialKey),
 		WalletUserID:      value.GetCredential(provider.NewAPIUserIDCredentialKey),
 		ZhipuOrganization: value.GetCredential("zhipu_organization"), ZhipuProject: value.GetCredential("zhipu_project"),
@@ -86,7 +87,7 @@ func UpstreamUsageBaseURL(value *provider.Record) string {
 		return ""
 	}
 	switch value.Platform {
-	case capability.PlatformOpenAI, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek:
+	case capability.PlatformOpenAI, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek, capability.PlatformMiniMax, capability.PlatformOpenCodeGo:
 		return (provider.ProtocolTarget{Record: value}).GetOpenAIBaseURL()
 	case capability.PlatformAnthropic:
 		return value.GetBaseURL()

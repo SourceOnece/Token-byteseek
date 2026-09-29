@@ -39,7 +39,7 @@ func (r *Store) ApplyCodexTicketScheduling(ctx context.Context, a *codexticket.A
 	if err != nil {
 		return time.Time{}, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if !rows.Next() {
 		return time.Time{}, rows.Err()
 	}

@@ -115,6 +115,10 @@ func BuildInternalGeminiTools(tools []ClaudeTool) ([]GeminiToolDeclaration, []st
 	}
 
 	var declarations []GeminiToolDeclaration
+	// Antigravity v1internal 拒绝函数与内置工具混用；保留客户端工具调用链。
+	if len(funcDecls) > 0 {
+		hasWebSearch, hasCodeExecution = false, false
+	}
 	if len(funcDecls) > 0 {
 		declarations = append(declarations, GeminiToolDeclaration{
 			FunctionDeclarations: funcDecls,

@@ -88,7 +88,7 @@ func TestGoogleConcurrencyError(t *testing.T) {
 		{
 			name:        "client cancellation is 499",
 			err:         context.Canceled,
-			wantStatus:  statusClientClosedRequest,
+			wantStatus:  StatusClientClosedRequest,
 			wantGStatus: "CANCELLED",
 			wantMessage: "context canceled",
 		},
@@ -121,7 +121,8 @@ func TestGoogleConcurrencyError(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(rec)
 
-			googleConcurrencyError(c, tt.err, "user")
+			status, _, _, message := ConcurrencyErrorResponse(tt.err, "user")
+			WriteGoogleError(c, status, message)
 
 			require.Equal(t, tt.wantStatus, rec.Code)
 			var body struct {

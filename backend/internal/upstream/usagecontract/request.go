@@ -9,6 +9,7 @@ import (
 )
 
 type Request struct {
+	OpenCodeGo                                                         bool
 	BaseURL                                                            string
 	APIKey, WalletToken, WalletUserID, ZhipuOrganization, ZhipuProject string                                      `json:"-"`
 	Do                                                                 func(*http.Request) (*http.Response, error) `json:"-"`

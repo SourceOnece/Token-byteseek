@@ -15,13 +15,14 @@ type ThinkingRequestOptions struct {
 	PassbackRequired, NativeReasoningEffort bool
 	GLM, GLM53                              bool
 	DummySignature                          string
+	PreserveSignedThinking                  bool
 }
 
 func FilterThinkingBlocks(body []byte, options ThinkingRequestOptions) []byte {
 	if !options.PreFilter {
 		return body
 	}
-	return FilterThinkingBlocksInternal(body, options.DummySignature)
+	return protocolanthropic.FilterThinkingBlocksInternal(body, options.DummySignature, options.PreserveSignedThinking)
 }
 
 func FilterThinkingBlocksForRetry(body []byte, options ThinkingRequestOptions) []byte {

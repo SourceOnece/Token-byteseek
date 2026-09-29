@@ -5,9 +5,9 @@
 <a id="opencode_protocol_routing"></a>
 ## 模式与协议
 
-`credentials.account_mode` 为 `zen` 或 `go`；缺失沿用 Go。`api_protocol` 可以固定 Chat Completions、Responses、Anthropic，或使用默认 `adaptive`。Zen 默认根为 `https://opencode.ai/zen/v1`，Go 为 `https://opencode.ai/zen/go/v1`；Messages 的默认根去掉末尾 `/v1`，拼接器识别版本段，避免 `/v1/v1/messages`。自定义端点保留其主机和路径前缀，仍受原 URL/代理/TLS 安全策略约束。
+`credentials.provider_mode` 为 `zen` 或 `go`；缺失沿用 Go。当前表单使用 TokenFlux 的 `upstream_protocols` 原生协议集合和 `api_base_urls` 分协议地址，分组控制入站协议和允许转换。Zen 默认根为 `https://opencode.ai/zen/v1`，Go 为 `https://opencode.ai/zen/go/v1`；Messages 的默认根去掉末尾 `/v1`，自定义端点保留主机和路径前缀，仍受原 URL/代理/TLS 安全策略约束。
 
-自适应协议按账号模型映射后的最终模型判断，与客户端的三种入站协议正交。`protocol_rules` 支持最多 64 条精确模型名或末尾 `*`，单模式最多 128 字节，按从上到下首次命中选择协议，未命中使用 Chat。缺失或 null 使用模式对应内置规则；显式 `[]` 意味全部使用 Chat，不等价于默认规则。Go 的 GPT/Grok/Muse 使用 Responses、MiniMax/Qwen 使用 Messages；Zen 的 GPT/Grok/Muse 使用 Responses、Claude/Qwen 使用 Messages，其余 Chat。管理员固定协议优先于规则；后台探测状态不覆盖这些规则。
+旧 `api_protocol` 和 `protocol_rules` 解析器保留用于兼容输入；运行时显式协议集合与当次 RoutePlan 优先。不会让旧模型规则绕过关闭的原生协议或分组转换限制。新后台通过统一协议设置控制路由，不另建一套 OpenCode 旧式路由表。
 
 三个公开入口复用现有转换服务、原模型恢复和计费路径。普通 OpenAI 的平台身份、OAuth、Codex 指纹模式、Compact 和调度资格不因新增平台改变。连接测试只检测管理员选中模型对应的实际原生协议，不把一个模型连续发送到三个端点。模型预设来自本批固定源码；实际账号可用模型以显式配置/同步结果和调度资格为准，不推断价格或上下文长度。
 
@@ -25,6 +25,6 @@ bh.061 使 OpenCode 平台及精确 HTTPS 官方 OpenCode/Command Code 端点使
 
 管理表单复用现有 Select、BaseDialog、规则列表和包豪斯蓝色重点。模式切换只替换仍等于旧默认的端点/规则，自定义值保留；保存空规则保留空数组。新平台接入现有分组、渠道、额度、错误规则和调度快照，不恢复已移除的 Composite 平台或另一套监控表。
 
-迁移 `274_add_opencode_platform_quota.sql` 对应 sub2api 原 238，仅扩展本地用户平台额度 CHECK。新增平台额度缺失仍为无限，新注册的十一平台批量写入须与 Ent 校验一致。回滚二进制前应停用新平台账号/分组，否则旧实例没有对应平台处理器；迁移记录不得删除。
+本批将 OpenCode Go 作为原生 Provider 平台接入能力目录和用量查询，不新增旧式用户平台额度字段；分组和提供商资格由 TokenFlux 的平台无关规则判断。升级后旧实例必须按本地 277–290 迁移顺序完成数据库升级，不能让旧二进制直接读取新平台记录；回滚需要使用兼容数据库的旧镜像和备份。
 
 相关文档：[账号能力矩阵](upstream_account_matrix.md)、[模型目录](model_catalog_and_marketplace.md)、[上游用量](upstream_usage.md)、[网关策略](../domains/gateway_policy_controls.md)、[本批版本](../operations/versions/v0_1_278_bh_030.md)。

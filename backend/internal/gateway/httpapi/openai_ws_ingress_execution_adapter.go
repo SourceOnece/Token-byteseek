@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
@@ -70,7 +71,7 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 
 	// The handler normally owns this registration across retry attempts. Direct
 	// callers still get the same session-scoped preemption behavior here.
-	if preemptCtx, cleanupPreempt, armed := s.BeginOpenAIWSIngressSessionPreemption(ctx, c, provider, firstClientMessage); armed {
+	if preemptCtx, cleanupPreempt, armed := s.BeginOpenAIWSIngressSessionPreemptionWithClient(ctx, c, provider, firstClientMessage, clientConn); armed {
 		ctx = preemptCtx
 		defer cleanupPreempt()
 		defer func() {
@@ -372,7 +373,8 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 	}
 
 	port := &wsIngressAdapter{
-		ParseFn: parseClientPayload, ReadFn: readClientMessage,
+		ResetBridgeWindowFn: func() { SetOpenAIWSHTTPBridgeToolState(c, requeststate.WSBridgeTools{}) },
+		ParseFn:             parseClientPayload, ReadFn: readClientMessage,
 		GenerateHashFn:  func(body []byte) string { return GenerateOpenAISessionHash(c, body) },
 		StoreDisabledFn: func(body []byte) bool { return s.isOpenAIWSStoreDisabledInRequestRaw(body, provider) },
 		ShouldBridgeFn: func(payload gatewayws.ClientPayload) bool {

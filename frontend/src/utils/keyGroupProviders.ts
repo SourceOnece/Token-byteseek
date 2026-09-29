@@ -7,9 +7,9 @@ export const KEY_GROUP_PROTOCOL_LABELS = { anthropic: 'Messages', openai: 'Respo
 export const KEY_GROUP_PROTOCOL_ICONS: Record<KeyGroupProtocol, GroupPlatform[]> = {
   anthropic: ['anthropic'], openai: ['openai'], gemini: ['gemini'], other: ['grok']
 }
-export function getKeyGroupProtocols(protocols: ProtocolID[]): KeyGroupProtocol[] {
+export function getKeyGroupProtocols(protocols: ProtocolID[] | null | undefined): KeyGroupProtocol[] {
   const result = new Set<KeyGroupProtocol>()
-  for (const protocol of protocols) {
+  for (const protocol of protocols ?? []) {
     if (protocol === 'anthropic_messages') result.add('anthropic')
     else if (['openai_responses', 'openai_responses_websocket', 'openai_chat_completions'].includes(protocol)) result.add('openai')
     else if (protocol === 'gemini_generate_content') result.add('gemini')

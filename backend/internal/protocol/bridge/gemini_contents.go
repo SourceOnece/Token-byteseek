@@ -122,7 +122,8 @@ func BuildParts(content json.RawMessage, toolIDToName map[string]string, allowDu
 			}
 			parts = append(parts, part)
 
-		case "image":
+		case "image", "document":
+			// PDF 等 base64 文档与图片一样转为 inlineData，避免转换后静默丢失附件。
 			if block.Source != nil && block.Source.Type == "base64" {
 				parts = append(parts, GeminiPart{
 					InlineData: &GeminiInlineData{

@@ -169,7 +169,7 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 					status = s.ticketModelStatusForAccount(model, values[key], values["status:"+key], now, cfg, a, cfg.targetLength())
 					status.Watchdog = safeTicketWatchdog(values["watchdog:"+key], cfg.WatchdogMode)
 					status.Collection = ticketCollectionState(values["collection:"+key])
-					if status.Collection.CooldownUntil != nil && !(cfg.VerifiedFlow && status.State == "ready") {
+					if status.Collection.CooldownUntil != nil && (!cfg.VerifiedFlow || status.State != "ready") {
 						status.State = "cooldown"
 					}
 					if status.State != "ready" {
@@ -216,10 +216,6 @@ func (s *CodexTicketService) Status(ctx context.Context, ids []int64) (*CodexTic
 		response.Items = append(response.Items, row)
 	}
 	return response, nil
-}
-
-func (s *CodexTicketService) ticketModelStatus(model, encrypted, observation string, now time.Time, lengths ...int) CodexTicketModelStatus {
-	return s.ticketModelStatusForAccount(model, encrypted, observation, now, nil, nil, lengths...)
 }
 
 func (s *CodexTicketService) ticketModelStatusForAccount(model, encrypted, observation string, now time.Time, cfg *codexTicketConfig, account *Account, lengths ...int) CodexTicketModelStatus {

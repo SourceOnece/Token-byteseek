@@ -85,7 +85,7 @@ func (s *proxyProbeService) probeTicketReferenceTarget(ctx context.Context, clie
 		}
 		return result
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	result.HTTPStatus = resp.StatusCode
 	if resp.StatusCode != http.StatusOK {
 		result.Status = "http_error"

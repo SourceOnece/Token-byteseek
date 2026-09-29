@@ -1917,6 +1917,10 @@ func OpenAIResponsesInputItemIDPrefix(itemType string) (string, bool) {
 
 // 回放请求中的无效 ID 必须删除而不是改写，因为伪造的 ID 可能会指向另一个上游对象。
 func ShouldStripOpenAIResponsesInputItemID(itemType, id string) bool {
+	// Codex web_search_call 已知最多 64 字节，超限 ID 只删除，不改写引用。
+	if itemType == "web_search_call" && len(id) > 64 {
+		return true
+	}
 	prefix, constrained := OpenAIResponsesInputItemIDPrefix(itemType)
 	if !constrained {
 		return false

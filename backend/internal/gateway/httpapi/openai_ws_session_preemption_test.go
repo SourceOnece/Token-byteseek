@@ -49,8 +49,8 @@ func (r *openAIWSPreemptCloseRecorder) Close(code coderws.StatusCode, reason str
 
 func TestOpenAIWSIngressSessionPreemptionSendsCloseFrameBeforeCancel(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	svc := &OpenAIGatewayService{}
-	account := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth}
+	svc := newWSFixture(wsFixtureInputs{})
+	account := &gatewayprovider.ExecutionProvider{Record: providercore.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	firstMessage := []byte(`{"type":"response.create","input":"hello"}`)
 	closer := &openAIWSPreemptCloseRecorder{closed: make(chan struct{})}
 
@@ -75,7 +75,7 @@ func TestOpenAIWSIngressSessionPreemptionSendsCloseFrameBeforeCancel(t *testing.
 	}
 	closer.mu.Lock()
 	require.Equal(t, []coderws.StatusCode{coderws.StatusTryAgainLater}, closer.codes)
-	require.Equal(t, openAIWSSessionPreemptedCloseReason, closer.reason)
+	require.Equal(t, ws.PreemptCloseReason, closer.reason)
 	require.NoError(t, closer.ctxErrAtSend, "取消必须等关闭帧发出之后")
 	closer.mu.Unlock()
 	select {
@@ -83,13 +83,13 @@ func TestOpenAIWSIngressSessionPreemptionSendsCloseFrameBeforeCancel(t *testing.
 	case <-time.After(2 * time.Second):
 		t.Fatal("旧连接应在关闭帧之后被取消")
 	}
-	require.ErrorIs(t, context.Cause(firstCtx), errOpenAIWSSessionPreempted)
+	require.ErrorIs(t, context.Cause(firstCtx), ws.ErrSessionPreempted)
 }
 
 func TestOpenAIWSIngressSessionPreemptionCancelsAfterCloseGrace(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	svc := &OpenAIGatewayService{}
-	account := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth}
+	svc := newWSFixture(wsFixtureInputs{})
+	account := &gatewayprovider.ExecutionProvider{Record: providercore.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	firstMessage := []byte(`{"type":"response.create","input":"hello"}`)
 	closer := &openAIWSPreemptCloseRecorder{closed: make(chan struct{}), release: make(chan struct{})}
 	defer close(closer.release)
@@ -106,14 +106,14 @@ func TestOpenAIWSIngressSessionPreemptionCancelsAfterCloseGrace(t *testing.T) {
 	)
 	require.True(t, armed)
 	defer secondCleanup()
-	require.Less(t, time.Since(started), openAIWSSessionPreemptCloseGrace, "新连接不得等待旧客户端的关闭握手")
+	require.Less(t, time.Since(started), ws.PreemptCloseGrace, "新连接不得等待旧客户端的关闭握手")
 
 	select {
 	case <-firstCtx.Done():
-	case <-time.After(openAIWSSessionPreemptCloseGrace + time.Second):
+	case <-time.After(ws.PreemptCloseGrace + time.Second):
 		t.Fatal("对端不回应关闭帧时也必须在宽限期内取消旧连接")
 	}
-	require.ErrorIs(t, context.Cause(firstCtx), errOpenAIWSSessionPreempted)
+	require.ErrorIs(t, context.Cause(firstCtx), ws.ErrSessionPreempted)
 }
 
 func TestOpenAIWSSessionPreemptRegistryCancelsSameScopedSessionOnly(t *testing.T) {
@@ -186,22 +186,22 @@ func TestOpenAIWSSessionPreemptContextEligibilityAndLocalCancellation(t *testing
 	apiKey := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 	grok := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
 
-	_, cleanup, armed, _ := svc.beginOpenAIWSSessionPreemptContext(context.Background(), apiKey, 7, 11, "sess", false, nil)
+	_, cleanup, armed, _ := svc.beginOpenAIWSSessionPreemptContext(context.Background(), apiKey, 7, 11, "sess", false)
 	cleanup()
 	require.False(t, armed)
-	_, cleanup, armed, _ = svc.beginOpenAIWSSessionPreemptContext(context.Background(), grok, 7, 11, "sess", false, nil)
+	_, cleanup, armed, _ = svc.beginOpenAIWSSessionPreemptContext(context.Background(), grok, 7, 11, "sess", false)
 	cleanup()
 	require.False(t, armed)
-	_, cleanup, armed, _ = svc.beginOpenAIWSSessionPreemptContext(context.Background(), oauth, 7, 11, "sess", true, nil)
+	_, cleanup, armed, _ = svc.beginOpenAIWSSessionPreemptContext(context.Background(), oauth, 7, 11, "sess", true)
 	cleanup()
 	require.False(t, armed, "HTTP-ingress one-shot must not participate")
 
-	firstCtx, firstCleanup, armed, replaced := svc.beginOpenAIWSSessionPreemptContext(context.Background(), oauth, 7, 11, "sess", false, nil)
+	firstCtx, firstCleanup, armed, replaced := svc.beginOpenAIWSSessionPreemptContext(context.Background(), oauth, 7, 11, "sess", false)
 	require.True(t, armed)
 	require.False(t, replaced)
 	stateStore.BindSessionTurnState(7, "sess", "turn-state", time.Hour)
 	stateStore.BindSessionConn(7, "sess", "conn-1", time.Hour)
-	_, secondCleanup, armed, replaced := svc.beginOpenAIWSSessionPreemptContext(context.Background(), oauth, 7, 11, "sess", false, nil)
+	_, secondCleanup, armed, replaced := svc.beginOpenAIWSSessionPreemptContext(context.Background(), oauth, 7, 11, "sess", false)
 	require.True(t, armed)
 	require.True(t, replaced)
 	require.True(t, isOpenAIWSSessionPreempted(firstCtx))
@@ -310,16 +310,16 @@ func TestOpenAIWSSessionPreemptRemoteClaimAndStaleReleaseAreAtomic(t *testing.T)
 	svc := newWSFixture(wsFixtureInputs{cache: cache})
 	key := openAIWSSessionPreemptKey{groupID: 7, apiKeyID: 11, sessionHash: "sess"}
 
-	previous, ok := svc.claimOpenAIWSSessionPreemptOwner(context.Background(), key, "owner-a")
+	previous, ok := svc.wsPreemption().Claim(context.Background(), ws.PreemptKey{GroupID: key.groupID, APIKeyID: key.apiKeyID, SessionHash: key.sessionHash}, "owner-a")
 	require.True(t, ok)
 	require.Empty(t, previous)
-	previous, ok = svc.claimOpenAIWSSessionPreemptOwner(context.Background(), key, "owner-b")
+	previous, ok = svc.wsPreemption().Claim(context.Background(), ws.PreemptKey{GroupID: key.groupID, APIKeyID: key.apiKeyID, SessionHash: key.sessionHash}, "owner-b")
 	require.True(t, ok)
 	require.Equal(t, "owner-a", previous)
-	svc.releaseOpenAIWSSessionPreemptOwner(context.Background(), key, "owner-a")
+	svc.wsPreemption().Release(context.Background(), ws.PreemptKey{GroupID: key.groupID, APIKeyID: key.apiKeyID, SessionHash: key.sessionHash}, "owner-a")
 
 	cache.mu.Lock()
-	current := string(cache.owners[cache.key(key.groupID, openAIWSSessionPreemptCacheHash(key.apiKeyID, key.sessionHash))])
+	current := string(cache.owners[cache.key(key.groupID, ws.CacheHash(key.apiKeyID, key.sessionHash))])
 	cache.mu.Unlock()
 	require.Equal(t, "owner-b", current, "stale cleanup must preserve the replacement owner")
 }
@@ -333,28 +333,28 @@ func TestOpenAIWSHTTPBridgeSessionPreemptionEligibility(t *testing.T) {
 		accountMode   string
 		wantArmed     bool
 	}{
-		{name: "explicit HTTP bridge", routerEnabled: true, defaultMode: OpenAIWSIngressModeCtxPool, accountMode: OpenAIWSIngressModeHTTPBridge},
-		{name: "default HTTP bridge", routerEnabled: true, defaultMode: OpenAIWSIngressModeHTTPBridge},
-		{name: "ctx pool overrides bridge default", routerEnabled: true, defaultMode: OpenAIWSIngressModeHTTPBridge, accountMode: OpenAIWSIngressModeCtxPool, wantArmed: true},
-		{name: "disabled router retains legacy preemption", defaultMode: OpenAIWSIngressModeHTTPBridge, accountMode: OpenAIWSIngressModeHTTPBridge, wantArmed: true},
+		{name: "explicit HTTP bridge", routerEnabled: true, defaultMode: providercore.OpenAIWSIngressModeCtxPool, accountMode: providercore.OpenAIWSIngressModeHTTPBridge},
+		{name: "default HTTP bridge", routerEnabled: true, defaultMode: providercore.OpenAIWSIngressModeHTTPBridge},
+		{name: "ctx pool overrides bridge default", routerEnabled: true, defaultMode: providercore.OpenAIWSIngressModeHTTPBridge, accountMode: providercore.OpenAIWSIngressModeCtxPool, wantArmed: true},
+		{name: "disabled router retains legacy preemption", defaultMode: providercore.OpenAIWSIngressModeHTTPBridge, accountMode: providercore.OpenAIWSIngressModeHTTPBridge, wantArmed: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := &config.Config{}
-			cfg.Gateway.OpenAIWS.ModeRouterV2Enabled = tt.routerEnabled
-			cfg.Gateway.OpenAIWS.IngressModeDefault = tt.defaultMode
+			cfg := &wsFixtureOptions{}
+			cfg.WS.ModeRouterV2Enabled = tt.routerEnabled
+			cfg.WS.IngressModeDefault = tt.defaultMode
 			cache := &openAIWSSessionPreemptCacheStub{}
-			svc := &OpenAIGatewayService{cfg: cfg, cache: cache}
+			svc := newWSFixture(wsFixtureInputs{options: cfg, cache: cache})
 			groupID := int64(7)
 			newContext := func() *gin.Context {
 				c, _ := gin.CreateTestContext(httptest.NewRecorder())
 				c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
 				c.Request.Header.Set("session-id", "shared-session")
-				c.Set("api_key", &APIKey{ID: 11, GroupID: &groupID})
+				c.Set("api_key", &apikey.APIKey{ID: 11, GroupID: &groupID})
 				return c
 			}
-			account := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth,
-				Extra: map[string]any{"openai_oauth_responses_websockets_v2_mode": tt.accountMode}}
+			account := &gatewayprovider.ExecutionProvider{Record: providercore.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth,
+				Extra: map[string]any{"openai_oauth_responses_websockets_v2_mode": tt.accountMode}}}
 			firstMessage := []byte(`{"type":"response.create","prompt_cache_key":"cache-a","input":"first request"}`)
 			secondMessage := []byte(`{"type":"response.create","prompt_cache_key":"cache-b","input":"second request"}`)
 			first, cleanupFirst, firstArmed := svc.BeginOpenAIWSIngressSessionPreemption(context.Background(), newContext(), account, firstMessage)
@@ -365,7 +365,7 @@ func TestOpenAIWSHTTPBridgeSessionPreemptionEligibility(t *testing.T) {
 			require.Equal(t, tt.wantArmed, secondArmed)
 			require.NoError(t, second.Err())
 			if tt.wantArmed {
-				require.True(t, IsOpenAIWSSessionPreemptedError(context.Cause(first)))
+				require.True(t, ws.IsSessionPreemptedError(context.Cause(first)))
 			} else {
 				require.NoError(t, first.Err(), "independent HTTP bridges must not cancel each other")
 				cache.mu.Lock()
@@ -397,14 +397,14 @@ func newOpenAIWSPreemptCodexContext(apiKeyID int64, threadID string) *gin.Contex
 	if threadID != "" {
 		c.Request.Header.Set(openAIWSTurnMetadataHeader, `{"session_id":"root-session","thread_id":"`+threadID+`"}`)
 	}
-	c.Set("api_key", &APIKey{ID: apiKeyID, GroupID: &groupID})
+	c.Set("api_key", &apikey.APIKey{ID: apiKeyID, GroupID: &groupID})
 	return c
 }
 
 func TestOpenAIWSIngressSessionPreemptionIsolatesCodexThreads(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	svc := &OpenAIGatewayService{}
-	account := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth}
+	svc := newWSFixture(wsFixtureInputs{})
+	account := &gatewayprovider.ExecutionProvider{Record: providercore.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	firstMessage := []byte(`{"type":"response.create","input":"hello"}`)
 	retryMessage := []byte(`{"type":"response.create","input":[{"role":"user","content":"hello"},{"role":"user","content":"again"}]}`)
 
@@ -435,7 +435,7 @@ func TestOpenAIWSIngressSessionPreemptionIsolatesCodexThreads(t *testing.T) {
 	)
 	require.True(t, armed)
 	defer rootRetryCleanup()
-	require.True(t, IsOpenAIWSSessionPreemptedError(context.Cause(rootCtx)), "same thread reconnect with a different body must still preempt")
+	require.True(t, ws.IsSessionPreemptedError(context.Cause(rootCtx)), "same thread reconnect with a different body must still preempt")
 	require.NoError(t, childCtx.Err(), "root reconnect must leave the child thread alone")
 	require.NoError(t, otherKeyCtx.Err())
 }
@@ -448,8 +448,8 @@ func newOpenAIWSPreemptCodexKindContext(apiKeyID int64, threadID, requestKind st
 
 func TestOpenAIWSIngressSessionPreemptionKeepsDetachedRequestsApart(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	svc := &OpenAIGatewayService{}
-	account := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth}
+	svc := newWSFixture(wsFixtureInputs{})
+	account := &gatewayprovider.ExecutionProvider{Record: providercore.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	turnMessage := []byte(`{"type":"response.create","input":"hello"}`)
 	memoryMessage := []byte(`{"type":"response.create","input":"consolidate"}`)
 
@@ -472,7 +472,7 @@ func TestOpenAIWSIngressSessionPreemptionKeepsDetachedRequestsApart(t *testing.T
 	)
 	require.True(t, armed)
 	defer prewarmCleanup()
-	require.True(t, IsOpenAIWSSessionPreemptedError(context.Cause(turnCtx)), "prewarm shares the turn lane and replaces the stale turn connection")
+	require.True(t, ws.IsSessionPreemptedError(context.Cause(turnCtx)), "prewarm shares the turn lane and replaces the stale turn connection")
 	require.NoError(t, memoryCtx.Err(), "turn lane reconnect must leave memory consolidation alone")
 
 	_, memoryRetryCleanup, armed := svc.BeginOpenAIWSIngressSessionPreemption(
@@ -480,12 +480,12 @@ func TestOpenAIWSIngressSessionPreemptionKeepsDetachedRequestsApart(t *testing.T
 	)
 	require.True(t, armed)
 	defer memoryRetryCleanup()
-	require.True(t, IsOpenAIWSSessionPreemptedError(context.Cause(memoryCtx)), "memory reconnect replaces the stale memory connection")
+	require.True(t, ws.IsSessionPreemptedError(context.Cause(memoryCtx)), "memory reconnect replaces the stale memory connection")
 	require.NoError(t, prewarmCtx.Err(), "memory reconnect must leave the turn lane alone")
 
 	scorer := newOpenAIWSPreemptCodexContext(11, "")
 	scorer.Request.Header.Set(openAIWSThreadIDHeader, "thread-a")
-	scorer.Request.Header.Set(openAISubagentHeader, "guardian")
+	scorer.Request.Header.Set("x-openai-subagent", "guardian")
 	scorerCtx, scorerCleanup, armed := svc.BeginOpenAIWSIngressSessionPreemption(context.Background(), scorer, account, turnMessage)
 	require.True(t, armed)
 	defer scorerCleanup()
@@ -499,11 +499,11 @@ func TestOpenAIWSIngressSessionPreemptionSkipsContentOnlyIdentity(t *testing.T) 
 	newContext := func() *gin.Context {
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
-		c.Set("api_key", &APIKey{ID: 11, GroupID: &groupID})
+		c.Set("api_key", &apikey.APIKey{ID: 11, GroupID: &groupID})
 		return c
 	}
-	svc := &OpenAIGatewayService{}
-	account := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth}
+	svc := newWSFixture(wsFixtureInputs{})
+	account := &gatewayprovider.ExecutionProvider{Record: providercore.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	contentOnly := []byte(`{"type":"response.create","model":"gpt-5.1","instructions":"sys","input":[{"role":"user","content":"same prompt"}]}`)
 
 	firstCtx, firstCleanup, armed := svc.BeginOpenAIWSIngressSessionPreemption(context.Background(), newContext(), account, contentOnly)
@@ -518,8 +518,8 @@ func TestOpenAIWSIngressSessionPreemptionSkipsContentOnlyIdentity(t *testing.T) 
 func TestOpenAIWSIngressSessionPreemptionClaimsRemoteOwnerByExecutionScope(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	stub := &openAIWSSessionPreemptCacheStub{}
-	svc := &OpenAIGatewayService{cache: stub}
-	account := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeOAuth}
+	svc := newWSFixture(wsFixtureInputs{cache: stub})
+	account := &gatewayprovider.ExecutionProvider{Record: providercore.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	firstMessage := []byte(`{"type":"response.create","input":"hello"}`)
 	c := newOpenAIWSPreemptCodexContext(11, "thread-a")
 
@@ -528,14 +528,14 @@ func TestOpenAIWSIngressSessionPreemptionClaimsRemoteOwnerByExecutionScope(t *te
 	defer cleanup()
 
 	scope, _ := resolveOpenAIWSExecutionScope(c, firstMessage, 11)
-	legacy := svc.GenerateSessionHash(c, firstMessage)
+	legacy := GenerateOpenAISessionHash(c, firstMessage)
 	require.NotEmpty(t, scope)
 	require.NotEqual(t, legacy, scope)
 
 	stub.mu.Lock()
 	defer stub.mu.Unlock()
-	_, scoped := stub.owners[stub.key(7, openAIWSSessionPreemptCacheHash(11, scope))]
-	_, legacyKeyed := stub.owners[stub.key(7, openAIWSSessionPreemptCacheHash(11, legacy))]
+	_, scoped := stub.owners[stub.key(7, ws.CacheHash(11, scope))]
+	_, legacyKeyed := stub.owners[stub.key(7, ws.CacheHash(11, legacy))]
 	require.True(t, scoped, "remote owner must be claimed under the execution scope")
 	require.False(t, legacyKeyed, "remote owner must not be claimed under the legacy session hash")
 }

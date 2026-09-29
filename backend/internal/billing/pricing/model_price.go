@@ -47,6 +47,7 @@ func ResolveModelPricing(model string, catalogPrice *LiteLLMModelPricing, prices
 				LongContextInputMultiplier:    litellmPricing.LongContextInputCostMultiplier,
 				LongContextOutputMultiplier:   litellmPricing.LongContextOutputCostMultiplier,
 				ImageInputPricePerToken:       litellmPricing.InputCostPerImageToken,
+				ImageCacheReadPricePerToken:   litellmPricing.CacheReadInputImageTokenCost,
 				ImageOutputPricePerToken:      litellmPricing.OutputCostPerImageToken,
 				MaxReasoningEffortMultiplier:  DefaultMaxReasoningEffortMultiplier(model),
 			}, policy), false, nil

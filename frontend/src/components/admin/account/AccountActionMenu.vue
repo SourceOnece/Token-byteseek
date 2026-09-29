@@ -2,9 +2,9 @@
   <Teleport to="body">
     <div v-if="show && position">
       <!-- Backdrop: click anywhere outside to close -->
-      <div class="fixed inset-0 z-[9998]" @click="emit('close')"></div>
+      <div class="fixed inset-0 z-menu-overlay" @click="emit('close')"></div>
       <div
-        class="action-menu-content bh-action-menu fixed z-[9999] max-h-[calc(100dvh-16px)] w-52 overflow-y-auto"
+        class="action-menu-content bh-action-menu fixed z-toast max-h-[calc(100dvh-16px)] w-52 overflow-y-auto"
         :style="{ top: position.top + 'px', left: position.left + 'px' }"
         @click.stop
       >

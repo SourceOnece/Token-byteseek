@@ -21,21 +21,21 @@ import (
 
 const openCodeSessionHeader = "X-OpenCode-Session"
 
-// ApplyOpenCodeSessionHeader forwards the caller-owned conversation identifier
-// only to OpenCode's official API origin. The caller applies this after provider
-// header overrides so a per-conversation value cannot be replaced by a fixed
-// provider-wide override.
+// 显式 OpenCode 提供商派生隔离会话；其它平台仅向官方域名转发原会话头。
 func ApplyOpenCodeSessionHeader(c *gin.Context, provider *gatewayprovider.ExecutionProvider, targetURL string, headers http.Header) {
 	if c == nil || c.Request == nil || provider == nil || provider.Record.Type != capability.ProviderTypeAPIKey || headers == nil {
 		return
 	}
 
 	parsed, err := url.Parse(targetURL)
-	if err != nil || !strings.EqualFold(parsed.Scheme, "https") || !strings.EqualFold(parsed.Hostname(), "opencode.ai") {
+	if err != nil || (!provider.View().IsOpenCodeGo() && (!strings.EqualFold(parsed.Scheme, "https") || !strings.EqualFold(parsed.Hostname(), "opencode.ai"))) {
 		return
 	}
 
 	sessionID := strings.TrimSpace(c.GetHeader(openCodeSessionHeader))
+	if provider.View().IsOpenCodeGo() {
+		sessionID = openCodeScopedSession(c, provider)
+	}
 	if sessionID == "" {
 		return
 	}

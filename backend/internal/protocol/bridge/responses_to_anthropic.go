@@ -390,7 +390,7 @@ func resToAnthHandleTextDelta(evt *ResponsesStreamEvent, state *ResponsesEventTo
 	if state.TextByPart[part] == nil {
 		state.TextByPart[part] = &strings.Builder{}
 	}
-	state.TextByPart[part].WriteString(evt.Delta)
+	_, _ = state.TextByPart[part].WriteString(evt.Delta)
 	state.TextDelivered = true
 
 	var events []AnthropicStreamEvent

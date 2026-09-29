@@ -258,12 +258,13 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 
 	// Calculate cost
 	tokens := UsageTokens{
-		InputTokens:         actualInputTokens,
-		ImageInputTokens:    result.Usage.ImageInputTokens,
-		OutputTokens:        result.Usage.OutputTokens,
-		CacheCreationTokens: result.Usage.CacheCreationInputTokens,
-		CacheReadTokens:     result.Usage.CacheReadInputTokens,
-		ImageOutputTokens:   result.Usage.ImageOutputTokens,
+		InputTokens:          actualInputTokens,
+		ImageInputTokens:     max(0, result.Usage.ImageInputTokens-result.Usage.ImageCacheReadTokens),
+		ImageCacheReadTokens: result.Usage.ImageCacheReadTokens,
+		OutputTokens:         result.Usage.OutputTokens,
+		CacheCreationTokens:  result.Usage.CacheCreationInputTokens,
+		CacheReadTokens:      result.Usage.CacheReadInputTokens,
+		ImageOutputTokens:    result.Usage.ImageOutputTokens,
 	}
 
 	// Get rate multiplier
@@ -413,7 +414,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 		OutputTokens:        result.Usage.OutputTokens,
 		CacheCreationTokens: result.Usage.CacheCreationInputTokens,
 		CacheReadTokens:     result.Usage.CacheReadInputTokens,
-		ImageInputTokens:    result.Usage.ImageInputTokens,
+		ImageInputTokens:    max(0, result.Usage.ImageInputTokens-result.Usage.ImageCacheReadTokens),
 		ImageOutputTokens:   result.Usage.ImageOutputTokens,
 		ImageCount:          result.ImageCount,
 		ImageSize:           OptionalTrimmedStringPtr(result.ImageSize),

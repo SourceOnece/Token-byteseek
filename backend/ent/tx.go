@@ -100,8 +100,6 @@ type Tx struct {
 	UserAttributeValue *UserAttributeValueClient
 	// UserDisabledPublicGroup is the client for interacting with the UserDisabledPublicGroup builders.
 	UserDisabledPublicGroup *UserDisabledPublicGroupClient
-	// UserPlatformQuota is the client for interacting with the UserPlatformQuota builders.
-	UserPlatformQuota *UserPlatformQuotaClient
 	// UserSubscription is the client for interacting with the UserSubscription builders.
 	UserSubscription *UserSubscriptionClient
 
@@ -278,7 +276,6 @@ func (tx *Tx) init() {
 	tx.UserAttributeDefinition = NewUserAttributeDefinitionClient(tx.config)
 	tx.UserAttributeValue = NewUserAttributeValueClient(tx.config)
 	tx.UserDisabledPublicGroup = NewUserDisabledPublicGroupClient(tx.config)
-	tx.UserPlatformQuota = NewUserPlatformQuotaClient(tx.config)
 	tx.UserSubscription = NewUserSubscriptionClient(tx.config)
 }
 

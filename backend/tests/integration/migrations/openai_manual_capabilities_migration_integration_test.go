@@ -12,7 +12,7 @@ import (
 
 // 隔离旧表验证两轮迁移的回填、幂等以及无关配置保留。
 func TestOpenAIManualCapabilityMigrations(t *testing.T) {
-	tx := historicalTx(t, "282_")
+	tx := historicalTx(t, "290_")
 	ctx := context.Background()
 	_, err := tx.ExecContext(ctx, `CREATE SCHEMA manual_capability_test; SET LOCAL search_path TO manual_capability_test;
  CREATE TABLE groups(id BIGINT,platform TEXT,force_openai_fast BOOLEAN);
@@ -26,7 +26,7 @@ func TestOpenAIManualCapabilityMigrations(t *testing.T) {
  (5,'zhipu','apikey','{"api_protocol":"adaptive"}','{}');`)
 	require.NoError(t, err)
 	for repeat := 0; repeat < 2; repeat++ {
-		for _, file := range []string{"269_group_openai_fast_policy.sql", "270_openai_manual_protocol_capabilities.sql"} {
+		for _, file := range []string{"277_group_openai_fast_policy.sql", "278_openai_manual_protocol_capabilities.sql"} {
 			data, err := dbmigrations.FS.ReadFile(file)
 			require.NoError(t, err)
 			_, err = tx.ExecContext(ctx, string(data))
@@ -49,7 +49,7 @@ func TestOpenAIManualCapabilityMigrations(t *testing.T) {
 	require.Equal(t, "force_priority", policy)
 	_, err = tx.ExecContext(ctx, "UPDATE groups SET openai_fast_policy='force_ultrafast' WHERE id=1")
 	require.NoError(t, err)
-	migration, _ := dbmigrations.FS.ReadFile("269_group_openai_fast_policy.sql")
+	migration, _ := dbmigrations.FS.ReadFile("277_group_openai_fast_policy.sql")
 	_, err = tx.ExecContext(ctx, string(migration))
 	require.NoError(t, err)
 	require.NoError(t, tx.QueryRowContext(ctx, "SELECT openai_fast_policy FROM groups WHERE id=1").Scan(&policy))

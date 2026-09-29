@@ -175,6 +175,11 @@ async function selectButtonByText(wrapper: ReturnType<typeof mountModal>, text: 
   await button?.trigger('click')
 }
 
+async function submitForm(wrapper: ReturnType<typeof mountModal>) {
+  await wrapper.get('form#create-provider-form').trigger('submit.prevent')
+  await flushPromises()
+}
+
 async function submitApiKeyProvider(platform: 'openai' | 'anthropic') {
   const wrapper = mountModal()
   await selectButtonByText(wrapper, platform === 'openai' ? 'OpenAI' : 'admin.providers.claudeConsole')
@@ -421,23 +426,23 @@ describe('CreateProviderModal OpenAI provider options', () => {
     await kimi.trigger('click')
     expect([...target.classes()].sort()).toEqual(inactiveClasses)
     expect(target.attributes('aria-pressed')).toBe('false')
-    expect(createAccountMock).not.toHaveBeenCalled()
+    expect(createProviderMock).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
   it.each(['payg', 'coding'])('保存 MiniMax %s 账号及独立端点，不改成 OpenAI 平台', async mode => {
     const wrapper = mountModal()
     await selectButtonByText(wrapper, 'MiniMax')
-    if (mode === 'coding') await selectButtonByText(wrapper, 'admin.accounts.cnProviders.accountMode.coding')
-    await wrapper.get('form#create-account-form input[type="text"]').setValue('MiniMax test')
-    await wrapper.get('form#create-account-form input[type="password"]').setValue('sk-minimax-test')
+    if (mode === 'coding') await selectButtonByText(wrapper, 'admin.providers.cnProviders.providerMode.coding')
+    await wrapper.get('form#create-provider-form input[type="text"]').setValue('MiniMax test')
+    await wrapper.get('form#create-provider-form input[type="password"]').setValue('sk-minimax-test')
     await wrapper.get('[data-testid="cn-adaptive-base-url-responses"]').setValue('https://relay.example/custom/responses')
     await submitForm(wrapper)
     await flushPromises()
-    expect(createAccountMock).toHaveBeenCalledTimes(1)
-    expect(createAccountMock.mock.calls[0]?.[0]).toMatchObject({
+    expect(createProviderMock).toHaveBeenCalledTimes(1)
+    expect(createProviderMock.mock.calls[0]?.[0]).toMatchObject({
       platform: 'minimax', type: 'apikey', credentials: {
-        account_mode: mode, api_protocol: 'adaptive', base_url: 'https://api.minimaxi.com/v1',
+        provider_mode: mode, upstream_protocols: ['anthropic_messages', 'openai_responses', 'openai_chat_completions'], base_url: 'https://api.minimaxi.com/v1',
         api_base_urls: { chat_completions: 'https://api.minimaxi.com/v1', anthropic: 'https://api.minimaxi.com/anthropic', responses: 'https://relay.example/custom/responses' }
       }
     })
@@ -486,16 +491,16 @@ describe('CreateProviderModal OpenAI provider options', () => {
   it.each(['go', 'zen'])('OpenCode %s 模式保存明确空协议规则和自定义端点', async mode => {
     const wrapper = mountModal()
     await selectButtonByText(wrapper, 'OpenCode')
-    if (mode === 'zen') await selectButtonByText(wrapper, 'admin.accounts.cnProviders.accountMode.zen')
-    await wrapper.get('form#create-account-form input[type="text"]').setValue('OpenCode test')
-    await wrapper.get('form#create-account-form input[type="password"]').setValue('sk-opencode-test')
+    if (mode === 'zen') await selectButtonByText(wrapper, 'admin.providers.cnProviders.providerMode.zen')
+    await wrapper.get('form#create-provider-form input[type="text"]').setValue('OpenCode test')
+    await wrapper.get('form#create-provider-form input[type="password"]').setValue('sk-opencode-test')
     await wrapper.get('[data-testid="cn-adaptive-base-url-anthropic"]').setValue('https://relay.example/proxy/v1')
     wrapper.getComponent({ name: 'OpenCodeGoProtocolRulesEditor' }).vm.$emit('update:rows', [])
     await submitForm(wrapper)
     await flushPromises()
-    expect(createAccountMock).toHaveBeenCalledTimes(1)
-    expect(createAccountMock.mock.calls[0]?.[0]).toMatchObject({
-      platform: 'opencode_go', type: 'apikey', credentials: { account_mode: mode, api_protocol: 'adaptive', protocol_rules: [], api_base_urls: { anthropic: 'https://relay.example/proxy/v1' } }
+    expect(createProviderMock).toHaveBeenCalledTimes(1)
+    expect(createProviderMock.mock.calls[0]?.[0]).toMatchObject({
+      platform: 'opencode_go', type: 'apikey', credentials: { provider_mode: mode, upstream_protocols: ['anthropic_messages', 'openai_responses', 'openai_chat_completions'], protocol_rules: [], api_base_urls: { anthropic: 'https://relay.example/proxy/v1' } }
     })
     wrapper.unmount()
   })

@@ -169,7 +169,7 @@ func TestNormalizeOpenAIWSContextWindowBoundary(t *testing.T) {
 
 	t.Run("same_window_keeps_previous_response_id", func(t *testing.T) {
 		payload := []byte("{\"type\":\"response.create\",\"previous_response_id\":\"resp_old\",\"client_metadata\":{\"x-codex-window-id\":\"window-a\"}}")
-		updated, boundary, err := normalizeOpenAIWSContextWindowBoundary(payload, "window-a")
+		updated, boundary, err := ws.NormalizeContextWindowBoundary(payload, "window-a")
 		require.NoError(t, err)
 		require.False(t, boundary.Changed)
 		require.False(t, boundary.PreviousResponseIDRemoved)
@@ -179,7 +179,7 @@ func TestNormalizeOpenAIWSContextWindowBoundary(t *testing.T) {
 
 	t.Run("new_window_drops_previous_response_id", func(t *testing.T) {
 		payload := []byte("{\"type\":\"response.create\",\"previous_response_id\":\"resp_old\",\"client_metadata\":{\"x-codex-window-id\":\"window-b\"}}")
-		updated, boundary, err := normalizeOpenAIWSContextWindowBoundary(payload, "window-a")
+		updated, boundary, err := ws.NormalizeContextWindowBoundary(payload, "window-a")
 		require.NoError(t, err)
 		require.True(t, boundary.Changed)
 		require.True(t, boundary.PreviousResponseIDRemoved)
@@ -189,7 +189,7 @@ func TestNormalizeOpenAIWSContextWindowBoundary(t *testing.T) {
 
 	t.Run("new_window_without_previous_response_id_still_marks_boundary", func(t *testing.T) {
 		payload := []byte("{\"type\":\"response.create\",\"client_metadata\":{\"x-codex-window-id\":\"window-b\"}}")
-		updated, boundary, err := normalizeOpenAIWSContextWindowBoundary(payload, "window-a")
+		updated, boundary, err := ws.NormalizeContextWindowBoundary(payload, "window-a")
 		require.NoError(t, err)
 		require.True(t, boundary.Changed)
 		require.False(t, boundary.PreviousResponseIDRemoved)
@@ -198,7 +198,7 @@ func TestNormalizeOpenAIWSContextWindowBoundary(t *testing.T) {
 
 	t.Run("embedded_turn_metadata_is_fallback", func(t *testing.T) {
 		payload := []byte("{\"type\":\"response.create\",\"previous_response_id\":\"resp_old\",\"client_metadata\":{\"x-codex-turn-metadata\":\"{\\\"window_id\\\":\\\"window-b\\\"}\"}}")
-		updated, boundary, err := normalizeOpenAIWSContextWindowBoundary(payload, "window-a")
+		updated, boundary, err := ws.NormalizeContextWindowBoundary(payload, "window-a")
 		require.NoError(t, err)
 		require.True(t, boundary.Changed)
 		require.True(t, boundary.PreviousResponseIDRemoved)

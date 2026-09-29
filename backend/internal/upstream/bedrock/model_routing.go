@@ -72,6 +72,11 @@ func ResolveBedrockModelRoute(provider *RouteInput, requestedModel string) (Bedr
 		modelID = defaultID
 	}
 	baseID := BedrockBaseModelID(modelID)
+	// 5.5 沿用固定上游的全局 ID；端点区域不改写 ID，真实区域权限交由 AWS 校验。
+	if modelID == "global.anthropic.claude-sonnet-5-5" {
+		route.ModelID = modelID
+		return route, nil
+	}
 	rule, knownModel := BedrockModelRegionRules[baseID]
 	failure := &BedrockModelRoutingError{
 		ModelID: modelID, SourceRegion: route.SourceRegion, ForceGlobal: ShouldForceBedrockGlobal(provider),
@@ -168,6 +173,8 @@ const (
 // 概览声称支持地域推理、但未列出对应精确 ID/来源关系的条目保留为未核实；不拼接 us-gov 等前缀。
 // SourceURL 记录每个型号自身的证据，升级时必须同时核对地域与全局来源区域。
 var BedrockModelRegionRules = map[string]BedrockModelRegionRule{
+	// 此条只记录固定上游确认的全局 ID；没有核实地域 ID，不推断区域支持表。
+	"anthropic.claude-sonnet-5-5": {SourceURL: "https://github.com/Wei-Shaw/sub2api/commit/8490a818678780e8301147c13696af94dea7dd07", GlobalProfile: BedrockInferenceProfile{Id: "global.anthropic.claude-sonnet-5-5"}},
 	"anthropic.claude-opus-4-7": {
 		SourceURL: "https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-opus-4-7.html",
 		GeoProfiles: []BedrockInferenceProfile{

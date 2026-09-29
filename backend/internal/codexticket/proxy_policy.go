@@ -275,7 +275,7 @@ func (s *CodexTicketService) resolveTicketAttemptProxy(ctx context.Context, c *c
 	if err != nil {
 		return p, &ticketProviderFailure{kind: ticketNetworkKind(err)}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 200 {
 		until := codexTicketRetryNotBefore(resp.Header.Get("Retry-After"), resp.StatusCode, "")
 		if until == nil && (resp.StatusCode == 401 || resp.StatusCode == 403) {

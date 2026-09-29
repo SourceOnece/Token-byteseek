@@ -141,7 +141,7 @@ describe('ModelDistributionChart', () => {
     const wrapper = mount(ModelDistributionChart, {
       props: {
         modelStats,
-        showProviderCost: false,
+        showAccountCost: false,
       },
       global: {
         stubs: {

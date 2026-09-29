@@ -2,6 +2,7 @@
 package provider
 
 import (
+	claudewire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
@@ -82,6 +83,7 @@ func thinkingRequestOptions(models ...string) requeststate.ThinkingRequestOption
 		return options
 	}
 	model := models[0]
+	options.PreserveSignedThinking = claudewire.IsOpus55(model) || claudewire.IsSonnet55(model)
 	options.PreFilter = modelidentity.ShouldPreFilterThinkingBlocks(model)
 	options.RetryFilters = modelidentity.ShouldApplyRetryFilters(model)
 	options.PassbackRequired = modelidentity.ResolveThinkingProtocol(model) == modelidentity.ThinkingProtocolPassbackRequired

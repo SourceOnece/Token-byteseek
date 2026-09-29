@@ -289,6 +289,8 @@ func ApplyConfigTokenPriceOverrides(pricing *ModelPricing, ConfigPricing *ModelP
 		priority := ConfigTierOverridePrice(pricing.CacheReadPricePerToken, pricing.CacheReadPricePerTokenPriority, *ConfigPricing.CacheReadPrice)
 		pricing.CacheReadPricePerToken = *ConfigPricing.CacheReadPrice
 		pricing.CacheReadPricePerTokenPriority = priority
+		// 显式统一缓存价同时覆盖图片缓存，避免本地配置被原生图片价绕过。
+		pricing.ImageCacheReadPricePerToken = *ConfigPricing.CacheReadPrice
 	}
 }
 
@@ -417,6 +419,15 @@ func ComputeTokenBreakdown(
 	bd.CacheCreationCost = ComputeCacheCreationCost(pricing, tokens, cacheCreationPrice, cacheCreationMultiplier)
 
 	bd.CacheReadCost = float64(tokens.CacheReadTokens) * cacheReadPrice
+	if tokens.ImageCacheReadTokens > 0 {
+		// 图片缓存是缓存总量的子集，不能再按普通图片输入重复收费。
+		images := min(tokens.ImageCacheReadTokens, max(tokens.CacheReadTokens, 0))
+		imagePrice := pricing.ImageCacheReadPricePerToken
+		if imagePrice == 0 {
+			imagePrice = cacheReadPrice
+		}
+		bd.CacheReadCost = float64(max(tokens.CacheReadTokens-images, 0))*cacheReadPrice + float64(images)*imagePrice
+	}
 
 	if tierMultiplier != 1.0 {
 		bd.InputCost *= tierMultiplier
@@ -758,15 +769,16 @@ func BuildTokenDisplayPricing(pricing *ModelPricing, rateMultiplier float64) Mod
 
 	cacheWritePrice, cacheWrite1hPrice := CacheCreationDisplayPrices(pricing)
 	displayPricing := ModelDisplayPricing{
-		PricingMode:               "token",
-		PriceStatus:               "priced",
-		InputPricePerToken:        pricing.InputPricePerToken * rateMultiplier,
-		ImageInputPricePerToken:   pricing.ImageInputPricePerToken * rateMultiplier,
-		OutputPricePerToken:       pricing.OutputPricePerToken * rateMultiplier,
-		CacheWritePricePerToken:   cacheWritePrice * rateMultiplier,
-		CacheWrite1hPricePerToken: cacheWrite1hPrice * rateMultiplier,
-		CacheReadPricePerToken:    pricing.CacheReadPricePerToken * rateMultiplier,
-		ImageOutputPricePerToken:  pricing.ImageOutputPricePerToken * rateMultiplier,
+		MaxReasoningEffortMultiplier: pricing.MaxReasoningEffortMultiplier,
+		PricingMode:                  "token",
+		PriceStatus:                  "priced",
+		InputPricePerToken:           pricing.InputPricePerToken * rateMultiplier,
+		ImageInputPricePerToken:      pricing.ImageInputPricePerToken * rateMultiplier,
+		OutputPricePerToken:          pricing.OutputPricePerToken * rateMultiplier,
+		CacheWritePricePerToken:      cacheWritePrice * rateMultiplier,
+		CacheWrite1hPricePerToken:    cacheWrite1hPrice * rateMultiplier,
+		CacheReadPricePerToken:       pricing.CacheReadPricePerToken * rateMultiplier,
+		ImageOutputPricePerToken:     pricing.ImageOutputPricePerToken * rateMultiplier,
 	}
 	if fastPricing, ok := FastModeDisplayPricing(pricing); ok {
 		displayPricing.FastInputPricePerToken = fastPricing.InputPricePerToken * rateMultiplier

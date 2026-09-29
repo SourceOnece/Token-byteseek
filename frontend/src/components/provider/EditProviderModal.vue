@@ -2328,7 +2328,7 @@
       <!-- 分组选择 -->
       <GroupSelector
         v-model="form.group_ids"
-        :groups="groups"
+        :groups="selectableGroups"
         data-tour="provider-form-groups"
       />
 
@@ -2399,6 +2399,7 @@ import type {
   Provider,
   Proxy,
   AdminGroup,
+  Group,
   OpenAICompactMode,
   OpenAIOAuthClientPolicy,
   OllamaCloudUsageState,
@@ -2530,6 +2531,16 @@ interface TempUnschedRuleForm {
 // State
 const submitting = ref(false)
 const ticketSettings = ref<InstanceType<typeof CodexTicketAccountSettings>>()
+
+// 已绑定停用分组仍可查看或移除；当前活跃列表的数据优先于账号旧快照。
+const selectableGroups = computed(() => {
+  const current: Group[] = [...props.groups]
+  const known = new Set(current.map(group => group.id))
+  for (const group of props.provider?.groups ?? []) {
+    if (props.provider?.group_ids?.includes(group.id) && !known.has(group.id)) { current.push(group); known.add(group.id) }
+  }
+  return current
+})
 const editBaseUrl = ref('https://api.anthropic.com')
 const editApiKey = ref('')
 const upstreamUsageEnabled = ref(true)

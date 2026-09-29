@@ -279,9 +279,14 @@
 
           <!-- User Usage Trend (Full Width) -->
           <div class="card p-4">
-            <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
               {{ t('admin.dashboard.recentUsage') }} (Top 12)
             </h3>
+            <div class="flex gap-2" role="group" :aria-label="t('admin.dashboard.recentUsage')">
+              <button v-for="metric in (['tokens', 'actual_cost'] as const)" :key="metric" type="button" class="btn btn-sm h-9" :class="userTrendMetric === metric ? 'btn-primary' : 'btn-secondary'" :aria-pressed="userTrendMetric === metric" @click="setUserTrendMetric(metric)">{{ t(metric === 'tokens' ? 'admin.dashboard.tokens' : 'admin.dashboard.actualSpending') }}</button>
+            </div>
+            </div>
             <div class="h-64">
               <div v-if="userTrendLoading" class="flex h-full items-center justify-center">
                 <LoadingSpinner size="md" />
@@ -318,7 +323,7 @@ import type {
   UserSpendingRankingItem
 } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import CodexQualityDashboard from '@/components/admin/account/CodexQualityDashboard.vue'
+import CodexQualityDashboard from '@/components/admin/provider/CodexQualityDashboard.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
@@ -445,7 +450,7 @@ const lineOptions = computed(() => ({
       },
       callbacks: {
         label: (context: any) => {
-          return `${context.dataset.label}: ${formatTokens(context.raw)}`
+          return `${context.dataset.label}: ${formatUserTrendValue(Number(context.raw))}`
         }
       }
     }
@@ -471,7 +476,7 @@ const lineOptions = computed(() => ({
         font: {
           size: CHART_TICK_FONT_SIZE
         },
-        callback: (value: string | number) => formatTokens(Number(value))
+        callback: (value: string | number) => formatUserTrendValue(Number(value))
       }
     }
   }
@@ -505,7 +510,7 @@ const userTrendChartData = computed(() => {
     if (!userGroups.has(key)) {
       userGroups.set(key, { name: getDisplayName(point), data: new Map() })
     }
-    userGroups.get(key)!.data.set(point.date, point.tokens)
+    userGroups.get(key)!.data.set(point.date, userTrendMetric.value === 'tokens' ? point.tokens : point.actual_cost)
   })
 
   const sortedDates = Array.from(allDates).sort()
@@ -632,6 +637,15 @@ const loadDashboardSnapshot = async (includeStats: boolean) => {
   }
 }
 
+// 指标变化重新请求 Top 用户，而不是只切换原 Top 用户的纵轴。
+const userTrendMetric = ref<'tokens' | 'actual_cost'>('tokens')
+const formatUserTrendValue = (value: number) => userTrendMetric.value === 'tokens' ? formatTokens(value) : `$${value.toFixed(2)}`
+const setUserTrendMetric = (metric: 'tokens' | 'actual_cost') => {
+  if (userTrendMetric.value === metric) return
+  userTrendMetric.value = metric
+  userTrend.value = []
+  void loadUsersTrend()
+}
 const loadUsersTrend = async () => {
   const currentSeq = ++usersTrendLoadSeq
   userTrendLoading.value = true
@@ -640,7 +654,8 @@ const loadUsersTrend = async () => {
       start_date: startDate.value,
       end_date: endDate.value,
       granularity: granularity.value,
-      limit: 12
+      limit: 12,
+      metric: userTrendMetric.value
     })
     if (currentSeq !== usersTrendLoadSeq) return
     userTrend.value = response.trend || []

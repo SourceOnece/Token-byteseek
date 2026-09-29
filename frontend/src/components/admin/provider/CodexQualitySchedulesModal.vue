@@ -153,7 +153,7 @@ function newPlan() {
 function edit(plan: QualitySchedule) { draft.value = JSON.parse(JSON.stringify(plan)); draft.value!.config.confirm_scheduling = false; draft.value!.config.timeout_seconds ||= 120; draft.value!.config.api_protocol ||= ''; error.value = ''; search.value = ''; void loadAccounts(1) }
 async function loadAccounts(page = 1) {
   const v = ++accountRequest
-  try { const value = await adminAPI.accounts.list(page, 50, { platform: 'openai', search: search.value }); if (v !== accountRequest) return; accountRows.value = value.items; accountTotal.value = value.total; accountPage.value = page } catch (e) { if (v === accountRequest) error.value = message(e) }
+  try { const value = await adminAPI.providers.list(page, 50, { platform: 'openai', search: search.value }); if (v !== accountRequest) return; accountRows.value = value.items; accountTotal.value = value.total; accountPage.value = page } catch (e) { if (v === accountRequest) error.value = message(e) }
 }
 function toggleAccount(id: number) { if (!draft.value) return; const ids = draft.value.config.account_ids; draft.value.config.account_ids = ids.includes(id) ? ids.filter(value => value !== id) : [...ids, id] }
 async function selectAll() {
@@ -162,7 +162,7 @@ async function selectAll() {
   try {
     const ids: number[] = []
     for (let page = 1; ; page++) {
-      const value = await adminAPI.accounts.list(page, 100, { platform: 'openai', search: query })
+      const value = await adminAPI.providers.list(page, 100, { platform: 'openai', search: query })
       if (v !== generation || draft.value !== target) return
       ids.push(...value.items.filter(eligible).map(account => account.id))
       if (ids.length > 500) throw new Error(t('admin.accounts.quality.tooMany'))

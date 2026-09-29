@@ -364,10 +364,6 @@ func (c *WSConn) hasReaderLoop() bool {
 	return c != nil && c.readerLoopResults != nil
 }
 
-func (c *WSConn) readerLoopClosedByPeer() bool {
-	return c != nil && c.readerLoopPeerClosed.Load()
-}
-
 func (c *WSConn) upstreamPingCount() int64 {
 	if c == nil || c.ws == nil {
 		return 0

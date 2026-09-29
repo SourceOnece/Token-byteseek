@@ -109,7 +109,7 @@ func (a ProtocolTarget) GetAnthropicProtocolBaseURL() string {
 	case routingcapability.PlatformDeepseek:
 		return DefaultDeepseekAnthropicBaseURL
 	case routingcapability.PlatformMiniMax, routingcapability.PlatformOpenCodeGo:
-		return a.Record.DefaultCNProtocolBaseURL(APIProtocolAnthropic)
+		return a.DefaultCNProtocolBaseURL(APIProtocolAnthropic)
 	default:
 		return ""
 	}

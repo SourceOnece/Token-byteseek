@@ -14,4 +14,18 @@ ALTER TABLE pricing_configs
  ADD COLUMN IF NOT EXISTS audio_tts_price_per_million_chars numeric(20,8),
  ADD COLUMN IF NOT EXISTS audio_stt_price_per_hour numeric(20,8);
 
--- 旧分组字段保留作兼容归档；新价格配置是运行时唯一来源。
+ALTER TABLE groups
+ DROP COLUMN IF EXISTS peak_rate_enabled,
+ DROP COLUMN IF EXISTS peak_start,
+ DROP COLUMN IF EXISTS peak_end,
+ DROP COLUMN IF EXISTS peak_rate_multiplier,
+ DROP COLUMN IF EXISTS long_context_pricing_enabled,
+ DROP COLUMN IF EXISTS free_openai_fast,
+ DROP COLUMN IF EXISTS batch_image_discount_multiplier,
+ DROP COLUMN IF EXISTS batch_image_hold_multiplier,
+ DROP COLUMN IF EXISTS web_search_price_per_call,
+ DROP COLUMN IF EXISTS search_price_per_1k,
+ DROP COLUMN IF EXISTS audio_realtime_price_per_min,
+ DROP COLUMN IF EXISTS audio_tts_price_per_million_chars,
+ DROP COLUMN IF EXISTS audio_stt_price_per_hour,
+ DROP COLUMN IF EXISTS model_pricing;

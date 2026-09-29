@@ -112,7 +112,7 @@ func TestRestoreSQLFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dumper := bp.NewPgDumper(bp.DatabaseOptions{Host: host, Port: port.Int(), User: "postgres", Password: "postgres", DBName: "test_restore", SSLMode: "disable"})
+	dumper := bp.NewPgDumper(bp.DatabaseOptions{Host: host, Port: port.Int(), User: "postgres", Password: "postgres", DBName: "test_restore", SSLMode: "disable"}, db)
 	err = dumper.Restore(ctx, strings.NewReader("DELETE FROM fixture; INSERT INTO definitely_missing_table VALUES(1); INSERT INTO fixture VALUES(2);"))
 	var count int
 	if e := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM fixture WHERE id=1").Scan(&count); e != nil {

@@ -358,8 +358,6 @@ const updateDropdownLeft = () => {
 
 const updateDropdownDirection = () => {
   if (!dropdownRef.value || !triggerRect.value) return
-  nextTick(() => {
-    if (!dropdownRef.value || !triggerRect.value) return
     updateDropdownLeft()
     const dropdownHeight = dropdownRef.value.offsetHeight || SELECT_PANEL_MAX_HEIGHT
     const spaceBelow = window.innerHeight - triggerRect.value.bottom
@@ -370,7 +368,6 @@ const updateDropdownDirection = () => {
     } else {
       dropdownPosition.value = 'bottom'
     }
-  })
 }
 
 const calculateDropdownPosition = () => { updateTriggerRect() }

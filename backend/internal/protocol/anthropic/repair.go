@@ -635,7 +635,7 @@ func FilterSignatureSensitiveBlocksForRetry(body []byte) []byte {
 // 策略：
 //   - 当 thinking.type 不是 "enabled"/"adaptive"：移除所有 thinking 相关块
 //   - 当 thinking.type 是 "enabled"/"adaptive"：仅移除缺失/无效 signature 的 thinking 块
-func FilterThinkingBlocksInternal(body []byte, rejectedSignature string) []byte {
+func FilterThinkingBlocksInternal(body []byte, rejectedSignature string, preserveSigned ...bool) []byte {
 	// Fast path: if body doesn't contain "thinking", skip parsing
 	if !bytes.Contains(body, []byte(`"type":"thinking"`)) &&
 		!bytes.Contains(body, []byte(`"type": "thinking"`)) &&
@@ -652,7 +652,8 @@ func FilterThinkingBlocksInternal(body []byte, rejectedSignature string) []byte 
 	}
 
 	// Check if thinking is enabled
-	thinkingEnabled := false
+	alwaysThinking := len(preserveSigned) > 0 && preserveSigned[0]
+	thinkingEnabled := alwaysThinking
 	if thinking, ok := req["thinking"].(map[string]any); ok {
 		if thinkType, ok := thinking["type"].(string); ok && (thinkType == "enabled" || thinkType == "adaptive") {
 			thinkingEnabled = true
@@ -693,6 +694,12 @@ func FilterThinkingBlocksInternal(body []byte, rejectedSignature string) []byte 
 				// When thinking is enabled and this is an assistant message,
 				// only keep thinking blocks with valid signatures
 				if thinkingEnabled && role == "assistant" {
+					if alwaysThinking && blockType == "redacted_thinking" {
+						if data, ok := blockMap["data"].(string); ok && data != "" {
+							newContent = append(newContent, block)
+							continue
+						}
+					}
 					signature, _ := blockMap["signature"].(string)
 					if signature != "" && signature != rejectedSignature {
 						newContent = append(newContent, block)
@@ -723,6 +730,40 @@ func FilterThinkingBlocksInternal(body []byte, rejectedSignature string) []byte 
 
 	if !filtered {
 		return body
+	}
+	// 5.5 的签名历史必须完整；丢弃其中一块后不能保留残缺的思考链。
+	if alwaysThinking {
+		for _, message := range messages {
+			m, ok := message.(map[string]any)
+			if !ok {
+				continue
+			}
+			content, ok := m["content"].([]any)
+			if !ok {
+				continue
+			}
+			cleaned := make([]any, 0, len(content))
+			for _, block := range content {
+				if b, ok := block.(map[string]any); ok {
+					typeName, _ := b["type"].(string)
+					if typeName == "thinking" || typeName == "redacted_thinking" {
+						continue
+					}
+					if _, exists := b["thinking"]; typeName == "" && exists {
+						continue
+					}
+				}
+				cleaned = append(cleaned, block)
+			}
+			if len(cleaned) == 0 {
+				text := "(content removed)"
+				if m["role"] == "assistant" {
+					text = "(assistant content removed)"
+				}
+				cleaned = append(cleaned, map[string]any{"type": "text", "text": text})
+			}
+			m["content"] = cleaned
+		}
 	}
 
 	newBody, err := json.Marshal(req)

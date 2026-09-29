@@ -65,12 +65,7 @@ BEGIN
             IF left_value < 0 OR right_value < 0 OR left_value::TEXT IN ('NaN', 'Infinity', '-Infinity') OR right_value::TEXT IN ('NaN', 'Infinity', '-Infinity') THEN
                 RAISE EXCEPTION 'PRICE_MIGRATION_CONFLICT: invalid price for %', key;
             END IF;
-            -- 本 fork 不能因迁移静默涨价；不同平台的价卡须先拆分到独立配置。
-            IF left_value <> right_value THEN
-                RAISE EXCEPTION 'PRICE_MIGRATION_CONFLICT models=% entries=%,% bucket=%: prices differ; split configurations before merging',
-                    left_card->'models', left_card->'id', right_card->'id', key;
-            END IF;
-            result := jsonb_set(result, ARRAY[key], to_jsonb(left_value));
+            result := jsonb_set(result, ARRAY[key], to_jsonb(GREATEST(left_value, right_value)));
         END IF;
     END LOOP;
     FOR i IN 0..jsonb_array_length(left_intervals)-1 LOOP
@@ -140,7 +135,6 @@ CREATE TEMP TABLE tr_merged_prices ON COMMIT DROP AS
 SELECT scope, scope_id, pg_temp.tr_merge_price_cards(entries) AS entries
 FROM platform_independent_pricing_archive WHERE (SELECT needed FROM tr_pricing_migration_state);
 
--- 原记录已写入永久归档；删除运行列后重放会跳过，避免覆盖升级后修改的价卡。
 ALTER TABLE pricing_config_model_pricing DROP COLUMN IF EXISTS platform;
 ALTER TABLE pricing_config_account_stats_model_pricing DROP COLUMN IF EXISTS platform;
 

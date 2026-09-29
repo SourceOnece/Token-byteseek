@@ -124,7 +124,19 @@ func DefaultFallbackPrices() map[string]*ModelPricing {
 		SupportsCacheBreakdown: false,
 	}
 
+	// 保留 fork 已同步的 Gemini 3.7/3.8 兜底价，显式价格配置仍优先。
+	for _, model := range []string{"gemini-3.7-flash", "gemini-3.8-flash"} {
+		prices[model] = &ModelPricing{InputPricePerToken: 0.75e-6, OutputPricePerToken: 3.75e-6, CacheReadPricePerToken: 0.075e-6}
+	}
+
+	// sub2api v0.2.10 的 Claude 5.5 价格，缓存长短写入继续分开计费。
+	prices["claude-opus-5-5"] = &ModelPricing{InputPricePerToken: 4e-6, OutputPricePerToken: 20e-6, CacheCreationPricePerToken: 5e-6, CacheReadPricePerToken: 0.2e-6, CacheCreation5mPrice: 5e-6, CacheCreation1hPrice: 8e-6, SupportsCacheBreakdown: true}
+	prices["claude-sonnet-5-5"] = &ModelPricing{InputPricePerToken: 2e-6, OutputPricePerToken: 10e-6, CacheCreationPricePerToken: 2.5e-6, CacheReadPricePerToken: 0.2e-6, CacheCreation5mPrice: 2.5e-6, CacheCreation1hPrice: 4e-6, SupportsCacheBreakdown: true}
+
 	// OpenAI GPT-5.4（业务指定价格）
+	// GPT Image 2.5 原生图片接口官方价：文本输入 5、图片输入 8、图片输出 30、图片缓存读取 2 USD/百万 token。
+	prices["gpt-image-2.5-flare"] = &ModelPricing{InputPricePerToken: 5e-6, ImageInputPricePerToken: 8e-6, OutputPricePerToken: 0, ImageOutputPricePerToken: 30e-6, CacheReadPricePerToken: 1.25e-6, ImageCacheReadPricePerToken: 2e-6}
+	prices["gpt-image-2.5-sunburst"] = prices["gpt-image-2.5-flare"]
 	prices["gpt-5.4"] = &ModelPricing{
 		InputPricePerToken:             2.5e-6,  // $2.5 per MTok
 		InputPricePerTokenPriority:     5e-6,    // $5 per MTok

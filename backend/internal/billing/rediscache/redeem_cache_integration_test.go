@@ -34,7 +34,7 @@ func (s *RedeemCacheSuite) TestGetRedeemAttemptCount_Missing() {
 
 func (s *RedeemCacheSuite) TestIncrementAndGetRedeemAttemptCount() {
 	userID := int64(1)
-	key := fmt.Sprintf("%s%d", "redeem:ratelimit:", userID)
+	key := fmt.Sprintf("%s%d", "redeem:ratelimit:v2:", userID)
 
 	require.NoError(s.T(), s.cache.IncrementRedeemAttemptCount(s.Ctx, userID), "IncrementRedeemAttemptCount")
 	count, err := s.cache.GetRedeemAttemptCount(s.Ctx, userID)

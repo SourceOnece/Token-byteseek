@@ -113,6 +113,8 @@ func (s *CatalogQuery) MatchByModelFamily(model string) *LiteLLMModelPricing {
 	// 因子串关系误匹配 "claude-opus-4-7"（opus-4.7 系列）。
 	// 注意：原 map 实现存在 Go map 迭代随机性导致的同类 bug，此处改为有序切片修复。
 	families := []modelFamily{
+		{name: "opus-5.5", match: []string{"claude-opus-5-5", "claude-opus-5.5"}},
+		{name: "sonnet-5.5", match: []string{"claude-sonnet-5-5", "claude-sonnet-5.5"}},
 		{name: "opus-5", match: []string{"claude-opus-5"}, pricing: []string{"claude-opus-5", "claude-opus-4-8", "claude-opus-4.8"}},
 		{name: "opus-4.7", match: []string{"claude-opus-4-7", "claude-opus-4.7"}, pricing: []string{"claude-opus-4-7", "claude-opus-4.7", "claude-opus-4-6"}},
 		{name: "opus-4.6", match: []string{"claude-opus-4-6", "claude-opus-4.6"}},
@@ -292,6 +294,11 @@ func (s *CatalogQuery) MatchOpenAIModel(model string) *LiteLLMModelPricing {
 		}
 	}
 
+	for _, imageModel := range []string{"gpt-image-2.5-flare", "gpt-image-2.5-sunburst"} {
+		if model == imageModel || model == imageModel+"-2026-09-08" {
+			return &LiteLLMModelPricing{InputCostPerToken: 5e-6, InputCostPerImageToken: 8e-6, OutputCostPerImageToken: 30e-6, CacheReadInputTokenCost: 1.25e-6, CacheReadInputImageTokenCost: 2e-6, LiteLLMProvider: "openai", Mode: "image_generation", SupportsPromptCaching: true}
+		}
+	}
 	if s.isImageGenerationModel(model) {
 		for _, candidate := range []string{"gpt-image-2", "gpt-image-1.5", "gpt-image-1"} {
 			if pricing, ok := s.Entries[candidate]; ok {

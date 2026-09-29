@@ -222,7 +222,7 @@
             type="button"
             @click="selectCNPlatform('minimax')"
             :class="[
-              'flex h-9 flex-1 items-center justify-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-all',
+              'flex h-9 flex-1 items-center justify-center gap-2 rounded-control px-4 py-1.5 text-sm font-medium transition-all',
               form.platform === 'minimax'
                 ? 'bg-white text-red-600 shadow-sm dark:bg-dark-600 dark:text-red-400'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
@@ -236,7 +236,7 @@
             type="button"
             @click="selectCNPlatform('opencode_go')"
             :class="[
-              'flex h-9 flex-1 items-center justify-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-all',
+              'flex h-9 flex-1 items-center justify-center gap-2 rounded-control px-4 py-1.5 text-sm font-medium transition-all',
               form.platform === 'opencode_go'
                 ? 'bg-white text-blue-600 shadow-sm dark:bg-dark-600 dark:text-blue-400'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
@@ -504,8 +504,8 @@
             :class="['flex items-center gap-3 border-2 p-3 text-left transition-all', providerMode === mode ? cnAccentActiveClass : 'border-gray-200 hover:border-gray-400 dark:border-dark-600 dark:hover:border-gray-600']">
             <span :class="['flex h-8 w-8 shrink-0 items-center justify-center', providerMode === mode ? cnAccentIconClass : 'bg-gray-100 dark:bg-dark-600']"><Icon :name="mode === 'payg' || mode === 'zen' ? 'creditCard' : 'bolt'" size="sm" /></span>
             <div>
-              <span class="block text-sm font-bold">{{ t('admin.accounts.cnProviders.accountMode.' + mode) }}</span>
-              <span class="text-sm text-gray-500 dark:text-gray-400">{{ t('admin.accounts.cnProviders.accountMode.' + mode + 'Desc') }}</span>
+              <span class="block text-sm font-bold">{{ t('admin.providers.cnProviders.providerMode.' + mode) }}</span>
+              <span class="text-sm text-gray-500 dark:text-gray-400">{{ t('admin.providers.cnProviders.providerMode.' + mode + 'Desc') }}</span>
             </div>
           </button>
         </div>

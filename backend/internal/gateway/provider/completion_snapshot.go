@@ -139,6 +139,7 @@ func ProjectOpenAICompletionResult(v *forwardcore.OpenAIResult, a *provider.Reco
 			CacheCreationInputTokens: v.Usage.CacheCreationInputTokens,
 			CacheReadInputTokens:     v.Usage.CacheReadInputTokens,
 			ImageInputTokens:         v.Usage.ImageInputTokens,
+			ImageCacheReadTokens:     v.Usage.ImageCacheReadTokens,
 			ImageOutputTokens:        v.Usage.ImageOutputTokens,
 		},
 	}

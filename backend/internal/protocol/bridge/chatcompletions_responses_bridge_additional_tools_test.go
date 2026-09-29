@@ -33,7 +33,7 @@ func TestResponsesToChatCompletionsRequest_LowersAdditionalToolsForChatOnlyUpstr
 	require.True(t, CustomToolNames(tools)["exec"])
 	require.Equal(t, "collaboration", NamespaceToolNames(tools)["collaboration__spawn_agent"].Namespace)
 
-	chat, err := ResponsesToChatCompletionsRequest(&req)
+	chat, err := ResponsesToChatCompletionsRequestWithOptions(&req, nil)
 	require.NoError(t, err)
 	require.Len(t, chat.Messages, 1, "additional_tools 不能变成 chat 消息")
 	require.Equal(t, "user", chat.Messages[0].Role)

@@ -53,5 +53,5 @@ func TestOpenAISetupTokenImagesUsesOAuthResponsesPath(t *testing.T) {
 	require.Equal(t, http.StatusTooManyRequests, failoverErr.StatusCode)
 	require.True(t, failoverErr.RetryableOnSameProvider)
 	require.False(t, failoverErr.SameProviderRetryDeadline.IsZero())
-	require.Contains(t, upstream.lastReq.URL.String(), "/backend-api/codex/responses")
+	require.Contains(t, upstream.lastReq.URL.String(), "/backend-api/codex/images/generations")
 }

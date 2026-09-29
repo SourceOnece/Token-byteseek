@@ -9,4 +9,6 @@ const (
 	UpstreamUsageAdapterZhipuCoding     = "zhipu_coding"
 	UpstreamUsageAdapterKimiBalance     = "kimi_balance"
 	UpstreamUsageAdapterDeepseekBalance = "deepseek_balance"
+	UpstreamUsageAdapterMiniMaxCoding   = "minimax_coding"
+	UpstreamUsageAdapterOpenCodeGo      = "opencode_go"
 )

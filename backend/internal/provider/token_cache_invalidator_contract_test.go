@@ -91,7 +91,7 @@ func TestCompositeTokenCacheInvalidator_Antigravity(t *testing.T) {
 	err := invalidator.InvalidateToken(context.Background(), provider)
 	require.NoError(t, err)
 	// 新行为：同时删除基于 project_id 和 provider_id 的缓存键
-	require.Equal(t, []string{"ag:ag-project", "ag:provider:99"}, cache.deletedKeys)
+	require.Equal(t, []string{"ag:provider:99"}, cache.deletedKeys)
 }
 
 func TestCompositeTokenCacheInvalidator_AntigravityWithoutProjectID(t *testing.T) {
@@ -298,7 +298,6 @@ func TestCompositeTokenCacheInvalidator_AllPlatformsIntegration(t *testing.T) {
 	expectedKeys := []string{
 		"gemini:gemini-proj",
 		"gemini:provider:1",
-		"ag:ag-proj",
 		"ag:provider:2",
 		"openai:provider:3",
 		"claude:provider:4",

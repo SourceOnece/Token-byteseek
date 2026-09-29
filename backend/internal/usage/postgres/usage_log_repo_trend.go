@@ -90,13 +90,22 @@ func (r *Store) GetAPIKeyUsageTrend(ctx context.Context, startTime, endTime time
 
 // GetUserUsageTrend 返回按付款主体和日期聚合的最活跃用户趋势。
 func (r *Store) GetUserUsageTrend(ctx context.Context, startTime, endTime time.Time, granularity string, limit int) (results []UserUsageTrendPoint, err error) {
-	if aggregated, ok, aggregateErr := r.getUserUsageTrendFromAnalytics(ctx, startTime, endTime, granularity, limit); aggregateErr == nil && ok {
+	return r.GetUserUsageTrendMetric(ctx, startTime, endTime, granularity, limit, "tokens")
+}
+
+// 新指标使用相同付款主体与聚合源；旧查询方法仍代表 token 排行。
+func (r *Store) GetUserUsageTrendMetric(ctx context.Context, startTime, endTime time.Time, granularity string, limit int, metric string) (results []UserUsageTrendPoint, err error) {
+	if aggregated, ok, aggregateErr := r.getUserUsageTrendFromAnalytics(ctx, startTime, endTime, granularity, limit, metric); aggregateErr == nil && ok {
 		return aggregated, nil
 	} else if aggregateErr != nil {
 		r.logUsageAnalyticsFallback("user_usage_trend", aggregateErr)
 	}
 	dateFormat := safeDateFormat(granularity)
-
+	// 排序表达式只取固定枚举，不能把查询参数拼入 SQL。
+	rank := "SUM(input_tokens + output_tokens + cache_creation_tokens + cache_read_tokens)"
+	if metric == "actual_cost" {
+		rank = "SUM(actual_cost)"
+	}
 	query := fmt.Sprintf(`
 		WITH top_users AS (
 			SELECT COALESCE(billing_user_id, user_id) AS user_id
@@ -104,7 +113,7 @@ func (r *Store) GetUserUsageTrend(ctx context.Context, startTime, endTime time.T
 			WHERE created_at >= $1 AND created_at < $2
 			-- 团队成员使用团队 Key 时，Top 用户应按付款主体合并用量。
 			GROUP BY COALESCE(billing_user_id, user_id)
-			ORDER BY SUM(input_tokens + output_tokens + cache_creation_tokens + cache_read_tokens) DESC
+			ORDER BY %s DESC
 			LIMIT $3
 		)
 		SELECT
@@ -122,7 +131,7 @@ func (r *Store) GetUserUsageTrend(ctx context.Context, startTime, endTime time.T
 		  AND u.created_at >= $4 AND u.created_at < $5
 		GROUP BY date, COALESCE(u.billing_user_id, u.user_id), us.email, us.username
 		ORDER BY date ASC, tokens DESC
-	`, dateFormat)
+	`, rank, dateFormat)
 
 	rows, err := r.sql.QueryContext(ctx, query, startTime, endTime, limit, startTime, endTime)
 	if err != nil {

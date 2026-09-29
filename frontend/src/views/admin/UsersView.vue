@@ -226,6 +226,9 @@
               </button>
             </div>
 
+            <button v-if="selectedCount > 0" type="button" class="btn btn-danger btn-sm h-9" data-test="bulk-delete-users" :disabled="bulkDeleting" @click="bulkDeleteIds = [...selectedIds]">
+              <Icon name="trash" size="sm" />{{ t('common.delete') }} · {{ selectedCount }}
+            </button>
             <button
               v-if="selectedCount > 0"
               class="btn btn-secondary flex-none whitespace-nowrap px-3 md:flex-initial"

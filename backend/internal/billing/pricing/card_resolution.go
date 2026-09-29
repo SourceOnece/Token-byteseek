@@ -35,7 +35,7 @@ func PriceCardNeedsBase(card *ModelPricingEntry) bool {
 // @project-doc docs/domains/routing_and_billing.md#group_model_pricing
 func ResolvePriceCards(configPricing *ModelPricingEntry, base *ModelPricing, baseSource string, longContextEnabled bool) *ResolvedPricing {
 	var resolved *ResolvedPricing
-	if PriceCardOverrides(configPricing) || configPricing != nil && configPricing.LegacyGroupOverride {
+	if PriceCardOverrides(configPricing) {
 		resolved = ResolveConfiguredPricing(configPricing, base, PricingSourceConfig)
 	} else {
 		resolved = &ResolvedPricing{

@@ -69,6 +69,7 @@ func (s *OpenAIRequests) SendChat(
 	grokCacheIdentity string,
 	tlsRouterMatch ...egress.TLSFingerprintRouterMatchResult,
 ) (*http.Response, error) {
+	rememberOpenCodeInboundSession(c, body)
 	return openai.SendChatRequest(ctx, body, openai.CCRequestOptions{
 		URL: targetURL, Token: bearerToken, Stream: stream, Headers: c.Request.Header,
 		RequestContext:  gatewayprovider.DetachUpstreamContext,
@@ -113,6 +114,7 @@ func (s *OpenAIRequests) AnthropicURL(provider *gatewayprovider.ExecutionProvide
 
 // BuildAnthropic 只投影本次请求 Header 与提供商策略。
 func (s *OpenAIRequests) BuildAnthropic(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, body []byte, apiKey, targetURL string) (*http.Request, []byte, error) {
+	rememberOpenCodeInboundSession(c, body)
 	var headers http.Header
 	if c != nil && c.Request != nil {
 		headers = c.Request.Header
@@ -123,7 +125,11 @@ func (s *OpenAIRequests) BuildAnthropic(ctx context.Context, c *gin.Context, pro
 		WireCasing: anthropic.ResolveWireCasing, AddHeader: anthropic.AddHeaderRaw, SetHeader: anthropic.SetHeaderRaw,
 		AuthHeader: func(h http.Header, key string) {
 			anthropic.SetAPIKeyAuthHeader(h, gatewayprovider.ExecutionProtocolRecord(provider).GetAnthropicAPIKeyAuthScheme() == providercore.AnthropicAPIKeyAuthSchemeAuthorizationBearer, key)
-		}, ApplyOverrides: gatewayprovider.BindExecutionHeaders(provider),
+		}, ApplyOverrides: func(h http.Header) {
+			provideradapter.ApplyCompatibleClientUserAgent(provider.View(), targetURL, h)
+			gatewayprovider.BindExecutionHeaders(provider)(h)
+			ApplyOpenCodeSessionHeader(c, provider, targetURL, h)
+		},
 	})
 }
 

@@ -99,10 +99,10 @@ func TestGatewayRoutesCodexModelsManifestPathIsRemoved(t *testing.T) {
 }
 
 func TestGatewayRoutesRetrieveModelAliasesAndSlashIDs(t *testing.T) {
-	repo := &codexModelsRemovalAccountRepo{accounts: []service.Account{{ID: 1, Platform: service.PlatformOpenAI, Type: service.AccountTypeAPIKey, Credentials: map[string]any{
+	repo := &codexModelsRemovalProviderRepo{providers: []provider.Record{{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{
 		"model_whitelist": []any{"vendor/model"},
 	}}}}
-	router := newGatewayRoutesTestRouterWithGatewayHandler(newCodexModelsRemovalGatewayHandler(repo), service.PlatformOpenAI)
+	router := newGatewayRoutesTestRouterWithGroup(&config.Config{}, &routing.Group{ID: 1, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions}}, newGatewayModelsHandlerForTest(repo))
 	for _, root := range []string{"/v1/models/", "/models/"} {
 		for model, status := range map[string]int{"vendor/model": 200, "missing": 404} {
 			w := httptest.NewRecorder()

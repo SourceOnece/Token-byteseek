@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	claudewire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"strings"
 )
 
@@ -27,10 +28,19 @@ func AnthropicToResponsesResponse(runtime Runtime, resp *AnthropicResponse) *Res
 
 	var outputs []ResponsesOutput
 	var msgParts []ResponsesContentPart
+	preserveThinking := claudewire.IsOpus55(resp.Model) || claudewire.IsSonnet55(resp.Model)
 
 	for _, block := range resp.Content {
 		switch block.Type {
-		case "thinking":
+		case "thinking", "redacted_thinking":
+			if preserveThinking && (block.Signature != "" || block.Data != "") {
+				item := ResponsesOutput{Type: "reasoning", ID: generateItemID(runtime), EncryptedContent: encodeAnthropicThinking(block)}
+				if block.Thinking != "" {
+					item.Summary = []ResponsesSummary{{Type: "summary_text", Text: block.Thinking}}
+				}
+				outputs = append(outputs, item)
+				continue
+			}
 			if block.Thinking != "" {
 				outputs = append(outputs, ResponsesOutput{
 					Type: "reasoning",
@@ -43,6 +53,11 @@ func AnthropicToResponsesResponse(runtime Runtime, resp *AnthropicResponse) *Res
 			}
 		case "text":
 			if block.Text != "" {
+				// 5.5 的签名思考与文本可能交错，必须保留多轮回放顺序。
+				if preserveThinking {
+					outputs = append(outputs, ResponsesOutput{Type: "message", ID: generateItemID(runtime), Role: "assistant", Status: "completed", Content: []ResponsesContentPart{{Type: "output_text", Text: block.Text}}})
+					continue
+				}
 				msgParts = append(msgParts, ResponsesContentPart{
 					Type: "output_text",
 					Text: block.Text,
@@ -153,9 +168,11 @@ type AnthropicEventToResponsesState struct {
 	CurrentName   string
 
 	// 当前打开输出项的完整内容，在关闭时写入 Outputs。
-	CurrentContent []ResponsesContentPart // message
-	CurrentArgs    string                 // function_call
-	CurrentSummary string                 // reasoning
+	CurrentContent             []ResponsesContentPart // message
+	CurrentArgs                string                 // function_call
+	CurrentSummary             string                 // reasoning
+	CurrentThinking            AnthropicContentBlock
+	PreserveThinkingSignatures bool
 	// 完整参数可能在 start 帧到达；一旦出现非空 delta 则以 delta 为准。
 	PendingToolInput string
 
@@ -233,6 +250,7 @@ func ResponsesEventToSSE(evt ResponsesStreamEvent) (string, error) {
 
 func anthToResHandleMessageStart(evt *AnthropicStreamEvent, state *AnthropicEventToResponsesState) []ResponsesStreamEvent {
 	if evt.Message != nil {
+		state.PreserveThinkingSignatures = claudewire.IsOpus55(evt.Message.Model) || claudewire.IsSonnet55(evt.Message.Model)
 		state.ResponseID = evt.Message.ID
 		if state.Model == "" {
 			state.Model = evt.Message.Model
@@ -265,7 +283,7 @@ func anthToResHandleContentBlockStart(runtime Runtime, evt *AnthropicStreamEvent
 	var events []ResponsesStreamEvent
 
 	switch evt.ContentBlock.Type {
-	case "thinking":
+	case "thinking", "redacted_thinking":
 		// 开新 item 前必须先关掉在开的那个，与下面的 tool_use 分支一致。
 		// 一个 message item 在它的 text 块 content_block_stop 时是刻意保持打开的
 		// （同一 item 里可能还有后续 text 块），所以 thinking 块到来时它仍然开着：
@@ -278,6 +296,8 @@ func anthToResHandleContentBlockStart(runtime Runtime, evt *AnthropicStreamEvent
 
 		state.CurrentItemID = generateItemID(runtime)
 		state.CurrentItemType = "reasoning"
+		state.CurrentThinking = *evt.ContentBlock
+		state.CurrentSummary = evt.ContentBlock.Thinking
 		state.ContentIndex = 0
 
 		events = append(events, makeResponsesEvent(state, "response.output_item.added", &ResponsesStreamEvent{
@@ -392,7 +412,10 @@ func anthToResHandleContentBlockDelta(evt *AnthropicStreamEvent, state *Anthropi
 		})}
 
 	case "signature_delta":
-		// Anthropic signature deltas have no Responses equivalent; skip
+		// 签名只放入回放封装，不能作为可见思考文本发给用户。
+		if state.PreserveThinkingSignatures {
+			state.CurrentThinking.Signature += evt.Delta.Signature
+		}
 		return nil
 	}
 
@@ -539,6 +562,10 @@ func closeCurrentResponsesItem(state *AnthropicEventToResponsesState) []Response
 		if state.CurrentSummary != "" {
 			item.Summary = []ResponsesSummary{{Type: "summary_text", Text: state.CurrentSummary}}
 		}
+		if state.PreserveThinkingSignatures && (state.CurrentThinking.Signature != "" || state.CurrentThinking.Data != "") {
+			state.CurrentThinking.Thinking = state.CurrentSummary
+			item.EncryptedContent = encodeAnthropicThinking(state.CurrentThinking)
+		}
 	}
 	state.Outputs = append(state.Outputs, item)
 
@@ -551,6 +578,7 @@ func closeCurrentResponsesItem(state *AnthropicEventToResponsesState) []Response
 	state.CurrentArgs = ""
 	state.PendingToolInput = ""
 	state.CurrentSummary = ""
+	state.CurrentThinking = AnthropicContentBlock{}
 	state.TextAccum = ""
 	state.OutputIndex++
 	state.ContentIndex = 0

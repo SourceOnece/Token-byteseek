@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
@@ -16,6 +17,25 @@ var ErrSessionPreempted = errors.New("openai ws session preempted by newer reque
 
 const preemptOwnerTTL = 2 * time.Hour
 const preemptWatchInterval = 2 * time.Second
+
+const PreemptCloseGrace = time.Second
+const PreemptCloseReason = "session preempted by a newer connection"
+
+type preemptNotifierKey struct{}
+type preemptFlagKey struct{}
+
+// 通知旧连接先发送关闭原因，再取消读写；每次请求单独绑定，不写共享服务。
+func WithPreemptionNotifier(ctx context.Context, notify func()) context.Context {
+	return context.WithValue(ctx, preemptNotifierKey{}, notify)
+}
+
+func ContextPreempted(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
+	flag, _ := ctx.Value(preemptFlagKey{}).(*atomic.Bool)
+	return flag != nil && flag.Load() || errors.Is(context.Cause(ctx), ErrSessionPreempted)
+}
 
 // PreemptKey 保留分组、Key 和会话三个隔离维度。
 type PreemptKey struct {
@@ -81,16 +101,31 @@ func (r *PreemptRegistry) Begin(key PreemptKey, cancel func()) (cleanup func(), 
 
 // Begin 注册当前入站连接，清理旧会话状态并观察远端所有者。
 func (s *Preemption) Begin(ctx context.Context, key PreemptKey) (context.Context, func(), bool, bool) {
-	preemptCtx, cancel := context.WithCancelCause(ctx)
+	flag := &atomic.Bool{}
+	preemptCtx, cancel := context.WithCancelCause(context.WithValue(ctx, preemptFlagKey{}, flag))
+	notify, _ := ctx.Value(preemptNotifierKey{}).(func())
 	ownerToken := uuid.NewString()
 	var preemptOnce sync.Once
 	preempt := func() {
 		preemptOnce.Do(func() {
+			flag.Store(true)
 			if stateStore := s.State; stateStore != nil {
 				stateStore.DeleteSessionTurnState(key.GroupID, key.SessionHash)
 				stateStore.DeleteSessionConn(key.GroupID, key.SessionHash)
 			}
-			cancel(ErrSessionPreempted)
+			if notify == nil {
+				cancel(ErrSessionPreempted)
+				return
+			}
+			done := make(chan struct{})
+			go func() { defer close(done); notify() }()
+			go func() {
+				select {
+				case <-done:
+				case <-time.After(PreemptCloseGrace):
+				}
+				cancel(ErrSessionPreempted)
+			}()
 		})
 	}
 	previousRemoteOwner, remoteClaimed := s.Claim(ctx, key, ownerToken)

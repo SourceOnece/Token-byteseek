@@ -16,8 +16,8 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-// 同名模型在不同旧平台上的金额必须各自保留，不能迁移成其中的较高价格。
-func TestByteSeekPricingScopesPreservePrices(t *testing.T) {
+// 按用户选择采用 TokenFlux 原生合并策略，同时验证原价格归档可查、重放不覆盖改价。
+func TestByteSeekPricingMigrationUsesNativeRules(t *testing.T) {
 	ctx := context.Background()
 	pg, err := tcpostgres.Run(ctx, "postgres:18.1-alpine3.23", tcpostgres.WithDatabase("pricing_scopes"), tcpostgres.WithUsername("postgres"), tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
 	require.NoError(t, err)
@@ -31,7 +31,9 @@ func TestByteSeekPricingScopesPreservePrices(t *testing.T) {
 	entries, err := fs.ReadDir(migrations.FS, ".")
 	require.NoError(t, err)
 	for _, entry := range entries {
-		if entry.Name() >= "283_" { continue }
+		if entry.Name() >= "283_" {
+			continue
+		}
 		body, err := migrations.FS.ReadFile(entry.Name())
 		require.NoError(t, err)
 		before[entry.Name()] = &fstest.MapFile{Data: body}
@@ -49,15 +51,18 @@ VALUES(8001,'openai','["public-model"]',0.000001,0.000002),(8001,'anthropic','["
 	var first, second float64
 	var firstID, secondID int64
 	query := `SELECT p.input_price,c.pricing_config_id FROM pricing_config_groups c JOIN pricing_config_model_pricing p ON p.pricing_config_id=c.pricing_config_id WHERE c.group_id=$1`
-	require.NoError(t, db.QueryRowContext(ctx,query,8001).Scan(&first,&firstID))
-	require.NoError(t, db.QueryRowContext(ctx,query,8002).Scan(&second,&secondID))
-	require.Equal(t, 0.000001, first)
+	require.NoError(t, db.QueryRowContext(ctx, query, 8001).Scan(&first, &firstID))
+	require.NoError(t, db.QueryRowContext(ctx, query, 8002).Scan(&second, &secondID))
+	require.Equal(t, 0.000005, first)
 	require.Equal(t, 0.000005, second)
-	require.NotEqual(t, firstID, secondID)
+	require.Equal(t, firstID, secondID)
+	var archived string
+	require.NoError(t, db.QueryRowContext(ctx, `SELECT entries::text FROM platform_independent_pricing_archive WHERE scope='config' AND scope_id=8001`).Scan(&archived))
+	require.Contains(t, archived, "0.000001")
 	// 再运行整个迁移集合不会覆盖迁移后的管理员改价。
-	_, err = db.ExecContext(ctx,`UPDATE pricing_config_model_pricing SET input_price=0.000003 WHERE pricing_config_id=$1`,firstID)
-	require.NoError(t,err)
+	_, err = db.ExecContext(ctx, `UPDATE pricing_config_model_pricing SET input_price=0.000003 WHERE pricing_config_id=$1`, firstID)
+	require.NoError(t, err)
 	require.NoError(t, infra.ApplyMigrations(ctx, db, migrations.FS))
-	require.NoError(t, db.QueryRowContext(ctx,query,8001).Scan(&first,&firstID))
-	require.Equal(t,0.000003,first)
+	require.NoError(t, db.QueryRowContext(ctx, query, 8001).Scan(&first, &firstID))
+	require.Equal(t, 0.000003, first)
 }

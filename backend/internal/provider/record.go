@@ -1232,7 +1232,7 @@ func (a *Record) GetProviderMode() string {
 
 // IsCodingPlan 报告提供商是否为 Coding Plan 模式（用于滚动用量窗口冷却）。
 func (a *Record) IsCodingPlan() bool {
-	return a.GetProviderMode() == ProviderModeCoding
+	return a.IsOpenCodeGoPlan() || a.GetProviderMode() == ProviderModeCoding
 }
 
 // SupportsNativeCNResponses 报告该国产供应商是否提供原生 Responses 端点。
@@ -1341,6 +1341,9 @@ func (a *Record) GetCNAPIKey() string {
 // GetCodingPlanProvider 根据提供商平台识别 Coding Plan 供应商。管理员可以使用自定义
 // 中继地址，因此不得通过 URL 内容反推供应商身份。
 func (a *Record) GetCodingPlanProvider() string {
+	if a.IsOpenCodeGoPlan() {
+		return PlatformOpenCodeGo
+	}
 	if a == nil || a.GetProviderMode() != ProviderModeCoding {
 		return ""
 	}
@@ -1349,6 +1352,8 @@ func (a *Record) GetCodingPlanProvider() string {
 		return PlatformKimi
 	case PlatformZhipu:
 		return PlatformZhipu
+	case PlatformMiniMax:
+		return PlatformMiniMax
 	default:
 		return ""
 	}

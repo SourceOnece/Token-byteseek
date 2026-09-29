@@ -113,6 +113,41 @@ func (h *ModelsHandler) Models(c *gin.Context) {
 	h.WriteDefaultModelsList(c, platform, availableModels)
 }
 
+// RetrieveModel 与列表使用相同准入规则，支持包含斜杠的供应商模型 ID。
+func (h *ModelsHandler) RetrieveModel(c *gin.Context) {
+	done, accepted := h.beginRequest(c, "openai")
+	if !accepted {
+		return
+	}
+	defer done()
+	key, _ := h.backend.Access(c)
+	var ids []string
+	if key != nil && key.IsComposite {
+		ids = h.CompositeRequestableModels(c, key, "")
+	} else {
+		var groupID *int64
+		if key != nil && key.Group != nil {
+			groupID = &key.Group.ID
+		}
+		platform, _ := h.backend.ForcedPlatform(c)
+		ids = routing.RequestableModelIDs(h.backend.Resolve(c.Request.Context(), groupID, platform).Models)
+		if key != nil && key.Group != nil && customListEnabled(key.Group) {
+			ids = FilterModelsByCustomList(ids, nil, key.Group.ModelsListConfig.Models)
+		}
+		if key != nil {
+			ids = filterModelAllowlist(key.Group, apikey.AppendAPIKeyModelAliases(ids, key.ModelMapping))
+		}
+	}
+	id := strings.TrimPrefix(c.Param("model"), "/")
+	for _, allowed := range ids {
+		if id == allowed {
+			h.WriteUnifiedModel(c, id)
+			return
+		}
+	}
+	c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "invalid_request_error", "code": "model_not_found", "message": "Model not found"}})
+}
+
 func (h *ModelsHandler) AntigravityModels(c *gin.Context) {
 	done, accepted := h.beginRequest(c, "openai")
 	if !accepted {

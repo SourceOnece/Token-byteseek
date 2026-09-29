@@ -7,7 +7,7 @@
       <button
         @click="goToPage(page - 1)"
         :disabled="page === 1"
-        class="pagination-control relative inline-flex h-9 items-center rounded-control border border-gray-300 bg-white px-4 py-0 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-200 dark:hover:bg-dark-800"
+        class="pagination-control bh-page-btn relative inline-flex h-9 items-center rounded-control border border-gray-300 bg-white px-4 py-0 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-200 dark:hover:bg-dark-800"
       >
         {{ t('pagination.previous') }}
       </button>
@@ -17,7 +17,7 @@
       <button
         @click="goToPage(page + 1)"
         :disabled="page === totalPages"
-        class="pagination-control relative ml-3 inline-flex h-9 items-center rounded-control border border-gray-300 bg-white px-4 py-0 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-200 dark:hover:bg-dark-800"
+        class="pagination-control bh-page-btn relative ml-3 inline-flex h-9 items-center rounded-control border border-gray-300 bg-white px-4 py-0 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-200 dark:hover:bg-dark-800"
       >
         {{ t('pagination.next') }}
       </button>
@@ -62,7 +62,7 @@
             :placeholder="t('pagination.jumpPlaceholder')"
             @keyup.enter="submitJump"
           />
-          <button type="button" class="pagination-jump-button btn btn-ghost btn-sm h-9" @click="submitJump">
+          <button type="button" class="pagination-control bh-page-btn pagination-jump-button btn btn-ghost btn-sm h-9" @click="submitJump">
             {{ t('pagination.jumpAction') }}
           </button>
         </div>
@@ -77,7 +77,7 @@
         <button
           @click="goToPage(page - 1)"
           :disabled="page === 1"
-          class="pagination-control relative inline-flex h-9 items-center rounded-l-control border border-gray-300 bg-white px-2 py-0 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800"
+          class="pagination-control bh-page-btn relative inline-flex h-9 items-center rounded-l-control border border-gray-300 bg-white px-2 py-0 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800"
           :aria-label="t('pagination.previous')"
         >
           <Icon name="chevronLeft" size="md" :stroke-width="2.5" />
@@ -90,7 +90,7 @@
           @click="typeof pageNum === 'number' && goToPage(pageNum)"
           :disabled="typeof pageNum !== 'number'"
           :class="[
-            'pagination-control pagination-page-button relative inline-flex h-9 min-w-9 items-center justify-center border px-2 py-0 text-sm font-medium',
+            'pagination-control bh-page-btn pagination-page-button relative inline-flex h-9 min-w-9 items-center justify-center border px-2 py-0 text-sm font-medium',
             pageNum === page
               ? 'z-10 border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400'
               : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-300 dark:hover:bg-dark-800',
@@ -108,7 +108,7 @@
         <button
           @click="goToPage(page + 1)"
           :disabled="page === totalPages"
-          class="pagination-control relative inline-flex h-9 items-center rounded-r-control border border-gray-300 bg-white px-2 py-0 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800"
+          class="pagination-control bh-page-btn relative inline-flex h-9 items-center rounded-r-control border border-gray-300 bg-white px-2 py-0 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800"
           :aria-label="t('pagination.next')"
         >
           <Icon name="chevronRight" size="md" :stroke-width="2.5" />

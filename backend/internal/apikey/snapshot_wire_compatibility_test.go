@@ -55,6 +55,10 @@ func TestCurrentSnapshotDropsRetiredFields(t *testing.T) {
 func migrateSnapshotPricingFields(value any) {
 	switch node := value.(type) {
 	case map[string]any:
+		// ByteSeek 分组准入是原生新快照上的增量，旧报文缺省为关闭。
+		if _, group := node["scheduler_type"]; group {
+			node["model_allowlist"] = map[string]any{"enabled": false}
+		}
 		delete(node, "platform")
 		delete(node, "peak_rate_enabled")
 		delete(node, "peak_start")

@@ -91,6 +91,7 @@ const props = withDefaults(defineProps<Props>(), {
   bodyScroll: true,
   closeOnEscape: true,
   closeOnClickOutside: false,
+  showCloseButton: true,
   zIndex: Z_INDEX.MODAL
 })
 

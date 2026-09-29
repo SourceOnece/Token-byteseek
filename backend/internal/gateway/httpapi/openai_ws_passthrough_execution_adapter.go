@@ -309,7 +309,7 @@ func (p *wsPassthroughAdapter) BeforeWrite(ctx context.Context, routingModel str
 			return nil
 		}
 		logOpenAIWSV2Passthrough(
-			"relay_error_failover provider_id=%d status=%d err_code=%p.service err_type=%p.service err_message=%p.service",
+			"relay_error_failover provider_id=%d status=%d err_code=%s err_type=%s err_message=%s",
 			p.provider.Record.ID,
 			errorStatus, gatewayprovider.TruncateOpenAIWSLogValue(errCodeRaw, gatewayprovider.OpenAIWSLogValueMaxLen), gatewayprovider.TruncateOpenAIWSLogValue(errTypeRaw, gatewayprovider.OpenAIWSLogValueMaxLen), gatewayprovider.TruncateOpenAIWSLogValue(errMsgRaw, gatewayprovider.OpenAIWSLogValueMaxLen),
 		)

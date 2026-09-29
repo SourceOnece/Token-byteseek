@@ -129,6 +129,7 @@ func (ImagesExecutor) Execute(ctx context.Context, input upstream.AttemptInput, 
 		ImageOutputTokens:        usage.ImageOutputTokens,
 	}
 	result.ImageInputTokens = usage.ImageInputTokens
+	result.ImageCacheReadTokens = usage.ImageCacheReadTokens
 	result.HasUsage = result.Usage.HasObservedTokens() || usage.ImageInputTokens > 0
 	result.Served = result.ObservedImages > 0
 	if output != nil {
