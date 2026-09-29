@@ -16,7 +16,11 @@ import (
 var ErrNotFound = errors.New("provider record not found")
 
 // Store 复用传入的Ent客户端，含事务和软删除拦截器，不创建第二套连接或持有数据缓存。
-type Store struct{ client *dbent.Client }
+type Store struct {
+	client *dbent.Client
+	sql    Executor
+	hooks  WriteHooks
+}
 
 func NewStore(client *dbent.Client) *Store { return &Store{client: client} }
 

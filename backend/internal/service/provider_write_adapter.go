@@ -22,6 +22,20 @@ func (a providerWriteAdapter) UpdateExtra(ctx context.Context, id int64, updates
 	return a.repo.UpdateExtra(ctx, id, updates)
 }
 
+func (a providerWriteAdapter) UpdateCredentials(ctx context.Context, id int64, credentials map[string]any) error {
+	if updater, ok := any(a.repo).(accountCredentialsUpdater); ok {
+		return updater.UpdateCredentials(ctx, id, credentials)
+	}
+	return a.repo.Update(ctx, AccountFromProviderRecord(&provider.Record{ID: id, Credentials: credentials}))
+}
+
+func (a providerWriteAdapter) BulkUpdate(ctx context.Context, ids []int64, updates provider.BulkUpdate) (int64, error) {
+	return a.repo.BulkUpdate(ctx, ids, updates)
+}
+
 func (s *adminServiceImpl) providerWriteStore() provider.WriteStore {
+	if factory, ok := any(s.accountRepo).(interface{ ProviderWriteStore() provider.WriteStore }); ok {
+		return factory.ProviderWriteStore()
+	}
 	return providerWriteAdapter{repo: s.accountRepo}
 }

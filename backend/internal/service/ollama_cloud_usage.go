@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -1012,28 +1013,7 @@ func IsOllamaCloudUsageAccount(account *Account) bool {
 	return isOllamaCloudBaseURL(baseURL)
 }
 
-func isOllamaCloudBaseURL(raw string) bool {
-	raw = strings.TrimSpace(raw)
-	if raw == "" || strings.ContainsAny(raw, "?#") {
-		return false
-	}
-	parsed, err := url.Parse(raw)
-	if err != nil || parsed.Opaque != "" || !strings.EqualFold(parsed.Scheme, "https") || parsed.User != nil || parsed.ForceQuery || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.RawFragment != "" {
-		return false
-	}
-	hostname := strings.ToLower(parsed.Hostname())
-	if hostname != "ollama.com" && hostname != "www.ollama.com" {
-		return false
-	}
-	authority := strings.ToLower(parsed.Host)
-	if authority != hostname && authority != hostname+":443" {
-		return false
-	}
-	if parsed.RawPath != "" {
-		return false
-	}
-	return parsed.Path == "" || parsed.Path == "/v1"
-}
+func isOllamaCloudBaseURL(raw string) bool {return provider.IsOllamaCloudBaseURL(raw)}
 
 func ollamaCloudUsageIdentity(account *Account) map[string]any {
 	if !IsOllamaCloudUsageAccount(account) {

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
@@ -188,10 +189,7 @@ func sanitizedCodexFingerprintExtraUpdates(updates map[string]any) map[string]an
 // ShouldEnsureCodexFingerprintSeedForExtraUpdates 判断 Extra 增量是否开启了
 // Codex 指纹收敛；开启时仓储必须原子保留或生成系统管理的账号 seed。
 func ShouldEnsureCodexFingerprintSeedForExtraUpdates(updates map[string]any) bool {
-	if updates == nil {
-		return false
-	}
-	return codexFingerprintModeRequiresSeed(codexFingerprintModeFromExtra(updates))
+	return provider.ShouldEnsureFingerprintSeed(updates)
 }
 
 // GetCodexFingerprintMode 从账号 extra JSON 读取指纹收敛模式。

@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"log/slog"
+
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 type accountCredentialsUpdater interface {
@@ -14,20 +16,39 @@ func persistAccountCredentials(ctx context.Context, repo AccountRepository, acco
 		return nil
 	}
 
-	// 安全不变量:spark 影子账号恒不持凭据(凭据透传母账号)。这是凭据写入的唯一汇聚点
-	// (token 刷新 / 订阅补全 / CRS 创建后刷新等全部经此),在此对影子早返 no-op 是
-	// defense-in-depth——即便某条上游路径漏判,也不会把凭据落到影子行(外审第6轮 P1)。
-	if account.IsCredentialShadow() {
-		slog.Warn("skip persisting credentials to spark shadow account",
-			"account_id", account.ID, "parent_id", *account.ParentAccountID)
-		return nil
+	value := account.ProviderRecord()
+	base := providerCredentialStoreAdapter{repo: repo, original: account}
+	var store provider.CredentialUpdateStore = base
+	if updater, ok := repo.(accountCredentialsUpdater); ok {
+		store = providerCredentialFieldsAdapter{providerCredentialStoreAdapter: base, updater: updater}
 	}
+	updated, err := provider.PersistCredentials(ctx, store, value, credentials, func(message string, args ...any) { slog.Warn(message, args...) })
+	if updated {
+		account.Credentials = value.Credentials
+	}
+	return err
+}
 
-	account.Credentials = shallowCopyMap(credentials)
-	if updater, ok := any(repo).(accountCredentialsUpdater); ok {
-		return updater.UpdateCredentials(ctx, account.ID, account.Credentials)
-	}
-	return repo.Update(ctx, account)
+type providerCredentialStoreAdapter struct {
+	repo AccountRepository
+	original *Account
+}
+
+func (a providerCredentialStoreAdapter) Update(ctx context.Context, value *provider.Record) error {
+	// 回退继续写完整原账号；包括分组/运行投影，不能用仅ID和凭据的新对象覆盖。
+	a.original.Credentials = value.Credentials
+	return a.repo.Update(ctx, a.original)
+}
+
+type providerCredentialFieldsAdapter struct {
+	providerCredentialStoreAdapter
+	updater accountCredentialsUpdater
+}
+
+func (a providerCredentialFieldsAdapter) UpdateCredentials(ctx context.Context, id int64, credentials map[string]any) error {
+	// 保留原实现先更新调用对象、再调用专用写入的时机，即使写入失败也不偷偷复原对象。
+	a.original.Credentials = credentials
+	return a.updater.UpdateCredentials(ctx, id, credentials)
 }
 
 // sparkShadowAllowedCredentialKeys 是 spark 影子账号唯一可写的凭据键集合(仅模型映射)。
