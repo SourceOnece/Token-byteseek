@@ -1783,7 +1783,7 @@ func setDefaults() {
 
 	// Passkey 默认关闭，启用时部署方必须显式声明依赖方域名和可信浏览器 Origin。
 	viper.SetDefault("webauthn.enabled", false)
-	viper.SetDefault("webauthn.rp_display_name", "TokenRouter")
+	viper.SetDefault("webauthn.rp_display_name", "ByteSeek")
 	viper.SetDefault("webauthn.rp_id", "")
 	viper.SetDefault("webauthn.rp_origins", []string{})
 

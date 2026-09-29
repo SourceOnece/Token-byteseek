@@ -10,6 +10,9 @@ export const CLIENT_LABELS: Record<ClientKind, string> = {
   claude: 'Claude Code', codex: 'Codex CLI', gemini: 'Gemini CLI', grok: 'Grok CLI', opencode: 'OpenCode',
 }
 const textProtocols: ProtocolID[] = ['openai_responses', 'anthropic_messages', 'openai_chat_completions', 'gemini_generate_content']
+// 生成的客户端配置以本站品牌标识服务商；ID 同时作为 TOML 表名和 OpenCode 的“服务商/模型”前缀，须保持小写 ASCII。
+export const CLIENT_PROVIDER_ID = 'byteseek'
+export const CLIENT_PROVIDER_NAME = 'ByteSeek'
 
 // 可请求集合来自服务端，不用分组品牌或模型名称推断上游平台。
 export function modelsForProtocol(group: Pick<Group, 'models' | 'model_protocols'> | undefined, protocol: ProtocolID): string[] {
@@ -67,7 +70,7 @@ export function buildClientConfig(input: {
   if (client === 'codex') {
     const folder = shell === 'unix' ? '~/.codex/' : '%userprofile%\\.codex\\'
     const auth = input.directAuth ? `requires_openai_auth = false\nexperimental_bearer_token = ${quote(apiKey)}` : 'requires_openai_auth = true'
-    const files = [{ path: `${folder}config.toml`, content: `model_provider = "tokenrouter"\nmodel = ${quote(model)}\nreview_model = ${quote(model)}\ndisable_response_storage = true\n\n[model_providers.tokenrouter]\nname = "TokenRouter"\nbase_url = ${quote(apiBase)}\nwire_api = "responses"\nsupports_websockets = ${input.websocket === true}\n${auth}${input.websocket ? '\n\n[features]\nresponses_websockets_v2 = true' : ''}` }]
+    const files = [{ path: `${folder}config.toml`, content: `model_provider = "${CLIENT_PROVIDER_ID}"\nmodel = ${quote(model)}\nreview_model = ${quote(model)}\ndisable_response_storage = true\n\n[model_providers.${CLIENT_PROVIDER_ID}]\nname = "${CLIENT_PROVIDER_NAME}"\nbase_url = ${quote(apiBase)}\nwire_api = "responses"\nsupports_websockets = ${input.websocket === true}\n${auth}${input.websocket ? '\n\n[features]\nresponses_websockets_v2 = true' : ''}` }]
     if (!input.directAuth) files.push({ path: `${folder}auth.json`, content: JSON.stringify({ OPENAI_API_KEY: apiKey }, null, 2) })
     return files
   }
@@ -93,7 +96,7 @@ default = ${quote(model)}` },
   ]
   const npm = protocol === 'anthropic_messages' ? '@ai-sdk/anthropic' : protocol === 'gemini_generate_content' ? '@ai-sdk/google' : protocol === 'openai_chat_completions' ? '@ai-sdk/openai-compatible' : '@ai-sdk/openai'
   return [{ path: 'opencode.json', content: JSON.stringify({
-    $schema: 'https://opencode.ai/config.json', model: `tokenrouter/${model}`,
-    provider: { tokenrouter: { npm, name: 'TokenRouter', options: { baseURL: protocol === 'gemini_generate_content' ? `${base}/v1beta` : apiBase, apiKey }, models: { [model]: { name: model } } } },
+    $schema: 'https://opencode.ai/config.json', model: `${CLIENT_PROVIDER_ID}/${model}`,
+    provider: { [CLIENT_PROVIDER_ID]: { npm, name: CLIENT_PROVIDER_NAME, options: { baseURL: protocol === 'gemini_generate_content' ? `${base}/v1beta` : apiBase, apiKey }, models: { [model]: { name: model } } } },
   }, null, 2) }]
 }

@@ -15,6 +15,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// siteModelOwner 是本站生成的模型条目在 owned_by 中对外展示的站点标识；上游目录自带的归属不受影响。
+const siteModelOwner = "byteseek"
+
 type ModelsBackend interface {
 	Access(*gin.Context) (*apikey.APIKey, bool)
 	ForcedPlatform(*gin.Context) (string, bool)
@@ -242,7 +245,7 @@ func (h *ModelsHandler) WriteCompositeModelsList(c *gin.Context, modelIDs []stri
 	for _, modelID := range modelIDs {
 		models = append(models, gin.H{
 			"id": modelID, "object": "model", "type": "model", "created": 1704067200,
-			"created_at": "2024-01-01T00:00:00Z", "owned_by": "token-router", "display_name": modelID,
+			"created_at": "2024-01-01T00:00:00Z", "owned_by": siteModelOwner, "display_name": modelID,
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"object": "list", "data": models})

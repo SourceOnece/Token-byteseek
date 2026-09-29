@@ -10,7 +10,7 @@ import (
 func (s *OpenAILiveExecutor) prepareLiveAttestation(ctx context.Context) (string, string, error) {
 	if s == nil || s.Attestation == nil {
 		return "", "", &session.LiveAttestationUnavailableError{
-			Reason: "TokenRouter has no platform DeviceCheck provider",
+			Reason: "ByteSeek has no platform DeviceCheck provider",
 		}
 	}
 	if s.AttestationCipher == nil {

@@ -47,7 +47,7 @@ func (h *ModelsHandler) unifiedModels(ids []string) []gin.H {
 			}
 		}
 		if item == nil {
-			item = gin.H{"id": id, "object": "model", "type": "model", "display_name": id, "owned_by": "tokenrouter"}
+			item = gin.H{"id": id, "object": "model", "type": "model", "display_name": id, "owned_by": siteModelOwner}
 		}
 		models = append(models, item)
 	}

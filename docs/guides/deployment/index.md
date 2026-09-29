@@ -342,7 +342,7 @@ Passkey 由部署配置控制，不能在管理后台直接开启。编辑 `conf
 ```yaml
 webauthn:
   enabled: true
-  rp_display_name: "TokenRouter"
+  rp_display_name: "ByteSeek"
   rp_id: "tokenrouter.example.com"
   rp_origins:
     - "https://tokenrouter.example.com"

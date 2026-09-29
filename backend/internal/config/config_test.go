@@ -31,6 +31,14 @@ func TestLoadDefaultModelsListReadMaxBytes(t *testing.T) {
 	require.Equal(t, DefaultModelsListReadMaxBytes, cfg.Gateway.ModelsListReadMaxBytes)
 }
 
+// Passkey 浏览器提示默认显示本站品牌，部署配置仍可覆盖。
+func TestLoadDefaultWebAuthnDisplayName(t *testing.T) {
+	resetViperWithJWTSecret(t)
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, "ByteSeek", cfg.WebAuthn.RPDisplayName)
+}
+
 func TestLoadTimezonePrecedence(t *testing.T) {
 	tests := []struct {
 		name         string

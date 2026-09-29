@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	ErrUnsupportedPlatform = errors.New("live attestation requires TokenRouter to run on Apple Silicon macOS; other server platforms are not supported")
-	ErrChatGPTAppMissing   = errors.New("live attestation requires the official ChatGPT app on the TokenRouter server")
+	ErrUnsupportedPlatform = errors.New("live attestation requires ByteSeek to run on Apple Silicon macOS; other server platforms are not supported")
+	ErrChatGPTAppMissing   = errors.New("live attestation requires the official ChatGPT app on the ByteSeek server")
 )
 
 // Provider 在发起 Live 请求前生成 ChatGPT DeviceCheck attestation。

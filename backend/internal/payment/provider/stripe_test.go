@@ -146,6 +146,19 @@ func TestBuildStripeCheckoutSessionCreateParamsUsesDashboardPaymentMethods(t *te
 	}
 }
 
+// 订单未提供商品说明时，Checkout 页面兜底显示本站品牌。
+func TestStripeCheckoutLineItemsFallBackToByteSeekProductName(t *testing.T) {
+	t.Parallel()
+
+	items := buildStripeCheckoutLineItems(payment.CreatePaymentRequest{OrderID: "order_1", Subject: "  "}, 100, "USD")
+	if len(items) != 1 || items[0].PriceData == nil || items[0].PriceData.ProductData == nil || items[0].PriceData.ProductData.Name == nil {
+		t.Fatalf("line items = %#v, want one named product", items)
+	}
+	if got := *items[0].PriceData.ProductData.Name; got != "ByteSeek payment" {
+		t.Fatalf("product name = %q, want ByteSeek payment", got)
+	}
+}
+
 func TestStripeCheckoutExpiresAtClampsSupportedWindow(t *testing.T) {
 	t.Parallel()
 

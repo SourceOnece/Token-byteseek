@@ -269,6 +269,15 @@ describe('KeyUsageView', () => {
     wrapper.unmount()
   })
 
+  it('footer does not expose the upstream TokenRouter repository', async () => {
+    const wrapper = await mountView()
+
+    expect(wrapper.find('a[href*="github.com/TokenFlux"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toMatch(/tokenrouter/i)
+
+    wrapper.unmount()
+  })
+
   it('queries the current local calendar date near midnight', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 6, 13, 0, 30))

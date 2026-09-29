@@ -1,5 +1,7 @@
 # 版本留档规则
 
+本次 [v0.1.279-bh.004](versions/v0_1_279_bh_004.md) 将“使用密钥”生成的 Codex/OpenCode 服务商标识改为 `byteseek`/`ByteSeek`，并统一 `/v1/models` 兜底 `owned_by`、Stripe 兜底商品名、Passkey 默认显示名及管理端 Live 文案，移除公开 Key 用量页上游 GitHub 链接；内部存储键、加密种子和模块路径保持。验证及发布状态见该记录，未部署。
+
 本次 [v0.1.279-bh.003](versions/v0_1_279_bh_003.md) 恢复迁移前 ByteSeek 包豪斯视觉，包括彩色排行榜、硬阴影、黄表头、方形开关和三原色图表；仅前端，不同步后端或修改现行接口。验证及 GHCR 固定/latest/bauhaus 同 digest 发布完成，未部署。
 
 本次 [v0.1.279-bh.002](versions/v0_1_279_bh_002.md) 记录 bh.001 生产部署：健康检查自动回滚在迁移 285 中途终止进程，旧版连接半迁移库导致接口 500；经全量备份、checksum 核对后续跑同一迁移并部署 bh.001。无代码或镜像变化。

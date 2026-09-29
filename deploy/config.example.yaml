@@ -78,7 +78,7 @@ server:
 # 填写浏览器访问使用的完整 Origin。
 webauthn:
   enabled: false
-  rp_display_name: "TokenRouter"
+  rp_display_name: "ByteSeek"
   # 示例: "tokenrouter.example.com"
   rp_id: ""
   # 示例: ["https://tokenrouter.example.com"]
