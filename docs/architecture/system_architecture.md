@@ -79,6 +79,8 @@
 
 bh.066 的 `internal/provider.Record` 和 `internal/egress.Proxy` 是新架构核心类型；`internal/provider/postgres.Store` 当前以原 `accounts` 表为数据源，旧 `AccountRepository` 负责关系/代理回填和事务外的历史兼容。Provider 读取投影不能直接序列化凭据，也不能跳过旧 scheduler outbox、Codex 票据配置或分组补全。表名和Ent schema尚未迁移。
 
+bh.067 接通 `provider.Admin` 的状态管理和 Store 的停启/标错/清错/删除核心写入；旧服务仍提供关联数据适配，旧仓储负责写后通知/缓存。因此目前不存在第二个后台维护循环或独立数据库池。Provider授权、完整编辑/批量规则以及统一价格的新模块仍未迁入；仅这些已接通的调用才能算本阶段实际覆盖。
+
 | 存储 | 所有权与使用方式 | 失败或丢失影响 |
 | --- | --- | --- |
 | PostgreSQL | 用户、身份、团队、Key、分组、渠道、账号、设置、订单、订阅、持久任务、用量和审计的权威状态 | 连接、迁移或密钥初始化失败会阻止完整应用启动；写失败不得由缓存结果伪装成成功 |

@@ -55,3 +55,35 @@ func TestProviderMigrationSharesAccountTransaction(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, batch, 1)
 }
+
+// 原生写入复用外部事务，清错误不能偷偷开启调度，删除可随事务回滚。
+func TestProviderNativeStatePreservesExternalTransaction(t *testing.T) {
+	ctx := context.Background()
+	tx := testEntTx(t)
+	client := tx.Client()
+	store := providerpostgres.NewStore(client)
+	r := &provider.Record{Name: "native-state", Platform: "openai", Type: "oauth", Status: "active", Schedulable: true}
+	require.NoError(t, store.CreateRecord(ctx, r))
+	require.NoError(t, store.SetErrorRecord(ctx, r.ID, "synthetic"))
+	r, err := store.GetByID(ctx, r.ID)
+	require.NoError(t, err)
+	require.Equal(t, "error", r.Status)
+	require.False(t, r.Schedulable)
+	require.NoError(t, store.ClearErrorRecord(ctx, r.ID))
+	r, err = store.GetByID(ctx, r.ID)
+	require.NoError(t, err)
+	require.Equal(t, "active", r.Status)
+	require.Empty(t, r.ErrorMessage)
+	require.False(t, r.Schedulable)
+	require.NoError(t, store.SetSchedulableRecord(ctx, r.ID, true))
+	r, err = store.GetByID(ctx, r.ID)
+	require.NoError(t, err)
+	require.True(t, r.Schedulable)
+	require.NoError(t, store.DeleteRecord(ctx, r.ID))
+	_, err = store.GetByID(ctx, r.ID)
+	require.ErrorIs(t, err, providerpostgres.ErrNotFound)
+	// 若内部错误提交了调用方事务，下面Rollback将返回ErrTxDone。
+	require.NoError(t, tx.Rollback())
+	_, err = providerpostgres.NewStore(integrationEntClient).GetByID(ctx, r.ID)
+	require.ErrorIs(t, err, providerpostgres.ErrNotFound)
+}

@@ -1340,20 +1340,7 @@ func (s *adminServiceImpl) resolveBulkUpdateTargetIDs(ctx context.Context, filte
 }
 
 func (s *adminServiceImpl) DeleteAccount(ctx context.Context, id int64) error {
-	// 级联删除 spark 影子账号（先删影子，再删母账号）
-	shadows, err := s.accountRepo.ListShadowsByParent(ctx, id)
-	if err != nil {
-		return fmt.Errorf("list spark shadows for cascade delete: %w", err)
-	}
-	for _, shadow := range shadows {
-		if err := s.accountRepo.Delete(ctx, shadow.ID); err != nil {
-			return fmt.Errorf("cascade delete spark shadow %d: %w", shadow.ID, err)
-		}
-	}
-	if err := s.accountRepo.Delete(ctx, id); err != nil {
-		return err
-	}
-	return nil
+	return s.providerStateAdmin().DeleteProvider(ctx, id)
 }
 
 func (s *adminServiceImpl) RefreshAccountCredentials(ctx context.Context, id int64) (*Account, error) {
@@ -1366,23 +1353,8 @@ func (s *adminServiceImpl) RefreshAccountCredentials(ctx context.Context, id int
 }
 
 func (s *adminServiceImpl) ClearAccountError(ctx context.Context, id int64) (*Account, error) {
-	if err := s.accountRepo.ClearError(ctx, id); err != nil {
+	if err := s.providerStateAdmin().ClearProviderError(ctx, id); err != nil {
 		return nil, err
-	}
-	if err := s.accountRepo.ClearRateLimit(ctx, id); err != nil {
-		return nil, err
-	}
-	if err := s.accountRepo.ClearAntigravityQuotaScopes(ctx, id); err != nil {
-		return nil, err
-	}
-	if err := s.accountRepo.ClearModelRateLimits(ctx, id); err != nil {
-		return nil, err
-	}
-	if err := s.accountRepo.ClearTempUnschedulable(ctx, id); err != nil {
-		return nil, err
-	}
-	if s.runtimeBlocker != nil {
-		s.runtimeBlocker.ClearAccountSchedulingBlock(id)
 	}
 	return s.accountRepo.GetByID(ctx, id)
 }
@@ -1391,15 +1363,11 @@ func (s *adminServiceImpl) SetAccountError(ctx context.Context, id int64, errorM
 	return s.accountRepo.SetError(ctx, id, errorMsg)
 }
 
-func (s *adminServiceImpl) SetAccountSchedulable(ctx context.Context, id int64, schedulable bool) (*Account, error) {
-	if err := s.accountRepo.SetSchedulable(ctx, id, schedulable); err != nil {
+func (s *adminServiceImpl) SetAccountSchedulable(ctx context.Context, id int64, enabled bool) (*Account, error) {
+	if err := s.providerStateAdmin().SetProviderSchedulable(ctx, id, enabled); err != nil {
 		return nil, err
 	}
-	updated, err := s.accountRepo.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return updated, nil
+	return s.accountRepo.GetByID(ctx, id)
 }
 
 func (s *adminServiceImpl) RevertAccountProxyFallback(ctx context.Context, id int64) error {
