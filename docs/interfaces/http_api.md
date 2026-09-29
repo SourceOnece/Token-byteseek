@@ -165,6 +165,8 @@ gemini_generate_content
 
 账号管理复用现有 `GET /api/v1/admin/accounts?search=…` 搜索框，搜索账号名称或列表显示邮箱，支持不区分大小写的包含匹配。显示邮箱来源按 credentials.email、extra.email_address、extra.email 优先，影子账号无自身邮箱时回退未删除母账号的 credentials.email。邮箱搜索只访问这些邮箱键，不匹配 access token、API Key 或凭据 JSON 全文；邮箱内 `%`、`_` 和反斜线按普通字符匹配。名称匹配仍使用原 NameContainsFold。
 
+bh.064 增加 TokenFlux 兼容的 `/api/v1/admin/providers` 管理入口。当前它复用同一组账号 handler，返回和保存仍使用 Account DTO、账号 ID、票据工作台和质量检测语义；原 `/accounts` 入口继续保留。Provider 入口不会绕过票据注入、STATE 验证、异常守护或调度联动。后续 Provider 数据模型迁移完成后，才会把该兼容路由切换到新仓储，并保留旧入口作为兼容层。
+
 条件在 Count 和分页前应用；分页列表、全量评分筛选、全选、按搜索导出及批量操作保持统一范围。前端账号局部刷新同样允许名称或显示邮箱命中。请求路径、参数、返回结构、已有其他筛选与空 search 行为不变，不新增上游查询、邮箱解析或账号写入。
 
 ## Codex 批量题目测试
