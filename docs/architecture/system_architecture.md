@@ -81,7 +81,9 @@ bh.066 的 `internal/provider.Record` 和 `internal/egress.Proxy` 是新架构�
 
 bh.067 接通 `provider.Admin` 的状态管理和 Store 的停启/标错/清错/删除核心写入；旧服务仍提供关联数据适配，旧仓储负责写后通知/缓存。因此目前不存在第二个后台维护循环或独立数据库池。Provider授权、完整编辑/批量规则以及统一价格的新模块仍未迁入；仅这些已接通的调用才能算本阶段实际覆盖。
 
-bh.068 的 `provider.WriteStore` 只接管经过管理服务校验的单号 Account 编辑和 Extra 增量；`providerWriteAdapter` 将投影交给原事务仓储，避免在Provider迁移未覆盖批量/凭据CAS前扩大写端口。批量字段和凭据刷新仍明确属于旧窄接口，后续按Provider字段合同单独迁移。
+bh.070 已把 `accountRepository` 的完整编辑、凭据刷新、Extra 增量和批量更新切换到 `provider/postgres.Store`。Provider Store 现在在同一 Ent 事务内完成行锁、受管 Extra 合并、凭据身份清理、批量 JSON 合并、scheduler outbox 和提交后快照同步；调用方仍收到合并后的 Extra/UpdatedAt。旧服务接口和 accounts 表名继续作为兼容边界，分组关系/票据历史/质量历史由旧投影补全，不能把表名未改理解成 TokenFlux 主架构已全部接通。
+
+凭据兼容适配器缺少专用字段更新端口时，先读取完整 Account 再写回，避免仅凭 ID 和凭据覆盖代理、分组、调度或票据配置。账号质量检测、Codex 票据和上游协议仍须在后续阶段迁移到 TokenFlux 的 provider/gateway/scheduler 组合根；本阶段只证明 Provider 写入所有权已统一。
 
 | 存储 | 所有权与使用方式 | 失败或丢失影响 |
 | --- | --- | --- |

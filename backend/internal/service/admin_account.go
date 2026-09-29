@@ -969,9 +969,13 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 	if err := validateQoderCosyCredentialsWithOptions(ctx, account, s.httpUpstream, s.tlsFPProfileService, deferQoderPATValidation); err != nil {
 		return nil, err
 	}
-	if err := s.providerWriteStore().Update(ctx, account.ProviderRecord()); err != nil {
+	record := account.ProviderRecord()
+	if err := s.providerWriteStore().Update(ctx, record); err != nil {
 		return nil, err
 	}
+	// 写入层可能合并最新受管状态，返回管理页面时不能沿用写入前的快照。
+	account.Extra = record.Extra
+	account.UpdatedAt = record.UpdatedAt
 
 	// 将 proxy 变更传播到 spark 影子账号（同步；Update 内部已触发调度快照）。
 	// 影子自身 proxy 不可独立编辑(见上),故对影子的更新不触发传播。

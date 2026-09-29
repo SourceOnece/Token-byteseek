@@ -15,7 +15,10 @@ func (a providerWriteAdapter) Update(ctx context.Context, record *provider.Recor
 	if account == nil {
 		return ErrAccountNilInput
 	}
-	return a.repo.Update(ctx, account)
+	err := a.repo.Update(ctx, account)
+	record.Extra = account.Extra
+	record.UpdatedAt = account.UpdatedAt
+	return err
 }
 
 func (a providerWriteAdapter) UpdateExtra(ctx context.Context, id int64, updates map[string]any) error {
@@ -26,7 +29,17 @@ func (a providerWriteAdapter) UpdateCredentials(ctx context.Context, id int64, c
 	if updater, ok := any(a.repo).(accountCredentialsUpdater); ok {
 		return updater.UpdateCredentials(ctx, id, credentials)
 	}
-	return a.repo.Update(ctx, AccountFromProviderRecord(&provider.Record{ID: id, Credentials: credentials}))
+	// 兼容旧测试替身时先读取完整记录，禁止用只含 ID/凭据的半成品覆盖
+	// 名称、分组、代理、调度和票据配置。生产仓储会走专用凭据端口。
+	current, err := a.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if current == nil {
+		return ErrAccountNotFound
+	}
+	current.Credentials = credentials
+	return a.repo.Update(ctx, current)
 }
 
 func (a providerWriteAdapter) BulkUpdate(ctx context.Context, ids []int64, updates provider.BulkUpdate) (int64, error) {
