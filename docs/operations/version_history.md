@@ -1,10 +1,10 @@
 # 版本留档规则
 
-本次 [v0.1.279-bh.009](versions/v0_1_279_bh_009.md) 只适配 TokenFlux 交互功能：表格列调序、仪表盘筛选/指标、空筛选显示、嵌入视口及属性标签编辑。原包豪斯和业务接口保持；sub2api 待修项未混入，最终验证中。
+本次 [v0.1.279-bh.009](versions/v0_1_279_bh_009.md) 只适配 TokenFlux 交互功能：表格列调序、仪表盘筛选/指标、空筛选显示、嵌入视口及属性标签编辑。原包豪斯和业务接口保持；sub2api 待修项未混入，验证及 GHCR 固定/latest/bauhaus 同 digest 发布完成，未部署。
 
 本次 [v0.1.279-bh.008](versions/v0_1_279_bh_008.md) 补齐 OpenAI 本地模型候选中的 GPT-6.1 Sol；定向前端 30 项测试和三标签镜像发布完成。
 
-本次 [v0.1.279-bh.007](versions/v0_1_279_bh_007.md) 固定 TokenFlux `eeb5cb14` 与 sub2api v0.2.11 增量，适配 Key 轮换/频率、模型属性、GPT-6.1 Sol/Astra Ultrafast 及套餐标签；保留旧价格源与包豪斯，验证完成、镜像待发布。
+本次 [v0.1.279-bh.007](versions/v0_1_279_bh_007.md) 固定 TokenFlux `eeb5cb14` 与 sub2api v0.2.11 增量，适配 Key 轮换/频率、模型属性、GPT-6.1 Sol/Astra Ultrafast 及套餐标签；保留旧价格源与包豪斯，验证及三标签镜像发布完成，未部署。
 
 本次 [v0.1.279-bh.006](versions/v0_1_279_bh_006.md) 将“使用密钥”的配置代码块改为终端黑底纸字，沿用包豪斯黄色强调、直角和硬阴影；不改配置内容或复制逻辑。验证及 GHCR 固定/latest/bauhaus 同 digest 发布完成，未部署。
 
