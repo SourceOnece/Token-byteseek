@@ -39,12 +39,16 @@
             <Toggle v-model="websocket" />
           </label>
         </div>
-        <div v-for="(file, index) in files" :key="file.path" class="overflow-hidden rounded-control border border-gray-200 dark:border-dark-700">
-          <div class="flex items-center justify-between gap-3 bg-gray-50 px-4 py-2 dark:bg-dark-800">
-            <code class="text-xs">{{ file.path }}</code>
-            <button type="button" class="btn btn-secondary btn-sm" @click="copyContent(file.content, index)">{{ copiedIndex === index ? t('keys.useKeyModal.copied') : t('keys.useKeyModal.copy') }}</button>
+        <!-- 配置块深浅主题均为黑色终端；标题和装饰不参与复制。 -->
+        <div v-for="(file, index) in files" :key="file.path" class="code-block min-w-0 overflow-hidden !p-0">
+          <div class="flex items-center justify-between gap-3 border-b border-white/20 bg-[#211f1a] px-4 py-2">
+            <div class="flex min-w-0 items-center gap-2 text-bh-yellow">
+              <span class="shrink-0 font-bold" aria-hidden="true">&gt;_</span>
+              <code class="min-w-0 truncate text-xs font-semibold" :title="file.path">{{ file.path }}</code>
+            </div>
+            <button type="button" class="btn btn-warning btn-sm shrink-0" @click="copyContent(file.content, index)">{{ copiedIndex === index ? t('keys.useKeyModal.copied') : t('keys.useKeyModal.copy') }}</button>
           </div>
-          <pre class="overflow-x-auto whitespace-pre-wrap break-all p-4 text-xs"><code>{{ file.content }}</code></pre>
+          <pre class="overflow-x-auto whitespace-pre-wrap break-all p-4 text-xs leading-relaxed"><code>{{ file.content }}</code></pre>
         </div>
       </template>
     </div>

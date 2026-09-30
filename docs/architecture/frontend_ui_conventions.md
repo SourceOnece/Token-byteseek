@@ -31,6 +31,8 @@
 
 ## 控件尺寸
 
+API 密钥页 `UseKeyModal` 的文件配置区复用 `.code-block`：深浅主题均固定墨黑底、纸色正文，标题栏黄色文件名/终端符号，复制按钮使用 `btn-warning`。装饰和文件标题不能加入复制内容；长文件名允许截断并提供 title，正文保留原换行/换行显示及滚动。
+
 - ByteSeek 按钮、输入框和下拉触发器采用 44px 触控基线（`.btn` / `.input` 为 `min-h-11`），分页保留 36px 紧凑高度。紧凑控件显式使用 `btn-sm/md/lg + h-9`。
 - 图标按钮两档：`.btn-icon`（h-11 w-11）与 `.btn-icon-sm`（h-8 w-8），保留直角、居中和统一硬阴影；`.btn-sm` 用于表格行内。颜色、几何和交互以[包豪斯契约](../operations/bauhaus_design_contract.md)为准。
 - 下拉触发器（Select、DateRangePicker）模板组合 `input input-trigger` + 各自状态类，不复制基线配方。
