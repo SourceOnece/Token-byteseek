@@ -20,7 +20,10 @@ const { t } = useI18n(), router = useRouter()
 const counts = ref<Record<string, number> | null>(null), loading = ref(false), error = ref(false)
 let active = true
 async function load() { if (loading.value) return; loading.value = true; try { const value = await qualitySchedulesAPI.stats(); if (active) { counts.value = value; error.value = false } } catch { if (active) error.value = true } finally { if (active) loading.value = false } }
-function openAccounts(status: string) { void router.push({ path: '/admin/accounts', query: { platform: 'openai', ...(status ? { quality_status: status } : {}) } }) }
+// 统计入口使用当前账号管理的命名路由，避免 Provider 迁移后旧路径被兜底重定向。
+function openAccounts(status: string) {
+  void router.push({ name: 'AdminProviders', query: { platform: 'openai', ...(status ? { quality_status: status } : {}) } })
+}
 onMounted(load)
 onBeforeUnmount(() => { active = false })
 defineExpose({ refresh: load })
