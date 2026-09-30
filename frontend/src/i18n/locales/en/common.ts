@@ -1,6 +1,8 @@
 export default {
 // Common
   common: {
+    moveUp: 'Move up',
+    moveDown: 'Move down',
     retry: 'Retry',
     loading: 'Loading...',
     justNow: 'just now',
@@ -124,6 +126,8 @@ export default {
     profile: 'Profile',
     users: 'Users',
     groups: 'Groups',
+    modelManagement: 'Model Management',
+    modelAttributes: 'Model Attributes',
     pricing: 'Price Management',
     subscriptions: 'Subscriptions',
     providers: 'Provider Management',

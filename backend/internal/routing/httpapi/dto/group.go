@@ -3,21 +3,23 @@ package dto
 import (
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
 type Group struct {
-	Models         []string                         `json:"models"`
-	ModelProtocols map[string][]protocol.ProtocolID `json:"model_protocols,omitempty"`
-	ID             int64                            `json:"id"`
-	Name           string                           `json:"name"`
-	Description    string                           `json:"description"`
-	DisplayBrand   string                           `json:"display_brand"`
-	RateMultiplier float64                          `json:"rate_multiplier"`
-	Capacity       *GroupCapacity                   `json:"capacity,omitempty"`
-	IsExclusive    bool                             `json:"is_exclusive"`
-	Status         string                           `json:"status"`
+	ModelAttributes map[string]modelcatalog.Presentation `json:"model_attributes,omitempty"`
+	Models          []string                             `json:"models"`
+	ModelProtocols  map[string][]protocol.ProtocolID     `json:"model_protocols,omitempty"`
+	ID              int64                                `json:"id"`
+	Name            string                               `json:"name"`
+	Description     string                               `json:"description"`
+	DisplayBrand    string                               `json:"display_brand"`
+	RateMultiplier  float64                              `json:"rate_multiplier"`
+	Capacity        *GroupCapacity                       `json:"capacity,omitempty"`
+	IsExclusive     bool                                 `json:"is_exclusive"`
+	Status          string                               `json:"status"`
 	// 会话隔离开启后，目标分组会拒绝其它分组已归属的显式会话切入。
 	SessionIsolationEnabled bool `json:"session_isolation_enabled"`
 

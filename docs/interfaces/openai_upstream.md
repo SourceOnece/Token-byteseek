@@ -212,6 +212,8 @@ OpenAI API Key 提供商以 `force_chat_completions` 承接 `/v1/messages` 时�
 
 ## 模型与能力
 
+bh.007 增加 `gpt-6.1-sol` 的目录、模型身份、instructions 和独立回退价格；默认测试型号和票据采集模型列表不变。三类兼容输入与 Responses/WS 的共用推理校验拒绝该模型的 `none` / `minimal` 和显式关闭 thinking，不能静默升档；原有 Ultra 校验继续执行。Astra 的 `ultrafast` 采用 6 倍标准价，独立于运营者的 Fast 倍率，响应服务档位的费用等级排序包含 ultrafast。未恢复 TokenFlux 已移除的 Codex manifest 端点；模型属性只供展示与配置导出，不等于完整 Codex manifest。
+
 客户端模型先经过 Key、分组和提供商层映射。OpenAI 内置别名、reasoning effort 归一化、旧版 Compact 端点支持、图像/embedding 能力和传输能力会影响候选提供商；模型列表只公开当前分组可请求的结果。
 
 GPT-5.6 的内置产品仅为 `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`。裸 `gpt-5.6` 不作为预设型号或 Sol 别名，OAuth 归一化与用量计费候选也不再自动将它改为 Sol 或旧 GPT；未知名称沿用兼容上游的既有透传边界，不因此保证上游支持。管理员显式 Key、渠道和提供商映射仍然有效，历史配置和用量记录不回写。模型目录查询与能力来源见[模型目录与市场](model_catalog_and_marketplace.md#model_catalog_metadata_lookup)。

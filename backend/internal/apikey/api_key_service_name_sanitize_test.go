@@ -51,6 +51,10 @@ func (s *apiKeyNameSanitizeRepoStub) GetByKeyForAuth(ctx context.Context, key st
 	panic("unexpected GetByKeyForAuth call")
 }
 
+func (s *apiKeyNameSanitizeRepoStub) RotateCredential(context.Context, *apikey.APIKey, string) error {
+	panic("unexpected RotateCredential call")
+}
+
 func (s *apiKeyNameSanitizeRepoStub) Update(ctx context.Context, key *apikey.APIKey, _ apikey.APIKeyUpdateFields) error {
 	clone := *key
 	s.updated = append(s.updated, &clone)

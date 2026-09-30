@@ -95,6 +95,12 @@ export default {
       failureHint: '以下密钥更新失败，可修改设置后重试。再次提交只会更新失败的密钥。'
     },
     deleteKey: '删除密钥',
+    rotateKey: '轮换凭据',
+    confirmRotate: '确认轮换',
+    rotateConfirmMessage: "确定要轮换 '{name}' 的 API Key 凭据吗？旧凭据将失效，使用它的客户端需要更新。Key 的 ID、配置和用量记录保持不变。",
+    keyRotatedSuccess: 'API Key 凭据已轮换',
+    rotatedKeyHint: '请复制新凭据并更新客户端配置。旧凭据已失效。',
+    failedToRotate: '轮换 API Key 凭据失败',
     deleteConfirmMessage: "确定要删除 '{name}' 吗？此操作无法撤销。",
     id: 'ID',
     apiKey: 'API 密钥',

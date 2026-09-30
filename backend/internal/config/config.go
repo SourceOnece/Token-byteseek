@@ -82,6 +82,7 @@ type Config struct {
 	Pricing           PricingConfig              `mapstructure:"pricing"`
 	Gateway           GatewayConfig              `mapstructure:"gateway"`
 	APIKeyAuth        APIKeyAuthCacheConfig      `mapstructure:"api_key_auth_cache"`
+	APIKeyCreate      APIKeyCreateConfig         `mapstructure:"api_key_create"`
 	SubscriptionCache SubscriptionCacheConfig    `mapstructure:"subscription_cache"`
 	Dashboard         DashboardCacheConfig       `mapstructure:"dashboard_cache"`
 	DashboardAgg      DashboardAggregationConfig `mapstructure:"dashboard_aggregation"`
@@ -527,7 +528,9 @@ type TokenRefreshConfig struct {
 }
 
 type PricingConfig struct {
-	// 价格数据远程URL（默认使用LiteLLM镜像）
+	// CatalogFormat 显式选择目录格式，默认保留原有报价来源，避免升级隐式改价。
+	CatalogFormat string `mapstructure:"catalog_format"`
+	// 模型价格与属性统一目录地址（models.dev 格式）
 	RemoteURL string `mapstructure:"remote_url"`
 	// 哈希校验文件URL
 	HashURL string `mapstructure:"hash_url"`
@@ -1442,6 +1445,11 @@ type RateLimitConfig struct {
 }
 
 // APIKeyAuthCacheConfig API Key 认证缓存配置
+// APIKeyCreateConfig 仅控制创建频率；数量沿用后台用户级事务限制。
+type APIKeyCreateConfig struct {
+	MaxPerUserPerHour int `mapstructure:"max_per_user_per_hour"`
+}
+
 type APIKeyAuthCacheConfig struct {
 	L1Size             int                    `mapstructure:"l1_size"`
 	L1TTLSeconds       int                    `mapstructure:"l1_ttl_seconds"`
@@ -1808,6 +1816,7 @@ func setDefaults() {
 		"*.openai.azure.com",
 	})
 	viper.SetDefault("security.url_allowlist.pricing_hosts", []string{
+		"models.dev",
 		"raw.githubusercontent.com",
 	})
 	viper.SetDefault("security.url_allowlist.crs_hosts", []string{})
@@ -2044,7 +2053,8 @@ func setDefaults() {
 	viper.SetDefault("rate_limit.overload_cooldown_minutes", 10)
 	viper.SetDefault("rate_limit.oauth_401_cooldown_minutes", 10)
 
-	// Pricing - 从 model-price-repo main 分支同步模型定价和上下文窗口数据
+	// 原有部署保持价格源；需要统一目录时显式选用 models_dev 格式及地址。
+	viper.SetDefault("pricing.catalog_format", "legacy")
 	viper.SetDefault("pricing.remote_url", "https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/main/model_prices_and_context_window.json")
 	viper.SetDefault("pricing.hash_url", "https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/main/model_prices_and_context_window.sha256")
 	viper.SetDefault("pricing.data_dir", "./data")
@@ -2072,6 +2082,7 @@ func setDefaults() {
 	viper.SetDefault("api_key_auth_cache.invalid_abuse.window_seconds", 60)
 	viper.SetDefault("api_key_auth_cache.invalid_abuse.block_seconds", 60)
 	viper.SetDefault("api_key_auth_cache.invalid_abuse.capacity", 16384)
+	viper.SetDefault("api_key_create.max_per_user_per_hour", 60)
 
 	// Subscription auth L1 cache
 	viper.SetDefault("subscription_cache.l1_size", 16384)
@@ -2384,6 +2395,14 @@ func setEnvReachableDefaults() {
 }
 
 func (c *Config) Validate() error {
+	if c.Pricing.CatalogFormat != "" && c.Pricing.CatalogFormat != "legacy" && c.Pricing.CatalogFormat != "models_dev" {
+		return fmt.Errorf("pricing.catalog_format must be legacy or models_dev")
+	}
+	if c.APIKeyCreate.MaxPerUserPerHour < 0 {
+		return fmt.Errorf("api_key_create.max_per_user_per_hour must be non-negative")
+	}
+	c.normalizePricingCatalogSource()
+
 	forwardedClientIPHeaders, err := NormalizeForwardedClientIPHeaders(c.Security.ForwardedClientIPHeaders)
 	if err != nil {
 		return fmt.Errorf("security.forwarded_client_ip_headers: %w", err)
@@ -3593,5 +3612,12 @@ func warnIfInsecureURL(field, raw string) {
 	}
 	if strings.EqualFold(u.Scheme, "http") {
 		slog.Warn("url uses http scheme; use https in production to avoid token leakage", "field", field)
+	}
+}
+
+func (c *Config) normalizePricingCatalogSource() {
+	// 只规范显式选择的新格式，不自动改写旧源或管理员镜像地址。
+	if c.Pricing.CatalogFormat == "models_dev" {
+		c.Pricing.HashURL = ""
 	}
 }

@@ -67,5 +67,5 @@ func (h *PricingHandler) ListDefaultPricing(c *gin.Context) {
 		start = (page - 1) * pageSize
 	}
 	end := min(start+pageSize, len(rows))
-	httpx.Success(c, gin.H{"items": rows[start:end], "total": len(rows), "last_updated": snapshot.UpdatedAt, "platforms": platforms})
+	httpx.Success(c, gin.H{"items": rows[start:end], "total": len(rows), "last_updated": snapshot.UpdatedAt, "platforms": platforms, "version": snapshot.Version, "last_error": snapshot.LastError})
 }

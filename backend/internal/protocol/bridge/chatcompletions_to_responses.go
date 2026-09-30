@@ -16,6 +16,9 @@ type chatMessageContent struct {
 // true. store is always false and reasoning.encrypted_content is always
 // included so that the response translator has full context.
 func ChatCompletionsToResponses(req *ChatCompletionsRequest, options RequestOptions) (*ResponsesRequest, error) {
+	if err := validateGPT61ChatEffort(req); err != nil {
+		return nil, err
+	}
 	if isUltraReasoningEffort(req.ReasoningEffort) {
 		return nil, fmt.Errorf("reasoning effort %q is not supported", strings.TrimSpace(req.ReasoningEffort))
 	}

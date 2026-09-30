@@ -522,6 +522,31 @@ func (r *KeyStore) Update(ctx context.Context, key *keycore.APIKey, fields keyco
 	return nil
 }
 
+// RotateCredential 原子替换凭据，不写回读取快照中的配置或用量。
+func (r *KeyStore) RotateCredential(ctx context.Context, key *keycore.APIKey, oldKey string) error {
+	now := time.Now()
+	affected, err := clientFromContext(ctx, r.client).APIKey.Update().
+		Where(
+			apikey.IDEQ(key.ID),
+			apikey.UserIDEQ(key.UserID),
+			apikey.KeyEQ(oldKey),
+			apikey.DeletedAtIsNil(),
+			apikey.ManagedByIsNil(),
+		).
+		SetKey(key.Key).
+		SetUpdatedAt(now).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		// 旧凭据已轮换、记录已删除或归属已变更时，不能覆盖当前记录。
+		return keycore.ErrAPIKeyRotationConflict
+	}
+	key.UpdatedAt = now
+	return nil
+}
+
 func (r *KeyStore) Delete(ctx context.Context, id int64) error {
 	// 存在唯一键约束 生成tombstone key 用来释放原key，长度远小于 128，满足 schema 限制
 	tombstoneKey := fmt.Sprintf("__deleted__%d__%d", id, time.Now().UnixNano())

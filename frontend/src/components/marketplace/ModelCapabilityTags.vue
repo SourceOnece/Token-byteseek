@@ -14,6 +14,7 @@
     >
       <Icon :name="modalityIconName(modality)" size="xs" :stroke-width="2.5" />
     </span>
+    <span v-if="!capabilities.input.length" class="text-xs text-gray-500">{{ t(props.model.attributes?.input_modalities === undefined ? 'admin.modelAttributes.unknown' : 'admin.modelAttributes.none') }}</span>
     <Icon name="moveRight" size="xs" :stroke-width="2" class="text-gray-400 dark:text-dark-500" />
     <span
       v-for="modality in capabilities.output"
@@ -24,6 +25,7 @@
     >
       <Icon :name="modalityIconName(modality)" size="xs" :stroke-width="2.5" />
     </span>
+    <span v-if="!capabilities.output.length" class="text-xs text-gray-500">{{ t(props.model.attributes?.output_modalities === undefined ? 'admin.modelAttributes.unknown' : 'admin.modelAttributes.none') }}</span>
   </span>
 </template>
 
@@ -35,14 +37,17 @@ import { resolveModelCapabilities, type ModelModality } from '@/utils/modelCapab
 import type { MarketplaceModel } from '@/types'
 
 const props = defineProps<{
-  model: Pick<MarketplaceModel, 'id' | 'pricing' | 'input_modalities' | 'output_modalities'>
+  model: Pick<MarketplaceModel, 'id' | 'pricing' | 'input_modalities' | 'output_modalities' | 'attributes'>
 }>()
 
 const { t } = useI18n()
 
-// 能力数据优先用后端从定价元数据下发的字段，缺失时由解析器回退到模型 ID 规则。
+// 新属性投影保留未知与显式空集合；仅兼容旧接口时使用历史模态推断。
 const capabilities = computed(() =>
-  resolveModelCapabilities(props.model.id, props.model.pricing, {
+  props.model.attributes ? {
+    input: (props.model.attributes.input_modalities ?? []) as ModelModality[],
+    output: (props.model.attributes.output_modalities ?? []) as ModelModality[],
+  } : resolveModelCapabilities(props.model.id, props.model.pricing, {
     input: props.model.input_modalities,
     output: props.model.output_modalities,
   })
@@ -56,6 +61,8 @@ function modalityLabel(modality: ModelModality): string {
       return t('marketplace.modalityImage')
     case 'audio':
       return t('marketplace.modalityAudio')
+    case 'pdf':
+      return 'PDF'
     case 'video':
       return t('marketplace.modalityVideo')
   }
@@ -64,6 +71,7 @@ function modalityLabel(modality: ModelModality): string {
 function modalityIconName(modality: ModelModality): 'modalityText' | 'modalityImage' | 'modalityAudio' | 'modalityVideo' {
   switch (modality) {
     case 'text':
+    case 'pdf':
       return 'modalityText'
     case 'image':
       return 'modalityImage'
@@ -78,6 +86,7 @@ function modalityIconName(modality: ModelModality): 'modalityText' | 'modalityIm
 function modalityTagClass(modality: ModelModality): string {
   switch (modality) {
     case 'text':
+    case 'pdf':
       return 'bg-blue-500/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-300'
     case 'image':
       return 'bg-green-500/10 text-green-600 dark:bg-green-400/10 dark:text-green-300'

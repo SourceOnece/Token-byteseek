@@ -19,6 +19,7 @@ const {
   nextStep,
   createKey,
   updateKey,
+  rotateKey,
   toggleStatus,
   replaceRoute,
 } = vi.hoisted(() => ({
@@ -35,6 +36,7 @@ const {
   nextStep: vi.fn(),
   createKey: vi.fn(),
   updateKey: vi.fn(),
+  rotateKey: vi.fn(),
   toggleStatus: vi.fn(),
   replaceRoute: vi.fn(),
 }))
@@ -116,6 +118,7 @@ vi.mock('@/api', () => ({
     create: vi.fn(),
     createWithPayload: createKey,
     update: updateKey,
+    rotate: rotateKey,
     delete: vi.fn(),
     toggleStatus,
     getBillingOptions,
@@ -391,6 +394,7 @@ describe('user KeysView column settings', () => {
     nextStep.mockReset()
     createKey.mockReset()
     updateKey.mockReset()
+    rotateKey.mockReset()
     toggleStatus.mockReset()
     replaceRoute.mockReset()
 
@@ -506,6 +510,75 @@ describe('user KeysView column settings', () => {
     await nextTick()
 
     expect(wrapper.get('[data-test="tf-cli-dialog-stub"]').attributes('data-key-name')).toBe('test-key')
+  })
+
+  it('轮换先确认，取消时不发送请求', async () => {
+    const wrapper = await mountView()
+    await getButtonByText(wrapper, 'More').trigger('click')
+    await getButtonByText(wrapper, 'keys.rotateKey').trigger('click')
+    const dialog = wrapper.findAllComponents({ name: 'ConfirmDialog' })
+      .find(component => component.props('title') === 'keys.rotateKey')!
+
+    expect(dialog.props('show')).toBe(true)
+    expect(rotateKey).not.toHaveBeenCalled()
+    dialog.vm.$emit('cancel')
+    await nextTick()
+    expect(dialog.props('show')).toBe(false)
+    expect(rotateKey).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('确认后只提交一次，成功展示并复制新凭据', async () => {
+    const updated = { ...createApiKey(), key: 'sk-rotated-key' }
+    let resolveRotation!: (key: ApiKey) => void
+    rotateKey.mockReturnValue(new Promise<ApiKey>(resolve => { resolveRotation = resolve }))
+    const wrapper = await mountView()
+    await getButtonByText(wrapper, 'More').trigger('click')
+    await getButtonByText(wrapper, 'keys.rotateKey').trigger('click')
+    const dialog = wrapper.findAllComponents({ name: 'ConfirmDialog' })
+      .find(component => component.props('title') === 'keys.rotateKey')!
+
+    dialog.vm.$emit('confirm')
+    dialog.vm.$emit('confirm')
+    dialog.vm.$emit('cancel')
+    await nextTick()
+    expect(rotateKey).toHaveBeenCalledTimes(1)
+    expect(rotateKey).toHaveBeenCalledWith(1)
+    expect(dialog.props('loading')).toBe(true)
+    expect(dialog.props('show')).toBe(true)
+
+    listKeys.mockRejectedValueOnce(new Error('refresh failed'))
+    resolveRotation(updated)
+    await flushPromises()
+    expect(dialog.props('show')).toBe(false)
+    expect(wrapper.get('code').text()).toBe(updated.key)
+    const table = wrapper.findComponent({ name: 'DataTable' })
+    expect(table.props('data')[0].key).toBe(updated.key)
+    await getButtonByText(wrapper, 'common.copy').trigger('click')
+    expect(copyToClipboard).toHaveBeenCalledWith(updated.key, expect.any(String))
+    wrapper.unmount()
+  })
+
+  it('轮换失败保留确认窗和原凭据，允许重试', async () => {
+    rotateKey.mockRejectedValueOnce(new Error('rotation failed'))
+    const wrapper = await mountView()
+    await getButtonByText(wrapper, 'More').trigger('click')
+    await getButtonByText(wrapper, 'keys.rotateKey').trigger('click')
+    const dialog = wrapper.findAllComponents({ name: 'ConfirmDialog' })
+      .find(component => component.props('title') === 'keys.rotateKey')!
+    dialog.vm.$emit('confirm')
+    await flushPromises()
+
+    expect(showError).toHaveBeenCalledWith('rotation failed')
+    expect(dialog.props('show')).toBe(true)
+    expect(dialog.props('loading')).toBe(false)
+    expect(wrapper.findComponent({ name: 'DataTable' }).props('data')[0].key).toBe('sk-test-key')
+    rotateKey.mockResolvedValueOnce({ ...createApiKey(), key: 'sk-retry-key' })
+    dialog.vm.$emit('confirm')
+    await flushPromises()
+    expect(rotateKey).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('code').text()).toBe('sk-retry-key')
+    wrapper.unmount()
   })
 
   it('shows a hidden column when toggled and persists the preference', async () => {

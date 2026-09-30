@@ -254,6 +254,10 @@ func MultiplyModelPricing(pricing *ModelPricing, multiplier float64) *ModelPrici
 		return nil
 	}
 	scaled := *pricing
+	scaled.ContextPrices = make([]ContextModelPrice, len(pricing.ContextPrices))
+	for i, tier := range pricing.ContextPrices {
+		scaled.ContextPrices[i] = ContextModelPrice{Threshold: tier.Threshold, Pricing: MultiplyModelPricing(tier.Pricing, multiplier)}
+	}
 	scaled.InputPricePerToken *= multiplier
 	scaled.InputPricePerTokenPriority *= multiplier
 	scaled.ImageInputPricePerToken *= multiplier

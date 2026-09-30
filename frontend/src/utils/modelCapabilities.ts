@@ -19,7 +19,7 @@ export interface ApiModelCapabilities {
 }
 
 // 标签固定按该顺序渲染，保证不同卡片之间可扫读对比。
-export const MODEL_MODALITY_ORDER: ModelModality[] = ['text', 'image', 'audio', 'video']
+export const MODEL_MODALITY_ORDER: ModelModality[] = ['text', 'image', 'audio', 'video', 'pdf']
 
 // 已知生图模型的 ID 特征（定价模式缺失时兜底，命中后只输出图片）。
 const IMAGE_OUTPUT_PATTERNS = [/dall-e/, /flux/, /stable-diffusion/, /imagen/, /cogview/, /midjourney/, /mj-/, /gpt-image/]

@@ -64,6 +64,15 @@ var (
 		Mode:                        "chat",
 		SupportsPromptCaching:       true,
 	}
+	// 与 sub2api 0.2.11 的 Sol 标准、Fast 和长上下文报价一致。
+	OpenAIGPT61SolPricing = &LiteLLMModelPricing{
+		InputCostPerToken: 2e-6, InputCostPerTokenPriority: 4e-6,
+		OutputCostPerToken: 10e-6, OutputCostPerTokenPriority: 20e-6,
+		CacheCreationInputTokenCost: 2.5e-6, CacheCreationInputTokenCostPriority: 5e-6,
+		CacheReadInputTokenCost: .1e-6, CacheReadInputTokenCostPriority: .2e-6,
+		LongContextInputTokenThreshold: 272000, LongContextInputCostMultiplier: 2, LongContextOutputCostMultiplier: 1.5,
+		SupportsServiceTier: true, LiteLLMProvider: "openai", Mode: "chat", SupportsPromptCaching: true,
+	}
 	OpenAIGPT56SolPricing = &LiteLLMModelPricing{
 		InputCostPerToken:                   5e-06,   // $5 per MTok
 		InputCostPerTokenPriority:           1e-05,   // $10 per MTok

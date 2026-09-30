@@ -3,6 +3,8 @@ package modelidentity
 import (
 	"strings"
 
+	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
@@ -23,6 +25,8 @@ func NormalizeOpenAI(model string) string {
 	}
 
 	switch {
+	case wire.IsGPT61SolModel(normalized):
+		return "gpt-6.1-sol"
 	case capability.IsOpenAIGPT6AstraModel(normalized):
 		return "gpt-6-astra"
 	case strings.Contains(normalized, "gpt-5.6-sol"):

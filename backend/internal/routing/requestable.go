@@ -13,6 +13,8 @@ import (
 
 // RequestableModel 描述客户端可请求的模型，以及模型广场应使用的定价模型。
 type RequestableModel struct {
+	// UpstreamModels 仅为展示保留已确认可请求的最终模型，不增加调度条件。
+	UpstreamModels   []string
 	Protocols        []capability.ProtocolID
 	ID               string
 	PricingModel     string
@@ -293,7 +295,8 @@ func (s *RequestableResolver) resolveRequestableModel(
 		return RequestableModel{}, false
 	}
 
-	resolved := RequestableModel{ID: requestedModel, Protocols: protocols}
+	slices.Sort(upstreamModels)
+	resolved := RequestableModel{ID: requestedModel, Protocols: protocols, UpstreamModels: slices.Compact(upstreamModels)}
 	switch billingSource {
 	case BillingModelSourceRequested:
 		resolved.PricingModel = requestedModel

@@ -92,6 +92,7 @@ var moduleDependencies = map[string]dependencySet{
 	"internal/codexticket": {Production: `ent/... internal/codexticket/... internal/egress internal/gateway/clientmeta internal/gateway/forward
 internal/provider internal/provider/postgres internal/scheduler internal/settings internal/server/httpx internal/upstream internal/upstream/openai
 internal/infra/httpclient/... internal/infra/telemetry/... internal/pkg/`, Tests: `internal/testutil/assertion`},
+	"internal/modelcatalog": {Production: "internal/modelcatalog", Tests: ""},
 	"ent": {Production: `ent/... internal/provider internal/apikey internal/billing internal/egress internal/identity
 internal/promotion internal/protocol internal/routing internal/routing/accessview
 internal/routing/capability internal/scheduler/policy internal/site`, Tests: ""},
@@ -129,7 +130,7 @@ internal/routing/modelmap internal/server/httpx internal/upstream internal/upstr
 internal/upstream/vertex internal/usage`, Tests: `internal/billing/pricing internal/billing/provider internal/billing/testkit internal/config internal/gateway/completion
 internal/gateway/modeltrace internal/gateway/provider/modelidentity internal/testutil/assertion
 internal/testutil/postgrescontainer internal/testutil/rediscontainer`},
-	"internal/billing": {Production: `ent/... internal/billing/... internal/egress internal/gateway/provider
+	"internal/billing": {Production: `internal/modelcatalog ent/... internal/billing/... internal/egress internal/gateway/provider
 internal/gateway/provider/modelidentity internal/idempotency/httpapi internal/identity/contact
 internal/identity/httpapi/authctx internal/infra/httpclient/... internal/infra/postgres/...
 internal/infra/telemetry/... internal/notification/contract internal/pkg/ internal/protocol internal/protocol/anthropic
@@ -201,7 +202,7 @@ internal/promotion internal/server/httpx internal/settings`, Tests: "internal/te
 internal/identity/httpapi/dto internal/pkg/ internal/promotion/... internal/server/httpx
 internal/settings`, Tests: ""},
 	"internal/protocol": {Production: "internal/protocol/...", Tests: "internal/testutil/assertion"},
-	"internal/routing": {Production: `ent/... internal/provider internal/apikey/httpapi/dto internal/billing internal/billing/pricing
+	"internal/routing": {Production: `internal/modelcatalog ent/... internal/provider internal/apikey/httpapi/dto internal/billing internal/billing/pricing
 internal/billing/provider internal/idempotency internal/idempotency/httpapi
 internal/infra/postgres/... internal/infra/telemetry/... internal/pkg/ internal/protocol
 internal/protocol/openai internal/routing/... internal/scheduler/policy internal/server/httpx
@@ -210,7 +211,7 @@ internal/upstream/deepseek internal/upstream/kimi internal/upstream/zhipu
 internal/upstream/gemini/codeassist internal/upstream/grok internal/upstream/openai
 internal/upstream/qoder`, Tests: `internal/provider/provider internal/apikey internal/billing/testkit internal/gateway/media
 internal/gateway/provider internal/gateway/provider/modelidentity internal/idempotency/testkit
-internal/identity/httpapi/authctx internal/scheduler`},
+internal/identity/httpapi/authctx internal/scheduler internal/testutil/postgrescontainer migrations`},
 	"internal/scheduler": {Production: `internal/provider internal/egress internal/infra/postgres/... internal/infra/telemetry/...
 internal/pkg/ internal/routing internal/routing/accessview internal/routing/capability
 internal/scheduler/... internal/server/httpx internal/settings`, Tests: "internal/provider/provider internal/billing internal/protocol internal/testutil/postgrescontainer"},
@@ -276,7 +277,7 @@ internal/identity/postgres internal/infra/crypto internal/infra/postgres interna
 internal/infra/telemetry/logging internal/pkg/timezone internal/routing/postgres migrations`, Tests: "ent/enttest ent/group ent/runtime internal/billing internal/routing/capability"},
 	"internal/app/lifecycle":       {Production: "internal/app/lifecycle", Tests: ""},
 	"internal/billing/httpapi/dto": {Production: "internal/billing internal/billing/httpapi/dto", Tests: ""},
-	"internal/billing/pricing":     {Production: "internal/billing/pricing internal/protocol internal/protocol/openai internal/protocol/anthropic internal/routing/capability", Tests: ""},
+	"internal/billing/pricing":     {Production: "internal/modelcatalog internal/billing/pricing internal/protocol internal/protocol/openai internal/protocol/anthropic internal/routing/capability", Tests: ""},
 	"internal/egress/httpapi/dto":  {Production: "internal/egress internal/egress/httpapi/dto", Tests: ""},
 	"internal/egress/urlpolicy":    {Production: "internal/egress/urlpolicy internal/pkg/ipmatch", Tests: ""},
 	"internal/gateway/clientmeta":  {Production: "internal/gateway/clientmeta internal/protocol/anthropic internal/protocol/openai", Tests: "internal/gateway/requeststate"},
@@ -309,7 +310,7 @@ internal/protocol/openai internal/protocol/wirejson`, Tests: ""},
 	"internal/protocol/wirejson":  {Production: "internal/protocol/wirejson", Tests: ""},
 	"internal/routing/accessview": {Production: "internal/billing/pricing internal/protocol internal/routing/accessview internal/scheduler/policy", Tests: ""},
 	"internal/routing/capability": {Production: "internal/protocol internal/protocol/openai internal/routing/capability", Tests: ""},
-	"internal/routing/httpapi/dto": {Production: `internal/billing/pricing internal/protocol internal/routing internal/routing/httpapi/dto
+	"internal/routing/httpapi/dto": {Production: `internal/modelcatalog internal/billing/pricing internal/protocol internal/routing internal/routing/httpapi/dto
 internal/scheduler/policy`, Tests: "internal/billing internal/routing/capability"},
 	"internal/routing/modelmap":       {Production: "internal/routing/modelmap", Tests: ""},
 	"internal/scheduler/policy":       {Production: "internal/scheduler/policy", Tests: ""},

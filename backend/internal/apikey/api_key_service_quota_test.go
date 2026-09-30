@@ -44,8 +44,8 @@ func (s *quotaStateCacheStub) IncrementCreateAttemptCount(context.Context, int64
 	return nil
 }
 
-func (s *quotaStateCacheStub) DeleteCreateAttemptCount(context.Context, int64) error {
-	return nil
+func (s *quotaStateCacheStub) IncrementCreateCount(context.Context, int64, time.Duration) (int64, error) {
+	return 0, nil
 }
 
 func (s *quotaStateCacheStub) IncrementDailyUsage(context.Context, string) error {
@@ -84,73 +84,100 @@ type quotaBaseAPIKeyRepoStub struct {
 func (s *quotaBaseAPIKeyRepoStub) Create(context.Context, *apikey.APIKey) error {
 	panic("unexpected Create call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) GetByID(context.Context, int64) (*apikey.APIKey, error) {
 	s.getByIDCalls++
 	return nil, nil
 }
+
 func (s *quotaBaseAPIKeyRepoStub) GetKeyAndOwnerID(context.Context, int64) (string, int64, error) {
 	panic("unexpected GetKeyAndOwnerID call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) GetByKey(context.Context, string) (*apikey.APIKey, error) {
 	panic("unexpected GetByKey call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) GetByKeyForAuth(context.Context, string) (*apikey.APIKey, error) {
 	panic("unexpected GetByKeyForAuth call")
 }
+
+func (s *quotaBaseAPIKeyRepoStub) RotateCredential(context.Context, *apikey.APIKey, string) error {
+	panic("unexpected RotateCredential call")
+}
+
 func (s *quotaBaseAPIKeyRepoStub) Update(context.Context, *apikey.APIKey, apikey.APIKeyUpdateFields) error {
 	panic("unexpected Update call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) Delete(context.Context, int64) error {
 	panic("unexpected Delete call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) DeleteWithAudit(context.Context, int64) error {
 	panic("unexpected DeleteWithAudit call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) ListByUserID(context.Context, int64, pagination.PaginationParams, apikey.APIKeyListFilters) ([]apikey.APIKey, *pagination.PaginationResult, error) {
 	panic("unexpected ListByUserID call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) VerifyOwnership(context.Context, int64, []int64) ([]int64, error) {
 	panic("unexpected VerifyOwnership call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) CountByUserID(context.Context, int64) (int64, error) {
 	panic("unexpected CountByUserID call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) ExistsByKey(context.Context, string) (bool, error) {
 	panic("unexpected ExistsByKey call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) ListByGroupID(context.Context, int64, pagination.PaginationParams) ([]apikey.APIKey, *pagination.PaginationResult, error) {
 	panic("unexpected ListByGroupID call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) SearchAPIKeys(context.Context, int64, string, int) ([]apikey.APIKey, error) {
 	panic("unexpected SearchAPIKeys call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) ClearGroupIDByGroupID(context.Context, int64) (int64, error) {
 	panic("unexpected ClearGroupIDByGroupID call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) UpdateGroupIDByUserAndGroup(context.Context, int64, int64, int64) (int64, error) {
 	panic("unexpected UpdateGroupIDByUserAndGroup call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) CountByGroupID(context.Context, int64) (int64, error) {
 	panic("unexpected CountByGroupID call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) ListKeysByUserID(context.Context, int64) ([]string, error) {
 	panic("unexpected ListKeysByUserID call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) ListKeysByGroupID(context.Context, int64) ([]string, error) {
 	panic("unexpected ListKeysByGroupID call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) IncrementQuotaUsed(context.Context, int64, float64) (float64, error) {
 	panic("unexpected IncrementQuotaUsed call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) UpdateLastUsed(context.Context, int64, time.Time) error {
 	panic("unexpected UpdateLastUsed call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) IncrementRateLimitUsage(context.Context, int64, float64) error {
 	panic("unexpected IncrementRateLimitUsage call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) ResetRateLimitWindows(context.Context, int64) error {
 	panic("unexpected ResetRateLimitWindows call")
 }
+
 func (s *quotaBaseAPIKeyRepoStub) GetRateLimitData(context.Context, int64) (*apikey.APIKeyRateLimitData, error) {
 	panic("unexpected GetRateLimitData call")
 }

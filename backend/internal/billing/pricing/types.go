@@ -2,6 +2,14 @@ package pricing
 
 // ModelPricing 模型价格配置（per-token价格，与LiteLLM格式一致）
 type ModelPricing struct {
+	// Astra Ultrafast 使用模型专属倍率，与运营者 Fast 配置分离。
+	UltrafastMultiplier                float64
+	CatalogSource                      string
+	PriorityInputPresent               bool
+	PriorityOutputPresent              bool
+	PriorityCacheReadPresent           bool
+	PriorityCacheWritePresent          bool
+	ContextPrices                      []ContextModelPrice
 	InputPricePerToken                 float64  // 每token输入价格 (USD)
 	InputPricePerTokenPriority         float64  // priority service tier 下每token输入价格 (USD)
 	ImageInputPricePerToken            float64  // 图片输入 token 价格 (USD)，为 0 时回退到普通输入价格
@@ -10,7 +18,7 @@ type ModelPricing struct {
 	OutputPricePerTokenPriority        float64  // priority service tier 下每token输出价格 (USD)
 	CacheCreationPricePerToken         float64  // 缓存创建每token价格 (USD)
 	CacheCreationPricePerTokenPriority float64  // priority service tier 下缓存创建每token价格 (USD)
-	CacheCreationPriceExplicit         bool     // 是否由价卡/区间定价显式设定（为 true 时即使 == 0 也不回退）
+	CacheCreationPriceExplicit         bool     // 价卡、区间或目录显式零价不触发缓存费用回退
 	CacheCreationPriorityDerived       bool     `json:"-"` // priority 缓存写价是否由 Fast 兜底策略推导
 	CacheReadPricePerToken             float64  // 缓存读取每token价格 (USD)
 	CacheReadPricePerTokenPriority     float64  // priority service tier 下缓存读取每token价格 (USD)
@@ -29,6 +37,12 @@ type ModelPricing struct {
 	LongContextOutputMultiplier   float64 // 长上下文整次会话输出倍率
 	ImageOutputPricePerToken      float64 // 图片输出 token 价格 (USD)
 	ImageOutputPriceExplicit      bool    // 是否由价卡定价显式设定，显式设定后不再回退
+}
+
+// ContextModelPrice 保存严格超过阈值时使用的整次绝对单价。
+type ContextModelPrice struct {
+	Threshold int
+	Pricing   *ModelPricing
 }
 
 // UsageTokens 使用的token数量

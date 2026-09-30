@@ -75,6 +75,10 @@ func (s *apiKeyRepoStub) GetByKeyForAuth(ctx context.Context, key string) (*APIK
 	panic("unexpected GetByKeyForAuth call")
 }
 
+func (s *apiKeyRepoStub) RotateCredential(context.Context, *APIKey, string) error {
+	panic("unexpected RotateCredential call")
+}
+
 func (s *apiKeyRepoStub) Update(ctx context.Context, key *APIKey, _ APIKeyUpdateFields) error {
 	if key != nil {
 		s.updatedKeys = append(s.updatedKeys, *key)
@@ -246,6 +250,10 @@ func (s *apiKeyCacheStub) IncrementCreateAttemptCount(ctx context.Context, userI
 
 // DeleteCreateAttemptCount 记录被清除缓存的用户 ID。
 // 删除 API Key 时会调用此方法清除用户的创建尝试计数缓存。
+func (s *apiKeyCacheStub) IncrementCreateCount(context.Context, int64, time.Duration) (int64, error) {
+	return 0, nil
+}
+
 func (s *apiKeyCacheStub) DeleteCreateAttemptCount(ctx context.Context, userID int64) error {
 	s.invalidated = append(s.invalidated, userID)
 	return nil
@@ -299,8 +307,8 @@ func TestApiKeyService_Delete_Success(t *testing.T) {
 
 	err := svc.Delete(context.Background(), 42, 7) // API Key ID=42, 调用者 userID=7
 	require.NoError(t, err)
-	require.Equal(t, []int64{42}, repo.deletedIDs)  // 验证正确的 API Key 被删除
-	require.Equal(t, []int64{7}, cache.invalidated) // 验证所有者的缓存被清除
+	require.Equal(t, []int64{42}, repo.deletedIDs) // 验证正确的 API Key 被删除
+	require.Empty(t, cache.invalidated)            // 删除不清空创建计数，防止删建绕过限制。
 	require.Equal(t, []string{svc.KeyAuthCacheKey("k")}, cache.deleteAuthKeys)
 	_, exists := svc.lastUsedTouchL1.Load(int64(42))
 	require.False(t, exists, "delete should clear touch debounce cache")

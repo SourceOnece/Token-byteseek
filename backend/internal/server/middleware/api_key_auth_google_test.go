@@ -230,6 +230,10 @@ func (f fakeAPIKeyRepo) GetByKeyForAuth(ctx context.Context, key string) (*apike
 	return f.GetByKey(ctx, key)
 }
 
+func (f fakeAPIKeyRepo) RotateCredential(context.Context, *apikey.APIKey, string) error {
+	panic("unexpected RotateCredential call")
+}
+
 func (f fakeAPIKeyRepo) Update(ctx context.Context, key *apikey.APIKey, _ apikey.APIKeyUpdateFields) error {
 	return errors.New("not implemented")
 }

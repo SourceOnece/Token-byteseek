@@ -1,3 +1,4 @@
+import type { ModelAttributes } from '@/types/modelAttributes'
 import type { Group, ProtocolID } from '@/types'
 
 export type ClientKind = 'claude' | 'codex' | 'gemini' | 'grok' | 'opencode'
@@ -25,14 +26,16 @@ export function groupForKeyConfig(group: Group | undefined, mapping: Record<stri
   const patterns = Object.keys(mapping).filter(source => source.endsWith('*')).sort((a, b) => b.length - a.length)
   const candidates = [...new Set([...(group.models ?? []), ...Object.keys(mapping).filter(source => !source.includes('*'))])]
   const modelProtocols: Record<string, ProtocolID[]> = {}
+  const modelAttributes: Record<string, ModelAttributes> = {}
   const models = candidates.filter(model => {
     const pattern = patterns.find(source => model.startsWith(source.slice(0, -1)))
     const target = mapping[model] ?? (pattern ? mapping[pattern] : model)
     if (!requestable.has(target)) return false
     if (group.model_protocols) modelProtocols[model] = [...(group.model_protocols[target] ?? [])]
+    if (group.model_attributes?.[target]) modelAttributes[model] = group.model_attributes[target]!
     return true
   })
-  return { ...group, models, ...(group.model_protocols ? { model_protocols: modelProtocols } : {}) }
+  return { ...group, models, ...(group.model_attributes ? { model_attributes: modelAttributes } : {}), ...(group.model_protocols ? { model_protocols: modelProtocols } : {}) }
 }
 export function clientProtocol(client: ClientKind, protocols: readonly ProtocolID[]): ProtocolID | undefined {
   if (client === 'opencode') return textProtocols.find(protocol => protocols.includes(protocol))
@@ -55,7 +58,7 @@ function environment(values: Record<string, string>, shell: ConfigShell): string
 // 配置只使用用户选定且服务端可请求的模型；协议选择不改变分组或提供商路由。
 export function buildClientConfig(input: {
   client: ClientKind; protocol: ProtocolID; model: string; baseUrl: string; apiKey: string;
-  shell: ConfigShell; websocket?: boolean; directAuth?: boolean;
+  shell: ConfigShell; websocket?: boolean; directAuth?: boolean; attributes?: ModelAttributes;
 }): ClientConfigFile[] {
   if (!input.model || input.model.includes('*')) return []
   const { client, protocol, model, apiKey, shell } = input
@@ -87,7 +90,7 @@ preferred_method = "api_key"
 
 [model.${quote(model)}]
 model = ${quote(model)}
-name = ${quote(model)}
+name = ${quote(input.attributes?.display_name ?? model)}
 env_key = "XAI_API_KEY"
 api_backend = "responses"
 
@@ -97,6 +100,22 @@ default = ${quote(model)}` },
   const npm = protocol === 'anthropic_messages' ? '@ai-sdk/anthropic' : protocol === 'gemini_generate_content' ? '@ai-sdk/google' : protocol === 'openai_chat_completions' ? '@ai-sdk/openai-compatible' : '@ai-sdk/openai'
   return [{ path: 'opencode.json', content: JSON.stringify({
     $schema: 'https://opencode.ai/config.json', model: `${CLIENT_PROVIDER_ID}/${model}`,
-    provider: { [CLIENT_PROVIDER_ID]: { npm, name: CLIENT_PROVIDER_NAME, options: { baseURL: protocol === 'gemini_generate_content' ? `${base}/v1beta` : apiBase, apiKey }, models: { [model]: { name: model } } } },
+    provider: { [CLIENT_PROVIDER_ID]: { npm, name: CLIENT_PROVIDER_NAME, options: { baseURL: protocol === 'gemini_generate_content' ? `${base}/v1beta` : apiBase, apiKey }, models: { [model]: openCodeModelInfo(model, input.attributes) } } },
   }, null, 2) }]
+}
+
+// 仅导出 OpenCode schema 接受的字段；limit 需要 context 与 output 同时存在。
+export function openCodeModelInfo(model: string, attributes?: ModelAttributes): Record<string, unknown> {
+  const result: Record<string, unknown> = { name: attributes?.display_name ?? model }
+  if (!attributes) return result
+  for (const key of ['attachment', 'reasoning', 'temperature', 'tool_call'] as const) {
+    if (attributes[key] !== undefined) result[key] = attributes[key]
+  }
+  if (attributes.context && attributes.output_limit) {
+    result.limit = { context: attributes.context, output: attributes.output_limit, ...(attributes.input_limit ? { input: attributes.input_limit } : {}) }
+  }
+  if (attributes.input_modalities !== undefined || attributes.output_modalities !== undefined) {
+    result.modalities = { ...(attributes.input_modalities !== undefined ? { input: attributes.input_modalities } : {}), ...(attributes.output_modalities !== undefined ? { output: attributes.output_modalities } : {}) }
+  }
+  return result
 }

@@ -29,18 +29,21 @@ func (r *authInvalidationRepoStub) Claim(_ context.Context, _ string, limit int,
 	r.claimLimit = limit
 	return append([]AuthCacheInvalidationEvent(nil), r.events...), nil
 }
+
 func (r *authInvalidationRepoStub) DeleteClaimed(_ context.Context, id int64, _ string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.deleted = append(r.deleted, id)
 	return nil
 }
+
 func (r *authInvalidationRepoStub) ScheduleSecondPass(_ context.Context, id int64, _ string, _ time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.scheduled = append(r.scheduled, id)
 	return nil
 }
+
 func (r *authInvalidationRepoStub) RetryClaimed(_ context.Context, id int64, _ string, _ time.Time, lastError string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -48,6 +51,7 @@ func (r *authInvalidationRepoStub) RetryClaimed(_ context.Context, id int64, _ s
 	r.retryError = lastError
 	return nil
 }
+
 func (r *authInvalidationRepoStub) Stats(context.Context) (AuthCacheInvalidationOutboxStats, error) {
 	return r.stats, r.statsErr
 }
@@ -64,20 +68,27 @@ type authInvalidationCacheStub struct {
 func (*authInvalidationCacheStub) GetCreateAttemptCount(context.Context, int64) (int, error) {
 	return 0, nil
 }
+
 func (*authInvalidationCacheStub) IncrementCreateAttemptCount(context.Context, int64) error {
 	return nil
 }
-func (*authInvalidationCacheStub) DeleteCreateAttemptCount(context.Context, int64) error { return nil }
-func (*authInvalidationCacheStub) IncrementDailyUsage(context.Context, string) error     { return nil }
+
+func (*authInvalidationCacheStub) IncrementCreateCount(context.Context, int64, time.Duration) (int64, error) {
+	return 0, nil
+}
+func (*authInvalidationCacheStub) IncrementDailyUsage(context.Context, string) error { return nil }
 func (*authInvalidationCacheStub) SetDailyUsageExpiry(context.Context, string, time.Duration) error {
 	return nil
 }
+
 func (*authInvalidationCacheStub) GetAuthCache(context.Context, string) (*APIKeyAuthCacheEntry, error) {
 	return nil, errors.New("miss")
 }
+
 func (*authInvalidationCacheStub) SetAuthCache(context.Context, string, *APIKeyAuthCacheEntry, time.Duration) error {
 	return nil
 }
+
 func (c *authInvalidationCacheStub) DeleteAuthCache(ctx context.Context, key string) error {
 	c.mu.Lock()
 	c.deleted = append(c.deleted, key)
@@ -87,6 +98,7 @@ func (c *authInvalidationCacheStub) DeleteAuthCache(ctx context.Context, key str
 	}
 	return nil
 }
+
 func (c *authInvalidationCacheStub) PublishAuthCacheInvalidation(ctx context.Context, key string) error {
 	c.mu.Lock()
 	c.published = append(c.published, key)
@@ -96,6 +108,7 @@ func (c *authInvalidationCacheStub) PublishAuthCacheInvalidation(ctx context.Con
 	}
 	return nil
 }
+
 func (c *authInvalidationCacheStub) SubscribeAuthCacheInvalidation(ctx context.Context, handler func(string)) error {
 	if c.subscribeFn != nil {
 		return c.subscribeFn(ctx, handler)

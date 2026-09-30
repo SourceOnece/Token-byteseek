@@ -52,8 +52,9 @@ func provideKeys(
 	calendar timezone.Calendar,
 ) *apikey.APIKeyService {
 	options := &apikey.Options{
-		Now:      time.Now,
-		Calendar: calendar,
+		Now:               time.Now,
+		Calendar:          calendar,
+		MaxCreatesPerHour: cfg.APIKeyCreate.MaxPerUserPerHour,
 		APIKeyAuth: apikey.APIKeyAuthCacheConfig{
 			L1Size:             cfg.APIKeyAuth.L1Size,
 			L1TTLSeconds:       cfg.APIKeyAuth.L1TTLSeconds,

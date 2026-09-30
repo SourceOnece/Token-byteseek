@@ -86,6 +86,7 @@ const websocketAllowed = computed(() => protocols.value.includes('openai_respons
 const files = computed(() => protocol.value && modelOptions.value.some(option => option.value === selectedModel.value) ? buildClientConfig({
   client: activeClient.value, protocol: protocol.value, model: selectedModel.value,
   baseUrl: props.baseUrl || window.location.origin, apiKey: props.apiKey, shell: shell.value,
+  attributes: props.group?.model_attributes?.[selectedModel.value],
   directAuth: directAuth.value, websocket: websocketAllowed.value && websocket.value,
 }) : [])
 

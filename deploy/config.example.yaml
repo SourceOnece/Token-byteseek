@@ -137,6 +137,7 @@ security:
     # Allowed hosts for pricing data download
     # 允许下载定价数据的主机列表
     pricing_hosts:
+      - "models.dev"
       - "raw.githubusercontent.com"
     # Allowed hosts for CRS sync (required when using CRS sync)
     # 允许 CRS 同步的主机列表（使用 CRS 同步功能时必须配置）
@@ -660,6 +661,17 @@ api_key_auth_cache:
     capacity: 16384
 
 # =============================================================================
+# API Key Creation Limits
+# 用户创建 API Key 的防滥用限制（0 表示不限制）
+# =============================================================================
+api_key_create:
+  # 数量上限沿用后台用户管理中的 API Key 上限（事务内校验）。
+  # Maximum API key creations per user per hour (custom and generated keys).
+  # Deleting a key does not refund the count, which blocks delete/recreate loops.
+  # 单个用户每小时可创建的 API Key 次数（自定义与自动生成均计入）；删除 Key 不返还次数，阻断删建循环
+  max_per_user_per_hour: 60
+
+# =============================================================================
 # Dashboard Cache Configuration
 # 仪表盘缓存配置
 # =============================================================================
@@ -1033,12 +1045,11 @@ rate_limit:
 # 定价数据源（可选）
 # =============================================================================
 pricing:
-  # URL to fetch model pricing data (default: model-price-repo main branch)
-  # 获取模型定价数据的 URL（默认：model-price-repo main 分支）
-  remote_url: "https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/refs/heads/main//model_prices_and_context_window.json"
-  # Hash verification URL (optional)
-  # 哈希校验 URL（可选）
-  hash_url: "https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/refs/heads/main//model_prices_and_context_window.sha256"
+  # 保留旧价格源；需要切换时同时设置 models_dev 和相应 remote_url，切换前核对报价。
+  # models_dev 地址为 https://models.dev/catalog.json，并使用空 hash_url。
+  catalog_format: "legacy"
+  remote_url: "https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/main/model_prices_and_context_window.json"
+  hash_url: "https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/main/model_prices_and_context_window.sha256"
   # Local data directory for caching
   # 本地数据缓存目录
   data_dir: "./data"
@@ -1055,13 +1066,13 @@ pricing:
   # 修改后在下一次哈希检查时按内容哈希自动重载，无需重启。
   # override_file: "./data/model_pricing_overrides.json"
   # Update interval in hours
-  # 更新间隔（小时）
+  # 兼容旧定价源的更新间隔；models.dev 使用下方分钟间隔
   update_interval_hours: 24
-  # Hash check interval in minutes. Each check compares the remote catalog hash and
+  # Catalog check interval in minutes. Each check uses a conditional request and
   # the local fallback/override file contents. Deleting a local file drops its
   # entries at the next check; a present but non-JSON file keeps the previous data
   # and is retried next check.
-  # 哈希检查间隔（分钟）。每次检查同时比对远程目录哈希与本地 fallback/override 文件内容；
+  # 目录检查间隔（分钟）。每次使用条件请求同步远程目录，同时检查本地补充文件内容；
   # 删除本地文件会在下次检查时移除其条目，文件存在但不是 JSON 时保留旧数据、下次检查再试。
   hash_check_interval_minutes: 10
 

@@ -59,6 +59,18 @@ func (c *ApiKeyCache) DeleteCreateAttemptCount(ctx context.Context, userID int64
 	return c.rdb.Del(ctx, key).Err()
 }
 
+// IncrementCreateCount 原子累加固定一小时窗口，后续创建不延长计数过期时间。
+func (c *ApiKeyCache) IncrementCreateCount(ctx context.Context, userID int64, window time.Duration) (int64, error) {
+	key := fmt.Sprintf("apikey:create_count:%d", userID)
+	pipe := c.rdb.TxPipeline()
+	count := pipe.Incr(ctx, key)
+	pipe.ExpireNX(ctx, key, window)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return 0, err
+	}
+	return count.Val(), nil
+}
+
 func (c *ApiKeyCache) IncrementDailyUsage(ctx context.Context, apiKey string) error {
 	return c.rdb.Incr(ctx, apiKey).Err()
 }

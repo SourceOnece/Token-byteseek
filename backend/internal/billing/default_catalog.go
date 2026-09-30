@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"maps"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
@@ -22,19 +23,32 @@ func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.Def
 		result.Prices = append(result.Prices, pricing.DefaultPriceValue{Key: key, Value: &value, Unit: unit})
 	}
 	raw := s.RawModelPricing(model)
+	result.Source = "local_supplement"
+	if raw != nil {
+		result.Source = raw.Source
+		result.PriceSources = maps.Clone(raw.PriceSources)
+	}
 	if mode == "video" {
+		if result.PriceSources == nil {
+			result.PriceSources = map[string]string{}
+		}
 		result.BillingMode = "video"
 		for _, size := range []string{"480p", "720p", "1080p"} {
 			add(size, s.DefaultVideoPrice(model, size), "USD/s")
+			result.PriceSources[size] = "local_supplement"
 		}
 		result.PriceStatus = "priced"
 		return result
 	}
 	imageModel := mode == "image" || pricing.HasExplicitImageGenerationPricing(raw) || pricing.LooksLikeImageModel(model)
 	if imageModel {
+		if result.PriceSources == nil {
+			result.PriceSources = map[string]string{}
+		}
 		result.BillingMode = "image"
 		for _, size := range []string{"1K", "2K", "4K"} {
 			add(size, s.DefaultImagePrice(model, size), "USD/image")
+			result.PriceSources[size] = "local_supplement"
 		}
 		result.PriceStatus = "priced"
 	}
@@ -109,6 +123,33 @@ func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.Def
 		}
 	}
 
+	if len(base.ContextPrices) > 0 {
+		root, rootPrices := base, result.Prices
+		start := 0
+		for i := 0; i <= len(root.ContextPrices); i++ {
+			var end *int
+			if i < len(root.ContextPrices) {
+				threshold := root.ContextPrices[i].Threshold
+				end = &threshold
+			}
+			if i > 0 {
+				base = root.ContextPrices[i-1].Pricing
+			}
+			result.Prices = nil
+			addTokenPrices("", "", false)
+			if _, ok := pricing.FastModeDisplayPricing(base); ok {
+				addTokenPrices("fast_", "priority", false)
+			}
+			if base.SupportsServiceTier {
+				addTokenPrices("flex_", "flex", false)
+			}
+			result.ContextIntervals = append(result.ContextIntervals, pricing.DefaultPriceInterval{MinTokens: start, MaxTokens: end, Prices: result.Prices})
+			if end != nil {
+				start = *end
+			}
+		}
+		base, result.Prices = root, rootPrices
+	}
 	if pricing.IsDeepSeekModel(model) {
 		add("peak", pricing.DeepseekPeakMultiplierAt(s.options.Now()), "multiplier")
 	}

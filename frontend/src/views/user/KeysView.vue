@@ -1139,6 +1139,39 @@
 
     <BulkEditKeysModal :show="showBulkEditModal" :selected-keys="selectedApiKeys" :groups="groups" @close="showBulkEditModal = false" @updated="handleBulkUpdated" />
 
+    <!-- 轮换前明确告知旧凭据会失效，提交期间保留确认框避免重复操作。 -->
+    <ConfirmDialog
+      :show="rotationKey !== null"
+      :title="t('keys.rotateKey')"
+      :message="t('keys.rotateConfirmMessage', { name: rotationKey?.name })"
+      :confirm-text="t('keys.confirmRotate')"
+      :danger="true"
+      :loading="rotatingKey"
+      @confirm="handleRotate"
+      @cancel="cancelRotate"
+    />
+
+    <!-- 轮换成功只展示一次新凭据，便于立即复制。 -->
+    <BaseDialog
+      :show="rotatedKey !== null"
+      :title="t('keys.keyRotatedSuccess')"
+      width="narrow"
+      @close="rotatedKey = null"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('keys.rotatedKeyHint') }}</p>
+        <code class="block break-all rounded-surface bg-gray-50 p-4 text-sm text-gray-900 dark:bg-dark-800 dark:text-gray-100">
+          {{ rotatedKey?.key }}
+        </code>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <button type="button" class="btn btn-secondary" @click="rotatedKey = null">{{ t('common.close') }}</button>
+          <button type="button" class="btn btn-primary" @click="rotatedKey && copyToClipboard(rotatedKey.key, rotatedKey.id)">{{ t('common.copy') }}</button>
+        </div>
+      </template>
+    </BaseDialog>
+
     <!-- Delete Confirmation Dialog -->
     <ConfirmDialog
       :show="showDeleteDialog"
@@ -1200,6 +1233,7 @@
       @use="openUseKeyModal"
       @import-tf="openTfCliImportDialog"
       @import="importToCcswitch"
+      @rotate="confirmRotate"
       @delete="confirmDelete"
     />
 
@@ -1309,6 +1343,7 @@ import { keysAPI, authAPI, usageAPI, userGroupsAPI } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import BulkEditKeysModal from '@/components/keys/BulkEditKeysModal.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
+import PlatformIcon from '@/components/common/PlatformIcon.vue'
 	import DataTable from '@/components/common/DataTable.vue'
 	import Pagination from '@/components/common/Pagination.vue'
 	import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -1536,6 +1571,9 @@ const showColumnDropdown = ref(false)
 const pendingCcsRow = ref<ApiKey | null>(null)
 const tfImportKey = ref<ApiKey | null>(null)
 const selectedKey = ref<ApiKey | null>(null)
+const rotationKey = ref<ApiKey | null>(null)
+const rotatedKey = ref<ApiKey | null>(null)
+const rotatingKey = ref(false)
 const actionMenuKey = ref<ApiKey | null>(null)
 const actionMenuPosition = ref<{ top: number; left: number } | null>(null)
 const copiedKeyId = ref<number | null>(null)
@@ -2321,6 +2359,32 @@ const closeGroupSelector = (event: MouseEvent) => {
 const confirmDelete = (key: ApiKey) => {
   selectedKey.value = key
   showDeleteDialog.value = true
+}
+
+const confirmRotate = (key: ApiKey) => {
+  rotationKey.value = key
+}
+
+const cancelRotate = () => {
+  if (!rotatingKey.value) rotationKey.value = null
+}
+
+const handleRotate = async () => {
+  if (!rotationKey.value || rotatingKey.value) return
+  rotatingKey.value = true
+  try {
+    const updated = await keysAPI.rotate(rotationKey.value.id)
+    // 只合并当前记录的新凭据，避免重新查询失败掩盖已经成功的轮换。
+    apiKeys.value = apiKeys.value.map(key => key.id === updated.id ? { ...key, ...updated } : key)
+    if (selectedKey.value?.id === updated.id) selectedKey.value = { ...selectedKey.value, ...updated }
+    rotationKey.value = null
+    rotatedKey.value = updated
+    appStore.showSuccess(t('keys.keyRotatedSuccess'))
+  } catch (error: any) {
+    appStore.showError(error?.message || t('keys.failedToRotate'))
+  } finally {
+    rotatingKey.value = false
+  }
 }
 
 const buildKeyFormPayload = () => {

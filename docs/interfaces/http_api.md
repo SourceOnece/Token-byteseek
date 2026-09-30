@@ -12,6 +12,7 @@
 - [提供商管理接口](#提供商管理接口)：修改批量管理、测试、诊断和导入时读取。
 - [备份与维护接口](#备份与维护接口)：修改备份和系统操作时读取。
 - [API Key 结算策略接口](#api-key-结算策略接口)：配置资金来源、查询订阅和收窄分组。
+- [API Key 凭据轮换接口](#api_key_rotation)：原地替换用户 Key 凭据。
 - [分组客户端协议](#分组客户端协议)：理解上游平台与客户端准入的独立契约。
 - [价格管理与分组策略](#价格管理与分组策略)：修改无平台价卡、模型规则和管理字段边界时读取。
 - [认证方式](#认证方式)：区分 JWT、管理密钥、API Key 和签名票据。
@@ -200,6 +201,13 @@ Ollama Cloud 的设置、状态、会话、自动刷新和主动刷新路由直�
 `GET /api/v1/keys/billing-options?scope=personal|team` 返回当前作用域可指定的有效订阅摘要，包括 `id`、`plan_id`、`plan_name`、`expires_at`、`groups_restricted` 和 `applicable_groups`。`GET /api/v1/groups/available?scope=personal|team&subscription_id={id}` 在带 `subscription_id` 时返回付款主体原有分组权限与该订阅套餐分组的交集；不带该参数时保持历史的可用分组结果。两个接口都不把成员自己的订阅泄露到团队作用域。可见分组的 `models` 和 `model_protocols` 来自组内可请求能力，供客户端配置选择真实模型；它们不扩大请求权限。
 
 网关 `GET /v1/usage` 在原有 Key 配额、订阅或余额字段之外始终返回 `billing` 对象，至少包含 `mode`、`source`、`preferred_subscription_id`、`available` 和 `unit`。`source=subscription` 时只返回实际选择的订阅额度/剩余值；指定订阅失效时仍使用该来源并标记 `available=false`，不返回余额。`source=balance` 时只返回付款主体余额，不加载或展示订阅额度。`auto` 的 `source` 随当前可用订阅动态变化；Key 自身的配额和滚动限额字段不受该展示规则影响。
+
+<a id="api_key_rotation"></a>
+## API Key 凭据轮换接口
+
+`POST /api/v1/keys/:id/rotate` 使用面板 JWT 及既有用户限流、审计中间件，无需请求体。成功返回包含新 `key` 的 API Key DTO，ID 不变。非正整数 ID 返回 `400`；不存在、非当前用户所有或系统托管的 Key 统一返回 `404`。团队 Key 沿用编辑操作的团队上下文错误；读取后发生并发变更时返回 `409 API_KEY_ROTATION_CONFLICT`，调用方应刷新记录。
+
+前端通过更多菜单进入确认窗，提交期间阻止重复点击及关闭，成功后更新列表中的凭据并展示复制入口。配置和用量保留、缓存失效及并发边界见 [API Key 凭据轮换](../domains/identity_and_tenancy.md#api_key_rotation)。
 
 ## 分组客户端协议
 

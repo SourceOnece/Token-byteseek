@@ -11,6 +11,7 @@ func RegisterUserRoutes[G any](authenticated *gin.RouterGroup, endpoint *APIKeyH
 		keys.GET("/:id", endpoint.GetByID)
 		keys.POST("", endpoint.Create)
 		keys.PUT("/:id", endpoint.Update)
+		keys.POST("/:id/rotate", endpoint.RotateCredential)
 		keys.DELETE("/:id", endpoint.Delete)
 	}
 	groups := authenticated.Group("/groups")

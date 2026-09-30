@@ -47,7 +47,7 @@ describe('KeyActionMenu', () => {
     document.body.innerHTML = ''
   })
 
-  it('将使用、tf/CCS 导入和删除收纳到更多菜单', async () => {
+  it('将使用、tf/CCS 导入、轮换和删除收纳到更多菜单', async () => {
     const wrapper = mount(KeyActionMenu, {
       props: {
         show: true,
@@ -60,11 +60,12 @@ describe('KeyActionMenu', () => {
 
     const menu = document.body.querySelector('[role="menu"]')
     expect(menu?.id).toBe('key-action-menu-7')
-    expect(menu?.querySelectorAll('[role="menuitem"]')).toHaveLength(4)
+    expect(menu?.querySelectorAll('[role="menuitem"]')).toHaveLength(5)
     expect(document.body.textContent).toContain('keys.useKey')
     expect(document.body.textContent).toContain('keys.importToTf')
     expect(document.body.textContent).toContain('keys.importToCcSwitch')
     expect(document.body.textContent).toContain('common.delete')
+    expect(document.body.textContent).toContain('keys.rotateKey')
 
     const tfButton = Array.from(document.body.querySelectorAll('button'))
       .find((button) => button.textContent?.includes('keys.importToTf'))
@@ -89,6 +90,13 @@ describe('KeyActionMenu', () => {
 
     expect(wrapper.emitted('delete')?.[0]).toEqual([apiKey])
     expect(wrapper.emitted('close')).toHaveLength(2)
+
+    const rotateButton = Array.from(document.body.querySelectorAll('button'))
+      .find((button) => button.textContent?.includes('keys.rotateKey'))
+    rotateButton?.click()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('rotate')?.[0]).toEqual([apiKey])
+    expect(wrapper.emitted('close')).toHaveLength(3)
     wrapper.unmount()
   })
 

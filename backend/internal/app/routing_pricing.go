@@ -96,7 +96,7 @@ func providePricingCatalog(calculator *billing.Calculator, prices *pricingprovid
 			names = append(names, model)
 		}
 		sort.Strings(names)
-		result := routing.DefaultPricingSnapshot{UpdatedAt: data.LastUpdated}
+		result := routing.DefaultPricingSnapshot{UpdatedAt: data.LastUpdated, Version: data.LocalHash, LastError: data.LastError}
 		for _, model := range names {
 			mode := modes[model]
 			if strings.Contains(model, "grok-imagine-video") {

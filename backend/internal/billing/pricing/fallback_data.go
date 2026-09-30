@@ -170,6 +170,15 @@ func DefaultFallbackPrices() map[string]*ModelPricing {
 		SupportsCacheBreakdown:         false,
 	}
 
+	// GPT-6.1 Sol 回退报价来自本批固定的 sub2api 目录，避免回退到其他型号。
+	prices["gpt-6.1-sol"] = &ModelPricing{
+		InputPricePerToken: 2e-6, InputPricePerTokenPriority: 4e-6,
+		OutputPricePerToken: 10e-6, OutputPricePerTokenPriority: 20e-6,
+		CacheCreationPricePerToken: 2.5e-6, CacheCreationPricePerTokenPriority: 5e-6,
+		CacheReadPricePerToken: .1e-6, CacheReadPricePerTokenPriority: .2e-6,
+		CacheCreationPriceExplicit: true, SupportsServiceTier: true,
+		LongContextInputThreshold: 272000, LongContextInputMultiplier: 2, LongContextOutputMultiplier: 1.5,
+	}
 	// OpenAI GPT-6 Astra 官方标准价格（USD/token）。
 	prices["gpt-6-astra"] = &ModelPricing{
 		InputPricePerToken:         10e-6,

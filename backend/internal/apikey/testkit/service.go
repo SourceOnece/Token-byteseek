@@ -25,6 +25,7 @@ func NewService(keys apikey.APIKeyRepository, users identity.UserRepository, gro
 			InvalidAbuse:      apikey.InvalidAuthAbuseConfig(cfg.APIKeyAuth.InvalidAbuse),
 		}}
 		options.Default.APIKeyPrefix = cfg.Default.APIKeyPrefix
+		options.MaxCreatesPerHour = cfg.APIKeyCreate.MaxPerUserPerHour
 		options.Team.Enabled = cfg.Team.Enabled
 	}
 	core := apikey.NewAPIKeyService(keys, users, groupReader, subs, rates, cache, options)

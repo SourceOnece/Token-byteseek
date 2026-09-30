@@ -1,8 +1,9 @@
 package pricing
 
 import (
-	claudewire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"strings"
+
+	claudewire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 )
 
 // getFallbackPricing 根据模型系列获取回退价格
@@ -184,6 +185,8 @@ func LookupFallbackPrice(prices map[string]*ModelPricing, model string, policy M
 	// OpenAI 仅匹配已知 GPT/Codex 族，避免未知 OpenAI 型号误计价。
 	if normalized := policy.NormalizedOpenAIModel; normalized != "" {
 		switch normalized {
+		case "gpt-6.1-sol":
+			return prices[normalized]
 		case "gpt-6-astra":
 			return prices["gpt-6-astra"]
 		case "gpt-5.6-sol":

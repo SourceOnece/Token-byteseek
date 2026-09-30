@@ -14,6 +14,7 @@ import (
 const ImagesResponsesMainModel = "gpt-5.4-mini"
 
 var CodexModelMap = map[string]string{
+	"gpt-6.1-sol":                "gpt-6.1-sol",
 	"gpt-5.6-sol":                "gpt-5.6-sol",
 	"gpt-5.6-terra":              "gpt-5.6-terra",
 	"gpt-5.6-luna":               "gpt-5.6-luna",
@@ -67,6 +68,7 @@ var CodexVersionModelPrefixes = []struct {
 	target string
 }{
 	{prefix: "gpt-6-sol", target: "gpt-6-sol"},
+	{prefix: "gpt-6.1-sol", target: "gpt-6.1-sol"},
 	{prefix: "gpt-6-luna", target: "gpt-6-luna"},
 	{prefix: "gpt-5.6-sol", target: "gpt-5.6-sol"},
 	{prefix: "gpt-5.6-terra", target: "gpt-5.6-terra"},

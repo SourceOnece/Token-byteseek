@@ -1,3 +1,4 @@
+import modelAttributes from './modelAttributes'
 import overview from './overview'
 import byteSeekAccounts from './accounts'
 import pricing from './pricing'
@@ -41,6 +42,7 @@ export default {
       groupTitle: 'Protocol controls',
       groupHint: 'Try each provider’s native protocol first, then the allowed conversion targets in order. Automatic mode uses the routes supported by the server.',
     },
+  ...modelAttributes,
   ...overview,
   ...pricing,
   ...providers,

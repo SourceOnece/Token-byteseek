@@ -86,6 +86,10 @@ func (s *apiKeyRepoStub) GetByKeyForAuth(ctx context.Context, key string) (*apik
 	panic("unexpected GetByKeyForAuth call")
 }
 
+func (s *apiKeyRepoStub) RotateCredential(context.Context, *apikey.APIKey, string) error {
+	panic("unexpected RotateCredential call")
+}
+
 func (s *apiKeyRepoStub) Update(ctx context.Context, key *apikey.APIKey, _ apikey.APIKeyUpdateFields) error {
 	if key != nil {
 		s.updatedKeys = append(s.updatedKeys, *key)
@@ -195,6 +199,7 @@ func (s *apiKeyRepoStub) SearchAPIKeys(ctx context.Context, userID int64, keywor
 func (s *apiKeyRepoStub) ClearGroupIDByGroupID(ctx context.Context, groupID int64) (int64, error) {
 	panic("unexpected ClearGroupIDByGroupID call")
 }
+
 func (s *apiKeyRepoStub) UpdateGroupIDByUserAndGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (int64, error) {
 	panic("unexpected UpdateGroupIDByUserAndGroup call")
 }
@@ -258,6 +263,10 @@ func (s *apiKeyCacheStub) IncrementCreateAttemptCount(ctx context.Context, userI
 
 // DeleteCreateAttemptCount 记录被清除缓存的用户 ID。
 // 删除 API Key 时会调用此方法清除用户的创建尝试计数缓存。
+func (s *apiKeyCacheStub) IncrementCreateCount(context.Context, int64, time.Duration) (int64, error) {
+	return 0, nil
+}
+
 func (s *apiKeyCacheStub) DeleteCreateAttemptCount(ctx context.Context, userID int64) error {
 	s.invalidated = append(s.invalidated, userID)
 	return nil

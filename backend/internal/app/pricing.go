@@ -38,6 +38,7 @@ func (c pricingCatalog) GetModelModalities(model string) ([]string, []string) {
 // 初始化、周期更新和停止继续由既有 PricingInitialization/PricingService hook 唯一管理。
 func providePricingService(cfg *config.Config, remote billingadapter.PricingRemoteClient) (*billingadapter.PricingService, error) {
 	options := billingadapter.Options{
+		ModelsDev:                cfg.Pricing.CatalogFormat == "models_dev",
 		DataDir:                  cfg.Pricing.DataDir,
 		RemoteURL:                cfg.Pricing.RemoteURL,
 		HashURL:                  cfg.Pricing.HashURL,

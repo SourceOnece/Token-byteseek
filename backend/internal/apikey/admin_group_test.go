@@ -205,6 +205,10 @@ func (s *apiKeyRepoStubForGroupUpdate) GetByID(_ context.Context, _ int64) (*api
 	return &clone, nil
 }
 
+func (s *apiKeyRepoStubForGroupUpdate) RotateCredential(context.Context, *apikey.APIKey, string) error {
+	panic("unexpected RotateCredential call")
+}
+
 func (s *apiKeyRepoStubForGroupUpdate) Update(_ context.Context, key *apikey.APIKey, _ apikey.APIKeyUpdateFields) error {
 	if s.updateErr != nil {
 		return s.updateErr

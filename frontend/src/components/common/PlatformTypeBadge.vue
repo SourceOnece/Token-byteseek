@@ -71,6 +71,7 @@ import type { ProviderPlatform, ProviderType } from '@/types'
 import PlatformIcon from './PlatformIcon.vue'
 import GrokFreeIcon from './GrokFreeIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { openAIPlanTypeLabel } from '@/utils/planType'
 
 const { t } = useI18n()
 
@@ -132,6 +133,7 @@ const normalizedPlanType = computed(() =>
 
 const planLabel = computed(() => {
   if (!normalizedPlanType.value) return ''
+  if (props.platform === 'openai') return openAIPlanTypeLabel(props.planType) || props.planType
   switch (normalizedPlanType.value) {
     case 'plus':
       return 'Plus'

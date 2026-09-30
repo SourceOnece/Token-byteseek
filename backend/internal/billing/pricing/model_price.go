@@ -9,6 +9,9 @@ import (
 func ResolveModelPricing(model string, catalogPrice *LiteLLMModelPricing, prices map[string]*ModelPricing, policy ModelPolicy) (*ModelPricing, bool, error) {
 	// 标准化模型名称（转小写）
 	model = strings.ToLower(model)
+	if catalogPrice != nil && catalogPrice.Source == "unpriced" {
+		return nil, false, fmt.Errorf("%w for model: %s", ErrModelPricingUnavailable, model)
+	}
 
 	// 1. 优先从动态价格服务获取
 	if catalogPrice != nil {
@@ -22,13 +25,29 @@ func ResolveModelPricing(model string, catalogPrice *LiteLLMModelPricing, prices
 			litellmPricing = nil
 		}
 		if litellmPricing != nil {
-			// 启用 5m/1h 分类计费的条件：
-			// 1. 存在 1h 价格
-			// 2. 1h 价格 > 5m 价格（防止 LiteLLM 数据错误导致少收费）
+			var contextPrices []ContextModelPrice
+			for _, tier := range litellmPricing.ContextPrices {
+				if tier.Pricing == nil {
+					continue
+				}
+				price, _, err := ResolveModelPricing(model, tier.Pricing, nil, policy)
+				if err == nil {
+					contextPrices = append(contextPrices, ContextModelPrice{Threshold: tier.Threshold, Pricing: price})
+				}
+			}
+			// models.dev 明确给出 1h 单价时按 TTL 拆分，显式零价也有效。
+			// 旧格式沿用 1h 高于 5m 的兼容判断。
 			price5m := litellmPricing.CacheCreationInputTokenCost
 			price1h := litellmPricing.CacheCreationInputTokenCostAbove1hr
-			enableBreakdown := price1h > 0 && price1h > price5m
+			enableBreakdown := price1h > 0 && price1h > price5m || litellmPricing.Source == "models.dev" && litellmPricing.CacheCreation1hPricePresent
 			return ApplyModelSpecificPricingPolicy(model, &ModelPricing{
+				CatalogSource:                      litellmPricing.Source,
+				CacheCreationPriceExplicit:         litellmPricing.Source != "" && litellmPricing.CacheCreationPricePresent && litellmPricing.CacheCreationInputTokenCost == 0,
+				PriorityInputPresent:               litellmPricing.PriorityInputPresent,
+				PriorityOutputPresent:              litellmPricing.PriorityOutputPresent,
+				PriorityCacheReadPresent:           litellmPricing.PriorityCacheReadPresent,
+				PriorityCacheWritePresent:          litellmPricing.PriorityCacheWritePresent,
+				ContextPrices:                      contextPrices,
 				InputPricePerToken:                 litellmPricing.InputCostPerToken,
 				InputPricePerTokenPriority:         litellmPricing.InputCostPerTokenPriority,
 				OutputPricePerToken:                litellmPricing.OutputCostPerToken,

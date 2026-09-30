@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 
+	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/tidwall/gjson"
@@ -29,6 +31,9 @@ func ValidateOpenAIReasoningEffort(body []byte, requestedModel string) error {
 		gjson.GetBytes(body, "session.reasoning_effort").String(),
 	}
 	for _, effort := range efforts {
+		if err := wire.ValidateGPT61SolEffort(requestedModel, effort); err != nil {
+			return err
+		}
 		if strings.EqualFold(strings.TrimSpace(effort), "ultra") {
 			return errors.New(`reasoning effort "ultra" is not supported; use "max"`)
 		}
@@ -42,6 +47,16 @@ func ValidateOpenAIReasoningEffort(body []byte, requestedModel string) error {
 	for _, model := range models {
 		if hasOpenAIUltraReasoningSuffix(model) {
 			return errors.New(`model reasoning suffix "ultra" is not supported; use "max"`)
+		}
+	}
+	if wire.IsGPT61SolModel(requestedModel) {
+		if gjson.GetBytes(body, "thinking.type").String() == "disabled" {
+			return wire.ValidateGPT61SolEffort(requestedModel, "none")
+		}
+		for _, model := range []string{requestedModel, gjson.GetBytes(body, "model").String()} {
+			if strings.HasSuffix(strings.ToLower(model), "-none") || strings.HasSuffix(strings.ToLower(model), "-minimal") {
+				return wire.ValidateGPT61SolEffort(requestedModel, "none")
+			}
 		}
 	}
 	return nil

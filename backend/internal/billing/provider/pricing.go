@@ -10,7 +10,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -19,6 +18,7 @@ import (
 	purepricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 
 	"go.uber.org/zap"
 )
@@ -31,12 +31,19 @@ type PricingRemoteClient interface {
 
 // PricingService 动态价格服务
 type PricingService struct {
-	options      *Options
-	remoteClient PricingRemoteClient
-	mu           sync.RWMutex
-	pricingData  map[string]*LiteLLMModelPricing
-	lastUpdated  time.Time
-	localHash    string
+	updateMu          sync.Mutex
+	modelCatalog      *modelcatalog.Catalog
+	catalogETag       string
+	lastCatalogError  string
+	attributesUpdated time.Time
+	attributesError   string
+	catalogBody       []byte
+	options           *Options
+	remoteClient      PricingRemoteClient
+	mu                sync.RWMutex
+	pricingData       map[string]*LiteLLMModelPricing
+	lastUpdated       time.Time
+	localHash         string
 	// fallback/override 文件在最近一次成功重建时的内容指纹，定时器据此判断是否
 	// 需要从本地目录缓存重建叠加层。
 	customFilesHash string
@@ -61,6 +68,21 @@ func NewPricingService(options Options, remoteClient PricingRemoteClient) *Prici
 
 // Initialize 初始化价格服务
 func (s *PricingService) Initialize() error {
+	// 旧报价格式下也加载离线展示属性，属性上线不改变原有计费来源。
+	if !s.options.ModelsDev {
+		body, err := modelcatalog.Offline()
+		if err != nil {
+			return err
+		}
+		catalog, err := modelcatalog.Parse(body)
+		if err != nil {
+			return err
+		}
+		s.mu.Lock()
+		s.modelCatalog = catalog
+		s.attributesUpdated = time.Now()
+		s.mu.Unlock()
+	}
 	// 确保数据目录存在
 	if err := os.MkdirAll(s.currentOptions().DataDir, 0o755); err != nil {
 		logging.LegacyPrintf("service.pricing", "[Pricing] Failed to create data directory: %v", err)
@@ -108,6 +130,9 @@ func (s *PricingService) StartUpdateScheduler() {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
+		if s.options.ModelsDev && remoteEnabled {
+			_ = s.SyncWithRemote()
+		}
 		ticker := time.NewTicker(hashInterval)
 		defer ticker.Stop()
 
@@ -133,6 +158,9 @@ func (s *PricingService) StartUpdateScheduler() {
 
 // checkAndUpdatePricing 检查并更新价格数据
 func (s *PricingService) CheckAndUpdatePricing() error {
+	if s.options.ModelsDev {
+		return s.loadModelsCatalog()
+	}
 	pricingFile := s.GetPricingFilePath()
 
 	// 检查本地文件是否存在
@@ -190,6 +218,9 @@ func (s *PricingService) CheckAndUpdatePricing() error {
 
 // syncWithRemote 与远程同步（基于哈希校验）
 func (s *PricingService) SyncWithRemote() error {
+	if s.options.ModelsDev {
+		return s.updateModelsCatalog(false)
+	}
 	// 如果配置了哈希URL，从远程获取哈希进行比对
 	if s.currentOptions().HashURL != "" {
 		remoteHash, err := s.FetchRemoteHash()
@@ -300,6 +331,9 @@ func (s *PricingService) ReloadIfCustomFilesChanged() {
 // reloadCustomPricingLayers 读取本地目录缓存并重新叠加 fallback/override，只替换内存数据
 // 与叠加层指纹。
 func (s *PricingService) ReloadCustomPricingLayers() error {
+	if s.options.ModelsDev {
+		return s.loadModelsCatalog()
+	}
 	pricingFile := s.GetPricingFilePath()
 	// 定价层文件可能在读取期间被替换。只有构建前后指纹一致时才提交，
 	// 否则丢弃这次混合快照并重试，避免短暂应用不匹配的 fallback/override。
@@ -343,6 +377,9 @@ func (s *PricingService) ReloadCustomPricingLayers() error {
 
 // downloadPricingData 从远程下载价格数据
 func (s *PricingService) DownloadPricingData() error {
+	if s.options.ModelsDev {
+		return s.updateModelsCatalog(true)
+	}
 	remoteURL, err := s.ValidatePricingURL(s.currentOptions().RemoteURL)
 	if err != nil {
 		return err
@@ -621,6 +658,9 @@ func warnDroppedLongContextLadders(old, next map[string]*LiteLLMModelPricing) {
 
 // useFallbackPricing 使用回退价格文件
 func (s *PricingService) UseFallbackPricing() error {
+	if s.options.ModelsDev {
+		return s.loadModelsCatalog()
+	}
 	fallbackFile := s.currentOptions().FallbackFile
 
 	if _, err := os.Stat(fallbackFile); os.IsNotExist(err) {
@@ -685,6 +725,20 @@ func (s *PricingService) GetModelPricing(modelName string) *LiteLLMModelPricing 
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	query := s.catalogQuery()
+	if s.options != nil && s.options.ModelsDev && s.modelCatalog != nil {
+		candidates := []string{modelName}
+		if query.Candidates != nil {
+			candidates = append(candidates, query.Candidates(modelName)...)
+		}
+		for _, name := range s.modelCatalog.IdentityCandidates(modelName, candidates) {
+			if value := s.pricingData[strings.ToLower(strings.TrimSpace(name))]; value != nil {
+				return value
+			}
+		}
+		if s.modelCatalog.RequiresExact(modelName) {
+			return &LiteLLMModelPricing{Source: "unpriced", TokenPricingAbsent: true}
+		}
+	}
 	defer s.emitCatalogDiagnostics(query)
 	return query.GetModelPricing(modelName)
 }
@@ -708,6 +762,8 @@ func (s *PricingService) GetStatus() map[string]any {
 
 	return map[string]any{
 		"model_count":  len(s.pricingData),
+		"version":      s.localHash,
+		"last_error":   s.lastCatalogError,
 		"last_updated": s.lastUpdated,
 		"local_hash":   s.localHash[:min(8, len(s.localHash))],
 	}
@@ -715,6 +771,9 @@ func (s *PricingService) GetStatus() map[string]any {
 
 // ForceUpdate 立即更新远程目录；未配置远程来源时重新加载本地目录及覆盖层。
 func (s *PricingService) ForceUpdate() error {
+	if s.options.ModelsDev {
+		return s.updateModelsCatalog(true)
+	}
 	if strings.TrimSpace(s.currentOptions().RemoteURL) == "" {
 		if err := s.ReloadCustomPricingLayers(); err != nil {
 			return err
@@ -729,6 +788,9 @@ func (s *PricingService) ForceUpdate() error {
 
 // getPricingFilePath 获取价格文件路径
 func (s *PricingService) GetPricingFilePath() string {
+	if s.options.ModelsDev {
+		return filepath.Join(s.options.DataDir, "models_dev_catalog.json")
+	}
 	return filepath.Join(s.currentOptions().DataDir, "model_pricing.json")
 }
 
@@ -766,6 +828,7 @@ type (
 
 // Options 由 app 从一次加载的配置投影，provider 不接收 config 或业务实体。
 type Options struct {
+	ModelsDev                bool
 	DataDir                  string
 	RemoteURL                string
 	HashURL                  string
@@ -792,16 +855,18 @@ func (s *PricingService) currentOptions() Options {
 
 // Snapshot 是可交给纯查询或测试消费者的独立目录快照。
 type Snapshot struct {
+	catalogIdentity            *modelcatalog.Catalog
 	Data                       map[string]*LiteLLMModelPricing
 	LastUpdated                time.Time
 	LocalHash, CustomFilesHash string
+	LastError                  string
 }
 
 // Snapshot 返回独立的 map、条目与切片，调用者不能改写运行目录。
 func (s *PricingService) Snapshot() Snapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := Snapshot{LastUpdated: s.lastUpdated, LocalHash: s.localHash, CustomFilesHash: s.customFilesHash}
+	out := Snapshot{catalogIdentity: s.modelCatalog, LastError: s.lastCatalogError, LastUpdated: s.lastUpdated, LocalHash: s.localHash, CustomFilesHash: s.customFilesHash}
 	if s.pricingData != nil {
 		out.Data = make(map[string]*LiteLLMModelPricing, len(s.pricingData))
 	}
@@ -810,10 +875,7 @@ func (s *PricingService) Snapshot() Snapshot {
 			out.Data[key] = nil
 			continue
 		}
-		copied := *value
-		copied.SupportedModalities = slices.Clone(value.SupportedModalities)
-		copied.SupportedOutputModalities = slices.Clone(value.SupportedOutputModalities)
-		out.Data[key] = &copied
+		out.Data[key] = purepricing.CloneCatalogPrice(value)
 	}
 	return out
 }
@@ -822,6 +884,8 @@ func (s *PricingService) Snapshot() Snapshot {
 func NewPricingServiceFromSnapshot(options Options, remote PricingRemoteClient, snapshot Snapshot) *PricingService {
 	s := NewPricingService(options, remote)
 	s.pricingData = snapshot.Data
+	s.modelCatalog = snapshot.catalogIdentity
+	s.lastCatalogError = snapshot.LastError
 	s.lastUpdated = snapshot.LastUpdated
 	s.localHash = snapshot.LocalHash
 	s.customFilesHash = snapshot.CustomFilesHash

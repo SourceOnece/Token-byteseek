@@ -10,7 +10,6 @@ import (
 
 // GetModelPricing 按目录、日期变体和厂商回退策略查询模型价格。
 func (s *CatalogQuery) GetModelPricing(modelName string) *LiteLLMModelPricing {
-
 	modelLower := strings.ToLower(strings.TrimSpace(modelName))
 	if modelLower == "" {
 		return nil
@@ -256,6 +255,8 @@ func (s *CatalogQuery) MatchOpenAIModel(model string) *LiteLLMModelPricing {
 		product, fallback = "gpt-5.5-pro", OpenAIGPT55ProFallbackPricing
 	case capability.IsOpenAIGPT6AstraModel(model):
 		product, fallback = "gpt-6-astra", OpenAIGPT6AstraPricing
+	case model == "gpt-6.1-sol" || sameModel == "gpt-6.1-sol":
+		product, fallback = "gpt-6.1-sol", OpenAIGPT61SolPricing
 	case strings.HasPrefix(model, "gpt-5.6-sol"):
 		product, fallback = "gpt-5.6-sol", OpenAIGPT56SolPricing
 	case strings.HasPrefix(model, "gpt-5.6-terra"):
@@ -372,15 +373,18 @@ type CatalogDiagnostic struct {
 func (s *CatalogQuery) legacyf(format string, args ...any) {
 	s.Diagnostics = append(s.Diagnostics, CatalogDiagnostic{Message: fmt.Sprintf(format, args...)})
 }
+
 func (s *CatalogQuery) info(message string) {
 	s.Diagnostics = append(s.Diagnostics, CatalogDiagnostic{Message: message, Structured: true})
 }
+
 func (s *CatalogQuery) modelLookupCandidates(model string) []string {
 	if s.Candidates != nil {
 		return s.Candidates(model)
 	}
 	return BuildModelLookupCandidates(model, nil)
 }
+
 func (s *CatalogQuery) isImageGenerationModel(model string) bool {
 	return s.IsImageModel != nil && s.IsImageModel(model)
 }

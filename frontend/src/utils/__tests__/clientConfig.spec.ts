@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Group } from '@/types'
-import { availableClients, buildClientConfig, modelsForProtocol, groupForKeyConfig, type ClientKind } from '../clientConfig'
+import { availableClients, buildClientConfig, modelsForProtocol, groupForKeyConfig, openCodeModelInfo, type ClientKind } from '../clientConfig'
 
 describe('客户端配置', () => {
   const base = { model: 'custom-model', baseUrl: 'https://api.example.com/v1/', apiKey: 'secret', shell: 'unix' as const }
@@ -68,5 +68,26 @@ describe('客户端配置', () => {
   it('空模型和通配符不能生成客户端配置', () => {
     expect(buildClientConfig({ ...base, model: '', client: 'codex', protocol: 'openai_responses' })).toEqual([])
     expect(buildClientConfig({ ...base, model: '*', client: 'codex', protocol: 'openai_responses' })).toEqual([])
+  })
+  it('展示属性不改变模型和协议集合，别名导出使用目标属性', () => {
+    const group = { models: ['real'], model_protocols: { real: ['openai_responses'] }, model_attributes: { real: { tool_call: false, output_limit: 1 } } } as Group
+    const result = groupForKeyConfig(group, { alias: 'real' })!
+    expect(result.models).toEqual(['real', 'alias'])
+    expect(result.model_protocols?.alias).toEqual(['openai_responses'])
+    expect(result.model_attributes?.alias).toEqual({ tool_call: false, output_limit: 1 })
+    expect(group.models).toEqual(['real'])
+  })
+  it('OpenCode 只导出 schema 接受的已知字段，保留 false 和空模态', () => {
+    expect(openCodeModelInfo('public', { display_name: 'Custom', context: 100, input_limit: 80, output_limit: 20, reasoning: false, input_modalities: [], output_modalities: ['pdf'], structured_output: true, route_differences: true })).toEqual({
+      name: 'Custom', reasoning: false, limit: { context: 100, input: 80, output: 20 }, modalities: { input: [], output: ['pdf'] },
+    })
+    expect(openCodeModelInfo('unknown', {})).toEqual({ name: 'unknown' })
+    expect(openCodeModelInfo('partial', { context: 100 })).toEqual({ name: 'partial' })
+  })
+  it('属性只进入支持的客户端格式，不作为请求参数写入其他配置', () => {
+    const attributes = { context: 100, output_limit: 1, temperature: false }
+    const [openCode] = buildClientConfig({ ...base, client: 'opencode', protocol: 'openai_responses', attributes })
+    expect(JSON.parse(openCode.content).provider.byteseek.models['custom-model']).toEqual({ name: 'custom-model', limit: { context: 100, output: 1 }, temperature: false })
+    expect(buildClientConfig({ ...base, client: 'codex', protocol: 'openai_responses', attributes })).toEqual(buildClientConfig({ ...base, client: 'codex', protocol: 'openai_responses' }))
   })
 })

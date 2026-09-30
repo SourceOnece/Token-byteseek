@@ -69,6 +69,28 @@ describe('默认价格查询', () => {
     wrapper.unmount()
   })
 
+  it('展示 models.dev 的多个上下文阶梯并保留零价', async () => {
+    vi.mocked(listDefaultPricing).mockResolvedValue({ total: 1, last_updated: '', items: [{
+      model: 'multi', platform: 'openai', billing_mode: 'token', price_status: 'priced',
+      prices: [{ key: 'input', value: 1, unit: 'USD/MTok' }],
+      context_intervals: [
+        { min_tokens: 0, max_tokens: 100000, prices: [{ key: 'input', value: 1, unit: 'USD/MTok' }] },
+        { min_tokens: 100000, max_tokens: 200000, prices: [{ key: 'input', value: 2, unit: 'USD/MTok' }] },
+        { min_tokens: 200000, max_tokens: null, prices: [{ key: 'input', value: 0, unit: 'USD/MTok' }] },
+      ],
+    }] })
+    const wrapper = mount(DefaultPricingPanel, { global: { stubs } })
+    await flushPromises()
+    await wrapper.findAll('button').find(item => item.text() === 'admin.pricing.defaults.details')!.trigger('click')
+    const buttons = wrapper.get('[data-testid="pricing-context-switch"]').findAll('button')
+    expect(buttons).toHaveLength(3)
+    await buttons[1]!.trigger('click')
+    expect(wrapper.findComponent({ name: 'BaseDialog' }).text()).toContain('2 USD/MTok')
+    await buttons[2]!.trigger('click')
+    expect(wrapper.findComponent({ name: 'BaseDialog' }).text()).toContain('0 USD/MTok')
+    wrapper.unmount()
+  })
+
   it('筛选变化发起一次分页查询，组件关闭时取消在途请求', async () => {
     vi.mocked(listDefaultPricing).mockResolvedValue({ total: 0, items: [], last_updated: '' })
     const wrapper = mount(DefaultPricingPanel, { global: { stubs } })

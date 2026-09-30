@@ -70,6 +70,8 @@ var platformToLiteLLMProvider = map[string]string{
 
 // DefaultPricingSnapshot 固定一次查询的模型名、价格和更新时间。
 type DefaultPricingSnapshot struct {
+	Version   string
+	LastError string
 	Prices    []pricing.DefaultModelPrice
 	UpdatedAt time.Time
 }

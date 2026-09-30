@@ -29,6 +29,7 @@ type ModelMarketplaceGroup struct {
 }
 
 type ModelMarketplaceModel struct {
+	Attributes  *EffectiveModelAttributes
 	ID          string
 	DisplayName string
 	Pricing     pricing.ModelDisplayPricing
@@ -319,6 +320,18 @@ func (s *Marketplace) BuildPublicModels(ctx context.Context, group *Group, model
 		return nil
 	}
 
+	var attributes map[string]EffectiveModelAttributes
+	if s.options.Attributes != nil {
+		inputs := make([]RequestableModel, 0, len(modelDefs))
+		for _, value := range modelDefs {
+			inputs = append(inputs, RequestableModel{ID: value.ID, UpstreamModels: value.UpstreamModels})
+		}
+		var err error
+		attributes, err = s.options.Attributes(ctx, group.ID, inputs)
+		if err != nil {
+			s.options.Warn("failed to read model attributes", "error", err)
+		}
+	}
 	models := make([]ModelMarketplaceModel, 0, len(modelDefs))
 	for _, modelDef := range modelDefs {
 		pricing := pricing.UnknownDisplayPricing()
@@ -326,9 +339,26 @@ func (s *Marketplace) BuildPublicModels(ctx context.Context, group *Group, model
 			pricing = s.RequestableModelPricing(ctx, group, modelDef)
 		}
 		inputModalities, outputModalities := s.ModelModalities(modelDef)
+		var presentation *EffectiveModelAttributes
+		if s.options.Attributes != nil {
+			inputModalities, outputModalities = nil, nil
+			if value, ok := attributes[modelDef.ID]; ok {
+				presentation = &value
+				if value.DisplayName != nil {
+					modelDef.DisplayName = *value.DisplayName
+				}
+				if value.InputModalities != nil {
+					inputModalities = *value.InputModalities
+				}
+				if value.OutputModalities != nil {
+					outputModalities = *value.OutputModalities
+				}
+			}
+		}
 
 		models = append(models, ModelMarketplaceModel{
 			ID:               modelDef.ID,
+			Attributes:       presentation,
 			DisplayName:      modelDef.DisplayName,
 			Pricing:          pricing,
 			InputModalities:  inputModalities,
@@ -400,6 +430,7 @@ func (s *Marketplace) resolveGroupModelsWithProviders(ctx context.Context, group
 }
 
 type MarketplaceModelDef struct {
+	UpstreamModels   []string
 	ID               string
 	DisplayName      string
 	PricingModel     string
@@ -411,6 +442,7 @@ func buildMarketplaceModelDefsFromRequestable(models []RequestableModel, display
 	for _, model := range models {
 		defs = append(defs, MarketplaceModelDef{
 			ID:               model.ID,
+			UpstreamModels:   model.UpstreamModels,
 			DisplayName:      lookupMarketplaceDisplayName(model.ID, displayNames),
 			PricingModel:     model.PricingModel,
 			PricingAmbiguous: model.PricingAmbiguous,
@@ -502,6 +534,7 @@ type MarketplacePrices interface {
 	GetModelModalities(string) ([]string, []string)
 }
 type MarketplaceOptions struct {
+	Attributes    func(context.Context, int64, []RequestableModel) (map[string]EffectiveModelAttributes, error)
 	Timezone      string
 	Now           func() time.Time
 	Warn          func(string, ...any)

@@ -723,6 +723,7 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/teams', label: t('nav.teams'), icon: UsersIcon, featureFlag: flagTeamAccess },
     { path: '/admin/groups', label: t('nav.groups'), icon: FolderIcon },
     { path: '/admin/pricing', label: t('nav.pricing', '价格管理'), icon: PricingIcon },
+    { path: '/admin/model-attributes', label: t('nav.modelAttributes'), icon: PricingIcon },
     { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon },
     { path: '/admin/providers', label: t('nav.providers'), icon: GlobeIcon },
     { path: '/admin/announcements', label: t('nav.announcements'), icon: BellIcon },

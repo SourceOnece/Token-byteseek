@@ -35,12 +35,13 @@ type InvalidAuthAbuseConfig struct {
 
 // Options 是认证缓存、Key 生成及团队开关的启动快照。
 type Options struct {
-	Now             func() time.Time
-	Calendar        timezone.Calendar
-	APIKeyAuth      APIKeyAuthCacheConfig
-	Default         struct{ APIKeyPrefix string }
-	Team            struct{ Enabled bool }
-	GroupFastPolicy func(string, bool) string
+	Now               func() time.Time
+	Calendar          timezone.Calendar
+	MaxCreatesPerHour int
+	APIKeyAuth        APIKeyAuthCacheConfig
+	Default           struct{ APIKeyPrefix string }
+	Team              struct{ Enabled bool }
+	GroupFastPolicy   func(string, bool) string
 }
 type (
 	User                       = identity.User

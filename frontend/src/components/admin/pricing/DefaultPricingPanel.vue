@@ -38,7 +38,8 @@
         </div>
         <p v-if="updatedAt && !updatedAt.startsWith('0001')" class="text-xs text-gray-500">{{ t('admin.pricing.defaults.updatedAt') }} {{ new Date(updatedAt).toLocaleString() }}</p>
         <p v-if="notice" role="status" class="text-sm text-emerald-600 dark:text-emerald-400">{{ notice }}</p>
-        <p v-if="error" role="alert" class="text-sm text-red-600">{{ error }}</p>
+        <p v-if="catalogVersion" class="text-xs text-gray-500">{{ catalogVersion.slice(0, 12) }}</p>
+        <p v-if="error || catalogError" role="alert" class="text-sm text-red-600">{{ error || catalogError }}</p>
       </div>
     </template>
     <template #table>
@@ -70,6 +71,7 @@
       <div class="flex flex-wrap items-center gap-2">
         <PlatformBadge :platform="selected.platform" />
         <BillingModeBadge :mode="selected.billing_mode" />
+        <span v-if="selected.source" class="text-xs text-gray-500">{{ t(`admin.modelAttributes.sources.${selected.source}`, selected.source) }}</span>
       </div>
       <p v-if="selected.price_status === 'unpriced'" class="text-sm text-gray-400 dark:text-dark-500">{{ t('admin.pricing.defaults.unpriced') }}</p>
       <template v-else>
@@ -103,7 +105,7 @@
         <!-- 价格行与模型广场卡片定价一致：弱化标签、等宽数字、细分隔线。 -->
         <dl class="space-y-2.5">
           <div v-for="price in activePrices" :key="price.key" class="flex items-baseline justify-between gap-3 border-b border-gray-100 pb-2 text-sm dark:border-dark-700">
-            <dt class="min-w-0 max-w-[45%] shrink-0 break-words text-gray-500 dark:text-dark-400">{{ priceLabel(price.key) }}</dt>
+            <dt class="min-w-0 max-w-[45%] shrink-0 break-words text-gray-500 dark:text-dark-400">{{ priceLabel(price.key) }}<span v-if="selected.price_sources?.[price.key.replace(/^(?:fast_|flex_)/, '')]" class="ml-1 text-xs">({{ t(`admin.modelAttributes.sources.${selected.price_sources[price.key.replace(/^(?:fast_|flex_)/, '')]}`) }})</span></dt>
             <dd class="min-w-0 break-words text-right font-medium tabular-nums [overflow-wrap:anywhere] text-gray-900 dark:text-white">{{ formatPrice(price) }}</dd>
           </div>
         </dl>
@@ -145,6 +147,8 @@ const filterDropdown = ref<HTMLElement | null>(null)
 const activeFilterCount = computed(() => Number(!!platform.value) + Number(!!mode.value))
 const error = ref('')
 const updatedAt = ref('')
+const catalogVersion = ref('')
+const catalogError = ref('')
 let controller: AbortController | undefined
 let updateController: AbortController | undefined
 let disposed = false
@@ -161,7 +165,7 @@ function priceLabel(key: string): string {
 // —— 弹窗价格开关：上下文（标准/长上下文）与模式（标准/Fast/Flex）相互独立 ——
 // 后端投影的 key 形如 long_fast_input（上下文前缀在前），两个开关组合出当前价格集。
 
-type PricingContext = 'standard' | 'long_context'
+type PricingContext = 'standard' | 'long_context' | number
 type PricingTier = 'standard' | 'fast' | 'flex'
 const segmentActiveClass = 'bg-white text-gray-900 shadow-sm dark:bg-dark-950 dark:text-white'
 const segmentInactiveClass = 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200'
@@ -177,6 +181,7 @@ function comboOf(key: string): { context: PricingContext; tier: PricingTier } {
   return { context, tier }
 }
 const availableContexts = computed<PricingContext[]>(() => {
+  if (selected.value?.context_intervals?.length) return selected.value.context_intervals.map((_, index) => index)
   if (!selected.value?.prices.some(price => comboOf(price.key).context === 'long_context')) return ['standard']
   return ['standard', 'long_context']
 })
@@ -185,16 +190,21 @@ const availableTiers = computed<PricingTier[]>(() => {
   const present = new Set(selected.value.prices.map(price => comboOf(price.key).tier))
   return (['standard', 'fast', 'flex'] as PricingTier[]).filter(tier => tier === 'standard' || present.has(tier))
 })
-const activeContext = computed<PricingContext>(() => availableContexts.value.includes(selectedContext.value) ? selectedContext.value : 'standard')
+const activeContext = computed<PricingContext>(() => availableContexts.value.includes(selectedContext.value) ? selectedContext.value : availableContexts.value[0] ?? 'standard')
 const activeTier = computed<PricingTier>(() => availableTiers.value.includes(selectedTier.value) ? selectedTier.value : 'standard')
 // 上下文开关使用与模型广场一致的紧凑区间文案：0-272k / 272k+。
 function contextRangeLabel(context: PricingContext): string {
+  if (typeof context === 'number') {
+    const interval = selected.value?.context_intervals?.[context]
+    return interval ? formatCompactTokenRange(interval.min_tokens, interval.max_tokens) : ''
+  }
   const threshold = selected.value?.long_context_threshold ?? 0
   return context === 'long_context' ? formatCompactTokenRange(threshold, null) : formatCompactTokenRange(0, threshold)
 }
 const activePrices = computed(() => {
   const prefix = comboPrefix(activeContext.value, activeTier.value)
-  return (selected.value?.prices ?? []).filter(price => {
+  const prices = typeof activeContext.value === 'number' ? selected.value?.context_intervals?.[activeContext.value]?.prices : selected.value?.prices
+  return (prices ?? []).filter(price => {
     if (!price.key.startsWith(prefix)) return false
     // 排除更长的组合前缀，保证每个组合只匹配自己的价格集。
     return !/^(?:long_|fast_|flex_)/.test(price.key.slice(prefix.length))
@@ -219,6 +229,8 @@ async function load() {
     items.value = result.items
     total.value = result.total
     updatedAt.value = result.last_updated
+    catalogVersion.value = result.version ?? ''
+    catalogError.value = result.last_error ?? ''
     platforms.value = result.platforms ?? platforms.value
   } catch {
     if (!current.signal.aborted) error.value = t('admin.pricing.loadError')

@@ -1,3 +1,5 @@
+import { openAIPlanTypeKey, openAIPlanTypeLabel, openAIPlanTypes } from '@/utils/planType'
+
 export function applyInterceptWarmup(
   credentials: Record<string, unknown>,
   enabled: boolean,
@@ -497,19 +499,7 @@ export interface PlanTypeOption {
  * （canonical 值 chatgptpro 显示为 Pro，team 显示为 Team）。未知值原样返回。
  */
 export function planTypeDisplayLabel(value: string): string {
-  switch (value.trim().toLowerCase()) {
-    case 'plus':
-      return 'Plus'
-    case 'pro':
-    case 'chatgptpro':
-      return 'Pro'
-    case 'free':
-      return 'Free'
-    case 'team':
-      return 'Team'
-    default:
-      return value
-  }
+  return openAIPlanTypeLabel(value) || value
 }
 
 /**
@@ -529,15 +519,10 @@ export function readPlanType(credentials: Record<string, unknown> | undefined | 
  */
 export function buildPlanTypeOptions(current: string, clearLabel: string): PlanTypeOption[] {
   const cur = (current || '').trim()
-  const curLabel = cur ? planTypeDisplayLabel(cur) : ''
-  const presets: PlanTypeOption[] = [
-    { value: 'plus', label: 'Plus' },
-    { value: 'pro', label: 'Pro' },
-    { value: 'free', label: 'Free' }
-  ]
+  const presets: PlanTypeOption[] = openAIPlanTypes.map(value => ({ value, label: planTypeDisplayLabel(value) }))
   const opts: PlanTypeOption[] = [{ value: '', label: clearLabel }]
   for (const p of presets) {
-    if (cur && p.value !== cur && p.label === curLabel) {
+    if (cur && p.value !== cur && openAIPlanTypeKey(cur) === openAIPlanTypeKey(p.value)) {
       // 当前值是该预设的别名或大小写变体：保留精确值，标签仍显示友好名。
       opts.push({ value: cur, label: p.label })
     } else {

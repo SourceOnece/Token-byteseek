@@ -59,6 +59,7 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 	eAdminGrokOAuth *routeprovider.GrokOAuthHandler,
 	eAdminAuditLog *routeaudit.AuditLogHandler,
 	eAdminPricing *routerouting.PricingHandler,
+	eModelAttributes *routerouting.ModelAttributeHandler,
 	eAdminSetting *routesettings.Handler,
 	ePreAggregation *routesettings.PreAggregationHandler,
 	eCreativeSettings *routecreative.SettingsHandler,
@@ -252,6 +253,7 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 			// 价格管理
 			{
 				routerouting.RegisterPricingRoutes(admin, eAdminPricing)
+				routerouting.RegisterModelAttributeRoutes(admin, eModelAttributes)
 			}
 
 			// 风控中心

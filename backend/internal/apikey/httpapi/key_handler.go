@@ -26,6 +26,7 @@ type APIKeyHandler[G any] struct {
 	apiKeyService        *apikey.APIKeyService
 	groupCapacityService GroupCapacityReader
 	groupModels          func(context.Context, int64) ([]string, map[string][]protocol.ProtocolID)
+	groupPresentation    func(context.Context, *routing.Group, *accessview.GroupCapacitySummary) *G
 	presentGroup         func(*routing.Group, *accessview.GroupCapacitySummary) *G
 }
 type GroupCapacityReader interface {
@@ -39,6 +40,11 @@ func NewAPIKeyHandler[G any](keys *apikey.APIKeyService, present func(*routing.G
 // SetGroupModelsReader 只为已授权的控制台分组提供目录，不改变 Key 的运行时权限。
 func (h *APIKeyHandler[G]) SetGroupModelsReader(read func(context.Context, int64) ([]string, map[string][]protocol.ProtocolID)) {
 	h.groupModels = read
+}
+
+// SetGroupPresentation 只丰富已授权控制台查询的展示值，不写入认证或调度快照。
+func (h *APIKeyHandler[G]) SetGroupPresentation(present func(context.Context, *routing.Group, *accessview.GroupCapacitySummary) *G) {
+	h.groupPresentation = present
 }
 
 func (h *APIKeyHandler[G]) SetGroupCapacityService(c GroupCapacityReader) { h.groupCapacityService = c }
@@ -362,6 +368,26 @@ func (h *APIKeyHandler[G]) Update(c *gin.Context) {
 	response.Success(c, h.keyResponse(key))
 }
 
+// RotateCredential 轮换当前用户的 API Key 凭据并返回原记录的新凭据。
+func (h *APIKeyHandler[G]) RotateCredential(c *gin.Context) {
+	subject, ok := authctx.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	keyID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || keyID <= 0 {
+		response.BadRequest(c, "Invalid key ID")
+		return
+	}
+	key, err := h.apiKeyService.RotateCredential(c.Request.Context(), keyID, subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, h.keyResponse(key))
+}
+
 // Delete handles deleting an API key
 // DELETE /api/v1/api-keys/:id
 func (h *APIKeyHandler[G]) Delete(c *gin.Context) {
@@ -427,6 +453,9 @@ func (h *APIKeyHandler[G]) GetAvailableGroups(c *gin.Context) {
 			groups[i].Models, groups[i].ModelProtocols = h.groupModels(c.Request.Context(), groups[i].ID)
 		}
 		groupDTO := h.presentGroup(&groups[i], capacity)
+		if h.groupPresentation != nil {
+			groupDTO = h.groupPresentation(c.Request.Context(), &groups[i], capacity)
+		}
 		out = append(out, *groupDTO)
 	}
 	response.Success(c, out)

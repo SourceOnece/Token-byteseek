@@ -143,6 +143,12 @@ export async function update(id: number, updates: UpdateApiKeyRequest): Promise<
   return data
 }
 
+// 原地轮换凭据，保留 Key 的配置和用量。
+export async function rotate(id: number): Promise<ApiKey> {
+  const { data } = await apiClient.post<ApiKey>(`/keys/${id}/rotate`)
+  return data
+}
+
 export interface BulkUpdateApiKeysResult {
   succeededIds: number[]
   failures: Array<{ id: number; error: unknown }>
@@ -197,6 +203,7 @@ export const keysAPI = {
   createWithPayload,
   update,
   bulkUpdate,
+  rotate,
   delete: deleteKey,
   toggleStatus
 }

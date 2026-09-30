@@ -204,6 +204,9 @@ export interface DefaultPriceValue {
   unit: string
 }
 export interface DefaultModelPrice {
+  source?: string
+  price_sources?: Record<string, string>
+  context_intervals?: { min_tokens: number; max_tokens: number | null; prices: DefaultPriceValue[] }[]
   model: string
   platform: string
   billing_mode: string
@@ -212,7 +215,7 @@ export interface DefaultModelPrice {
   long_context_threshold?: number
   long_context_threshold_inclusive?: boolean
 }
-export async function listDefaultPricing(params: { page: number; page_size: number; platform?: string; search?: string; billing_mode?: string }, signal?: AbortSignal): Promise<PaginatedResponse<DefaultModelPrice> & { last_updated: string; platforms?: string[] }> {
+export async function listDefaultPricing(params: { page: number; page_size: number; platform?: string; search?: string; billing_mode?: string }, signal?: AbortSignal): Promise<PaginatedResponse<DefaultModelPrice> & { last_updated: string; platforms?: string[]; version?: string; last_error?: string }> {
   const { data } = await apiClient.get('/admin/pricing/defaults', { params, signal })
   return data
 }

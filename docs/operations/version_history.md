@@ -1,5 +1,7 @@
 # 版本留档规则
 
+本次 [v0.1.279-bh.007](versions/v0_1_279_bh_007.md) 固定 TokenFlux `eeb5cb14` 与 sub2api v0.2.11 增量，适配 Key 轮换/频率、模型属性、GPT-6.1 Sol/Astra Ultrafast 及套餐标签；保留旧价格源与包豪斯，验证完成、镜像待发布。
+
 本次 [v0.1.279-bh.006](versions/v0_1_279_bh_006.md) 将“使用密钥”的配置代码块改为终端黑底纸字，沿用包豪斯黄色强调、直角和硬阴影；不改配置内容或复制逻辑。验证及 GHCR 固定/latest/bauhaus 同 digest 发布完成，未部署。
 
 本次 [v0.1.279-bh.005](versions/v0_1_279_bh_005.md) 修复管理员仪表盘的检测统计跳转，使用当前账号管理命名路由并保留 `quality_status`。后端筛选及包豪斯样式不变；验证及 GHCR 固定/latest/bauhaus 同 digest 发布完成，未部署。

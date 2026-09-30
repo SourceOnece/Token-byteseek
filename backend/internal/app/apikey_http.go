@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
@@ -12,7 +13,7 @@ import (
 )
 
 // provideKeyHTTP 直接绑定 Key 用例与容量展示投影，不创建额外认证缓存。
-func provideKeyHTTP(keys *apikey.APIKeyService, capacity *routing.CapacityService, catalogue *routing.RequestableCatalogue) *keyhttp.APIKeyHandler[dto.Group] {
+func provideKeyHTTP(keys *apikey.APIKeyService, capacity *routing.CapacityService, catalogue *routing.RequestableCatalogue, attributes *routing.ModelAttributeService) *keyhttp.APIKeyHandler[dto.Group] {
 	handler := keyhttp.NewAPIKeyHandler(keys, func(group *routing.Group, summary *accessview.GroupCapacitySummary) *dto.Group {
 		result := dto.GroupFromRouting(apikey.RoutingGroup(group))
 		if result != nil && summary != nil {
@@ -21,15 +22,24 @@ func provideKeyHTTP(keys *apikey.APIKeyService, capacity *routing.CapacityServic
 		return result
 	})
 	handler.SetGroupCapacityService(capacity)
-	handler.SetGroupModelsReader(func(ctx context.Context, id int64) ([]string, map[string][]protocol.ProtocolID) {
-		result := catalogue.ResolveRequestableModels(ctx, &id, "")
-		models := make([]string, 0, len(result.Models))
-		protocols := make(map[string][]protocol.ProtocolID)
-		for _, model := range result.Models {
-			models = append(models, model.ID)
-			protocols[model.ID] = model.Protocols
+	handler.SetGroupPresentation(func(ctx context.Context, group *routing.Group, summary *accessview.GroupCapacitySummary) *dto.Group {
+		result := dto.GroupFromRouting(apikey.RoutingGroup(group))
+		if summary != nil {
+			result.Capacity = dto.GroupCapacityFromSummary(summary)
 		}
-		return models, protocols
+		resolved := catalogue.ResolveRequestableModels(ctx, &group.ID, "")
+		result.Models = make([]string, 0, len(resolved.Models))
+		result.ModelProtocols = make(map[string][]protocol.ProtocolID)
+		for _, model := range resolved.Models {
+			result.Models = append(result.Models, model.ID)
+			result.ModelProtocols[model.ID] = model.Protocols
+		}
+		var err error
+		result.ModelAttributes, err = attributes.ResolveModels(ctx, group.ID, resolved.Models)
+		if err != nil {
+			slog.Warn("failed to read group model attributes", "group_id", group.ID, "error", err)
+		}
+		return result
 	})
 	return handler
 }

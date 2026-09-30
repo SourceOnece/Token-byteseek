@@ -102,3 +102,30 @@ func (c *pricingRemoteClient) FetchHashText(ctx context.Context, url string) (st
 	}
 	return hash, nil
 }
+
+// FetchCatalog 使用 ETag 节省目录下载，304 不发布新快照。
+func (c *pricingRemoteClient) FetchCatalog(ctx context.Context, url, etag string) ([]byte, string, bool, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, "", false, err
+	}
+	if etag != "" {
+		req.Header.Set("If-None-Match", etag)
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, "", false, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusNotModified {
+		return nil, etag, true, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", false, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 32*1024*1024+1))
+	if len(body) > 32*1024*1024 {
+		return nil, "", false, fmt.Errorf("model catalog exceeds 32 MiB")
+	}
+	return body, resp.Header.Get("ETag"), false, err
+}

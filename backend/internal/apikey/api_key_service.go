@@ -28,12 +28,14 @@ var (
 	ErrGroupNotAllowed                   = infraerrors.Forbidden("GROUP_NOT_ALLOWED", "user is not allowed to bind this group")
 	ErrGroupDisabledForUser              = infraerrors.Forbidden("GROUP_DISABLED_FOR_USER", "user is not allowed to use this public group")
 	ErrAPIKeyExists                      = infraerrors.Conflict("API_KEY_EXISTS", "api key already exists")
+	ErrAPIKeyRotationConflict            = infraerrors.Conflict("API_KEY_ROTATION_CONFLICT", "API Key 已变更，请刷新后重试")
 	ErrAPIKeyLimitReached                = infraerrors.Conflict("API_KEY_LIMIT_REACHED", "api key limit reached")
 	ErrAPIKeyTooShort                    = infraerrors.BadRequest("API_KEY_TOO_SHORT", "api key must be at least 16 characters")
 	ErrAPIKeyInvalidChars                = infraerrors.BadRequest("API_KEY_INVALID_CHARS", "api key can only contain letters, numbers, underscores, and hyphens")
 	ErrAPIKeyLimitInvalid                = infraerrors.BadRequest("API_KEY_LIMIT_INVALID", "api key limits must be finite, non-negative, and less than 1000000000000")
 	ErrAPIKeyExpiryInvalid               = infraerrors.BadRequest("API_KEY_EXPIRY_INVALID", "expires_in_days must be greater than zero")
 	ErrAPIKeyRateLimited                 = infraerrors.TooManyRequests("API_KEY_RATE_LIMITED", "too many failed attempts, please try again later")
+	ErrAPIKeyCreateLimited               = infraerrors.TooManyRequests("API_KEY_CREATE_RATE_LIMITED", "too many api keys created recently, please try again later")
 	ErrAPIKeyAuthOverloaded              = infraerrors.ServiceUnavailable("API_KEY_AUTH_OVERLOADED", "api key authentication is temporarily overloaded")
 	ErrInvalidIPPattern                  = infraerrors.BadRequest("INVALID_IP_PATTERN", "invalid IP or CIDR pattern")
 	ErrInvalidAPIKeyFastModePolicy       = infraerrors.BadRequest("INVALID_API_KEY_FAST_MODE_POLICY", "invalid API key fast mode policy")
@@ -134,6 +136,8 @@ type APIKeyRepository interface {
 	GetByKeyForAuth(ctx context.Context, key string) (*APIKey, error)
 	// Update 只写 fields 中显式声明的列，其余列保持库中当前值。
 	Update(ctx context.Context, key *APIKey, fields APIKeyUpdateFields) error
+	// RotateCredential 仅替换凭据，以旧凭据和所有者校验并发变更。
+	RotateCredential(ctx context.Context, key *APIKey, oldKey string) error
 	Delete(ctx context.Context, id int64) error
 	// DeleteWithAudit 为兼容滚动升级保留历史接口名。
 	// 实现必须以原子方式写入墓碑并软删除 Key，且不得保留已删除的凭据材料。
@@ -176,7 +180,7 @@ type APIKeyQuotaUsageState = billing.APIKeyQuotaUsageState
 type APIKeyCache interface {
 	GetCreateAttemptCount(ctx context.Context, userID int64) (int, error)
 	IncrementCreateAttemptCount(ctx context.Context, userID int64) error
-	DeleteCreateAttemptCount(ctx context.Context, userID int64) error
+	IncrementCreateCount(ctx context.Context, userID int64, window time.Duration) (int64, error)
 
 	IncrementDailyUsage(ctx context.Context, apiKey string) error
 	SetDailyUsageExpiry(ctx context.Context, apiKey string, ttl time.Duration) error
@@ -832,6 +836,15 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 		fallbackWhenGroupUnavailable = *req.FallbackWhenGroupUnavailable
 	}
 
+	// 创建频率按实际操作成员统计，团队付款人与创建者不能混用；数量仍由仓储事务校验。
+	if s.cfg != nil && s.cfg.MaxCreatesPerHour > 0 && s.cache != nil {
+		count, countErr := s.cache.IncrementCreateCount(ctx, userID, time.Hour)
+		// 沿用自定义 Key 防滥用计数的故障放行，不影响正常凭据鉴权。
+		if countErr == nil && count > int64(s.cfg.MaxCreatesPerHour) {
+			return nil, ErrAPIKeyCreateLimited
+		}
+	}
+
 	// 创建API Key记录
 	apiKey := &APIKey{
 		UserID:                       userID,
@@ -1396,10 +1409,7 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 		}
 		apiKey.Status = *req.Status
 		fields.Status = true
-		// 如果状态改变，清除Redis缓存
-		if s.cache != nil {
-			_ = s.cache.DeleteCreateAttemptCount(ctx, apiKey.UserID)
-		}
+		// 状态修改不清除创建相关计数，避免反复启停绕过限制。
 	}
 
 	// Update quota fields
@@ -1515,9 +1525,7 @@ func (s *APIKeyService) Delete(ctx context.Context, id int64, userID int64) erro
 	}
 
 	// 删除成功后再清理缓存,避免"缓存已清但删除失败"的竞态。
-	if s.cache != nil {
-		_ = s.cache.DeleteCreateAttemptCount(ctx, userID)
-	}
+	// 删除不返还创建次数，自定义凭据失败计数也不能借删除清零。
 	s.InvalidateAuthCacheByKey(ctx, existing.Key)
 	s.lastUsedTouchL1.Delete(id)
 

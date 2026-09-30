@@ -58,11 +58,12 @@ type ModelMarketplacePricingInterval struct {
 }
 
 type ModelMarketplaceModel struct {
-	ID               string                  `json:"id"`
-	DisplayName      string                  `json:"display_name"`
-	Pricing          ModelMarketplacePricing `json:"pricing"`
-	InputModalities  []string                `json:"input_modalities,omitempty"`
-	OutputModalities []string                `json:"output_modalities,omitempty"`
+	Attributes       *routing.EffectiveModelAttributes `json:"attributes,omitempty"`
+	ID               string                            `json:"id"`
+	DisplayName      string                            `json:"display_name"`
+	Pricing          ModelMarketplacePricing           `json:"pricing"`
+	InputModalities  []string                          `json:"input_modalities,omitempty"`
+	OutputModalities []string                          `json:"output_modalities,omitempty"`
 }
 
 type ModelMarketplaceCapacity struct {
@@ -118,6 +119,7 @@ func ModelMarketplaceGroupsFromRouting(groups []routing.ModelMarketplaceGroup) [
 				DisplayName:      model.DisplayName,
 				Pricing:          modelMarketplacePricingFromRouting(model.Pricing),
 				InputModalities:  model.InputModalities,
+				Attributes:       model.Attributes,
 				OutputModalities: model.OutputModalities,
 			})
 		}

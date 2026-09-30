@@ -1,6 +1,8 @@
 export default {
 // Common
   common: {
+    moveUp: '上移',
+    moveDown: '下移',
     retry: '重试',
     loading: '加载中...',
     justNow: '刚刚',
@@ -124,6 +126,8 @@ export default {
     profile: '个人资料',
     users: '用户管理',
     groups: '分组管理',
+    modelManagement: '模型管理',
+    modelAttributes: '属性管理',
     pricing: '价格管理',
     subscriptions: '订阅管理',
     providers: '提供商管理',

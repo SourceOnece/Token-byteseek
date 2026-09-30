@@ -20,7 +20,7 @@ func ShouldAutoInjectPromptCacheKeyForCompat(model string) bool {
 	canonical := capability.CanonicalizeOpenAIModelAliasSpelling(trimmed)
 	// 仅对完整的 GPT-6 Astra 名称开启此兼容状态，避免把其他 GPT-6
 	// 系列或未公开别名误当成同一缓存身份。
-	if canonical == "gpt-6-astra" {
+	if canonical == "gpt-6-astra" || protocolopenai.IsGPT61SolModel(canonical) {
 		return true
 	}
 	// 仅对 Responses 兼容路径支持的 GPT-5 族开启自动注入，避免 normalizeCodexModel

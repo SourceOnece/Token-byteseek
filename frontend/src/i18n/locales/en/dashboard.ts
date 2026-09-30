@@ -95,6 +95,12 @@ export default {
       failureHint: 'These keys could not be updated. Adjust the settings and retry. Only failed keys will be retried.'
     },
     deleteKey: 'Delete API Key',
+    rotateKey: 'Rotate credential',
+    confirmRotate: 'Confirm rotation',
+    rotateConfirmMessage: "Rotate the API key credential for '{name}'? The old credential will stop working, so clients using it must be updated. The key ID, settings, and usage history will stay the same.",
+    keyRotatedSuccess: 'API key credential rotated',
+    rotatedKeyHint: 'Copy the new credential and update your clients. The old credential is no longer valid.',
+    failedToRotate: 'Failed to rotate API key credential',
     deleteConfirmMessage: "Are you sure you want to delete '{name}'? This action cannot be undone.",
     id: 'ID',
     apiKey: 'API Key',
