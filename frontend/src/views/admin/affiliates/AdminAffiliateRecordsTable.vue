@@ -21,7 +21,7 @@
       </template>
 
       <template #table>
-        <DataTable
+        <DataTable :column-order-storage-key="`${sortStorageKey}-columns`"
           :columns="columns"
           :data="records"
           :loading="loading"

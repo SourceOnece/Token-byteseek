@@ -48,7 +48,7 @@
 
       <template v-if="mode === 'usage'">
         <div class="card overflow-hidden">
-          <DataTable :columns="usageColumns" :data="logs" :loading="logsLoading" row-key="id">
+          <DataTable column-order-storage-key="team-usage-column-order" :columns="usageColumns" :data="logs" :loading="logsLoading" row-key="id">
             <template #cell-actor_email="{ value }">
               <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
             </template>

@@ -1,7 +1,7 @@
 <template>
   <div
     class="ba-theme-shell"
-    :class="fullViewport ? 'fixed inset-0 h-[100dvh] overflow-hidden' : 'min-h-screen'"
+    :class="shellClass"
   >
     <!-- Background Decoration -->
     <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
@@ -15,7 +15,7 @@
     <div
       class="relative z-10 flex min-w-0 flex-col pt-[var(--header-h)] transition-all duration-300"
       :class="[
-        fullViewport ? 'h-full min-h-0' : 'min-h-screen',
+        columnClass,
         hideSidebar
           ? ''
           : sidebarCollapsed
@@ -26,9 +26,9 @@
       <!-- Main Content：布局组件统一负责空间分配,子页面不再复制父级尺寸或抵消内边距。 -->
       <main
         class="app-main flex min-w-0 flex-1 flex-col"
-        :class="fullViewport ? 'min-h-0 p-0' : 'px-4 pb-4 pt-4 md:px-6 md:pb-6 lg:px-8 lg:pb-8'"
+        :class="mainClass"
       >
-        <div v-if="pageTitle" class="page-heading bh-page-heading mb-5 flex flex-shrink-0 flex-wrap items-start justify-between gap-3">
+        <div v-if="pageTitle && !hidePageHeading" class="page-heading bh-page-heading mb-5 flex flex-shrink-0 flex-wrap items-start justify-between gap-3">
           <div>
             <h1 class="page-title">{{ pageTitle }}</h1>
             <p v-if="pageDescription" class="page-description">{{ pageDescription }}</p>
@@ -58,10 +58,15 @@ import AppHeader from './AppHeader.vue'
 interface Props {
   // 全屏工作区使用动态视口锁定布局，并在组件存续期间禁止页面滚动。
   fullViewport?: boolean
+  // 嵌入内容保留原页头/留白，同时获得可计算的视口高度。
+  fitViewport?: boolean | 'all'
+  hidePageHeading?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   fullViewport: false,
+  fitViewport: false,
+  hidePageHeading: false,
 })
 
 const appStore = useAppStore()
@@ -71,6 +76,18 @@ const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 // 全屏工作区页面（如创作台）通过路由 meta 隐藏侧栏并取消内容区缩进。
 const hideSidebar = computed(() => route.meta.hideSidebar === true)
 const fullViewport = computed(() => props.fullViewport)
+const shellClass = computed(() => {
+  if (fullViewport.value) return 'fixed inset-0 h-[100dvh] overflow-hidden'
+  if (props.fitViewport === 'all') return 'h-[100dvh] min-h-0 overflow-hidden'
+  return props.fitViewport ? 'min-h-screen lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden' : 'min-h-screen'
+})
+const columnClass = computed(() => fullViewport.value || props.fitViewport === 'all'
+  ? 'h-full min-h-0' : props.fitViewport ? 'min-h-screen lg:h-full lg:min-h-0' : 'min-h-screen')
+const mainClass = computed(() => {
+  if (fullViewport.value) return 'min-h-0 p-0'
+  const padding = 'px-4 pb-4 pt-4 md:px-6 md:pb-6 lg:px-8 lg:pb-8'
+  return props.fitViewport === 'all' ? `${padding} min-h-0` : props.fitViewport ? `${padding} lg:min-h-0` : padding
+})
 const isAdmin = computed(() => authStore.user?.role === 'admin')
 
 let previousHtmlOverflowY: string | null = null

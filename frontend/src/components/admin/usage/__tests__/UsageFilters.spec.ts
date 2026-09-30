@@ -282,3 +282,21 @@ describe('UsageFilters — team options', () => {
     ])
   })
 })
+
+describe('UsageFilters — 未设置的条件', () => {
+  it('undefined 条件按 null 传给下拉框，显示“全部”选项；选择后写回筛选对象', async () => {
+    const filters: Record<string, any> = { start_date: '', end_date: '' }
+    const wrapper = mountFilters(filters as ReturnType<typeof defaultFilters>)
+    await flushPromises()
+
+    const selects = wrapper.findAllComponents({ name: 'Select' })
+    expect(selects.length).toBeGreaterThan(0)
+    for (const select of selects) {
+      expect(select.props('modelValue')).toBeNull()
+    }
+
+    const typeSelect = selects.find((select) => select.props('options')?.[0]?.label === 'All Types')
+    typeSelect!.vm.$emit('update:modelValue', 'sync')
+    expect(filters.request_type).toBe('sync')
+  })
+})

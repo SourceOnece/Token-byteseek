@@ -3,7 +3,7 @@
     <div class="card flex min-h-0 flex-1 flex-col overflow-hidden">
       <IpGeoBatchToolbar :ips="rows.map((r) => r.client_ip)" @failed="emit('ipGeoBatchFailed')" />
 
-      <DataTable
+      <DataTable column-order-storage-key="user-error-requests-column-order"
         :columns="columns"
         :data="rows"
         :loading="loading"

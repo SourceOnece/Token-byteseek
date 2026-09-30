@@ -1,6 +1,37 @@
 export default {
 // Dashboard
   dashboard: {
+    usageChart: {
+      loadFailed: '加载用量失败，请重试',
+      metricsLabel: '用量指标',
+      rangeLabel: '时间范围',
+      metrics: {
+        requests: '请求数',
+        tokens: 'Token',
+        cost: '消费',
+        cacheHitRate: '缓存命中率'
+      },
+      ranges: {
+        '24h': '24 小时',
+        '7d': '7 天',
+        '30d': '30 天',
+        '90d': '90 天'
+      },
+      series: {
+        input: '输入',
+        output: '输出',
+        cacheCreation: '缓存创建',
+        cacheRead: '缓存读取',
+        actualCost: '实际扣费',
+        total: '合计'
+      },
+      vsPrevious: '较上一周期',
+      noPrevious: '上一周期无数据',
+      byHour: '按小时',
+      byDay: '按天',
+      trendTitle: '用量趋势 · {metric}',
+      empty: '所选时间范围内暂无用量'
+    },
     title: '仪表盘',
     welcomeMessage: '欢迎回来！这是您账户的概览。',
     balance: '余额',

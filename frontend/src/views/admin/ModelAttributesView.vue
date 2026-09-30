@@ -66,9 +66,9 @@
           </div>
         </fieldset>
         <RuleListEditor :items="form.rules" :title="t('admin.modelAttributes.rules')" :empty-text="t('admin.modelAttributes.emptyRules')" variant="card" @add="form.rules.push({ models: [], attributes: {} })" @remove="form.rules.splice($event, 1)" @move="moveRule">
-          <template #row="{ item, index }">
+          <template #row="{ item }">
             <div class="space-y-4">
-              <label class="block"><span class="input-label">{{ t('admin.modelAttributes.models') }}</span><input class="input" required :value="item.models.join(', ')" :placeholder="t('admin.modelAttributes.modelHint')" @change="form.rules[index]!.models = ($event.target as HTMLInputElement).value.split(',').map(value => value.trim()).filter(Boolean)" /></label>
+              <div><label class="input-label">{{ t('admin.modelAttributes.models') }}</label><ModelTagInput v-model:models="item.models" :aria-label="t('admin.modelAttributes.models')" :placeholder="t('admin.modelAttributes.modelHint')" /></div>
               <ModelAttributesFields v-model="item.attributes" />
             </div>
           </template>
@@ -102,6 +102,7 @@ import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ModelAttributesFields from '@/components/admin/ModelAttributesFields.vue'
+import ModelTagInput from '@/components/admin/pricing/ModelTagInput.vue'
 import ModelAttributesSummary from '@/components/common/ModelAttributesSummary.vue'
 import { modelAttributesAPI, type AttributeConfig, type DefaultAttributes } from '@/api/admin/modelAttributes'
 import { adminAPI } from '@/api/admin'
@@ -172,6 +173,11 @@ function moveRule(from: number, to: number) {
 }
 async function save() {
   if (saving.value) return
+  // 标签输入不能依赖浏览器 required，空规则在请求前提示。
+  if (form.value.rules.some(rule => rule.models.length === 0)) {
+    formError.value = t('admin.modelAttributes.modelsRequired')
+    return
+  }
   saving.value = true
   formError.value = ''
   try { await modelAttributesAPI.save(form.value); showEditor.value = false; await load() }

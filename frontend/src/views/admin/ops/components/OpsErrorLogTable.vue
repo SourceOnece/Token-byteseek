@@ -7,7 +7,7 @@
         @failed="emit('ipGeoBatchFailed')"
       />
 
-      <DataTable
+      <DataTable column-order-storage-key="admin-ops-errors-column-order"
         :columns="columns"
         :data="rows"
         :loading="loading"

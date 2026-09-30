@@ -1,5 +1,6 @@
 export default {
   "modelAttributes": {
+    "modelsRequired": "请为每条规则添加模型",
     "title": "属性管理",
     "description": "配置模型展示信息和客户端导出属性。属性配置不改变网关请求处理。",
     "tabs": {

@@ -1,6 +1,37 @@
 export default {
 // Dashboard
   dashboard: {
+    usageChart: {
+      loadFailed: 'Could not load usage. Please retry.',
+      metricsLabel: 'Usage metrics',
+      rangeLabel: 'Time range',
+      metrics: {
+        requests: 'Requests',
+        tokens: 'Tokens',
+        cost: 'Cost',
+        cacheHitRate: 'Cache hit rate'
+      },
+      ranges: {
+        '24h': '24h',
+        '7d': '7d',
+        '30d': '30d',
+        '90d': '90d'
+      },
+      series: {
+        input: 'Input',
+        output: 'Output',
+        cacheCreation: 'Cache creation',
+        cacheRead: 'Cache read',
+        actualCost: 'Charged',
+        total: 'Total'
+      },
+      vsPrevious: 'vs previous period',
+      noPrevious: 'No data for previous period',
+      byHour: 'Hourly',
+      byDay: 'Daily',
+      trendTitle: 'Usage trend · {metric}',
+      empty: 'No usage in the selected range'
+    },
     title: 'Dashboard',
     welcomeMessage: "Welcome back! Here's an overview of your account.",
     balance: 'Balance',

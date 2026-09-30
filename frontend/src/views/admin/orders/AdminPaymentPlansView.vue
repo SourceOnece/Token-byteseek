@@ -19,7 +19,7 @@
     <TablePageLayout>
       <template #table>
         <!-- 套餐表格复用 API Keys 与订单页相同的滚动卡片容器，字段和操作列保持套餐专属逻辑。 -->
-        <DataTable :columns="planColumns" :data="plans" :loading="plansLoading">
+        <DataTable column-order-storage-key="admin-payment-plans-column-order" :columns="planColumns" :data="plans" :loading="plansLoading">
         <template #cell-price="{ value, row }">
           <div class="text-sm">
             <span class="font-medium text-gray-900 dark:text-white">{{ planCurrencySymbol(row.currency) }}{{ (value ?? 0).toFixed(2) }}</span>

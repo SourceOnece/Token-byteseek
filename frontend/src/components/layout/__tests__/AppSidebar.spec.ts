@@ -96,7 +96,9 @@ describe('global header and sidebar hierarchy', () => {
   it('keeps the scrolling content below the fixed global header', () => {
     // 主内容不能与顶栏使用同级 z-index，否则滚动时后渲染内容会盖住顶栏。
     expect(layoutSource).toContain('class="relative z-10 flex min-w-0 flex-col pt-[var(--header-h)] transition-all duration-300"')
-    expect(layoutSource).toContain("fullViewport ? 'h-full min-h-0' : 'min-h-screen'")
+    // 高度模式由统一计算属性选择，仍保留当前顶栏下的 flex 容器。
+    expect(layoutSource).toContain('columnClass,')
+    expect(layoutSource).toContain("? 'h-full min-h-0' : props.fitViewport")
     expect(layoutSource).not.toContain('lg:z-50')
   })
 

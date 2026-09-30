@@ -16,7 +16,10 @@
       <div v-if="loading" class="flex items-center justify-center py-12"><LoadingSpinner /></div>
       <template v-else-if="stats">
         <UserDashboardStats :stats="stats" :balance="user?.balance || 0" />
-        <UserDashboardCharts v-model:startDate="startDate" v-model:endDate="endDate" v-model:granularity="granularity" :loading="loadingCharts" :trend="trendData" :models="modelStats" @dateRangeChange="onDateRangeChange" @granularityChange="loadCharts" @refresh="refreshAll" />
+        <UserDashboardCharts :start-date="usage.pickerStart.value" :end-date="usage.pickerEnd.value" :granularity="usage.activeRange.value.granularity" :loading="loadingCharts" :trend="usage.current.value" :models="modelStats">
+          <template #toolbar><UserDashboardUsageToolbar :refreshing="loadingCharts || loading" @refresh="refreshAll" /></template>
+          <template #trend><UserDashboardUsageChart /></template>
+        </UserDashboardCharts>
         <UserDashboardHeatmap ref="heatmapRef" />
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div class="lg:col-span-2"><UserDashboardAnnouncements /></div>
@@ -28,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useAnnouncementStore } from '@/stores/announcements'
@@ -41,8 +44,11 @@ import UserDashboardHeatmap from '@/components/user/dashboard/UserDashboardHeatm
 import UserDashboardAnnouncements from '@/components/user/dashboard/UserDashboardAnnouncements.vue'
 import UserDashboardQuickActions from '@/components/user/dashboard/UserDashboardQuickActions.vue'
 import Icon from '@/components/icons/Icon.vue'
-import type { ModelStat, TrendDataPoint } from '@/types'
-import { formatDateLocalInput } from '@/utils/format'
+import type { ModelStat } from '@/types'
+import { provideUsageChartState } from '@/components/user/dashboard/usageChartState'
+import { formatQueryTime } from '@/components/user/dashboard/usageChartData'
+import UserDashboardUsageChart from '@/components/user/dashboard/UserDashboardUsageChart.vue'
+import UserDashboardUsageToolbar from '@/components/user/dashboard/UserDashboardUsageToolbar.vue'
 
 const authStore = useAuthStore()
 const { t } = useI18n()
@@ -50,28 +56,10 @@ const announcementStore = useAnnouncementStore()
 const user = computed(() => authStore.user)
 const stats = ref<UserStatsType | null>(null)
 const loading = ref(false)
-const loadingCharts = ref(false)
-const trendData = ref<TrendDataPoint[]>([])
+const usage = provideUsageChartState()
+const loadingModels = ref(false)
+const loadingCharts = computed(() => usage.loading.value || loadingModels.value)
 const modelStats = ref<ModelStat[]>([])
-
-const startDate = ref(formatDateLocalInput(new Date(Date.now() - 6 * 86400000)))
-const endDate = ref(formatDateLocalInput(new Date()))
-const granularity = ref('day')
-
-// 短时间范围使用小时粒度，避免趋势图只剩一个数据点。
-const getGranularityForRange = (start: string, end: string): 'day' | 'hour' => {
-  const parsePoint = (value: string) => new Date(value.length === 10 ? `${value}T00:00:00` : value).getTime()
-  const startTime = parsePoint(start)
-  const endTime = parsePoint(end)
-  if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return 'day'
-  return Math.ceil((endTime - startTime) / 86400000) <= 1 ? 'hour' : 'day'
-}
-const onDateRangeChange = (range: { startDate: string; endDate: string }) => {
-  startDate.value = range.startDate
-  endDate.value = range.endDate
-  granularity.value = getGranularityForRange(range.startDate, range.endDate)
-  loadCharts()
-}
 
 const loadStats = async () => {
   loading.value = true
@@ -88,28 +76,28 @@ const loadStats = async () => {
   }
 }
 
-const loadCharts = async () => {
-  loadingCharts.value = true
+// 保留原模型分布，跟随趋势的窗口与筛选；慢响应不能覆盖新选择。
+let modelRequest = 0
+onBeforeUnmount(() => { modelRequest++ })
+const loadCharts = async () => { await usage.load() }
+const loadModels = async () => {
+  const sequence = ++modelRequest
+  loadingModels.value = true
   try {
-    const res = await Promise.all([
-      usageAPI.getDashboardTrend({
-        start_date: startDate.value,
-        end_date: endDate.value,
-        granularity: granularity.value as any,
-      }),
-      usageAPI.getDashboardModels({
-        start_date: startDate.value,
-        end_date: endDate.value,
-      }),
-    ])
-    trendData.value = res[0].trend || []
-    modelStats.value = res[1].models || []
+    const range = usage.activeRange.value
+    const result = await usageAPI.getDashboardModels({
+      start_date: formatQueryTime(range.startAt), end_date: formatQueryTime(range.endAt),
+      ...usage.filterState.queryParams.value,
+    })
+    if (sequence === modelRequest) modelStats.value = result.models || []
   } catch (error) {
-    console.error('Failed to load charts:', error)
+    if (sequence === modelRequest) modelStats.value = []
+    console.error('Failed to load model distribution:', error)
   } finally {
-    loadingCharts.value = false
+    if (sequence === modelRequest) loadingModels.value = false
   }
 }
+watch([usage.activeRange, usage.filterState.queryParams], loadModels)
 
 // App 负责首次预加载；用户主动刷新时同时绕过公告节流获取最新内容。
 const heatmapRef = ref<InstanceType<typeof UserDashboardHeatmap> | null>(null)
@@ -123,5 +111,6 @@ const refreshAll = () => {
 onMounted(() => {
   void loadStats()
   void loadCharts()
+  void usage.loadFilterOptions()
 })
 </script>

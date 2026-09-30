@@ -47,4 +47,40 @@ describe('属性管理页面', () => {
     expect(modelAttributesAPI.save).toHaveBeenCalledWith(expect.objectContaining({ id: 1, group_ids: [7], rules: [{ models: ['upstream'], attributes: { tool_call: false } }] }))
     wrapper.unmount()
   })
+  it('模型按回车添加标签，删除后保存仍提交模型数组和分组选择', async () => {
+    const wrapper = mount(ModelAttributesView, { global: { stubs } })
+    await flushPromises()
+    await wrapper.get('button[aria-label="common.edit"]').trigger('click')
+    await flushPromises()
+
+    const input = wrapper.get('input[aria-label="admin.modelAttributes.models"]')
+    await input.setValue('claude-*')
+    await input.trigger('keydown', { key: 'Enter' })
+    expect(modelAttributesAPI.save).not.toHaveBeenCalled()
+    expect(wrapper.get('button[aria-label="common.delete claude-*"]').exists()).toBe(true)
+    await wrapper.get('button[aria-label="common.delete upstream"]').trigger('click')
+    await wrapper.get('input[type="checkbox"]').setValue(false)
+    await wrapper.get('#attribute-form').trigger('submit')
+    await flushPromises()
+
+    expect(modelAttributesAPI.save).toHaveBeenCalledWith(expect.objectContaining({
+      group_ids: [],
+      rules: [{ models: ['claude-*'], attributes: { tool_call: false } }],
+    }))
+    wrapper.unmount()
+  })
+
+  it('清空模型标签后阻止保存空规则', async () => {
+    const wrapper = mount(ModelAttributesView, { global: { stubs } })
+    await flushPromises()
+    await wrapper.get('button[aria-label="common.edit"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('button[aria-label="common.delete upstream"]').trigger('click')
+    await wrapper.get('#attribute-form').trigger('submit')
+    await flushPromises()
+
+    expect(modelAttributesAPI.save).not.toHaveBeenCalled()
+    expect(wrapper.get('[role="alert"]').text()).toBe('admin.modelAttributes.modelsRequired')
+    wrapper.unmount()
+  })
 })

@@ -1,6 +1,7 @@
 export default {
 // Common
   common: {
+    reorderColumn: 'Reorder {column}: drag or use left/right arrow keys',
     moveUp: 'Move up',
     moveDown: 'Move down',
     retry: 'Retry',

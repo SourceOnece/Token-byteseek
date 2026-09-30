@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- Date Range Filter -->
     <div class="card p-4">
-      <div class="time-controls flex flex-wrap items-center justify-between gap-2">
+      <slot name="toolbar"><div class="time-controls flex flex-wrap items-center justify-between gap-2">
         <div class="flex min-w-0 items-center gap-2">
           <span class="time-control-label text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('dashboard.timeRange') }}:</span>
           <DateRangePicker :start-date="startDate" :end-date="endDate" @update:startDate="$emit('update:startDate', $event)" @update:endDate="$emit('update:endDate', $event)" @change="$emit('dateRangeChange', $event)" />
@@ -13,7 +13,7 @@
             <Select :model-value="granularity" :options="[{value:'day', label:t('dashboard.day')}, {value:'hour', label:t('dashboard.hour')}]" @update:model-value="$emit('update:granularity', $event)" @change="$emit('granularityChange')" />
           </div>
         </div>
-      </div>
+      </div></slot>
     </div>
 
     <!-- Charts Grid -->
@@ -58,7 +58,7 @@
       </div>
 
       <!-- Token Usage Trend Chart -->
-      <TokenUsageTrend :trend-data="trend" :loading="loading" :granularity="granularity === 'hour' ? 'hour' : 'day'" />
+      <slot name="trend"><TokenUsageTrend :trend-data="trend" :loading="loading" :granularity="granularity === 'hour' ? 'hour' : 'day'" /></slot>
     </div>
   </div>
 </template>

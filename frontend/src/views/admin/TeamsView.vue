@@ -35,7 +35,7 @@
       </template>
 
       <template #table>
-        <DataTable
+        <DataTable column-order-storage-key="admin-teams-column-order"
           :columns="columns"
           :data="paginatedTeams"
           :loading="loading"

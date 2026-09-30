@@ -237,6 +237,21 @@ describe('user UsageView', () => {
     expect(getAvailable).toHaveBeenCalled()
   })
 
+  it('主筛选框初始值为 null，显示“全部”选项，请求参数不带未选条件', async () => {
+    const wrapper = mountUsageView()
+    await flushPromises()
+
+    const labels = ['usage.allApiKeys', 'admin.usage.allModels', 'admin.usage.allGroups', 'admin.usage.allTypes']
+    for (const label of labels) {
+      const select = wrapper.findAllComponents({ name: 'Select' })
+        .find((item) => item.props('options')?.[0]?.label === (messages[label] ?? label))
+      expect(select?.props('modelValue')).toBeNull()
+    }
+    const params = query.mock.calls[0][0]
+    for (const key of ['api_key_id', 'group_id', 'model', 'request_type']) {
+      expect(params[key]).toBeUndefined()
+    }
+  })
   it('loads team keys and aggregated member charts for a team owner', async () => {
     getCurrentTeam.mockResolvedValue({
       team: { id: 7, name: 'Demo team' },

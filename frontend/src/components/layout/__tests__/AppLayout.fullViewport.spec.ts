@@ -125,4 +125,28 @@ describe('AppLayout 全屏视口模式', () => {
     expect(normalMain?.classList).not.toContain('p-0')
     normal.unmount()
   })
+  it('宽屏锁定模式只在 lg 及以上锁定高度，保留内边距且不改写文档滚动', () => {
+    const wrapper = mount(AppLayout, {
+      props: { fitViewport: true },
+      global: { stubs: { AppHeader: true, AppSidebar: true } },
+      slots: { default: '<div data-testid="content" />' },
+    })
+    const shell = wrapper.element
+    const contentWrapper = shell.querySelector(':scope > div.relative')
+    const main = shell.querySelector('main.app-main')
+
+    // 窄屏仍按普通模式随内容增高，宽屏由 lg 变体锁定为视口高度。
+    expect(shell.classList).toContain('min-h-screen')
+    expect(shell.classList).toContain('lg:h-[100dvh]')
+    expect(shell.classList).toContain('lg:overflow-hidden')
+    expect(shell.classList).not.toContain('fixed')
+    expect(contentWrapper?.classList).toContain('lg:h-full')
+    expect(contentWrapper?.classList).toContain('lg:min-h-0')
+    expect(main?.classList).toContain('px-4')
+    expect(main?.classList).toContain('lg:min-h-0')
+    expect(document.documentElement.style.overflowY).toBe('')
+    expect(document.body.style.overflowY).toBe('')
+
+    wrapper.unmount()
+  })
 })

@@ -250,7 +250,7 @@
 
       <!-- Users Table -->
       <template #table>
-        <DataTable
+        <DataTable column-order-storage-key="admin-users-column-order"
           :columns="columns"
           :data="sortedUsers"
           :loading="loading"

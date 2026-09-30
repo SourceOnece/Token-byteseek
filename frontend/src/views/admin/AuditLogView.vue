@@ -96,7 +96,7 @@
 
       <!-- 日志表格 -->
       <template #table>
-        <DataTable :columns="columns" :data="logs" :loading="loading" row-key="id">
+        <DataTable column-order-storage-key="admin-audit-logs-column-order" :columns="columns" :data="logs" :loading="loading" row-key="id">
           <template #cell-created_at="{ value }">
             <span class="whitespace-nowrap text-gray-600 dark:text-gray-300">{{ formatTime(value) }}</span>
           </template>

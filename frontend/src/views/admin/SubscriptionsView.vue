@@ -213,7 +213,7 @@
 
       <!-- Subscriptions Table -->
       <template #table>
-        <DataTable
+        <DataTable column-order-storage-key="admin-subscriptions-column-order"
           :columns="columns"
           :data="subscriptions"
           :loading="loading"

@@ -42,7 +42,7 @@
       </div>
     </div>
 
-    <DataTable :columns="columns" :data="orders" :loading="loading">
+    <DataTable column-order-storage-key="admin-orders-column-order" :columns="columns" :data="orders" :loading="loading">
       <template #cell-id="{ value }">
         <span class="font-mono text-sm">#{{ value }}</span>
       </template>

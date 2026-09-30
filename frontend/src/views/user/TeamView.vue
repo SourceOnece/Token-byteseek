@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <AppLayout :hide-page-heading="!!teamContext">
     <div class="space-y-6">
       <div v-if="transferToken" class="border-b border-gray-200 pb-6 dark:border-dark-700">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">

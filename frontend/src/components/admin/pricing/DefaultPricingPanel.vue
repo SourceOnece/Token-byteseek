@@ -43,7 +43,7 @@
       </div>
     </template>
     <template #table>
-      <DataTable :columns="columns" :data="items" :loading="loading">
+      <DataTable column-order-storage-key="default-pricing-column-order" :columns="columns" :data="items" :loading="loading">
         <template #cell-platform="{ row }"><PlatformBadge :platform="row.platform" /></template>
         <template #cell-billing_mode="{ row }"><BillingModeBadge :mode="row.billing_mode" /></template>
         <template #cell-price="{ row }">

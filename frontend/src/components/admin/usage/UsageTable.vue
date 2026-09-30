@@ -17,7 +17,7 @@
       </button>
     </div>
     <div class="overflow-auto">
-      <DataTable
+      <DataTable :column-order-storage-key="columnOrderStorageKey"
         :columns="columns"
         :data="data"
         :loading="loading"
@@ -682,6 +682,8 @@ import type { AdminUsageLog } from '@/types'
 import type { Column } from '@/components/common/types'
 
 interface Props {
+  /** 不同页面独立持久化列顺序，不改变数据排序。 */
+  columnOrderStorageKey?: string
   data: AdminUsageLog[]
   loading?: boolean
   columns: Column[]

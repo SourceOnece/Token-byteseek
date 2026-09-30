@@ -200,7 +200,7 @@
           @toggle-schedulable="handleBulkToggleSchedulable"
         />
         <div ref="providerTableRef" class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <DataTable
+        <DataTable column-order-storage-key="admin-providers-column-order"
           ref="dataTableRef"
           :columns="cols"
           :data="providers"

@@ -1,5 +1,6 @@
 export default {
   "modelAttributes": {
+    "modelsRequired": "Add a model to each rule",
     "title": "Model Attributes",
     "description": "Manage model information and client export metadata. Attribute configurations do not change gateway request processing.",
     "tabs": {

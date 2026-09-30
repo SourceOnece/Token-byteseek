@@ -130,7 +130,7 @@
       </div>
 
       <div v-show="activeTab === 'usage'" class="space-y-4" data-testid="admin-usage-table-section">
-        <UsageTable
+        <UsageTable column-order-storage-key="admin-usage-column-order"
           :data="usageLogs"
           :loading="loading"
           :columns="visibleColumns"

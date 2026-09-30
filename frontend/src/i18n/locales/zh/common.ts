@@ -1,6 +1,7 @@
 export default {
 // Common
   common: {
+    reorderColumn: '调整「{column}」列位置：拖动或使用左右方向键',
     moveUp: '上移',
     moveDown: '下移',
     retry: '重试',

@@ -75,7 +75,7 @@
       </template>
 
       <template #table>
-        <DataTable
+        <DataTable column-order-storage-key="batch-image-column-order"
           :columns="columns"
           :data="visibleBatchJobs"
           :loading="loadingKeys || loadingJobs"

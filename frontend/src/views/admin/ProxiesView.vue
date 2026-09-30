@@ -126,7 +126,7 @@
 
       <template #table>
         <div ref="proxyTableRef" class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <DataTable
+        <DataTable column-order-storage-key="admin-proxies-column-order"
           :columns="columns"
           :data="proxies"
           :loading="loading"
