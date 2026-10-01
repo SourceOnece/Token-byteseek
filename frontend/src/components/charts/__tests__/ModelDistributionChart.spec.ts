@@ -87,8 +87,7 @@ describe('ModelDistributionChart', () => {
 
     const chartData = JSON.parse(wrapper.find('.chart-data').text())
     expect(chartData.labels).toEqual(['model-a', 'model-b'])
-    expect(chartData.datasets[0].data[0]).toBeCloseTo(1 + Math.log10(2))
-    expect(chartData.datasets[0].data[1]).toBe(1)
+    expect(chartData.datasets[0].data).toEqual([1000, 500])
 
     const chartTableLayout = wrapper.find('table').element.parentElement?.parentElement
     expect(chartTableLayout?.className).toContain('sm:items-start')
@@ -122,8 +121,7 @@ describe('ModelDistributionChart', () => {
 
     const chartData = JSON.parse(wrapper.find('.chart-data').text())
     expect(chartData.labels).toEqual(['model-b', 'model-a'])
-    expect(chartData.datasets[0].data[0]).toBeCloseTo(1 + Math.log10(7))
-    expect(chartData.datasets[0].data[1]).toBe(1)
+    expect(chartData.datasets[0].data).toEqual([1.4, 0.2])
 
     const rows = wrapper.findAll('tbody tr')
     expect(rows[0].text()).toContain('model-b')
@@ -187,10 +185,13 @@ describe('ModelDistributionChart', () => {
       '#3 User #3',
       'Others',
     ])
-    expect(chartData.datasets[0].data[0]).toBeCloseTo(1 + Math.log10(12 / 8))
-    expect(chartData.datasets[0].data[1]).toBe(1)
-    expect(chartData.datasets[0].data[2]).toBe(0)
-    expect(chartData.datasets[0].data[3]).toBeCloseTo(1 + Math.log10(10 / 8))
+    expect(chartData.datasets[0].data).toEqual([12, 8, 0, 10])
+
+    const options = (wrapper.vm as any).$?.setupState.rankingDoughnutOptions
+    expect(options.plugins.tooltip.callbacks.label({ label: '#1 alpha', dataIndex: 0 }))
+      .toBe('#1 alpha: $12.00 (40.0%)')
+    expect(options.plugins.tooltip.callbacks.label({ label: 'Others', dataIndex: 3 }))
+      .toBe('Others: $10.00 (33.3%)')
     expect(chartData.datasets[0].backgroundColor[0]).toBe('#3b82f6')
     expect(chartData.datasets[0].backgroundColor[3]).toBe('#94a3b8')
     expect(chartData.datasets[0].backgroundColor[3]).not.toBe(chartData.datasets[0].backgroundColor[0])

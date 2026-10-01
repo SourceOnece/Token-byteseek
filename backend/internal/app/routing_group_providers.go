@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
@@ -10,8 +11,7 @@ import (
 
 // routingGroupProviders 投影提供商存储；平台默认目录通过按需查询端口提供。
 type routingGroupProviders struct {
-	Store    *providerpostgres.ProviderStore
-	Defaults provider.ModelMappingDefaults
+	Store *providerpostgres.ProviderStore
 }
 
 func (r routingGroupProviders) GetByIDs(ctx context.Context, ids []int64) ([]routing.GroupProvider, error) {
@@ -24,18 +24,11 @@ func (r routingGroupProviders) GetByIDs(ctx context.Context, ids []int64) ([]rou
 	return out, err
 }
 
-func (r routingGroupProviders) ListSchedulableByGroupID(ctx context.Context, id int64) ([]routing.GroupProvider, error) {
+func (r routingGroupProviders) ListSchedulableByGroupID(ctx context.Context, id int64) ([]routing.CatalogueProvider, error) {
 	values, err := r.Store.ListSchedulableByGroupID(ctx, id)
-	if values == nil {
-		return nil, err
-	}
-	out := make([]routing.GroupProvider, len(values))
-	for i := range values {
-		out[i] = r.project(&values[i])
-	}
-	return out, err
+	return gatewayprovider.CatalogueProviders(values), err
 }
 
 func (r routingGroupProviders) project(v *provider.Record) routing.GroupProvider {
-	return routing.GroupProvider{ID: v.ID, Platform: v.Platform, Type: v.Type, Models: v.GetConfiguredRequestModels(r.Defaults)}
+	return routing.GroupProvider{ID: v.ID, Platform: v.Platform, Type: v.Type}
 }

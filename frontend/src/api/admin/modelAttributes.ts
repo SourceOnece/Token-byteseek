@@ -50,5 +50,8 @@ export const modelAttributesAPI = {
   async defaults(params: Record<string, string | number>) {
     return (await apiClient.get<AttributeCatalogResponse>(`${base}/defaults`, { params })).data
   },
+  async getModelDefaultAttributes(model: string) {
+    return (await apiClient.get<ModelAttributes>(`${base}/defaults/model`, { params: { model } })).data
+  },
   async update() { await apiClient.post(`${base}/defaults/update`, undefined, { timeout: 120_000 }) },
 }

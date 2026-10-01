@@ -1,7 +1,7 @@
 <template>
   <div>
-    <!-- 标签允许长模型名换行，删除按钮保持可见。 -->
-    <TransitionGroup name="motion-list" @before-leave="prepareListLeave" @before-enter="restoreEnteringElement" tag="div" class="relative flex flex-wrap gap-2 rounded-control border border-gray-200 bg-white p-2 dark:border-dark-600 dark:bg-dark-800 min-h-9">
+    <!-- 容器与 .input 同底色和描边；标签允许长模型名换行，删除按钮保持可见。 -->
+    <TransitionGroup name="motion-list" @before-leave="prepareListLeave" @before-enter="restoreEnteringElement" tag="div" class="relative flex min-h-9 flex-wrap gap-2 rounded-control border border-primary-900/10 bg-white p-2 transition duration-fast focus-within:ring-2 focus-within:ring-black/10 dark:border-dark-600 dark:bg-dark-950 dark:focus-within:border-dark-400 dark:focus-within:ring-white/6">
       <span
         v-for="(model, idx) in models"
         :key="model"
@@ -13,7 +13,7 @@
           type="button"
           @click="removeModel(idx)"
           :aria-label="`${t('common.delete')} ${model}`"
-          class="shrink-0 rounded-compact hover:bg-primary-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-primary-800"
+          class="shrink-0 rounded-compact opacity-70 hover:bg-black/10 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-white/10"
         >
           <Icon name="x" size="xs" />
         </button>

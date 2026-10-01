@@ -46,6 +46,8 @@ RequestLogger
 
 ## 路由族
 
+提供商导入接受 version=2 的 `sub2api-data` 和 `tokenrouter-data`，本地导出仍使用前者。类型别名不放宽必填 `proxies`/`providers` 集合、旧 `accounts` 字段拒绝、管理员鉴权或幂等规则；前端与后端接受范围一致。
+
 | 路由族 | 认证 | 主要所有者与用途 |
 | --- | --- | --- |
 | `/health`、`/setup/status` | 无 | `server/common.go`；进程健康与正常模式 setup 状态 |

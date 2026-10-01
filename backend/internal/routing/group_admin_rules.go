@@ -3,7 +3,6 @@ package routing
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
@@ -23,36 +22,6 @@ func (s *GroupAdmin) ValidateUnavailableFallbackGroup(ctx context.Context, curre
 		return fmt.Errorf("unavailable fallback group must be active")
 	}
 	return nil
-}
-
-func ConfiguredModelsListCandidateIDs(providers []GroupProvider, _ string) []string {
-	modelSet := make(map[string]struct{})
-	hasAnyConfiguredModels := false
-	for _, acc := range providers {
-		requestModels := acc.Models
-		if len(requestModels) == 0 {
-			continue
-		}
-		hasAnyConfiguredModels = true
-		for _, model := range requestModels {
-			model = strings.TrimSpace(model)
-			if model == "" {
-				continue
-			}
-			modelSet[model] = struct{}{}
-		}
-	}
-	if !hasAnyConfiguredModels {
-		return nil
-	}
-
-	// 候选项按字典序稳定输出，避免编辑分组时下拉列表随机抖动。
-	models := make([]string, 0, len(modelSet))
-	for model := range modelSet {
-		models = append(models, model)
-	}
-	sort.Strings(models)
-	return models
 }
 
 func FilterModelsListCandidates(candidates []string, selectedModels []string) []string {

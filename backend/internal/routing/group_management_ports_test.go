@@ -3,28 +3,29 @@
 package routing_test
 
 import (
+	"context"
+	"math"
+	"net/http"
+	"slices"
+	"strings"
+	"testing"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
-	context "context"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 
-	math "math"
-
-	http "net/http"
-
-	testing "testing"
-
-	pagination "github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 
-	require "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAdminServiceGroupAdvancedSchedulerOverrides(t *testing.T) {
@@ -151,16 +152,15 @@ type groupModelsListProviderRepoStub struct {
 	calledGroupID int64
 }
 
-func (s *groupModelsListProviderRepoStub) ListSchedulableByGroupID(_ context.Context, groupID int64) ([]routing.GroupProvider, error) {
+func (s *groupModelsListProviderRepoStub) ListSchedulableByGroupID(_ context.Context, groupID int64) ([]routing.CatalogueProvider, error) {
 	s.calledGroupID = groupID
-	out := make([]routing.GroupProvider, len(s.providers))
-	for i, record := range s.providers {
-		if record.Type == "" {
-			record.Type = capability.ProviderTypeAPIKey
+	records := append([]provider.Record(nil), s.providers...)
+	for i := range records {
+		if records[i].Type == "" {
+			records[i].Type = capability.ProviderTypeAPIKey
 		}
-		out[i] = routing.GroupProvider{ID: record.ID, Platform: record.Platform, Type: record.Type, Models: record.GetConfiguredRequestModels(provideradapter.ModelDefaults())}
 	}
-	return out, nil
+	return gatewayprovider.CatalogueProviders(records), nil
 }
 
 // TestAdminService_GetGroupModelsListCandidates_UsesConfiguredRequestModels 确保 OpenAI-compatible 分组不会混入 OpenAI 默认模型。
@@ -196,7 +196,48 @@ func TestAdminService_GetGroupModelsListCandidates_UsesConfiguredRequestModels(t
 	require.Equal(t, []string{"claude-sonnet-4-6", "deepseek-v4-flash", "deepseek-v4-pro"}, models)
 }
 
-// TestAdminService_GetGroupModelsListCandidates_UsesCustomModelsList 确保已有分组不会因为 OpenAI 上游平台回退出 GPT 默认模型。
+// TestGroupModelsListCandidatesApplyGroupMappingAndRestrictions 覆盖请求、分组映射和上游三个白名单阶段。
+func TestGroupModelsListCandidatesApplyGroupMappingAndRestrictions(t *testing.T) {
+	for _, stage := range []string{routing.BillingModelSourceRequested, routing.BillingModelSourceGroupMapped, routing.BillingModelSourceUpstream} {
+		t.Run(stage, func(t *testing.T) {
+			group := &routing.Group{ID: 59, RoutingPolicy: routing.GroupRoutingPolicy{
+				Enabled: true, RestrictModels: true, RestrictionModelSource: stage,
+				ModelMapping: map[string]string{
+					"gemini-3.8-flash":  "gemini-3.8-flash-tiered",
+					"gemini-3.7-flash":  "gemini-3.7-flash-tiered",
+					"gemini-3.1-pro":    "gemini-3.1-pro-high",
+					"unavailable-alias": "missing-model",
+				},
+			}}
+			requested := []string{"gemini-3.1-pro", "gemini-3.7-flash", "gemini-3.8-flash"}
+			mapped := []string{"gemini-3.1-pro-high", "gemini-3.7-flash-tiered", "gemini-3.8-flash-tiered"}
+			allowed := requested
+			if stage != routing.BillingModelSourceRequested {
+				allowed = mapped
+			}
+			group.RoutingPolicy.AllowedModels = append(append([]string{}, allowed...), "unavailable-alias")
+			providers := &groupModelsListProviderRepoStub{providers: []provider.Record{{
+				ID: 3678, Platform: capability.PlatformOpenAI,
+				Credentials: map[string]any{"model_whitelist": mapped},
+			}}}
+			svc := newGroupAdminPortsForTest(&groupRepoStubForAdmin{getByID: group}, nil, nil, nil, providers, nil, nil)
+			models, err := svc.GetGroupModelsListCandidates(context.Background(), group.ID, "")
+			require.NoError(t, err)
+			if stage == routing.BillingModelSourceRequested {
+				require.Equal(t, requested, models)
+			} else {
+				require.ElementsMatch(t, append(append([]string{}, requested...), mapped...), models)
+			}
+			// 自定义列表只筛选请求模型，不会将历史上游名称重新加入候选。
+			group.ModelsListConfig = routing.GroupModelsListConfig{Enabled: true, Models: []string{"gemini-3.8-flash", "unavailable-alias"}}
+			models, err = svc.GetGroupModelsListCandidates(context.Background(), group.ID, "")
+			require.NoError(t, err)
+			require.Equal(t, []string{"gemini-3.8-flash"}, models)
+		})
+	}
+}
+
+// TestAdminServiceCustomModelsCannotInventUnsupportedModels 确保已有分组不会因为 OpenAI 上游平台回退出 GPT 默认模型。
 func TestAdminServiceCustomModelsCannotInventUnsupportedModels(t *testing.T) {
 	groupID := int64(12)
 	groupRepo := &groupRepoStubForAdmin{
@@ -255,7 +296,7 @@ func TestAdminService_GetGroupModelsListCandidates_FiltersCustomModelsList(t *te
 	require.Equal(t, []string{"deepseek-v4-pro", "deepseek-v4-flash"}, models)
 }
 
-// TestAdminService_GetGroupModelsListCandidates_IgnoresCustomModelsListForPlatformSwitch 确保编辑时切换平台不会沿用旧平台的自定义模型。
+// TestAdminServiceGetGroupModelsListCandidatesKeepsEmptyIntersection 确保编辑时切换平台不会沿用旧平台的自定义模型。
 func TestAdminServiceGetGroupModelsListCandidatesKeepsEmptyIntersection(t *testing.T) {
 	groupID := int64(14)
 	groupRepo := &groupRepoStubForAdmin{
@@ -287,7 +328,7 @@ func TestAdminServiceGetGroupModelsListCandidatesKeepsEmptyIntersection(t *testi
 	require.Empty(t, models)
 }
 
-// TestAdminService_GetGroupModelsListCandidates_FallsBackToPlatformDefaults 确保未配置有限模型时仍保留旧的默认候选。
+// TestAdminService_GetGroupModelsListCandidates_FallsBackToPlatformDefaults 默认目录仍受分组协议限制。
 func TestAdminService_GetGroupModelsListCandidates_FallsBackToPlatformDefaults(t *testing.T) {
 	groupID := int64(11)
 	groupRepo := &groupRepoStubForAdmin{
@@ -303,7 +344,10 @@ func TestAdminService_GetGroupModelsListCandidates_FallsBackToPlatformDefaults(t
 	models, err := svc.GetGroupModelsListCandidates(context.Background(), groupID, "")
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, provideradapter.DefaultProviderModels(&provider.Record{Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}), models)
+	expected := provideradapter.DefaultProviderModels(&provider.Record{Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey})
+	expected = slices.DeleteFunc(expected, func(model string) bool { return strings.HasPrefix(model, "text-embedding-") })
+	require.ElementsMatch(t, expected, models)
+	require.NotContains(t, models, "text-embedding-3-small")
 }
 
 func TestAdminService_CreateGroup_AppendsSortOrder(t *testing.T) {
@@ -387,7 +431,7 @@ func TestAdminService_UpdateGroup_InvalidatesAuthCacheOnRPMLimitChange(t *testin
 	require.Equal(t, []int64{1}, invalidator.groupIDs, "分组 RPMLimit 写入 auth snapshot，变更后必须失效 API Key 认证缓存")
 }
 
-// 新策略必须优先于旧布尔输入，并在更新、缓存失效和平台切换中完整保留。
+// TestAdminGroupOpenAIFastPolicy 验证新策略必须优先于旧布尔输入，并在更新、缓存失效和平台切换中完整保留。
 func TestAdminGroupOpenAIFastPolicy(t *testing.T) {
 	for _, policy := range []string{"follow_request", "force_priority", "force_ultrafast", "force_off"} {
 		t.Run(policy, func(t *testing.T) {

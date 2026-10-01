@@ -575,6 +575,10 @@ func TestGrokQuotaServiceQueryQuotaFreeFallsBackToGrok45(t *testing.T) {
 	t.Parallel()
 
 	provider := healthyGrokQuotaOAuthProvider(51)
+	// 有效模型缓存避免后台目录请求干扰账单与主动额度请求的次数断言。
+	provider.Extra = map[string]any{providercore.GrokObservedModelsExtraKey: map[string]any{
+		"models": []string{"grok-4.5"}, "fetched_at": time.Now().UTC().Format(time.RFC3339),
+	}}
 	repo := &grokQuotaProviderRepo{grokQuotaReadStore: &grokQuotaReadStore{
 		providersByID: map[int64]*providercore.Record{provider.ID: provider},
 	}}

@@ -104,6 +104,10 @@ html.dark[data-visual-theme='bauhaus'] .rank-list-row[data-rank='1'] { --rank-ac
 html.dark[data-visual-theme='bauhaus'] .rank-list-row[data-rank='2'] { --rank-accent: var(--bh-yellow); }
 html.dark[data-visual-theme='bauhaus'] .rank-list-row[data-rank='3'] { --rank-accent: #97b7e8; }
 html[data-visual-theme='bauhaus'] .rank-list-row { background: var(--bh-surface); }
+/* 横条保留浅色名次填充，小编号自己的白底由下一条规则保留。 */
+html[data-visual-theme='bauhaus'] .rank-list-row[data-rank='1'] { background: color-mix(in srgb, var(--bh-red) 8%, var(--bh-surface)); }
+html[data-visual-theme='bauhaus'] .rank-list-row[data-rank='2'] { background: color-mix(in srgb, var(--bh-yellow) 14%, var(--bh-surface)); }
+html[data-visual-theme='bauhaus'] .rank-list-row[data-rank='3'] { background: color-mix(in srgb, var(--bh-blue) 8%, var(--bh-surface)); }
 html[data-visual-theme='bauhaus'] .rank-list-badge { background: #fff; color: #141414; border: 2px solid #141414; }
 html[data-visual-theme='bauhaus'] .rank-list-row [data-testid='usage-ranking-row-metrics'] p:first-child { color: var(--rank-accent, var(--bh-ink)); }
 html[data-visual-theme='bauhaus'] .rank-podium .blur-2xl { display: none; }

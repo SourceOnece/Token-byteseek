@@ -3,6 +3,9 @@ package app
 import (
 	"context"
 	"database/sql"
+	"log/slog"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
 	routingprovider "github.com/TokenFlux/TokenRouter/internal/routing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -14,7 +17,6 @@ import (
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
-	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
 	apikeypostgres "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
 
@@ -49,8 +51,13 @@ func provideGroupReader(store *routingpostgres.GroupStore) routing.GroupReposito
 }
 
 func provideRoutingGroupAdmin(store *routingpostgres.GroupStore, providers *providerpostgres.ProviderStore, keys *apikeypostgres.KeyStore, invalidator apikey.APIKeyAuthCacheInvalidator, modelConfigs *routing.PricingConfigService, settings *settingscore.Store, defaults *scheduler.AdminDefaults) *routing.GroupAdmin {
-	return routing.NewGroupAdmin(store, store, store, routingGroupProviders{Store: providers, Defaults: provideradapter.ModelDefaults()}, keys, invalidator, modelConfigs, routing.GroupAdminOptions{
+	return routing.NewGroupAdmin(store, store, store, routingGroupProviders{Store: providers}, keys, invalidator, modelConfigs, routing.GroupAdminOptions{
 		DefaultModels: routingprovider.DefaultGroupModelCandidates,
+		ModelResolver: routing.RequestableResolver{
+			GroupPolicies: modelConfigs,
+			Defaults:      provider.CatalogueDefaults(),
+			Warn:          slog.Warn,
+		},
 		GlobalWeights: func(ctx context.Context) (policy.ScoreWeights, error) {
 			return scheduler.LoadValidationWeights(ctx, settings, *defaults)
 		}, Mutate: store.Mutate,

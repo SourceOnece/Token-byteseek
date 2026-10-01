@@ -28,8 +28,8 @@ func (s *probeScheduleStub) Stop() context.Context {
 
 type probeExecutorStub struct{}
 
-func (probeExecutorStub) Select(context.Context, GroupAvailabilityProbeDueGroup, string) (int64, error) {
-	return 1, nil
+func (probeExecutorStub) Select(_ context.Context, _ GroupAvailabilityProbeDueGroup, model string) (GroupProbeTarget, error) {
+	return GroupProbeTarget{ProviderID: 1, ModelID: model}, nil
 }
 
 func (probeExecutorStub) Test(context.Context, int64, string, string, string) (*ProbeExecutionResult, error) {

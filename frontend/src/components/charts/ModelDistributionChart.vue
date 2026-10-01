@@ -239,7 +239,6 @@ import { Doughnut } from 'vue-chartjs'
 import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import UserBreakdownSubTable from './UserBreakdownSubTable.vue'
-import { toLogarithmicDisplayValues } from '@/utils/chartDisplayScale'
 import { externalTooltipHandler, hideExternalTooltip } from '@/utils/chartExternalTooltip'
 import { CHART_PALETTE, CHART_OTHER_COLOR } from '@/composables/useChartTheme'
 import type { ModelStat, UserSpendingRankingItem, UserBreakdownItem } from '@/types'
@@ -353,7 +352,7 @@ const displayModelStats = computed(() => {
   return [...sourceStats].sort((a, b) => toFiniteNumber(b[metricKey]) - toFiniteNumber(a[metricKey]))
 })
 
-// 图形渲染对应的原始指标值；扇区经 log 压缩后，tooltip 仍按原始值计算真实占比。
+// 圆环扇区与 tooltip 共用原始指标值，保证扇区大小与占比一致。
 const chartValues = computed(() =>
   displayModelStats.value.map((m) => toFiniteNumber(props.metric === 'actual_cost' ? m.actual_cost : m.total_tokens))
 )
@@ -365,7 +364,7 @@ const chartData = computed(() => {
     labels: displayModelStats.value.map((m) => m.model),
     datasets: [
       {
-        data: toLogarithmicDisplayValues(chartValues.value),
+        data: chartValues.value,
         backgroundColor: chartColors.slice(0, displayModelStats.value.length),
         borderWidth: 0
       }
@@ -396,7 +395,7 @@ const rankingChartData = computed(() => {
     labels,
     datasets: [
       {
-        data: toLogarithmicDisplayValues(rankingValues.value),
+        data: rankingValues.value,
         backgroundColor,
         borderWidth: 0
       }
@@ -446,7 +445,6 @@ const doughnutOptions = computed(() => ({
       enabled: false,
       external: externalTooltipHandler,
       callbacks: {
-        // 扇区可能被 log 压缩，数值与占比一律按原始值（dataIndex 回查）展示。
         label: (context: any) => {
           const value = chartValues.value[context.dataIndex] ?? 0
           const total = chartValues.value.reduce((a: number, b: number) => a + b, 0)

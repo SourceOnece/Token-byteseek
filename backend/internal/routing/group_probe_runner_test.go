@@ -5,7 +5,38 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
+
+// mappedProbeExecutor 验证选择结果进入真实测试参数，历史记录仍使用管理员选择的请求模型。
+type mappedProbeExecutor struct {
+	t *testing.T
+}
+
+func (e mappedProbeExecutor) Select(_ context.Context, due GroupAvailabilityProbeDueGroup, model string) (GroupProbeTarget, error) {
+	require.Equal(e.t, int64(59), due.GroupID)
+	require.Equal(e.t, "gemini-3.8-flash", model)
+	return GroupProbeTarget{ProviderID: 3678, ModelID: "gemini-3.8-flash-tiered"}, nil
+}
+
+func (e mappedProbeExecutor) Test(_ context.Context, id int64, model, prompt, userAgent string) (*ProbeExecutionResult, error) {
+	require.Equal(e.t, int64(3678), id)
+	require.Equal(e.t, "gemini-3.8-flash-tiered", model)
+	require.Equal(e.t, "hi", prompt)
+	require.Equal(e.t, "probe-client", userAgent)
+	return &ProbeExecutionResult{Status: GroupAvailabilityProbeStatusSuccess}, nil
+}
+
+func TestGroupProbeAttemptUsesMappedTargetAndRecordsRequestedModel(t *testing.T) {
+	runner := NewGroupAvailabilityProbeRunnerService(nil, mappedProbeExecutor{t: t}, GroupProbeOptions{})
+	result := runner.runProbeAttempt(context.Background(), GroupAvailabilityProbeDueGroup{GroupID: 59}, GroupAvailabilityProbeConfig{
+		ModelID: "gemini-3.8-flash", Prompt: "hi", UserAgent: "probe-client",
+	})
+	require.True(t, result.Success)
+	require.Equal(t, "gemini-3.8-flash", result.ModelID)
+	require.Equal(t, int64(3678), *result.ProviderID)
+}
 
 // groupAvailabilityProbeRunnerRepoStub 记录领取参数，并可阻塞首轮领取以验证 runner 非重入。
 type groupAvailabilityProbeRunnerRepoStub struct {

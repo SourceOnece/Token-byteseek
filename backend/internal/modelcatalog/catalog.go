@@ -78,6 +78,8 @@ type Catalog struct {
 	Entries   map[string]Entry
 	Providers map[string]bool
 	Ambiguous map[string]bool
+	// attributeFallbacks 只保存归属一致的公共模型属性，不参与报价索引。
+	attributeFallbacks map[string]Attributes
 }
 
 type sourceModel struct {
@@ -177,18 +179,40 @@ func Parse(body []byte) (*Catalog, error) {
 			catalog.Ambiguous[id] = true
 		}
 	}
+	publicAttributes := make(map[string]Attributes, len(source.Models))
 	// 仅模型资料也可单独查询，不借用任意中继的报价。
 	for id, model := range source.Models {
 		entry, err := model.entry(id, strings.SplitN(id, "/", 2)[0])
 		if err != nil {
 			return nil, err
 		}
+		publicAttributes[normalize(id)] = entry.Attributes
 		if _, exists := catalog.Entries[normalize(id)]; !exists {
 			catalog.Entries[normalize(id)] = entry
 		}
 		bareID := strings.SplitN(id, "/", 2)[1]
 		if _, exists := catalog.Entries[normalize(bareID)]; !exists && len(bare[normalize(bareID)]) == 0 {
 			catalog.Entries[normalize(bareID)] = entry
+		}
+	}
+	catalog.attributeFallbacks = make(map[string]Attributes)
+	for id, candidates := range bare {
+		if !catalog.Ambiguous[id] || strings.Contains(id, "/") {
+			continue
+		}
+		canonical := normalize(candidates[0].Canonical)
+		if canonical == "" {
+			continue
+		}
+		consistent := true
+		for _, candidate := range candidates[1:] {
+			if normalize(candidate.Canonical) != canonical {
+				consistent = false
+				break
+			}
+		}
+		if attributes, exists := publicAttributes[canonical]; consistent && exists {
+			catalog.attributeFallbacks[id] = attributes
 		}
 	}
 	if len(catalog.Entries) == 0 {
@@ -320,6 +344,22 @@ func (c *Catalog) Lookup(candidates []string) (Entry, bool) {
 		}
 	}
 	return Entry{}, false
+}
+
+// LookupAttributes 优先查询现有身份，仅为裸名歧义使用归属一致的公共属性。
+// 供应商限定查询不回退，返回值也不会带入任何供应商报价。
+func (c *Catalog) LookupAttributes(model string, candidates []string) (Attributes, bool) {
+	if entry, found := c.Lookup(c.IdentityCandidates(model, candidates)); found {
+		return entry.Attributes, true
+	}
+	if c == nil || strings.Contains(normalize(model), "/") {
+		return Attributes{}, false
+	}
+	attributes, found := c.attributeFallbacks[normalize(model)]
+	if !found {
+		return Attributes{}, false
+	}
+	return Merge(Attributes{}, attributes), true
 }
 
 // Rows 返回稳定排序的可查询索引，明确保留供应商限定名称。

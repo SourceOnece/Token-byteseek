@@ -43,8 +43,8 @@ func (s *Service) ModelAttributes(model string) modelcatalog.Attributes {
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	entry, _ := s.modelCatalog.Lookup(s.modelCatalog.IdentityCandidates(model, candidates))
-	return entry.Attributes
+	attributes, _ := s.modelCatalog.LookupAttributes(model, candidates)
+	return attributes
 }
 
 func (s *Service) buildModelsCatalog(body []byte) (*modelcatalog.Catalog, map[string]*CatalogModelPricing, pricing.OperationPrices, error) {

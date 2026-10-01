@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// Probe 连接已绑定的原生选择器与提供商测试，保留平台分发及 Gemini 兜底。
+// Probe 连接分组提供商选择与原生测试，传递本次选择的分组映射模型。
 type Probe struct {
 	ProviderTest    ProviderTester
 	gatewaySvc      *Generic
@@ -23,12 +23,19 @@ type ProviderTester interface {
 	RunTestBackgroundWithPromptAndUserAgent(context.Context, int64, string, string, string) (*provider.ScheduledTestResult, error)
 }
 
-func (s Probe) Select(ctx context.Context, due routing.GroupAvailabilityProbeDueGroup, model string) (int64, error) {
+func (s Probe) Select(ctx context.Context, due routing.GroupAvailabilityProbeDueGroup, model string) (routing.GroupProbeTarget, error) {
 	provider, err := s.selectProbeProvider(ctx, due, model)
 	if err != nil {
-		return 0, err
+		return routing.GroupProbeTarget{}, err
 	}
-	return provider.Record.ID, nil
+	// 选择仍以请求模型校验白名单，测试只接收分组映射结果，避免丢失别名或重复映射。
+	routingModel := model
+	if s.openAIGateway != nil {
+		routingModel = s.openAIGateway.resolveGroupRoutingModel(ctx, &due.GroupID, model)
+	} else if s.gatewaySvc != nil {
+		routingModel = s.gatewaySvc.groupMappedModelForGroup(ctx, &due.GroupID, model)
+	}
+	return routing.GroupProbeTarget{ProviderID: provider.Record.ID, ModelID: routingModel}, nil
 }
 
 func (s Probe) Test(ctx context.Context, id int64, model, prompt, userAgent string) (*routing.ProbeExecutionResult, error) {

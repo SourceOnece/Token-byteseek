@@ -6,17 +6,16 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// GroupProvider 仅提供管理分组需要的提供商资格与已配置模型，不携带凭据。
+// GroupProvider 仅提供管理分组需要的提供商资格，不携带凭据。
 type GroupProvider struct {
 	ID       int64
 	Platform string
 	Type     string
-	Models   []string
 }
 
 type GroupProviders interface {
 	GetByIDs(context.Context, []int64) ([]GroupProvider, error)
-	ListSchedulableByGroupID(context.Context, int64) ([]GroupProvider, error)
+	ListSchedulableByGroupID(context.Context, int64) ([]CatalogueProvider, error)
 }
 
 type GroupKeyReader interface {
@@ -30,6 +29,7 @@ type GroupPricingInvalidator interface{ InvalidateCache() }
 
 // GroupAdminOptions 注入读取时机和原有闭合事务；规则不依赖装配和具体存储。
 type GroupAdminOptions struct {
+	ModelResolver RequestableResolver
 	DefaultModels func(string) []string
 	GlobalWeights func(context.Context) (policy.ScoreWeights, error)
 	Mutate        func(context.Context, func(context.Context) error) error

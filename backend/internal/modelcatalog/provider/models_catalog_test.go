@@ -21,6 +21,35 @@ type catalogRemoteFixture struct {
 	validators []string
 }
 
+// TestModelAttributesCanonicalFallbackKeepsPricing 验证服务接入属性回退后仍保留价格来源隔离。
+// 使用未登记的合成型号，避免 ByteSeek 已有图片补充价影响“未定价”前提。
+func TestModelAttributesCanonicalFallbackKeepsPricing(t *testing.T) {
+	remote := &catalogRemoteFixture{body: []byte(`{
+		"models":{"openai/test-image-attribute-fallback":{
+			"modalities":{"input":["text","image"],"output":["image"]}
+		}},
+		"providers":{
+			"azure":{"models":{"test-image-attribute-fallback":{
+				"canonical_model_id":"openai/test-image-attribute-fallback","cost":{"input":1,"output":2}
+			}}},
+			"relay":{"models":{"test-image-attribute-fallback":{
+				"canonical_model_id":"openai/test-image-attribute-fallback","cost":{"input":3,"output":4}
+			}}}
+		}
+	}`)}
+	s := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: t.TempDir()}, remote)
+	require.NoError(t, s.ForceUpdate())
+	attributes := s.ModelAttributes("test-image-attribute-fallback")
+	require.Equal(t, []string{"text", "image"}, *attributes.InputModalities)
+	require.Equal(t, []string{"image"}, *attributes.OutputModalities)
+	price := s.GetModelPricing("test-image-attribute-fallback")
+	require.Equal(t, "unpriced", price.Source)
+	require.True(t, price.TokenPricingAbsent)
+	require.False(t, price.InputPricePresent)
+	require.Nil(t, s.ModelAttributes("azure/test-image-attribute-fallback").InputModalities)
+	require.InDelta(t, 1e-6, s.GetModelPricing("azure/test-image-attribute-fallback").InputCostPerToken, 1e-12)
+}
+
 func (r *catalogRemoteFixture) FetchCatalog(_ context.Context, _ string, validator string) ([]byte, string, bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

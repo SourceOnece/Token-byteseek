@@ -135,19 +135,18 @@ import ExpandableTableRow from '@/components/common/ExpandableTableRow.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LogarithmicScale, Tooltip, Legend } from 'chart.js'
+import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
 import { Bar, Doughnut } from 'vue-chartjs'
 import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import UserBreakdownSubTable from './UserBreakdownSubTable.vue'
-import { toLogarithmicDisplayValues } from '@/utils/chartDisplayScale'
 import { externalTooltipHandler, hideExternalTooltip } from '@/utils/chartExternalTooltip'
 import { CHART_PALETTE } from '@/composables/useChartTheme'
 import type { EndpointStat, UserBreakdownItem } from '@/types'
 import { getUserBreakdown } from '@/api/admin/dashboard'
 import { formatTokens } from '@/utils/format'
 
-ChartJS.register(ArcElement, BarElement, CategoryScale, LogarithmicScale, Tooltip, Legend)
+ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
 onBeforeUnmount(hideExternalTooltip)
 
@@ -241,7 +240,7 @@ const displayEndpointStats = computed(() => {
   return [...sourceStats].sort((a, b) => b[metricKey] - a[metricKey])
 })
 
-// 原始指标值：柱状图按原值走对数轴，圆环图按 log 压缩渲染，tooltip 始终按原始值计算真实占比。
+// 圆环扇区与 tooltip 共用原始指标值，保证扇区大小与占比一致。
 const chartValues = computed(() =>
   displayEndpointStats.value.map((item) =>
     props.metric === 'actual_cost' ? item.actual_cost : item.total_tokens
@@ -268,15 +267,14 @@ const doughnutChartData = computed(() => ({
   labels: displayEndpointStats.value.map((item) => item.endpoint),
   datasets: [
     {
-      data: toLogarithmicDisplayValues(chartValues.value),
+      data: chartValues.value,
       backgroundColor: chartColors.slice(0, displayEndpointStats.value.length),
       borderWidth: 0
     }
   ]
 }))
 
-// tooltip 统一展示「名称: 数值 (占比)」，圆环图与柱状图共用；
-// 圆环扇区可能被 log 压缩，数值与占比一律按原始值（dataIndex 回查）计算。
+// 圆环图与柱状图共用 tooltip，按原始指标值展示「名称: 数值 (占比)」。
 const tooltipLabel = (context: any) => {
   const value = chartValues.value[context.dataIndex] ?? 0
   const total = chartValues.value.reduce((a: number, b: number) => a + b, 0)
@@ -318,12 +316,12 @@ const barOptions = computed(() => ({
       }
     },
     y: {
-      // 端点用量常差几个数量级，对数刻度保证小用量端点也可见。
-      type: 'logarithmic' as const,
+      // 数值轴从零开始，柱形高度与原始用量成正比。
+      type: 'linear' as const,
+      beginAtZero: true,
       ticks: {
         display: false
       },
-      // log 轴默认会为每个次要刻度画网格线，视觉上挤成一团，整体关闭。
       grid: {
         display: false
       }

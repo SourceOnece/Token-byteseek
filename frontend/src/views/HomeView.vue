@@ -18,15 +18,14 @@
   </div>
 
   <!-- 默认首页 -->
-  <div v-else class="ba-theme-shell relative flex min-h-screen flex-col overflow-hidden pt-[var(--header-h)] text-gray-950 dark:text-white">
+  <div v-else :data-home-theme="visualTheme" class="home-landing ba-theme-shell relative flex min-h-screen flex-col overflow-hidden pt-[var(--header-h)] text-gray-950 dark:text-white">
     <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
 
     <!-- 首页与控制台共用顶栏，外壳为固定顶栏预留高度。 -->
     <AppHeader public-page />
 
-    <!-- 两套首页只区分构成，公开配置、市场数据和登录状态共用下方逻辑。 -->
-    <template v-if="visualTheme === 'bauhaus'">
-    <main data-testid="bauhaus-home" v-content-reveal="motionRoute?.path" class="relative z-10 flex-1 pb-0">
+    <!-- 两种主题共用同一首页构成和数据，仅通过局部皮肤变量改变外观。 -->
+    <main data-testid="home-content" v-content-reveal="motionRoute?.path" class="relative z-10 flex-1 pb-0">
       <!-- ===== Hero：不对称构成 + 几何装饰 ===== -->
       <section class="relative mx-auto max-w-7xl px-4 pb-16 pt-16 sm:px-6 lg:px-8 lg:pb-24 lg:pt-24">
         <div class="relative grid items-center gap-14 lg:grid-cols-[minmax(0,0.92fr)_minmax(360px,1.08fr)] lg:gap-20">
@@ -117,7 +116,7 @@
           <div
             v-for="(card, index) in homeStatsCards"
             :key="card.key"
-            class="border-[3px] border-gray-950 bg-white shadow transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 dark:border-dark-100 dark:bg-dark-800"
+            class="home-stat-card border-[3px] border-gray-950 bg-white shadow transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 dark:border-dark-100 dark:bg-dark-800"
           >
             <div class="h-2.5" :class="['bg-bh-red', 'bg-bh-yellow', 'bg-bh-blue', 'bg-gray-950 dark:bg-dark-100'][index % 4]"></div>
             <div class="px-5 pb-5 pt-4">
@@ -188,7 +187,7 @@
           <!-- 卡片 2：多账号智能调度 -->
           <article class="bh-home-block bh-home-block-hover group">
             <div class="flex items-center justify-between border-b-[3px] border-gray-950 bg-bh-blue px-5 py-3.5 dark:border-dark-100">
-              <h3 class="text-base font-extrabold text-white">{{ t('home.features.multiAccount') }}</h3>
+              <h3 class="text-base font-extrabold text-white">{{ t('home.features.multiProvider') }}</h3>
               <span class="bh-home-head-shape h-5 w-5 rounded-full bg-bh-yellow transition-transform duration-300 group-hover:rotate-[135deg]"></span>
             </div>
             <div class="relative flex h-40 items-center justify-center overflow-hidden border-b-[3px] border-gray-950 bg-bh-paper dark:border-dark-100 dark:bg-dark-900">
@@ -222,7 +221,7 @@
             </div>
             <div class="p-5">
               <p class="text-sm font-medium leading-6 text-gray-700 dark:text-dark-100">
-                {{ t('home.features.multiAccountDesc') }}
+                {{ t('home.features.multiProviderDesc') }}
               </p>
               <router-link :to="isAuthenticated ? dashboardPath : '/login'" class="bh-home-card-cta">
                 {{ t('home.features.learnMore') }}
@@ -462,7 +461,7 @@
                   <Icon name="key" size="sm" :stroke-width="2" />
                 </span>
                 <div class="flex-1 border-2 border-gray-950 bg-white px-3 py-2 font-mono text-xs font-bold text-gray-700 dark:border-dark-100 dark:bg-dark-900 dark:text-dark-200">
-                  TOKENFLUX_API_KEY
+                  BYTESEEK_API_KEY
                 </div>
               </div>
               <div class="mt-3 border-2 border-gray-950 bg-gray-950 px-3 py-2 font-mono text-sm tracking-[0.2em] text-bh-yellow dark:border-dark-100">
@@ -558,473 +557,6 @@
         <div class="bh-home-stripe mt-10" aria-hidden="true"><i></i><i></i><i></i></div>
       </div>
     </footer>
-    </template>
-    <template v-else>
-    <main v-content-reveal="motionRoute?.path" class="relative z-10 flex-1 px-4 pb-20 pt-16 sm:px-6 lg:px-8">
-      <section class="mx-auto max-w-5xl text-center">
-        <h1 class="mx-auto max-w-4xl text-4xl font-bold leading-[1.05] tracking-tight text-gray-950 dark:text-white sm:text-5xl md:text-6xl lg:text-7xl">
-          {{ homeHeroTitle }}
-        </h1>
-        <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-gray-600 dark:text-dark-300">
-          {{ homeHeroSubtitle }}
-        </p>
-
-        <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <router-link
-            :to="isAuthenticated ? dashboardPath : '/login'"
-            class="inline-flex min-h-[44px] min-w-[180px] items-center justify-center gap-2 rounded-control bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-none transition hover:bg-primary-700"
-          >
-            {{ isAuthenticated ? t('home.goToDashboard') : t('home.getStarted') }}
-            <Icon name="arrowRight" size="sm" :stroke-width="2" />
-          </router-link>
-          <router-link
-            to="/models"
-            class="inline-flex min-h-[44px] min-w-[180px] items-center justify-center gap-2 rounded-control border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-900 shadow-sm transition hover:border-black/20 hover:text-primary-600 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-100 dark:hover:border-primary-500"
-          >
-            {{ t('home.exploreMarketplace') }}
-            <span class="relative flex h-5 w-5 items-center justify-center overflow-hidden">
-              <MotionTransition name="home-marketplace-icon" mode="out-in">
-                <ProviderIcon
-                  v-if="homeMarketplaceButtonBrand"
-                  :key="homeMarketplaceButtonBrand"
-                  :brand="homeMarketplaceButtonBrand"
-                  size="18px"
-                />
-                <Icon v-else key="marketplace-fallback" name="sparkles" size="sm" class="text-primary-500" />
-              </MotionTransition>
-            </span>
-          </router-link>
-        </div>
-      </section>
-
-      <section class="mx-auto mt-16 grid max-w-4xl grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
-        <div v-for="card in homeStatsCards" :key="card.key" class="text-center">
-          <p class="min-h-[1.1em] text-3xl font-bold tabular-nums tracking-tight text-gray-950 dark:text-white md:text-4xl">
-            {{ card.value }}
-          </p>
-          <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">{{ card.label }}</p>
-        </div>
-      </section>
-      <p v-if="homeStatsError" class="mt-4 text-center text-xs text-gray-500 dark:text-dark-400">
-        {{ t('home.stats.unavailable') }}
-      </p>
-
-      <!-- Provider icon marquee -->
-      <section class="mx-auto mt-14 max-w-5xl" aria-hidden="true">
-        <div class="home-marquee relative overflow-hidden">
-          <div class="home-marquee-track flex w-max items-center gap-8">
-            <span
-              v-for="(brand, index) in homeMarqueeBrands"
-              :key="`${brand}-${index}`"
-              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200/80 bg-white text-gray-700 shadow-sm dark:border-dark-700 dark:bg-dark-900 dark:text-dark-100"
-            >
-              <ProviderIcon :brand="brand" size="17px" />
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <section class="mx-auto mt-20 grid max-w-7xl gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <article class="group overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-layout hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]">
-          <div class="relative h-44 overflow-hidden border-b border-gray-200 bg-white dark:border-dark-800 dark:bg-dark-950">
-            <div class="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-110">
-              <span
-                v-for="(icon, index) in homeProviderCloudIcons"
-                :key="`${icon.brand}-${index}`"
-                class="absolute flex h-7 w-7 items-center justify-center rounded-full border border-gray-100 bg-white/95 text-gray-700 shadow-[0_5px_16px_rgba(0,0,0,0.13)] ring-1 ring-black/[0.02] dark:border-dark-700 dark:bg-dark-900 dark:text-dark-100 dark:ring-white/[0.04]"
-                :style="{
-                  left: icon.left,
-                  top: icon.top,
-                  opacity: icon.opacity,
-                  transform: `translate(-50%, -50%) scale(${icon.scale})`,
-                }"
-              >
-                <ProviderIcon :brand="icon.brand" size="14px" />
-              </span>
-            </div>
-            <span
-              class="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white via-white/35 to-transparent dark:from-dark-950 dark:via-dark-950/35"
-            ></span>
-          </div>
-          <div class="p-5">
-            <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-              {{ t('home.features.unifiedGateway') }}
-            </h2>
-            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">
-              {{ t('home.features.unifiedGatewayDesc') }}
-            </p>
-            <router-link to="/models" class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-300">
-              {{ t('home.features.browseAll') }}
-              <Icon name="arrowRight" size="xs" />
-            </router-link>
-          </div>
-        </article>
-
-        <article class="group overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-layout hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]">
-          <div class="relative flex h-44 items-center justify-center overflow-hidden border-b border-gray-200 bg-white dark:border-dark-800 dark:bg-dark-950">
-            <div class="relative h-full w-full transition-transform duration-500 ease-out group-hover:scale-110">
-              <div class="absolute left-1/2 top-7 z-10 max-w-[82%] -translate-x-1/2 truncate rounded-control bg-gray-100 px-3.5 py-1.5 text-xs font-medium text-gray-800 shadow-sm dark:bg-dark-900 dark:text-dark-100">
-                {{ homeRouteLabel }}
-              </div>
-              <svg
-                class="absolute left-1/2 top-12 h-24 w-[220px] -translate-x-1/2 text-gray-300 dark:text-dark-700"
-                viewBox="0 0 220 110"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M110 0V30"
-                  stroke="currentColor"
-                  stroke-width="1.35"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M110 30C110 60 28 52 28 84M110 30C110 55 110 64 110 84M110 30C110 60 192 52 192 84"
-                  stroke="currentColor"
-                  stroke-width="1.35"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <div class="absolute bottom-6 left-1/2 flex w-[190px] -translate-x-1/2 justify-between">
-                <span
-                  v-for="brand in homeRouteProviderBrands"
-                  :key="brand"
-                  class="flex h-9 w-9 items-center justify-center rounded-control border border-gray-100 bg-white text-gray-700 shadow-[0_5px_16px_rgba(0,0,0,0.13)] dark:border-dark-700 dark:bg-dark-900 dark:text-dark-100"
-                >
-                  <ProviderIcon :brand="brand" size="17px" />
-                </span>
-              </div>
-            </div>
-          </div>
-          <div class="p-5">
-            <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-              {{ t('home.features.multiProvider') }}
-            </h2>
-            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">
-              {{ t('home.features.multiProviderDesc') }}
-            </p>
-            <router-link :to="isAuthenticated ? dashboardPath : '/login'" class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-300">
-              {{ t('home.features.learnMore') }}
-              <Icon name="arrowRight" size="xs" />
-            </router-link>
-          </div>
-        </article>
-
-        <article class="group overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-layout hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]">
-          <div class="flex h-44 items-center justify-center border-b border-gray-200 bg-gray-50 p-6 dark:border-dark-800 dark:bg-dark-950">
-            <div class="w-full max-w-[200px] rounded-surface border border-gray-200 bg-white p-4 shadow-sm transition-transform duration-500 ease-out group-hover:scale-110 dark:border-dark-700 dark:bg-dark-900">
-              <div class="mb-4 flex items-center justify-between text-xs text-gray-500 dark:text-dark-400">
-                <span>{{ t('home.features.usageChart') }}</span>
-                <Icon name="chart" size="sm" />
-              </div>
-              <div class="space-y-3">
-                <div class="h-2 w-11/12 rounded-full bg-sky-300"></div>
-                <div class="h-2 w-2/3 rounded-full bg-amber-300"></div>
-                <div class="h-2 w-5/6 rounded-full bg-emerald-300"></div>
-                <div class="h-2 w-1/2 rounded-full bg-violet-300"></div>
-              </div>
-            </div>
-          </div>
-          <div class="p-5">
-            <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-              {{ t('home.features.balanceQuota') }}
-            </h2>
-            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">
-              {{ t('home.features.balanceQuotaDesc') }}
-            </p>
-            <router-link :to="isAuthenticated ? dashboardPath : '/login'" class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-300">
-              {{ t('home.features.viewUsage') }}
-              <Icon name="arrowRight" size="xs" />
-            </router-link>
-          </div>
-        </article>
-
-        <article class="group overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-layout hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]">
-          <div class="flex h-44 items-center justify-center border-b border-gray-200 bg-gray-50 dark:border-dark-800 dark:bg-dark-950">
-            <div class="relative flex h-24 w-24 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition-transform duration-500 ease-out group-hover:scale-110 dark:border-dark-700 dark:bg-dark-900">
-              <Icon name="shield" size="xl" class="text-gray-400 dark:text-dark-300" />
-              <span class="absolute -right-1 -top-1 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
-                <Icon name="check" size="md" :stroke-width="2" :animate-on-hover="false" />
-              </span>
-            </div>
-          </div>
-          <div class="p-5">
-            <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-              {{ t('home.features.dataPolicies') }}
-            </h2>
-            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">
-              {{ t('home.features.dataPoliciesDesc') }}
-            </p>
-            <a
-              v-if="docUrl"
-              :href="docUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-300"
-            >
-              {{ t('home.docs') }}
-              <Icon name="externalLink" size="xs" />
-            </a>
-          </div>
-        </article>
-      </section>
-
-      <section class="mx-auto mt-20 max-w-7xl">
-        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <router-link to="/models" class="inline-flex items-center gap-2 text-2xl font-bold text-gray-950 hover:text-primary-600 dark:text-white dark:hover:text-primary-300">
-              {{ t('home.providers.title') }}
-              <Icon name="chevronRight" size="md" :animate-on-hover="false" />
-            </router-link>
-            <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
-              {{ formatMarketplaceStat(totalModelCount) }} {{ t('marketplace.modelsStat') }}
-              ·
-              {{ formatMarketplaceStat(supportedProviders.length) }} {{ t('home.stats.providerTypes') }}
-            </p>
-          </div>
-          <router-link to="/models" class="text-sm font-medium text-gray-500 transition hover:text-primary-600 dark:text-dark-400 dark:hover:text-primary-300">
-            {{ t('home.viewAll') }}
-            <Icon name="arrowRight" size="xs" class="inline-block" />
-          </router-link>
-        </div>
-
-        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <div
-            v-if="homeMarketplaceLoading"
-            class="rounded-surface border border-gray-200 bg-white px-5 py-4 text-center text-sm text-gray-500 dark:border-dark-800 dark:bg-dark-900 dark:text-dark-400 sm:col-span-2 lg:col-span-3"
-          >
-            {{ t('common.loading') }}
-          </div>
-
-          <div
-            v-else-if="supportedProviders.length === 0"
-            class="rounded-surface border border-gray-200 bg-white px-5 py-4 text-center text-sm text-gray-500 dark:border-dark-800 dark:bg-dark-900 dark:text-dark-400 sm:col-span-2 lg:col-span-3"
-          >
-            {{ homeMarketplaceError ? t('home.providers.unavailable') : t('home.providers.empty') }}
-          </div>
-
-          <!-- 管理员配置了首页展示模型时，按 OpenRouter Featured Models 风格渲染单模型卡片 -->
-          <template v-else-if="featuredModels.length > 0">
-            <article
-              v-for="featured in featuredModels"
-              :key="featured.model.id"
-              class="rounded-surface border border-gray-200 bg-white p-6 shadow-sm ring-1 ring-transparent transition duration-layout hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]"
-            >
-              <div class="flex items-start gap-4">
-                <!-- 图标与模型广场保持一致：模型图标体系 + 白底圆角方形 -->
-                <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-surface border border-gray-200 bg-white shadow-sm dark:border-dark-700 dark:bg-dark-950">
-                  <ModelIcon :model="featured.model.id" size="28px" />
-                </span>
-                <div class="min-w-0 flex-1">
-                  <h3 class="truncate text-lg font-semibold text-gray-950 dark:text-white">
-                    {{ featured.model.display_name || featured.model.id }}
-                  </h3>
-                  <p class="truncate text-sm text-gray-500 dark:text-dark-400">
-                    {{ t('home.featured.byProvider', { provider: homeProviderCategory(featured.group).label }) }}
-                  </p>
-                </div>
-              </div>
-              <!-- 左下角展示相对官方价的折扣，右下角留空；无折扣数据时整块底部区域不渲染 -->
-              <div v-if="featured.discountOff" class="mt-5 border-t border-gray-200 pt-5 dark:border-dark-800">
-                <p class="text-sm font-semibold tabular-nums text-gray-950 dark:text-white">
-                  {{ featured.discountOff }}
-                </p>
-              </div>
-            </article>
-          </template>
-
-          <template v-else>
-            <article
-              v-for="provider in supportedProviders.slice(0, 6)"
-              :key="provider.key"
-              class="rounded-surface border border-gray-200 bg-white p-6 shadow-sm ring-1 ring-transparent transition duration-layout hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]"
-            >
-              <div class="flex items-start gap-4">
-                <span
-                  class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-50 dark:border-dark-700 dark:bg-dark-950"
-                  :class="providerIconWrapClass(provider)"
-                >
-                  <ProviderIcon :brand="provider.iconBrand" size="22px" />
-                </span>
-                <div class="min-w-0 flex-1">
-                  <h3 class="truncate text-lg font-semibold text-gray-950 dark:text-white">
-                    {{ provider.label }}
-                  </h3>
-                  <p class="text-sm text-gray-500 dark:text-dark-400">
-                    {{ provider.groupCount }} {{ t('home.providers.groups') }}
-                  </p>
-                </div>
-              </div>
-              <div class="mt-5 border-t border-gray-200 pt-5 dark:border-dark-800">
-                <div class="flex items-end justify-between gap-4">
-                  <div>
-                    <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('home.providers.modelCount') }}</p>
-                    <p class="mt-1 text-lg font-semibold text-gray-950 dark:text-white">
-                      {{ provider.modelCount }}
-                    </p>
-                  </div>
-                  <p
-                    v-if="provider.officialPriceRatio"
-                    class="max-w-[180px] text-right text-sm font-semibold text-emerald-600 dark:text-emerald-300"
-                  >
-                    {{ formatOfficialPriceRatio(provider.officialPriceRatio) }}
-                  </p>
-                  <p v-else class="text-sm font-medium text-primary-600 dark:text-primary-300">
-                    {{ t('home.providers.supported') }}
-                  </p>
-                </div>
-              </div>
-            </article>
-          </template>
-        </div>
-      </section>
-
-      <section class="mx-auto mt-16 max-w-7xl px-2 sm:px-0">
-        <div class="grid gap-8 md:grid-cols-3">
-          <article
-            v-for="step in homeSteps"
-            :key="step.key"
-            class="flex min-h-[190px] flex-col"
-          >
-            <div class="flex items-center gap-3">
-              <span class="flex h-8 w-8 items-center justify-center rounded-full bg-primary-50 text-base font-semibold text-primary-600 dark:bg-primary-500/10 dark:text-primary-300">
-                {{ step.index }}
-              </span>
-              <h2 class="text-lg font-semibold tracking-tight text-gray-950 dark:text-white">{{ step.title }}</h2>
-            </div>
-            <p class="mt-4 max-w-sm text-sm leading-6 text-gray-600 dark:text-dark-300">{{ step.description }}</p>
-
-            <div v-if="step.key === 'signup'" class="mt-8">
-              <div class="flex items-center gap-3 text-primary-500">
-                <Icon name="user" size="md" :stroke-width="1.8" />
-                <div class="space-y-1.5">
-                  <div class="h-1.5 w-7 rounded-full bg-primary-100 dark:bg-primary-400/20"></div>
-                  <div class="h-1.5 w-20 rounded-full bg-primary-100 dark:bg-primary-400/20"></div>
-                </div>
-              </div>
-              <div class="mt-4 grid max-w-[156px] grid-cols-3 gap-3">
-                <span class="flex h-10 w-10 items-center justify-center rounded-control bg-white/90 shadow-sm ring-1 ring-gray-100 dark:bg-dark-950 dark:ring-dark-800">
-                  <ProviderIcon brand="Google" size="20px" />
-                </span>
-                <span class="flex h-10 w-10 items-center justify-center rounded-control bg-white/90 text-gray-800 shadow-sm ring-1 ring-gray-100 dark:bg-dark-950 dark:text-gray-100 dark:ring-dark-800">
-                  <GitHubMark class="h-5 w-5" />
-                </span>
-                <span class="flex h-10 w-10 items-center justify-center rounded-control bg-white/90 text-primary-500 shadow-sm ring-1 ring-gray-100 dark:bg-dark-950 dark:ring-dark-800">
-                  <Icon name="mail" size="md" :stroke-width="1.8" />
-                </span>
-              </div>
-            </div>
-
-            <div v-else-if="step.key === 'browse'" class="mt-auto max-w-[270px] pt-6">
-              <div class="flex items-center gap-3 text-primary-500">
-                <Icon name="grid" size="md" :stroke-width="1.8" />
-                <div class="grid flex-1 grid-cols-4 gap-2">
-                  <div class="h-1 rounded-full bg-primary-100 dark:bg-primary-400/20"></div>
-                  <div class="h-1 rounded-full bg-primary-100 dark:bg-primary-400/20"></div>
-                  <div class="h-1 rounded-full bg-primary-100 dark:bg-primary-400/20"></div>
-                  <div class="h-1 rounded-full bg-primary-100 dark:bg-primary-400/20"></div>
-                </div>
-              </div>
-              <div class="mt-4 space-y-2">
-                <div class="flex items-center gap-2 rounded-control bg-white/90 px-3 py-2 text-gray-700 shadow-sm ring-1 ring-gray-100 dark:bg-dark-950 dark:text-dark-200 dark:ring-dark-800">
-                  <span class="w-14 text-xs font-medium">Claude</span>
-                  <span class="h-2 flex-1 rounded-full bg-primary-100 dark:bg-primary-400/20"></span>
-                  <span class="h-2 w-12 rounded-full bg-primary-100 dark:bg-primary-400/20"></span>
-                </div>
-                <div class="flex items-center gap-2 rounded-control bg-white/90 px-3 py-2 text-gray-700 shadow-sm ring-1 ring-gray-100 dark:bg-dark-950 dark:text-dark-200 dark:ring-dark-800">
-                  <span class="w-14 text-xs font-medium">GPT</span>
-                  <span class="h-2 flex-1 rounded-full bg-primary-100 dark:bg-primary-400/20"></span>
-                  <span class="h-2 w-12 rounded-full bg-primary-100 dark:bg-primary-400/20"></span>
-                </div>
-              </div>
-            </div>
-
-            <div v-else class="mt-8 max-w-[270px]">
-              <div class="flex items-center gap-3 text-primary-500">
-                <Icon name="key" size="md" :stroke-width="1.8" />
-                <div class="flex-1 rounded-control bg-white/90 px-3 py-2 font-mono text-xs text-gray-600 shadow-sm ring-1 ring-gray-100 dark:bg-dark-950 dark:text-dark-300 dark:ring-dark-800">
-                  TOKENFLUX_API_KEY
-                </div>
-              </div>
-              <div class="mt-3 rounded-control bg-white/90 px-3 py-2 font-mono text-sm tracking-[0.2em] text-gray-950 shadow-sm ring-1 ring-gray-100 dark:bg-dark-950 dark:text-white dark:ring-dark-800">
-                ••••••••••••••••
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <!-- CTA -->
-      <section class="mx-auto mt-24 max-w-3xl text-center">
-        <h2 class="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">
-          {{ t('home.cta.title') }}
-        </h2>
-        <p class="mx-auto mt-4 max-w-xl text-base leading-7 text-gray-600 dark:text-dark-300">
-          {{ t('home.cta.description') }}
-        </p>
-        <div class="mt-8">
-          <router-link
-            :to="isAuthenticated ? dashboardPath : '/login'"
-            class="inline-flex min-h-[44px] min-w-[180px] items-center justify-center gap-2 rounded-control bg-primary-600 px-8 py-3 text-sm font-semibold text-white transition hover:bg-primary-700"
-          >
-            {{ isAuthenticated ? t('home.goToDashboard') : t('home.cta.button') }}
-            <Icon name="arrowRight" size="sm" :stroke-width="2" />
-          </router-link>
-        </div>
-      </section>
-    </main>
-
-    <footer class="relative z-10 border-t border-gray-200 bg-white/90 px-6 py-12 backdrop-blur dark:border-dark-800 dark:bg-dark-950/90">
-      <div class="mx-auto max-w-7xl">
-        <div class="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:flex lg:justify-between lg:gap-8">
-          <!-- Brand -->
-          <div class="col-span-2 sm:col-span-3 lg:col-auto lg:max-w-[240px] lg:shrink-0">
-            <div class="flex items-center gap-2.5">
-              <span class="h-8 w-8 shrink-0 overflow-hidden rounded-control shadow-sm">
-                <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
-              </span>
-              <span class="text-sm font-semibold text-gray-950 dark:text-white">{{ siteName }}</span>
-            </div>
-            <p class="mt-4 text-sm text-gray-500 dark:text-dark-400">
-              &copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}
-            </p>
-            <p
-              v-for="(line, index) in footerTextLines"
-              :key="index"
-              class="mt-1 text-xs text-gray-400 dark:text-dark-500"
-            >
-              {{ line }}
-            </p>
-          </div>
-
-          <!-- Link columns -->
-          <div v-for="column in footerColumns" :key="column.title" class="lg:min-w-[140px]">
-            <h3 class="text-sm font-semibold text-gray-950 dark:text-white">{{ column.title }}</h3>
-            <ul class="mt-4 space-y-2.5">
-              <li v-for="link in column.links" :key="link.label">
-                <router-link
-                  v-if="link.url.startsWith('/')"
-                  :to="link.url"
-                  class="text-sm text-gray-500 transition hover:text-gray-950 dark:text-dark-400 dark:hover:text-white"
-                >
-                  {{ link.label }}
-                </router-link>
-                <a
-                  v-else
-                  :href="link.url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-sm text-gray-500 transition hover:text-gray-950 dark:text-dark-400 dark:hover:text-white"
-                >
-                  {{ link.label }}
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </footer>
-    </template>
   </div>
 </template>
 
@@ -1052,7 +584,6 @@ import { isGoogleOneTapEligible, isGoogleOneTapOriginSupported } from '@/utils/g
 import {
   providerBrandDisplayName,
   providerBrandFilterKey,
-  resolveProviderBrand,
   resolveProviderBrandKey,
 } from '@/utils/providerBrand'
 
@@ -1200,12 +731,6 @@ const footerColumns = computed(() => {
   }
 
   return [{ title: t('home.footer.quickLinks'), links: quickLinks }]
-})
-
-// 服务商图标滚动条:图标列表复制一份实现无缝循环
-const homeMarqueeBrands = computed(() => {
-  const brands = homeProviderVisuals.value.slice(0, 20)
-  return [...brands, ...brands]
 })
 
 // 黑色走马灯随语言切换文案，单轮不重复；模板复制轨道保证无缝循环。
@@ -1487,7 +1012,8 @@ const homeOrbitNodes = computed(() =>
 )
 
 const homeRouteLabel = computed(() => {
-  return 'OpenAI/GPT-5.4'
+  // 示例随当前市场数据变化，不再把旧型号写死为现行服务。
+  return featuredModels.value[0]?.model.id || marketplaceGroups.value.flatMap(group => group.models)[0]?.id || t('home.heroSubtitle')
 })
 
 const homeSteps = computed<HomeStep[]>(() => [
@@ -1739,13 +1265,6 @@ function mergeProviderVisualBrands(brands: string[]): string[] {
   return merged
 }
 
-function providerIconWrapClass(provider: Pick<HomeProviderSummary, 'key' | 'iconBrand'>): string {
-  if (provider.key === 'antigravity') {
-    return 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-400/30'
-  }
-  return resolveProviderBrand(provider.iconBrand).iconWrapClass
-}
-
 async function fetchHomeMarketplace() {
   homeMarketplaceLoading.value = true
   homeMarketplaceError.value = false
@@ -1809,50 +1328,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.home-marketplace-icon-enter-active,
-.home-marketplace-icon-leave-active {
-  transition: opacity var(--motion-layout) var(--motion-ease), transform var(--motion-layout) var(--motion-ease);
-}
-
-.home-marketplace-icon-enter-from {
-  opacity: 0;
-  transform: translateY(-70%);
-}
-
-.home-marketplace-icon-leave-to {
-  opacity: 0;
-  transform: translateY(70%);
-}
-
-/* 服务商图标无缝滚动条,两端用渐隐遮罩 */
-.home-marquee {
-  -webkit-mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
-  mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
-}
-
-.home-marquee-track {
-  animation: home-marquee-scroll 48s linear infinite;
-}
-
-.home-marquee:hover .home-marquee-track {
-  animation-play-state: paused;
-}
-
-@keyframes home-marquee-scroll {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .home-marquee-track {
-    animation: none;
-  }
-}
-
 /* CTA 按钮：黑框 + 硬阴影 + 位移 */
 .bh-home-cta {
   display: inline-flex;
@@ -2410,4 +1885,61 @@ onUnmounted(() => {
  .bh-home-marquee-copy[aria-hidden] { display: none; }
 }
 
+/* 两种皮肤共用构成；TokenFlux 只覆盖局部色板、边框、字重和阴影。 */
+.home-landing[data-home-theme='tokenflux'] {
+  --bh-red: rgb(var(--theme-primary-600));
+  --bh-blue: rgb(var(--theme-primary-400));
+  --bh-yellow: rgb(var(--theme-primary-100));
+  --bh-shadow: 0 8px 28px rgb(0 0 0 / .08);
+  --bh-shadow-sm: 0 4px 16px rgb(0 0 0 / .06);
+}
+.home-landing[data-home-theme='tokenflux'] .bg-bh-red { background-color: var(--bh-red); }
+.home-landing[data-home-theme='tokenflux'] .bg-bh-yellow { background-color: var(--bh-yellow); }
+.home-landing[data-home-theme='tokenflux'] .bg-bh-blue { background-color: var(--bh-blue); }
+.home-landing[data-home-theme='tokenflux'] .text-bh-red { color: var(--bh-red); }
+.home-landing[data-home-theme='tokenflux'] .text-bh-yellow { color: var(--bh-yellow); }
+.home-landing[data-home-theme='tokenflux'] :is(.home-stat-card, .bh-home-block, .bauhaus-home-stage, .bauhaus-home-stage-panel) {
+  border: 1px solid rgb(var(--theme-primary-900) / .12);
+  border-radius: var(--radius-surface);
+  box-shadow: var(--bh-shadow);
+}
+.home-landing[data-home-theme='tokenflux'] :is(.home-stat-card, .bh-home-block) { overflow: hidden; }
+.home-landing[data-home-theme='tokenflux'] :is(.bh-home-block, .bauhaus-home-stage) { background: var(--bh-surface); }
+.home-landing[data-home-theme='tokenflux'] :is(.bh-home-cta, .bh-home-kicker, .bauhaus-home-stage-stamp, .bauhaus-home-stage-node, .bauhaus-home-stage-icon-node) {
+  border-radius: var(--radius-control);
+  border-width: 1px;
+  border-color: rgb(var(--theme-primary-900) / .12);
+  box-shadow: none;
+}
+.home-landing[data-home-theme='tokenflux'] .bh-home-cta { font-weight: 600; }
+.home-landing[data-home-theme='tokenflux'] .bh-home-cta:hover { transform: translateY(-2px); box-shadow: var(--bh-shadow-sm); }
+.home-landing[data-home-theme='tokenflux'] .bh-home-cta:active { transform: translateY(1px); box-shadow: none; }
+.home-landing[data-home-theme='tokenflux'] .bauhaus-home-stage-panel:hover { transform: translateY(-2px); }
+.home-landing[data-home-theme='tokenflux'] .bauhaus-home-stage-panel:active { transform: translateY(1px); box-shadow: none; }
+.home-landing[data-home-theme='tokenflux'] .bh-home-kicker { background: rgb(var(--theme-primary-100)); color: rgb(var(--theme-primary-800)); letter-spacing: .15em; }
+.home-landing[data-home-theme='tokenflux'] .bh-home-section-title { font-weight: 700; }
+.home-landing[data-home-theme='tokenflux'] .bh-home-section-title::before { width: 8px; border-radius: var(--radius-compact); transform: none; }
+.home-landing[data-home-theme='tokenflux'] main :is([class~="border-gray-950"], [class~="border-gray-950/70"]) { border-color: rgb(var(--theme-primary-900) / .12); }
+.home-landing[data-home-theme='tokenflux'] main :is([class~="border-2"], [class~="border-[3px]"]) { border-width: 1px; border-radius: var(--radius-control); }
+.home-landing[data-home-theme='tokenflux'] main [class~="border-b-[3px]"] { border-bottom-width: 1px; }
+.home-landing[data-home-theme='tokenflux'] main [class~="border-t-2"] { border-top-width: 1px; }
+.home-landing[data-home-theme='tokenflux'] .bh-home-block-hover:hover { transform: translateY(-4px); box-shadow: var(--bh-shadow); }
+.home-landing[data-home-theme='tokenflux'] .bh-home-marquee { border-width: 1px; border-color: rgb(var(--theme-primary-900) / .12); background: rgb(var(--theme-primary-950)); }
+.home-landing[data-home-theme='tokenflux'] .bauhaus-home-marquee-word { color: rgb(var(--theme-primary-100)); font-family: inherit; font-weight: 600; }
+.home-landing[data-home-theme='tokenflux'] .bauhaus-home-marquee-separator { color: rgb(var(--theme-primary-400)); }
+.home-landing[data-home-theme='tokenflux'] .bauhaus-home-stage-sun { background: rgb(var(--theme-primary-100)); border: 1px solid rgb(var(--theme-primary-400) / .5); }
+.home-landing[data-home-theme='tokenflux'] .bauhaus-home-stage-ring { border-width: 1px; }
+.home-landing[data-home-theme='tokenflux'] .bauhaus-home-stage-geometry { filter: none; }
+.home-landing[data-home-theme='tokenflux'] footer { border-top: 1px solid rgb(var(--theme-primary-900) / .12); }
+.home-landing[data-home-theme='tokenflux'] footer h3 { border: 0; letter-spacing: normal; }
+.home-landing[data-home-theme='tokenflux'] footer .bh-home-stripe { height: 1px; opacity: .3; }
+:global(html.dark) .home-landing[data-home-theme='tokenflux'] {
+  --bh-shadow: none;
+  --bh-shadow-sm: none;
+}
+:global(html.dark) .home-landing[data-home-theme='tokenflux'] :is(.home-stat-card, .bh-home-block, .bauhaus-home-stage, .bauhaus-home-stage-panel, .bh-home-cta, footer) { border-color: rgb(252 252 254 / .078); }
+:global(html.dark) .home-landing[data-home-theme='tokenflux'] main :is([class~="border-gray-950"], [class~="border-gray-950/70"]) { border-color: rgb(252 252 254 / .078); }
+@media (prefers-reduced-motion: reduce) {
+ .home-landing[data-home-theme='tokenflux'] :is(.bh-home-block-hover, .bh-home-cta, .bauhaus-home-stage-panel) { transition: none; }
+}
 </style>

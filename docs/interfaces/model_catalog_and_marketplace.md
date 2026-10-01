@@ -15,6 +15,8 @@
 <a id="model_catalog_resolution"></a>
 ## 目录解析
 
+分组编辑页的模型候选和探测模型选项复用 RequestableResolver，依据已保存的分组映射、白名单检查阶段、协议与提供商能力返回请求模型名。自定义列表只筛选可请求候选并保留排序，不因保存过历史上游名称就把它重新加入探针选项。未保存的策略需保存后重新加载候选。
+
 公开市场的分组筛选、逐请求提供商预取/排序、辅助容量与可用性、动态设置和输出组合已由 `routing.Marketplace` 执行；`routing/httpapi` 直接提供模型与公开统计 HTTP。app 绑定唯一分组存储、settings.Store、billing 报价及原 Dashboard 统计读取，平台默认目录与显示名由 `routing/provider` 投影，app 直接注入选项，保留动态目录的原读取时点。市场展示、价卡和元数据测试直接验证 routing.Marketplace；网关目录与实际查价的一致性测试也直接组合原生市场端口，不构造另一份市场服务。
 
 `routing.RequestableResolver` 唯一负责可请求候选合并、分组白名单、请求模型 → 分组映射模型 → 上游模型 及价格歧义判断。`routing.RequestableCatalogue` 组合候选读取与模型列表短缓存，由 app 直接绑定 provider 存储。`gateway/provider.ModelPolicy` 为目录和实际转发提供同一套平台模型判断，提供商记录与本次 attempt 的模型链分开传入。提供商模型范围与一跳匹配由 provider 提供，平台专有资格、thinking/模型限流观测和动态默认目录通过窄接口接入。
@@ -43,6 +45,8 @@ Claude Code、Codex、Gemini、Grok、OpenCode 与 CC Switch 配置按用户选�
 
 <a id="model_catalog_metadata_lookup"></a>
 ## 目录元数据查询
+
+裸模型名因多个供应商记录产生歧义时，属性精确查询失败后核对 canonical_model_id；所有记录指向同一公共型号且资料存在才回退公共属性，限定名和已有精确记录不借此补字段。回退不改变价格索引、歧义状态或借用中继报价。
 
 ByteSeek 保留的原生图片缓存维度、GPT-6.1、Claude 5.5、Gemini 3.7/3.8、Grok 4.7 和 Astra Ultrafast 规则通过 `backend/internal/modelcatalog/model_pricing_supplements.json` 一并嵌入。保留已有固定上游来源与核验日期，不恢复硬编码模型猜价；新增 `ultrafast_multiplier` 是独立可选商业规则，不被 Fast 倍率覆盖。图片缓存价格同时保存“字段存在”标记，明确零价保持免费，只有未提供专用缓存价时才沿用通用缓存价。
 
@@ -89,6 +93,8 @@ models.dev 的目录、属性和本地补充在同一版本发布，只读快照
 <a id="group_availability_probe"></a>
 ## 容量与可用性
 
+分组探测填写允许的请求模型名。选择器用该名称校验准入，同时返回提供商 ID 与分组映射后的模型；测试服务再做提供商映射，各阶段只执行一次。探测历史仍记录配置请求名。该修正不是 Codex 票据采集或题目检测的新调度规则。
+
 市场接口可以附加 Group capacity 和历史 availability summary。容量来自当前提供商/并发投影，可用性只为启用 probe 的 Group 查询；用户侧模型广场和 API Key 分组选择器不展示 capacity，管理员分组管理仍正常展示。两者都是辅助信息：读取失败时仍返回模型和价格，不把缺失观测解释为 0 容量或 0% 可用。
 
 创建普通 API Key 时，分组选择按 Messages、OpenAI、Gemini、其他协议分类，依据 `allowed_protocols`；不再根据已移除的分组平台字段推断。分类先受个人/团队主体和套餐允许分组的交集限制，不扩大权限、不自动选择具体分组，不改创建 API。缺少协议集合时按空集合处理。编辑已有 Key 和复合 Key 映射不使用该筛选。账号编辑补回详情中仍绑定但已停用的分组，管理员可明确移除；未绑定的停用组不加入清单。
@@ -129,6 +135,8 @@ models.dev 的目录、属性和本地补充在同一版本发布，只读快照
 
 <a id="model_attributes"></a>
 ## 模型属性配置
+
+编辑器添加模型且当前规则尚未填写属性时，查询第一个新增的非通配符型号并填入已知属性。显式 false/空模态保留，已有属性不覆盖；查询途中修改型号/属性、移除规则或关闭编辑器后，旧结果不得写回。未知型号或查询失败继续手动填写，不影响保存其它有效配置。
 
 属性配置保存于 `model_attribute_configs`，有名称、描述、启用状态和有序规则；分组关联表以 `group_id` 唯一约束保证每组最多关联一份配置，一份配置可供多个分组使用。规则和关联在同一事务保存，名称或分组冲突整体回滚。属性配置与价格配置独立，停用、删除或解除关联后恢复默认属性。
 

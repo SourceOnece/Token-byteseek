@@ -20,8 +20,15 @@ type ProbeExecutionResult struct {
 	StartedAt    time.Time
 	FinishedAt   time.Time
 }
+
+// GroupProbeTarget 保留本次选择的提供商和分组映射后的模型；提供商映射由测试服务执行。
+type GroupProbeTarget struct {
+	ProviderID int64
+	ModelID    string
+}
+
 type GroupProbeExecutor interface {
-	Select(context.Context, GroupAvailabilityProbeDueGroup, string) (int64, error)
+	Select(context.Context, GroupAvailabilityProbeDueGroup, string) (GroupProbeTarget, error)
 	Test(context.Context, int64, string, string, string) (*ProbeExecutionResult, error)
 }
 type GroupProbeOptions struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
@@ -40,7 +41,8 @@ func (s *GroupAdmin) GetGroup(ctx context.Context, id int64) (*Group, error) {
 	return s.groupRepo.GetByID(ctx, id)
 }
 
-// GetGroupModelsListCandidates 新组展示默认目录建议，已有组只展示实际提供商能力的并集。
+// GetGroupModelsListCandidates 新组展示默认建议，已有组按分组策略和提供商能力解析请求模型。
+// @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_resolution
 func (s *GroupAdmin) GetGroupModelsListCandidates(ctx context.Context, id int64, _ string) ([]string, error) {
 	if id <= 0 {
 		return s.options.DefaultModels(""), nil
@@ -56,7 +58,12 @@ func (s *GroupAdmin) GetGroupModelsListCandidates(ctx context.Context, id int64,
 	if err != nil {
 		return nil, err
 	}
-	candidates := ConfiguredModelsListCandidateIDs(providers, "")
+	resolution := s.options.ModelResolver.ResolveWithProviders(ctx, &id, "", nil, providers)
+	candidates := make([]string, 0, len(resolution.Models))
+	for _, model := range resolution.Models {
+		candidates = append(candidates, model.ID)
+	}
+	sort.Strings(candidates)
 	if group.CustomModelsListEnabled() {
 		candidates = FilterModelsListCandidates(candidates, group.ModelsListConfig.Models)
 	}

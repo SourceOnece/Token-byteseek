@@ -111,7 +111,12 @@
             <div class="space-y-4">
               <div>
                 <label class="input-label">{{ t('admin.modelAttributes.models') }}</label>
-                <ModelTagInput v-model:models="item.models" :aria-label="t('admin.modelAttributes.models')" :placeholder="t('admin.modelAttributes.modelHint')" />
+                <ModelTagInput
+                  :models="item.models"
+                  :aria-label="t('admin.modelAttributes.models')"
+                  :placeholder="t('admin.modelAttributes.modelHint')"
+                  @update:models="onModelsUpdate(item, $event)"
+                />
               </div>
               <ModelAttributesFields v-model="item.attributes" />
             </div>
@@ -152,7 +157,7 @@ import ModelAttributesFields from '@/components/admin/ModelAttributesFields.vue'
 import ModelCatalogInfo from '@/components/admin/ModelCatalogInfo.vue'
 import ModelTagInput from '@/components/admin/pricing/ModelTagInput.vue'
 import ModelAttributesSummary from '@/components/common/ModelAttributesSummary.vue'
-import { modelAttributesAPI, type AttributeConfig, type DefaultAttributes } from '@/api/admin/modelAttributes'
+import { modelAttributesAPI, type AttributeConfig, type AttributeRule, type DefaultAttributes } from '@/api/admin/modelAttributes'
 import { adminAPI } from '@/api/admin'
 import type { AdminGroup } from '@/types'
 import { attributeCapabilities } from '@/types/modelAttributes'
@@ -223,6 +228,29 @@ function moveRule(from: number, to: number) {
   const item = form.value.rules.splice(from, 1)[0]
   if (item) form.value.rules.splice(to, 0, item)
 }
+
+// 与价格配置一致，只在新增模型且属性尚未填写时查询第一个新增模型。
+async function onModelsUpdate(rule: AttributeRule, models: string[]) {
+  const addedModels = models.filter(model => !rule.models.includes(model))
+  rule.models = models
+  const model = addedModels[0]
+  if (!model || model.includes('*') || Object.keys(rule.attributes).length > 0) return
+
+  const requestedModels = rule.models
+  const attributes = rule.attributes
+  try {
+    const defaults = await modelAttributesAPI.getModelDefaultAttributes(model)
+    // 慢请求不能覆盖后续输入、手动编辑或已经移除的规则。
+    if (
+      !showEditor.value || saving.value || !form.value.rules.includes(rule)
+      || rule.models !== requestedModels || rule.attributes !== attributes
+    ) return
+    rule.attributes = defaults
+  } catch {
+    // 目录查询失败时保留表单，用户仍可手动填写。
+  }
+}
+
 async function save() {
   if (saving.value) return
   formError.value = ''
@@ -258,5 +286,5 @@ async function updateCatalog() {
 watch([activeTab, status, provider, capability], () => { page.value = 1; load() })
 watch(search, () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { page.value = 1; load() }, SEARCH_DEBOUNCE_MS) })
 onMounted(load)
-onUnmounted(() => { sequence++; clearTimeout(searchTimer) })
+onUnmounted(() => { sequence++; showEditor.value = false; clearTimeout(searchTimer) })
 </script>

@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	DataType    = "sub2api-data"
-	DataVersion = 2
+	DataType = "sub2api-data"
+	// TokenFlux 同版本导出只改类型标识；本地导出保持原标识，读入兼容两者。
+	TokenRouterDataType = "tokenrouter-data"
+	DataVersion         = 2
 )
 
 type (
@@ -91,7 +93,7 @@ type DataImportResult struct {
 }
 
 func ValidateHeader(payload DataPayload) error {
-	if payload.Type != DataType {
+	if payload.Type != DataType && payload.Type != TokenRouterDataType {
 		return fmt.Errorf("unsupported data type: %s", payload.Type)
 	}
 	if payload.Version != DataVersion {

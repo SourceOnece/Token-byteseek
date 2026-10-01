@@ -154,7 +154,7 @@ func runGroupAvailabilityProbeAttempts(
 // runProbeAttempt 完成一次提供商选择和真实请求，并转换为统一的分组探测结果。
 func (s *GroupAvailabilityProbeRunnerService) runProbeAttempt(ctx context.Context, due GroupAvailabilityProbeDueGroup, probeConfig GroupAvailabilityProbeConfig) *GroupAvailabilityProbeResult {
 	startedAt := s.now()
-	providerID, err := s.executor.Select(ctx, due, probeConfig.ModelID)
+	target, err := s.executor.Select(ctx, due, probeConfig.ModelID)
 	if err != nil {
 		finishedAt := s.now()
 		return &GroupAvailabilityProbeResult{
@@ -169,11 +169,11 @@ func (s *GroupAvailabilityProbeRunnerService) runProbeAttempt(ctx context.Contex
 		}
 	}
 
-	result, err := s.executor.Test(ctx, providerID, probeConfig.ModelID, probeConfig.Prompt, probeConfig.UserAgent)
+	result, err := s.executor.Test(ctx, target.ProviderID, target.ModelID, probeConfig.Prompt, probeConfig.UserAgent)
 	finishedAt := s.now()
 	probeResult := &GroupAvailabilityProbeResult{
 		GroupID:    due.GroupID,
-		ProviderID: &providerID,
+		ProviderID: &target.ProviderID,
 		ModelID:    probeConfig.ModelID,
 		Status:     GroupAvailabilityProbeStatusSuccess,
 		Success:    true,
