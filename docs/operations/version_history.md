@@ -1,6 +1,6 @@
 # 版本留档规则
 
-本次 [v0.2.0-bh.002](versions/v0_2_0_bh_002.md) 按用户新要求完整跟进 TokenFlux 页面和动效，默认 TokenFlux 并提供包豪斯下拉主题；两种皮肤共用界面，定制业务保留。代码验证完成，发布状态见记录。
+本次 [v0.2.0-bh.002](versions/v0_2_0_bh_002.md) 按用户新要求完整跟进 TokenFlux 页面和动效，默认 TokenFlux 并提供包豪斯下拉主题；两种皮肤共用界面，定制业务保留。验证及 GHCR 固定/latest/bauhaus 同 digest 发布完成，未部署。
 
 本次 [v0.2.0-bh.001](versions/v0_2_0_bh_001.md) 同步 TokenFlux 0.2.0 的统一目录计费、内嵌补充、按次结算及筛选/日历/仪表盘交互，保留包豪斯和票据等定制；sub2api 本轮无新提交，已有模型/图片规则迁入新结构。代码验证及 GHCR 固定/latest/bauhaus 同 digest 发布完成，未部署；旧价格配置升级影响见记录。
 
