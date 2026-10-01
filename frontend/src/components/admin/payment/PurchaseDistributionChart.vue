@@ -9,7 +9,7 @@
     >
       {{ t('payment.admin.noData') }}
     </div>
-    <div v-else class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(260px,0.9fr)]">
+    <div v-else class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(260px,0.9fr)]">
       <div class="min-w-0">
         <p class="mb-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
           {{ t('payment.admin.amountShare') }}
@@ -39,7 +39,7 @@
             <tr
               v-for="(item, index) in sortedItems"
               :key="distributionKey(item, index)"
-              class="border-t border-gray-100 dark:border-gray-700"
+              class="border-t border-gray-100 dark:border-dark-600"
             >
               <td class="py-2">
                 <div class="flex min-w-0 items-center gap-2">

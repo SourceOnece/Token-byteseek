@@ -5,34 +5,29 @@
         {{ t('admin.dashboard.groupDistribution') }}
       </h3>
       <div
+        v-segmented
         v-if="showMetricToggle"
-        class="inline-flex rounded-control border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-dark-800"
+        class="segmented"
       >
         <button
           type="button"
-          class="rounded-control px-2.5 py-1 text-xs font-medium transition-colors"
-          :class="metric === 'tokens'
-            ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+          class="segmented-item px-2.5 py-1 text-xs"
+          :class="{ 'segmented-item-active': metric === 'tokens' }"
           @click="emit('update:metric', 'tokens')"
         >
           {{ t('admin.dashboard.metricTokens') }}
         </button>
         <button
           type="button"
-          class="rounded-control px-2.5 py-1 text-xs font-medium transition-colors"
-          :class="metric === 'actual_cost'
-            ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+          class="segmented-item px-2.5 py-1 text-xs"
+          :class="{ 'segmented-item-active': metric === 'actual_cost' }"
           @click="emit('update:metric', 'actual_cost')"
         >
           {{ t('admin.dashboard.metricActualCost') }}
         </button>
       </div>
     </div>
-    <div v-if="loading" class="flex h-48 items-center justify-center">
-      <LoadingSpinner />
-    </div>
+    <ChartSkeleton v-if="loading" variant="distribution" />
     <!-- 桌面端顶部对齐，避免数据较少时表格被圆环图垂直居中。 -->
     <div v-else-if="displayGroupStats.length > 0 && chartData" class="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
       <div class="h-48 w-48 shrink-0">
@@ -47,25 +42,31 @@
               <th class="pb-2 text-right">{{ t('admin.dashboard.requests') }}</th>
               <th class="pb-2 text-right">{{ t('admin.dashboard.tokens') }}</th>
               <th class="pb-2 text-right">{{ t('admin.dashboard.actual') }}</th>
-              <th v-if="showAccountCost" class="pb-2 text-right">{{ t('admin.dashboard.accountCost') }}</th>
+              <th v-if="showProviderCost" class="pb-2 text-right">{{ t('admin.dashboard.providerCost') }}</th>
               <th v-if="showStandardCost" class="pb-2 text-right">{{ t('admin.dashboard.standard') }}</th>
             </tr>
           </thead>
           <tbody>
             <template v-for="group in displayGroupStats" :key="group.group_id">
-              <tr
-                class="border-t border-gray-100 transition-colors dark:border-gray-700"
+              <tr data-icon-trigger
+                class="border-t border-gray-100 transition-colors dark:border-dark-600"
                 :class="enableBreakdown && group.group_id > 0 ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700/40' : ''"
                 @click="enableBreakdown && group.group_id > 0 && toggleBreakdown('group', group.group_id)"
               >
                 <td
                   class="max-w-[100px] truncate py-1.5 font-medium"
-                  :class="enableBreakdown && group.group_id > 0 ? 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300' : 'text-gray-900 dark:text-white'"
+                  :class="enableBreakdown && group.group_id > 0 ? 'text-primary-600 hover:text-primary-800 dark:text-primary-500 dark:hover:text-primary-500' : 'text-gray-900 dark:text-white'"
                   :title="group.group_name || String(group.group_id)"
                 >
                   <span class="inline-flex items-center gap-1">
-                    <svg v-if="enableBreakdown && group.group_id > 0 && expandedKey === `group-${group.group_id}`" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    <svg v-else-if="enableBreakdown && group.group_id > 0" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <Icon
+                      v-if="enableBreakdown && group.group_id > 0"
+                      name="chevronRight"
+                      size="xs"
+                      :animate-on-hover="false"
+                      class="h-3 w-3 shrink-0 transition-transform duration-normal"
+                      :class="{ 'rotate-90': expandedKey === `group-${group.group_id}` }"
+                    />
                     {{ group.group_name || t('admin.dashboard.noGroup') }}
                   </span>
                 </td>
@@ -78,7 +79,7 @@
                 <td class="py-1.5 text-right text-green-600 dark:text-green-400">
                   {{ balanceUnitSymbol }}{{ formatCost(group.actual_cost) }}
                 </td>
-                <td v-if="showAccountCost" class="py-1.5 text-right text-orange-500 dark:text-orange-400">
+                <td v-if="showProviderCost" class="py-1.5 text-right text-orange-500 dark:text-orange-400">
                   {{ usdUnitSymbol }}{{ formatCost(group.provider_cost) }}
                 </td>
                 <td v-if="showStandardCost" class="py-1.5 text-right text-gray-400 dark:text-gray-500">
@@ -86,16 +87,14 @@
                 </td>
               </tr>
               <!-- User breakdown sub-rows -->
-              <tr v-if="expandedKey === `group-${group.group_id}`">
-                <td :colspan="distributionColspan" class="p-0">
+              <ExpandableTableRow :open="expandedKey === `group-${group.group_id}`" :colspan="distributionColspan">
                   <UserBreakdownSubTable
                     :items="breakdownItems"
                     :loading="breakdownLoading"
-                    :show-account-cost="showAccountCost"
+                    :show-provider-cost="showProviderCost"
                     :show-standard-cost="showStandardCost"
                   />
-                </td>
-              </tr>
+                </ExpandableTableRow>
             </template>
           </tbody>
         </table>
@@ -111,18 +110,22 @@
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
+import ExpandableTableRow from '@/components/common/ExpandableTableRow.vue'
+import Icon from '@/components/icons/Icon.vue'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LogarithmicScale, Tooltip, Legend } from 'chart.js'
 import { Bar, Doughnut } from 'vue-chartjs'
-import { BH_CHART_PALETTE } from '@/utils/chartTheme'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import UserBreakdownSubTable from './UserBreakdownSubTable.vue'
 import { toLogarithmicDisplayValues } from '@/utils/chartDisplayScale'
 import { externalTooltipHandler, hideExternalTooltip } from '@/utils/chartExternalTooltip'
+import { CHART_PALETTE, CHART_TICK_FONT_SIZE } from '@/composables/useChartTheme'
 import type { GroupStat, UserBreakdownItem } from '@/types'
 import { getUserBreakdown } from '@/api/admin/dashboard'
+import { formatTokens } from '@/utils/format'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LogarithmicScale, Tooltip, Legend)
 
@@ -142,7 +145,7 @@ const props = withDefaults(defineProps<{
   chartType?: GroupChartType
   showMetricToggle?: boolean
   enableBreakdown?: boolean
-  showAccountCost?: boolean
+  showProviderCost?: boolean
   showStandardCost?: boolean
   startDate?: string
   endDate?: string
@@ -153,7 +156,7 @@ const props = withDefaults(defineProps<{
   chartType: 'doughnut',
   showMetricToggle: false,
   enableBreakdown: true,
-  showAccountCost: true,
+  showProviderCost: true,
   showStandardCost: true,
 })
 
@@ -164,9 +167,9 @@ const emit = defineEmits<{
 const expandedKey = ref<string | null>(null)
 const breakdownItems = ref<UserBreakdownItem[]>([])
 const breakdownLoading = ref(false)
-const showAccountCost = computed(() => props.showAccountCost)
+const showProviderCost = computed(() => props.showProviderCost)
 const showStandardCost = computed(() => props.showStandardCost)
-const distributionColspan = computed(() => 4 + (showAccountCost.value ? 1 : 0) + (showStandardCost.value ? 1 : 0))
+const distributionColspan = computed(() => 4 + (showProviderCost.value ? 1 : 0) + (showStandardCost.value ? 1 : 0))
 
 const toggleBreakdown = async (type: string, id: number | string) => {
   const key = `${type}-${id}`
@@ -192,7 +195,7 @@ const toggleBreakdown = async (type: string, id: number | string) => {
   }
 }
 
-const chartColors = [...BH_CHART_PALETTE]
+const chartColors = CHART_PALETTE // 原 10 色拷贝前缀逐项一致,补齐 11/12 色
 
 const displayGroupStats = computed(() => {
   if (!props.groupStats?.length) return []
@@ -290,7 +293,7 @@ const barOptions = computed(() => ({
       ticks: {
         autoSkip: false,
         font: {
-          size: 10
+          size: CHART_TICK_FONT_SIZE
         },
         // 分组名可能较长，y 轴标签截断展示，全名见 tooltip 与表格。
         callback(this: any, value: any) {
@@ -313,17 +316,6 @@ const barOptions = computed(() => ({
     }
   }
 }))
-
-const formatTokens = (value: number): string => {
-  if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(2)}B`
-  } else if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(2)}M`
-  } else if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(2)}K`
-  }
-  return value.toLocaleString()
-}
 
 const formatNumber = (value: number): string => {
   return toFiniteNumber(value).toLocaleString()

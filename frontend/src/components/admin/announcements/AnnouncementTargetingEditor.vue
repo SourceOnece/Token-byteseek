@@ -36,61 +36,36 @@
       </div>
     </div>
 
-    <div v-if="mode === 'custom'" class="mt-4 space-y-4">
-      <div class="flex items-center justify-between">
-        <div class="text-sm font-medium text-gray-900 dark:text-white">
-          OR
-          <span class="ml-1 text-xs font-normal text-gray-500 dark:text-dark-400">
-            ({{ anyOf.length }}/50)
-          </span>
-        </div>
-        <button
-          type="button"
-          class="btn btn-secondary"
-          :disabled="anyOf.length >= 50"
-          @click="addOrGroup"
+    <RuleListEditor
+      v-if="mode === 'custom'"
+      class="mt-4"
+      :items="anyOf"
+      :item-key="targetingRowKey"
+      :title="`OR (${anyOf.length}/50)`"
+      :add-label="t('admin.announcements.form.addOrGroup')"
+      :empty-text="`${t('admin.announcements.form.targetingCustom')}: ${t('admin.announcements.form.addOrGroup')}`"
+      :max="50"
+      :error="validationError"
+      variant="card"
+      :item-label="(index) => `${t('admin.announcements.form.targetingCustom')} #${index + 1}`"
+      test-id="announcement-groups"
+      @add="addOrGroup"
+      @remove="removeOrGroup"
+    >
+      <template #row="{ item: group, index: groupIndex }">
+        <RuleListEditor
+          :items="group.all_of || []"
+          :item-key="targetingRowKey"
+          :title="`AND (${group.all_of?.length || 0}/50)`"
+          :add-label="t('admin.announcements.form.addAndCondition')"
+          :max="50"
+          variant="card"
+          :item-label="(index) => t('common.ruleIndex', { index: index + 1 })"
+          :test-id="`announcement-conditions-${groupIndex}`"
+          @add="addAndCondition(groupIndex)"
+          @remove="removeAndCondition(groupIndex, $event)"
         >
-          <Icon name="plus" size="sm" class="mr-1" />
-          {{ t('admin.announcements.form.addOrGroup') }}
-        </button>
-      </div>
-
-      <div v-if="anyOf.length === 0" class="rounded-surface border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-dark-600 dark:text-dark-400">
-        {{ t('admin.announcements.form.targetingCustom') }}: {{ t('admin.announcements.form.addOrGroup') }}
-      </div>
-
-      <div
-        v-for="(group, groupIndex) in anyOf"
-        :key="groupIndex"
-        class="rounded-surface border border-gray-200 bg-white p-4 shadow-sm dark:border-dark-700 dark:bg-dark-800"
-      >
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="text-sm font-medium text-gray-900 dark:text-white">
-              {{ t('admin.announcements.form.targetingCustom') }} #{{ groupIndex + 1 }}
-              <span class="ml-2 text-xs font-normal text-gray-500 dark:text-dark-400">AND ({{ (group.all_of?.length || 0) }}/50)</span>
-            </div>
-            <div class="mt-1 text-xs text-gray-500 dark:text-dark-400">
-              {{ t('admin.announcements.form.addAndCondition') }}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            class="btn btn-secondary"
-            @click="removeOrGroup(groupIndex)"
-          >
-            <Icon name="trash" size="sm" class="mr-1" />
-            {{ t('common.delete') }}
-          </button>
-        </div>
-
-        <div class="mt-4 space-y-3">
-          <div
-            v-for="(cond, condIndex) in (group.all_of || [])"
-            :key="condIndex"
-            class="rounded-surface border border-gray-200 bg-gray-50 p-3 dark:border-dark-700 dark:bg-dark-900/30"
-          >
+          <template #row="{ item: cond, index: condIndex }">
             <div class="flex flex-col gap-3 md:flex-row md:items-end">
               <div class="w-full md:w-52">
                 <label class="input-label">{{ t('admin.announcements.form.conditionType') }}</label>
@@ -100,8 +75,7 @@
                   @update:model-value="(v) => setConditionType(groupIndex, condIndex, v as any)"
                 />
               </div>
-
-              <div v-if="cond.type === 'subscription'" class="flex-1">
+              <div v-if="cond.type === 'subscription'" class="min-w-0 flex-1">
                 <label class="input-label">{{ t('admin.announcements.form.selectPackages') }}</label>
                 <div class="grid max-h-40 grid-cols-1 gap-2 overflow-y-auto rounded-surface border border-gray-200 bg-gray-50 p-3 dark:border-dark-600 dark:bg-dark-800 sm:grid-cols-2">
                   <label
@@ -132,8 +106,7 @@
                   </div>
                 </div>
               </div>
-
-              <div v-else class="flex flex-1 flex-col gap-3 sm:flex-row">
+              <div v-else class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row">
                 <div class="w-full sm:w-44">
                   <label class="input-label">{{ t('admin.announcements.form.operator') }}</label>
                   <Select
@@ -153,43 +126,16 @@
                   />
                 </div>
               </div>
-
-              <div class="flex justify-end">
-                <button
-                  type="button"
-                  class="btn btn-secondary"
-                  @click="removeAndCondition(groupIndex, condIndex)"
-                >
-                  <Icon name="trash" size="sm" class="mr-1" />
-                  {{ t('common.delete') }}
-                </button>
-              </div>
             </div>
-          </div>
-
-          <div class="flex justify-end">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              :disabled="(group.all_of?.length || 0) >= 50"
-              @click="addAndCondition(groupIndex)"
-            >
-              <Icon name="plus" size="sm" class="mr-1" />
-              {{ t('admin.announcements.form.addAndCondition') }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="validationError" class="rounded-surface border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-900/10 dark:text-red-300">
-        {{ validationError }}
-      </div>
-    </div>
+          </template>
+        </RuleListEditor>
+      </template>
+    </RuleListEditor>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, toRaw, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type {
   AnnouncementTargeting,
@@ -201,7 +147,8 @@ import type {
 } from '@/types'
 
 import Select from '@/components/common/Select.vue'
-import Icon from '@/components/icons/Icon.vue'
+import RuleListEditor from '@/components/common/RuleListEditor.vue'
+import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 
 const { t } = useI18n()
 
@@ -262,9 +209,34 @@ type TargetingDraft = {
   any_of: AnnouncementConditionGroup[]
 }
 
+// 展示 key 保存在 WeakMap 中，不写入公告的提交数据。
+const inheritedRowKeys = new WeakMap<object, string>()
+const newRowKey = createStableObjectKeyResolver<object>('announcement-targeting')
+
+function targetingRowKey(row: object): string {
+  const raw = toRaw(row)
+  return inheritedRowKeys.get(raw) ?? newRowKey(raw)
+}
+
+// 克隆后的组和条件继承原行身份，编辑字段时保留输入焦点。
+function cloneTargeting(): TargetingDraft {
+  const current = props.modelValue ?? { any_of: [] }
+  const draft: TargetingDraft = JSON.parse(JSON.stringify(current))
+  draft.any_of ??= []
+  draft.any_of.forEach((group, groupIndex) => {
+    const previous = current.any_of?.[groupIndex]
+    if (!previous) return
+    inheritedRowKeys.set(group, targetingRowKey(previous))
+    group.all_of?.forEach((condition, condIndex) => {
+      const previousCondition = previous.all_of?.[condIndex]
+      if (previousCondition) inheritedRowKeys.set(condition, targetingRowKey(previousCondition))
+    })
+  })
+  return draft
+}
+
 function updateTargeting(mutator: (draft: TargetingDraft) => void) {
-  const draft: TargetingDraft = JSON.parse(JSON.stringify(props.modelValue ?? { any_of: [] }))
-  if (!draft.any_of) draft.any_of = []
+  const draft = cloneTargeting()
   mutator(draft)
   emit('update:modelValue', draft)
 }
@@ -387,8 +359,7 @@ watch(
 
     syncTimeout = setTimeout(() => {
       // Build the new targeting state
-      const newTargeting: TargetingDraft = JSON.parse(JSON.stringify(props.modelValue ?? { any_of: [] }))
-      if (!newTargeting.any_of) newTargeting.any_of = []
+      const newTargeting = cloneTargeting()
 
       const groups = newTargeting.any_of ?? []
       for (let gi = 0; gi < groups.length; gi++) {

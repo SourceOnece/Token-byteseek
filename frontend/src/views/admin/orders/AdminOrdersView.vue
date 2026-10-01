@@ -26,7 +26,7 @@
           class="btn btn-secondary shrink-0 btn-icon"
           :title="t('common.refresh')"
         >
-          <Icon name="refresh" size="md" :class="ordersLoading ? 'animate-spin' : ''" />
+          <Icon name="refresh" size="sm" :class="ordersLoading ? 'animate-spin' : ''" />
         </button>
       </div>
       </template>
@@ -40,7 +40,7 @@
               <Icon name="eye" size="sm" />
               {{ t('common.view') }}
             </button>
-            <button v-if="canOpenInvoice(row)" @click="openInvoice(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+            <button v-if="canOpenInvoice(row)" @click="openInvoice(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 dark:text-primary-500 dark:hover:bg-primary-500/8">
               <Icon name="document" size="sm" />
               {{ t('payment.orders.invoice') }}
             </button>
@@ -52,14 +52,14 @@
               <Icon name="exclamationTriangle" size="sm" />
               {{ t('payment.admin.forceExpire') }}
             </button>
-            <button v-if="row.status === 'FAILED'" @click="handleRetryOrder(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+            <button v-if="row.status === 'FAILED'" @click="handleRetryOrder(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 dark:text-primary-500 dark:hover:bg-primary-500/8">
               <Icon name="refresh" size="sm" />
               {{ t('payment.admin.retry') }}
             </button>
             <template v-if="row.status === 'REFUND_REQUESTED'">
               <span v-if="row.refund_amount" class="rounded-full bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">{{ formatOrderAmount(row.refund_amount, row) }}</span>
               <button @click="openRefundDialog(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20">
-                <Icon name="check" size="sm" />
+                <Icon name="check" size="sm" :animate-on-hover="false" />
                 {{ t('payment.admin.approveRefund') }}
               </button>
             </template>
@@ -183,9 +183,7 @@
 </template>
 
 <script setup lang="ts">
-import FilterField from '@/components/common/FilterField.vue'
-import FilterDropdown from '@/components/common/FilterDropdown.vue'
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminPaymentAPI } from '@/api/admin/payment'
@@ -198,6 +196,8 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import Icon from '@/components/icons/Icon.vue'
 import AdminRefundDialog from '@/components/admin/payment/AdminRefundDialog.vue'
 import OrderStatusBadge from '@/components/payment/OrderStatusBadge.vue'
@@ -220,8 +220,6 @@ const ordersLoading = ref(false)
 const orders = ref<PaymentOrder[]>([])
 const orderSearch = ref('')
 const orderFilters = reactive({ status: '', payment_type: '', order_type: '' })
-const showFilterDropdown = ref(false)
-const filterDropdownRef = ref<HTMLElement | null>(null)
 const activeFilterCount = computed(() => [orderFilters.status, orderFilters.payment_type, orderFilters.order_type].filter(Boolean).length)
 const orderPagination = reactive({ page: 1, page_size: 20, total: 0 })
 const selectedOrder = ref<PaymentOrder | null>(null)
@@ -244,12 +242,6 @@ function resetOrderFilters() {
   orderFilters.order_type = ''
   orderPagination.page = 1
   loadOrders()
-}
-
-function handleOrderClickOutside(event: MouseEvent) {
-  const target = event.target
-  if (target instanceof Node && filterDropdownRef.value?.contains(target)) return
-  showFilterDropdown.value = false
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -469,8 +461,5 @@ function formatDateTime(dateStr: string): string { return formatOrderDateTime(da
 
 onMounted(() => {
   loadOrders()
-  document.addEventListener('click', handleOrderClickOutside)
 })
-
-onUnmounted(() => document.removeEventListener('click', handleOrderClickOutside))
 </script>

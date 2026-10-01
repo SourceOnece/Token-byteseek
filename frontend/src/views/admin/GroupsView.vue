@@ -3,10 +3,10 @@
     <TablePageLayout>
       <template #filters>
         <div
-          class="flex flex-col justify-between gap-4 lg:flex-row lg:items-start"
+          class="flex flex-col justify-between gap-2 lg:flex-row lg:items-start"
         >
           <!-- 左侧：模糊搜索和筛选项，可自动换行。 -->
-          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-3">
+          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
             <div class="input-icon-wrap min-w-0 flex-1 sm:flex-none sm:w-64">
               <Icon
                 name="search"
@@ -30,7 +30,7 @@
 
           <!-- 右侧：刷新、排序和创建等操作。 -->
           <div
-            class="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-3 lg:w-auto"
+            class="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-2 lg:w-auto"
           >
             <button
               @click="loadGroups"
@@ -40,7 +40,7 @@
             >
               <Icon
                 name="refresh"
-                size="md"
+                size="sm"
                 :class="loading ? 'animate-spin' : ''"
               />
             </button>
@@ -50,43 +50,46 @@
                 class="btn btn-secondary shrink-0 btn-icon"
                 :title="t('admin.groups.columnSettings')"
               >
-                <Icon name="grid" size="md" />
+                <Icon name="grid" size="sm" />
                 <span class="hidden">{{ t("admin.groups.columnSettings") }}</span>
               </button>
-              <div
-                v-if="showColumnDropdown"
-                class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
-              >
-                <button
-                  v-for="col in toggleableColumns"
-                  :key="col.key"
-                  @click="toggleColumn(col.key)"
-                  class="dropdown-item justify-between"
+              <MotionTransition name="dropdown-fade">
+                <div
+                  v-if="showColumnDropdown" :inert="!(showColumnDropdown) || undefined"
+                  class="dropdown right-0 top-full z-50 mt-1 max-h-menu w-48 overflow-y-auto"
                 >
-                  <span>{{ col.label }}</span>
-                  <Icon
-                    v-if="isColumnVisible(col.key)"
-                    name="check"
-                    size="sm"
-                    class="text-primary-500"
-                    :stroke-width="2"
-                  />
-                </button>
-              </div>
+                  <button
+                    v-for="col in toggleableColumns"
+                    :key="col.key"
+                    @click="toggleColumn(col.key)"
+                    class="dropdown-item justify-between"
+                  >
+                    <span>{{ col.label }}</span>
+                    <Icon
+                      v-if="isColumnVisible(col.key)"
+                      name="check"
+                      size="sm"
+                      class="text-primary-500"
+                      :stroke-width="2"
+                      :animate-on-hover="false"
+                    />
+                  </button>
+                </div>
+              </MotionTransition>
             </div>
             <button
               @click="openSortModal"
               class="btn btn-secondary shrink-0 btn-icon"
               :title="t('admin.groups.sortOrder')"
             >
-              <Icon name="arrowsUpDown" size="md" />
+              <Icon name="arrowsUpDown" size="sm" :animate-on-hover="false" />
             </button>
             <button
               @click="openCreateModal"
               class="btn btn-primary whitespace-nowrap"
               data-tour="groups-create-btn"
             >
-              <Icon name="plus" size="md" class="mr-2" />
+              <Icon name="plus" size="sm" class="mr-2" />
               {{ t("admin.groups.createGroup") }}
             </button>
           </div>
@@ -94,7 +97,8 @@
       </template>
 
       <template #table>
-        <DataTable column-order-storage-key="admin-groups-column-order"
+        <DataTable
+          column-order-storage-key="admin-groups-column-order"
           :columns="columns"
           :data="groups"
           :loading="loading"
@@ -380,26 +384,13 @@
             class="btn btn-primary"
             data-tour="group-form-submit"
           >
-            <svg
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
               v-if="submitting"
               class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            />
             {{ submitting ? t("admin.groups.creating") : t("common.create") }}
           </button>
         </div>
@@ -472,26 +463,13 @@
             class="btn btn-primary"
             data-tour="group-form-submit"
           >
-            <svg
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
               v-if="submitting"
               class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            />
             {{ submitting ? t("admin.groups.updating") : t("common.update") }}
           </button>
         </div>
@@ -572,26 +550,13 @@
             :disabled="sortSubmitting"
             class="btn btn-primary"
           >
-            <svg
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
               v-if="sortSubmitting"
               class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            />
             {{ sortSubmitting ? t("common.saving") : t("common.save") }}
           </button>
         </div>
@@ -626,6 +591,7 @@
 <script setup lang="ts">
 import FilterField from '@/components/common/FilterField.vue'
 import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAppStore } from "@/stores/app";
@@ -758,8 +724,6 @@ const toggleableColumns = computed(() =>
 const hiddenColumns = reactive<Set<string>>(new Set());
 const showColumnDropdown = ref(false);
 const columnDropdownRef = ref<HTMLElement | null>(null);
-const showFilterDropdown = ref(false);
-const filterDropdownRef = ref<HTMLElement | null>(null);
 
 const getValidHiddenColumnKeys = () =>
   new Set(toggleableColumns.value.map((col) => col.key));
@@ -2155,9 +2119,6 @@ const handleClickOutside = (event: MouseEvent) => {
   }
   if (columnDropdownRef.value && !columnDropdownRef.value.contains(target)) {
     showColumnDropdown.value = false;
-  }
-  if (filterDropdownRef.value && !filterDropdownRef.value.contains(target)) {
-    showFilterDropdown.value = false;
   }
 };
 

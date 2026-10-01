@@ -206,7 +206,7 @@ describe('PaymentProviderDialog payment guide', () => {
     ;(wrapper.vm as unknown as { loadProvider: (provider: ProviderInstance) => void }).loadProvider(provider)
     await nextTick()
 
-    await wrapper.find('button.btn-sm').trigger('click')
+    await wrapper.get('[data-testid="easypay-custom-methods-add"]').trigger('click')
     await nextTick()
 
     const inputs = wrapper.findAll('input[type="text"]')
@@ -286,7 +286,7 @@ describe('PaymentProviderDialog payment guide', () => {
     ;(wrapper.vm as unknown as { loadProvider: (provider: ProviderInstance) => void }).loadProvider(provider)
     await nextTick()
 
-    await wrapper.find('button.btn-sm').trigger('click')
+    await wrapper.get('[data-testid="easypay-custom-methods-add"]').trigger('click')
     await nextTick()
 
     const inputs = wrapper.findAll('input[type="text"]')

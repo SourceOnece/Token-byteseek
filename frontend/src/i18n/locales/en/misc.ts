@@ -243,7 +243,9 @@ marketplace: {
     revokeSuccessWithReplacement: 'Plan revoked and {count} API key(s) rebound to the next pack.',
     revokeSuccess: 'Plan revoked successfully. API keys rebound: 0.',
     revokeFailed: 'Failed to revoke the plan. Its status or quota may have changed; please try again.'
-  },
+  ,
+currentPackEnds: 'Current pack ends {date}'
+},
 // Onboarding Tour
   onboarding: {
     restartTour: 'Restart Onboarding Tour',
@@ -535,7 +537,9 @@ marketplace: {
       city: 'City',
       state: 'State',
       optionalMark: ' (optional)',
-    },
+
+title: 'Billing details'
+},
     result: {
       success: 'Payment Successful',
       subscriptionSuccess: 'Subscription Successful',
@@ -658,7 +662,9 @@ marketplace: {
       quota: 'Quota',
       unlimited: 'Unlimited',
       models: 'Models',
-    },
+
+current: 'Current plan'
+},
     days: 'days',
     weeks: 'weeks',
     months: 'months',
@@ -831,5 +837,7 @@ marketplace: {
         revoked: 'Revoked',
       },
     },
-  },
+
+orderSummary: 'Order summary'
+},
 }

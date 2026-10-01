@@ -119,9 +119,9 @@ describe('ImportDataModal', () => {
     expect(importData).not.toHaveBeenCalled()
   })
 
-  it('粘贴有效 JSON 时提交解析后的数据', async () => {
+  it.each(['tokenrouter-data', 'sub2api-data'])('粘贴 %s 版本 2 数据时提交解析后的数据', async (type) => {
     const wrapper = mountModal()
-    const payload = { type: 'sub2api-data', version: 2, providers: [{ name: 'pasted-provider' }], proxies: [] }
+    const payload = { type, version: 2, providers: [{ name: 'pasted-provider' }], proxies: [] }
     importData.mockResolvedValue(successResult)
 
     await wrapper.find('textarea').setValue(JSON.stringify(payload))
@@ -136,8 +136,8 @@ describe('ImportDataModal', () => {
 
   it('同时存在文件和粘贴内容时优先使用粘贴内容', async () => {
     const wrapper = mountModal()
-    const filePayload = { type: 'sub2api-data', version: 2, providers: [{ name: 'file-provider' }], proxies: [] }
-    const pastedPayload = { type: 'sub2api-data', version: 2, providers: [{ name: 'pasted-provider' }], proxies: [] }
+    const filePayload = { type: 'tokenrouter-data', version: 2, providers: [{ name: 'file-provider' }], proxies: [] }
+    const pastedPayload = { type: 'tokenrouter-data', version: 2, providers: [{ name: 'pasted-provider' }], proxies: [] }
     importData.mockResolvedValue(successResult)
 
     const input = wrapper.find('input[type="file"]')
@@ -175,7 +175,7 @@ describe('ImportDataModal', () => {
   it('无有效 JSON 的新选择不会清空已有文件', async () => {
     const wrapper = mountModal()
     const input = wrapper.find('input[type="file"]')
-    const payload = { type: 'sub2api-data', version: 2, providers: [{ name: 'kept-provider' }], proxies: [] }
+    const payload = { type: 'tokenrouter-data', version: 2, providers: [{ name: 'kept-provider' }], proxies: [] }
     importData.mockResolvedValue(successResult)
 
     setInputFiles(input.element, [makeJsonFile('valid.json', payload)])
@@ -200,14 +200,14 @@ describe('ImportDataModal', () => {
 
     setInputFiles(input.element, [
       makeJsonFile('first.json', {
-        type: 'sub2api-data',
+        type: 'tokenrouter-data',
         version: 2,
         providers: [{ name: 'provider-a' }],
         proxies: [],
         skipped_shadows: 1
       }),
       makeJsonFile('second.json', {
-        type: 'sub2api-data',
+        type: 'tokenrouter-data',
         version: 2,
         providers: [{ name: 'provider-b' }],
         proxies: [{ proxy_key: 'proxy-b' }],
@@ -221,7 +221,7 @@ describe('ImportDataModal', () => {
 
     expect(importData).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        type: 'sub2api-data',
+        type: 'tokenrouter-data',
         version: 2,
         providers: [{ name: 'provider-a' }, { name: 'provider-b' }],
         proxies: [{ proxy_key: 'proxy-b' }],
@@ -232,7 +232,7 @@ describe('ImportDataModal', () => {
 
   it('拖入 JSON 文件后可以直接导入', async () => {
     const wrapper = mountModal()
-    const payload = { type: 'sub2api-data', version: 2, providers: [{ name: 'dropped-provider' }], proxies: [] }
+    const payload = { type: 'tokenrouter-data', version: 2, providers: [{ name: 'dropped-provider' }], proxies: [] }
     importData.mockResolvedValue(successResult)
 
     await wrapper.find('.border-dashed').trigger('drop', {
@@ -256,7 +256,7 @@ describe('ImportDataModal', () => {
     })
     setInputFiles(input.element, [
       makeJsonFile('mixed.json', {
-        type: 'sub2api-data',
+        type: 'tokenrouter-data',
         version: 2,
         providers: [{ name: 'created' }, { name: 'failed' }],
         proxies: []

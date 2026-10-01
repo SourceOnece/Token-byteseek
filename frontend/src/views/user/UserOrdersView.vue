@@ -3,11 +3,11 @@
     <TablePageLayout>
       <!-- 筛选工具栏与其他列表页保持一致，不使用额外的卡片外框。 -->
       <template #filters>
-        <div class="flex flex-wrap items-center gap-3">
-          <Select v-model="currentFilter" :options="statusFilters" class="w-36" @change="handlePageChange(1)" />
+        <div class="flex flex-wrap items-center gap-2">
+          <Select v-model="currentFilter" :options="statusFilters" class="w-36" @change="pagination.page = 1; fetchOrders()" />
           <div class="flex flex-1 items-center justify-end gap-2">
             <button @click="fetchOrders" :disabled="loading" class="btn btn-secondary shrink-0 btn-icon" :title="t('common.refresh')">
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
             <button class="btn btn-primary" @click="router.push('/purchase')">{{ t('payment.result.backToRecharge') }}</button>
           </div>
@@ -26,7 +26,7 @@
                 <Icon name="dollar" size="sm" />
                 <span>{{ t('payment.orders.requestRefund') }}</span>
               </button>
-              <button v-if="canOpenInvoice(row)" @click="openInvoice(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+              <button v-if="canOpenInvoice(row)" @click="openInvoice(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 dark:text-primary-500 dark:hover:bg-primary-500/8">
                 <Icon name="document" size="sm" />
                 <span>{{ t('payment.orders.invoice') }}</span>
               </button>

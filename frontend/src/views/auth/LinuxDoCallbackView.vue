@@ -10,7 +10,7 @@
         </p>
       </div>
 
-      <transition name="fade-slow">
+      <MotionTransition name="fade-slow">
         <div
           v-if="
             needsInvitation ||
@@ -230,12 +230,13 @@
             </div>
           </template>
         </div>
-      </transition>
+      </MotionTransition>
     </div>
   </AuthLayout>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'

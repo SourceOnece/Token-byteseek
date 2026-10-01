@@ -2,7 +2,7 @@
   <button
     type="button"
     @click="toggle"
-    class="toggle-control relative inline-flex flex-shrink-0 cursor-pointer rounded-none border-0 p-0 focus:outline-none"
+    class="toggle-control relative inline-flex flex-shrink-0 cursor-pointer rounded-full border-0 p-0 transition-colors duration-normal ease-standard focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-dark-800"
     :class="[
       props.modelValue ? props.onClass : offTrackClass,
       props.disabled && 'cursor-not-allowed opacity-50'
@@ -16,7 +16,7 @@
   >
     <!-- 滑块尺寸、边距与开态位移全部由下方 CSS 变量推导,改档位只调变量不改位移。 -->
     <span
-      class="toggle-thumb pointer-events-none absolute block transform rounded-none border border-bh-ink bg-white transition-transform duration-150 ease-out"
+      class="toggle-thumb pointer-events-none absolute block transform rounded-full bg-white shadow ring-0 transition-transform duration-normal ease-standard"
     />
   </button>
 </template>
@@ -74,8 +74,6 @@ function toggle() {
   --toggle-inset: 0.25rem;
   width: var(--toggle-track-w);
   height: var(--toggle-track-h);
-  box-shadow: inset 0 0 0 2px var(--bh-ink), var(--bh-shadow);
-  transition: translate 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
 }
 
 .toggle-control[data-size='sm'] {
@@ -98,19 +96,5 @@ function toggle() {
 
 .toggle-control[aria-checked='true'] .toggle-thumb {
   transform: translateX(calc(var(--toggle-track-w) - var(--toggle-thumb) - 2 * var(--toggle-inset)));
-}
-
-/* 内描边不改变当前大小档位、滑块行程和受控开关语义。 */
-@media (hover: hover) {
-  .toggle-control:hover:not(:disabled) { translate: -1px -1px; }
-}
-.toggle-control:active:not(:disabled) {
-  translate: 2px 2px;
-  box-shadow: inset 0 0 0 2px var(--bh-ink), 2px 2px 0 var(--bh-shadow-ink);
-}
-.toggle-control:focus-visible { outline: 2px solid var(--bh-blue); outline-offset: 4px; }
-.toggle-control:disabled { box-shadow: inset 0 0 0 2px var(--bh-ink); }
-@media (prefers-reduced-motion: reduce) {
-  .toggle-control, .toggle-thumb { transition: none; }
 }
 </style>

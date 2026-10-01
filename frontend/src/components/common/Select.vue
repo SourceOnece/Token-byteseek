@@ -41,15 +41,16 @@
       <span class="select-icon">
         <Icon
           name="chevronDown"
-          size="md"
-          :class="['transition-transform duration-200', isOpen && 'rotate-180']"
+          size="sm"
+          :class="['transition-transform duration-normal', isOpen && 'rotate-180']"
+          :animate-on-hover="false"
         />
       </span>
     </button>
 
     <!-- Teleport dropdown to body to escape stacking context -->
     <Teleport to="body">
-      <Transition name="dropdown-fade">
+      <MotionTransition name="dropdown-fade">
         <div
           v-if="isOpen"
           ref="dropdownRef"
@@ -108,6 +109,7 @@
                   size="sm"
                   class="text-primary-500"
                   :stroke-width="2"
+                  :animate-on-hover="false"
                 />
               </slot>
             </div>
@@ -118,17 +120,19 @@
             </div>
           </div>
         </div>
-      </Transition>
+      </MotionTransition>
     </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useFloatingMotion } from '@/composables/useFloatingMotion'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, inject } from 'vue'
-import { FILTER_FIELD_KEY, isSameFilterValue, resolveEmptyValue } from './filterPanel'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import { SELECT_PANEL_MAX_HEIGHT, Z_INDEX } from '@/constants/overlay'
+import { FILTER_FIELD_KEY, isSameFilterValue, resolveEmptyValue } from './filterPanel'
 
 const { t } = useI18n()
 
@@ -211,6 +215,7 @@ const dropdownStyle = computed(() => {
   const estimatedWidth = Math.min(Math.max(rect.width, 200), maxDropdownWidth)
   const fallbackLeft = clampDropdownLeft(rect.left, estimatedWidth)
   const style: Record<string, string> = {
+    '--dropdown-shift': dropdownPosition.value === 'top' ? 'var(--motion-shift)' : 'calc(-1 * var(--motion-shift))',
     position: 'fixed',
     left: `${dropdownLeft.value ?? fallbackLeft}px`,
     minWidth: `${rect.width}px`,
@@ -409,6 +414,9 @@ watch(isOpen, (open) => {
   }
 })
 
+// 折叠父区退出时关闭 portal，展开过程中让定位跟随触发按钮。
+useFloatingMotion(containerRef, () => isOpen.value, () => { isOpen.value = false }, updateTriggerRect)
+
 const selectOption = (option: any) => {
   const value = getOptionValue(option) ?? null
   emit('update:modelValue', value)
@@ -521,21 +529,16 @@ onUnmounted(() => {
 /* 基线配方(h-9/px-4/py-1.5/边框/焦点环)已与 .input 同源,模板以 input input-trigger 组合;
    这里只保留展开/错误/禁用三个状态增量。 */
 .select-trigger-open {
-  border-color: var(--bh-blue) !important;
-  box-shadow: 3px 3px 0 0 var(--bh-blue);
-}
-
-.dark .select-trigger-open {
-  border-color: #5581c2 !important;
-  box-shadow: 3px 3px 0 0 #5581c2;
+  /* 展开态使用中性描边和外圈，与输入框焦点保持一致。 */
+  @apply border-primary-900/10 ring-2 ring-black/10 dark:border-dark-400 dark:ring-white/6;
 }
 
 .select-trigger-error {
-  border-color: var(--bh-red) !important;
+  @apply border-red-500 focus:border-red-500 focus:ring-red-500/30;
 }
 
 .select-trigger-disabled {
-  @apply cursor-not-allowed bg-gray-100 opacity-60 dark:bg-dark-900;
+  @apply cursor-not-allowed bg-gray-100 opacity-60 dark:bg-dark-950;
 }
 
 .select-value {
@@ -543,7 +546,7 @@ onUnmounted(() => {
 }
 
 .select-icon {
-  @apply flex-shrink-0 text-gray-800 dark:text-dark-200;
+  @apply flex-shrink-0 text-gray-400 dark:text-dark-400;
 }
 
 .select-clear {
@@ -583,10 +586,10 @@ onUnmounted(() => {
 
 .select-dropdown-portal .select-option {
   @apply flex items-center justify-between gap-2;
-  @apply px-4 py-2.5 text-sm font-semibold;
-  @apply text-gray-800 dark:text-gray-200;
-  @apply cursor-pointer transition-colors duration-100;
-  border-left: 4px solid transparent;
+  @apply px-4 py-2.5 text-sm;
+  @apply text-gray-700 dark:text-gray-300;
+  @apply cursor-pointer transition-colors duration-fast;
+  @apply hover:bg-gray-50 dark:hover:bg-dark-800 dark:hover:text-primary-500;
   pointer-events: auto !important;
 }
 
@@ -596,19 +599,18 @@ onUnmounted(() => {
 }
 
 .select-dropdown-portal .select-option-selected {
-  background: var(--bh-yellow) !important;
-  color: #141414 !important;
-  border-left-color: var(--bh-red);
-  font-weight: 800;
-}
-
-.select-dropdown-portal .select-option-selected .text-primary-500 {
-  color: #141414 !important;
+  /* 深色选中项保留淡品牌色底，文字和勾选使用品牌青。 */
+  @apply bg-gray-100 dark:bg-primary-500/8 dark:hover:bg-primary-500/8;
+  @apply text-primary-700 dark:text-primary-500;
 }
 
 .select-dropdown-portal .select-option-focused {
-  background: rgba(255, 204, 0, 0.22);
-  border-left-color: var(--bh-red);
+  /* 键盘焦点与 hover 共用弱填充，选中项仍使用自己的底色。 */
+  @apply bg-gray-100 dark:bg-dark-800 dark:text-primary-500;
+}
+
+.select-dropdown-portal .select-option-selected.select-option-focused {
+  @apply dark:bg-primary-500/8;
 }
 
 .select-dropdown-portal .select-option-disabled {

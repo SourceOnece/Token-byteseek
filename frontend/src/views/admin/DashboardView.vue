@@ -8,15 +8,13 @@
         :title="t('common.refresh')"
         @click="loadDashboardStats"
       >
-        <Icon name="refresh" size="md" :class="chartsLoading ? 'animate-spin' : ''" />
+        <Icon name="refresh" size="sm" :class="chartsLoading ? 'animate-spin' : ''" />
       </button>
     </template>
 
-    <div class="space-y-6">
+    <div class="space-y-4">
       <!-- Loading State -->
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <LoadingSpinner />
-      </div>
+      <DashboardSkeleton v-if="loading && !stats" />
 
       <template v-else-if="stats">
         <CodexQualityDashboard ref="qualityDashboard" />
@@ -25,9 +23,9 @@
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <!-- Total API Keys -->
           <div class="card p-4">
-            <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-              <div class="shrink-0 self-start bh-dashboard-plate bg-bh-blue">
-                <Icon name="key" size="md" class="text-white" :stroke-width="2" />
+            <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
+              <div class="shrink-0 self-start rounded-control bg-blue-100 p-2 dark:bg-blue-900/30">
+                <Icon name="key" size="md" class="text-blue-600 dark:text-blue-400" :stroke-width="2" />
               </div>
               <div class="min-w-0">
                 <p class="bh-dashboard-stat-label">
@@ -45,9 +43,9 @@
 
           <!-- Service Accounts -->
           <div class="card p-4">
-            <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-              <div class="shrink-0 self-start bh-dashboard-plate bg-bh-red">
-                <Icon name="server" size="md" class="text-white" :stroke-width="2" />
+            <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
+              <div class="shrink-0 self-start rounded-control bg-purple-100 p-2 dark:bg-purple-900/30">
+                <Icon name="server" size="md" class="text-purple-600 dark:text-purple-400" :stroke-width="2" />
               </div>
               <div class="min-w-0">
                 <p class="bh-dashboard-stat-label">
@@ -70,9 +68,9 @@
 
           <!-- Today Requests -->
           <div class="card p-4">
-            <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-              <div class="shrink-0 self-start bh-dashboard-plate bg-bh-yellow">
-                <Icon name="chart" size="md" class="text-gray-950" :stroke-width="2" />
+            <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
+              <div class="shrink-0 self-start rounded-control bg-green-100 p-2 dark:bg-green-900/30">
+                <Icon name="chart" size="md" class="text-green-600 dark:text-green-400" :stroke-width="2" />
               </div>
               <div class="min-w-0">
                 <p class="bh-dashboard-stat-label">
@@ -90,9 +88,9 @@
 
           <!-- New Users Today -->
           <div class="card p-4">
-            <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-              <div class="shrink-0 self-start bh-dashboard-plate bg-gray-950 dark:bg-dark-100">
-                <Icon name="userPlus" size="md" class="text-white dark:text-gray-950" :stroke-width="2" />
+            <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
+              <div class="shrink-0 self-start rounded-control bg-emerald-100 p-2 dark:bg-emerald-900/30">
+                <Icon name="userPlus" size="md" class="text-emerald-600 dark:text-emerald-400" :stroke-width="2" />
               </div>
               <div class="min-w-0">
                 <p class="bh-dashboard-stat-label">
@@ -113,9 +111,9 @@
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <!-- Today Tokens -->
           <div class="card p-4">
-            <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-              <div class="shrink-0 self-start bh-dashboard-plate bg-bh-yellow">
-                <Icon name="cube" size="md" class="text-gray-950" :stroke-width="2" />
+            <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
+              <div class="shrink-0 self-start rounded-control bg-amber-100 p-2 dark:bg-amber-900/30">
+                <Icon name="cube" size="md" class="text-amber-600 dark:text-amber-400" :stroke-width="2" />
               </div>
               <div class="min-w-0">
                 <p class="bh-dashboard-stat-label">
@@ -150,9 +148,9 @@
 
           <!-- Total Tokens -->
           <div class="card p-4">
-            <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-              <div class="shrink-0 self-start bh-dashboard-plate bg-bh-blue">
-                <Icon name="database" size="md" class="text-white" :stroke-width="2" />
+            <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
+              <div class="shrink-0 self-start rounded-control bg-indigo-100 p-2 dark:bg-indigo-900/30">
+                <Icon name="database" size="md" class="text-indigo-600 dark:text-indigo-400" :stroke-width="2" />
               </div>
               <div class="min-w-0">
                 <p class="bh-dashboard-stat-label">
@@ -187,9 +185,9 @@
 
           <!-- Performance (RPM/TPM) -->
           <div class="card p-4">
-            <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-              <div class="shrink-0 self-start bh-dashboard-plate bg-bh-red">
-                <Icon name="bolt" size="md" class="text-white" :stroke-width="2" />
+            <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
+              <div class="shrink-0 self-start rounded-control bg-violet-100 p-2 dark:bg-violet-900/30">
+                <Icon name="bolt" size="md" class="text-violet-600 dark:text-violet-400" :stroke-width="2" />
               </div>
               <div class="min-w-0 flex-1">
                 <p class="bh-dashboard-stat-label">
@@ -213,9 +211,9 @@
 
           <!-- Avg Response Time -->
           <div class="card p-4">
-            <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-              <div class="shrink-0 self-start bh-dashboard-plate bg-gray-950 dark:bg-dark-100">
-                <Icon name="clock" size="md" class="text-white dark:text-gray-950" :stroke-width="2" />
+            <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
+              <div class="shrink-0 self-start rounded-control bg-rose-100 p-2 dark:bg-rose-900/30">
+                <Icon name="clock" size="md" class="text-rose-600 dark:text-rose-400" :stroke-width="2" />
               </div>
               <div class="min-w-0">
                 <p class="bh-dashboard-stat-label">
@@ -233,7 +231,7 @@
         </div>
 
         <!-- Charts Section -->
-        <div class="space-y-6">
+        <div class="space-y-4">
           <!-- Date Range Filter -->
           <div class="card p-4">
             <div class="time-controls flex flex-wrap items-center justify-between gap-2">
@@ -259,7 +257,7 @@
           </div>
 
           <!-- Charts Grid -->
-          <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <ModelDistributionChart
               :model-stats="modelStats"
               :enable-ranking-view="true"
@@ -288,9 +286,7 @@
             </div>
             </div>
             <div class="h-64">
-              <div v-if="userTrendLoading" class="flex h-full items-center justify-center">
-                <LoadingSpinner size="md" />
-              </div>
+              <ChartSkeleton v-if="userTrendLoading" height="100%" />
               <Line v-else-if="userTrendChartData" :data="userTrendChartData" :options="lineOptions" />
               <div
                 v-else
@@ -324,7 +320,8 @@ import type {
 } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import CodexQualityDashboard from '@/components/admin/provider/CodexQualityDashboard.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
+import DashboardSkeleton from '@/components/common/DashboardSkeleton.vue'
 import Icon from '@/components/icons/Icon.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Select from '@/components/common/Select.vue'
@@ -366,7 +363,7 @@ const { formatBalanceAmount, formatUsdAmount } = useBalanceDisplay()
 const { refreshBatchImageAccess } = useBatchImageAccess()
 const stats = ref<DashboardStats | null>(null)
 const qualityDashboard = ref<InstanceType<typeof CodexQualityDashboard> | null>(null)
-const loading = ref(false)
+const loading = ref(true)
 const chartsLoading = ref(false)
 const userTrendLoading = ref(false)
 const rankingLoading = ref(false)
@@ -415,8 +412,8 @@ const granularityOptions = computed(() => [
 // 修复为非一次性快照,主题切换即刻重绘。
 const { isDark } = useChartTheme()
 const chartColors = computed(() => ({
-  text: isDark.value ? '#D9D9DE' : '#2D4F68',
-  grid: isDark.value ? '#29292E' : '#DDF4FC'
+  text: isDark.value ? '#D4D4D8' : '#2D4F68',
+  grid: isDark.value ? '#27272A' : '#DDF4FC'
 }))
 
 // Line chart options (for user trend chart)

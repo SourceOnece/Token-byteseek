@@ -24,8 +24,9 @@
         </button>
       </div>
 
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <LoadingSpinner />
+      <div v-if="loading" class="grid gap-4 md:grid-cols-2" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <ContentSkeleton variant="detail" :rows="4" class="rounded-control border border-gray-200 p-4 dark:border-dark-600" />
+        <ContentSkeleton variant="list" :rows="3" class="rounded-control border border-gray-200 p-4 dark:border-dark-600" />
       </div>
 
       <template v-else>
@@ -120,7 +121,12 @@
               @click="showRules = !showRules"
             >
               <span>{{ t('admin.providers.inviteResetRules') }}</span>
-              <Icon name="chevronDown" size="sm" :class="['transition-transform', showRules && 'rotate-180']" />
+              <Icon
+                name="chevronDown"
+                size="sm"
+                :class="['transition-transform', showRules && 'rotate-180']"
+                :animate-on-hover="false"
+              />
             </button>
             <div v-if="showRules" class="rounded-control bg-gray-50 p-3 text-sm text-gray-600 dark:bg-dark-800 dark:text-gray-300">
               <ul v-if="rules.length > 0" class="list-disc space-y-1 pl-5">
@@ -189,6 +195,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -197,7 +204,6 @@ import type { Provider } from '@/types'
 import type { CodexInviteResetCredit, CodexInviteResetStatus } from '@/api/admin/providers'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const maxEmails = 5

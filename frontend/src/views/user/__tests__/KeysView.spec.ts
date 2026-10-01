@@ -1191,9 +1191,9 @@ describe('user KeysView column settings', () => {
       (select) => select.attributes('data-tour') === 'key-form-group'
     )
     await groupSelect!.vm.$emit('update:modelValue', 42)
-    await wrapper.get('[data-test="model-mapping-add"]').trigger('click')
-    await wrapper.get('[data-test="model-mapping-source-0"]').setValue(' codex-auto-review ')
-    await wrapper.get('[data-test="model-mapping-target-0"]').setValue(' gpt-5.6-luna ')
+    await wrapper.get('[data-testid="model-mapping-add"]').trigger('click')
+    await wrapper.get('[data-testid="model-mapping-source-0"]').setValue(' codex-auto-review ')
+    await wrapper.get('[data-testid="model-mapping-target-0"]').setValue(' gpt-5.6-luna ')
     await wrapper.get('form#key-form').trigger('submit')
     await flushPromises()
 
@@ -1217,9 +1217,9 @@ describe('user KeysView column settings', () => {
     const wrapper = await mountView()
 
     await getButtonByText(wrapper, 'Edit').trigger('click')
-    expect((wrapper.get('[data-test="model-mapping-source-0"]').element as HTMLInputElement).value)
+    expect((wrapper.get('[data-testid="model-mapping-source-0"]').element as HTMLInputElement).value)
       .toBe('codex-auto-review')
-    await wrapper.get('[data-test="model-mapping-remove-0"]').trigger('click')
+    await wrapper.get('[data-testid="model-mapping-remove-0"]').trigger('click')
     await wrapper.get('form#key-form').trigger('submit')
     await flushPromises()
 
@@ -1230,15 +1230,15 @@ describe('user KeysView column settings', () => {
     const wrapper = await mountView()
 
     await getButtonByText(wrapper, 'Create API Key').trigger('click')
-    await wrapper.get('[data-test="model-mapping-add"]').trigger('click')
-    await wrapper.get('[data-test="model-mapping-source-0"]').setValue('bad*source')
-    await wrapper.get('[data-test="model-mapping-target-0"]').setValue('target')
+    await wrapper.get('[data-testid="model-mapping-add"]').trigger('click')
+    await wrapper.get('[data-testid="model-mapping-source-0"]').setValue('bad*source')
+    await wrapper.get('[data-testid="model-mapping-target-0"]').setValue('target')
     expect(wrapper.get('[role="alert"]').text()).toBe('Invalid source wildcard')
 
-    await wrapper.get('[data-test="model-mapping-source-0"]').setValue('alias')
-    await wrapper.get('[data-test="model-mapping-add"]').trigger('click')
-    await wrapper.get('[data-test="model-mapping-source-1"]').setValue(' alias ')
-    await wrapper.get('[data-test="model-mapping-target-1"]').setValue('target-2')
+    await wrapper.get('[data-testid="model-mapping-source-0"]').setValue('alias')
+    await wrapper.get('[data-testid="model-mapping-add"]').trigger('click')
+    await wrapper.get('[data-testid="model-mapping-source-1"]').setValue(' alias ')
+    await wrapper.get('[data-testid="model-mapping-target-1"]').setValue('target-2')
     expect(wrapper.findAll('[role="alert"]').some((error) => error.text() === 'Duplicate source model')).toBe(true)
 
     await wrapper.get('form#key-form').trigger('submit')

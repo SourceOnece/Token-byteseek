@@ -1,9 +1,9 @@
 <template>
   <div class="card overflow-hidden">
-    <div class="flex min-h-[61px] items-center justify-between gap-3 border-b-2 border-gray-950 px-6 py-4 dark:border-dark-200/60">
+    <div class="flex min-h-[61px] items-center justify-between gap-3 border-b border-gray-100 px-6 py-4 dark:border-dark-700">
       <div class="flex min-w-0 items-center gap-2.5">
-        <Icon name="bell" size="md" class="shrink-0 text-bh-red dark:text-accent-300" />
-        <h2 class="truncate text-lg font-extrabold text-gray-950 dark:text-white">
+        <Icon name="bell" size="md" class="shrink-0 text-primary-600 dark:text-primary-400" />
+        <h2 class="truncate text-lg font-semibold text-gray-900 dark:text-white">
           {{ t('dashboard.recentAnnouncements') }}
         </h2>
       </div>
@@ -28,9 +28,19 @@
       <div
         v-if="loading"
         data-testid="announcement-timeline-loading"
-        class="flex items-center justify-center py-12"
+        class="space-y-5 py-4"
+        role="status"
+        :aria-label="t('common.loading')"
+        aria-busy="true"
       >
-        <LoadingSpinner size="lg" />
+        <div v-for="row in 3" :key="row" class="flex items-start gap-4" aria-hidden="true">
+          <Skeleton variant="circle" :width="12" :height="12" class="shrink-0" />
+          <div class="min-w-0 flex-1 space-y-3">
+            <Skeleton width="65%" :height="16" />
+            <Skeleton width="90%" :height="12" />
+            <Skeleton width="35%" :height="12" />
+          </div>
+        </div>
       </div>
 
       <div v-else-if="timelineItems.length === 0" class="py-8">
@@ -50,7 +60,7 @@
             v-if="index < timelineItems.length - 1"
             data-testid="announcement-timeline-connector"
             aria-hidden="true"
-            class="absolute bottom-[-1.625rem] left-[5px] top-[1.375rem] w-px bg-gray-950/25 dark:bg-dark-200/25"
+            class="absolute bottom-[-1.625rem] left-[5px] top-[1.375rem] w-px bg-gray-200 dark:bg-dark-600"
           ></span>
           <span
             v-if="!item.announcement.read_at"
@@ -98,6 +108,7 @@
               name="chevronRight"
               size="sm"
               class="mt-1 shrink-0 text-gray-400 transition-transform group-hover:translate-x-0.5 group-hover:text-primary-500 dark:text-dark-500 dark:group-hover:text-primary-400"
+              :animate-on-hover="false"
             />
           </button>
         </li>
@@ -124,7 +135,7 @@ import { formatDate, formatDateTime } from '@/utils/format'
 import type { UserAnnouncement } from '@/types'
 import AnnouncementPopup from '@/components/common/AnnouncementPopup.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import Skeleton from '@/components/common/Skeleton.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const MAX_ANNOUNCEMENTS = 5

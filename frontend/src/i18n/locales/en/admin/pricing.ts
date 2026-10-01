@@ -592,7 +592,10 @@ riskControl: {
          syncModelsSuccess: 'Synced {count} new model(s)',
          syncModelsAlreadyUpToDate: 'Models already up to date',
          syncModelsError: 'Failed to sync models'
-       }
+       ,
+imageUnitPrice: 'Price per image',
+videoUnitPrice: 'Price per second'
+}
      },
 // Subscriptions
     subscriptions: {

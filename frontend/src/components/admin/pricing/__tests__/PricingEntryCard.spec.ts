@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 
 import PricingEntryCard from '../PricingEntryCard.vue'
 import { createDefaultTimePricingForm, type PricingFormEntry } from '../types'
@@ -99,4 +99,28 @@ describe('PricingEntryCard', () => {
     expect(wrapper.find('[data-testid="fast-multiplier"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="flex-multiplier"]').exists()).toBe(true)
   })
+
+  it.each(['token', 'per_request', 'image', 'video'] as const)('保留 %s 区间的必填提示、输入身份和删除行为', async billingMode => {
+    const wrapper = mount(PricingEntryCard, {
+      props: {
+        entry: makeEntry({ billing_mode: billingMode }),
+        'onUpdate': updated => { void wrapper.setProps({ entry: updated }) },
+      },
+      global: { stubs: { Icon: true, ModelTagInput: true, Select: true, 'transition-group': true } },
+    })
+    const variant = billingMode === 'token' ? 'token' : billingMode === 'per_request' ? 'request' : 'media'
+    await wrapper.get(`[data-testid="pricing-${variant}-intervals-add"]`).trigger('click')
+    await flushPromises()
+    const row = wrapper.get(`[data-testid="pricing-${variant}-intervals-row"]`)
+    expect(row.find('.border-red-400').exists()).toBe(true)
+    const input = row.get('input')
+    await input.setValue('20')
+    await flushPromises()
+    expect(wrapper.get(`[data-testid="pricing-${variant}-intervals-row"]`).get('input').element).toBe(input.element)
+    await wrapper.get(`[data-testid="pricing-${variant}-intervals-remove-0"]`).trigger('click')
+    await flushPromises()
+    expect(wrapper.props('entry').intervals).toHaveLength(0)
+    wrapper.unmount()
+  })
+
 })

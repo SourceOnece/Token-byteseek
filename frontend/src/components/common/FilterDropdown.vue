@@ -194,7 +194,7 @@ defineExpose({ close: () => { open.value = false } })
 
 .filter-trigger-count {
   @apply pointer-events-none absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-compact px-1;
-  @apply bg-bh-yellow text-xs font-bold leading-none text-gray-950;
+  @apply bg-primary-600 text-xs font-bold leading-none text-white;
   @apply ring-2 ring-white dark:ring-dark-950;
 }
 
@@ -204,8 +204,7 @@ defineExpose({ close: () => { open.value = false } })
   @apply max-h-[min(70vh,42rem)];
   @apply bg-white dark:bg-dark-900;
   @apply rounded-surface border border-primary-900/10 dark:border-dark-600;
-  border: 2px solid var(--bh-ink);
-  box-shadow: var(--bh-shadow);
+
 }
 
 /* 头部、已选条件和字段区之间不画分割线，只靠留白区分层次。 */

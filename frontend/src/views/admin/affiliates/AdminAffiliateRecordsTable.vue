@@ -2,7 +2,7 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div class="input-icon-wrap min-w-0 w-full flex-1 sm:w-64 sm:flex-none sm:max-w-none">
             <Icon name="search" size="md" class="input-icon text-gray-400" />
             <input v-model="filters.search" type="text" class="input input-has-icon" :placeholder="t('admin.affiliates.records.searchPlaceholder')" @input="debounceLoad" />
@@ -14,14 +14,14 @@
               @change="handleDateRangeChange"
             />
             <button class="btn btn-secondary shrink-0 btn-icon" :disabled="loading" :title="t('common.refresh')" @click="loadRecords">
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
           </div>
         </div>
       </template>
 
       <template #table>
-        <DataTable :column-order-storage-key="`${sortStorageKey}-columns`"
+        <DataTable
           :columns="columns"
           :data="records"
           :loading="loading"
@@ -29,6 +29,7 @@
           default-sort-key="created_at"
           default-sort-order="desc"
           :sort-storage-key="sortStorageKey"
+          :column-order-storage-key="`${sortStorageKey}-columns`"
           @sort="handleSort"
         >
           <template #cell-inviter="{ row }">
@@ -124,9 +125,7 @@
       width="normal"
       @close="overviewDialog = false"
     >
-      <div v-if="overviewLoading" class="flex justify-center py-8">
-        <div class="h-6 w-6 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></div>
-      </div>
+      <ContentSkeleton v-if="overviewLoading" variant="detail" :rows="6" class="py-4" />
       <div v-else-if="selectedOverview" class="space-y-4">
         <div class="rounded-surface border border-gray-100 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800">
           <div class="font-mono text-sm text-gray-900 dark:text-white">#{{ selectedOverview.user_id }}</div>
@@ -147,6 +146,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, defineComponent, h, onMounted, reactive, ref, type PropType } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'

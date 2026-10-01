@@ -2,9 +2,9 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-3">
-          <div class="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
-            <div class="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[260px_160px_144px_152px] 2xl:w-auto">
+        <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-2 2xl:flex-row 2xl:items-center 2xl:justify-between">
+            <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[260px_160px_144px_152px] 2xl:w-auto">
               <div class="min-w-0">
                 <SearchInput
                   v-model="filters.taskName"
@@ -22,14 +22,14 @@
                 {{ t('common.reset') }}
               </button>
               <button type="button" class="btn btn-secondary" :disabled="loadingKeys || loadingJobs" :title="t('common.refresh')" @click="refreshPage">
-                <Icon name="refresh" size="md" :class="loadingKeys || loadingJobs ? 'animate-spin' : ''" />
+                <Icon name="refresh" size="sm" :class="loadingKeys || loadingJobs ? 'animate-spin' : ''" />
               </button>
               <button type="button" class="btn btn-secondary" @click="showGuideModal = true">
-                <Icon name="book" size="md" class="mr-2" />
+                <Icon name="book" size="sm" class="mr-2" />
                 {{ t('batchImage.actions.usageGuide') }}
               </button>
               <button type="button" class="btn btn-primary" @click="openCreateModal">
-                <Icon name="plus" size="md" class="mr-2" />
+                <Icon name="plus" size="sm" class="mr-2" />
                 {{ t('batchImage.actions.createJob') }}
               </button>
             </div>
@@ -37,7 +37,7 @@
 
           <div
             v-if="selectedJobIds.size"
-            class="flex flex-wrap items-center justify-between gap-3 rounded-control border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-dark-700 dark:bg-dark-800"
+            class="flex flex-wrap items-center justify-between gap-2 rounded-control border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-dark-700 dark:bg-dark-800"
           >
             <i18n-t
               keypath="batchImage.list.selectedJobs"
@@ -57,7 +57,12 @@
                 :disabled="bulkDownloading || selectedDownloadableRows.length === 0"
                 @click="downloadSelectedJobs"
               >
-                <Icon :name="bulkDownloading ? 'refresh' : 'download'" size="sm" class="mr-1.5" :class="bulkDownloading ? 'animate-spin' : ''" />
+                <Icon
+                  :name="bulkDownloading ? 'refresh' : 'download'"
+                  size="sm"
+                  class="mr-1.5"
+                  :class="bulkDownloading ? 'animate-spin' : ''"
+                />
                 {{ t('batchImage.actions.downloadSelected') }}
               </button>
               <button
@@ -66,7 +71,12 @@
                 :disabled="bulkDeleting"
                 @click="deleteSelectedJobs"
               >
-                <Icon :name="bulkDeleting ? 'refresh' : 'trash'" size="sm" class="mr-1.5" :class="bulkDeleting ? 'animate-spin' : ''" />
+                <Icon
+                  :name="bulkDeleting ? 'refresh' : 'trash'"
+                  size="sm"
+                  class="mr-1.5"
+                  :class="bulkDeleting ? 'animate-spin' : ''"
+                />
                 {{ t('batchImage.actions.deleteRecords') }}
               </button>
             </div>
@@ -75,7 +85,8 @@
       </template>
 
       <template #table>
-        <DataTable column-order-storage-key="batch-image-column-order"
+        <DataTable
+          column-order-storage-key="batch-image-column-order"
           :columns="columns"
           :data="visibleBatchJobs"
           :loading="loadingKeys || loadingJobs"
@@ -111,7 +122,11 @@
 	                :title="expandedParentIds.has(row.id) ? t('batchImage.list.collapseChildren') : t('batchImage.list.expandChildren', { n: row.child_count }, row.child_count)"
 	                @click.stop="toggleChildRows(row.id)"
 	              >
-	                <Icon :name="expandedParentIds.has(row.id) ? 'chevronDown' : 'chevronRight'" size="xs" />
+	                <Icon
+	                  name="chevronRight" class="transition-transform duration-normal" :class="{ 'rotate-90': expandedParentIds.has(row.id) }"
+	                  size="xs"
+	                  :animate-on-hover="false"
+	                />
 	              </button>
 	              <span v-else class="w-6 flex-shrink-0" />
 	              <button type="button" class="min-w-0 flex-1 rounded-control py-1 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/10 dark:hover:bg-dark-700 dark:focus-visible:ring-primary-500/30" @click="selectJob(row.id)">
@@ -196,9 +211,9 @@
               >
                 <Icon
                   :name="isDownloadingJob(row.id) ? 'refresh' : 'download'"
-	                  size="sm"
-	                  :class="isDownloadingJob(row.id) ? 'animate-spin' : ''"
-	                />
+                  size="sm"
+                  :class="isDownloadingJob(row.id) ? 'animate-spin' : ''"
+                />
                 <span class="text-xs">{{ t('batchImage.actions.download') }}</span>
 	              </button>
               <div v-if="canRetry(row) || canDeleteRecord(row)">
@@ -261,7 +276,7 @@
               :disabled="pagination.page <= 1 || loadingJobs"
               @click="handlePageChange(pagination.page - 1)"
             >
-              <Icon name="chevronLeft" size="sm" class="mr-1" />
+              <Icon name="chevronLeft" size="sm" class="mr-1" :animate-on-hover="false" />
               {{ t('pagination.previous') }}
             </button>
             <button
@@ -271,7 +286,7 @@
               @click="handlePageChange(pagination.page + 1)"
             >
               {{ t('pagination.next') }}
-              <Icon name="chevronRight" size="sm" class="ml-1" />
+              <Icon name="chevronRight" size="sm" class="ml-1" :animate-on-hover="false" />
             </button>
           </div>
         </div>
@@ -281,7 +296,7 @@
     <Teleport to="body">
       <div
         v-if="openMoreJobId"
-        class="fixed z-teleport-tooltip w-44 overflow-hidden rounded-control bg-white py-1 text-sm shadow-lg ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
+        class="dropdown fixed z-teleport-tooltip w-44 overflow-hidden text-sm"
         :style="moreMenuStyle"
         @click.stop
       >
@@ -304,7 +319,11 @@
               :disabled="deletingBatchId === job.id"
               @click="deleteJob(job)"
             >
-              <Icon :name="deletingBatchId === job.id ? 'refresh' : 'trash'" size="sm" :class="deletingBatchId === job.id ? 'animate-spin' : ''" />
+              <Icon
+                :name="deletingBatchId === job.id ? 'refresh' : 'trash'"
+                size="sm"
+                :class="deletingBatchId === job.id ? 'animate-spin' : ''"
+              />
               {{ t('batchImage.actions.deleteRecords') }}
             </button>
           </template>
@@ -313,27 +332,29 @@
     </Teleport>
 
     <Teleport to="body">
-      <div
-        v-if="promptPopover.visible"
-        class="batch-prompt-popover fixed z-teleport-tooltip rounded-surface border border-gray-200 bg-white p-3 text-sm text-gray-800 shadow-xl ring-1 ring-black/5 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-100 dark:ring-white/10"
-        :style="promptPopover.style"
-        @mouseenter="cancelPromptPopoverClose"
-        @mouseleave="schedulePromptPopoverClose"
-      >
-        <div class="mb-2 flex items-center justify-between gap-3">
-          <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('batchImage.promptPopover.title') }}</span>
-          <button
-            type="button"
-            class="rounded-control px-2 py-1 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 dark:text-primary-300 dark:hover:bg-primary-900/20"
-            @click="copyPromptPopover"
-          >
-            {{ t('common.copy') }}
-          </button>
+      <MotionTransition name="fade">
+        <div
+          v-if="promptPopover.visible" :inert="!(promptPopover.visible) || undefined"
+          class="batch-prompt-popover fixed z-teleport-tooltip rounded-surface border border-gray-200 bg-white p-3 text-sm text-gray-800 shadow-xl ring-1 ring-black/5 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-100 dark:ring-white/10"
+          :style="promptPopover.style"
+          @mouseenter="cancelPromptPopoverClose"
+          @mouseleave="schedulePromptPopoverClose"
+        >
+          <div class="mb-2 flex items-center justify-between gap-3">
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('batchImage.promptPopover.title') }}</span>
+            <button
+              type="button"
+              class="rounded-control px-2 py-1 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 dark:text-primary-300 dark:hover:bg-primary-900/20"
+              @click="copyPromptPopover"
+            >
+              {{ t('common.copy') }}
+            </button>
+          </div>
+          <p class="max-h-48 overflow-y-auto whitespace-pre-wrap break-words leading-6 selection:bg-primary-100 selection:text-primary-900 dark:selection:bg-primary-900/60 dark:selection:text-primary-100">
+            {{ promptPopover.text }}
+          </p>
         </div>
-        <p class="max-h-48 overflow-y-auto whitespace-pre-wrap break-words leading-6 selection:bg-primary-100 selection:text-primary-900 dark:selection:bg-primary-900/60 dark:selection:text-primary-100">
-          {{ promptPopover.text }}
-        </p>
-      </div>
+      </MotionTransition>
     </Teleport>
 
     <BaseDialog :show="!!currentJob" :title="t('batchImage.detail.title')" width="extra-wide" @close="closeDetail">
@@ -372,13 +393,18 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('batchImage.detail.items') }}</h3>
           <button type="button" class="btn btn-secondary btn-sm" :disabled="refreshing || loadingItems" @click="refreshDetail">
-            <Icon name="refresh" size="sm" class="mr-1.5" :class="refreshing || loadingItems ? 'animate-spin' : ''" />
+            <Icon
+              name="refresh"
+              size="sm"
+              class="mr-1.5"
+              :class="refreshing || loadingItems ? 'animate-spin' : ''"
+            />
             {{ t('common.refresh') }}
           </button>
         </div>
 
-        <div v-if="items.length" class="overflow-x-auto rounded-control border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
-          <table class="w-full min-w-[860px] table-fixed divide-y divide-gray-200 text-sm dark:divide-dark-700">
+        <div v-if="items.length || loadingItems" class="overflow-x-auto rounded-control border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
+          <table :aria-busy="loadingItems && !items.length" class="w-full min-w-[860px] table-fixed divide-y divide-gray-200 text-sm dark:divide-dark-700">
             <colgroup>
               <col class="w-[18%]" />
               <col class="w-[34%]" />
@@ -395,7 +421,8 @@
                 <th class="px-3 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('batchImage.detail.result') }}</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
+            <TableSkeletonBody v-if="loadingItems && !items.length" :columns="5" cell-class="px-3 py-3" />
+            <tbody v-else class="divide-y divide-gray-100 dark:divide-dark-700">
               <tr
                 v-for="item in items"
                 :key="itemPreviewKey(item)"
@@ -456,7 +483,11 @@
                       :title="previewErrorIds.has(itemPreviewKey(item)) ? t('batchImage.detail.previewReload') : t('batchImage.detail.previewLoad')"
                       @click="loadItemPreview(item)"
                     >
-                      <Icon :name="previewLoadingIds.has(itemPreviewKey(item)) ? 'refresh' : 'eye'" size="sm" :class="previewLoadingIds.has(itemPreviewKey(item)) ? 'animate-spin' : ''" />
+                      <Icon
+                        :name="previewLoadingIds.has(itemPreviewKey(item)) ? 'refresh' : 'eye'"
+                        size="sm"
+                        :class="previewLoadingIds.has(itemPreviewKey(item)) ? 'animate-spin' : ''"
+                      />
                     </button>
                     <div v-else class="flex h-full w-full items-center justify-center text-gray-400" :title="item.image_count > 0 ? t('batchImage.detail.previewUnavailable') : t('batchImage.detail.noImage')">
                       <Icon name="document" size="sm" />
@@ -477,11 +508,15 @@
           </table>
         </div>
         <div v-else class="rounded-control border border-dashed border-gray-200 py-10 text-center dark:border-dark-700">
-          <Icon name="refresh" size="lg" class="mx-auto mb-3 text-gray-400" :class="loadingItems ? 'animate-spin' : ''" />
+          <Icon
+            name="refresh"
+            size="lg"
+            class="mx-auto mb-3 text-gray-400"
+          />
           <p class="text-sm font-medium text-gray-700 dark:text-gray-200">
-            {{ loadingItems ? t('batchImage.detail.loadingItems') : t('batchImage.detail.noItems') }}
+            {{ t('batchImage.detail.noItems') }}
           </p>
-          <p v-if="!loadingItems" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {{ t('batchImage.detail.noItemsHint') }}
           </p>
         </div>
@@ -490,7 +525,13 @@
       <template #footer>
         <div class="flex justify-end gap-3">
 	          <button type="button" class="btn btn-secondary" :disabled="!currentJob || !canCancel(currentJob) || cancelling" @click="cancelSelected">
-	            <Icon v-if="cancelling" name="refresh" size="sm" class="mr-2 animate-spin" />
+	            <Icon
+	              v-if="cancelling"
+	              name="refresh"
+	              size="sm"
+	              class="mr-2 animate-spin"
+	              :animate-on-hover="false"
+	            />
 	            {{ t('batchImage.actions.cancelJob') }}
 	          </button>
 	          <button
@@ -500,7 +541,12 @@
 	            :disabled="retryingBatchId === currentJob.id"
 	            @click="retrySelected"
 	          >
-	            <Icon name="refresh" size="sm" class="mr-2" :class="currentJob && retryingBatchId === currentJob.id ? 'animate-spin' : ''" />
+	            <Icon
+	              name="refresh"
+	              size="sm"
+	              class="mr-2"
+	              :class="currentJob && retryingBatchId === currentJob.id ? 'animate-spin' : ''"
+	            />
 	            {{ t('batchImage.actions.retryFailedItems') }}
 	          </button>
 	          <button
@@ -698,7 +744,13 @@
         <div class="flex justify-end gap-3">
           <button type="button" class="btn btn-secondary" :disabled="submitting" @click="closeCreateModal">{{ t('common.cancel') }}</button>
 	          <button type="button" class="btn btn-primary inline-flex min-w-[120px] justify-center" :disabled="submitting || loadingModels || (parsedItems.length === 0 && !promptDraft.trim()) || !selectedApiKey || !form.model" @click="submitJob">
-            <Icon v-if="submitting" name="refresh" size="sm" class="mr-2 animate-spin" />
+            <Icon
+              v-if="submitting"
+              name="refresh"
+              size="sm"
+              class="mr-2 animate-spin"
+              :animate-on-hover="false"
+            />
             {{ submitting ? t('common.submitting') : t('batchImage.actions.submitJob') }}
           </button>
         </div>
@@ -742,6 +794,8 @@
 </template>
 
 <script setup lang="ts">
+import TableSkeletonBody from '@/components/common/TableSkeletonBody.vue'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -812,7 +866,7 @@ type PreviewCacheRecord = {
 type PreviewImageSource = ImageBitmap | HTMLImageElement
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled', 'output_deleted'])
-const PREVIEW_CACHE_DB_NAME = 'sub2api-batch-image-preview-cache'
+const PREVIEW_CACHE_DB_NAME = 'tokenrouter-batch-image-preview-cache'
 const PREVIEW_CACHE_STORE_NAME = 'thumbnails'
 const PREVIEW_THUMBNAIL_MAX_EDGE = 360
 const PREVIEW_THUMBNAIL_QUALITY = 0.72
@@ -840,7 +894,7 @@ const outputCountSelectOptions = computed<SelectOption[]>(() =>
 )
 
 const columns = computed<Column[]>(() => [
-  { key: 'select', label: '', sortable: false, class: 'w-12 text-center' },
+  { key: 'select', label: '', sortable: false },
   { key: 'id', label: t('batchImage.columns.taskName'), sortable: false, class: 'w-[240px] max-w-[240px]' },
   { key: 'model', label: t('batchImage.columns.model'), sortable: false, class: 'w-[180px] max-w-[180px] text-center' },
   { key: 'api_key_name', label: t('batchImage.columns.apiKey'), sortable: false, class: 'w-40 max-w-40 text-center' },
@@ -1054,7 +1108,7 @@ const endpointBase = computed(() => {
   const configured = appStore.apiBaseUrl?.trim()
   if (configured) return configured.replace(/\/+$/, '')
   if (typeof window !== 'undefined') return window.location.origin.replace(/\/+$/, '')
-  return '<你的 Sub2API API 端点>'
+  return '<你的 TokenRouter API 端点>'
 })
 
 const selectedModelReferenceLimit = computed(() => referenceImageLimitForModel(form.model))
@@ -1089,7 +1143,7 @@ function referenceImageLimitForModel(model: string) {
 }
 
 const agentInstruction = computed(() => `---
-name: sub2api-batch-image
+name: tokenrouter-batch-image
 description: 当用户希望用 Gemini/Vertex 批量生成图片、批量跑提示词、下载批量生图结果、重试失败图片时使用。
 ---
 
@@ -1664,7 +1718,7 @@ async function submitJob() {
         response_mime_type: form.responseMimeType,
         items: parsedItems.value,
 	      },
-	      `sub2api-ui-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+	      `tokenrouter-ui-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
 	    )
 	    currentJob.value = job
 	    selectedBatchId.value = job.id
@@ -1845,7 +1899,7 @@ async function retryFailedJob(job: BatchImageJobRow | BatchImageJob) {
         response_mime_type: form.responseMimeType,
         items: failedItems,
       },
-      `sub2api-ui-retry-${job.id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      `tokenrouter-ui-retry-${job.id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     )
     currentJob.value = retryJob
     selectedBatchId.value = retryJob.id

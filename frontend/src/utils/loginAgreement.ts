@@ -12,3 +12,8 @@ export function hasAcceptedLoginAgreement(revision: string): boolean {
     return false
   }
 }
+
+// 沿用 ByteSeek 已有的同意记录键，撤回不恢复其他品牌旧记录。
+export function revokeLoginAgreement(): void {
+  try { localStorage.removeItem(LOGIN_AGREEMENT_STORAGE_KEY) } catch { /* 存储受限时不阻断界面。 */ }
+}

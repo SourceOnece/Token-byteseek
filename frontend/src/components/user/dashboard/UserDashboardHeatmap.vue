@@ -140,10 +140,10 @@ const FALLBACK_WEEKS = 53
 // 格子分档色：0 为无用量，1-4 按用量分位递增
 const LEVEL_CLASSES = [
   'bg-gray-100 dark:bg-dark-700',
-  'bg-emerald-200 dark:bg-emerald-800',
-  'bg-emerald-300 dark:bg-emerald-600',
-  'bg-emerald-500 dark:bg-emerald-400',
-  'bg-emerald-700 dark:bg-emerald-300',
+  'bg-green-200 dark:bg-green-800',
+  'bg-green-300 dark:bg-green-600',
+  'bg-green-500 dark:bg-green-400',
+  'bg-green-700 dark:bg-green-300',
 ]
 // 方向键在日期间移动的步长：上下为前后一天，左右为前后一周
 const KEY_OFFSETS: Record<string, number> = { ArrowUp: -1, ArrowDown: 1, ArrowLeft: -7, ArrowRight: 7 }
@@ -446,7 +446,7 @@ const tooltipStyle = computed(() => {
     overflow: 'hidden',
     boxSizing: 'border-box' as const,
     // 定位随日期立即更新，提示只做淡入淡出。
-    transition: 'opacity var(--motion-fast) var(--motion-ease, cubic-bezier(.22,1,.36,1))',
+    transition: 'opacity var(--motion-fast) var(--motion-ease)',
     willChange: 'opacity',
   }
 })
@@ -496,7 +496,7 @@ defineExpose({ reload: load })
 /* 可点击的格子：悬停或键盘聚焦时放大并加外环 */
 .heatmap-cell-interactive {
   cursor: pointer;
-  transition: transform var(--motion-fast) var(--motion-ease, cubic-bezier(.22,1,.36,1)), box-shadow var(--motion-fast) var(--motion-ease, cubic-bezier(.22,1,.36,1));
+  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
 }
 
 .heatmap-cell-interactive:hover,
@@ -532,7 +532,7 @@ defineExpose({ reload: load })
 
 /* 首次入场：按列错峰从小到大淡入，延迟由 --wave-delay 提供 */
 .heatmap-cell-enter {
-  animation: heatmap-cell-enter var(--dash-heatmap-enter-ms, 320ms) var(--motion-ease, cubic-bezier(.22,1,.36,1)) var(--wave-delay, 0ms) both;
+  animation: heatmap-cell-enter var(--dash-heatmap-enter-ms, 320ms) var(--motion-ease) var(--wave-delay, 0ms) both;
 }
 
 @keyframes heatmap-cell-enter {

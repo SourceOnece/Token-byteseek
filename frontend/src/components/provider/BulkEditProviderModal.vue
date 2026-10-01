@@ -11,14 +11,7 @@
       <!-- Info -->
       <div class="rounded-control bg-blue-50 p-4 dark:bg-blue-900/20">
         <p class="text-sm text-blue-700 dark:text-blue-400">
-          <svg class="mr-1.5 inline h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
+          <Icon name="infoCircle" size="md" class="mr-1.5 inline h-5 w-5" />
           {{ t('admin.providers.bulkEdit.selectionInfo', { count: targetMode === 'filtered' ? targetPreviewCount : providerIds.length }) }}
         </p>
       </div>
@@ -26,9 +19,7 @@
       <!-- Mixed platform warning -->
       <div v-if="isMixedPlatform" class="rounded-control bg-amber-50 p-4 dark:bg-amber-900/20">
         <p class="text-sm text-amber-700 dark:text-amber-400">
-          <svg class="mr-1.5 inline h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
+          <Icon name="exclamationTriangle" size="md" class="mr-1.5 inline h-5 w-5" />
           {{ t('admin.providers.bulkEdit.mixedPlatformWarning', { platforms: targetSelectedPlatforms.join(', ') }) }}
         </p>
       </div>
@@ -245,51 +236,27 @@
               <button
                 type="button"
                 :class="[
-                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                   modelRestrictionMode === 'whitelist'
-                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
                 ]"
                 @click="modelRestrictionMode = 'whitelist'"
               >
-                <svg
-                  class="mr-1.5 inline h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <Icon name="checkCircle" size="sm" :animate-on-hover="false" class="mr-1.5 inline h-4 w-4" />
                 {{ t('admin.providers.modelWhitelist') }}
               </button>
               <button
                 type="button"
                 :class="[
-                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                   modelRestrictionMode === 'mapping'
                     ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
                 ]"
                 @click="modelRestrictionMode = 'mapping'"
               >
-                <svg
-                  class="mr-1.5 inline h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                  />
-                </svg>
+                <Icon name="swap" size="sm" class="mr-1.5 inline h-4 w-4" />
                 {{ t('admin.providers.modelMapping') }}
               </button>
             </div>
@@ -298,22 +265,10 @@
             </p>
 
             <!-- Whitelist Mode -->
-            <div v-if="modelRestrictionMode === 'whitelist'">
+            <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
               <div class="mb-3 rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
                 <p class="text-xs text-blue-700 dark:text-blue-400">
-                  <svg
-                    class="mr-1 inline h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                  <Icon name="infoCircle" size="sm" class="mr-1 inline h-4 w-4" />
                   {{ t('admin.providers.selectAllowedModels') }}
                 </p>
               </div>
@@ -332,110 +287,12 @@
             </div>
 
             <!-- Mapping Mode -->
-            <div v-else>
-              <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
-                <p class="text-xs text-purple-700 dark:text-purple-400">
-                  <svg
-                    class="mr-1 inline h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  {{ t('admin.providers.mapRequestModels') }}
-                </p>
-              </div>
-
-              <!-- Model Mapping List -->
-              <div v-if="modelMappings.length > 0" class="mb-3 space-y-2">
-                <div
-                  v-for="(mapping, index) in modelMappings"
-                  :key="index"
-                  class="flex items-center gap-2"
-                >
-                  <input
-                    v-model="mapping.from"
-                    type="text"
-                    class="input flex-1"
-                    :placeholder="t('admin.providers.requestModel')"
-                  />
-                  <svg
-                    class="h-4 w-4 flex-shrink-0 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M14 5l7 7m0 0l-7 7m7-7H3"
-                    />
-                  </svg>
-                  <input
-                    v-model="mapping.to"
-                    type="text"
-                    class="input flex-1"
-                    :placeholder="t('admin.providers.actualModel')"
-                  />
-                  <button
-                    type="button"
-                    class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                    @click="removeModelMapping(index)"
-                  >
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-                @click="addModelMapping"
-              >
-                <svg
-                  class="mr-1 inline h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                {{ t('admin.providers.addMapping') }}
-              </button>
-
-              <!-- Quick Add Buttons -->
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="preset in filteredPresets"
-                  :key="preset.label"
-                  type="button"
-                  :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-                  @click="addPresetMapping(preset.from, preset.to)"
-                >
-                  + {{ preset.label }}
-                </button>
-              </div>
-            </div>
-
+            <ProviderModelMappingEditor
+              v-else
+              v-model="modelMappings"
+              :presets="filteredPresets"
+              @preset="addPresetMapping"
+            />
         </div>
       </div>
 
@@ -503,14 +360,7 @@
               @keyup.enter="addCustomErrorCode"
             />
             <button type="button" class="btn btn-secondary px-3" @click="addCustomErrorCode">
-              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
+              <Icon name="plus" size="sm" class="h-4 w-4" />
             </button>
           </div>
 
@@ -1191,44 +1041,13 @@
           id="bulk-edit-openai-compact-model-mapping"
           :class="!enableOpenAICompactModelMapping && 'pointer-events-none opacity-50'"
         >
-          <div v-if="openAICompactModelMappings.length > 0" class="mb-3 space-y-2">
-            <div
-              v-for="(mapping, index) in openAICompactModelMappings"
-              :key="index"
-              class="flex items-center gap-2"
-            >
-              <input
-                v-model="mapping.from"
-                type="text"
-                class="input flex-1"
-                :placeholder="t('admin.providers.fromModel')"
-                data-testid="bulk-edit-openai-compact-model-mapping-input"
-              />
-              <span class="text-gray-400">→</span>
-              <input
-                v-model="mapping.to"
-                type="text"
-                class="input flex-1"
-                :placeholder="t('admin.providers.toModel')"
-                data-testid="bulk-edit-openai-compact-model-mapping-input"
-              />
-              <button
-                type="button"
-                class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                @click="removeOpenAICompactModelMapping(index)"
-              >
-                <Icon name="trash" size="sm" />
-              </button>
-            </div>
-          </div>
-          <button
-            type="button"
-            class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-            data-testid="bulk-edit-openai-compact-model-mapping-add"
-            @click="addOpenAICompactModelMapping"
-          >
-            + {{ t('admin.providers.addMapping') }}
-          </button>
+          <ProviderModelMappingEditor
+            v-model="openAICompactModelMappings"
+            :hint="''"
+            :source-placeholder="t('admin.providers.fromModel')"
+            :target-placeholder="t('admin.providers.toModel')"
+            test-id="bulk-edit-openai-compact-model-mapping"
+          />
         </div>
       </div>
 
@@ -1262,7 +1081,8 @@
             <Toggle v-model="rpmLimitEnabled" variant="flush" off-tone="soft" />
           </div>
 
-          <div v-if="rpmLimitEnabled" class="space-y-3">
+          <Collapse :open="rpmLimitEnabled" unmount-on-hide>
+            <div class="space-y-3">
             <div>
               <label class="input-label text-xs">{{ t('admin.providers.quotaControl.rpmLimit.baseRpm') }}</label>
               <input
@@ -1284,9 +1104,9 @@
                   type="button"
                   @click="bulkRpmStrategy = 'tiered'"
                   :class="[
-                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition-all',
+                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition',
                     bulkRpmStrategy === 'tiered'
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
                   ]"
                 >
@@ -1296,9 +1116,9 @@
                   type="button"
                   @click="bulkRpmStrategy = 'sticky_exempt'"
                   :class="[
-                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition-all',
+                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition',
                     bulkRpmStrategy === 'sticky_exempt'
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
                   ]"
                 >
@@ -1321,6 +1141,7 @@
             </div>
 
             </div>
+          </Collapse>
           </div>
 
         <!-- 用户消息限速模式（独立于 RPM 开关，始终可见） -->
@@ -1382,15 +1203,17 @@
             data-testid="bulk-edit-tls-fingerprint-profile"
             :options="tlsFingerprintProfileOptions"
           />
-          <div v-if="tlsFingerprintEnabled && allOpenAIOAuth" class="mt-3">
-            <Select
-              v-model="tlsFingerprintRouterId"
-              id="bulk-edit-tls-fingerprint-router"
-              data-testid="bulk-edit-tls-fingerprint-router"
-              :options="tlsFingerprintRouterOptions"
-            />
-            <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
-          </div>
+          <Collapse :open="tlsFingerprintEnabled && allOpenAIOAuth" unmount-on-hide>
+            <div class="mt-3">
+              <Select
+                v-model="tlsFingerprintRouterId"
+                id="bulk-edit-tls-fingerprint-router"
+                data-testid="bulk-edit-tls-fingerprint-router"
+                :options="tlsFingerprintRouterOptions"
+              />
+              <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
+            </div>
+          </Collapse>
         </div>
       </div>
 
@@ -1436,26 +1259,13 @@
           :disabled="submitting"
           class="btn btn-primary"
         >
-          <svg
+          <Icon
+            name="loader"
+            size="sm"
+            :animate-on-hover="false"
             v-if="submitting"
             class="-ml-1 mr-2 h-4 w-4 animate-spin"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            />
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
-          </svg>
+          />
           {{
             submitting ? t('admin.providers.bulkEdit.updating') : t('admin.providers.bulkEdit.submit')
           }}
@@ -1469,6 +1279,9 @@
 
 <script setup lang="ts">
 import CodexTicketAccountSettings from '@/components/admin/provider/CodexTicketAccountSettings.vue'
+import { vContentReveal } from '@/directives/contentReveal'
+import Collapse from '@/components/common/Collapse.vue'
+
 import ProviderProtocolSelector from './ProviderProtocolSelector.vue'
 import type { ProtocolID } from '@/types'
 import OpenAICompactionCheckbox from './OpenAICompactionCheckbox.vue'
@@ -1493,6 +1306,8 @@ import GroupSelector from '@/components/common/GroupSelector.vue'
 import CodexImageToolModeSelector from '@/components/provider/CodexImageToolModeSelector.vue'
 import ModelWhitelistSelector from '@/components/provider/ModelWhitelistSelector.vue'
 import Icon from '@/components/icons/Icon.vue'
+import ProviderModelMappingEditor from '@/components/provider/ProviderModelMappingEditor.vue'
+import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import {
   buildModelMappingObject,
   buildPersistedModelRestriction,
@@ -1657,17 +1472,12 @@ const filteredPresets = computed(() => {
 })
 
 // Model mapping type
-interface ModelMapping {
-  from: string
-  to: string
-}
-
 type OptionalNumberInputValue = number | null | ''
 
 interface ParsedModelRestrictionState {
   mode: 'whitelist' | 'mapping'
   allowedModels: string[]
-  modelMappings: ModelMapping[]
+  modelMappings: ModelMappingRow[]
 }
 
 // State - field enable flags
@@ -1709,7 +1519,7 @@ const submitting = ref(false)
 const baseUrl = ref('')
 const modelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const allowedModels = ref<string[]>([])
-const modelMappings = ref<ModelMapping[]>([])
+const modelMappings = ref<ModelMappingRow[]>([])
 const selectedErrorCodes = ref<number[]>([])
 const customErrorCodeInput = ref<number | null>(null)
 const interceptWarmupRequests = ref(false)
@@ -1747,7 +1557,7 @@ const codexFingerprintModeOptions = computed(() => [
 ])
 const openAICompactMode = ref<OpenAICompactMode>('force_on')
 const openAINativeCompactionV2Mode = ref<OpenAICompactMode>('force_on')
-const openAICompactModelMappings = ref<ModelMapping[]>([])
+const openAICompactModelMappings = ref<ModelMappingRow[]>([])
 const rpmLimitEnabled = ref(false)
 const bulkBaseRpm = ref<number | null>(null)
 const bulkRpmStrategy = ref<'tiered' | 'sticky_exempt'>('tiered')
@@ -1811,10 +1621,10 @@ const openAIAPIKeyWSModeConcurrencyHintKey = computed(() =>
   resolveOpenAIWSModeConcurrencyHintKey(openaiAPIKeyResponsesWebSocketV2Mode.value)
 )
 
-const cloneModelMappings = (mappings: ModelMapping[]) =>
+const cloneModelMappings = (mappings: ModelMappingRow[]) =>
   mappings.map(({ from, to }) => ({ from, to }))
 
-const normalizeModelMappings = (mappings: ModelMapping[]) => {
+const normalizeModelMappings = (mappings: ModelMappingRow[]) => {
   return cloneModelMappings(mappings)
     .map(({ from, to }) => ({
       from: from.trim(),
@@ -1853,7 +1663,7 @@ const parseProviderModelRestriction = (provider: Provider): ParsedModelRestricti
   const credentials = (provider.credentials as Record<string, unknown>) || {}
 
   let allowedModels: string[] = []
-  let modelMappings: ModelMapping[] = []
+  let modelMappings: ModelMappingRow[] = []
 
   if (provider.platform === 'antigravity') {
     const rawMapping = credentials.model_mapping as Record<string, string> | undefined
@@ -1963,22 +1773,6 @@ const loadSelectedProviderDefaults = async () => {
 }
 
 // Model mapping helpers
-const addModelMapping = () => {
-  modelMappings.value.push({ from: '', to: '' })
-}
-
-const removeModelMapping = (index: number) => {
-  modelMappings.value.splice(index, 1)
-}
-
-const addOpenAICompactModelMapping = () => {
-  openAICompactModelMappings.value.push({ from: '', to: '' })
-}
-
-const removeOpenAICompactModelMapping = (index: number) => {
-  openAICompactModelMappings.value.splice(index, 1)
-}
-
 const addPresetMapping = (from: string, to: string) => {
   const exists = modelMappings.value.some((m) => m.from === from)
   if (exists) {

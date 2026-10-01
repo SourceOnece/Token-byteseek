@@ -75,7 +75,7 @@
   </div>
 
   <Teleport to="body">
-    <Transition name="agreement-fade">
+    <MotionTransition name="agreement-fade">
       <div
         v-if="dialogVisible"
         class="fixed inset-0 z-announcement-top flex items-center justify-center overflow-y-auto bg-gray-950/60 p-4 backdrop-blur-sm"
@@ -151,11 +151,12 @@
           </div>
         </div>
       </div>
-    </Transition>
+    </MotionTransition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
@@ -231,7 +232,7 @@ function documentIcon(index: number, title: string): 'document' | 'shield' | 'gl
 <style scoped>
 .agreement-fade-enter-active,
 .agreement-fade-leave-active {
-  transition: opacity 0.18s ease;
+  transition: opacity var(--motion-fast) var(--motion-ease);
 }
 
 .agreement-fade-enter-from,
@@ -241,7 +242,7 @@ function documentIcon(index: number, title: string): 'document' | 'shield' | 'gl
 
 .agreement-fade-enter-active > div,
 .agreement-fade-leave-active > div {
-  transition: transform 0.18s ease, opacity 0.18s ease;
+  transition: transform var(--motion-fast) var(--motion-ease), opacity var(--motion-fast) var(--motion-ease);
 }
 
 .agreement-fade-enter-from > div,

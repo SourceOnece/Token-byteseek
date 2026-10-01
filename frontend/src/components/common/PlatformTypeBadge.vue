@@ -8,20 +8,7 @@
       </span>
       <span :class="['inline-flex items-center gap-1 px-1.5 py-1', typeClass]">
         <!-- OAuth icon -->
-        <svg
-          v-if="type === 'oauth'"
-          class="h-3 w-3"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
-          />
-        </svg>
+        <Icon name="key" size="xs" v-if="type === 'oauth'" class="h-3 w-3" />
         <!-- Setup Token icon -->
         <Icon v-else-if="type === 'setup-token'" name="shield" size="xs" />
         <!-- API Key icon -->
@@ -51,9 +38,7 @@
         :class="['inline-flex items-center gap-1 px-1.5 py-1', privacyBadge.class]"
         :title="privacyBadge.title"
       >
-        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" :d="privacyBadge.icon" />
-        </svg>
+        <Icon :name="privacyBadge.icon" size="xs" :animate-on-hover="false" />
         <span>{{ privacyBadge.label }}</span>
       </span>
     </div>
@@ -307,8 +292,8 @@ const privacyBadge = computed(() => {
   // 支持 OpenAI 和 Antigravity 平台
   if (props.platform !== 'openai' && props.platform !== 'antigravity') return null
 
-  const shieldCheck = 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z'
-  const shieldX = 'M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285zM12 18h.008v.008H12V18z'
+  const shieldCheck = 'shieldCheck' as const
+  const shieldX = 'shieldX' as const
   switch (props.privacyMode) {
     // OpenAI states
     case 'training_off':

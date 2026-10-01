@@ -796,7 +796,10 @@ affiliates: {
           "group_mapped": "Group-mapped model",
           "upstream": "Final upstream model"
         }
-      },
+      ,
+"addMapping": "Add mapping",
+"mappingEmpty": "No model mappings configured"
+},
       providerFilters: {
         title: 'Provider filters',
         oauthOnly: 'Only allow OAuth providers',
@@ -951,7 +954,10 @@ affiliates: {
         priorityLabel: 'Priority',
         priorityHint: 'Lower value means higher priority, used for provider scheduling',
         statusLabel: 'Status'
-      },
+      ,
+reasoningEffortMappingIndex: 'Mapping #{index}',
+reasoningEffortMappingsEmpty: 'No reasoning effort mappings configured'
+},
       exclusiveObj: {
         yes: 'Yes',
         no: 'No'
@@ -1239,7 +1245,9 @@ affiliates: {
         noRulesHint: 'Add routing rules to route specific model requests to designated providers',
         searchProviderPlaceholder: 'Search providers...',
         providersHint: 'Select providers to prioritize for this model pattern'
-      },
+      ,
+ruleIndex: 'Rule #{index}'
+},
       claudeMaxSimulation: {
         title: 'Claude Max Usage Simulation',
         tooltip:

@@ -221,7 +221,9 @@ export default {
       tooManyMappings: 'A composite key supports up to 20 group mappings',
       moveUp: 'Move up',
       moveDown: 'Move down'
-    },
+    ,
+moreMappings: '+{count}'
+},
     billing: {
       modeLabel: 'Billing source',
       subscriptionLabel: 'Selected subscription',
@@ -656,7 +658,12 @@ export default {
     subscriptionRefreshFailed: 'Redeemed successfully, but failed to refresh subscription status.',
     userRefreshFailed: 'Redeemed successfully, but failed to refresh account information.',
     pleaseEnterCode: 'Please enter a redeem code'
-  },
+  ,
+balanceReceived: 'Balance credited {amount}',
+concurrencyReceived: 'Concurrency {count}',
+subscriptionReceived: 'Subscription received',
+dataRefreshFailed: 'Redeemed successfully, but data could not be refreshed. Please reload the page.'
+},
 affiliate: {
     title: 'Affiliate Rebates',
     description: 'Invite new users and convert rebate quota into account balance',

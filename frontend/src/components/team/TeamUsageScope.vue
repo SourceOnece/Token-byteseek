@@ -1,6 +1,22 @@
 <template>
-  <div class="space-y-6">
-    <div v-if="loading" class="flex justify-center py-16"><LoadingSpinner /></div>
+  <div class="space-y-4">
+    <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" aria-hidden="true">
+        <div v-for="card in 4" :key="card" class="card min-w-0 space-y-3 p-4">
+          <Skeleton width="55%" :height="12" />
+          <Skeleton width="75%" :height="28" />
+          <Skeleton width="65%" :height="12" />
+        </div>
+      </div>
+      <ContentSkeleton variant="form" :rows="2" class="card p-6" />
+      <div v-if="mode === 'usage'" class="card overflow-hidden">
+        <DataTable :columns="usageColumns" :data="[]" :loading="true" row-key="id" />
+      </div>
+      <div v-else class="card p-6">
+        <h2 class="mb-5 text-base font-semibold text-gray-900 dark:text-white">{{ t('team.totalCost') }}</h2>
+        <ContentSkeleton :rows="5" />
+      </div>
+    </div>
     <div v-else-if="noTeam" class="card py-14 text-center">
       <Icon name="users" size="xl" class="mx-auto text-gray-400" />
       <p class="mt-4 font-medium text-gray-900 dark:text-white">{{ t('team.noTeam') }}</p>
@@ -18,7 +34,7 @@
       </div>
 
       <div v-if="isOwner" class="card p-6">
-        <div class="flex flex-wrap items-end gap-4">
+        <div class="flex flex-wrap items-end gap-2">
           <div class="w-full sm:w-56">
             <label class="input-label">{{ t('team.keyOwner') }}</label>
             <Select v-model="memberID" :options="memberOptions" @change="reload" />
@@ -27,7 +43,7 @@
             <label class="input-label">{{ t('team.keys') }}</label>
             <Select v-model="keyID" :options="keyOptions" @change="reload" />
           </div>
-          <div class="ml-auto flex gap-3">
+          <div class="ml-auto flex gap-2">
             <button type="button" class="btn btn-secondary" :disabled="logsLoading" @click="loadUsage">{{ t('common.refresh') }}</button>
             <button type="button" class="btn btn-secondary" @click="resetFilters">{{ t('common.reset') }}</button>
           </div>
@@ -46,41 +62,40 @@
         </div>
       </div>
 
-      <template v-if="mode === 'usage'">
-        <div class="card overflow-hidden">
-          <DataTable column-order-storage-key="team-usage-column-order" :columns="usageColumns" :data="logs" :loading="logsLoading" row-key="id">
-            <template #cell-actor_email="{ value }">
-              <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
-            </template>
-            <template #cell-api_key_name="{ value }">
-              <span class="text-gray-700 dark:text-gray-300">{{ value }}</span>
-            </template>
-            <template #cell-model="{ value }">
-              <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
-            </template>
-            <template #cell-tokens="{ row }">
-              <div class="flex items-center gap-3 text-sm">
-                <span class="inline-flex items-center gap-1">
-                  <Icon name="arrowDown" size="sm" class="text-emerald-500" />
-                  <span class="font-medium text-gray-900 dark:text-white">{{ Number(row.input_tokens || 0).toLocaleString() }}</span>
-                </span>
-                <span class="inline-flex items-center gap-1">
-                  <Icon name="arrowUp" size="sm" class="text-violet-500" />
-                  <span class="font-medium text-gray-900 dark:text-white">{{ Number(row.output_tokens || 0).toLocaleString() }}</span>
-                </span>
-              </div>
-            </template>
-            <template #cell-actual_cost="{ value }">
-              <BalanceAmount :amount="value" :fraction-digits="4" class="font-medium text-green-600 dark:text-green-400" />
-            </template>
-            <template #cell-created_at="{ value }">
-              <span class="whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ formatDateTime(value) }}</span>
-            </template>
-            <template #empty>
-              <div class="py-6 text-sm text-gray-500 dark:text-gray-400">{{ t('team.noUsage') }}</div>
-            </template>
-          </DataTable>
-        </div>
+      <!-- 团队用量的表体和分页使用同一张卡片。 -->
+      <div v-if="mode === 'usage'" class="card overflow-hidden">
+        <DataTable column-order-storage-key="team-usage-column-order" :columns="usageColumns" :data="logs" :loading="logsLoading" row-key="id">
+          <template #cell-actor_email="{ value }">
+            <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
+          </template>
+          <template #cell-api_key_name="{ value }">
+            <span class="text-gray-700 dark:text-gray-300">{{ value }}</span>
+          </template>
+          <template #cell-model="{ value }">
+            <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
+          </template>
+          <template #cell-tokens="{ row }">
+            <div class="flex items-center gap-3 text-sm">
+              <span class="inline-flex items-center gap-1">
+                <Icon name="arrowDown" size="sm" class="text-emerald-500" />
+                <span class="font-medium text-gray-900 dark:text-white">{{ Number(row.input_tokens || 0).toLocaleString() }}</span>
+              </span>
+              <span class="inline-flex items-center gap-1">
+                <Icon name="arrowUp" size="sm" class="text-violet-500" />
+                <span class="font-medium text-gray-900 dark:text-white">{{ Number(row.output_tokens || 0).toLocaleString() }}</span>
+              </span>
+            </div>
+          </template>
+          <template #cell-actual_cost="{ value }">
+            <BalanceAmount :amount="value" :fraction-digits="4" class="font-medium text-green-600 dark:text-green-400" />
+          </template>
+          <template #cell-created_at="{ value }">
+            <span class="whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ formatDateTime(value) }}</span>
+          </template>
+          <template #empty>
+            <div class="py-6 text-sm text-gray-500 dark:text-gray-400">{{ t('team.noUsage') }}</div>
+          </template>
+        </DataTable>
         <Pagination
           v-if="total > 0"
           :page="page"
@@ -89,15 +104,16 @@
           @update:page="handlePageChange"
           @update:pageSize="handlePageSizeChange"
         />
-      </template>
+      </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import Skeleton from '@/components/common/Skeleton.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'

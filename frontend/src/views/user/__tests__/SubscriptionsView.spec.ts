@@ -39,7 +39,7 @@ function createTestI18n() {
           queuedPacks: 'Queued {count}',
           startsAt: 'Starts At',
           expires: 'Expires',
-          extendsThrough: 'Extends through {date}',
+          currentPackEnds: 'Current pack ends {date}',
           daily: 'Daily',
           weekly: 'Weekly',
           monthly: 'Monthly',

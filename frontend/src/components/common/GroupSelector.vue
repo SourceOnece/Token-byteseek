@@ -66,10 +66,8 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import GroupBadge from './GroupBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
-import type { AdminGroup } from '@/types'
-
-// 选择器只需要展示字段，不要求账号详情补造管理员路由配置。
-type SelectableGroup = Pick<AdminGroup, 'id' | 'name' | 'description' | 'display_brand' | 'rate_multiplier' | 'status'> & { provider_count?: number }
+import type { Group } from '@/types'
+type SelectableGroup = Group & { provider_count?: number }
 
 const { t } = useI18n()
 

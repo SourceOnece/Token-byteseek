@@ -32,13 +32,12 @@ describe('light theme text contrast', () => {
     const sidebarLinkBlock = styleSource.match(/\.sidebar-link\s*\{[\s\S]*?\n {2}\}/)
 
     expect(sidebarLinkBlock).not.toBeNull()
-    expect(sidebarLinkBlock?.[0]).toContain('@apply text-sm font-bold;')
-    expect(sidebarLinkBlock?.[0]).toContain('@apply text-gray-800 dark:text-dark-100;')
-    expect(sidebarLinkBlock?.[0]).not.toContain('counter-increment')
+    expect(sidebarLinkBlock?.[0]).toContain('@apply text-primary-900 dark:text-dark-100;')
+    expect(sidebarLinkBlock?.[0]).not.toContain('text-primary-900/75')
     expect(styleSource).toContain('html:not(.dark) :is(')
     expect(styleSource).toContain('.text-gray-500')
     expect(styleSource).toContain('.text-primary-900\\/65')
-    expect(styleSource).toContain('color: #57534a;')
+    expect(styleSource).toContain('color: #426177;')
   })
 })
 
@@ -95,19 +94,18 @@ describe('global header and sidebar hierarchy', () => {
 
   it('keeps the scrolling content below the fixed global header', () => {
     // 主内容不能与顶栏使用同级 z-index，否则滚动时后渲染内容会盖住顶栏。
-    expect(layoutSource).toContain('class="relative z-10 flex min-w-0 flex-col pt-[var(--header-h)] transition-all duration-300"')
-    // 高度模式由统一计算属性选择，仍保留当前顶栏下的 flex 容器。
-    expect(layoutSource).toContain('columnClass,')
-    expect(layoutSource).toContain("? 'h-full min-h-0' : props.fitViewport")
+    expect(layoutSource).toContain('class="relative z-10 flex min-w-0 flex-col pt-[var(--header-h)] transition-[margin-left] duration-layout"')
+    // 全屏工作区与全尺寸贴合布局都需要明确高度，保证内容在顶栏下方滚动。
+    expect(layoutSource).toContain("if (fullViewport.value || props.fitViewport === 'all') return 'h-full min-h-0'")
     expect(layoutSource).not.toContain('lg:z-50')
   })
 
   it('fades the mobile overlay in and out', () => {
     // 遮罩应渐进显示和隐藏，避免打开侧栏时页面突然变暗。
-    // 配方已收敛为全局 fade,本组件只用 --fade-duration-* 覆盖进/退时长。
-    expect(componentSource).toContain('<transition name="fade">')
-    expect(componentSource).toContain('--fade-duration-enter: 200ms;')
-    expect(componentSource).toContain('--fade-duration-leave: 150ms;')
+    // 遮罩与全站淡入配方共用时长，不在侧栏保留局部副本。
+    expect(componentSource).toContain('<MotionTransition name="fade">')
+    expect(styleSource).toContain('transition: opacity var(--motion-fast) var(--motion-ease);')
+    expect(styleSource).toContain('transition: opacity var(--motion-exit) var(--motion-ease-exit);')
   })
 })
 
@@ -135,10 +133,10 @@ describe('AppSidebar admin personal menu', () => {
 
   it('uses distinct icons for ranking, usage, team, and affiliate entries', () => {
     // 普通用户菜单与管理员个人菜单使用相同映射，避免同组入口再次出现重复图标。
-    expect(componentSource.match(/path: '\/usage-ranking'.*icon: RankingIcon/g)).toHaveLength(2)
-    expect(componentSource.match(/path: '\/usage'.*icon: ChartIcon/g)).toHaveLength(2)
-    expect(componentSource.match(/path: '\/team'.*icon: UsersIcon/g)).toHaveLength(2)
-    expect(componentSource.match(/path: '\/affiliate',[\s\S]{0,180}?icon: AffiliateIcon/g)).toHaveLength(2)
+    expect(componentSource.match(/path: '\/usage-ranking'.*icon: 'ranking'/g)).toHaveLength(2)
+    expect(componentSource.match(/path: '\/usage'.*icon: 'chart'/g)).toHaveLength(2)
+    expect(componentSource.match(/path: '\/team'.*icon: 'users'/g)).toHaveLength(2)
+    expect(componentSource.match(/path: '\/affiliate',[\s\S]{0,180}?icon: 'affiliate'/g)).toHaveLength(2)
   })
 })
 

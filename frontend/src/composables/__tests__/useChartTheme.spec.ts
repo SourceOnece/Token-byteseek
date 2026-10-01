@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { effectScope, nextTick } from 'vue'
+import { setVisualTheme } from '@/composables/useVisualTheme'
 import { setTheme } from '@/composables/useTheme'
 import { useChartTheme, CHART_PALETTE, CHART_SERIES_COLORS } from '@/composables/useChartTheme'
 
 describe('useChartTheme', () => {
+  beforeEach(async () => { setVisualTheme('bauhaus'); await nextTick() })
   it('colors 跟随主题切换响应式更新(回归:非响应式快照曾导致切主题不重绘)', () => {
     const scope = effectScope()
     const theme = scope.run(() => useChartTheme())!
@@ -54,7 +56,7 @@ describe('useChartTheme', () => {
       output: '#E1251B',
       cacheCreation: '#E0A800',
       cacheRead: '#0F7B4D',
-      cacheHitRate: '#141414'
+      cacheHitRate: '#1450A3'
     })
   })
 })

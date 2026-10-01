@@ -7,7 +7,9 @@
         @failed="emit('ipGeoBatchFailed')"
       />
 
-      <DataTable column-order-storage-key="admin-ops-errors-column-order"
+      <DataTable
+        class="min-h-0 flex-1 overflow-auto"
+        column-order-storage-key="admin-ops-errors-column-order"
         :columns="columns"
         :data="rows"
         :loading="loading"
@@ -161,15 +163,13 @@
             :title="t('admin.ops.errorLog.details')"
             @click.stop="emit('openErrorDetail', row.id)"
           >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <Icon name="document" size="sm" class="h-4 w-4" />
           </button>
         </template>
 
         <template #empty><EmptyState :message="t('admin.ops.errorLog.noErrors')" /></template>
       </DataTable>
-    </div>
-
-    <div class="flex-shrink-0">
+      <!-- 分页留在表格外框内，不随表体滚动。 -->
       <Pagination
         v-if="total > 0"
         :total="total"
@@ -183,6 +183,7 @@
 </template>
 
 <script setup lang="ts">
+import Icon from '@/components/icons/Icon.vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DataTable from '@/components/common/DataTable.vue'
@@ -219,17 +220,11 @@ const allColumns = computed<Column[]>(() => [
 ])
 
 // 传入 visibleColumnKeys 时按其过滤；未传时显示全部列。
-const columns = computed<Column[]>(() => {
-  const visibleColumns = props.visibleColumnKeys
+const columns = computed<Column[]>(() =>
+  props.visibleColumnKeys
     ? allColumns.value.filter((c) => props.visibleColumnKeys!.includes(c.key))
     : allColumns.value
-  if (!props.summaryFirst) return visibleColumns
-  return [
-    ...visibleColumns.filter(c => c.key === 'created_at'),
-    ...visibleColumns.filter(c => c.key === 'message'),
-    ...visibleColumns.filter(c => c.key !== 'created_at' && c.key !== 'message'),
-  ]
-})
+)
 
 function isUpstreamRow(log: OpsErrorLog): boolean {
   const phase = String(log.phase || '').toLowerCase()
@@ -299,8 +294,6 @@ interface Props {
   userClickable?: boolean
   /** 列设置，仅显示这些 key 对应的列；未传时显示全部列。 */
   visibleColumnKeys?: string[]
-  /** 仅运维详情弹窗把时间和错误摘要放到最前，其余页面保持原列顺序。 */
-  summaryFirst?: boolean
   /** 嵌入统一卡片内使用：去掉自身卡片外观 */
   flat?: boolean
   /** 页面已有独立批量地区按钮时关闭表格内部工具条。 */

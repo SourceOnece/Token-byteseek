@@ -2,9 +2,9 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <!-- Left: Search + Filters -->
-          <div class="flex min-w-0 flex-1 items-center gap-3">
+          <div class="flex min-w-0 flex-1 items-center gap-2">
             <div class="min-w-0 flex-1 sm:flex-none sm:w-64">
             <input
               v-model="searchQuery"
@@ -30,10 +30,10 @@
               class="btn btn-secondary shrink-0 btn-icon"
               :title="t('common.refresh')"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
             <button @click="openCreateDialog" class="btn btn-primary shrink-0 whitespace-nowrap">
-              <Icon name="plus" size="md" class="mr-1" />
+              <Icon name="plus" size="sm" class="mr-1" />
               {{ t('admin.announcements.createAnnouncement') }}
             </button>
           </div>
@@ -41,7 +41,8 @@
       </template>
 
       <template #table>
-        <DataTable column-order-storage-key="admin-announcements-column-order"
+        <DataTable
+          column-order-storage-key="admin-announcements-column-order"
           :columns="columns"
           :data="announcements"
           :loading="loading"
@@ -118,14 +119,14 @@
             <div class="flex items-center space-x-1">
               <button
                 @click="openPreview(row)"
-                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-500/8 dark:hover:text-primary-500"
                 :title="t('admin.announcements.preview')"
               >
                 <Icon name="eye" size="sm" />
               </button>
               <button
                 @click="openReadStatus(row)"
-                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-500/8 dark:hover:text-primary-500"
                 :title="t('admin.announcements.readStatus')"
               >
                 <Icon name="chartBar" size="sm" />
@@ -203,12 +204,12 @@
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label class="input-label">{{ t('admin.announcements.form.startsAt') }}</label>
-            <input v-model="form.starts_at_str" type="datetime-local" max="9999-12-31T23:59" class="input" />
+            <input v-model="form.starts_at_str" type="datetime-local" class="input" />
             <p class="input-hint">{{ t('admin.announcements.form.startsAtHint') }}</p>
           </div>
           <div>
             <label class="input-label">{{ t('admin.announcements.form.endsAt') }}</label>
-            <input v-model="form.ends_at_str" type="datetime-local" max="9999-12-31T23:59" class="input" />
+            <input v-model="form.ends_at_str" type="datetime-local" class="input" />
             <p class="input-hint">{{ t('admin.announcements.form.endsAtHint') }}</p>
           </div>
         </div>

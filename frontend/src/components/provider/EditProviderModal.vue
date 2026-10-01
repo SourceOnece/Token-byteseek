@@ -39,7 +39,7 @@
             :class="[
               'rounded-control border px-4 py-2 text-sm font-medium transition-colors',
               qoderSite === 'global'
-                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
                 : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-dark-500 dark:bg-dark-700 dark:text-gray-300'
             ]"
           >
@@ -53,7 +53,7 @@
             :class="[
               'rounded-control border px-4 py-2 text-sm font-medium transition-colors',
               qoderSite === 'cn'
-                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
+                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
                 : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-dark-500 dark:bg-dark-700 dark:text-gray-300'
             ]"
           >
@@ -125,10 +125,10 @@
               :key="opt.value"
               type="button"
               :class="[
-                'rounded-control border-2 px-3 py-1.5 text-xs transition-all',
+                'rounded-control border-2 px-3 py-1.5 text-xs transition',
                 editProviderMode === opt.value
-                  ? 'border-primary-500 bg-primary-50 font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
-                  : 'border-gray-200 text-gray-700 hover:border-gray-400 dark:border-dark-600 dark:text-gray-300 dark:hover:border-gray-600'
+                  ? 'border-primary-500 bg-primary-50 font-medium text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
+                  : 'border-gray-200 text-gray-700 hover:border-gray-400 dark:border-dark-600 dark:text-gray-300 dark:hover:border-dark-500'
               ]"
               @click="editProviderMode = opt.value"
             >
@@ -233,50 +233,26 @@
                 type="button"
                 @click="modelRestrictionMode = 'whitelist'"
                 :class="[
-                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                   modelRestrictionMode === 'whitelist'
-                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
                 ]"
               >
-                <svg
-                  class="mr-1.5 inline h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <Icon name="checkCircle" size="sm" :animate-on-hover="false" class="mr-1.5 inline h-4 w-4" />
                 {{ t('admin.providers.modelWhitelist') }}
               </button>
               <button
                 type="button"
                 @click="modelRestrictionMode = 'mapping'"
                 :class="[
-                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                   modelRestrictionMode === 'mapping'
                     ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
                 ]"
               >
-                <svg
-                  class="mr-1.5 inline h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                  />
-                </svg>
+                <Icon name="swap" size="sm" class="mr-1.5 inline h-4 w-4" />
                 {{ t('admin.providers.modelMapping') }}
               </button>
             </div>
@@ -285,7 +261,7 @@
             </p>
 
             <!-- Whitelist Mode -->
-            <div v-if="modelRestrictionMode === 'whitelist'">
+            <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
               <ModelWhitelistSelector :model-value="allowedModels" :platform="provider?.platform || 'anthropic'" :provider-id="provider?.id" @update:model-value="setAllowedModels" />
               <p class="text-xs text-gray-500 dark:text-gray-400">
                 {{ t('admin.providers.selectedModels', { count: allowedModels.length }) }}
@@ -296,110 +272,14 @@
             </div>
 
             <!-- Mapping Mode -->
-            <div v-else>
-              <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
-                <p class="text-xs text-purple-700 dark:text-purple-400">
-                  <svg
-                    class="mr-1 inline h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  {{ t('admin.providers.mapRequestModels') }}
-                </p>
-              </div>
-
-            <!-- Model Mapping List -->
-            <div v-if="modelMappings.length > 0" class="mb-3 space-y-2">
-              <div
-                v-for="(mapping, index) in modelMappings"
-                :key="getModelMappingKey(mapping)"
-                class="flex items-center gap-2"
-              >
-                <input
-                  v-model="mapping.from"
-                  type="text"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.requestModel')"
-                />
-                <svg
-                  class="h-4 w-4 flex-shrink-0 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
-                <input
-                  v-model="mapping.to"
-                  type="text"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.actualModel')"
-                />
-                <button
-                  type="button"
-                  @click="removeModelMapping(index)"
-                  class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              @click="addModelMapping"
-              class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-            >
-              <svg
-                class="mr-1 inline h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              {{ t('admin.providers.addMapping') }}
-            </button>
-
-              <!-- Quick Add Buttons -->
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="preset in presetMappings"
-                  :key="preset.label"
-                  type="button"
-                  @click="addPresetMapping(preset.from, preset.to)"
-                  :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-                >
-                  + {{ preset.label }}
-                </button>
-              </div>
-            </div>
-
+            <ProviderModelMappingEditor
+              v-else
+              v-model="modelMappings"
+              :presets="presetMappings"
+              @add="touchQoderModelRestriction"
+              @remove="touchQoderModelRestriction"
+              @preset="addPresetMapping"
+            />
         </div>
 
         <!-- Pool Mode Section -->
@@ -413,43 +293,49 @@
             </div>
             <Toggle v-model="poolModeEnabled" variant="flush" off-tone="soft" />
           </div>
-          <div v-if="poolModeEnabled" class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-              <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
-              {{ t('admin.providers.poolModeInfo') }}
-            </p>
-          </div>
-          <div v-if="poolModeEnabled" class="mt-3">
-            <label class="input-label">{{ t('admin.providers.poolModeRetryCount') }}</label>
-            <input
-              v-model.number="poolModeRetryCount"
-              type="number"
-              min="0"
-              :max="MAX_POOL_MODE_RETRY_COUNT"
-              step="1"
-              class="input"
-            />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{
-                t('admin.providers.poolModeRetryCountHint', {
-                  default: DEFAULT_POOL_MODE_RETRY_COUNT,
-                  max: MAX_POOL_MODE_RETRY_COUNT
-                })
-              }}
-            </p>
-          </div>
-          <div v-if="poolModeEnabled" class="mt-3">
-            <label class="input-label">{{ t('admin.providers.poolModeRetryStatusCodes') }}</label>
-            <input
-              v-model="poolModeRetryStatusCodesInput"
-              type="text"
-              class="input"
-              :placeholder="DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ')"
-            />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.poolModeRetryStatusCodesHint', { default: DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ') }) }}
-            </p>
-          </div>
+          <Collapse :open="poolModeEnabled" unmount-on-hide>
+            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
+              <p class="text-xs text-blue-700 dark:text-blue-400">
+                <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
+                {{ t('admin.providers.poolModeInfo') }}
+              </p>
+            </div>
+          </Collapse>
+          <Collapse :open="poolModeEnabled" unmount-on-hide>
+            <div class="mt-3">
+              <label class="input-label">{{ t('admin.providers.poolModeRetryCount') }}</label>
+              <input
+                v-model.number="poolModeRetryCount"
+                type="number"
+                min="0"
+                :max="MAX_POOL_MODE_RETRY_COUNT"
+                step="1"
+                class="input"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{
+                  t('admin.providers.poolModeRetryCountHint', {
+                    default: DEFAULT_POOL_MODE_RETRY_COUNT,
+                    max: MAX_POOL_MODE_RETRY_COUNT
+                  })
+                }}
+              </p>
+            </div>
+          </Collapse>
+          <Collapse :open="poolModeEnabled" unmount-on-hide>
+            <div class="mt-3">
+              <label class="input-label">{{ t('admin.providers.poolModeRetryStatusCodes') }}</label>
+              <input
+                v-model="poolModeRetryStatusCodesInput"
+                type="text"
+                class="input"
+                :placeholder="DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ')"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.providers.poolModeRetryStatusCodesHint', { default: DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ') }) }}
+              </p>
+            </div>
+          </Collapse>
         </div>
 
         <!-- 自定义错误码区域 -->
@@ -464,76 +350,71 @@
             <Toggle v-model="customErrorCodesEnabled" variant="flush" off-tone="soft" />
           </div>
 
-          <div v-if="customErrorCodesEnabled" class="space-y-3">
-            <div class="rounded-control bg-amber-50 p-3 dark:bg-amber-900/20">
-              <p class="text-xs text-amber-700 dark:text-amber-400">
-                <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
-                {{ t('admin.providers.customErrorCodesWarning') }}
-              </p>
-            </div>
+          <Collapse :open="customErrorCodesEnabled" unmount-on-hide>
+            <div class="space-y-3">
+              <div class="rounded-control bg-amber-50 p-3 dark:bg-amber-900/20">
+                <p class="text-xs text-amber-700 dark:text-amber-400">
+                  <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
+                  {{ t('admin.providers.customErrorCodesWarning') }}
+                </p>
+              </div>
 
-            <!-- 错误码快捷按钮 -->
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="code in commonErrorCodes"
-                :key="code.value"
-                type="button"
-                @click="toggleErrorCode(code.value)"
-                :class="[
-                  'rounded-control px-3 py-1.5 text-sm font-medium transition-colors',
-                  selectedErrorCodes.includes(code.value)
-                    ? 'bg-red-100 text-red-700 ring-1 ring-red-500 dark:bg-red-900/30 dark:text-red-400'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                ]"
-              >
-                {{ code.value }} {{ code.label }}
-              </button>
-            </div>
-
-            <!-- 手动输入 -->
-            <div class="flex items-center gap-2">
-              <input
-                v-model.number="customErrorCodeInput"
-                type="number"
-                min="100"
-                max="599"
-                class="input flex-1"
-                :placeholder="t('admin.providers.enterErrorCode')"
-                @keyup.enter="addCustomErrorCode"
-              />
-              <button type="button" @click="addCustomErrorCode" class="btn btn-secondary px-3">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <!-- 已选错误码汇总 -->
-            <div class="flex flex-wrap gap-1.5">
-              <span
-                v-for="code in selectedErrorCodes.sort((a, b) => a - b)"
-                :key="code"
-                class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
-              >
-                {{ code }}
+              <!-- 错误码快捷按钮 -->
+              <div class="flex flex-wrap gap-2">
                 <button
+                  v-for="code in commonErrorCodes"
+                  :key="code.value"
                   type="button"
-                  @click="removeErrorCode(code)"
-                  class="hover:text-red-900 dark:hover:text-red-300"
+                  @click="toggleErrorCode(code.value)"
+                  :class="[
+                    'rounded-control px-3 py-1.5 text-sm font-medium transition-colors',
+                    selectedErrorCodes.includes(code.value)
+                      ? 'bg-red-100 text-red-700 ring-1 ring-red-500 dark:bg-red-900/30 dark:text-red-400'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                  ]"
                 >
-                  <Icon name="x" size="sm" :stroke-width="2" />
+                  {{ code.value }} {{ code.label }}
                 </button>
-              </span>
-              <span v-if="selectedErrorCodes.length === 0" class="text-xs text-gray-400">
-                {{ t('admin.providers.noneSelectedUsesDefault') }}
-              </span>
+              </div>
+
+              <!-- 手动输入 -->
+              <div class="flex items-center gap-2">
+                <input
+                  v-model.number="customErrorCodeInput"
+                  type="number"
+                  min="100"
+                  max="599"
+                  class="input flex-1"
+                  :placeholder="t('admin.providers.enterErrorCode')"
+                  @keyup.enter="addCustomErrorCode"
+                />
+                <button type="button" @click="addCustomErrorCode" class="btn btn-secondary px-3">
+                  <Icon name="plus" size="sm" class="h-4 w-4" />
+                </button>
+              </div>
+
+              <!-- 已选错误码汇总 -->
+              <div class="flex flex-wrap gap-1.5">
+                <span
+                  v-for="code in selectedErrorCodes.sort((a, b) => a - b)"
+                  :key="code"
+                  class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                >
+                  {{ code }}
+                  <button
+                    type="button"
+                    @click="removeErrorCode(code)"
+                    class="hover:text-red-900 dark:hover:text-red-300"
+                  >
+                    <Icon name="x" size="sm" :stroke-width="2" />
+                  </button>
+                </span>
+                <span v-if="selectedErrorCodes.length === 0" class="text-xs text-gray-400">
+                  {{ t('admin.providers.noneSelectedUsesDefault') }}
+                </span>
+              </div>
             </div>
-          </div>
+          </Collapse>
         </div>
 
       </div>
@@ -572,16 +453,18 @@
           </div>
           <Toggle v-model="grokOAuthCustomBaseUrlEnabled" variant="flush" off-tone="soft" data-testid="grok-custom-base-url-toggle" />
         </div>
-        <div v-if="grokOAuthCustomBaseUrlEnabled" class="space-y-2">
-          <input
-            v-model="grokOAuthBaseUrl"
-            type="text"
-            class="input"
-            data-testid="grok-custom-base-url-input"
-            :placeholder="t('admin.providers.grokCustomBaseUrl.placeholder')"
-          />
-          <GrokBaseUrlPresets @select="grokOAuthBaseUrl = $event" />
-        </div>
+        <Collapse :open="grokOAuthCustomBaseUrlEnabled" unmount-on-hide>
+          <div class="space-y-2">
+            <input
+              v-model="grokOAuthBaseUrl"
+              type="text"
+              class="input"
+              data-testid="grok-custom-base-url-input"
+              :placeholder="t('admin.providers.grokCustomBaseUrl.placeholder')"
+            />
+            <GrokBaseUrlPresets @select="grokOAuthBaseUrl = $event" />
+          </div>
+        </Collapse>
       </div>
 
       <!-- 请求头覆写区域（支持的平台 API Key 与 Grok OAuth） -->
@@ -596,19 +479,21 @@
           <Toggle v-model="headerOverrideEnabled" variant="flush" off-tone="soft" />
         </div>
 
-        <div v-if="headerOverrideEnabled" class="space-y-3">
-          <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-              <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
-              {{ t('admin.providers.headerOverride.info') }}
-            </p>
-          </div>
+        <Collapse :open="headerOverrideEnabled" unmount-on-hide>
+          <div class="space-y-3">
+            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
+              <p class="text-xs text-blue-700 dark:text-blue-400">
+                <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
+                {{ t('admin.providers.headerOverride.info') }}
+              </p>
+            </div>
 
-          <HeaderOverrideEditor
-            :rows="headerOverrideRows"
-            @update:rows="headerOverrideRows = $event"
-          />
-        </div>
+            <HeaderOverrideEditor
+              :rows="headerOverrideRows"
+              @update:rows="headerOverrideRows = $event"
+            />
+          </div>
+        </Collapse>
       </div>
 
       <!-- OAuth/COSY 模型映射：这类提供商没有 apikey 容器，需要独立的模型映射区域 -->
@@ -624,9 +509,9 @@
               type="button"
               @click="modelRestrictionMode = 'whitelist'"
               :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                 modelRestrictionMode === 'whitelist'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
               ]"
             >
@@ -636,7 +521,7 @@
               type="button"
               @click="modelRestrictionMode = 'mapping'"
               :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                 modelRestrictionMode === 'mapping'
                   ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -650,7 +535,7 @@
           </p>
 
           <!-- Whitelist Mode -->
-          <div v-if="modelRestrictionMode === 'whitelist'">
+          <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
             <ModelWhitelistSelector
               :model-value="allowedModels"
               :platform="provider?.platform || 'anthropic'"
@@ -667,83 +552,14 @@
           </div>
 
           <!-- Mapping Mode -->
-          <div v-else>
-            <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
-              <p class="text-xs text-purple-700 dark:text-purple-400">
-                {{ t('admin.providers.mapRequestModels') }}
-              </p>
-            </div>
-
-            <div v-if="modelMappings.length > 0" class="mb-3 space-y-2">
-              <div
-                v-for="(mapping, index) in modelMappings"
-                :key="'oauth-' + getModelMappingKey(mapping)"
-                class="flex items-center gap-2"
-              >
-                <input
-                  v-model="mapping.from"
-                  type="text"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.requestModel')"
-                />
-                <svg
-                  class="h-4 w-4 flex-shrink-0 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
-                <input
-                  v-model="mapping.to"
-                  type="text"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.actualModel')"
-                />
-                <button
-                  type="button"
-                  @click="removeModelMapping(index)"
-                  class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              @click="addModelMapping"
-              class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-            >
-              + {{ t('admin.providers.addMapping') }}
-            </button>
-
-            <!-- Quick Add Buttons -->
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="preset in presetMappings"
-                :key="'oauth-' + preset.label"
-                type="button"
-                @click="addPresetMapping(preset.from, preset.to)"
-                :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-              >
-                + {{ preset.label }}
-              </button>
-            </div>
-          </div>
-
+          <ProviderModelMappingEditor
+            v-else
+            v-model="modelMappings"
+            :presets="presetMappings"
+            @add="touchQoderModelRestriction"
+            @remove="touchQoderModelRestriction"
+            @preset="addPresetMapping"
+          />
       </div>
 
       <!-- Upstream fields (only for upstream type) -->
@@ -806,56 +622,32 @@
               type="button"
               @click="modelRestrictionMode = 'whitelist'"
               :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                 modelRestrictionMode === 'whitelist'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
               ]"
             >
-              <svg
-                class="mr-1.5 inline h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+              <Icon name="checkCircle" size="sm" :animate-on-hover="false" class="mr-1.5 inline h-4 w-4" />
               {{ t('admin.providers.modelWhitelist') }}
             </button>
             <button
               type="button"
               @click="modelRestrictionMode = 'mapping'"
               :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                 modelRestrictionMode === 'mapping'
                   ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
               ]"
             >
-              <svg
-                class="mr-1.5 inline h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                />
-              </svg>
+              <Icon name="swap" size="sm" class="mr-1.5 inline h-4 w-4" />
               {{ t('admin.providers.modelMapping') }}
             </button>
           </div>
 
           <!-- Whitelist Mode -->
-          <div v-if="modelRestrictionMode === 'whitelist'">
+          <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
             <ModelWhitelistSelector :model-value="allowedModels" :platform="provider?.platform || 'anthropic'" :provider-id="provider?.id" @update:model-value="setAllowedModels" />
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.providers.selectedModels', { count: allowedModels.length }) }}
@@ -866,109 +658,14 @@
           </div>
 
           <!-- Mapping Mode -->
-          <div v-else>
-            <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
-              <p class="text-xs text-purple-700 dark:text-purple-400">
-                <svg
-                  class="mr-1 inline h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                {{ t('admin.providers.mapRequestModels') }}
-              </p>
-            </div>
-
-            <!-- Model Mapping List -->
-            <div v-if="modelMappings.length > 0" class="mb-3 space-y-2">
-              <div
-                v-for="(mapping, index) in modelMappings"
-                :key="getModelMappingKey(mapping)"
-                class="flex items-center gap-2"
-              >
-                <input
-                  v-model="mapping.from"
-                  type="text"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.requestModel')"
-                />
-                <svg
-                  class="h-4 w-4 flex-shrink-0 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
-                <input
-                  v-model="mapping.to"
-                  type="text"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.actualModel')"
-                />
-                <button
-                  type="button"
-                  @click="removeModelMapping(index)"
-                  class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              @click="addModelMapping"
-              class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-            >
-              <svg
-                class="mr-1 inline h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              {{ t('admin.providers.addMapping') }}
-            </button>
-
-            <!-- Quick Add Buttons -->
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="preset in presetMappings"
-                :key="preset.label"
-                type="button"
-                @click="addPresetMapping(preset.from, preset.to)"
-                :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-              >
-                + {{ preset.label }}
-              </button>
-            </div>
-          </div>
+          <ProviderModelMappingEditor
+            v-else
+            v-model="modelMappings"
+            :presets="presetMappings"
+            @add="touchQoderModelRestriction"
+            @remove="touchQoderModelRestriction"
+            @preset="addPresetMapping"
+          />
         </div>
       </div>
 
@@ -1054,9 +751,9 @@
               type="button"
               @click="modelRestrictionMode = 'whitelist'"
               :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                 modelRestrictionMode === 'whitelist'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
               ]"
             >
@@ -1066,7 +763,7 @@
               type="button"
               @click="modelRestrictionMode = 'mapping'"
               :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                 modelRestrictionMode === 'mapping'
                   ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -1080,7 +777,7 @@
           </p>
 
           <!-- Whitelist Mode -->
-          <div v-if="modelRestrictionMode === 'whitelist'">
+          <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
             <ModelWhitelistSelector :model-value="allowedModels" platform="anthropic" @update:model-value="setAllowedModels" />
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.providers.selectedModels', { count: allowedModels.length }) }}
@@ -1089,31 +786,14 @@
           </div>
 
           <!-- Mapping Mode -->
-          <div v-else class="space-y-3">
-            <div v-for="(mapping, index) in modelMappings" :key="getModelMappingKey(mapping)" class="flex items-center gap-2">
-              <input v-model="mapping.from" type="text" class="input flex-1" :placeholder="t('admin.providers.fromModel')" />
-              <span class="text-gray-400">→</span>
-              <input v-model="mapping.to" type="text" class="input flex-1" :placeholder="t('admin.providers.toModel')" />
-              <button type="button" @click="modelMappings.splice(index, 1)" class="text-red-500 hover:text-red-700">
-                <Icon name="trash" size="sm" />
-              </button>
-            </div>
-            <button type="button" @click="modelMappings.push({ from: '', to: '' })" class="btn btn-secondary text-sm">
-              + {{ t('admin.providers.addMapping') }}
-            </button>
-            <!-- Bedrock Preset Mappings -->
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="preset in bedrockPresets"
-                :key="preset.from"
-                type="button"
-                @click="modelMappings.push({ from: preset.from, to: preset.to })"
-                :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-              >
-                + {{ preset.label }}
-              </button>
-            </div>
-          </div>
+          <ProviderModelMappingEditor
+            v-else
+            v-model="modelMappings"
+            :presets="bedrockPresets"
+            :source-placeholder="t('admin.providers.fromModel')"
+            :target-placeholder="t('admin.providers.toModel')"
+            @preset="(from, to) => modelMappings.push({ from, to })"
+          />
         </div>
 
         <!-- Pool Mode Section for Bedrock -->
@@ -1127,43 +807,49 @@
             </div>
             <Toggle v-model="poolModeEnabled" variant="flush" off-tone="soft" />
           </div>
-          <div v-if="poolModeEnabled" class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-              <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
-              {{ t('admin.providers.poolModeInfo') }}
-            </p>
-          </div>
-          <div v-if="poolModeEnabled" class="mt-3">
-            <label class="input-label">{{ t('admin.providers.poolModeRetryCount') }}</label>
-            <input
-              v-model.number="poolModeRetryCount"
-              type="number"
-              min="0"
-              :max="MAX_POOL_MODE_RETRY_COUNT"
-              step="1"
-              class="input"
-            />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{
-                t('admin.providers.poolModeRetryCountHint', {
-                  default: DEFAULT_POOL_MODE_RETRY_COUNT,
-                  max: MAX_POOL_MODE_RETRY_COUNT
-                })
-              }}
-            </p>
-          </div>
-          <div v-if="poolModeEnabled" class="mt-3">
-            <label class="input-label">{{ t('admin.providers.poolModeRetryStatusCodes') }}</label>
-            <input
-              v-model="poolModeRetryStatusCodesInput"
-              type="text"
-              class="input"
-              :placeholder="DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ')"
-            />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.poolModeRetryStatusCodesHint', { default: DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ') }) }}
-            </p>
-          </div>
+          <Collapse :open="poolModeEnabled" unmount-on-hide>
+            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
+              <p class="text-xs text-blue-700 dark:text-blue-400">
+                <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
+                {{ t('admin.providers.poolModeInfo') }}
+              </p>
+            </div>
+          </Collapse>
+          <Collapse :open="poolModeEnabled" unmount-on-hide>
+            <div class="mt-3">
+              <label class="input-label">{{ t('admin.providers.poolModeRetryCount') }}</label>
+              <input
+                v-model.number="poolModeRetryCount"
+                type="number"
+                min="0"
+                :max="MAX_POOL_MODE_RETRY_COUNT"
+                step="1"
+                class="input"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{
+                  t('admin.providers.poolModeRetryCountHint', {
+                    default: DEFAULT_POOL_MODE_RETRY_COUNT,
+                    max: MAX_POOL_MODE_RETRY_COUNT
+                  })
+                }}
+              </p>
+            </div>
+          </Collapse>
+          <Collapse :open="poolModeEnabled" unmount-on-hide>
+            <div class="mt-3">
+              <label class="input-label">{{ t('admin.providers.poolModeRetryStatusCodes') }}</label>
+              <input
+                v-model="poolModeRetryStatusCodesInput"
+                type="text"
+                class="input"
+                :placeholder="DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ')"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.providers.poolModeRetryStatusCodesHint', { default: DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ') }) }}
+              </p>
+            </div>
+          </Collapse>
         </div>
       </div>
 
@@ -1190,12 +876,13 @@
         <ModelWhitelistSelector v-model="antigravityWhitelistModels" platform="antigravity" />
 
         <!-- Mapping Mode Only (no toggle for Antigravity) -->
-        <div>
-          <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
-            <p class="text-xs text-purple-700 dark:text-purple-400">{{ t('admin.providers.mapRequestModels') }}</p>
-          </div>
-
-          <div class="mb-3 flex flex-wrap gap-2">
+        <ProviderModelMappingEditor
+          v-model="antigravityModelMappings"
+          :presets="antigravityPresetMappings"
+          wildcard-validation
+          @preset="addAntigravityPresetMapping"
+        >
+          <template #header-actions>
             <button
               type="button"
               @click="syncAntigravityUpstreamModels"
@@ -1204,85 +891,8 @@
             >
               {{ isSyncingAntigravityUpstream ? t('admin.providers.syncUpstreamModelsLoading') : t('admin.providers.syncUpstreamModels') }}
             </button>
-          </div>
-
-          <div v-if="antigravityModelMappings.length > 0" class="mb-3 space-y-2">
-            <div
-              v-for="(mapping, index) in antigravityModelMappings"
-              :key="getAntigravityModelMappingKey(mapping)"
-              class="space-y-1"
-            >
-              <div class="flex items-center gap-2">
-                <input
-                  v-model="mapping.from"
-                  type="text"
-                  :class="[
-                    'input flex-1',
-                    !isValidWildcardPattern(mapping.from) ? 'border-red-500 dark:border-red-500' : '',
-                    mapping.to.includes('*') ? '' : ''
-                  ]"
-                  :placeholder="t('admin.providers.requestModel')"
-                />
-                <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-                <input
-                  v-model="mapping.to"
-                  type="text"
-                  :class="[
-                    'input flex-1',
-                    mapping.to.includes('*') ? 'border-red-500 dark:border-red-500' : ''
-                  ]"
-                  :placeholder="t('admin.providers.actualModel')"
-                />
-                <button
-                  type="button"
-                  @click="removeAntigravityModelMapping(index)"
-                  class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <!-- 校验错误提示 -->
-              <p v-if="!isValidWildcardPattern(mapping.from)" class="text-xs text-red-500">
-                {{ t('admin.providers.wildcardOnlyAtEnd') }}
-              </p>
-              <p v-if="mapping.to.includes('*')" class="text-xs text-red-500">
-                {{ t('admin.providers.targetNoWildcard') }}
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            @click="addAntigravityModelMapping"
-            class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-          >
-            <svg class="mr-1 inline h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            {{ t('admin.providers.addMapping') }}
-          </button>
-
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="preset in antigravityPresetMappings"
-              :key="preset.label"
-              type="button"
-              @click="addAntigravityPresetMapping(preset.from, preset.to)"
-              :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-            >
-              + {{ preset.label }}
-            </button>
-          </div>
-        </div>
+          </template>
+        </ProviderModelMappingEditor>
       </div>
 
       <!-- Temp Unschedulable Rules -->
@@ -1297,126 +907,9 @@
           <Toggle v-model="tempUnschedEnabled" variant="flush" off-tone="soft" />
         </div>
 
-        <div v-if="tempUnschedEnabled" class="space-y-3">
-          <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-              <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
-              {{ t('admin.providers.tempUnschedulable.notice') }}
-            </p>
-          </div>
-
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="preset in tempUnschedPresets"
-              :key="preset.label"
-              type="button"
-              @click="addTempUnschedRule(preset.rule)"
-              class="rounded-control bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-300 dark:hover:bg-dark-500"
-            >
-              + {{ preset.label }}
-            </button>
-          </div>
-
-          <div v-if="tempUnschedRules.length > 0" class="space-y-3">
-            <div
-              v-for="(rule, index) in tempUnschedRules"
-              :key="getTempUnschedRuleKey(rule)"
-              class="rounded-control border border-gray-200 p-3 dark:border-dark-600"
-            >
-              <div class="mb-2 flex items-center justify-between">
-                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  {{ t('admin.providers.tempUnschedulable.ruleIndex', { index: index + 1 }) }}
-                </span>
-                <div class="flex items-center gap-2">
-                  <button
-                    type="button"
-                    :disabled="index === 0"
-                    @click="moveTempUnschedRule(index, -1)"
-                    class="rounded-compact p-1 text-gray-400 transition-colors hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-gray-200"
-                  >
-                    <Icon name="chevronUp" size="sm" :stroke-width="2" />
-                  </button>
-                  <button
-                    type="button"
-                    :disabled="index === tempUnschedRules.length - 1"
-                    @click="moveTempUnschedRule(index, 1)"
-                    class="rounded-compact p-1 text-gray-400 transition-colors hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-gray-200"
-                  >
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    @click="removeTempUnschedRule(index)"
-                    class="rounded-compact p-1 text-red-500 transition-colors hover:text-red-600"
-                  >
-                    <Icon name="x" size="sm" :stroke-width="2" />
-                  </button>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label class="input-label">{{ t('admin.providers.tempUnschedulable.errorCode') }}</label>
-                  <input
-                    v-model.number="rule.error_code"
-                    type="number"
-                    min="100"
-                    max="599"
-                    class="input"
-                    :placeholder="t('admin.providers.tempUnschedulable.errorCodePlaceholder')"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t('admin.providers.tempUnschedulable.durationMinutes') }}</label>
-                  <input
-                    v-model.number="rule.duration_minutes"
-                    type="number"
-                    min="1"
-                    class="input"
-                    :placeholder="t('admin.providers.tempUnschedulable.durationPlaceholder')"
-                  />
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="input-label">{{ t('admin.providers.tempUnschedulable.keywords') }}</label>
-                  <input
-                    v-model="rule.keywords"
-                    type="text"
-                    class="input"
-                    :placeholder="t('admin.providers.tempUnschedulable.keywordsPlaceholder')"
-                  />
-                  <p class="input-hint">{{ t('admin.providers.tempUnschedulable.keywordsHint') }}</p>
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="input-label">{{ t('admin.providers.tempUnschedulable.description') }}</label>
-                  <input
-                    v-model="rule.description"
-                    type="text"
-                    class="input"
-                    :placeholder="t('admin.providers.tempUnschedulable.descriptionPlaceholder')"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            @click="addTempUnschedRule()"
-            class="w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-          >
-            <svg
-              class="mr-1 inline h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            {{ t('admin.providers.tempUnschedulable.addRule') }}
-          </button>
-        </div>
+        <Collapse :open="tempUnschedEnabled" unmount-on-hide>
+          <TempUnschedRulesEditor v-model="tempUnschedRules" />
+        </Collapse>
       </div>
 
       <div
@@ -1437,18 +930,20 @@
             :aria-label="t('admin.providers.providerSchedulingThresholdOverride')"
           />
         </div>
-        <div v-if="providerSchedulingThresholdOverrideEnabled">
-          <label class="input-label">{{ t('admin.providers.providerSchedulingThresholdOverrideValue') }}</label>
-          <input
-            v-model.number="providerSchedulingThresholdOverrideValue"
-            data-testid="provider-scheduling-threshold-override-value"
-            type="number"
-            min="1"
-            max="100"
-            class="input"
-          />
-          <p class="input-hint">{{ t('admin.providers.providerSchedulingThresholdOverrideDisabledHint') }}</p>
-        </div>
+        <Collapse :open="providerSchedulingThresholdOverrideEnabled" unmount-on-hide>
+          <div >
+            <label class="input-label">{{ t('admin.providers.providerSchedulingThresholdOverrideValue') }}</label>
+            <input
+              v-model.number="providerSchedulingThresholdOverrideValue"
+              data-testid="provider-scheduling-threshold-override-value"
+              type="number"
+              min="1"
+              max="100"
+              class="input"
+            />
+            <p class="input-hint">{{ t('admin.providers.providerSchedulingThresholdOverrideDisabledHint') }}</p>
+          </div>
+        </Collapse>
       </div>
 
       <!-- Intercept Warmup Requests (Anthropic/Antigravity) -->
@@ -1894,21 +1389,23 @@
           </div>
           <Toggle v-model="tlsFingerprintEnabled" variant="flush" off-tone="soft" data-testid="edit-openai-tls-fingerprint-toggle" />
         </div>
-        <div v-if="tlsFingerprintEnabled" class="mt-3 space-y-3">
-          <Select
-            v-model="tlsFingerprintProfileId"
-            data-testid="edit-openai-tls-fingerprint-profile"
-            :options="tlsFingerprintProfileOptions"
-          />
-          <div v-if="supportsTLSFingerprintRouter">
+        <Collapse :open="tlsFingerprintEnabled" unmount-on-hide>
+          <div class="mt-3 space-y-3">
             <Select
-              v-model="tlsFingerprintRouterId"
-              data-testid="edit-openai-tls-fingerprint-router"
-              :options="tlsFingerprintRouterOptions"
+              v-model="tlsFingerprintProfileId"
+              data-testid="edit-openai-tls-fingerprint-profile"
+              :options="tlsFingerprintProfileOptions"
             />
-            <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
+            <div v-if="supportsTLSFingerprintRouter">
+              <Select
+                v-model="tlsFingerprintRouterId"
+                data-testid="edit-openai-tls-fingerprint-router"
+                :options="tlsFingerprintRouterOptions"
+              />
+              <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
+            </div>
           </div>
-        </div>
+        </Collapse>
       </div>
 
       <div
@@ -1919,37 +1416,14 @@
           :label="t('admin.providers.openai.nativeCompactV2Mode')" :hint="t('admin.providers.openai.nativeCompactV2ModeDesc')" />
         <OpenAICompactionCheckbox v-model="openAICompactMode" test-id="edit-openai-compact-mode"
           :label="t('admin.providers.openai.compactMode')" :hint="t('admin.providers.openai.compactModeDesc')" />
-        <div v-if="openAICompactMode !== 'force_off'">
-          <label class="input-label">{{ t('admin.providers.openai.compactModelMapping') }}</label>
-          <p class="input-hint">{{ t('admin.providers.openai.compactModelMappingDesc') }}</p>
-          <div v-if="openAICompactModelMappings.length > 0" class="mb-3 space-y-2">
-            <div
-              v-for="(mapping, index) in openAICompactModelMappings"
-              :key="getOpenAICompactModelMappingKey(mapping)"
-              class="flex items-center gap-2"
-            >
-              <input
-                v-model="mapping.from"
-                type="text"
-                class="input flex-1"
-                :placeholder="t('admin.providers.fromModel')"
-              />
-              <span class="text-gray-400">→</span>
-              <input
-                v-model="mapping.to"
-                type="text"
-                class="input flex-1"
-                :placeholder="t('admin.providers.toModel')"
-              />
-              <button type="button" @click="removeOpenAICompactModelMapping(index)" class="text-red-500 hover:text-red-700">
-                <Icon name="trash" size="sm" />
-              </button>
-            </div>
-          </div>
-          <button type="button" @click="addOpenAICompactModelMapping" class="btn btn-secondary text-sm">
-            + {{ t('admin.providers.addMapping') }}
-          </button>
-        </div>
+        <ProviderModelMappingEditor
+          v-if="openAICompactMode !== 'force_off'"
+          v-model="openAICompactModelMappings"
+          :title="t('admin.providers.openai.compactModelMapping')"
+          :hint="t('admin.providers.openai.compactModelMappingDesc')"
+          :source-placeholder="t('admin.providers.fromModel')"
+          :target-placeholder="t('admin.providers.toModel')"
+        />
       </div>
 
       <div>
@@ -2038,38 +1512,40 @@
             <Toggle v-model="windowCostEnabled" variant="flush" off-tone="soft" />
           </div>
 
-          <div v-if="windowCostEnabled" class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="input-label">{{ t('admin.providers.quotaControl.windowCost.limit') }}</label>
-              <div class="relative">
-                <span class="input-icon text-gray-500 dark:text-gray-400">$</span>
-                <input
-                  v-model.number="windowCostLimit"
-                  type="number"
-                  min="0"
-                  step="1"
-                  class="input input-has-icon input-icon-text"
-                  :placeholder="t('admin.providers.quotaControl.windowCost.limitPlaceholder')"
-                />
+          <Collapse :open="windowCostEnabled" unmount-on-hide>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="input-label">{{ t('admin.providers.quotaControl.windowCost.limit') }}</label>
+                <div class="relative">
+                  <span class="input-icon text-gray-500 dark:text-gray-400">$</span>
+                  <input
+                    v-model.number="windowCostLimit"
+                    type="number"
+                    min="0"
+                    step="1"
+                    class="input input-has-icon input-icon-text"
+                    :placeholder="t('admin.providers.quotaControl.windowCost.limitPlaceholder')"
+                  />
+                </div>
+                <p class="input-hint">{{ t('admin.providers.quotaControl.windowCost.limitHint') }}</p>
               </div>
-              <p class="input-hint">{{ t('admin.providers.quotaControl.windowCost.limitHint') }}</p>
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.quotaControl.windowCost.stickyReserve') }}</label>
-              <div class="relative">
-                <span class="input-icon text-gray-500 dark:text-gray-400">$</span>
-                <input
-                  v-model.number="windowCostStickyReserve"
-                  type="number"
-                  min="0"
-                  step="1"
-                  class="input input-has-icon input-icon-text"
-                  :placeholder="t('admin.providers.quotaControl.windowCost.stickyReservePlaceholder')"
-                />
+              <div>
+                <label class="input-label">{{ t('admin.providers.quotaControl.windowCost.stickyReserve') }}</label>
+                <div class="relative">
+                  <span class="input-icon text-gray-500 dark:text-gray-400">$</span>
+                  <input
+                    v-model.number="windowCostStickyReserve"
+                    type="number"
+                    min="0"
+                    step="1"
+                    class="input input-has-icon input-icon-text"
+                    :placeholder="t('admin.providers.quotaControl.windowCost.stickyReservePlaceholder')"
+                  />
+                </div>
+                <p class="input-hint">{{ t('admin.providers.quotaControl.windowCost.stickyReserveHint') }}</p>
               </div>
-              <p class="input-hint">{{ t('admin.providers.quotaControl.windowCost.stickyReserveHint') }}</p>
             </div>
-          </div>
+          </Collapse>
         </div>
 
         <!-- Session Limit -->
@@ -2084,35 +1560,37 @@
             <Toggle v-model="sessionLimitEnabled" variant="flush" off-tone="soft" />
           </div>
 
-          <div v-if="sessionLimitEnabled" class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="input-label">{{ t('admin.providers.quotaControl.sessionLimit.maxSessions') }}</label>
-              <input
-                v-model.number="maxSessions"
-                type="number"
-                min="1"
-                step="1"
-                class="input"
-                :placeholder="t('admin.providers.quotaControl.sessionLimit.maxSessionsPlaceholder')"
-              />
-              <p class="input-hint">{{ t('admin.providers.quotaControl.sessionLimit.maxSessionsHint') }}</p>
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.quotaControl.sessionLimit.idleTimeout') }}</label>
-              <div class="relative">
+          <Collapse :open="sessionLimitEnabled" unmount-on-hide>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="input-label">{{ t('admin.providers.quotaControl.sessionLimit.maxSessions') }}</label>
                 <input
-                  v-model.number="sessionIdleTimeout"
+                  v-model.number="maxSessions"
                   type="number"
                   min="1"
                   step="1"
-                  class="input pr-12"
-                  :placeholder="t('admin.providers.quotaControl.sessionLimit.idleTimeoutPlaceholder')"
+                  class="input"
+                  :placeholder="t('admin.providers.quotaControl.sessionLimit.maxSessionsPlaceholder')"
                 />
-                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">{{ t('common.minutes') }}</span>
+                <p class="input-hint">{{ t('admin.providers.quotaControl.sessionLimit.maxSessionsHint') }}</p>
               </div>
-              <p class="input-hint">{{ t('admin.providers.quotaControl.sessionLimit.idleTimeoutHint') }}</p>
+              <div>
+                <label class="input-label">{{ t('admin.providers.quotaControl.sessionLimit.idleTimeout') }}</label>
+                <div class="relative">
+                  <input
+                    v-model.number="sessionIdleTimeout"
+                    type="number"
+                    min="1"
+                    step="1"
+                    class="input pr-12"
+                    :placeholder="t('admin.providers.quotaControl.sessionLimit.idleTimeoutPlaceholder')"
+                  />
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">{{ t('common.minutes') }}</span>
+                </div>
+                <p class="input-hint">{{ t('admin.providers.quotaControl.sessionLimit.idleTimeoutHint') }}</p>
+              </div>
             </div>
-          </div>
+          </Collapse>
         </div>
 
         <!-- RPM Limit -->
@@ -2127,71 +1605,73 @@
             <Toggle v-model="rpmLimitEnabled" variant="flush" off-tone="soft" />
           </div>
 
-          <div v-if="rpmLimitEnabled" class="space-y-4">
-            <div>
-              <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.baseRpm') }}</label>
-              <input
-                v-model.number="baseRpm"
-                type="number"
-                min="1"
-                max="1000"
-                step="1"
-                class="input"
-                :placeholder="t('admin.providers.quotaControl.rpmLimit.baseRpmPlaceholder')"
-              />
-              <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.baseRpmHint') }}</p>
-            </div>
-
-            <div>
-              <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.strategy') }}</label>
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  @click="rpmStrategy = 'tiered'"
-                  :class="[
-                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition-all',
-                    rpmStrategy === 'tiered'
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                  ]"
-                >
-                  <div class="text-center">
-                    <div>{{ t('admin.providers.quotaControl.rpmLimit.strategyTiered') }}</div>
-                    <div class="mt-0.5 text-xs opacity-70">{{ t('admin.providers.quotaControl.rpmLimit.strategyTieredHint') }}</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  @click="rpmStrategy = 'sticky_exempt'"
-                  :class="[
-                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition-all',
-                    rpmStrategy === 'sticky_exempt'
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                  ]"
-                >
-                  <div class="text-center">
-                    <div>{{ t('admin.providers.quotaControl.rpmLimit.strategyStickyExempt') }}</div>
-                    <div class="mt-0.5 text-xs opacity-70">{{ t('admin.providers.quotaControl.rpmLimit.strategyStickyExemptHint') }}</div>
-                  </div>
-                </button>
+          <Collapse :open="rpmLimitEnabled" unmount-on-hide>
+            <div class="space-y-4">
+              <div>
+                <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.baseRpm') }}</label>
+                <input
+                  v-model.number="baseRpm"
+                  type="number"
+                  min="1"
+                  max="1000"
+                  step="1"
+                  class="input"
+                  :placeholder="t('admin.providers.quotaControl.rpmLimit.baseRpmPlaceholder')"
+                />
+                <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.baseRpmHint') }}</p>
               </div>
-            </div>
 
-            <div v-if="rpmStrategy === 'tiered'">
-              <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.stickyBuffer') }}</label>
-              <input
-                v-model.number="rpmStickyBuffer"
-                type="number"
-                min="1"
-                step="1"
-                class="input"
-                :placeholder="t('admin.providers.quotaControl.rpmLimit.stickyBufferPlaceholder')"
-              />
-              <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.stickyBufferHint') }}</p>
-            </div>
+              <div>
+                <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.strategy') }}</label>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    @click="rpmStrategy = 'tiered'"
+                    :class="[
+                      'flex-1 rounded-control px-3 py-2 text-sm font-medium transition',
+                      rpmStrategy === 'tiered'
+                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                    ]"
+                  >
+                    <div class="text-center">
+                      <div>{{ t('admin.providers.quotaControl.rpmLimit.strategyTiered') }}</div>
+                      <div class="mt-0.5 text-xs opacity-70">{{ t('admin.providers.quotaControl.rpmLimit.strategyTieredHint') }}</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    @click="rpmStrategy = 'sticky_exempt'"
+                    :class="[
+                      'flex-1 rounded-control px-3 py-2 text-sm font-medium transition',
+                      rpmStrategy === 'sticky_exempt'
+                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                    ]"
+                  >
+                    <div class="text-center">
+                      <div>{{ t('admin.providers.quotaControl.rpmLimit.strategyStickyExempt') }}</div>
+                      <div class="mt-0.5 text-xs opacity-70">{{ t('admin.providers.quotaControl.rpmLimit.strategyStickyExemptHint') }}</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
 
-          </div>
+              <div v-if="rpmStrategy === 'tiered'" v-content-reveal>
+                <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.stickyBuffer') }}</label>
+                <input
+                  v-model.number="rpmStickyBuffer"
+                  type="number"
+                  min="1"
+                  step="1"
+                  class="input"
+                  :placeholder="t('admin.providers.quotaControl.rpmLimit.stickyBufferPlaceholder')"
+                />
+                <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.stickyBufferHint') }}</p>
+              </div>
+
+            </div>
+          </Collapse>
 
           <!-- 用户消息限速模式（独立于 RPM 开关，始终可见） -->
           <div class="mt-4">
@@ -2255,17 +1735,19 @@
             </div>
             <Toggle v-model="cacheTTLOverrideEnabled" variant="flush" off-tone="soft" />
           </div>
-          <div v-if="cacheTTLOverrideEnabled" class="mt-3">
-            <label class="input-label text-xs">{{ t('admin.providers.quotaControl.cacheTTLOverride.target') }}</label>
-            <Select
-              v-model="cacheTTLOverrideTarget"
-              :options="cacheTTLOverrideTargetOptions"
-              class="mt-1"
-            />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.quotaControl.cacheTTLOverride.targetHint') }}
-            </p>
-          </div>
+          <Collapse :open="cacheTTLOverrideEnabled" unmount-on-hide>
+            <div class="mt-3">
+              <label class="input-label text-xs">{{ t('admin.providers.quotaControl.cacheTTLOverride.target') }}</label>
+              <Select
+                v-model="cacheTTLOverrideTarget"
+                :options="cacheTTLOverrideTargetOptions"
+                class="mt-1"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.providers.quotaControl.cacheTTLOverride.targetHint') }}
+              </p>
+            </div>
+          </Collapse>
         </div>
 
         <!-- Custom Base URL Relay -->
@@ -2279,14 +1761,16 @@
             </div>
             <Toggle v-model="customBaseUrlEnabled" variant="flush" off-tone="soft" />
           </div>
-          <div v-if="customBaseUrlEnabled" class="mt-3">
-            <input
-              v-model="customBaseUrl"
-              type="text"
-              class="input"
-              :placeholder="t('admin.providers.quotaControl.customBaseUrl.urlHint')"
-            />
-          </div>
+          <Collapse :open="customBaseUrlEnabled" unmount-on-hide>
+            <div class="mt-3">
+              <input
+                v-model="customBaseUrl"
+                type="text"
+                class="input"
+                :placeholder="t('admin.providers.quotaControl.customBaseUrl.urlHint')"
+              />
+            </div>
+          </Collapse>
         </div>
       </div>
 
@@ -2314,11 +1798,11 @@
               ?
             </span>
             <div
-              class="pointer-events-none absolute left-0 top-full z-tooltip mt-1.5 w-72 rounded-compact bg-gray-900 px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
+              class="pointer-events-none absolute left-0 top-full z-tooltip mt-1.5 w-72 tooltip-panel rounded-compact px-3 py-2 text-xs opacity-0 transition-opacity group-hover:opacity-100"
             >
               {{ t('admin.providers.allowOveragesTooltip') }}
               <div
-                class="absolute bottom-full left-3 border-4 border-transparent border-b-gray-900 dark:border-b-gray-700"
+                class="tooltip-caret -top-1 left-3 border-l border-t"
               ></div>
             </div>
           </div>
@@ -2348,26 +1832,13 @@
           class="btn btn-primary"
           data-tour="provider-form-submit"
         >
-          <svg
+          <Icon
+            name="loader"
+            size="sm"
+            :animate-on-hover="false"
             v-if="submitting"
             class="-ml-1 mr-2 h-4 w-4 animate-spin"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            ></circle>
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
+          />
           {{ submitting ? t('admin.providers.updating') : t('common.update') }}
         </button>
       </div>
@@ -2382,6 +1853,9 @@
 import OpenCodeGoProtocolRulesEditor from "./OpenCodeGoProtocolRulesEditor.vue"
 import CodexTicketAccountSettings from '@/components/admin/provider/CodexTicketAccountSettings.vue'
 import { applyOpenCodeGoProtocolRules, cloneOpenCodeGoProtocolRules, parseOpenCodeGoProtocolRules, defaultOpenCodeProtocolRules } from './credentialsBuilder'
+import { vContentReveal } from '@/directives/contentReveal'
+import Collapse from '@/components/common/Collapse.vue'
+
 // 统一协议选择只保存原生集合，不在提供商侧配置转换。
 const upstreamProtocols = ref<ProtocolID[] | undefined>(undefined)
 
@@ -2411,6 +1885,9 @@ import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import UpstreamRequestIdHeaderField from '@/components/provider/UpstreamRequestIdHeaderField.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
+import ProviderModelMappingEditor from '@/components/provider/ProviderModelMappingEditor.vue'
+import TempUnschedRulesEditor, { type TempUnschedRuleForm } from '@/components/provider/TempUnschedRulesEditor.vue'
+import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import ProxySelector from '@/components/common/ProxySelector.vue'
 import GroupSelector from '@/components/common/GroupSelector.vue'
 import CodexImageToolModeSelector from '@/components/provider/CodexImageToolModeSelector.vue'
@@ -2444,7 +1921,6 @@ import {
   type HeaderOverrideRow
 } from '@/components/provider/credentialsBuilder'
 import { formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
-import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import {
   applyCodexImageToolMode,
   readCodexImageToolMode,
@@ -2472,7 +1948,6 @@ import {
   buildPersistedModelRestriction,
   splitQoderPersistedModelRestriction,
   splitPersistedModelRestriction,
-  isValidWildcardPattern,
   type QoderSite
 } from '@/composables/useModelWhitelist'
 
@@ -2516,18 +1991,6 @@ const antigravityPresetMappings = computed(() => getPresetMappingsByPlatform('an
 const bedrockPresets = computed(() => getPresetMappingsByPlatform('bedrock'))
 
 // Model mapping type
-interface ModelMapping {
-  from: string
-  to: string
-}
-
-interface TempUnschedRuleForm {
-  error_code: number | null
-  keywords: string
-  duration_minutes: number | null
-  description: string
-}
-
 // State
 const submitting = ref(false)
 const ticketSettings = ref<InstanceType<typeof CodexTicketAccountSettings>>()
@@ -2689,8 +2152,8 @@ const isBedrockAPIKeyMode = computed(() =>
   props.provider?.type === 'bedrock' &&
   (props.provider?.credentials as Record<string, unknown>)?.auth_mode === 'apikey'
 )
-const modelMappings = ref<ModelMapping[]>([])
-const openAICompactModelMappings = ref<ModelMapping[]>([])
+const modelMappings = ref<ModelMappingRow[]>([])
+const openAICompactModelMappings = ref<ModelMappingRow[]>([])
 const modelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const allowedModels = ref<string[]>([])
 const qoderModelRestrictionConfigured = ref(false)
@@ -2769,7 +2232,7 @@ const allowOverages = ref(false) // For antigravity providers: enable AI Credits
 const antigravityProjectId = ref('')
 const antigravityModelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const antigravityWhitelistModels = ref<string[]>([])
-const antigravityModelMappings = ref<ModelMapping[]>([])
+const antigravityModelMappings = ref<ModelMappingRow[]>([])
 const isSyncingAntigravityUpstream = ref(false)
 const tempUnschedEnabled = ref(false)
 const providerSchedulingThresholdOverrideEnabled = ref(false)
@@ -2779,10 +2242,6 @@ const supportsProviderSchedulingThresholdOverride = computed(() =>
   supportsProviderSchedulingThresholdOverridePlatform(props.provider?.platform)
 )
 const tempUnschedRules = ref<TempUnschedRuleForm[]>([])
-const getModelMappingKey = createStableObjectKeyResolver<ModelMapping>('edit-model-mapping')
-const getOpenAICompactModelMappingKey = createStableObjectKeyResolver<ModelMapping>('edit-openai-compact-model-mapping')
-const getAntigravityModelMappingKey = createStableObjectKeyResolver<ModelMapping>('edit-antigravity-model-mapping')
-const getTempUnschedRuleKey = createStableObjectKeyResolver<TempUnschedRuleForm>('edit-temp-unsched-rule')
 
 // Quota control state (Anthropic OAuth/SetupToken only)
 const windowCostEnabled = ref(false)
@@ -2968,35 +2427,6 @@ const presetMappings = computed(() =>
     isQoderCosyProvider.value ? qoderSite.value : undefined
   )
 )
-const tempUnschedPresets = computed(() => [
-  {
-    label: t('admin.providers.tempUnschedulable.presets.overloadLabel'),
-    rule: {
-      error_code: 529,
-      keywords: 'overloaded, too many',
-      duration_minutes: 60,
-      description: t('admin.providers.tempUnschedulable.presets.overloadDesc')
-    }
-  },
-  {
-    label: t('admin.providers.tempUnschedulable.presets.rateLimitLabel'),
-    rule: {
-      error_code: 429,
-      keywords: 'rate limit, too many requests',
-      duration_minutes: 10,
-      description: t('admin.providers.tempUnschedulable.presets.rateLimitDesc')
-    }
-  },
-  {
-    label: t('admin.providers.tempUnschedulable.presets.unavailableLabel'),
-    rule: {
-      error_code: 503,
-      keywords: 'unavailable, maintenance',
-      duration_minutes: 30,
-      description: t('admin.providers.tempUnschedulable.presets.unavailableDesc')
-    }
-  }
-])
 
 // Computed: default base URL based on platform
 const defaultBaseUrl = computed(() => {
@@ -3649,16 +3079,6 @@ const setAllowedModels = (models: string[]) => {
   allowedModels.value = models
 }
 
-const addModelMapping = () => {
-  touchQoderModelRestriction()
-  modelMappings.value.push({ from: '', to: '' })
-}
-
-const removeModelMapping = (index: number) => {
-  touchQoderModelRestriction()
-  modelMappings.value.splice(index, 1)
-}
-
 const addPresetMapping = (from: string, to: string) => {
   touchQoderModelRestriction()
   const exists = modelMappings.value.some((m) => m.from === from)
@@ -3667,22 +3087,6 @@ const addPresetMapping = (from: string, to: string) => {
     return
   }
   modelMappings.value.push({ from, to })
-}
-
-const addAntigravityModelMapping = () => {
-  antigravityModelMappings.value.push({ from: '', to: '' })
-}
-
-const addOpenAICompactModelMapping = () => {
-  openAICompactModelMappings.value.push({ from: '', to: '' })
-}
-
-const removeOpenAICompactModelMapping = (index: number) => {
-  openAICompactModelMappings.value.splice(index, 1)
-}
-
-const removeAntigravityModelMapping = (index: number) => {
-  antigravityModelMappings.value.splice(index, 1)
 }
 
 const addAntigravityPresetMapping = (from: string, to: string) => {
@@ -3779,32 +3183,6 @@ const removeErrorCode = (code: number) => {
   if (index !== -1) {
     selectedErrorCodes.value.splice(index, 1)
   }
-}
-
-const addTempUnschedRule = (preset?: TempUnschedRuleForm) => {
-  if (preset) {
-    tempUnschedRules.value.push({ ...preset })
-    return
-  }
-  tempUnschedRules.value.push({
-    error_code: null,
-    keywords: '',
-    duration_minutes: 30,
-    description: ''
-  })
-}
-
-const removeTempUnschedRule = (index: number) => {
-  tempUnschedRules.value.splice(index, 1)
-}
-
-const moveTempUnschedRule = (index: number, direction: number) => {
-  const target = index + direction
-  if (target < 0 || target >= tempUnschedRules.value.length) return
-  const rules = tempUnschedRules.value
-  const current = rules[index]
-  rules[index] = rules[target]
-  rules[target] = current
 }
 
 const buildTempUnschedRules = (rules: TempUnschedRuleForm[]) => {

@@ -1014,7 +1014,9 @@ export default {
         duplicateName: 'Duplicate header name (matching is case-insensitive)',
         invalidValue: 'Invalid header value (control characters are not allowed; max length 8192)',
         tooManyEntries: 'Too many header override entries (max 64)'
-      },
+      ,
+empty: 'No header overrides configured'
+},
       grokCustomBaseUrl: {
         title: 'Custom Upstream URL',
         hint: 'When enabled, provider traffic (chat/media/probes) is forwarded to the specified address. OAuth authorization and token refresh are unaffected and stay on the official endpoints.',
@@ -1864,5 +1866,7 @@ export default {
       needsReauth: 'Re-auth Required',
       rateLimited: 'Rate Limited',
       usageError: 'Fetch Error'
-    },
+    ,
+modelMappingEmpty: 'No model mappings configured'
+},
 }

@@ -2,7 +2,7 @@
   <div class="space-y-4" :aria-busy="loading">
     <!-- 指标卡展示所选范围的合计与环比，点击后在下方折线图中查看该指标 -->
     <div
-      class="dash-rise-item grid grid-cols-2 gap-3"
+      class="dash-rise-item grid grid-cols-2 gap-4 lg:grid-cols-4"
       :style="{ '--rise-i': 0 }"
       role="tablist"
       :aria-label="t('dashboard.usageChart.metricsLabel')"
@@ -14,9 +14,9 @@
         role="tab"
         :data-testid="`usage-metric-${item.key}`"
         :aria-selected="metric === item.key"
-        class="metric-card card bh-pressable flex min-w-0 flex-col gap-3 overflow-hidden p-4 text-left transition-colors duration-150"
+        class="metric-card card flex min-w-0 flex-col gap-3 overflow-hidden p-4 text-left transition-colors duration-fast"
         :class="metric === item.key
-          ? 'bg-bh-yellow border-gray-950'
+          ? 'border-primary-600 dark:border-primary-500/70'
           : 'hover:border-black/20 dark:hover:border-dark-500'"
         @click="selectMetric(item.key)"
       >
@@ -49,7 +49,7 @@
         <span v-else class="flex min-w-0 items-center gap-2 text-xs text-gray-500 dark:text-dark-400" :data-testid="`usage-delta-${item.key}`">
           <template v-if="item.delta">
             <span
-              class="inline-flex shrink-0 items-center gap-1 rounded-control px-2 py-0.5 font-medium tabular-nums"
+              class="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-medium tabular-nums"
               :class="deltaToneClasses[item.delta.tone]"
             >
               <Icon :name="deltaIcons[item.delta.tone]" size="xs" :animate-on-hover="false" />
@@ -63,8 +63,8 @@
     </div>
 
     <!-- 折线图与模型排行并排，窄于 xl 时排行排到图表下方 -->
-    <div class="dash-rise-item grid grid-cols-1 gap-4" :style="{ '--rise-i': 1 }">
-      <div ref="chartCardRef" class="card flex min-w-0 flex-col p-4 " data-testid="usage-chart-card">
+    <div class="dash-rise-item grid grid-cols-1 gap-4 xl:grid-cols-3" :style="{ '--rise-i': 1 }">
+      <div ref="chartCardRef" class="card flex min-w-0 flex-col p-4 xl:col-span-2" data-testid="usage-chart-card">
         <div class="mb-4 flex min-h-7 flex-wrap items-center justify-between gap-2">
           <div class="flex items-baseline gap-2">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-dark-50" data-testid="usage-chart-title">{{ chartTitle }}</h3>
@@ -140,7 +140,7 @@
         </div>
       </div>
 
-      <UserDashboardTopModels class="" />
+      <UserDashboardTopModels class="xl:col-span-1" />
     </div>
   </div>
 </template>
@@ -166,11 +166,11 @@ import { Line } from 'vue-chartjs'
 import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
 import Skeleton from '@/components/common/Skeleton.vue'
 import Icon from '@/components/icons/Icon.vue'
-// 使用已存在的包豪斯 SVG 图标类型。
-type IconName = NonNullable<InstanceType<typeof Icon>['$props']['name']>
+import type { IconName } from '@/components/icons/registry'
 import UsageSparkline from './UsageSparkline.vue'
 import UserDashboardTopModels from './UserDashboardTopModels.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
+import { useVisualTheme } from '@/composables/useVisualTheme'
 import { useChartTheme, CHART_SERIES_COLORS, CHART_TICK_FONT_SIZE } from '@/composables/useChartTheme'
 import { useCountUp } from '@/composables/useCountUp'
 import { externalTooltipHandler, hideExternalTooltip } from '@/utils/chartExternalTooltip'
@@ -191,7 +191,7 @@ type UsageDataset = ChartDataset<'line', Array<number | null>> & {
 }
 
 // 请求数和消费折线使用品牌色，浅色取 primary-600，深色取 primary-500。
-const BRAND_LINE_COLOR = { light: '#1450A3', dark: '#97B7E8' }
+const BRAND_LINE_COLOR = { light: '#12A7E8', dark: '#00D2FF' }
 // 卡片底色，悬停点和峰值环的描边与之相同，看起来像镂空。
 const CARD_SURFACE = { light: '#FFFFFF', dark: '#0F0F10' }
 // 未结束时段与上一周期对比线的虚线样式。
@@ -203,6 +203,7 @@ const LABEL_PADDING_X = 6
 const LABEL_GAP = 10
 
 const { t } = useI18n()
+const { visualTheme } = useVisualTheme()
 const { formatBalanceAmount } = useBalanceDisplay()
 const { colors: themeColors, isDark } = useChartTheme()
 const reducedMotion = usePreferredReducedMotion()
@@ -291,7 +292,7 @@ const metricTabs = computed(() => {
   return [
     {
       key: 'requests' as const,
-      icon: 'arrowsUpDown' as IconName,
+      icon: 'swap' as IconName,
       label: t('dashboard.usageChart.metrics.requests'),
       value: formatNumber(now.requests),
       animatedValue: formatNumber(Math.round(animatedRequests.value)),
@@ -300,7 +301,7 @@ const metricTabs = computed(() => {
     },
     {
       key: 'tokens' as const,
-      icon: 'chart' as IconName,
+      icon: 'layers' as IconName,
       label: t('dashboard.usageChart.metrics.tokens'),
       value: formatTokensK(now.tokens),
       animatedValue: formatTokensK(animatedTokens.value),
@@ -309,7 +310,7 @@ const metricTabs = computed(() => {
     },
     {
       key: 'cost' as const,
-      icon: 'creditCard' as IconName,
+      icon: 'dollar' as IconName,
       label: t('dashboard.usageChart.metrics.cost'),
       value: formatCostTotal(now.cost),
       animatedValue: formatCostTotal(animatedCost.value),
@@ -343,8 +344,8 @@ const shortLabel = (date: string): string => (
 )
 const axisLabels = computed(() => current.value.map((point) => shortLabel(point.date)))
 
-const brandColor = computed(() => (isDark.value ? BRAND_LINE_COLOR.dark : BRAND_LINE_COLOR.light))
-const surfaceColor = computed(() => (isDark.value ? CARD_SURFACE.dark : CARD_SURFACE.light))
+const brandColor = computed(() => visualTheme.value === 'bauhaus' ? (isDark.value ? '#97B7E8' : '#1450A3') : (isDark.value ? BRAND_LINE_COLOR.dark : BRAND_LINE_COLOR.light))
+const surfaceColor = computed(() => visualTheme.value === 'bauhaus' && isDark.value ? '#26231D' : (isDark.value ? CARD_SURFACE.dark : CARD_SURFACE.light))
 
 // 单指标主线的颜色，命中率沿用序列色。
 const mainColor = computed(() => (metric.value === 'cacheHitRate' ? CHART_SERIES_COLORS.cacheHitRate : brandColor.value))
@@ -539,7 +540,7 @@ const drawLabel = (ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
   const width = ctx.measureText(text).width + LABEL_PADDING_X * 2
   ctx.fillStyle = fill
   ctx.beginPath()
-  if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, width, LABEL_HEIGHT, 0)
+  if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, width, LABEL_HEIGHT, visualTheme.value === 'bauhaus' ? 0 : LABEL_HEIGHT / 2)
   else ctx.rect(x, y, width, LABEL_HEIGHT)
   ctx.fill()
   ctx.fillStyle = color
@@ -701,7 +702,7 @@ defineExpose({ chartCardRef })
 
 /* 图例兼开关的胶囊 */
 .legend-chip {
-  @apply inline-flex items-center gap-2 rounded-control border border-gray-200 px-3 py-1 text-xs transition-colors duration-150 dark:border-dark-600;
+  @apply inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs transition-colors duration-fast dark:border-dark-600;
 }
 
 .legend-chip-on {
@@ -711,7 +712,4 @@ defineExpose({ chartCardRef })
 .legend-chip-off {
   @apply text-gray-400 dark:text-dark-500;
 }
-/* 选中卡片在深色主题也使用黄色实体底，避免卡片底色规则导致黑字落在深底。 */
-.metric-card[aria-selected="true"] { background: var(--bh-yellow) !important; color: #141414 !important; }
-.metric-card[aria-selected="true"] :deep(span) { color: #141414 !important; }
 </style>

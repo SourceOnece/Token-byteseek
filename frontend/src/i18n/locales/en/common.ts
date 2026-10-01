@@ -105,9 +105,14 @@ export default {
         withSuffix: '{time} to lift'
       }
     }
-  },
+  ,
+ruleIndex: 'Rule #{index}'
+},
 // Navigation
   nav: {
+    visualTheme: 'Visual theme',
+    tokenfluxTheme: 'TokenFlux',
+    bauhausTheme: 'Bauhaus',
     dashboard: 'Dashboard',
     modelMarketplace: 'Models',
     usageRanking: 'Usage Ranking',
@@ -157,7 +162,10 @@ export default {
     paymentPlans: 'Plans',
     riskControl: 'Risk Control',
     auditLogs: 'Audit Logs'
-  },
+  ,
+systemTheme: 'System',
+theme: 'Theme'
+},
 // Auth
   auth: {
     welcomeBack: 'Welcome Back',

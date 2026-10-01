@@ -1,83 +1,86 @@
 <template>
   <Teleport to="body">
-    <div v-if="show && position">
+
       <!-- Backdrop: click anywhere outside to close -->
-      <div class="fixed inset-0 z-menu-overlay" @click="emit('close')"></div>
-      <div
-        class="action-menu bh-action-menu action-menu-content max-h-[calc(100dvh-16px)] w-52 overflow-y-auto"
-        :style="{ top: position.top + 'px', left: position.left + 'px' }"
-        @click.stop
-      >
-        <div class="py-1">
-          <template v-if="provider">
-            <button @click="$emit('test', provider); $emit('close')" class="dropdown-item">
-              <Icon name="play" size="sm" class="text-green-500" :stroke-width="2" />
-              {{ t('admin.providers.testConnection') }}
-            </button>
-            <button @click="$emit('stats', provider); $emit('close')" class="dropdown-item">
-              <Icon name="chart" size="sm" class="text-indigo-500" />
-              {{ t('admin.providers.viewStats') }}
-            </button>
-            <button @click="$emit('advanced-scheduler-score', provider); $emit('close')" class="dropdown-item">
-              <Icon name="calculator" size="sm" class="text-violet-500" />
-              {{ t('admin.providers.advancedSchedulerScore.action') }}
-            </button>
-            <button @click="$emit('schedule', provider); $emit('close')" class="dropdown-item">
-              <Icon name="clock" size="sm" class="text-orange-500" />
-              {{ t('admin.scheduledTests.schedule') }}
-            </button>
-            <button v-if="canDuplicate" @click="$emit('duplicate', provider); $emit('close')" class="dropdown-item">
-              <Icon name="copy" size="sm" class="text-sky-500" />
-              {{ t('admin.providers.duplicateProvider') }}
-            </button>
-            <!-- 影子提供商不持凭据:重授权/刷新 token 对其无效(后端拒绝),故隐藏(外审 G4)。 -->
-            <template v-if="supportsReauth">
-              <button @click="$emit('reauth', provider); $emit('close')" class="dropdown-item text-blue-600">
-                <Icon name="link" size="sm" />
-                {{ t('admin.providers.reAuthorize') }}
+      <div v-if="show && position" class="fixed inset-0 z-menu-overlay" @click="emit('close')"></div>
+      <MotionTransition name="dropdown-fade">
+        <div
+          v-if="show && position"
+          class="action-menu action-menu-content max-h-[calc(100dvh-16px)] w-52 overflow-y-auto"
+          :style="{ top: position.top + 'px', left: position.left + 'px' }"
+          @click.stop
+        >
+          <div class="py-1">
+            <template v-if="provider">
+              <button @click="$emit('test', provider); $emit('close')" class="dropdown-item">
+                <Icon name="play" size="sm" class="text-green-500" :stroke-width="2" />
+                {{ t('admin.providers.testConnection') }}
               </button>
-            </template>
-            <template v-if="supportsTokenRefresh">
-              <button @click="$emit('refresh-token', provider); $emit('close')" class="dropdown-item text-purple-600">
+              <button @click="$emit('stats', provider); $emit('close')" class="dropdown-item">
+                <Icon name="chart" size="sm" class="text-indigo-500" />
+                {{ t('admin.providers.viewStats') }}
+              </button>
+              <button @click="$emit('advanced-scheduler-score', provider); $emit('close')" class="dropdown-item">
+                <Icon name="calculator" size="sm" class="text-violet-500" />
+                {{ t('admin.providers.advancedSchedulerScore.action') }}
+              </button>
+              <button @click="$emit('schedule', provider); $emit('close')" class="dropdown-item">
+                <Icon name="clock" size="sm" class="text-orange-500" />
+                {{ t('admin.scheduledTests.schedule') }}
+              </button>
+              <button v-if="canDuplicate" @click="$emit('duplicate', provider); $emit('close')" class="dropdown-item">
+                <Icon name="copy" size="sm" class="text-sky-500" />
+                {{ t('admin.providers.duplicateProvider') }}
+              </button>
+              <!-- 影子提供商不持凭据:重授权/刷新 token 对其无效(后端拒绝),故隐藏(外审 G4)。 -->
+              <template v-if="supportsReauth">
+                <button @click="$emit('reauth', provider); $emit('close')" class="dropdown-item text-blue-600">
+                  <Icon name="link" size="sm" />
+                  {{ t('admin.providers.reAuthorize') }}
+                </button>
+              </template>
+              <template v-if="supportsTokenRefresh">
+                <button @click="$emit('refresh-token', provider); $emit('close')" class="dropdown-item text-purple-600">
+                  <Icon name="refresh" size="sm" />
+                  {{ t('admin.providers.refreshToken') }}
+                </button>
+              </template>
+              <button v-if="isOpenAIOAuthParent" @click="$emit('create-spark-shadow', provider); $emit('close')" class="dropdown-item text-amber-600">
+                <Icon name="sparkles" size="sm" />
+                {{ t('admin.providers.createSparkShadow') }}
+              </button>
+              <button v-if="supportsPrivacy" @click="$emit('set-privacy', provider); $emit('close')" class="dropdown-item text-emerald-600">
+                <Icon name="shield" size="sm" />
+                {{ t('admin.providers.setPrivacy') }}
+              </button>
+              <button v-if="isOpenAIOAuth" @click="$emit('invite-reset', provider); $emit('close')" class="dropdown-item text-cyan-600">
+                <Icon name="gift" size="sm" />
+                {{ t('admin.providers.inviteReset') }}
+              </button>
+              <div v-if="hasRecoverableState" class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
+              <button v-if="hasRecoverableState" @click="$emit('recover-state', provider); $emit('close')" class="dropdown-item text-emerald-600">
+                <Icon name="sync" size="sm" />
+                {{ t('admin.providers.recoverState') }}
+              </button>
+              <button v-if="hasQuotaLimit" @click="$emit('reset-quota', provider); $emit('close')" class="dropdown-item text-teal-600">
                 <Icon name="refresh" size="sm" />
-                {{ t('admin.providers.refreshToken') }}
+                {{ t('admin.providers.resetQuota') }}
+              </button>
+              <!-- 删除置于菜单底部，并继续交由页面弹出确认框。 -->
+              <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
+              <button type="button" @click="$emit('delete', provider); $emit('close')" class="dropdown-item text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20">
+                <Icon name="trash" size="sm" />
+                {{ t('common.delete') }}
               </button>
             </template>
-            <button v-if="isOpenAIOAuthParent" @click="$emit('create-spark-shadow', provider); $emit('close')" class="dropdown-item text-amber-600">
-              <Icon name="sparkles" size="sm" />
-              {{ t('admin.providers.createSparkShadow') }}
-            </button>
-            <button v-if="supportsPrivacy" @click="$emit('set-privacy', provider); $emit('close')" class="dropdown-item text-emerald-600">
-              <Icon name="shield" size="sm" />
-              {{ t('admin.providers.setPrivacy') }}
-            </button>
-            <button v-if="isOpenAIOAuth" @click="$emit('invite-reset', provider); $emit('close')" class="dropdown-item text-cyan-600">
-              <Icon name="gift" size="sm" />
-              {{ t('admin.providers.inviteReset') }}
-            </button>
-            <div v-if="hasRecoverableState" class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
-            <button v-if="hasRecoverableState" @click="$emit('recover-state', provider); $emit('close')" class="dropdown-item text-emerald-600">
-              <Icon name="sync" size="sm" />
-              {{ t('admin.providers.recoverState') }}
-            </button>
-            <button v-if="hasQuotaLimit" @click="$emit('reset-quota', provider); $emit('close')" class="dropdown-item text-teal-600">
-              <Icon name="refresh" size="sm" />
-              {{ t('admin.providers.resetQuota') }}
-            </button>
-            <!-- 删除置于菜单底部，并继续交由页面弹出确认框。 -->
-            <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
-            <button type="button" @click="$emit('delete', provider); $emit('close')" class="dropdown-item text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20">
-              <Icon name="trash" size="sm" />
-              {{ t('common.delete') }}
-            </button>
-          </template>
+          </div>
         </div>
-      </div>
-    </div>
+      </MotionTransition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, watch, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@/components/icons'

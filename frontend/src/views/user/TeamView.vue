@@ -1,6 +1,6 @@
 <template>
   <AppLayout :hide-page-heading="!!teamContext">
-    <div class="space-y-6">
+    <div class="space-y-4">
       <div v-if="transferToken" class="border-b border-gray-200 pb-6 dark:border-dark-700">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
           {{ t('team.transferActionTitle') }}
@@ -10,7 +10,7 @@
         </p>
         <div class="mt-4 flex gap-3">
           <button class="btn btn-primary" :disabled="resolvingToken" @click="resolvePendingToken('accepted')">
-            <Icon name="check" size="sm" />
+            <Icon name="check" size="sm" :animate-on-hover="false" />
             {{ t('team.accept') }}
           </button>
           <button class="btn btn-secondary" :disabled="resolvingToken" @click="resolvePendingToken('declined')">
@@ -20,8 +20,15 @@
         </div>
       </div>
 
-      <div v-if="loading" class="flex justify-center py-16">
-        <LoadingSpinner />
+      <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <div class="space-y-3" aria-hidden="true">
+          <Skeleton :width="192" :height="28" />
+          <Skeleton :width="256" :height="16" />
+        </div>
+        <div class="flex gap-4 border-b border-gray-200 pb-3 dark:border-dark-700" aria-hidden="true">
+          <Skeleton v-for="tab in 3" :key="tab" :width="80" :height="36" />
+        </div>
+        <ContentSkeleton variant="list" :rows="4" class="card p-6" />
       </div>
 
       <div v-else-if="!teamContext" class="mx-auto max-w-xl py-10">
@@ -49,47 +56,49 @@
       </div>
 
       <template v-else>
-        <header class="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div class="flex flex-wrap items-center gap-3">
-              <h1 class="page-title">{{ teamContext.team.name }}</h1>
-              <span class="badge" :class="teamContext.team.status === 'active' ? 'badge-success' : 'badge-danger'">
-                {{ teamContext.team.status === 'active' ? t('team.statusActive') : t('team.statusSuspended') }}
-              </span>
+        <div class="space-y-2">
+          <header class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <div class="flex flex-wrap items-center gap-3">
+                <h1 class="page-title">{{ teamContext.team.name }}</h1>
+                <span class="badge" :class="teamContext.team.status === 'active' ? 'badge-success' : 'badge-danger'">
+                  {{ teamContext.team.status === 'active' ? t('team.statusActive') : t('team.statusSuspended') }}
+                </span>
+              </div>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {{ isOwner ? t('team.owner') : t('team.member') }} · {{ t('team.memberCount', { count: teamContext.team.member_count + 1 }) }}
+              </p>
             </div>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {{ isOwner ? t('team.owner') : t('team.member') }} · {{ t('team.memberCount', { count: teamContext.team.member_count + 1 }) }}
-            </p>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <button class="btn btn-secondary" type="button" @click="startTeamGuide">
-              <Icon name="questionCircle" size="sm" />
-              {{ t('team.guideButton') }}
-            </button>
-            <button class="btn btn-secondary" :disabled="refreshing" @click="refreshAll">
-              <Icon name="refresh" size="sm" />
-              {{ t('common.refresh') }}
-            </button>
-          </div>
-        </header>
+            <div class="flex flex-wrap items-center gap-2">
+              <button class="btn btn-secondary" type="button" @click="startTeamGuide">
+                <Icon name="questionCircle" size="sm" />
+                {{ t('team.guideButton') }}
+              </button>
+              <button class="btn btn-secondary" :disabled="refreshing" @click="refreshAll">
+                <Icon name="refresh" size="sm" />
+                {{ t('common.refresh') }}
+              </button>
+            </div>
+          </header>
 
-        <nav class="flex gap-1 overflow-x-auto border-b border-gray-200 dark:border-dark-700" aria-label="Team sections">
-          <button
-            v-for="tab in visibleTabs"
-            :key="tab.value"
-            type="button"
-            class="inline-flex h-9 shrink-0 items-center border-b-2 px-4 py-1.5 text-sm font-medium transition-colors"
-            :class="activeTab === tab.value
-              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-              : 'border-transparent text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'"
-            :data-tour="tab.value === 'settings' ? 'team-settings-tab' : undefined"
-            @click="activeTab = tab.value"
-          >
-            {{ tab.label }}
-          </button>
-        </nav>
+          <nav class="flex gap-1 overflow-x-auto border-b border-gray-200 dark:border-dark-700" aria-label="Team sections">
+            <button
+              v-for="tab in visibleTabs"
+              :key="tab.value"
+              type="button"
+              class="inline-flex h-9 shrink-0 items-center border-b-2 px-4 py-1.5 text-sm font-medium transition-colors"
+              :class="activeTab === tab.value
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'"
+              :data-tour="tab.value === 'settings' ? 'team-settings-tab' : undefined"
+              @click="activeTab = tab.value"
+            >
+              {{ tab.label }}
+            </button>
+          </nav>
+        </div>
 
-        <section v-if="activeTab === 'overview'" class="space-y-6">
+        <section v-if="activeTab === 'overview'" v-content-reveal class="space-y-4">
           <div v-if="!isOwner" class="card p-6" data-tour="team-limit-progress">
             <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.limitProgress') }}</h2>
             <div class="mt-5 grid gap-5 md:grid-cols-3">
@@ -141,15 +150,17 @@
             </div>
           </section>
 
-          <section v-if="isOwner" class="space-y-5" data-tour="team-invitations">
-            <div class="flex items-center justify-between gap-4">
-              <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.invitations') }}</h2>
-              <span class="text-sm text-gray-500 dark:text-gray-400">{{ invitations.length }}</span>
+          <section v-if="isOwner" class="space-y-4" data-tour="team-invitations">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between gap-4">
+                <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.invitations') }}</h2>
+                <span class="text-sm text-gray-500 dark:text-gray-400">{{ invitations.length }}</span>
+              </div>
+              <form class="flex flex-col gap-3 sm:flex-row" @submit.prevent="sendInvitation">
+                <input v-model.trim="inviteEmail" type="email" class="input flex-1" :placeholder="t('team.inviteEmail')" required />
+                <button class="btn btn-primary" :disabled="submitting"><Icon name="mail" size="sm" />{{ t('team.sendInvite') }}</button>
+              </form>
             </div>
-            <form class="flex flex-col gap-3 sm:flex-row" @submit.prevent="sendInvitation">
-              <input v-model.trim="inviteEmail" type="email" class="input flex-1" :placeholder="t('team.inviteEmail')" required />
-              <button class="btn btn-primary" :disabled="submitting"><Icon name="mail" size="sm" />{{ t('team.sendInvite') }}</button>
-            </form>
             <div class="card divide-y divide-gray-100 dark:divide-dark-700">
               <div v-if="invitations.length === 0" class="py-12 text-center text-sm text-gray-500">{{ t('team.noInvitations') }}</div>
               <div v-for="invitation in invitations" :key="invitation.id" class="flex flex-wrap items-center justify-between gap-4 p-5">
@@ -160,7 +171,7 @@
           </section>
         </section>
 
-        <section v-else-if="activeTab === 'keys'" class="space-y-6">
+        <section v-else-if="activeTab === 'keys'" class="space-y-4">
           <div class="card overflow-hidden">
             <div class="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-4 dark:border-dark-700">
               <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.keys') }}</h2>
@@ -195,7 +206,7 @@
           </div>
         </section>
 
-        <section v-else class="space-y-6">
+        <section v-else class="space-y-4">
           <div v-if="isOwner" class="card p-6">
             <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.name') }}</h2>
             <form class="mt-4 flex flex-col gap-3 sm:flex-row" @submit.prevent="renameTeam"><input v-model.trim="renameName" class="input flex-1" required maxlength="100" /><button class="btn btn-primary" :disabled="submitting">{{ t('team.rename') }}</button></form>
@@ -223,7 +234,7 @@
           </div>
           <!-- 将生命周期操作收拢成一致的设置行，避免危险操作脱离上下文。 -->
           <div class="card overflow-hidden">
-            <div v-if="isOwner" class="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div v-if="isOwner" class="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-end sm:justify-between">
               <div class="flex min-w-0 items-start gap-3">
                 <div
                   class="flex h-10 w-10 shrink-0 items-center justify-center rounded-control"
@@ -249,7 +260,7 @@
               </button>
             </div>
             <div
-              class="flex flex-col gap-4 bg-gray-50/70 px-5 py-5 dark:bg-dark-800/40 sm:flex-row sm:items-center sm:justify-between"
+              class="flex flex-col gap-4 bg-gray-50/70 px-5 py-5 dark:bg-dark-800/40 sm:flex-row sm:items-end sm:justify-between"
               :class="isOwner ? 'border-t border-gray-200 dark:border-dark-700' : ''"
             >
               <div class="flex min-w-0 items-start gap-3">
@@ -303,13 +314,16 @@
 </template>
 
 <script setup lang="ts">
+import Skeleton from '@/components/common/Skeleton.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import { vContentReveal } from '@/directives/contentReveal'
+
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import TeamInvitationDialog from '@/components/team/TeamInvitationDialog.vue'
 import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'

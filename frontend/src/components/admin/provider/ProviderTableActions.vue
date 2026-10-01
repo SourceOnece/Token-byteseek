@@ -1,8 +1,8 @@
 <template>
-  <div class="flex flex-wrap items-center gap-3">
+  <div class="flex flex-wrap items-center gap-2">
     <slot name="before"></slot>
     <button @click="$emit('refresh')" :disabled="loading" class="btn btn-secondary shrink-0 btn-icon">
-      <Icon name="refresh" size="md" :class="[loading ? 'animate-spin' : '']" />
+      <Icon name="refresh" size="sm" :class="[loading ? 'animate-spin' : '']" />
     </button>
     <slot name="after"></slot>
     <slot name="beforeCreate"></slot>

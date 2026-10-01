@@ -47,22 +47,29 @@ onUnmounted(() => {
 /* 桌面端：Flexbox 布局。高度由 AppLayout 的 flex 链分配(flex-1 占满主区剩余空间),
    不再自行计算视口高度;移动端恢复自然高度。 */
 .table-page-layout {
-  @apply flex flex-1 flex-col gap-4 min-h-0;
+  @apply flex flex-1 flex-col min-h-0;
 }
 
 .layout-section-fixed {
   @apply flex-shrink-0;
 }
 
+/* 工具组之间保持 8px，最后一组工具到表格卡片使用 16px。 */
+.layout-section-fixed + .layout-section-fixed {
+  @apply mt-2;
+}
+
+.layout-section-fixed + .layout-section-scrollable {
+  @apply mt-4;
+}
+
 .layout-section-scrollable {
   @apply flex-1 min-h-0 flex flex-col;
 }
 
-/* 表格滚动容器 - 增强版表体滚动方案（包豪斯硬边） */
+/* 表格滚动容器 - 增强版表体滚动方案 */
 .table-scroll-container {
-  @apply flex flex-col overflow-hidden h-full bg-white dark:bg-dark-800 rounded-none;
-  border: 2px solid var(--bh-ink);
-  box-shadow: var(--bh-shadow-sm);
+  @apply flex flex-col overflow-hidden h-full bg-white dark:bg-dark-900 rounded-surface border border-gray-200 dark:border-dark-600 shadow-none;
 }
 
 .table-scroll-container :deep(.table-wrapper) {
@@ -78,7 +85,8 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(thead) {
-  background: var(--bh-yellow);
+  /* sticky 表头使用不透明底色，避免合成层模糊表头文字边缘。 */
+  @apply bg-gray-50 dark:bg-dark-900;
 }
 
 .table-scroll-container :deep(tbody) {
@@ -86,15 +94,12 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(th) {
-  /* 保留旧版黄底厚边表头，宽表仍由 DataTable 自适应列间距。 */
-  @apply px-4 py-3 text-left text-sm font-extrabold tracking-wider;
-  color: #141414;
-  background: var(--bh-yellow);
-  border-bottom: 2px solid #141414;
+  /* 表头与 DataTable、.table 保持同一密度:py-2 + text-xs,给数据行留出可视空间。 */
+  @apply px-4 py-2 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-dark-300 border-b border-gray-200 dark:border-dark-700;
 }
 
 .table-scroll-container :deep(td) {
-  @apply px-4 py-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-dark-800;
+  @apply px-4 py-3 text-sm text-gray-700 dark:text-dark-100 border-b border-gray-100 dark:border-dark-700;
 }
 
 /* 桌面分页器与表头共用同一外框，表体滚动时保持固定。 */
@@ -107,7 +112,7 @@ onUnmounted(() => {
 }
 
 .table-page-layout:not(.mobile-mode) .table-pagination-footer {
-  @apply border-t border-gray-200 bg-gray-50/80 dark:border-dark-700 dark:bg-dark-950;
+  @apply border-t border-gray-200 bg-gray-50/80 dark:border-dark-700 dark:bg-dark-900;
 }
 
 /* 页脚内的分页器去掉自带边框与底色,与表格外框融为一体;控件保持全站 36px 基线。 */

@@ -1,30 +1,23 @@
 <template>
-  <!-- 模型能力标识：输入模态图标 -> 输出模态图标，样式对齐 OpenRouter（Lucide 图标 + 类型色）。 -->
+  <!-- 模型能力标识：输入模态图标 -> 输出模态图标，每个图标悬停显示模态名称。 -->
   <span
     class="inline-flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1"
     data-testid="model-capability-tags"
-    :title="summary"
   >
-    <span
+    <ModalityIcon
       v-for="modality in capabilities.input"
       :key="`input-${modality}`"
       :data-modality="`input-${modality}`"
-      class="inline-flex h-5 w-5 items-center justify-center rounded-control"
-      :class="modalityTagClass(modality)"
-    >
-      <Icon :name="modalityIconName(modality)" size="xs" :stroke-width="2.5" />
-    </span>
+      :modality="modality"
+    />
     <span v-if="!capabilities.input.length" class="text-xs text-gray-500">{{ t(props.model.attributes?.input_modalities === undefined ? 'admin.modelAttributes.unknown' : 'admin.modelAttributes.none') }}</span>
     <Icon name="moveRight" size="xs" :stroke-width="2" class="text-gray-400 dark:text-dark-500" />
-    <span
+    <ModalityIcon
       v-for="modality in capabilities.output"
       :key="`output-${modality}`"
       :data-modality="`output-${modality}`"
-      class="inline-flex h-5 w-5 items-center justify-center rounded-control"
-      :class="modalityTagClass(modality)"
-    >
-      <Icon :name="modalityIconName(modality)" size="xs" :stroke-width="2.5" />
-    </span>
+      :modality="modality"
+    />
     <span v-if="!capabilities.output.length" class="text-xs text-gray-500">{{ t(props.model.attributes?.output_modalities === undefined ? 'admin.modelAttributes.unknown' : 'admin.modelAttributes.none') }}</span>
   </span>
 </template>
@@ -33,6 +26,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
+import ModalityIcon from '@/components/common/ModalityIcon.vue'
 import { resolveModelCapabilities, type ModelModality } from '@/utils/modelCapabilities'
 import type { MarketplaceModel } from '@/types'
 
@@ -51,54 +45,5 @@ const capabilities = computed(() =>
     input: props.model.input_modalities,
     output: props.model.output_modalities,
   })
-)
-
-function modalityLabel(modality: ModelModality): string {
-  switch (modality) {
-    case 'text':
-      return t('marketplace.modalityText')
-    case 'image':
-      return t('marketplace.modalityImage')
-    case 'audio':
-      return t('marketplace.modalityAudio')
-    case 'pdf':
-      return 'PDF'
-    case 'video':
-      return t('marketplace.modalityVideo')
-  }
-}
-
-function modalityIconName(modality: ModelModality): 'modalityText' | 'modalityImage' | 'modalityAudio' | 'modalityVideo' {
-  switch (modality) {
-    case 'text':
-    case 'pdf':
-      return 'modalityText'
-    case 'image':
-      return 'modalityImage'
-    case 'audio':
-      return 'modalityAudio'
-    case 'video':
-      return 'modalityVideo'
-  }
-}
-
-// 每种模态使用独立颜色（10% 底色 + 同色图标），配色参考 OpenRouter：文字=蓝、图片=绿、音频=琥珀、视频=玫红。
-function modalityTagClass(modality: ModelModality): string {
-  switch (modality) {
-    case 'text':
-    case 'pdf':
-      return 'bg-blue-500/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-300'
-    case 'image':
-      return 'bg-green-500/10 text-green-600 dark:bg-green-400/10 dark:text-green-300'
-    case 'audio':
-      return 'bg-amber-500/10 text-amber-600 dark:bg-amber-400/10 dark:text-amber-300'
-    case 'video':
-      return 'bg-rose-500/10 text-rose-600 dark:bg-rose-400/10 dark:text-rose-300'
-  }
-}
-
-// 悬停提示完整能力描述，如「文字·图片 -> 文字」。
-const summary = computed(() =>
-  capabilities.value.input.map(modalityLabel).join('·') + ' -> ' + capabilities.value.output.map(modalityLabel).join('·')
 )
 </script>

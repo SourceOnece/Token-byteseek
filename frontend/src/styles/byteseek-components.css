@@ -1,0 +1,17 @@
+/* ByteSeek 专属工作台沿用 TokenFlux 的公共控件；颜色和阴影随皮肤变量切换。 */
+.bh-policy-card, .bh-policy-section, .bh-block { @apply rounded-surface border border-gray-200 bg-white dark:border-dark-600 dark:bg-dark-900; }
+.bh-icon-action, .bh-page-btn { border: 1px solid currentColor; padding: .5rem .75rem; }
+.bh-icon-action { width: 2rem; height: 2rem; display: inline-flex; align-items: center; justify-content: center; }
+.bh-icon-action-danger { @apply text-red-600 dark:text-red-400; }
+.bh-menu-item { display: flex; width: 100%; align-items: center; gap: .5rem; padding: .5rem .75rem; }
+.bh-marker-title, .bh-dashboard-stat-label, .bh-stat-label { @apply font-semibold; }
+.bh-dashboard-plate, .bh-plate { display: flex; width: 2.5rem; height: 2.5rem; flex-shrink: 0; align-items: center; justify-content: center; }
+.bh-total-chip { border: 1px solid rgb(229 231 235); padding: .25rem .5rem; font-size: .75rem; font-weight: 600; }
+.bh-tooltip { border-radius: var(--radius-control); background: rgb(17 24 39); color: #fff; box-shadow: 0 10px 15px -3px rgb(0 0 0 / .1); }
+.bh-pressable { transition: all var(--motion-fast) var(--motion-ease); }
+
+/* 自定义成功/失败语义不随皮肤改变：满血绿、降智红、失败黄。 */
+.bh-tf-status-success { @apply text-emerald-700 dark:text-emerald-400; }
+.bh-tf-status-danger { @apply text-red-700 dark:text-red-400; }
+.bh-tf-status-warning { @apply text-amber-700 dark:text-amber-400; }
+.bh-tf-status-neutral { @apply text-gray-600 dark:text-dark-300; }

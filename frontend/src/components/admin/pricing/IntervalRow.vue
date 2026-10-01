@@ -1,83 +1,78 @@
 <template>
-  <div class="flex items-start gap-2 rounded-compact border p-2"
+  <div class="grid min-w-0 grid-cols-1 gap-2 rounded-control border p-3 sm:grid-cols-2"
        :class="isEmpty ? 'border-red-400 bg-red-50 dark:border-red-500 dark:bg-red-950/20' : 'border-gray-200 bg-white dark:border-dark-500 dark:bg-dark-700'">
-    <!-- Token 模式：上下文区间和价格。 -->
+    <!-- Token 模式：上下文区间和各项单价。 -->
     <template v-if="mode === 'token'">
-      <div class="pricing-interval-grid grid min-w-0 flex-1 gap-2">
+      <div class="pricing-interval-grid grid min-w-0 gap-2 sm:col-span-2">
         <div>
           <label class="text-xs text-gray-400">Min</label>
           <input :value="interval.min_tokens" @input="emitField('min_tokens', toInt(($event.target as HTMLInputElement).value))"
-            type="number" min="0" class="input mt-0.5 text-xs" />
+            type="number" min="0" class="input mt-1 text-xs" />
         </div>
         <div>
           <label class="text-xs text-gray-400">Max <span class="text-gray-300">(含)</span></label>
           <input :value="interval.max_tokens ?? ''" @input="emitField('max_tokens', toIntOrNull(($event.target as HTMLInputElement).value))"
-            type="number" min="0" class="input mt-0.5 text-xs" :placeholder="'∞'" />
+            type="number" min="0" class="input mt-1 text-xs" :placeholder="'∞'" />
         </div>
         <div>
           <label class="text-xs text-gray-400">{{ t('admin.pricing.form.inputPrice', '输入') }} <span v-if="isEmpty" class="text-red-500">*</span> <span class="text-gray-300">$/M</span></label>
           <input :value="interval.input_price" @input="emitField('input_price', ($event.target as HTMLInputElement).value)"
-            type="number" step="any" min="0" class="input mt-0.5 text-xs" />
+            type="number" step="any" min="0" class="input mt-1 text-xs" />
         </div>
         <div>
           <label class="text-xs text-gray-400">{{ t('admin.pricing.form.outputPrice', '输出') }} <span v-if="isEmpty" class="text-red-500">*</span> <span class="text-gray-300">$/M</span></label>
           <input :value="interval.output_price" @input="emitField('output_price', ($event.target as HTMLInputElement).value)"
-            type="number" step="any" min="0" class="input mt-0.5 text-xs" />
+            type="number" step="any" min="0" class="input mt-1 text-xs" />
         </div>
         <div>
           <label class="text-xs text-gray-400">{{ t('admin.pricing.form.cacheWrite5mPriceShort', '缓存W 5m') }} <span class="text-gray-300">$/M</span></label>
           <input :value="interval.cache_write_price" @input="emitField('cache_write_price', ($event.target as HTMLInputElement).value)"
-            type="number" step="any" min="0" class="input mt-0.5 text-xs" />
+            type="number" step="any" min="0" class="input mt-1 text-xs" />
         </div>
         <div>
           <label class="text-xs text-gray-400">{{ t('admin.pricing.form.cacheWrite1hPriceShort', '缓存W 1h') }} <span class="text-gray-300">$/M</span></label>
           <input :value="interval.cache_write_1h_price" @input="emitField('cache_write_1h_price', ($event.target as HTMLInputElement).value)"
-            type="number" step="any" min="0" class="input mt-0.5 text-xs" />
+            type="number" step="any" min="0" class="input mt-1 text-xs" />
         </div>
         <div>
           <label class="text-xs text-gray-400">{{ t('admin.pricing.form.cacheReadPrice', '缓存R') }} <span class="text-gray-300">$/M</span></label>
           <input :value="interval.cache_read_price" @input="emitField('cache_read_price', ($event.target as HTMLInputElement).value)"
-            type="number" step="any" min="0" class="input mt-0.5 text-xs" />
+            type="number" step="any" min="0" class="input mt-1 text-xs" />
         </div>
       </div>
     </template>
 
-    <!-- Per-request / Image mode: tier label + context range + price -->
+    <!-- 按次、图片和视频计费共用层级、上下文范围与价格字段。 -->
     <template v-else>
-      <div class="w-24">
+      <div class="min-w-0">
         <label class="text-xs text-gray-400">
           {{ mode === 'image' || mode === 'video' ? t('admin.pricing.form.resolution', '分辨率') : t('admin.pricing.form.tierLabel', '层级') }}
         </label>
         <input :value="interval.tier_label" @input="emitField('tier_label', ($event.target as HTMLInputElement).value)"
-          type="text" class="input mt-0.5 text-xs" :placeholder="mode === 'video' ? '480p / 720p / 1080p' : mode === 'image' ? '1K / 2K / 4K' : ''" />
+          type="text" class="input mt-1 text-xs" :placeholder="mode === 'video' ? '480p / 720p / 1080p' : mode === 'image' ? '1K / 2K / 4K' : ''" />
       </div>
-      <div class="w-20">
+      <div class="min-w-0">
         <label class="text-xs text-gray-400">Min</label>
         <input :value="interval.min_tokens" @input="emitField('min_tokens', toInt(($event.target as HTMLInputElement).value))"
-          type="number" min="0" class="input mt-0.5 text-xs" />
+          type="number" min="0" class="input mt-1 text-xs" />
       </div>
-      <div class="w-20">
+      <div class="min-w-0">
         <label class="text-xs text-gray-400">Max <span class="text-gray-300">(含)</span></label>
         <input :value="interval.max_tokens ?? ''" @input="emitField('max_tokens', toIntOrNull(($event.target as HTMLInputElement).value))"
-          type="number" min="0" class="input mt-0.5 text-xs" :placeholder="'∞'" />
+          type="number" min="0" class="input mt-1 text-xs" :placeholder="'∞'" />
       </div>
-      <div class="flex-1">
+      <div class="min-w-0">
         <label class="text-xs text-gray-400">{{ mode === 'video' ? t('admin.pricing.form.videoUnitPrice') : mode === 'image' ? t('admin.pricing.form.imageUnitPrice') : t('admin.pricing.form.perRequestPrice', '单次价格') }} <span v-if="isEmpty" class="text-red-500">*</span> <span class="text-gray-300">$</span></label>
         <input :value="interval.per_request_price" @input="emitField('per_request_price', ($event.target as HTMLInputElement).value)"
-          type="number" step="any" min="0" class="input mt-0.5 text-xs" />
+          type="number" step="any" min="0" class="input mt-1 text-xs" />
       </div>
     </template>
-
-    <button type="button" @click="emit('remove')" class="mt-4 rounded-compact p-0.5 text-gray-400 hover:text-red-500">
-      <Icon name="x" size="sm" />
-    </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import Icon from '@/components/icons/Icon.vue'
 import type { IntervalFormEntry } from './types'
 import type { BillingMode } from '@/api/admin/pricing'
 
@@ -90,7 +85,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   update: [interval: IntervalFormEntry]
-  remove: []
 }>()
 
 // 检测所有价格字段是否都为空

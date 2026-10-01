@@ -1071,7 +1071,9 @@ export default {
         duplicateName: '存在重复的请求头名称（匹配不区分大小写）',
         invalidValue: '请求头值不合法（不允许控制字符，长度不超过 8192）',
         tooManyEntries: '请求头覆写条目过多（最多 64 条）'
-      },
+      ,
+empty: '未配置请求头覆写'
+},
       grokCustomBaseUrl: {
         title: '自定义上游地址',
         hint: '开启后提供商流量（对话/媒体/探测）改发指定地址；OAuth 授权与令牌刷新不受影响，仍走官方端点。',
@@ -1833,5 +1835,7 @@ export default {
         usageTrend: '30天费用与请求趋势',
         noData: '该提供商暂无使用数据'
       }
-    },
+    ,
+modelMappingEmpty: '未配置模型映射'
+},
 }

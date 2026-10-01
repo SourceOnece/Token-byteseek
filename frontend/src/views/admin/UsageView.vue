@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <div class="space-y-4">
       <UsageStatsCards :stats="usageStats" />
       <!-- Charts Section -->
       <div class="space-y-4">
@@ -22,7 +22,7 @@
             </div>
           </div>
         </div>
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ModelDistributionChart
             v-model:source="modelDistributionSource"
             v-model:metric="modelDistributionMetric"
@@ -47,7 +47,7 @@
             :filters="breakdownFilters"
           />
         </div>
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <EndpointDistributionChart
             v-model:source="endpointDistributionSource"
             v-model:metric="endpointDistributionMetric"
@@ -104,33 +104,39 @@
                 <Icon name="grid" size="sm" />
                 <span class="hidden">{{ t('admin.users.columnSettings') }}</span>
               </button>
-              <div
-                v-if="showColumnDropdown"
-                class="dropdown right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto"
-              >
-                <button
-                  v-for="col in currentToggleableColumns"
-                  :key="col.key"
-                  @click="toggleCurrentColumn(col.key)"
-                  class="dropdown-item justify-between"
+              <MotionTransition name="dropdown-fade">
+                <div
+                  v-if="showColumnDropdown" :inert="!(showColumnDropdown) || undefined"
+                  class="dropdown right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto"
                 >
-                  <span>{{ col.label }}</span>
-                  <Icon
-                    v-if="isCurrentColumnVisible(col.key)"
-                    name="check"
-                    size="sm"
-                    class="text-primary-500"
-                    :stroke-width="2"
-                  />
-                </button>
-              </div>
+                  <button
+                    v-for="col in currentToggleableColumns"
+                    :key="col.key"
+                    @click="toggleCurrentColumn(col.key)"
+                    class="dropdown-item justify-between"
+                  >
+                    <span>{{ col.label }}</span>
+                    <Icon
+                      v-if="isCurrentColumnVisible(col.key)"
+                      name="check"
+                      size="sm"
+                      class="text-primary-500"
+                      :stroke-width="2"
+                      :animate-on-hover="false"
+                    />
+                  </button>
+                </div>
+              </MotionTransition>
             </div>
           </template>
         </UsageFilters>
       </div>
 
-      <div v-show="activeTab === 'usage'" class="space-y-4" data-testid="admin-usage-table-section">
-        <UsageTable column-order-storage-key="admin-usage-column-order"
+      <!-- 表格与分页共用外框，底部分隔线和圆角由卡片统一收口。 -->
+      <div v-show="activeTab === 'usage'" v-content-reveal="activeTab === 'usage'" class="card overflow-hidden" data-testid="admin-usage-table-section">
+        <UsageTable
+          flat
+          column-order-storage-key="admin-usage-column-order"
           :data="usageLogs"
           :loading="loading"
           :columns="visibleColumns"
@@ -145,7 +151,7 @@
         <Pagination v-if="pagination.total > 0" :page="pagination.page" :total="pagination.total" :page-size="pagination.page_size" @update:page="handlePageChange" @update:pageSize="handlePageSizeChange" />
       </div>
 
-      <div v-show="activeTab === 'errors'" data-testid="admin-usage-errors-section">
+      <div v-show="activeTab === 'errors'" v-content-reveal="activeTab === 'errors'" data-testid="admin-usage-errors-section">
         <OpsErrorLogTable
           :rows="errRows" :total="errTotal" :loading="errLoading"
           :page="errPage" :page-size="errPageSize"
@@ -191,6 +197,9 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
+import { vContentReveal } from '@/directives/contentReveal'
+
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { saveAs } from 'file-saver'

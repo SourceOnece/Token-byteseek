@@ -1,3 +1,4 @@
+import { nextMotionFrame } from '@/__tests__/helpers/motion'
 import { defineComponent, h } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -107,6 +108,7 @@ describe.each(['login', 'register'] as const)('%s 协议提交门禁', (page) =>
     expect(view.get('#password').attributes('disabled')).toBeUndefined()
     expect(view.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
     expect(view.get('form').attributes('novalidate')).toBeDefined()
+    await nextMotionFrame()
     expect(hintVisible()).toBe(false)
     await view.get('button[type="submit"]').trigger('click')
     await flushPromises()
@@ -116,6 +118,7 @@ describe.each(['login', 'register'] as const)('%s 协议提交门禁', (page) =>
     expect(mocks.login).not.toHaveBeenCalled()
     expect(mocks.register).not.toHaveBeenCalled()
     await view.get('#login-agreement-consent').setValue(true)
+    await nextMotionFrame()
     expect(hintVisible()).toBe(false)
     expect(view.get('button[type="submit"]').attributes('disabled')).toBeDefined()
   })
@@ -128,12 +131,14 @@ describe.each(['login', 'register'] as const)('%s 协议提交门禁', (page) =>
     await view.get('form').trigger('submit')
     expect(hintVisible()).toBe(true)
     await view.get('#login-agreement-consent').setValue(true)
+    await nextMotionFrame()
     expect(hintVisible()).toBe(false)
     await view.get('form').trigger('submit')
     await flushPromises()
     expect(page === 'login' ? mocks.login : mocks.register).toHaveBeenCalledTimes(1)
     await view.get('#login-agreement-consent').setValue(false)
     expect(view.get('#email').attributes('disabled')).toBeUndefined()
+    await nextMotionFrame()
     expect(hintVisible()).toBe(false)
     expect(mocks.warning).not.toHaveBeenCalled()
   })
@@ -152,6 +157,7 @@ describe.each(['login', 'register'] as const)('%s 协议提交门禁', (page) =>
     expect(mocks.location.href).toBe(`http://localhost/${page}`)
     document.body.dispatchEvent(new Event('touchstart', { bubbles: true }))
     await flushPromises()
+    await nextMotionFrame()
     expect(hintVisible()).toBe(false)
     await button.trigger('click')
     expect(hintVisible()).toBe(true)
@@ -174,6 +180,27 @@ describe.each(['login', 'register'] as const)('%s 协议提交门禁', (page) =>
     expect(acceptedView.get('form').attributes('novalidate')).toBeUndefined()
   })
 
+  it('撤回旧品牌同意记录后，重新进入页面仍需要同意', async () => {
+    localStorage.setItem('sub2api_login_agreement_consent', JSON.stringify({ revision: 'current-revision' }))
+    const view = await mountPage(page)
+    expect((view.get('#login-agreement-consent').element as HTMLInputElement).checked).toBe(true)
+
+    await view.get('#login-agreement-consent').setValue(false)
+    view.unmount()
+
+    const reopenedView = await mountPage(page)
+    expect((reopenedView.get('#login-agreement-consent').element as HTMLInputElement).checked).toBe(false)
+    await reopenedView.get('form').trigger('submit')
+    expect(hintVisible()).toBe(true)
+    expect(mocks.login).not.toHaveBeenCalled()
+    expect(mocks.register).not.toHaveBeenCalled()
+
+    await reopenedView.get('#login-agreement-consent').setValue(true)
+    reopenedView.unmount()
+    const acceptedView = await mountPage(page)
+    expect((acceptedView.get('#login-agreement-consent').element as HTMLInputElement).checked).toBe(true)
+  })
+
   it('条款弹窗模式仍在进入页面时显示并保持原有门禁', async () => {
     mocks.settings.mockResolvedValue({ ...baseSettings, login_agreement_mode: 'modal' })
     const view = await mountPage(page)
@@ -192,6 +219,7 @@ describe.each(['login', 'register'] as const)('%s 协议提交门禁', (page) =>
         expect(hintVisible()).toBe(true)
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
         await flushPromises()
+        await nextMotionFrame()
         expect(hintVisible()).toBe(false)
       }
       expect(mocks.passkey).not.toHaveBeenCalled()

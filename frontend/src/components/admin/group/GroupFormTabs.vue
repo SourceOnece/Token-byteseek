@@ -23,14 +23,14 @@
       <!-- 所有页签持续挂载，避免模型策略和推理规则的内部草稿在切页时丢失。 -->
       <section
         v-for="tab in allTabs"
-        v-show="activeTab === tab && visibleTabs.includes(tab)"
+        v-show="activeTab === tab && visibleTabs.includes(tab)" v-content-reveal="activeTab === tab && visibleTabs.includes(tab)"
         :id="`${idPrefix}-panel-${tab}`"
         :key="tab"
         role="tabpanel"
         :aria-labelledby="`${idPrefix}-tab-${tab}`"
         :data-group-tab="tab"
         tabindex="0"
-        class="group-tab-panel space-y-5"
+        class="group-tab-panel space-y-6"
       >
         <slot :name="tab" />
       </section>
@@ -39,6 +39,8 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -132,57 +134,15 @@ defineExpose({ validate, revealField })
 }
 
 .group-tab-list {
-  @apply flex shrink-0 gap-2 overflow-x-auto p-1 pb-2;
-  border-bottom: 3px solid var(--bh-ink);
+  @apply flex shrink-0 overflow-x-auto border-b border-gray-200 dark:border-dark-700;
 }
 
 .group-tab {
-  @apply inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-extrabold;
-  border: 2px solid var(--bh-ink);
-  background: var(--bh-surface);
-  color: var(--bh-ink);
-  box-shadow: var(--bh-shadow-sm);
-  transition: translate 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+  @apply shrink-0 whitespace-nowrap border-b-2 border-transparent px-4 py-3 text-sm font-medium text-gray-500 transition-colors hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:text-gray-400 dark:hover:text-white;
 }
 
 .group-tab-active {
-  background: var(--bh-yellow);
-  color: #141414;
-}
-
-/* 几何标记只承担装饰，页签语义继续由原有 ARIA 和文字表达。 */
-.group-tab::before {
-  content: '';
-  width: 10px;
-  height: 10px;
-  flex: none;
-  background: var(--bh-red);
-}
-
-.group-tab[data-group-tab-button='models']::before {
-  background: var(--bh-blue);
-  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
-}
-
-.group-tab[data-group-tab-button='scheduling']::before {
-  background: var(--bh-red);
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
-}
-
-.group-tab[data-group-tab-button='protocol']::before { background: var(--bh-blue); }
-
-.group-tab:focus-visible {
-  outline: 2px solid var(--bh-blue);
-  outline-offset: 2px;
-}
-
-.group-tab:active {
-  translate: 2px 2px;
-  box-shadow: 2px 2px 0 var(--bh-shadow-ink);
-}
-
-@media (hover: hover) {
-  .group-tab:hover { translate: -1px -1px; }
+  @apply border-primary-500 text-primary-700 dark:text-primary-300;
 }
 
 .group-tab-content {

@@ -5,7 +5,7 @@
       @click="openModal"
       :class="[
         triggerClass,
-        { 'text-blue-600 dark:text-blue-400': unreadCount > 0 }
+        { 'text-primary-600 dark:text-primary-500': unreadCount > 0 }
       ]"
       :aria-label="t('announcements.title')"
       :title="t('announcements.title')"
@@ -23,7 +23,7 @@
 
     <!-- 公告列表弹窗与公告详情共用同一套轻量卡片风格。 -->
     <Teleport to="body">
-      <Transition name="pop-fade">
+      <MotionTransition name="pop-fade">
         <div
           v-if="isModalOpen"
           class="fixed inset-0 z-announcement flex items-center justify-center overflow-y-auto bg-[var(--overlay-bg)] p-3 backdrop-blur-sm sm:p-6"
@@ -66,7 +66,7 @@
                   class="inline-flex h-8 items-center gap-1.5 rounded-compact px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-dark-300 dark:hover:bg-dark-700 dark:hover:text-white dark:focus-visible:ring-primary-500/50"
                   @click="markAllAsRead"
                 >
-                  <Icon name="checkCircle" size="sm" :stroke-width="1.75" />
+                  <Icon name="checkCircle" size="sm" :stroke-width="1.75" :animate-on-hover="false" />
                   <span>{{ t('announcements.markAllRead') }}</span>
                 </button>
                 <button
@@ -76,20 +76,14 @@
                   :aria-label="t('common.close')"
                   @click="closeModal"
                 >
-                  <Icon name="x" size="md" :stroke-width="1.75" />
+                  <Icon name="x" size="sm" :stroke-width="1.75" />
                 </button>
               </div>
             </header>
 
             <!-- 列表区域独立滚动，避免较多公告撑出视口。 -->
             <div class="announcement-list-scrollbar min-h-0 flex-1 overflow-y-auto border-t border-gray-100 dark:border-dark-700/70">
-              <div
-                v-if="loading"
-                data-testid="announcement-list-loading"
-                class="flex items-center justify-center py-14"
-              >
-                <LoadingSpinner size="md" color="secondary" />
-              </div>
+              <ContentSkeleton v-if="loading" data-testid="announcement-list-loading" variant="list" :rows="4" class="p-6" />
 
               <ul
                 v-else-if="displayedAnnouncements.length > 0"
@@ -124,7 +118,7 @@
                       data-testid="announcement-list-status-read"
                       class="flex h-9 w-9 items-center justify-center rounded-control bg-gray-100 text-gray-400 dark:bg-dark-800 dark:text-dark-400"
                     >
-                      <Icon name="checkCircle" size="sm" :stroke-width="1.75" />
+                      <Icon name="checkCircle" size="sm" :stroke-width="1.75" :animate-on-hover="false" />
                     </span>
 
                     <span class="min-w-0">
@@ -147,6 +141,7 @@
                       size="sm"
                       class="justify-self-end text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-dark-500"
                       :stroke-width="1.75"
+                      :animate-on-hover="false"
                     />
                   </button>
                 </li>
@@ -162,7 +157,7 @@
             </div>
           </section>
         </div>
-      </Transition>
+      </MotionTransition>
     </Teleport>
 
     <!-- 铃铛详情与仪表盘共用同一个轻量公告浮层。 -->
@@ -177,6 +172,8 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
@@ -185,7 +182,6 @@ import { useAnnouncementStore } from '@/stores/announcements'
 import { formatRelativeTime } from '@/utils/format'
 import type { UserAnnouncement } from '@/types'
 import AnnouncementPopup from '@/components/common/AnnouncementPopup.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const props = withDefaults(defineProps<{
@@ -205,9 +201,9 @@ const unreadCount = computed(() => announcementStore.unreadCount)
 const displayedAnnouncements = computed(() => announcements.value.slice(0, 20))
 const triggerClass = computed(() => {
   if (props.variant === 'status') {
-    return 'relative flex h-9 w-9 items-center justify-center rounded-control text-primary-900/70 transition-colors hover:bg-primary-100 hover:text-primary-900 dark:text-dark-100/80 dark:hover:bg-dark-800 dark:hover:text-white'
+    return 'relative flex h-9 w-9 items-center justify-center rounded-control text-primary-900 transition-colors hover:bg-primary-100 dark:text-dark-100 dark:hover:bg-dark-700 dark:hover:text-white'
   }
-  return 'relative flex h-9 w-9 items-center justify-center rounded-control text-gray-600 transition-all hover:bg-gray-100 hover:scale-105 dark:text-gray-400 dark:hover:bg-dark-800'
+  return 'relative flex h-9 w-9 items-center justify-center rounded-control text-gray-600 transition hover:bg-gray-100 hover:scale-105 dark:text-gray-400 dark:hover:bg-dark-800'
 })
 
 // 列表弹窗和详情弹窗分别维护显示状态。
@@ -289,14 +285,14 @@ watch(
 }
 
 .announcement-list-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--bh-scrollbar);
+  background: rgb(156 163 175 / 0.45);
   border: 2px solid transparent;
   border-radius: 9999px;
   background-clip: padding-box;
 }
 
 :global(.dark) .announcement-list-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--bh-scrollbar);
+  background: rgb(82 82 91 / 0.7);
   border: 2px solid transparent;
   background-clip: padding-box;
 }

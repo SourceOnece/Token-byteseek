@@ -21,57 +21,61 @@
       </label>
     </div>
 
-    <div v-if="enabledModel && !automaticAdapter" class="mt-3 space-y-3">
-      <div>
-        <label class="input-label">{{ t('admin.providers.upstreamUsage.adapter') }}</label>
-        <Select
-          v-model="adapterModel"
-          :options="adapterOptions"
-          data-testid="upstream-usage-adapter"
-        />
-      </div>
-      <div>
-        <label class="input-label">{{ t('admin.providers.upstreamUsage.baseUrl') }}</label>
-        <input
-          v-model="baseUrlModel"
-          type="text"
-          class="input"
-          :placeholder="t('admin.providers.upstreamUsage.baseUrlPlaceholder')"
-          data-testid="upstream-usage-base-url"
-        />
-        <p class="input-hint">{{ t('admin.providers.upstreamUsage.baseUrlHint') }}</p>
-      </div>
-      <template v-if="adapterModel === 'new_api'">
+    <Collapse :open="enabledModel && !automaticAdapter" unmount-on-hide>
+      <div class="mt-3 space-y-3">
         <div>
-          <label class="input-label">{{ t('admin.providers.upstreamUsage.walletAccessToken') }}</label>
-          <input
-            v-model="walletAccessTokenModel"
-            type="password"
-            class="input font-mono"
-            autocomplete="new-password"
-            :placeholder="t('admin.providers.upstreamUsage.walletAccessTokenPlaceholder')"
-            data-testid="upstream-usage-wallet-access-token"
+          <label class="input-label">{{ t('admin.providers.upstreamUsage.adapter') }}</label>
+          <Select
+            v-model="adapterModel"
+            :options="adapterOptions"
+            data-testid="upstream-usage-adapter"
           />
-          <p class="input-hint">{{ t('admin.providers.upstreamUsage.walletAccessTokenHint') }}</p>
         </div>
         <div>
-          <label class="input-label">{{ t('admin.providers.upstreamUsage.walletUserId') }}</label>
+          <label class="input-label">{{ t('admin.providers.upstreamUsage.baseUrl') }}</label>
           <input
-            v-model="walletUserIdModel"
+            v-model="baseUrlModel"
             type="text"
-            inputmode="numeric"
             class="input"
-            :placeholder="t('admin.providers.upstreamUsage.walletUserIdPlaceholder')"
-            data-testid="upstream-usage-wallet-user-id"
+            :placeholder="t('admin.providers.upstreamUsage.baseUrlPlaceholder')"
+            data-testid="upstream-usage-base-url"
           />
-          <p class="input-hint">{{ t('admin.providers.upstreamUsage.walletUserIdHint') }}</p>
+          <p class="input-hint">{{ t('admin.providers.upstreamUsage.baseUrlHint') }}</p>
         </div>
-      </template>
-    </div>
+        <template v-if="adapterModel === 'new_api'">
+          <div>
+            <label class="input-label">{{ t('admin.providers.upstreamUsage.walletAccessToken') }}</label>
+            <input
+              v-model="walletAccessTokenModel"
+              type="password"
+              class="input font-mono"
+              autocomplete="new-password"
+              :placeholder="t('admin.providers.upstreamUsage.walletAccessTokenPlaceholder')"
+              data-testid="upstream-usage-wallet-access-token"
+            />
+            <p class="input-hint">{{ t('admin.providers.upstreamUsage.walletAccessTokenHint') }}</p>
+          </div>
+          <div>
+            <label class="input-label">{{ t('admin.providers.upstreamUsage.walletUserId') }}</label>
+            <input
+              v-model="walletUserIdModel"
+              type="text"
+              inputmode="numeric"
+              class="input"
+              :placeholder="t('admin.providers.upstreamUsage.walletUserIdPlaceholder')"
+              data-testid="upstream-usage-wallet-user-id"
+            />
+            <p class="input-hint">{{ t('admin.providers.upstreamUsage.walletUserIdHint') }}</p>
+          </div>
+        </template>
+      </div>
+    </Collapse>
   </div>
 </template>
 
 <script setup lang="ts">
+import Collapse from '@/components/common/Collapse.vue'
+
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Select, { type SelectOption } from '@/components/common/Select.vue'

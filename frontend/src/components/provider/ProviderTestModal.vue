@@ -99,7 +99,7 @@
       <div class="group relative">
         <div
           ref="terminalRef"
-          class="max-h-menu-sm min-h-[120px] overflow-y-auto rounded-surface border border-gray-700 bg-gray-900 p-4 font-mono text-sm dark:border-gray-800 dark:bg-black"
+          class="max-h-menu-sm min-h-[120px] overflow-y-auto rounded-surface border border-gray-700 bg-gray-900 p-4 font-mono text-sm dark:border-dark-700 dark:bg-black"
         >
           <!-- Status Line -->
           <div v-if="status === 'idle'" class="flex items-center gap-2 text-gray-500">
@@ -107,7 +107,13 @@
             <span>{{ t('admin.providers.readyToTest') }}</span>
           </div>
           <div v-else-if="status === 'connecting'" class="flex items-center gap-2 text-yellow-400">
-            <Icon name="refresh" size="sm" class="animate-spin" :stroke-width="2" />
+            <Icon
+              name="refresh"
+              size="sm"
+              class="animate-spin"
+              :stroke-width="2"
+              :animate-on-hover="false"
+            />
             <span>{{ t('admin.providers.connectingToApi') }}</span>
           </div>
 
@@ -126,7 +132,7 @@
             v-if="status === 'success'"
             class="mt-3 flex items-center gap-2 border-t border-gray-700 pt-3 text-green-400"
           >
-            <Icon name="check" size="sm" :stroke-width="2" />
+            <Icon name="check" size="sm" :stroke-width="2" :animate-on-hover="false" />
             <span>{{ t('admin.providers.testCompleted') }}</span>
           </div>
           <div
@@ -142,7 +148,7 @@
         <button
           v-if="outputLines.length > 0"
           @click="copyOutput"
-          class="absolute right-2 top-2 rounded-control bg-gray-800/80 p-1.5 text-gray-400 opacity-0 transition-all hover:bg-gray-700 hover:text-white group-hover:opacity-100"
+          class="absolute right-2 top-2 rounded-control bg-gray-800/80 p-1.5 text-gray-400 opacity-0 transition hover:bg-gray-700 hover:text-white group-hover:opacity-100"
           :title="t('admin.providers.copyOutput')"
         >
           <Icon name="link" size="sm" :stroke-width="2" />
@@ -154,7 +160,7 @@
           {{ t('admin.providers.imagePreview') }}
         </div>
         <div class="flex flex-wrap justify-center gap-3">
-          <div
+          <div data-icon-trigger
             v-for="(image, index) in generatedImages"
             :key="`${image.url}-${index}`"
             class="group/img relative cursor-pointer overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm transition hover:border-black/20 hover:shadow-md dark:border-dark-500 dark:bg-dark-700 dark:hover:border-primary-300"
@@ -162,7 +168,12 @@
           >
             <img :src="image.url" :alt="`test-image-${index + 1}`" class="max-h-[360px] w-full object-contain" /> <!-- check-ui-allow: 图片预览局部约束 -->
             <div class="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover/img:bg-black/20">
-              <Icon name="eye" size="lg" class="text-white opacity-0 drop-shadow-lg transition-opacity group-hover/img:opacity-100" :stroke-width="2" />
+              <Icon
+                name="eye"
+                size="lg"
+                class="text-white opacity-0 drop-shadow-lg transition-opacity group-hover/img:opacity-100"
+                :stroke-width="2"
+              />
             </div>
             <div class="border-t border-gray-100 px-3 py-1.5 text-xs text-gray-500 dark:border-dark-500 dark:text-gray-300">
               {{ image.mimeType || 'image/*' }}
@@ -173,7 +184,7 @@
 
       <!-- Image Lightbox -->
       <Teleport to="body">
-        <Transition name="fade">
+        <MotionTransition name="fade">
           <div
             v-if="previewImageUrl"
             class="fixed inset-0 z-tooltip flex items-center justify-center bg-[var(--overlay-bg-strong)] p-4"
@@ -191,7 +202,7 @@
               class="max-h-[90vh] max-w-[90vw] rounded-control object-contain shadow-2xl"
             />
           </div>
-        </Transition>
+        </MotionTransition>
       </Teleport>
 
       <!-- Test Info -->
@@ -221,7 +232,7 @@
           @click="startTest"
           :disabled="status === 'connecting' || !selectedModelId"
           :class="[
-            'flex items-center gap-2 rounded-control px-4 py-2 text-sm font-medium transition-all',
+            'flex items-center gap-2 rounded-control px-4 py-2 text-sm font-medium transition',
             status === 'connecting' || !selectedModelId
               ? 'cursor-not-allowed bg-primary-400 text-white'
               : status === 'success'
@@ -237,6 +248,7 @@
             size="sm"
             class="animate-spin"
             :stroke-width="2"
+            :animate-on-hover="false"
           />
           <Icon v-else-if="status === 'idle'" name="play" size="sm" :stroke-width="2" />
           <Icon v-else name="refresh" size="sm" :stroke-width="2" />
@@ -256,6 +268,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, ref, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'

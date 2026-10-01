@@ -2,7 +2,7 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2">
           <!-- Left: Search + Filters -->
           <div class="min-w-0 flex-1 sm:max-w-64">
             <input
@@ -23,10 +23,10 @@
               class="btn btn-secondary shrink-0 btn-icon"
               :title="t('common.refresh')"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
             <button @click="showCreateDialog = true" class="btn btn-primary whitespace-nowrap px-3 sm:px-4">
-              <Icon name="plus" size="md" class="mr-1" />
+              <Icon name="plus" size="sm" class="mr-1" />
               {{ t('admin.promo.createCode') }}
             </button>
           </div>
@@ -34,7 +34,8 @@
       </template>
 
       <template #table>
-        <DataTable column-order-storage-key="admin-promo-codes-column-order"
+        <DataTable
+          column-order-storage-key="admin-promo-codes-column-order"
           :columns="columns"
           :data="codes"
           :loading="loading"
@@ -57,14 +58,7 @@
                 :title="copiedCode === value ? t('admin.promo.copied') : t('keys.copyToClipboard')"
               >
                 <Icon v-if="copiedCode !== value" name="copy" size="sm" :stroke-width="2" />
-                <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
+                <Icon name="check" size="sm" :animate-on-hover="false" v-else class="h-4 w-4" />
               </button>
             </div>
           </template>
@@ -115,7 +109,7 @@
               </button>
               <button
                 @click="handleViewUsages(row)"
-                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-500/8 dark:hover:text-primary-500"
                 :title="t('admin.promo.viewUsages')"
               >
                 <Icon name="eye" size="sm" />
@@ -315,9 +309,7 @@
       width="wide"
       @close="showUsagesDialog = false"
     >
-      <div v-if="usagesLoading" class="flex items-center justify-center py-8">
-        <Icon name="refresh" size="lg" class="animate-spin text-gray-400" />
-      </div>
+      <ContentSkeleton v-if="usagesLoading" :rows="4" class="py-4" />
       <div v-else-if="usages.length === 0" class="py-8 text-center text-gray-500 dark:text-gray-400">
         {{ t('admin.promo.noUsages') }}
       </div>
@@ -381,6 +373,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

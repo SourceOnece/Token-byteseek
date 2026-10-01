@@ -19,6 +19,8 @@ import {
   PointElement,
   Tooltip
 } from 'chart.js'
+import { watch } from 'vue'
+import { useVisualTheme } from '@/composables/useVisualTheme'
 
 // 兼容现有消费者的导出；响应式主题单独读取纯色板，避免加载副作用。
 export { BH_CHART_PALETTE, BH_CHART_NEUTRAL } from '@/constants/chartTheme'
@@ -80,4 +82,23 @@ export function applyBauhausChartTheme(): void {
   })
 }
 
-applyBauhausChartTheme()
+// 先保存 Chart.js 原生默认值；包豪斯只在用户选择后生效，可完整切回。
+Chart.register(LineElement, PointElement, ArcElement, BarElement, Legend, Tooltip)
+const nativeFont = { ...Chart.defaults.font }
+const nativeLine = { ...Chart.defaults.elements.line }
+const nativePoint = { ...Chart.defaults.elements.point }
+const nativeArc = { ...Chart.defaults.elements.arc }
+const nativeLegend = { ...Chart.defaults.plugins.legend.labels, font: { ...Chart.defaults.plugins.legend.labels.font } }
+const nativeTooltip = { ...Chart.defaults.plugins.tooltip }
+watch(useVisualTheme().visualTheme, skin => {
+  if (skin === 'bauhaus') applyBauhausChartTheme()
+  else {
+    Object.assign(Chart.defaults.font, nativeFont)
+    Chart.defaults.set('elements.line', nativeLine)
+    Chart.defaults.set('elements.point', nativePoint)
+    Chart.defaults.set('elements.arc', nativeArc)
+    Chart.defaults.set('plugins.legend.labels', nativeLegend)
+    Chart.defaults.set('plugins.tooltip', nativeTooltip)
+  }
+  Object.values(Chart.instances).forEach(chart => chart.update('none'))
+}, { immediate: true })

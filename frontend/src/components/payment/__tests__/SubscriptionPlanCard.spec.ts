@@ -89,7 +89,7 @@ describe('SubscriptionPlanCard', () => {
     expect(title.attributes('title')).toBe(name)
     expect(title.classes()).toEqual(expect.arrayContaining([
       'min-w-0',
-      'h-12',
+      'sm:h-12',
       'break-words',
       'line-clamp-2',
       '[overflow-wrap:anywhere]',
@@ -108,7 +108,9 @@ describe('SubscriptionPlanCard', () => {
 
     expect(title.element.parentElement?.classList).toContain('min-w-0')
     expect(title.element.parentElement?.classList).toContain('flex-1')
-    expect(price?.element.parentElement?.parentElement?.classList).toContain('shrink-0')
+    // 价格区独立于标题行，长标题不会挤压价格。
+    expect(title.element.parentElement?.contains(price?.element ?? null)).toBe(false)
+    expect(price?.classes()).toContain('tabular-nums')
     expect(wrapper.get('p').text()).toBe('Includes advanced models and priority support.')
     expect(wrapper.get('button').text()).toBe('payment.subscribeNow')
   })
@@ -119,6 +121,6 @@ describe('SubscriptionPlanCard', () => {
 
     expect(title.text()).toBe('Pro')
     expect(title.attributes('title')).toBe('Pro')
-    expect(title.classes()).toEqual(expect.arrayContaining(['text-base', 'font-bold', 'h-12']))
+    expect(title.classes()).toEqual(expect.arrayContaining(['text-base', 'font-semibold', 'sm:h-12']))
   })
 })

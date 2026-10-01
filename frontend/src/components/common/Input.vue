@@ -25,7 +25,7 @@
         :autocomplete="autocomplete"
         :readonly="readonly"
         :class="[
-          'input w-full transition-all duration-200',
+          'input w-full transition duration-normal',
           $slots.prefix ? 'input-has-icon' : '',
           $slots.suffix ? 'input-has-icon-right' : '',
           error ? 'input-error ring-2 ring-red-500/20' : '',

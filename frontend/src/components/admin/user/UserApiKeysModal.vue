@@ -5,7 +5,7 @@
         <UserAvatar :avatar-url="user.avatar_url || ''" :user-id="user.id" :alt="user.email" size-class="h-10 w-10" />
         <div><p class="font-medium text-gray-900 dark:text-white">{{ user.email }}</p><p class="text-sm text-gray-500 dark:text-dark-400">{{ user.username }}</p></div>
       </div>
-      <div v-if="loading" class="flex justify-center py-8"><svg class="h-8 w-8 animate-spin text-primary-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>
+      <ContentSkeleton v-if="loading" variant="list" :rows="3" class="py-4" />
       <div v-else-if="apiKeys.length === 0" class="py-8 text-center"><p class="text-sm text-gray-500">{{ t('admin.users.noApiKeys') }}</p></div>
       <div v-else ref="scrollContainerRef" class="max-h-96 space-y-3 overflow-y-auto" @scroll="closeGroupSelector">
         <div v-for="key in apiKeys" :key="key.id" class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-600 dark:bg-dark-800">
@@ -52,8 +52,14 @@
                   :rate-multiplier="key.group.rate_multiplier"
                 />
                 <span v-else class="text-gray-400 italic">{{ t('admin.users.none') }}</span>
-                <svg v-if="updatingKeyIds.has(key.id)" class="h-3 w-3 animate-spin text-primary-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <svg v-else class="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" /></svg>
+                <Icon
+                  name="loader"
+                  size="xs"
+                  :animate-on-hover="false"
+                  v-if="updatingKeyIds.has(key.id)"
+                  class="h-3 w-3 animate-spin text-primary-500"
+                />
+                <Icon name="sort" size="xs" :animate-on-hover="false" v-else class="h-3 w-3 text-gray-400" />
               </button>
             </div>
             <div class="flex items-center gap-1"><span>{{ t('admin.users.columns.created') }}: {{ formatDateTime(key.created_at) }}</span></div>
@@ -65,60 +71,67 @@
 
   <!-- Group Selector Dropdown -->
   <Teleport to="body">
-    <div
-      v-if="groupSelectorKeyId !== null && dropdownPosition"
-      ref="dropdownRef"
-      class="animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-64 overflow-hidden rounded-control bg-white shadow-lg ring-1 ring-black/5 duration-200 dark:bg-dark-800 dark:ring-white/10"
-      :style="{
-        top: dropdownPosition.top !== undefined ? dropdownPosition.top + 'px' : undefined,
-        bottom: dropdownPosition.bottom !== undefined ? dropdownPosition.bottom + 'px' : undefined,
-        left: dropdownPosition.left + 'px'
-      }"
-    >
-      <div class="max-h-64 overflow-y-auto p-1.5">
-        <!-- Unbind option -->
-        <button
-          @click="changeGroup(selectedKeyForGroup!, null)"
-          :class="[
-            'flex w-full items-center rounded-control px-3 py-2 text-sm transition-colors',
-            !selectedKeyForGroup?.group_id
-              ? 'bg-primary-50 dark:bg-primary-900/20'
-              : 'hover:bg-gray-100 dark:hover:bg-dark-700'
-          ]"
-        >
-          <span class="text-gray-500 italic">{{ t('admin.users.none') }}</span>
-          <svg
-            v-if="!selectedKeyForGroup?.group_id"
-            class="ml-auto h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400"
-            fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"
-          ><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-        </button>
-        <!-- Group options -->
-        <button
-          v-for="group in allGroups"
-          :key="group.id"
-          @click="changeGroup(selectedKeyForGroup!, group.id)"
-          :class="[
-            'flex w-full items-center justify-between rounded-control px-3 py-2 text-sm transition-colors',
-            selectedKeyForGroup?.group_id === group.id
-              ? 'bg-primary-50 dark:bg-primary-900/20'
-              : 'hover:bg-gray-100 dark:hover:bg-dark-700'
-          ]"
-        >
-          <GroupOptionItem
-            :name="group.name"
-            :display-brand="group.display_brand"
-            :rate-multiplier="group.rate_multiplier"
-            :description="group.description"
-            :selected="selectedKeyForGroup?.group_id === group.id"
-          />
-        </button>
+    <MotionTransition name="dropdown-fade">
+      <div
+        v-if="groupSelectorKeyId !== null && dropdownPosition" :inert="!(groupSelectorKeyId !== null && dropdownPosition) || undefined"
+        ref="dropdownRef"
+        class="dropdown animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-64 overflow-hidden duration-normal py-0"
+        :style="{
+          top: dropdownPosition.top !== undefined ? dropdownPosition.top + 'px' : undefined,
+          bottom: dropdownPosition.bottom !== undefined ? dropdownPosition.bottom + 'px' : undefined,
+          left: dropdownPosition.left + 'px'
+        }"
+      >
+        <div class="max-h-64 overflow-y-auto p-1.5">
+          <!-- Unbind option -->
+          <button
+            @click="changeGroup(selectedKeyForGroup!, null)"
+            :class="[
+              'flex w-full items-center rounded-control px-3 py-2 text-sm transition-colors',
+              !selectedKeyForGroup?.group_id
+                ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
+                : 'hover:bg-gray-100 dark:hover:bg-dark-700'
+            ]"
+          >
+            <span class="text-gray-500 italic">{{ t('admin.users.none') }}</span>
+            <Icon
+              name="check"
+              size="sm"
+              :animate-on-hover="false"
+              v-if="!selectedKeyForGroup?.group_id"
+              class="ml-auto h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400"
+            />
+          </button>
+          <!-- Group options -->
+          <button
+            v-for="group in allGroups"
+            :key="group.id"
+            @click="changeGroup(selectedKeyForGroup!, group.id)"
+            :class="[
+              'flex w-full items-center justify-between rounded-control px-3 py-2 text-sm transition-colors',
+              selectedKeyForGroup?.group_id === group.id
+                ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
+                : 'hover:bg-gray-100 dark:hover:bg-dark-700'
+            ]"
+          >
+            <GroupOptionItem
+              :name="group.name"
+              :display-brand="group.display_brand"
+              :rate-multiplier="group.rate_multiplier"
+              :description="group.description"
+              :selected="selectedKeyForGroup?.group_id === group.id"
+            />
+          </button>
+        </div>
       </div>
-    </div>
+    </MotionTransition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import MotionTransition from '@/components/common/MotionTransition.vue'
+import Icon from '@/components/icons/Icon.vue'
 import { ref, computed, watch, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

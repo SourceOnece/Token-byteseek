@@ -29,8 +29,9 @@ const OFFICIAL_REQUEST_ID_HEADERS: Record<string, { platform: string; header: st
 const examples = computed<HeaderExample[]>(() => {
   const items: HeaderExample[] = []
   if (props.type === 'apikey') {
+    items.push({ label: 'TokenRouter', header: 'X-TokenRouter-Request-ID' })
     items.push({
-      label: 'sub2api',
+      label: 'Sub2API',
       header: 'X-Client-Request-ID',
       note: t('admin.providers.upstreamRequestIdHeaderHelp.sub2apiNote')
     })

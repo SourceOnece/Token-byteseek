@@ -45,6 +45,7 @@ describe("ReasoningEffortPolicyFields", () => {
     expect(wrapper.text()).toContain("admin.groups.form.reasoningEffortFrom");
     expect(wrapper.text()).toContain("admin.groups.form.reasoningEffortTo");
     expect(wrapper.text()).toContain("admin.groups.form.addReasoningEffortPair");
+    expect(wrapper.text()).not.toContain("class=");
 
     const modelInput = wrapper.get(
       `#create-group-reasoning-${mapping.id}-model`,

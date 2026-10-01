@@ -2,9 +2,9 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div class="flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
           <!-- Left: Search + Filters -->
-          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-3">
+          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
             <div class="input-icon-wrap min-w-0 flex-1 sm:flex-none sm:w-64">
             <Icon
               name="search"
@@ -37,7 +37,7 @@
               class="btn btn-secondary shrink-0 btn-icon"
               :title="t('common.refresh')"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
             <div ref="moreActionsDropdownRef" class="relative shrink-0">
               <button
@@ -47,50 +47,52 @@
                 :title="t('admin.proxies.moreActions')"
                 @click="showMoreActionsDropdown = !showMoreActionsDropdown"
               >
-                <Icon name="more" size="md" />
+                <Icon name="more" size="sm" />
                 {{ t('admin.proxies.moreActions') }}
-                <Icon name="chevronDown" size="xs" />
+                <Icon name="chevronDown" size="xs" :animate-on-hover="false" />
               </button>
-              <div
-                v-if="showMoreActionsDropdown"
-                class="absolute right-0 top-full z-modal-nested mt-2 w-56 rounded-control border border-gray-200 bg-white p-1 shadow-xl dark:border-dark-600 dark:bg-dark-900"
-                @click.stop
-              >
-                <button
-                  type="button"
-                  class="dropdown-item-sm rounded-control disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="batchTesting || loading"
-                  @click="showMoreActionsDropdown = false; handleBatchTest()"
+              <MotionTransition name="dropdown-fade">
+                <div
+                  v-if="showMoreActionsDropdown" :inert="!(showMoreActionsDropdown) || undefined"
+                  class="absolute right-0 top-full z-modal-nested mt-2 w-56 rounded-control border border-gray-200 bg-white p-1 shadow-xl dark:border-dark-600 dark:bg-dark-900"
+                  @click.stop
                 >
-                  <Icon name="play" size="sm" />
-                  {{ t('admin.proxies.testConnection') }}
-                </button>
-                <button
-                  type="button"
-                  class="dropdown-item-sm rounded-control disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="batchQualityChecking || loading"
-                  @click="showMoreActionsDropdown = false; handleBatchQualityCheck()"
-                >
-                  <Icon name="shield" size="sm" :class="batchQualityChecking ? 'animate-pulse' : ''" />
-                  {{ t('admin.proxies.batchQualityCheck') }}
-                </button>
-                <button
-                  type="button"
-                  class="dropdown-item-sm rounded-control"
-                  @click="showMoreActionsDropdown = false; showImportData = true"
-                >
-                  <Icon name="upload" size="sm" />
-                  {{ t('admin.proxies.dataImport') }}
-                </button>
-                <button
-                  type="button"
-                  class="dropdown-item-sm rounded-control"
-                  @click="showMoreActionsDropdown = false; showExportDataDialog = true"
-                >
-                  <Icon name="download" size="sm" />
-                  {{ selectedCount > 0 ? t('admin.proxies.dataExportSelected') : t('admin.proxies.dataExport') }}
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    class="dropdown-item-sm rounded-control disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="batchTesting || loading"
+                    @click="showMoreActionsDropdown = false; handleBatchTest()"
+                  >
+                    <Icon name="play" size="sm" />
+                    {{ t('admin.proxies.testConnection') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="dropdown-item-sm rounded-control disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="batchQualityChecking || loading"
+                    @click="showMoreActionsDropdown = false; handleBatchQualityCheck()"
+                  >
+                    <Icon name="shield" size="sm" :class="batchQualityChecking ? 'animate-pulse' : ''" />
+                    {{ t('admin.proxies.batchQualityCheck') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="dropdown-item-sm rounded-control"
+                    @click="showMoreActionsDropdown = false; showImportData = true"
+                  >
+                    <Icon name="upload" size="sm" />
+                    {{ t('admin.proxies.dataImport') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="dropdown-item-sm rounded-control"
+                    @click="showMoreActionsDropdown = false; showExportDataDialog = true"
+                  >
+                    <Icon name="download" size="sm" />
+                    {{ selectedCount > 0 ? t('admin.proxies.dataExportSelected') : t('admin.proxies.dataExport') }}
+                  </button>
+                </div>
+              </MotionTransition>
             </div>
             <button
               @click="openBatchDelete"
@@ -98,11 +100,11 @@
               class="btn btn-danger shrink-0 whitespace-nowrap"
               :title="t('admin.proxies.batchDeleteAction')"
             >
-              <Icon name="trash" size="md" class="mr-2" />
+              <Icon name="trash" size="sm" class="mr-2" />
               {{ t('admin.proxies.batchDeleteAction') }}
             </button>
             <button @click="showCreateModal = true" class="btn btn-primary shrink-0 whitespace-nowrap">
-              <Icon name="plus" size="md" class="mr-2" />
+              <Icon name="plus" size="sm" class="mr-2" />
               {{ t('admin.proxies.createProxy') }}
             </button>
           </div>
@@ -111,7 +113,8 @@
 
       <template #table>
         <div ref="proxyTableRef" class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <DataTable column-order-storage-key="admin-proxies-column-order"
+        <DataTable
+          column-order-storage-key="admin-proxies-column-order"
           :columns="columns"
           :data="proxies"
           :loading="loading"
@@ -168,19 +171,21 @@
                   <Icon name="copy" size="sm" />
                 </button>
                 <!-- 右键展开格式选择菜单 -->
-                <div
-                  v-if="copyMenuProxyId === row.id"
-                  class="absolute left-0 top-full z-50 mt-1 w-auto min-w-[180px] rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-500 dark:bg-dark-700"
-                >
-                  <button
-                    v-for="fmt in getCopyFormats(row)"
-                    :key="fmt.label"
-                    class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-gray-100 dark:hover:bg-dark-600"
-                    @click.stop="copyFormat(fmt.value)"
+                <MotionTransition name="dropdown-fade">
+                  <div
+                    v-if="copyMenuProxyId === row.id" :inert="!(copyMenuProxyId === row.id) || undefined"
+                    class="dropdown left-0 top-full z-50 mt-1 w-auto min-w-[180px]"
                   >
-                    <span class="truncate font-mono text-gray-600 dark:text-gray-300">{{ fmt.label }}</span>
-                  </button>
-                </div>
+                    <button
+                      v-for="fmt in getCopyFormats(row)"
+                      :key="fmt.label"
+                      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-gray-100 dark:hover:bg-dark-600"
+                      @click.stop="copyFormat(fmt.value)"
+                    >
+                      <span class="truncate font-mono text-gray-600 dark:text-gray-300">{{ fmt.label }}</span>
+                    </button>
+                  </div>
+                </MotionTransition>
               </div>
             </div>
           </template>
@@ -296,54 +301,28 @@
                 :disabled="testingProxyIds.has(row.id)"
                 class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400"
               >
-                <svg
+                <Icon
+                  name="loader"
+                  size="sm"
+                  :animate-on-hover="false"
                   v-if="testingProxyIds.has(row.id)"
                   class="h-4 w-4 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  ></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                <Icon v-else name="checkCircle" size="sm" />
+                />
+                <Icon v-else name="checkCircle" size="sm" :animate-on-hover="false" />
                 <span class="text-xs">{{ t('admin.proxies.testConnection') }}</span>
               </button>
               <button
                 @click="handleQualityCheck(row)"
                 :disabled="qualityCheckingProxyIds.has(row.id)"
-                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-primary-500/8 dark:hover:text-primary-500"
               >
-                <svg
+                <Icon
+                  name="loader"
+                  size="sm"
+                  :animate-on-hover="false"
                   v-if="qualityCheckingProxyIds.has(row.id)"
                   class="h-4 w-4 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  ></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
+                />
                 <Icon v-else name="shield" size="sm" />
                 <span class="text-xs">{{ t('admin.proxies.qualityCheck') }}</span>
               </button>
@@ -423,19 +402,7 @@
                 : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             ]"
           >
-            <svg
-              class="mr-1.5 inline h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="1.5"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"
-              />
-            </svg>
+            <Icon name="list" size="sm" class="mr-1.5 inline h-4 w-4" />
             {{ t('admin.proxies.batchAdd') }}
           </button>
         </div>
@@ -510,7 +477,7 @@
               class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               @click="createPasswordVisible = !createPasswordVisible"
             >
-              <Icon :name="createPasswordVisible ? 'eyeOff' : 'eye'" size="md" />
+              <Icon :name="createPasswordVisible ? 'eyeOff' : 'eye'" size="sm" />
             </button>
           </div>
         </div>
@@ -572,7 +539,13 @@
         <div v-if="batchParseResult.total > 0" class="rounded-control bg-gray-50 p-4 dark:bg-dark-700">
             <div class="flex items-center gap-4 text-sm">
               <div class="flex items-center gap-1.5">
-              <Icon name="checkCircle" size="sm" :stroke-width="2" class="text-primary-500" />
+              <Icon
+                name="checkCircle"
+                size="sm"
+                :stroke-width="2"
+                class="text-primary-500"
+                :animate-on-hover="false"
+              />
               <span class="text-gray-700 dark:text-gray-300">
                 {{ t('admin.proxies.parsedCount', { count: batchParseResult.valid }) }}
               </span>
@@ -589,19 +562,7 @@
               </span>
             </div>
             <div v-if="batchParseResult.duplicate > 0" class="flex items-center gap-1.5">
-              <svg
-                class="h-4 w-4 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"
-                />
-              </svg>
+              <Icon name="copy" size="sm" class="h-4 w-4 text-gray-400" />
               <span class="text-gray-500 dark:text-gray-400">
                 {{ t('admin.proxies.duplicateCount', { count: batchParseResult.duplicate }) }}
               </span>
@@ -623,26 +584,13 @@
             :disabled="submitting"
             class="btn btn-primary"
           >
-            <svg
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
               v-if="submitting"
               class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            />
             {{ submitting ? t('admin.proxies.creating') : t('common.create') }}
           </button>
           <button
@@ -652,26 +600,13 @@
             :disabled="submitting || batchParseResult.valid === 0"
             class="btn btn-primary"
           >
-            <svg
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
               v-if="submitting"
               class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            />
             {{
               submitting
                 ? t('admin.proxies.importing')
@@ -739,7 +674,7 @@
               class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               @click="editPasswordVisible = !editPasswordVisible"
             >
-              <Icon :name="editPasswordVisible ? 'eyeOff' : 'eye'" size="md" />
+              <Icon :name="editPasswordVisible ? 'eyeOff' : 'eye'" size="sm" />
             </button>
           </div>
         </div>
@@ -797,26 +732,13 @@
             :disabled="submitting"
             class="btn btn-primary"
           >
-            <svg
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
               v-if="submitting"
               class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            />
             {{ submitting ? t('admin.proxies.updating') : t('common.update') }}
           </button>
         </div>
@@ -945,15 +867,11 @@
       width="normal"
       @close="closeProvidersModal"
     >
-      <div v-if="providersLoading" class="flex items-center justify-center py-8 text-sm text-gray-500">
-        <Icon name="refresh" size="md" class="mr-2 animate-spin" />
-        {{ t('common.loading') }}
-      </div>
-      <div v-else-if="proxyProviders.length === 0" class="py-6 text-center text-sm text-gray-500">
+      <div v-if="!providersLoading && proxyProviders.length === 0" class="py-6 text-center text-sm text-gray-500">
         {{ t('admin.proxies.providersEmpty') }}
       </div>
       <div v-else class="max-h-80 overflow-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-dark-700">
+        <table :aria-busy="providersLoading" class="min-w-full divide-y divide-gray-200 text-sm dark:divide-dark-700">
           <thead class="bg-gray-50 text-xs text-gray-500 dark:bg-dark-800 dark:text-dark-400">
             <tr>
               <th class="px-4 py-2 text-left">{{ t('admin.proxies.providerName') }}</th>
@@ -961,7 +879,8 @@
               <th class="px-4 py-2 text-left">{{ t('admin.proxies.providerNotes') }}</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900">
+          <TableSkeletonBody v-if="providersLoading" :columns="3" cell-class="px-3 py-2" />
+          <tbody v-else class="divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900">
             <tr v-for="provider in proxyProviders" :key="provider.id">
               <td class="px-4 py-2 font-medium text-gray-900 dark:text-white">{{ provider.name }}</td>
               <td class="px-4 py-2">
@@ -989,6 +908,8 @@
 <script setup lang="ts">
 import FilterField from '@/components/common/FilterField.vue'
 import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import TableSkeletonBody from '@/components/common/TableSkeletonBody.vue'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -1074,8 +995,6 @@ const filters = reactive({
   protocol: '',
   status: ''
 })
-const showFilterDropdown = ref(false)
-const filterDropdownRef = ref<HTMLElement | null>(null)
 const showMoreActionsDropdown = ref(false)
 const moreActionsDropdownRef = ref<HTMLElement | null>(null)
 const pagination = reactive({
@@ -1964,7 +1883,7 @@ const handleExportData = async () => {
           }
     ))
     const timestamp = formatExportTimestamp()
-    const filename = `sub2api-proxy-${timestamp}.json`
+    const filename = `tokenrouter-proxy-${timestamp}.json`
     const blob = new Blob([JSON.stringify(dataPayload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -2121,8 +2040,7 @@ function closeCopyMenu() {
 function handleProxyClickOutside(event: MouseEvent) {
   const target = event.target
   closeCopyMenu()
-  if (target instanceof Node && (filterDropdownRef.value?.contains(target) || moreActionsDropdownRef.value?.contains(target))) return
-  showFilterDropdown.value = false
+  if (target instanceof Node && moreActionsDropdownRef.value?.contains(target)) return
   showMoreActionsDropdown.value = false
 }
 

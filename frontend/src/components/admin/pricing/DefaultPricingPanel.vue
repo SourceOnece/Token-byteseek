@@ -1,10 +1,9 @@
 <template>
   <TablePageLayout>
     <template #filters>
-      <div class="space-y-3">
-        <p class="text-sm text-gray-600 dark:text-gray-300">{{ t('admin.pricing.defaults.description') }}</p>
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-3">
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
             <div class="input-icon-wrap min-w-0 flex-1 sm:flex-none sm:w-64">
               <Icon name="search" size="md" class="input-icon text-gray-400 dark:text-gray-500" />
               <input v-model="search" class="input input-has-icon" :placeholder="t('admin.pricing.defaults.search')" :aria-label="t('admin.pricing.defaults.search')" />
@@ -18,19 +17,18 @@
               </FilterField>
             </FilterDropdown>
           </div>
-          <div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-3">
+          <div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
             <button type="button" class="btn btn-secondary btn-icon" :disabled="loading || updating" :title="t('common.refresh')" :aria-label="t('common.refresh')" @click="load">
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
             <button type="button" class="btn btn-primary whitespace-nowrap" :disabled="loading || updating" :title="t('admin.pricing.defaults.updateHint')" @click="updateCatalog">
-              <Icon :name="updating ? 'refresh' : 'download'" size="md" class="mr-2" :class="updating ? 'animate-spin' : ''" />
+              <Icon :name="updating ? 'refresh' : 'download'" size="sm" class="mr-2" :class="updating ? 'animate-spin' : ''" />
               {{ t(updating ? 'admin.pricing.defaults.updating' : 'admin.pricing.defaults.update') }}
             </button>
           </div>
         </div>
-        <p v-if="updatedAt && !updatedAt.startsWith('0001')" class="text-xs text-gray-500">{{ t('admin.pricing.defaults.updatedAt') }} {{ new Date(updatedAt).toLocaleString() }}</p>
+        <ModelCatalogInfo :version="catalogVersion" :updated-at="updatedAt" />
         <p v-if="notice" role="status" class="text-sm text-emerald-600 dark:text-emerald-400">{{ notice }}</p>
-        <p v-if="catalogVersion" class="text-xs text-gray-500">{{ catalogVersion.slice(0, 12) }}</p>
         <p v-if="error || catalogError" role="alert" class="text-sm text-red-600">{{ error || catalogError }}</p>
       </div>
     </template>
@@ -69,25 +67,25 @@
       <template v-else>
         <!-- 上下文与模式是两个独立开关，与模型广场定价面板同款；价格行展示当前组合应用后的单价。 -->
         <div v-if="availableContexts.length > 1 || availableTiers.length > 1" class="flex flex-wrap items-center justify-end gap-2">
-          <div v-if="availableContexts.length > 1" class="inline-flex max-w-full flex-wrap rounded-compact bg-gray-100 p-0.5 dark:bg-dark-800" data-testid="pricing-context-switch">
+          <div v-segmented v-if="availableContexts.length > 1" class="segmented max-w-full flex-wrap" data-testid="pricing-context-switch">
             <button
               v-for="context in availableContexts"
               :key="context"
               type="button"
-              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
-              :class="context === activeContext ? segmentActiveClass : segmentInactiveClass"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold"
+              :class="{ 'segmented-item-active': context === activeContext }"
               @click="selectedContext = context"
             >
               {{ contextRangeLabel(context) }}
             </button>
           </div>
-          <div v-if="availableTiers.length > 1" class="inline-flex max-w-full flex-wrap rounded-control bg-gray-100 p-0.5 dark:bg-dark-800" data-testid="pricing-tier-switch">
+          <div v-segmented v-if="availableTiers.length > 1" class="segmented max-w-full flex-wrap" data-testid="pricing-tier-switch">
             <button
               v-for="tier in availableTiers"
               :key="tier"
               type="button"
-              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
-              :class="tier === activeTier ? segmentActiveClass : segmentInactiveClass"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold"
+              :class="{ 'segmented-item-active': tier === activeTier }"
               @click="selectedTier = tier"
             >
               {{ t(`admin.pricing.defaults.tiers.${tier}`) }}
@@ -107,9 +105,8 @@
 </template>
 
 <script setup lang="ts">
-import FilterField from '@/components/common/FilterField.vue'
-import FilterDropdown from '@/components/common/FilterDropdown.vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { vSegmented } from '@/directives/segmented'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDebounceFn } from '@vueuse/core'
 import { listDefaultPricing, updateDefaultPricing, type DefaultModelPrice, type DefaultPriceValue } from '@/api/admin/pricing'
@@ -117,9 +114,12 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import Select from '@/components/common/Select.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import PlatformBadge from '@/components/common/PlatformBadge.vue'
 import BillingModeBadge from '@/components/common/BillingModeBadge.vue'
+import ModelCatalogInfo from '@/components/admin/ModelCatalogInfo.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatCompactTokenRange } from '@/utils/formatters'
 import { SEARCH_DEBOUNCE_MS } from '@/constants/ui'
@@ -136,8 +136,6 @@ const total = ref(0)
 const loading = ref(false)
 const updating = ref(false)
 const notice = ref('')
-const showFilters = ref(false)
-const filterDropdown = ref<HTMLElement | null>(null)
 const activeFilterCount = computed(() => Number(!!platform.value) + Number(!!mode.value))
 const error = ref('')
 const updatedAt = ref('')
@@ -161,8 +159,6 @@ function priceLabel(key: string): string {
 
 type PricingContext = 'standard' | 'long_context' | number
 type PricingTier = 'standard' | 'fast' | 'flex'
-const segmentActiveClass = 'bg-white text-gray-900 shadow-sm dark:bg-dark-950 dark:text-white'
-const segmentInactiveClass = 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200'
 const selectedContext = ref<PricingContext>('standard')
 const selectedTier = ref<PricingTier>('standard')
 function comboPrefix(context: PricingContext, tier: PricingTier): string {
@@ -251,18 +247,13 @@ async function updateCatalog() {
   }
 }
 
-function closeFiltersOutside(event: MouseEvent) {
-  if (event.target instanceof Node && !filterDropdown.value?.contains(event.target)) showFilters.value = false
-}
 const searchChanged = useDebounceFn(() => { if (page.value !== 1) page.value = 1; else void load() }, SEARCH_DEBOUNCE_MS)
 watch(search, searchChanged)
 watch([platform, mode], () => { if (page.value !== 1) page.value = 1; else void load() })
 watch([page, pageSize], load, { immediate: true })
-onMounted(() => document.addEventListener('click', closeFiltersOutside))
 onBeforeUnmount(() => {
   disposed = true
   controller?.abort()
   updateController?.abort()
-  document.removeEventListener('click', closeFiltersOutside)
 })
 </script>

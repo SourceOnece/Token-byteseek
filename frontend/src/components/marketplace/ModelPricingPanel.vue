@@ -1,5 +1,5 @@
 <template>
-  <div v-if="hasDisplayPricing" class="min-w-0">
+  <div v-if="hasDisplayPricing" class="model-pricing-panel min-w-0" :data-price-mode="fastMode ? 'fast' : 'standard'">
     <!-- 展开/收起触发条：右下角箭头指示面板状态，展开时向上、收起时向下。 -->
     <button
       type="button"
@@ -12,57 +12,52 @@
         <Icon name="eye" size="sm" />
         {{ expanded ? t('marketplace.collapsePricing') : t('marketplace.viewPricing') }}
       </span>
-      <Icon :name="expanded ? 'chevronUp' : 'chevronDown'" size="sm" />
+      <Icon name="chevronDown" class="transition-transform duration-normal" :class="{ 'rotate-180': expanded }" size="sm" :animate-on-hover="false" />
     </button>
 
-    <!-- 抽屉式定价面板：grid 行高 0fr -> 1fr 过渡实现原地展开收起。 -->
-    <div
-      class="grid min-w-0 grid-cols-1 transition-[grid-template-rows,opacity] duration-300 ease-in-out"
-      :class="expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 invisible'"
-    >
-      <!-- 抽屉内容顶部间距：仅展开时保留，收起时归零，不占卡片空间。 -->
-      <div
-        class="min-h-0 min-w-0 overflow-hidden transition-[padding-top] duration-300 ease-in-out"
-        :class="{ 'pt-3': expanded }"
-      >
+    <!-- 收起后保留上下文区间和 fast mode，退出期间同步折叠高度。 -->
+    <Collapse :open="expanded">
+      <div class="pt-3">
         <!-- 右上角：上下文区间 / fast mode 切换，定价行随选择联动。 -->
         <div
           v-if="selectableIntervals.length > 0 || hasFastPricing"
           class="mb-3 flex flex-wrap items-center justify-end gap-2"
         >
           <div
+            v-segmented
             v-if="selectableIntervals.length > 0"
-            class="inline-flex max-w-full flex-wrap rounded-compact bg-gray-100 p-0.5 dark:bg-dark-800"
+            class="segmented max-w-full flex-wrap"
             data-testid="pricing-interval-switch"
           >
             <button
               v-for="(item, index) in selectableIntervals"
               :key="item.key"
               type="button"
-              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
-              :class="index === activeIntervalIndex ? (fastMode ? fastActiveClass : standardActiveClass) : segmentInactiveClass"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold"
+              :class="{ 'segmented-item-active': index === activeIntervalIndex }"
               @click="selectedIntervalIndex = index"
             >
               {{ formatCompactTokenRange(item.interval.min_tokens, item.interval.max_tokens) }}
             </button>
           </div>
           <div
+            v-segmented
             v-if="hasFastPricing"
-            class="inline-flex max-w-full flex-wrap rounded-control bg-gray-100 p-0.5 dark:bg-dark-800"
+            class="segmented max-w-full flex-wrap"
             data-testid="pricing-fast-switch"
           >
             <button
               type="button"
-              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
-              :class="!fastMode ? standardActiveClass : segmentInactiveClass"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold"
+              :class="{ 'segmented-item-active': !fastMode }"
               @click="fastMode = false"
             >
               {{ t('marketplace.pricingStandard') }}
             </button>
             <button
               type="button"
-              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
-              :class="fastMode ? fastActiveClass : segmentInactiveClass"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold"
+              :class="{ 'segmented-item-active': fastMode }"
               @click="fastMode = true"
             >
               {{ t('marketplace.pricingFast') }}
@@ -70,31 +65,33 @@
           </div>
         </div>
 
-        <div v-if="hasPositiveValue(model.pricing?.max_reasoning_effort_multiplier)" class="mb-2 flex flex-wrap items-baseline justify-between gap-2 border-2 px-2 py-1 text-sm" :class="[pricingRowClass, pricingTextClass]" data-testid="pricing-max-multiplier">
+        <!-- 保留已接入的 Max 倍率展示，主题只改变强调色。 -->
+        <div v-if="hasPositiveValue(model.pricing?.max_reasoning_effort_multiplier)" class="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-sm" data-testid="pricing-max-multiplier">
           <span>{{ t('admin.pricing.maxReasoningEffortMultiplier') }}</span>
-          <strong :class="pricingTextClass">Max × {{ model.pricing.max_reasoning_effort_multiplier }}</strong>
+          <strong>Max × {{ model.pricing.max_reasoning_effort_multiplier }}</strong>
         </div>
         <!-- 完整定价允许在窄卡片内换行，避免隐藏的抽屉也撑大父网格。 -->
         <div v-if="activeRows.length > 0" class="space-y-2.5" data-testid="pricing-rows">
           <div
             v-for="row in activeRows"
             :key="row.key"
-            class="flex items-baseline justify-between gap-3 border-2 px-2 py-1 text-sm"
-            :class="pricingRowClass"
+            class="flex items-baseline justify-between gap-3 border-b border-gray-100 pb-2 text-sm dark:border-dark-700"
           >
             <span class="min-w-0 max-w-[45%] shrink-0 break-words text-gray-500 dark:text-dark-400">{{ row.label }}</span>
-            <span class="min-w-0 break-words text-right font-extrabold [overflow-wrap:anywhere] tabular-nums" :class="pricingTextClass">{{ row.value }}</span>
+            <span class="min-w-0 break-words text-right font-medium [overflow-wrap:anywhere] tabular-nums text-gray-900 dark:text-white">{{ row.value }}</span>
           </div>
         </div>
         <p v-else class="text-sm text-gray-400 dark:text-dark-500">
           {{ t('marketplace.pricingUnavailable') }}
         </p>
       </div>
-    </div>
+    </Collapse>
   </div>
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
+import Collapse from '@/components/common/Collapse.vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
@@ -114,9 +111,6 @@ const expanded = ref(false)
 const fastMode = ref(false)
 const selectedIntervalIndex = ref(0)
 
-const standardActiveClass = 'bg-emerald-600 text-white shadow-sm dark:bg-emerald-500 dark:text-gray-950'
-const fastActiveClass = 'bg-bh-yellow text-gray-950 shadow-sm dark:bg-bh-yellow dark:text-gray-950'
-const segmentInactiveClass = 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200'
 
 interface PricingRow {
   key: string
@@ -294,15 +288,6 @@ const fastRows = computed(() => fastTokenPricingRows(activeSource.value))
 
 // 当前定价来源存在 fast mode 加价时才展示切换。
 const hasFastPricing = computed(() => pricingKind(props.model.pricing) === 'token' && fastRows.value.length > 0)
-
-// fast 模式只在确实存在 fast 行时生效，避免切换区间后错误保留黄色状态。
-const isFastModeActive = computed(() => fastMode.value && fastRows.value.length > 0)
-const pricingRowClass = computed(() => isFastModeActive.value
-  ? 'border-bh-yellow bg-bh-yellow/20 dark:border-bh-yellow dark:bg-bh-yellow/15'
-  : 'border-emerald-700 bg-emerald-50 dark:border-emerald-300 dark:bg-emerald-900/25')
-const pricingTextClass = computed(() => isFastModeActive.value
-  ? 'text-amber-800 dark:text-amber-200'
-  : 'text-emerald-700 dark:text-emerald-300')
 
 const activeRows = computed(() => {
   if (fastMode.value && fastRows.value.length > 0) {

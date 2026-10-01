@@ -240,7 +240,9 @@ marketplace: {
     revokeSuccessWithReplacement: '套餐已撤销，{count} 个 API Key 已改绑到接续套餐。',
     revokeSuccess: '套餐已成功撤销，改绑 API Key 数量：0。',
     revokeFailed: '撤销套餐失败，套餐状态或额度可能已变化，请刷新后重试。'
-  },
+  ,
+currentPackEnds: '当前套餐 {date} 结束'
+},
 // Onboarding Tour
   onboarding: {
     restartTour: '重新查看新手引导',
@@ -558,7 +560,9 @@ marketplace: {
       city: '城市',
       state: '省/州',
       optionalMark: '（可选）',
-    },
+
+title: '账单信息'
+},
     result: {
       success: '支付成功',
       subscriptionSuccess: '订阅成功',
@@ -681,7 +685,9 @@ marketplace: {
       quota: '配额',
       unlimited: '无限制',
       models: '模型',
-    },
+
+current: '当前套餐'
+},
     days: '天',
     weeks: '周',
     months: '个月',
@@ -854,5 +860,7 @@ marketplace: {
         revoked: '已撤销',
       },
     },
-  },
+
+orderSummary: '订单摘要'
+},
 }

@@ -5,9 +5,7 @@
     width="narrow"
     @close="emit('close')"
   >
-    <div v-if="loading" class="flex min-h-48 items-center justify-center" data-testid="invitation-loading">
-      <LoadingSpinner />
-    </div>
+    <ContentSkeleton v-if="loading" data-testid="invitation-loading" variant="detail" :rows="4" class="min-h-48 py-4" />
 
     <div v-else-if="error" class="py-4" data-testid="invitation-error">
       <div class="flex items-start gap-3 rounded-control bg-red-50 p-4 text-red-700 dark:bg-red-950/30 dark:text-red-300">
@@ -76,7 +74,7 @@
             :disabled="loading || resolving || !preview"
             @click="emit('resolve', 'accepted')"
           >
-            <Icon name="check" size="sm" />
+            <Icon name="check" size="sm" :animate-on-hover="false" />
             {{ t('team.accept') }}
           </button>
         </template>
@@ -86,10 +84,10 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { useI18n } from 'vue-i18n'
 import type { TeamInvitationPreview } from '@/api/team'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatDateTime } from '@/utils/format'
 

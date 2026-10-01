@@ -66,7 +66,6 @@ function mountModal() {
           emits: ['update:modelValue'],
           template: '<div class="select-stub">{{ options?.[0]?.label }}</div>'
         },
-        LoadingSpinner: true,
         Icon: true
       }
     }

@@ -1,7 +1,11 @@
 <template>
   <div class="space-y-4">
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
+    <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+      <div class="card space-y-3 p-6" aria-hidden="true">
+        <Skeleton width="35%" :height="16" class="mx-auto" />
+        <Skeleton width="55%" :height="36" class="mx-auto" />
+      </div>
+      <ContentSkeleton variant="form" :rows="3" class="card p-6" />
     </div>
     <div v-else-if="initError" class="card p-6 text-center">
       <p class="text-sm text-red-600 dark:text-red-400">{{ initError }}</p>
@@ -12,7 +16,7 @@
       <div class="card p-6">
         <div class="flex flex-col items-center space-y-4 py-4">
           <div class="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-            <Icon name="check" size="lg" class="text-green-500" />
+            <Icon name="check" size="lg" class="text-green-500" :animate-on-hover="false" />
           </div>
           <p class="text-lg font-bold text-gray-900 dark:text-white">{{ t('payment.result.success') }}</p>
           <div class="w-full rounded-surface bg-gray-50 p-4 dark:bg-dark-800">
@@ -64,6 +68,8 @@
 </template>
 
 <script setup lang="ts">
+import Skeleton from '@/components/common/Skeleton.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, onMounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'

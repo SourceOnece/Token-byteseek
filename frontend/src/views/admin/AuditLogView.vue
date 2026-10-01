@@ -3,7 +3,7 @@
     <TablePageLayout>
       <!-- 筛选条件 -->
       <template #filters>
-        <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center justify-between gap-2">
             <FilterDropdown :active-count="activeFilterCount" :columns="3" keep-mounted @reset="resetAuditFilters">
               <FilterField :label="t('admin.audit.filters.q')" :value-text="filters.q" @clear="clearAuditFilter('q')" full>
                 <div class="input-icon-wrap">
@@ -145,12 +145,7 @@
       :close-on-click-outside="true"
       @close="detailVisible = false"
     >
-      <div v-if="detailLoading" class="flex items-center justify-center py-16">
-        <div class="flex flex-col items-center gap-3">
-          <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
-          <div class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('common.loading') }}</div>
-        </div>
-      </div>
+      <ContentSkeleton v-if="detailLoading" variant="detail" :rows="8" class="py-4" />
 
       <div v-else-if="detail" class="space-y-5 py-2">
         <!-- 操作与结果概览 -->
@@ -329,9 +324,8 @@
   </AppLayout>
 </template>
 <script setup lang="ts">
-import FilterField from '@/components/common/FilterField.vue'
-import FilterDropdown from '@/components/common/FilterDropdown.vue'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI, type AuditLog } from '@/api/admin'
 import { totpAPI } from '@/api'
@@ -341,6 +335,8 @@ import DataTable from '@/components/common/DataTable.vue'
 import type { Column } from '@/components/common/types'
 import Pagination from '@/components/common/Pagination.vue'
 import Select from '@/components/common/Select.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -364,8 +360,6 @@ const filters = reactive({
   auth_method: '',
   success: ''
 })
-const showFilterDropdown = ref(false)
-const filterPanelRef = ref<HTMLElement | null>(null)
 const activeFilterCount = computed(() => Object.values(filters).filter((value) => String(value).trim() !== '').length + (timeRange.value ? 1 : 0))
 
 // 时间范围：预设窗口（同 /admin/ops 时间下拉）+ 自定义起止（datetime-local，支持时分）
@@ -437,6 +431,21 @@ function handleCustomTimeRangeConfirm() {
   customEndTime.value = customEndTimeInput.value
   timeRange.value = 'custom'
   showCustomTimeRangeDialog.value = false
+  search()
+}
+
+// 移除单个文本条件后立即重新查询。
+function clearAuditFilter(key: 'q' | 'actor_email' | 'action' | 'client_ip') {
+  filters[key] = ''
+  search()
+}
+
+// 清空全部筛选条件和时间范围后重新查询。
+function resetAuditFilters() {
+  for (const key of Object.keys(filters) as Array<keyof typeof filters>) filters[key] = ''
+  timeRange.value = ''
+  customStartTime.value = ''
+  customEndTime.value = ''
   search()
 }
 
@@ -649,35 +658,7 @@ function statusDotClass(status: number): string {
   return 'bg-green-500'
 }
 
-function handleFilterClickOutside(event: MouseEvent) {
-  const target = event.target
-  if (target instanceof Node && filterPanelRef.value?.contains(target)) return
-  if (target instanceof Element && target.closest('.select-dropdown-portal')) return
-  showFilterDropdown.value = false
-}
-
 onMounted(() => {
   fetchLogs()
-  document.addEventListener('click', handleFilterClickOutside)
 })
-
-onUnmounted(() => document.removeEventListener('click', handleFilterClickOutside))
-
-
-// 移除单个文本条件后立即重新查询。
-function clearAuditFilter(key: 'q' | 'actor_email' | 'action' | 'client_ip') {
-  filters[key] = ''
-  search()
-}
-
-
-// 清空全部筛选条件和时间范围后重新查询。
-function resetAuditFilters() {
-  for (const key of Object.keys(filters) as Array<keyof typeof filters>) filters[key] = ''
-  timeRange.value = ''
-  customStartTime.value = ''
-  customEndTime.value = ''
-  search()
-}
-
 </script>

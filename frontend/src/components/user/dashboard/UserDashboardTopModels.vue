@@ -3,7 +3,7 @@
     <div class="mb-4 flex min-h-7 items-center justify-between gap-2">
       <div class="flex min-w-0 items-baseline gap-2">
         <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-dark-50">
-          <Icon name="chart" size="sm" class="text-primary-600 dark:text-primary-500" />
+          <Icon name="chartBar" size="sm" class="text-primary-600 dark:text-primary-500" />
           {{ t('dashboard.topModels.title') }}
         </h3>
         <span class="truncate text-xs text-gray-500 dark:text-dark-400" data-testid="top-models-subtitle">{{ subtitle }}</span>
@@ -34,7 +34,7 @@
       data-testid="top-models-empty"
       class="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-sm text-gray-500 dark:text-dark-400"
     >
-      <Icon name="grid" size="lg" class="text-gray-300 dark:text-dark-600" />
+      <Icon name="cube" size="lg" class="text-gray-300 dark:text-dark-600" />
       {{ t('dashboard.topModels.empty') }}
     </div>
 
@@ -42,9 +42,9 @@
       <li v-for="(row, index) in rows" :key="`${row.model}-${version}`">
         <button
           type="button"
-          class="group bh-pressable w-full rounded-control px-2 py-2 text-left transition-colors duration-150"
+          class="group w-full rounded-control px-2 py-2 text-left transition-colors duration-fast"
           :class="row.active
-            ? 'bg-bh-yellow border-2 border-gray-950'
+            ? 'bg-primary-500/8 ring-1 ring-primary-500/15'
             : 'hover:bg-gray-50 dark:hover:bg-dark-800'"
           :aria-pressed="row.active"
           :title="row.active ? t('dashboard.topModels.clearFilter') : t('dashboard.topModels.filterHint')"
@@ -64,9 +64,9 @@
             <span class="shrink-0 text-sm font-medium tabular-nums text-gray-900 dark:text-dark-50">{{ row.value }}</span>
           </div>
           <div class="mt-2 flex items-center gap-2 pl-6">
-            <div class="h-1 flex-1 overflow-hidden rounded-control bg-gray-100 dark:bg-dark-800">
+            <div class="h-1 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-800">
               <div
-                class="top-model-bar h-full rounded-control"
+                class="top-model-bar h-full rounded-full"
                 :style="{ '--bar-w': `${row.share}%`, '--bar-delay': `${index * TOP_MODEL_BAR_STEP_MS}ms`, opacity: barOpacity(index) }"
               ></div>
             </div>
@@ -157,13 +157,11 @@ const barOpacity = (index: number): number => 1 - index * 0.15
 </script>
 
 <style scoped>
-/* 黄色选中行在深色主题仍用墨色文字，保持金额与模型名对比度。 */
-button[aria-pressed="true"] :deep(span) { color: #141414 !important; }
 /* 占比条从 0 伸展到目标宽度，前一行先动；行 key 变化时重新播放。 */
 .top-model-bar {
   width: var(--bar-w);
   background-color: theme('colors.primary.600');
-  animation: top-model-bar var(--dash-top-model-bar-ms, 600ms) var(--motion-ease, cubic-bezier(.22,1,.36,1)) var(--bar-delay) both;
+  animation: top-model-bar var(--dash-top-model-bar-ms, 600ms) var(--motion-ease) var(--bar-delay) both;
 }
 
 :global(.dark) .top-model-bar {

@@ -8,7 +8,7 @@
       :class="[
         'rounded-control px-3 py-1 text-xs transition-colors',
         isActive(preset)
-          ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+          ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
           : 'bg-gray-100 text-gray-700 hover:bg-primary-50 hover:text-primary-700 dark:bg-dark-600 dark:text-gray-300 dark:hover:bg-primary-900/30 dark:hover:text-primary-400'
       ]"
       @click="emit('select', preset)"
@@ -20,7 +20,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { CN_BASE_URL_PRESETS, type CnBaseUrlPreset, type CnAccountMode } from './credentialsBuilder'
+import { CN_BASE_URL_PRESETS, type CnBaseUrlPreset } from './credentialsBuilder'
 
 // 国产供应商快捷端点：点击把预设地址（及对应提供商类型/协议）回填到调用方。
 // 与 Grok 预设一致，仅作快速填充，输入框仍接受任意第三方转发地址。
@@ -28,7 +28,7 @@ import { CN_BASE_URL_PRESETS, type CnBaseUrlPreset, type CnAccountMode } from '.
 const props = defineProps<{
   platform: 'kimi' | 'zhipu' | 'deepseek' | 'minimax' | 'opencode_go'
   /** 当前已选提供商类型，用于过滤和高亮匹配的预设 */
-  mode?: CnAccountMode
+  mode?: 'payg' | 'coding' | 'go' | 'zen'
   /** 当前已选 API 协议，用于过滤和高亮匹配的预设 */
   protocol?: 'adaptive' | 'chat_completions' | 'anthropic' | 'responses'
   /** 当前输入框中的 base url，用于高亮完全匹配项 */

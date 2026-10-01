@@ -1,10 +1,10 @@
 <template>
   <div>
     <!-- 标签允许长模型名换行，删除按钮保持可见。 -->
-    <div class="flex flex-wrap gap-2 rounded-control border border-gray-200 bg-white p-2 dark:border-dark-600 dark:bg-dark-800 min-h-9">
+    <TransitionGroup name="motion-list" @before-leave="prepareListLeave" @before-enter="restoreEnteringElement" tag="div" class="relative flex flex-wrap gap-2 rounded-control border border-gray-200 bg-white p-2 dark:border-dark-600 dark:bg-dark-800 min-h-9">
       <span
         v-for="(model, idx) in models"
-        :key="idx"
+        :key="model"
         class="inline-flex max-w-full items-center gap-2 rounded-compact px-2 py-1 text-sm"
         :class="getPlatformTagClass(props.platform || '')"
       >
@@ -19,6 +19,7 @@
         </button>
       </span>
       <input
+        key="model-input"
         ref="inputRef"
         v-model="inputValue"
         type="text"
@@ -30,7 +31,7 @@
         @keydown.delete="handleBackspace"
         @paste="handlePaste"
       />
-    </div>
+    </TransitionGroup>
     <p class="mt-1 text-xs text-gray-400">
       {{ t('admin.pricing.form.modelInputHint', 'Press Enter to add, supports paste for batch import.') }}
     </p>
@@ -38,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import { prepareListLeave, restoreEnteringElement } from '@/utils/leavingElement'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'

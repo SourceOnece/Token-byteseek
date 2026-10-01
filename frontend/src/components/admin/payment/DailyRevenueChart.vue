@@ -4,9 +4,7 @@
       {{ t('payment.admin.dailyRevenue') }}
     </h3>
     <div class="h-64">
-      <div v-if="loading" class="flex h-full items-center justify-center">
-        <LoadingSpinner size="md" />
-      </div>
+      <ChartSkeleton v-if="loading" height="100%" />
       <Line v-else-if="chartData" :data="chartData" :options="chartOptions" />
       <div
         v-else
@@ -19,6 +17,7 @@
 </template>
 
 <script setup lang="ts">
+import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
 import { computed, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -32,7 +31,6 @@ import {
   Filler
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { externalTooltipHandler, hideExternalTooltip } from '@/utils/chartExternalTooltip'
 import type { DailyPaymentStats } from '@/types/payment'
 

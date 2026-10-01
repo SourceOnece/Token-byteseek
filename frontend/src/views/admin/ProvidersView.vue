@@ -2,7 +2,7 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col-reverse gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div class="flex flex-col-reverse gap-2 lg:flex-row lg:items-start lg:justify-between">
           <div class="min-w-0 flex-1">
             <ProviderTableFilters
               v-model:searchQuery="params.search"
@@ -32,31 +32,45 @@
                 >
                   <Icon name="clock" size="sm" :class="autoRefreshEnabled ? 'text-primary-500' : ''" />
                 </button>
-                <div
-                  v-if="showAutoRefreshDropdown"
-                  class="fixed z-50 w-56 origin-top-left overflow-hidden rounded-control border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
-                  :style="autoRefreshDropdownStyle"
-                >
-                  <div class="p-2">
-                    <button
-                      @click="setAutoRefreshEnabled(!autoRefreshEnabled)"
-                      class="dropdown-item-sm justify-between rounded-control"
-                    >
-                      <span>{{ t('admin.providers.enableAutoRefresh') }}</span>
-                      <Icon v-if="autoRefreshEnabled" name="check" size="sm" class="text-primary-500" />
-                    </button>
-                    <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
-                    <button
-                      v-for="sec in autoRefreshIntervals"
-                      :key="sec"
-                      @click="setAutoRefreshInterval(sec)"
-                      class="dropdown-item-sm justify-between rounded-control"
-                    >
-                      <span>{{ autoRefreshIntervalLabel(sec) }}</span>
-                      <Icon v-if="autoRefreshIntervalSeconds === sec" name="check" size="sm" class="text-primary-500" />
-                    </button>
+                <MotionTransition name="dropdown-fade">
+                  <div
+                    v-if="showAutoRefreshDropdown" :inert="!(showAutoRefreshDropdown) || undefined"
+                    class="dropdown fixed z-50 w-56 origin-top-left overflow-hidden py-0"
+                    :style="autoRefreshDropdownStyle"
+                  >
+                    <div class="p-2">
+                      <button
+                        @click="setAutoRefreshEnabled(!autoRefreshEnabled)"
+                        class="dropdown-item-sm justify-between rounded-control"
+                      >
+                        <span>{{ t('admin.providers.enableAutoRefresh') }}</span>
+                        <Icon
+                          v-if="autoRefreshEnabled"
+                          name="check"
+                          size="sm"
+                          class="text-primary-500"
+                          :animate-on-hover="false"
+                        />
+                      </button>
+                      <div class="my-1 border-t border-gray-100 dark:border-dark-600"></div>
+                      <button
+                        v-for="sec in autoRefreshIntervals"
+                        :key="sec"
+                        @click="setAutoRefreshInterval(sec)"
+                        class="dropdown-item-sm justify-between rounded-control"
+                      >
+                        <span>{{ autoRefreshIntervalLabel(sec) }}</span>
+                        <Icon
+                          v-if="autoRefreshIntervalSeconds === sec"
+                          name="check"
+                          size="sm"
+                          class="text-primary-500"
+                          :animate-on-hover="false"
+                        />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </MotionTransition>
               </div>
 
               <!-- 更多工具下拉菜单 -->
@@ -70,95 +84,108 @@
                 >
                   <Icon name="more" size="sm" class="lg:hidden" />
                   <span class="hidden lg:inline">{{ t('admin.providers.moreActions') }}</span>
-                  <Icon name="chevronDown" size="xs" class="ml-1 hidden lg:inline" />
+                  <Icon
+                    name="chevronDown"
+                    size="xs"
+                    class="ml-1 hidden lg:inline"
+                    :animate-on-hover="false"
+                  />
                 </button>
                 <Teleport to="body">
-                  <div
-                    v-if="showProviderToolsDropdown"
-                    class="fixed z-teleport-tooltip origin-top-right overflow-hidden rounded-control border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
-                    :style="providerToolsDropdownStyle"
-                    @click.stop
-                  >
-                    <div class="overflow-y-auto p-2" :style="{ maxHeight: `${providerToolsDropdownPosition.maxHeight}px` }">
-                    <div class="px-2 py-2">
-                      <div class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                        {{ t('admin.providers.dataActions') }}
+                  <MotionTransition name="dropdown-fade">
+                    <div
+                      v-if="showProviderToolsDropdown" :inert="!(showProviderToolsDropdown) || undefined"
+                      class="dropdown fixed z-teleport-tooltip origin-top-right overflow-hidden py-0"
+                      :style="providerToolsDropdownStyle"
+                      @click.stop
+                    >
+                      <div class="overflow-y-auto p-2" :style="{ maxHeight: `${providerToolsDropdownPosition.maxHeight}px` }">
+                      <div class="px-2 py-2">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                          {{ t('admin.providers.dataActions') }}
+                        </div>
                       </div>
-                    </div>
-                    <button class="dropdown-item-sm gap-3 rounded-control" @click="openSyncFromCrs">
-                      <span class="provider-tools-menu-icon bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
-                        <Icon name="sync" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">{{ t('admin.providers.syncFromCrs') }}</span>
-                    </button>
-                    <button class="dropdown-item-sm gap-3 rounded-control" @click="openImportData">
-                      <span class="provider-tools-menu-icon bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">
-                        <Icon name="upload" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">{{ t('admin.providers.dataImport') }}</span>
-                    </button>
-                    <button class="dropdown-item-sm gap-3 rounded-control" @click="openExportDataDialogFromMenu">
-                      <span class="provider-tools-menu-icon bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
-                        <Icon name="download" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">
-                        {{ selIds.length ? t('admin.providers.dataExportSelected') : t('admin.providers.dataExport') }}
-                      </span>
-                      <span
-                        v-if="selIds.length"
-                        class="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
-                      >
-                        {{ t('admin.providers.selectedCount', { count: selIds.length }) }}
-                      </span>
-                    </button>
-
-                    <div class="my-2 border-t border-gray-100 dark:border-gray-700"></div>
-                    <div class="px-2 py-2">
-                      <div class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                        {{ t('admin.providers.toolActions') }}
-                      </div>
-                    </div>
-                    <button class="dropdown-item-sm gap-3 rounded-control" @click="openErrorPassthrough">
-                      <span class="provider-tools-menu-icon bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
-                        <Icon name="shield" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">{{ t('admin.errorPassthrough.title') }}</span>
-                    </button>
-                    <button class="dropdown-item-sm gap-3 rounded-control" @click="openTLSFingerprintProfiles">
-                      <span class="provider-tools-menu-icon bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-                        <Icon name="lock" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">{{ t('admin.tlsFingerprintProfiles.title') }}</span>
-                    </button>
-                    <button class="dropdown-item-sm gap-3 rounded-control" @click="openTLSFingerprintRouters">
-                      <span class="provider-tools-menu-icon bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300">
-                        <Icon name="swap" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">{{ t('admin.tlsFingerprintRouters.title') }}</span>
-                    </button>
-
-                    <div class="my-2 border-t border-gray-100 dark:border-gray-700"></div>
-                    <div class="px-2 py-2">
-                      <div class="flex items-center justify-between gap-3">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                          {{ t('admin.providers.viewColumns') }}
+                      <button class="dropdown-item-sm gap-3 rounded-control" @click="openSyncFromCrs">
+                        <span class="provider-tools-menu-icon bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                          <Icon name="sync" size="sm" />
                         </span>
-                        <Icon name="grid" size="sm" class="text-gray-400" />
+                        <span class="flex-1 text-left">{{ t('admin.providers.syncFromCrs') }}</span>
+                      </button>
+                      <button class="dropdown-item-sm gap-3 rounded-control" @click="openImportData">
+                        <span class="provider-tools-menu-icon bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">
+                          <Icon name="upload" size="sm" />
+                        </span>
+                        <span class="flex-1 text-left">{{ t('admin.providers.dataImport') }}</span>
+                      </button>
+                      <button class="dropdown-item-sm gap-3 rounded-control" @click="openExportDataDialogFromMenu">
+                        <span class="provider-tools-menu-icon bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
+                          <Icon name="download" size="sm" />
+                        </span>
+                        <span class="flex-1 text-left">
+                          {{ selIds.length ? t('admin.providers.dataExportSelected') : t('admin.providers.dataExport') }}
+                        </span>
+                        <span
+                          v-if="selIds.length"
+                          class="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+                        >
+                          {{ t('admin.providers.selectedCount', { count: selIds.length }) }}
+                        </span>
+                      </button>
+
+                      <div class="my-2 border-t border-gray-100 dark:border-dark-600"></div>
+                      <div class="px-2 py-2">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                          {{ t('admin.providers.toolActions') }}
+                        </div>
+                      </div>
+                      <button class="dropdown-item-sm gap-3 rounded-control" @click="openErrorPassthrough">
+                        <span class="provider-tools-menu-icon bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
+                          <Icon name="shield" size="sm" />
+                        </span>
+                        <span class="flex-1 text-left">{{ t('admin.errorPassthrough.title') }}</span>
+                      </button>
+                      <button class="dropdown-item-sm gap-3 rounded-control" @click="openTLSFingerprintProfiles">
+                        <span class="provider-tools-menu-icon bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                          <Icon name="lock" size="sm" />
+                        </span>
+                        <span class="flex-1 text-left">{{ t('admin.tlsFingerprintProfiles.title') }}</span>
+                      </button>
+                      <button class="dropdown-item-sm gap-3 rounded-control" @click="openTLSFingerprintRouters">
+                        <span class="provider-tools-menu-icon bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300">
+                          <Icon name="swap" size="sm" />
+                        </span>
+                        <span class="flex-1 text-left">{{ t('admin.tlsFingerprintRouters.title') }}</span>
+                      </button>
+
+                      <div class="my-2 border-t border-gray-100 dark:border-dark-600"></div>
+                      <div class="px-2 py-2">
+                        <div class="flex items-center justify-between gap-3">
+                          <span class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                            {{ t('admin.providers.viewColumns') }}
+                          </span>
+                          <Icon name="grid" size="sm" class="text-gray-400" />
+                        </div>
+                      </div>
+                      <div class="grid grid-cols-1 gap-1">
+                        <button
+                          v-for="col in toggleableColumns"
+                          :key="col.key"
+                          @click="toggleColumn(col.key)"
+                          class="dropdown-item-sm justify-between rounded-control"
+                        >
+                          <span class="truncate">{{ col.label }}</span>
+                          <Icon
+                            v-if="isColumnVisible(col.key)"
+                            name="check"
+                            size="sm"
+                            class="text-primary-500"
+                            :animate-on-hover="false"
+                          />
+                        </button>
+                      </div>
                       </div>
                     </div>
-                    <div class="grid grid-cols-1 gap-1">
-                      <button
-                        v-for="col in toggleableColumns"
-                        :key="col.key"
-                        @click="toggleColumn(col.key)"
-                        class="dropdown-item-sm justify-between rounded-control"
-                      >
-                        <span class="truncate">{{ col.label }}</span>
-                        <Icon v-if="isColumnVisible(col.key)" name="check" size="sm" class="text-primary-500" />
-                      </button>
-                    </div>
-                    </div>
-                  </div>
+                  </MotionTransition>
                 </Teleport>
               </div>
             </template>
@@ -200,7 +227,8 @@
           @toggle-schedulable="handleBulkToggleSchedulable"
         />
         <div ref="providerTableRef" class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <DataTable column-order-storage-key="admin-providers-column-order"
+        <DataTable
+          column-order-storage-key="admin-providers-column-order"
           ref="dataTableRef"
           :columns="cols"
           :data="providers"
@@ -225,7 +253,12 @@
             />
           </template>
           <template #cell-select="{ row }">
-            <input type="checkbox" :checked="isSelected(row.id)" @change="toggleSel(row.id)" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" />
+            <input
+              type="checkbox"
+              :checked="isSelected(row.id)"
+              @change="toggleSel(row.id)"
+              class="h-4 w-4 cursor-pointer rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
           </template>
           <template #cell-id="{ value }">
             <span class="font-mono text-xs text-gray-500 dark:text-gray-400">#{{ value }}</span>
@@ -255,7 +288,7 @@
                     :href="providerHomepageUrl(row)"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="border-b border-dotted border-gray-300 font-medium text-gray-900 dark:border-gray-600 dark:text-white"
+                    class="border-b border-dotted border-gray-300 font-medium text-gray-900 dark:border-dark-500 dark:text-white"
                   >
                     {{ value }}
                   </a>
@@ -364,7 +397,7 @@
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded-compact text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" :title="t('admin.providers.fallbackActiveTip', { origin: row.proxy_fallback_origin_name })">
                   {{ t('admin.providers.fallbackActive') }}
                 </span>
-                <button class="text-xs px-1.5 py-0.5 rounded-compact border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" @click="onRevertFallback(row)">{{ t('admin.providers.revertProxy') }}</button>
+                <button class="text-xs px-1.5 py-0.5 rounded-compact border border-gray-300 dark:border-dark-500 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" @click="onRevertFallback(row)">{{ t('admin.providers.revertProxy') }}</button>
               </div>
             </div>
           </template>
@@ -427,11 +460,11 @@
           <template #cell-actions="{ row }">
             <div class="flex items-center gap-1">
               <button @click="handleEdit(row)" class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                <Icon name="edit" size="sm" class="h-4 w-4" />
                 <span class="text-xs">{{ t('common.edit') }}</span>
               </button>
               <button @click="openMenu(row, $event)" class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-dark-700 dark:hover:text-white">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
+                <Icon name="more" size="sm" class="h-4 w-4" />
                 <span class="text-xs">{{ t('common.more') }}</span>
               </button>
             </div>
@@ -500,6 +533,7 @@ import CodexQualitySchedulesModal from '@/components/admin/provider/CodexQuality
 import CodexQualityResultsDialog from '@/components/admin/provider/CodexQualityResultsDialog.vue'
 import CodexTicketCollectModal from '@/components/admin/provider/CodexTicketCollectModal.vue'
 import { ref, reactive, computed, nextTick, onMounted, onUnmounted, onBeforeUnmount, toRaw, watch } from 'vue'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { useIntervalFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -2728,7 +2762,7 @@ const handleExportData = async () => {
           }
     ))
     const timestamp = formatExportTimestamp()
-    const filename = `sub2api-provider-${timestamp}.json`
+    const filename = `tokenrouter-provider-${timestamp}.json`
     const blob = new Blob([JSON.stringify(dataPayload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')

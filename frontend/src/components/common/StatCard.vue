@@ -13,6 +13,7 @@
             name="arrowUp"
             size="xs"
             :class="changeType === 'down' && 'rotate-180'"
+            :animate-on-hover="false"
           />
           {{ formattedChange }}
         </span>

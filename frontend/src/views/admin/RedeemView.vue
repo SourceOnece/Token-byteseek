@@ -2,9 +2,9 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
+        <div class="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
           <!-- 左侧：搜索和筛选 -->
-          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-3">
+          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
             <input
               v-model="searchQuery"
               type="text"
@@ -30,7 +30,7 @@
               class="btn btn-secondary shrink-0 btn-icon"
               :title="t('common.refresh')"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
             <button @click="handleExportCodes" class="btn btn-secondary shrink-0 whitespace-nowrap">
               {{ t('admin.redeem.exportCsv') }}
@@ -41,7 +41,7 @@
               :disabled="selectedCount === 0 || batchUpdating"
               class="btn btn-secondary shrink-0 whitespace-nowrap"
             >
-              <Icon name="edit" size="md" class="mr-2" />
+              <Icon name="edit" size="sm" class="mr-2" />
               {{ t('admin.redeem.batchUpdate') }}
             </button>
             <button data-testid="generate-open" @click="showGenerateDialog = true" class="btn btn-primary shrink-0 whitespace-nowrap">
@@ -52,7 +52,8 @@
       </template>
 
       <template #table>
-        <DataTable column-order-storage-key="admin-redeem-column-order"
+        <DataTable
+          column-order-storage-key="admin-redeem-column-order"
           :columns="columns"
           :data="codes"
           :loading="loading"
@@ -97,14 +98,7 @@
                 :title="copiedCode === value ? t('admin.redeem.copied') : t('keys.copyToClipboard')"
               >
                 <Icon v-if="copiedCode !== value" name="copy" size="sm" :stroke-width="2" />
-                <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
+                <Icon name="check" size="sm" :animate-on-hover="false" v-else class="h-4 w-4" />
               </button>
             </div>
           </template>
@@ -187,14 +181,7 @@
                 @click="handleDelete(row)"
                 class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
+                <Icon name="trash" size="sm" class="h-4 w-4" />
                 <span class="text-xs">{{ t('common.delete') }}</span>
               </button>
               <span v-if="!canEditCode(row) && row.status !== 'unused'" class="text-gray-400 dark:text-dark-500">-</span>
@@ -216,7 +203,7 @@
         <!-- 批量操作 -->
         <div
           v-if="selectedCount > 0"
-          class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-control bg-primary-50 p-3 dark:bg-primary-900/20"
+          class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-control bg-primary-50 p-3 dark:bg-primary-900/20"
         >
           <span class="text-sm font-medium text-primary-900 dark:text-primary-100">
             {{ t('admin.redeem.selectedCount', { count: selectedCount }) }}
@@ -581,19 +568,12 @@
               <div
                 class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
               >
-                <svg
+                <Icon
+                  name="check"
+                  size="md"
+                  :animate-on-hover="false"
                   class="h-5 w-5 text-green-600 dark:text-green-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
+                />
               </div>
               <div>
                 <h2 class="text-base font-semibold text-gray-900 dark:text-white">
@@ -608,7 +588,7 @@
               @click="closeResultDialog"
               class="rounded-control p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-300"
             >
-              <Icon name="x" size="md" :stroke-width="2" />
+              <Icon name="x" size="sm" :stroke-width="2" />
             </button>
           </div>
           <!-- 内容 -->
@@ -629,19 +609,12 @@
             <button
               @click="copyGeneratedCodes"
               :class="[
-                'btn flex items-center gap-2 transition-all',
+                'btn flex items-center gap-2 transition',
                 copiedAll ? 'btn-success' : 'btn-secondary'
               ]"
             >
               <Icon v-if="!copiedAll" name="copy" size="sm" :stroke-width="2" />
-              <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+              <Icon name="check" size="sm" :animate-on-hover="false" v-else class="h-4 w-4" />
               {{ copiedAll ? t('admin.redeem.copied') : t('admin.redeem.copyAll') }}
             </button>
             <button @click="downloadGeneratedCodes" class="btn btn-primary flex items-center gap-2">
@@ -656,8 +629,6 @@
 </template>
 
 <script setup lang="ts">
-import FilterField from '@/components/common/FilterField.vue'
-import FilterDropdown from '@/components/common/FilterDropdown.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -677,6 +648,8 @@ import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Select from '@/components/common/Select.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 
@@ -810,8 +783,6 @@ const filters = reactive({
   type: '',
   status: ''
 })
-const showFilterDropdown = ref(false)
-const filterDropdownRef = ref<HTMLElement | null>(null)
 const pagination = reactive({
   page: 1,
   page_size: getPersistedPageSize(),
@@ -830,12 +801,6 @@ const resetRedeemFilters = () => {
   filters.status = ''
   pagination.page = 1
   loadCodes()
-}
-
-const handleFilterClickOutside = (event: MouseEvent) => {
-  const target = event.target
-  if (target instanceof Node && filterDropdownRef.value?.contains(target)) return
-  showFilterDropdown.value = false
 }
 
 let abortController: AbortController | null = null
@@ -1305,12 +1270,10 @@ const loadSubscriptionPlans = async () => {
 onMounted(() => {
   loadCodes()
   loadSubscriptionPlans()
-  document.addEventListener('click', handleFilterClickOutside)
 })
 
 onUnmounted(() => {
   clearTimeout(searchTimeout)
   abortController?.abort()
-  document.removeEventListener('click', handleFilterClickOutside)
 })
 </script>

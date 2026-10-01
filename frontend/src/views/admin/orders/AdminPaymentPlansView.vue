@@ -8,10 +8,10 @@
           :title="t('common.refresh')"
           @click="loadPlans"
         >
-          <Icon name="refresh" size="md" :class="plansLoading ? 'animate-spin' : ''" />
+          <Icon name="refresh" size="sm" :class="plansLoading ? 'animate-spin' : ''" />
         </button>
         <button class="btn btn-primary" @click="openPlanEdit(null)">
-          <Icon name="plus" size="md" class="mr-2" />
+          <Icon name="plus" size="sm" class="mr-2" />
           {{ t('payment.admin.createPlan') }}
         </button>
       </div>
@@ -67,7 +67,7 @@
         <template #cell-actions="{ row }">
           <div class="flex items-center gap-2">
             <button
-              class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+              class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-500/8 dark:hover:text-primary-500"
               @click="openPlanEdit(row)"
             >
               <Icon name="edit" size="sm" />

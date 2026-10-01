@@ -1,300 +1,320 @@
 <template>
   <AppLayout>
-    <div class="mx-auto max-w-4xl space-y-6">
-      <div v-if="loading" class="flex items-center justify-center py-20">
-        <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
+    <!-- 页签与标题同行放在页头右侧；支付中和订阅确认时隐藏。 -->
+    <template v-if="!loading && tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" #page-heading-actions>
+      <div v-segmented role="tablist" class="segmented gap-1">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          type="button"
+          role="tab"
+          :aria-selected="activeTab === tab.key"
+          class="segmented-item flex h-8 items-center justify-center px-4 text-sm"
+          :class="{ 'segmented-item-active': activeTab === tab.key }"
+          @click="activeTab = tab.key"
+        >
+          {{ tab.label }}
+        </button>
       </div>
-      <template v-else>
-        <!-- Tab Switcher (hide during payment and subscription confirm) -->
-        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" class="flex space-x-1 rounded-control bg-gray-100 p-1 dark:bg-dark-800">
-          <button v-for="tab in tabs" :key="tab.key"
-            class="flex h-9 flex-1 items-center justify-center rounded-control px-4 py-1.5 text-sm font-medium transition-all"
-            :class="activeTab === tab.key ? 'bg-white text-gray-900 shadow dark:bg-dark-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
-            @click="activeTab = tab.key">{{ tab.label }}</button>
-        </div>
-        <!-- Payment in progress (shared by recharge and subscription) -->
-        <template v-if="paymentPhase === 'paying'">
-          <PaymentStatusPanel
-            :order-id="paymentState.orderId"
-            :amount="paymentState.amount"
-            :pay-amount="paymentState.payAmount"
-            :qr-code="paymentState.qrCode"
-            :expires-at="paymentState.expiresAt"
-            :payment-type="paymentState.paymentType"
-            :out-trade-no="paymentState.outTradeNo"
-            :pay-url="paymentState.payUrl"
-            :order-type="paymentState.orderType"
-            :currency="paymentState.currency || selectedCurrency"
-            :mobile-alipay-deep-link="paymentState.alipayMobilePrecreateDeepLink"
-            @done="onPaymentDone"
-            @success="onPaymentSuccess"
-            @settled="onPaymentSettled"
-          />
-        </template>
-        <!-- Tab content (select phase) -->
-        <template v-else>
-          <!-- Top-up Tab -->
-          <div v-if="tabs.length === 0" class="py-12 text-center text-sm font-bold">{{ t('payment.billingUnavailable') }}</div>
-          <template v-else-if="activeTab === 'recharge'">
-            <!-- Recharge Account Card -->
-            <div class="card p-6">
-              <p class="text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('payment.rechargeAccount') }}</p>
-              <p class="mt-1 text-base font-semibold text-gray-900 dark:text-white">{{ user?.username || '' }}</p>
-              <p class="mt-0.5 text-sm font-medium text-green-600 dark:text-green-400">{{ t('payment.currentBalance') }}: {{ formatBalanceAmount(user?.balance, { fractionDigits: 2 }) }}</p>
-            </div>
-            <div v-if="enabledMethods.length === 0" class="card py-16 text-center">
-              <p class="text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
-            </div>
-            <template v-else>
-            <div class="card p-6">
-              <AmountInput
-                v-model="amount"
-                :amounts="[10, 20, 50, 100, 200, 500, 1000, 2000, 5000]"
-                :min="globalMinAmount"
-                :max="globalMaxAmount"
-              />
-              <p v-if="amountError" class="mt-2 text-xs text-amber-600 dark:text-amber-300">{{ amountError }}</p>
-            </div>
-            <div v-if="enabledMethods.length >= 1" class="card p-6">
-              <PaymentMethodSelector
-                :methods="methodOptions"
-                :selected="selectedMethod"
-                @select="selectedMethod = $event"
-              />
-            </div>
-            <div v-if="isStripeSelected" class="card p-6">
-              <div class="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label class="input-label">{{ t('payment.billing.name') }}</label>
-                  <input v-model="billingInfo.name" class="input mt-1 w-full" autocomplete="name" />
+    </template>
+    <!-- 不加 mx-auto：app-main 是 flex 列容器，auto 边距会让内容收缩到内容宽度并与页头错位。 -->
+    <div
+      class="purchase-viewport relative w-full"
+      :style="{ '--purchase-direction': activeTab === 'subscription' ? 1 : -1 }"
+    >
+      <MotionTransition name="purchase-slide" :css="!loading">
+        <div :key="activeTab" class="w-full space-y-4">
+          <!-- 首次取数：按结算双栏的位置显示骨架。 -->
+          <div
+            v-if="loading"
+            role="status"
+            aria-busy="true"
+            :aria-label="t('common.loading')"
+            class="space-y-4"
+          >
+            <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22.5rem] xl:items-start">
+              <div class="space-y-4">
+                <div class="card space-y-4 p-4 sm:p-6">
+                  <Skeleton width="6rem" height="1rem" />
+                  <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                    <Skeleton v-for="n in 10" :key="n" height="2.25rem" />
+                  </div>
+                  <Skeleton height="2.25rem" />
                 </div>
-                <div>
-                  <label class="input-label">{{ t('payment.billing.email') }}</label>
-                  <input v-model="billingInfo.email" class="input mt-1 w-full" autocomplete="email" type="email" />
+                <div class="card space-y-4 p-4 sm:p-6">
+                  <Skeleton width="6rem" height="1rem" />
+                  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <Skeleton v-for="n in 3" :key="n" height="3.5rem" />
+                  </div>
                 </div>
-                <div>
-                  <label class="input-label">{{ optionalBillingLabel('country') }}</label>
-                  <input v-model="billingInfo.country" class="input mt-1 w-full" autocomplete="country" maxlength="2" />
-                </div>
-                <div>
-                  <label class="input-label">{{ optionalBillingLabel('postalCode') }}</label>
-                  <input v-model="billingInfo.postal_code" class="input mt-1 w-full" autocomplete="postal-code" />
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="input-label">{{ optionalBillingLabel('line1') }}</label>
-                  <input v-model="billingInfo.line1" class="input mt-1 w-full" autocomplete="address-line1" />
-                </div>
-                <div>
-                  <label class="input-label">{{ optionalBillingLabel('city') }}</label>
-                  <input v-model="billingInfo.city" class="input mt-1 w-full" autocomplete="address-level2" />
-                </div>
-                <div>
-                  <label class="input-label">{{ optionalBillingLabel('state') }}</label>
-                  <input v-model="billingInfo.state" class="input mt-1 w-full" autocomplete="address-level1" />
-                </div>
+              </div>
+              <div class="card space-y-3 p-4 sm:p-6">
+                <Skeleton width="5rem" height="0.75rem" />
+                <Skeleton width="9rem" height="2rem" />
+                <Skeleton height="1rem" class="mt-6" />
+                <Skeleton height="1rem" />
+                <Skeleton height="2.25rem" class="mt-6" />
               </div>
             </div>
-            <div v-if="validAmount > 0" class="card p-6">
-              <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('payment.paymentAmount') }}</span>
-                  <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(validAmount) }}</span>
-                </div>
-                <div v-if="rechargeFeeBreakdown.fixedFee > 0" class="flex justify-between">
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fixedFee') }}</span>
-                  <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(rechargeFeeBreakdown.fixedFee) }}</span>
-                </div>
-                <div v-if="rechargeFeeBreakdown.rateFee > 0" class="flex justify-between">
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('payment.rateFee') }} ({{ rechargeFeeBreakdown.feeRate }}%)</span>
-                  <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(rechargeFeeBreakdown.rateFee) }}</span>
-                </div>
-                <div v-if="rechargeFeeBreakdown.totalFee > 0" class="flex justify-between">
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('payment.feeTotal') }}</span>
-                  <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(rechargeFeeBreakdown.totalFee) }}</span>
-                </div>
-                <div v-if="rechargeFeeBreakdown.totalFee > 0" class="flex justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
-                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
-                  <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(totalAmount) }}</span>
-                </div>
-                <div v-if="balanceRechargeMultiplier !== 1" class="flex justify-between" :class="{ 'border-t border-gray-200 pt-2 dark:border-dark-600': rechargeFeeBreakdown.totalFee <= 0 }">
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('payment.creditedBalance') }}</span>
-                  <span class="text-gray-900 dark:text-white">{{ formatBalanceAmount(creditedAmount, { fractionDigits: 2 }) }}</span>
-                </div>
-                <p v-if="balanceRechargeMultiplier !== 1" class="border-t border-gray-200 pt-2 text-xs text-gray-500 dark:border-dark-600 dark:text-gray-400">
-                  {{ t('payment.rechargeRatePreview', { currency: selectedCurrency, amount: balanceRechargeMultiplier.toFixed(2), unitName: balanceUnitName }) }}
-                </p>
-              </div>
-            </div>
-            <button :class="['btn w-full py-0 text-base font-medium', paymentButtonClass]" :disabled="!canSubmit || submitting" @click="handleSubmitRecharge">
-              <span v-if="submitting" class="flex items-center justify-center gap-2">
-                <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                {{ t('common.processing') }}
-              </span>
-              <span v-else>{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(totalAmount) }}</span>
-            </button>
-            </template>
-          </template>
-          <!-- Subscribe Tab -->
-          <template v-else-if="activeTab === 'subscription'">
-            <!-- Subscription confirm (inline, replaces plan list) -->
-            <template v-if="selectedPlan">
-              <div class="card p-6">
-                <!-- 套餐名称 -->
-                <div class="mb-3 flex flex-wrap items-center gap-2">
-                  <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ selectedPlan.name }}</h3>
-                </div>
-                <!-- Price -->
-                <div class="flex items-baseline gap-2">
-                  <span v-if="selectedPlan.original_price" class="text-sm text-gray-400 line-through dark:text-gray-500">
-                    {{ formatSelectedSubscriptionPaymentAmount(selectedPlan.original_price) }}
-                  </span>
-                  <span :class="['text-3xl font-bold', planTextClass]">{{ formatSelectedSubscriptionPaymentAmount(selectedPlan.price) }}</span>
-                  <span class="text-sm text-gray-500 dark:text-gray-400">/ {{ planValiditySuffix }}</span>
-                </div>
-                <!-- Description -->
-                <p v-if="selectedPlan.description" class="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-                  {{ selectedPlan.description }}
-                </p>
-                <!-- 套餐额度信息 -->
-                <div class="mt-3 grid grid-cols-2 gap-3">
-                  <div v-if="hasPlanQuota(selectedPlan.daily_limit_usd)">
-                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.dailyLimit') }}</span>
-                    <div class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ formatPlanQuota(selectedPlan.daily_limit_usd) }}</div>
-                  </div>
-                  <div v-if="hasPlanQuota(selectedPlan.weekly_limit_usd)">
-                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.weeklyLimit') }}</span>
-                    <div class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ formatPlanQuota(selectedPlan.weekly_limit_usd) }}</div>
-                  </div>
-                  <div v-if="hasPlanQuota(selectedPlan.monthly_limit_usd)">
-                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.monthlyLimit') }}</span>
-                    <div class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ formatPlanQuota(selectedPlan.monthly_limit_usd) }}</div>
-                  </div>
-                  <div v-if="!hasPlanQuota(selectedPlan.daily_limit_usd) && !hasPlanQuota(selectedPlan.weekly_limit_usd) && !hasPlanQuota(selectedPlan.monthly_limit_usd)">
-                    <span class="text-xs text-gray-400 dark:text-gray-500">{{ t('payment.planCard.quota') }}</span>
-                    <div class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ t('payment.planCard.unlimited') }}</div>
-                  </div>
-                </div>
-              </div>
-              <div v-if="enabledMethods.length >= 1" class="card p-6">
-                <PaymentMethodSelector
-                  :methods="subMethodOptions"
-                  :selected="selectedMethod"
-                  @select="selectedMethod = $event"
-                />
-              </div>
-              <div v-if="isStripeSelected" class="card p-6">
-                <div class="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label class="input-label">{{ t('payment.billing.name') }}</label>
-                    <input v-model="billingInfo.name" class="input mt-1 w-full" autocomplete="name" />
-                  </div>
-                  <div>
-                    <label class="input-label">{{ t('payment.billing.email') }}</label>
-                    <input v-model="billingInfo.email" class="input mt-1 w-full" autocomplete="email" type="email" />
-                  </div>
-                  <div>
-                    <label class="input-label">{{ optionalBillingLabel('country') }}</label>
-                    <input v-model="billingInfo.country" class="input mt-1 w-full" autocomplete="country" maxlength="2" />
-                  </div>
-                  <div>
-                    <label class="input-label">{{ optionalBillingLabel('postalCode') }}</label>
-                    <input v-model="billingInfo.postal_code" class="input mt-1 w-full" autocomplete="postal-code" />
-                  </div>
-                  <div class="sm:col-span-2">
-                    <label class="input-label">{{ optionalBillingLabel('line1') }}</label>
-                    <input v-model="billingInfo.line1" class="input mt-1 w-full" autocomplete="address-line1" />
-                  </div>
-                  <div>
-                    <label class="input-label">{{ optionalBillingLabel('city') }}</label>
-                    <input v-model="billingInfo.city" class="input mt-1 w-full" autocomplete="address-level2" />
-                  </div>
-                  <div>
-                    <label class="input-label">{{ optionalBillingLabel('state') }}</label>
-                    <input v-model="billingInfo.state" class="input mt-1 w-full" autocomplete="address-level1" />
-                  </div>
-                </div>
-              </div>
-              <div v-if="selectedPlan.price > 0" class="card p-6">
-                <div class="space-y-2 text-sm">
-                  <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.amountLabel') }}</span>
-                    <span class="text-gray-900 dark:text-white">{{ formatSelectedSubscriptionPaymentAmount(selectedPlan.price) }}</span>
-                  </div>
-                  <div v-if="subscriptionFeeBreakdown.fixedFee > 0" class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fixedFee') }}</span>
-                    <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(subscriptionFeeBreakdown.fixedFee) }}</span>
-                  </div>
-                  <div v-if="subscriptionFeeBreakdown.rateFee > 0" class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.rateFee') }} ({{ subscriptionFeeBreakdown.feeRate }}%)</span>
-                    <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(subscriptionFeeBreakdown.rateFee) }}</span>
-                  </div>
-                  <div v-if="subscriptionFeeBreakdown.totalFee > 0" class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.feeTotal') }}</span>
-                    <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(subscriptionFeeBreakdown.totalFee) }}</span>
-                  </div>
-                  <div class="flex justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
-                    <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
-                    <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(subTotalAmount) }}</span>
-                  </div>
-                </div>
-              </div>
-              <button :class="['btn w-full py-0 text-base font-medium', paymentButtonClass]" :disabled="!canSubmitSubscription || submitting" @click="confirmSubscribe">
-                <span v-if="submitting" class="flex items-center justify-center gap-2">
-                  <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                  {{ t('common.processing') }}
-                </span>
-                <span v-else>{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(subTotalAmount) }}</span>
-              </button>
-              <button class="btn btn-secondary w-full" @click="selectedPlan = null">{{ t('common.cancel') }}</button>
-            </template>
-            <!-- Plan list -->
-            <template v-else>
-              <div v-if="checkout.plans.length === 0" class="card py-16 text-center">
-                <Icon name="gift" size="xl" class="mx-auto mb-3 text-gray-300 dark:text-dark-600" />
-                <p class="text-gray-500 dark:text-gray-400">{{ t('payment.noPlans') }}</p>
-              </div>
-              <div v-else :class="planGridClass">
-                <SubscriptionPlanCard v-for="plan in checkout.plans" :key="plan.id" :plan="plan" :active-subscriptions="activeSubscriptions" @select="selectPlan" />
-              </div>
-              <!-- Active subscriptions (compact, below plan list) -->
-              <div v-if="activeSubscriptions.length > 0">
-                <p class="mb-2 text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('payment.activeSubscription') }}</p>
-                <div class="space-y-2">
-                  <div v-for="sub in activeSubscriptions" :key="sub.id"
-                    class="flex items-center gap-3 rounded-surface border border-gray-100 bg-white px-3 py-2 dark:border-dark-700 dark:bg-dark-800">
-                    <div :class="['h-6 w-1 shrink-0 rounded-full', platformAccentBarClass('')]" />
-                    <div class="min-w-0 flex-1">
-                      <div class="flex items-center gap-1.5">
-                        <span class="truncate text-xs font-semibold text-gray-900 dark:text-white">{{ subscriptionName(sub) }}</span>
-                      </div>
-                      <div class="flex flex-wrap gap-x-3 text-xs text-gray-400 dark:text-gray-500">
-                        <span v-if="subscriptionUnlimited(sub)">{{ t('payment.planCard.quota') }}: {{ t('payment.planCard.unlimited') }}</span>
-                        <span v-if="sub.expires_at">{{ t('userSubscriptions.daysRemaining', { days: getDaysRemaining(sub.expires_at) }) }}</span>
-                        <span v-else>{{ t('userSubscriptions.noExpiration') }}</span>
-                      </div>
-                    </div>
-                    <span class="badge badge-success shrink-0 text-xs">{{ t('userSubscriptions.status.active') }}</span>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </template>
-        </template>
-        <div v-if="(checkout.help_text || checkout.help_image_url) && paymentPhase === 'select' && !selectedPlan" class="card p-4">
-          <div class="flex flex-col items-center gap-3">
-            <img v-if="checkout.help_image_url" :src="checkout.help_image_url" alt=""
-              class="h-40 max-w-full cursor-pointer rounded-control object-contain transition-opacity hover:opacity-80"
-              @click="previewImage = checkout.help_image_url" />
-            <div
-              v-if="renderedHelpText"
-              class="payment-help-markdown max-w-full text-sm text-gray-500 dark:text-gray-400"
-              v-html="renderedHelpText"
-            ></div>
           </div>
+          <template v-else>
+            <!-- 支付中（充值与订阅共用） -->
+            <PaymentStatusPanel
+              v-if="paymentPhase === 'paying'"
+              :order-id="paymentState.orderId"
+              :amount="paymentState.amount"
+              :pay-amount="paymentState.payAmount"
+              :qr-code="paymentState.qrCode"
+              :expires-at="paymentState.expiresAt"
+              :payment-type="paymentState.paymentType"
+              :out-trade-no="paymentState.outTradeNo"
+              :pay-url="paymentState.payUrl"
+              :order-type="paymentState.orderType"
+              :currency="paymentState.currency || selectedCurrency"
+              :mobile-alipay-deep-link="paymentState.alipayMobilePrecreateDeepLink"
+              @done="onPaymentDone"
+              @success="onPaymentSuccess"
+              @settled="onPaymentSettled"
+            />
+
+            <!-- 订阅套餐列表 -->
+            <template v-else-if="activeTab === 'subscription' && !selectedPlan">
+              <div v-if="checkout.plans.length === 0" class="card empty-state">
+                <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-surface bg-gray-100 dark:bg-dark-800">
+                  <Icon name="gift" size="lg" class="text-gray-400 dark:text-dark-500" />
+                </div>
+                <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('payment.noPlans') }}</p>
+              </div>
+              <section v-else :aria-label="t('payment.selectPlan')">
+                <!-- 主区在 lg 仍需让出侧栏宽度，三列放到 xl 才不拥挤。 -->
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  <SubscriptionPlanCard
+                    v-for="plan in checkout.plans"
+                    :key="plan.id"
+                    :plan="plan"
+                    :active-subscriptions="activeSubscriptions"
+                    @select="selectPlan"
+                  />
+                </div>
+              </section>
+
+              <!-- 当前订阅：沿用兑换页的用量列表，直接展示各周期用量与剩余时间。 -->
+              <section
+                v-if="activeSubscriptions.length > 0"
+                data-testid="purchase-active-subscriptions"
+                class="space-y-4"
+              >
+                <div class="flex items-center justify-between gap-4">
+                  <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('payment.activeSubscription') }}</h2>
+                  <router-link
+                    to="/subscriptions"
+                    class="shrink-0 text-sm text-primary-600 hover:underline dark:text-primary-400"
+                  >
+                    {{ t('subscriptionProgress.viewAll') }}
+                  </router-link>
+                </div>
+                <SubscriptionUsageList
+                  :subscriptions="activeSubscriptions"
+                  class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                  item-class="card p-4"
+                />
+              </section>
+
+              <PaymentHelpNote
+                v-if="hasHelpContent"
+                :image-url="checkout.help_image_url"
+                :html="renderedHelpText"
+                @preview="previewImage = $event"
+              />
+            </template>
+
+            <!-- 充值未开放 -->
+            <div v-else-if="activeTab === 'recharge' && enabledMethods.length === 0" class="card empty-state">
+              <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-surface bg-gray-100 dark:bg-dark-800">
+                <Icon name="creditCard" size="lg" class="text-gray-400 dark:text-dark-500" />
+              </div>
+              <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('payment.notAvailable') }}</p>
+            </div>
+
+            <!-- 结算：充值与订阅确认共用。xl 以下按选择、摘要顺序堆叠（lg 主区还要让出侧栏，双栏会挤压支付方式），xl 起右栏摘要吸顶。 -->
+            <div v-else class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22.5rem] xl:items-start">
+              <!-- 金额（或套餐）、支付方式、账单信息各占一张卡片，分组更清楚。 -->
+              <div class="min-w-0 space-y-4">
+                <!-- 订阅确认：套餐摘要 -->
+                <section v-if="isSubscriptionCheckout && selectedPlan" class="card p-4 sm:p-6">
+                  <p class="text-xs font-medium text-gray-500 dark:text-dark-400">{{ t('payment.confirmSubscription') }}</p>
+                  <h2 class="mt-1 break-words text-lg font-semibold text-gray-900 dark:text-white">{{ selectedPlan.name }}</h2>
+                  <div class="mt-3 flex flex-wrap items-baseline gap-x-2">
+                    <span class="text-3xl font-semibold tracking-tight tabular-nums text-gray-900 dark:text-white">
+                      {{ formatSelectedSubscriptionPaymentAmount(selectedPlan.price) }}
+                    </span>
+                    <span class="text-sm text-gray-500 dark:text-dark-400">/ {{ planValiditySuffix }}</span>
+                    <span v-if="selectedPlan.original_price" class="text-sm text-gray-400 line-through dark:text-dark-500">
+                      {{ formatSelectedSubscriptionPaymentAmount(selectedPlan.original_price) }}
+                    </span>
+                  </div>
+                  <p v-if="selectedPlan.description" class="mt-2 text-sm leading-relaxed text-gray-500 dark:text-dark-400">
+                    {{ selectedPlan.description }}
+                  </p>
+                  <dl class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    <div v-if="hasPlanQuota(selectedPlan.daily_limit_usd)">
+                      <dt class="text-xs text-gray-500 dark:text-dark-400">{{ t('payment.planCard.dailyLimit') }}</dt>
+                      <dd class="mt-1 text-base font-semibold tabular-nums text-gray-900 dark:text-dark-100">{{ formatPlanQuota(selectedPlan.daily_limit_usd) }}</dd>
+                    </div>
+                    <div v-if="hasPlanQuota(selectedPlan.weekly_limit_usd)">
+                      <dt class="text-xs text-gray-500 dark:text-dark-400">{{ t('payment.planCard.weeklyLimit') }}</dt>
+                      <dd class="mt-1 text-base font-semibold tabular-nums text-gray-900 dark:text-dark-100">{{ formatPlanQuota(selectedPlan.weekly_limit_usd) }}</dd>
+                    </div>
+                    <div v-if="hasPlanQuota(selectedPlan.monthly_limit_usd)">
+                      <dt class="text-xs text-gray-500 dark:text-dark-400">{{ t('payment.planCard.monthlyLimit') }}</dt>
+                      <dd class="mt-1 text-base font-semibold tabular-nums text-gray-900 dark:text-dark-100">{{ formatPlanQuota(selectedPlan.monthly_limit_usd) }}</dd>
+                    </div>
+                    <div v-if="!hasPlanQuota(selectedPlan.daily_limit_usd) && !hasPlanQuota(selectedPlan.weekly_limit_usd) && !hasPlanQuota(selectedPlan.monthly_limit_usd)">
+                      <dt class="text-xs text-gray-500 dark:text-dark-400">{{ t('payment.planCard.quota') }}</dt>
+                      <dd class="mt-1 text-base font-semibold text-gray-900 dark:text-dark-100">{{ t('payment.planCard.unlimited') }}</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <!-- 充值：金额 -->
+                <section v-else class="card p-4 sm:p-6">
+                  <h2 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.amountLabel') }}</h2>
+                  <AmountInput
+                    v-model="amount"
+                    :amounts="[10, 20, 50, 100, 200, 500, 1000, 2000, 5000]"
+                    :min="globalMinAmount"
+                    :max="globalMaxAmount"
+                    :currency="selectedCurrency"
+                  />
+                  <p v-if="amountError" class="mt-2 text-xs text-amber-600 dark:text-amber-300">{{ amountError }}</p>
+                </section>
+
+                <section v-if="enabledMethods.length >= 1" class="card p-4 sm:p-6">
+                  <h2 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.paymentMethod') }}</h2>
+                  <PaymentMethodSelector
+                    :methods="checkoutMethodOptions"
+                    :selected="selectedMethod"
+                    @select="selectedMethod = $event"
+                  />
+                </section>
+
+                <!-- Stripe 账单信息 -->
+                <section v-if="isStripeSelected" class="card p-4 sm:p-6">
+                  <h2 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.billing.title') }}</h2>
+                  <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label class="input-label">{{ t('payment.billing.name') }}</label>
+                      <input v-model="billingInfo.name" class="input mt-1 w-full" autocomplete="name" />
+                    </div>
+                    <div>
+                      <label class="input-label">{{ t('payment.billing.email') }}</label>
+                      <input v-model="billingInfo.email" class="input mt-1 w-full" autocomplete="email" type="email" />
+                    </div>
+                    <div>
+                      <label class="input-label">{{ optionalBillingLabel('country') }}</label>
+                      <input v-model="billingInfo.country" class="input mt-1 w-full" autocomplete="country" maxlength="2" />
+                    </div>
+                    <div>
+                      <label class="input-label">{{ optionalBillingLabel('postalCode') }}</label>
+                      <input v-model="billingInfo.postal_code" class="input mt-1 w-full" autocomplete="postal-code" />
+                    </div>
+                    <div class="sm:col-span-2">
+                      <label class="input-label">{{ optionalBillingLabel('line1') }}</label>
+                      <input v-model="billingInfo.line1" class="input mt-1 w-full" autocomplete="address-line1" />
+                    </div>
+                    <div>
+                      <label class="input-label">{{ optionalBillingLabel('city') }}</label>
+                      <input v-model="billingInfo.city" class="input mt-1 w-full" autocomplete="address-level2" />
+                    </div>
+                    <div>
+                      <label class="input-label">{{ optionalBillingLabel('state') }}</label>
+                      <input v-model="billingInfo.state" class="input mt-1 w-full" autocomplete="address-level1" />
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <!-- 吸顶偏移 = 顶栏高度 + 1.5rem 页面内边距。 -->
+              <aside class="min-w-0 space-y-4 xl:sticky xl:top-[calc(var(--header-h)+1.5rem)]">
+                <section data-testid="checkout-summary" class="card p-4 sm:p-6">
+                  <dl v-if="!isSubscriptionCheckout" class="mb-5 border-b border-gray-100 pb-5 dark:border-dark-700">
+                    <dt class="text-xs font-medium text-gray-500 dark:text-dark-400">{{ t('payment.currentBalance') }}</dt>
+                    <dd class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">
+                      {{ formatBalanceAmount(user?.balance, { fractionDigits: 2 }) }}
+                    </dd>
+                    <dd class="mt-1 truncate text-xs text-gray-500 dark:text-dark-400">
+                      {{ t('payment.rechargeAccount') }}: {{ user?.username || '' }}
+                    </dd>
+                  </dl>
+
+                  <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.orderSummary') }}</h2>
+                  <dl class="mt-3 space-y-2 text-sm">
+                    <div class="flex justify-between gap-4">
+                      <dt class="text-gray-500 dark:text-dark-400">{{ checkoutBaseLabel }}</dt>
+                      <dd class="tabular-nums text-gray-900 dark:text-dark-100">{{ checkoutBaseText }}</dd>
+                    </div>
+                    <div v-if="checkoutFeeBreakdown.fixedFee > 0" class="flex justify-between gap-4">
+                      <dt class="text-gray-500 dark:text-dark-400">{{ t('payment.fixedFee') }}</dt>
+                      <dd class="tabular-nums text-gray-900 dark:text-dark-100">{{ formatSelectedPaymentAmount(checkoutFeeBreakdown.fixedFee) }}</dd>
+                    </div>
+                    <div v-if="checkoutFeeBreakdown.rateFee > 0" class="flex justify-between gap-4">
+                      <dt class="text-gray-500 dark:text-dark-400">{{ t('payment.rateFee') }} ({{ checkoutFeeBreakdown.feeRate }}%)</dt>
+                      <dd class="tabular-nums text-gray-900 dark:text-dark-100">{{ formatSelectedPaymentAmount(checkoutFeeBreakdown.rateFee) }}</dd>
+                    </div>
+                    <div v-if="checkoutFeeBreakdown.totalFee > 0" class="flex justify-between gap-4">
+                      <dt class="text-gray-500 dark:text-dark-400">{{ t('payment.feeTotal') }}</dt>
+                      <dd class="tabular-nums text-gray-900 dark:text-dark-100">{{ formatSelectedPaymentAmount(checkoutFeeBreakdown.totalFee) }}</dd>
+                    </div>
+                    <div class="flex items-baseline justify-between gap-4 border-t border-gray-100 pt-3 dark:border-dark-700">
+                      <dt class="font-medium text-gray-900 dark:text-white">{{ t('payment.actualPay') }}</dt>
+                      <dd class="text-xl font-semibold tabular-nums text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(checkoutTotalAmount) }}</dd>
+                    </div>
+                    <div v-if="!isSubscriptionCheckout && balanceRechargeMultiplier !== 1" class="flex justify-between gap-4">
+                      <dt class="text-gray-500 dark:text-dark-400">{{ t('payment.creditedBalance') }}</dt>
+                      <dd class="font-medium tabular-nums text-primary-600 dark:text-primary-400">{{ formatBalanceAmount(creditedAmount, { fractionDigits: 2 }) }}</dd>
+                    </div>
+                  </dl>
+                  <p v-if="!isSubscriptionCheckout && balanceRechargeMultiplier !== 1" class="mt-3 text-xs text-gray-500 dark:text-dark-400">
+                    {{ t('payment.rechargeRatePreview', { currency: selectedCurrency, amount: balanceRechargeMultiplier.toFixed(2), unitName: balanceUnitName }) }}
+                  </p>
+
+                  <div class="mt-6 space-y-2">
+                    <button
+                      type="button"
+                      :class="['btn w-full', paymentButtonClass]"
+                      :disabled="!checkoutCanSubmit || submitting"
+                      @click="handleCheckoutSubmit"
+                    >
+                      <template v-if="submitting">
+                        <Icon name="loader" size="sm" :animate-on-hover="false" class="animate-spin" />
+                        {{ t('common.processing') }}
+                      </template>
+                      <template v-else>{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(checkoutTotalAmount) }}</template>
+                    </button>
+                    <button
+                      v-if="isSubscriptionCheckout"
+                      type="button"
+                      class="btn btn-secondary w-full"
+                      @click="selectedPlan = null"
+                    >
+                      {{ t('common.cancel') }}
+                    </button>
+                  </div>
+                </section>
+
+                <PaymentHelpNote
+                  v-if="!isSubscriptionCheckout && hasHelpContent"
+                  :image-url="checkout.help_image_url"
+                  :html="renderedHelpText"
+                  @preview="previewImage = $event"
+                />
+              </aside>
+            </div>
+          </template>
         </div>
-      </template>
+      </MotionTransition>
     </div>
-    <!-- Renewal Plan Selection Modal -->
+    <!-- 续费套餐选择弹窗 -->
     <BaseDialog
       :show="showRenewalModal"
       :title="t('payment.selectPlan')"
@@ -315,18 +335,20 @@
       @confirm="confirmDuplicatePlanPurchase"
       @cancel="closeDuplicatePlanDialog"
     />
-    <!-- Image Preview Overlay -->
+    <!-- 帮助图片预览 -->
     <Teleport to="body">
-      <Transition name="modal">
+      <MotionTransition name="modal">
         <div v-if="previewImage" class="fixed inset-0 z-modal-nested flex items-center justify-center bg-[var(--overlay-bg-strong)] backdrop-blur-sm" @click="previewImage = ''">
           <img :src="previewImage" alt="" class="max-h-[85vh] max-w-[90vw] rounded-surface object-contain shadow-2xl" />
         </div>
-      </Transition>
+      </MotionTransition>
     </Teleport>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -356,12 +378,14 @@ import {
   type PaymentRecoverySnapshot,
   writePaymentRecoverySnapshot,
 } from '@/components/payment/paymentFlow'
-import { platformAccentBarClass, platformTextClass } from '@/utils/platformColors'
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
+import PaymentHelpNote from '@/components/payment/PaymentHelpNote.vue'
+import SubscriptionUsageList from '@/components/common/SubscriptionUsageList.vue'
 import PaymentStatusPanel from '@/components/payment/PaymentStatusPanel.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
+import Skeleton from '@/components/common/Skeleton.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { DEFAULT_PAYMENT_CURRENCY, formatPaymentAmount, normalizePaymentCurrency, paymentCurrencyFractionDigits } from '@/components/payment/currency'
 import { planValiditySuffix as validitySuffixOf } from '@/components/payment/validity'
@@ -386,11 +410,6 @@ marked.setOptions({
 
 const user = computed(() => authStore.user)
 const activeSubscriptions = computed(() => subscriptionStore.activeSubscriptions)
-
-function getDaysRemaining(expiresAt: string): number {
-  const diff = new Date(expiresAt).getTime() - Date.now()
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
-}
 
 const loading = ref(true)
 const submitting = ref(false)
@@ -600,10 +619,10 @@ const tabs = computed(() => {
   return result
 })
 
-// 已经进入支付阶段的订单不取消；模式变化仅校正下一次选择。
+// 只校正待选择的页签，既有支付订单仍可继续完成。
 watch(tabs, (available) => {
   if (available.some(tab => tab.key === activeTab.value)) return
-  activeTab.value = available[0]?.key ?? 'recharge'
+  activeTab.value = available[0]?.key ?? "recharge"
   selectedPlan.value = null
 })
 
@@ -620,6 +639,7 @@ const subscriptionUsdToCnyRate = computed(() => {
   return Number.isFinite(rate) && rate > 0 ? rate : 0
 })
 const creditedAmount = computed(() => Math.round((validAmount.value * balanceRechargeMultiplier.value) * 100) / 100)
+const hasHelpContent = computed(() => Boolean(checkout.value.help_text || checkout.value.help_image_url))
 const renderedHelpText = computed(() => {
   const content = checkout.value.help_text.trim()
   if (!content) return ''
@@ -631,13 +651,6 @@ function formatPlanQuota(value: number | null | undefined): string {
   const amount = Number(value)
   return formatBalanceAmount(value, { fractionDigits: Number.isInteger(amount) ? 0 : 2 })
 }
-
-// Adaptive grid: center single card, 2-col for 2 plans, 3-col for 3+
-const planGridClass = computed(() => {
-  const n = checkout.value.plans.length
-  if (n <= 2) return 'grid grid-cols-1 gap-5 sm:grid-cols-2'
-  return 'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3'
-})
 
 // Check if an amount fits a method's [min, max]. 0 = no limit.
 function amountFitsMethod(amt: number, methodType: string): boolean {
@@ -858,6 +871,28 @@ const canSubmitSubscription = computed(() =>
     && (!isStripeSelected.value || (billingInfo.name.trim() !== '' && billingInfo.email.trim() !== ''))
 )
 
+// 结算区由充值和订阅确认共用，以下计算属性按当前场景切换数据来源。
+const isSubscriptionCheckout = computed(() => activeTab.value === 'subscription' && selectedPlan.value !== null)
+const checkoutMethodOptions = computed(() => (isSubscriptionCheckout.value ? subMethodOptions.value : methodOptions.value))
+const checkoutFeeBreakdown = computed(() => (isSubscriptionCheckout.value ? subscriptionFeeBreakdown.value : rechargeFeeBreakdown.value))
+const checkoutTotalAmount = computed(() => (isSubscriptionCheckout.value ? subTotalAmount.value : totalAmount.value))
+const checkoutCanSubmit = computed(() => (isSubscriptionCheckout.value ? canSubmitSubscription.value : canSubmit.value))
+const checkoutBaseLabel = computed(() => (isSubscriptionCheckout.value ? t('payment.orders.amount') : t('payment.paymentAmount')))
+const checkoutBaseText = computed(() => {
+  if (isSubscriptionCheckout.value && selectedPlan.value) {
+    return formatSelectedSubscriptionPaymentAmount(selectedPlan.value.price)
+  }
+  return formatSelectedPaymentAmount(validAmount.value)
+})
+
+function handleCheckoutSubmit() {
+  if (isSubscriptionCheckout.value) {
+    void confirmSubscribe()
+    return
+  }
+  void handleSubmitRecharge()
+}
+
 // Auto-switch to first available method when current selection can't handle the amount
 watch(() => [validAmount.value, selectedMethod.value] as const, ([amt, method]) => {
   if (amt <= 0 || amountFitsMethod(amt, method)) return
@@ -878,9 +913,6 @@ const paymentButtonClass = computed(() => {
   if (m === 'airwallex') return 'btn-airwallex'
   return 'btn-primary'
 })
-
-// Subscription confirm: platform accent colors (clean card, no gradient)
-const planTextClass = computed(() => platformTextClass(''))
 
 // Renewal modal state
 const showRenewalModal = ref(false)
@@ -956,23 +988,6 @@ async function selectPlan(plan: SubscriptionPlan) {
     return
   }
   applySelectedPlan(plan)
-}
-
-function findCheckoutPlan(planId: number): SubscriptionPlan | undefined {
-  return checkout.value.plans.find(plan => plan.id === planId)
-}
-
-function resolveSubscriptionPlan(sub: UserSubscription): UserSubscription['plan'] | SubscriptionPlan | undefined {
-  return sub.plan ?? findCheckoutPlan(sub.plan_id)
-}
-
-
-function subscriptionName(sub: UserSubscription): string {
-  return resolveSubscriptionPlan(sub)?.name || `Plan #${sub.plan_id}`
-}
-
-function subscriptionUnlimited(sub: UserSubscription): boolean {
-  return !hasPlanQuota(sub.daily_limit_usd) && !hasPlanQuota(sub.weekly_limit_usd) && !hasPlanQuota(sub.monthly_limit_usd)
 }
 
 function hasPlanQuota(value: number | null | undefined): boolean {
@@ -1422,35 +1437,27 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.payment-help-markdown {
-  text-align: center;
+/* 只在横向翻页期间裁剪内容，静止时保留摘要吸顶和浮层的原有布局。 */
+.purchase-viewport:has(.purchase-slide-enter-active, .purchase-slide-leave-active) {
+  overflow: clip;
 }
 
-.payment-help-markdown :deep(p) {
-  margin: 0.25rem 0;
+.purchase-slide-enter-active,
+.purchase-slide-leave-active {
+  transition: transform var(--motion-layout) var(--motion-ease);
 }
 
-.payment-help-markdown :deep(a) {
-  color: rgb(18 167 232);
-  font-weight: 500;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+/* 旧面板退出时与新面板重叠，避免两个页面上下排列。 */
+.purchase-slide-leave-active {
+  position: absolute;
+  inset: 0 0 auto;
 }
 
-.payment-help-markdown :deep(ul),
-.payment-help-markdown :deep(ol) {
-  display: inline-block;
-  margin: 0.25rem auto;
-  padding-left: 1.25rem;
-  text-align: left;
+.purchase-slide-enter-from {
+  transform: translateX(calc(var(--purchase-direction) * 100%));
 }
 
-.payment-help-markdown :deep(strong) {
-  color: rgb(17 24 39);
-  font-weight: 600;
-}
-
-.dark .payment-help-markdown :deep(strong) {
-  color: rgb(255 255 255);
+.purchase-slide-leave-to {
+  transform: translateX(calc(var(--purchase-direction) * -100%));
 }
 </style>

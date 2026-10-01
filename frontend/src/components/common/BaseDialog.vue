@@ -1,8 +1,9 @@
 <template>
   <Teleport to="body">
-    <Transition name="modal" @after-leave="afterLeave">
+    <MotionTransition name="modal" @after-leave="handleAfterLeave">
       <div
         v-if="show"
+        :inert="!show || undefined"
         class="modal-overlay h-[100dvh] w-[100dvw] min-w-0 overflow-hidden"
         :style="zIndexStyle"
         :aria-labelledby="dialogId"
@@ -28,7 +29,7 @@
               class="-mr-2 border-2 border-transparent p-2 text-gray-600 transition-colors hover:border-gray-950 hover:bg-bh-red hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:text-dark-300 dark:hover:border-dark-100"
               aria-label="Close modal"
             >
-              <Icon name="x" size="md" :stroke-width="2.5" />
+              <Icon name="x" size="sm" />
             </button>
           </div>
 
@@ -47,7 +48,7 @@
           </div>
         </div>
       </div>
-    </Transition>
+    </MotionTransition>
   </Teleport>
 </template>
 
@@ -56,6 +57,7 @@ let dialogIdCounter = 0
 </script>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, watch, onMounted, onUnmounted, ref, nextTick } from 'vue'
 import { useDialogLifecycle } from '@/composables/useDialogLifecycle'
 import Icon from '@/components/icons/Icon.vue'
@@ -83,6 +85,7 @@ interface Props {
 
 interface Emits {
   (e: 'close'): void
+  (e: 'after-leave'): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -125,13 +128,19 @@ const handleEscape = (event: KeyboardEvent) => {
   }
 }
 
-// 嵌套弹窗只让顶层响应关闭，滚动锁与焦点在退出完成后释放。
 const { afterLeave, isTop } = useDialogLifecycle(() => props.show, dialogRef)
+
+function handleAfterLeave() {
+  afterLeave()
+  if (!props.show) emit('after-leave')
+}
+
+// 重新打开默认内容区时回顶，分页表单继续自行管理内部滚动。
 watch(() => props.show, async (open) => {
   if (!open) return
   await nextTick()
   if (props.show && modalBodyRef.value) modalBodyRef.value.scrollTop = 0
-})
+}, { immediate: true })
 
 onMounted(() => {
   document.addEventListener('keydown', handleEscape)

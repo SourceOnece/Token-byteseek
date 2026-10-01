@@ -1,17 +1,18 @@
 <template>
   <div class="ba-theme-shell relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+    <div class="absolute right-4 top-4 z-10"><VisualThemeSelector /></div>
     <!-- Background -->
     <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
     <AuthBackground />
 
     <!-- Content Container -->
-    <div class="relative z-10 w-full max-w-md">
+    <div v-content-reveal="motionRoute?.path" class="relative z-10 w-full max-w-md">
       <!-- Logo/Brand -->
       <div class="mb-8 text-center">
         <!-- Custom Logo or Default Logo -->
         <template v-if="settingsLoaded">
           <div
-            class="mb-5 inline-flex h-16 w-16 items-center justify-center overflow-hidden border-[3px] border-gray-950 bg-white shadow dark:border-dark-100 dark:bg-dark-800"
+            class="mb-4 inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-surface shadow-lg shadow-primary-500/30"
           >
             <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
           </div>
@@ -19,44 +20,46 @@
           <h1 class="mb-2 page-title">
             {{ siteName }}
           </h1>
-          <p class="inline-block text-sm font-bold text-gray-700 dark:text-dark-200">
+          <p class="text-sm text-gray-500 dark:text-dark-400">
             {{ siteSubtitle }}
           </p>
         </template>
       </div>
 
-      <!-- Card Container：硬边框 + 大位移阴影 + 三原色顶条 -->
-      <div class="relative border-[3px] border-gray-950 bg-white shadow-xl dark:border-dark-100 dark:bg-dark-800">
-        <div class="bh-stripe" aria-hidden="true"><i></i><i></i><i></i></div>
-        <div class="p-8">
-          <slot />
-        </div>
+      <!-- Card Container -->
+      <div class="card-glass rounded-surface p-8 shadow-glass">
+        <slot />
       </div>
 
       <!-- Footer Links -->
-      <div class="mt-6 text-center text-sm font-semibold">
+      <div class="mt-6 text-center text-sm">
         <slot name="footer" />
       </div>
 
       <!-- Copyright -->
-      <div class="mt-8 text-center font-mono text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-dark-300">
-        &copy; {{ currentYear }} {{ siteName }} · FORM &amp; FUNKTION
+      <div class="mt-8 text-center text-xs text-gray-400 dark:text-dark-500">
+        &copy; {{ currentYear }} {{ siteName }}. All rights reserved.
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+import { useRoute as useMotionRoute } from 'vue-router'
+const motionRoute = useMotionRoute()
+
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AuthBackground from '@/components/auth/AuthBackground.vue'
+import VisualThemeSelector from '@/components/common/VisualThemeSelector.vue'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
 
 const appStore = useAppStore()
 const { locale } = useI18n()
 
-const siteName = computed(() => appStore.siteName || 'Sub2API')
+const siteName = computed(() => appStore.siteName || 'ByteSeek')
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
 const siteSubtitle = computed(() => {
   const settings = appStore.cachedPublicSettings

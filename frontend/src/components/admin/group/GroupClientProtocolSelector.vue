@@ -69,50 +69,39 @@
             @update:model-value="toggle(protocol.id)"
           />
         </div>
-        <div
+        <!-- 回退目标可互换位置，行 key 使用下标并关闭列表动效。 -->
+        <RuleListEditor
           v-if="
             isEnabled(protocol.id) &&
             fallbackMode(protocol.id) === 'restricted' &&
             hasFallbackTargets(protocol.id)
           "
-          class="mt-2 space-y-2 rounded-compact border border-gray-100 bg-gray-50/50 p-3 dark:border-dark-700 dark:bg-dark-800/40"
+          class="mt-2 rounded-compact border border-gray-100 bg-gray-50/50 p-3 dark:border-dark-700 dark:bg-dark-800/40"
+          :items="fallbacks?.[protocol.id] ?? []"
+          :animated="false"
+          add-placement="footer"
+          :add-disabled="!remainingTarget(protocol.id)"
+          @add="addTarget(protocol.id)"
+          @remove="(index) => removeTarget(protocol.id, index)"
         >
-          <div
-            v-for="(target, index) in fallbacks?.[protocol.id]"
-            :key="index"
-            class="flex items-center gap-2"
-          >
-            <span
-              class="w-4 shrink-0 text-right text-xs tabular-nums text-gray-400 dark:text-dark-500"
-              >{{ index + 1 }}</span
-            >
-            <Select
-              class="min-w-0 flex-1"
-              :aria-label="`${protocol.name}: ${t('admin.protocols.fallback')} ${index + 1}`"
-              :model-value="target"
-              :options="targetOptions(protocol.id)"
-              @update:model-value="
-                setTarget(protocol.id, index, String($event) as ProtocolID)
-              "
-            />
-            <button
-              type="button"
-              class="btn btn-ghost btn-icon shrink-0 text-red-500"
-              :aria-label="t('common.delete')"
-              @click="removeTarget(protocol.id, index)"
-            >
-              <Icon name="trash" size="sm" />
-            </button>
-          </div>
-          <button
-            type="button"
-            class="btn btn-secondary btn-sm"
-            :disabled="!remainingTarget(protocol.id)"
-            @click="addTarget(protocol.id)"
-          >
-            <Icon name="plus" size="sm" />{{ t('common.add') }}
-          </button>
-        </div>
+          <template #row="{ item: target, index }">
+            <div class="flex items-center gap-2">
+              <span
+                class="w-4 shrink-0 text-right text-xs tabular-nums text-gray-400 dark:text-dark-500"
+                >{{ index + 1 }}</span
+              >
+              <Select
+                class="min-w-0 flex-1"
+                :aria-label="`${protocol.name}: ${t('admin.protocols.fallback')} ${index + 1}`"
+                :model-value="target"
+                :options="targetOptions(protocol.id)"
+                @update:model-value="
+                  setTarget(protocol.id, index, String($event) as ProtocolID)
+                "
+              />
+            </div>
+          </template>
+        </RuleListEditor>
       </div>
     </div>
     <div class="space-y-2 border-t border-gray-200 pt-6 dark:border-dark-600">
@@ -144,7 +133,7 @@ import { useI18n } from 'vue-i18n'
 import Toggle from '@/components/common/Toggle.vue'
 import Select from '@/components/common/Select.vue'
 import GroupFormSection from './GroupFormSection.vue'
-import Icon from '@/components/icons/Icon.vue'
+import RuleListEditor from '@/components/common/RuleListEditor.vue'
 import {
   loadProtocolCatalog,
   protocolCatalog,

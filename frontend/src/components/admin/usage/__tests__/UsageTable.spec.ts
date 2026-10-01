@@ -1,3 +1,4 @@
+import { nextMotionFrame } from '@/__tests__/helpers/motion'
 const ipGeoMocks = vi.hoisted(() => ({
   getEntry: vi.fn(() => ({ status: 'idle' as const })),
   fetchOne: vi.fn(),
@@ -232,6 +233,7 @@ describe('admin UsageTable detailed timing tooltip', () => {
 
     await timingButton.trigger('click')
     await nextTick()
+    await nextMotionFrame()
     expect(wrapper.find('[data-testid="timing-detail-tooltip"]').exists()).toBe(false)
   })
 })
@@ -805,7 +807,7 @@ const DataTableStubWithUser = {
 
 describe('admin UsageTable deleted-user badge', () => {
   it('right-aligns compact members on mobile and constrains long emails on desktop', () => {
-    const email = 'member.with.a.very.long.address@sub2api.example.com'
+    const email = 'member.with.a.very.long.address@tokenrouter.example.com'
     const wrapper = mount(UsageTable, {
       props: {
         data: [{ request_id: 'req-long-email', user_id: 3559, user: { id: 3559, email } }],

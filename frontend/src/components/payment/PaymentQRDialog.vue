@@ -42,7 +42,7 @@
     <!-- Success State -->
     <div v-else class="flex flex-col items-center space-y-4 py-4">
       <div class="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-        <Icon name="check" size="lg" class="text-green-500" />
+        <Icon name="check" size="lg" class="text-green-500" :animate-on-hover="false" />
       </div>
       <p class="text-lg font-bold text-gray-900 dark:text-white">{{ t('payment.result.success') }}</p>
       <div v-if="paidOrder" class="w-full rounded-surface bg-gray-50 p-4 dark:bg-dark-800">

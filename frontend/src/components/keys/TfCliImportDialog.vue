@@ -6,9 +6,9 @@
     width="narrow"
     @close="requestClose"
   >
-    <div class="bh-tf-import-dialog min-w-0 space-y-5" data-test="tf-cli-import-dialog">
-      <div class="bh-tf-import-heading flex min-w-0 items-center gap-3 pb-4">
-        <div class="bh-tf-import-icon flex h-9 w-9 shrink-0 items-center justify-center">
+    <div class="min-w-0 space-y-5" data-test="tf-cli-import-dialog">
+      <div class="flex min-w-0 items-center gap-3 border-b border-gray-100 pb-4 dark:border-dark-700">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
           <Icon name="terminal" size="md" />
         </div>
         <div class="min-w-0">
@@ -26,7 +26,7 @@
         class="flex min-h-36 flex-col items-center justify-center gap-3 py-4 text-center"
         role="status"
       >
-        <Icon name="refresh" size="lg" class="animate-spin text-primary-500" />
+        <Icon name="refresh" size="lg" class="animate-spin text-primary-500" :animate-on-hover="false" />
         <div>
           <p class="text-sm font-medium text-gray-900 dark:text-white">
             {{ t('keys.tfImport.discoveringTitle') }}
@@ -40,7 +40,7 @@
       <template v-else-if="phase === 'ready' && target">
         <div
           v-if="target.verified"
-          class="bh-tf-status bh-tf-status-success flex gap-3 p-3"
+          class="flex gap-3 rounded-control border border-emerald-200 bg-emerald-50 p-3 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300"
           data-test="tf-cli-verified"
           role="status"
         >
@@ -52,7 +52,7 @@
         </div>
         <div
           v-else
-          class="bh-tf-status bh-tf-status-warning flex gap-3 p-3"
+          class="flex gap-3 rounded-control border border-amber-200 bg-amber-50 p-3 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200"
           data-test="tf-cli-unverified"
           role="alert"
         >
@@ -63,7 +63,7 @@
           </div>
         </div>
 
-        <dl class="bh-tf-import-facts divide-y text-sm">
+        <dl class="divide-y divide-gray-100 border-y border-gray-100 text-sm dark:divide-dark-700 dark:border-dark-700">
           <div class="flex min-w-0 items-center justify-between gap-4 py-3">
             <dt class="shrink-0 text-gray-500 dark:text-dark-400">{{ t('keys.tfImport.destination') }}</dt>
             <dd class="truncate font-mono text-xs text-gray-900 dark:text-dark-100">
@@ -99,11 +99,11 @@
 
       <div
         v-else-if="phase === 'accepted'"
-        class="bh-tf-status bh-tf-status-success flex gap-3 p-4"
+        class="flex gap-3 rounded-control border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300"
         data-test="tf-cli-accepted"
         role="status"
       >
-        <Icon name="checkCircle" size="lg" class="shrink-0" />
+        <Icon name="checkCircle" size="lg" class="shrink-0" :animate-on-hover="false" />
         <div class="min-w-0">
           <p class="text-sm font-medium">{{ t('keys.tfImport.acceptedTitle') }}</p>
           <p class="mt-1 text-xs leading-5">{{ t('keys.tfImport.acceptedDescription') }}</p>
@@ -112,11 +112,16 @@
 
       <div
         v-else-if="phase === 'notFound'"
-        class="bh-tf-status bh-tf-status-neutral flex gap-3 p-4"
+        class="flex gap-3 rounded-control border border-gray-200 bg-gray-50 p-4 text-gray-700 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200"
         data-test="tf-cli-not-found"
         role="alert"
       >
-        <Icon name="xCircle" size="lg" class="shrink-0 text-gray-500 dark:text-dark-400" />
+        <Icon
+          name="xCircle"
+          size="lg"
+          class="shrink-0 text-gray-500 dark:text-dark-400"
+          :animate-on-hover="false"
+        />
         <div class="min-w-0">
           <p class="text-sm font-medium">{{ t('keys.tfImport.notFoundTitle') }}</p>
           <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-dark-400">
@@ -127,7 +132,7 @@
 
       <div
         v-else-if="phase === 'error'"
-        class="bh-tf-status bh-tf-status-danger flex gap-3 p-4"
+        class="flex gap-3 rounded-control border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-800/60 dark:bg-red-950/30 dark:text-red-300"
         data-test="tf-cli-import-error"
         role="alert"
       >
@@ -161,7 +166,7 @@
       </template>
       <template v-else-if="phase === 'sending'">
         <button type="button" class="btn btn-primary inline-flex cursor-wait items-center gap-2" disabled>
-          <Icon name="refresh" size="sm" class="animate-spin" />
+          <Icon name="refresh" size="sm" class="animate-spin" :animate-on-hover="false" />
           {{ t('keys.tfImport.waiting') }}
         </button>
       </template>

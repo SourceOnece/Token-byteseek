@@ -160,7 +160,7 @@ describe('TokenUsageTrend', () => {
     })
 
     expect(JSON.parse(wrapper.find('.chart-options').text()).plugins.legend.labels.color).toBe(
-      '#EAE5D8'
+      '#DEE0E2'
     )
 
     setTheme(false)
@@ -168,9 +168,9 @@ describe('TokenUsageTrend', () => {
 
     const lightOptions = JSON.parse(wrapper.find('.chart-options').text())
     // 浅色主题下使用深色文字，避免图例和坐标轴融入白色背景。
-    expect(lightOptions.plugins.legend.labels.color).toBe('#403D36')
-    expect(lightOptions.scales.x.ticks.color).toBe('#403D36')
-    expect(lightOptions.scales.y.ticks.color).toBe('#403D36')
+    expect(lightOptions.plugins.legend.labels.color).toBe('#3F3F46')
+    expect(lightOptions.scales.x.ticks.color).toBe('#3F3F46')
+    expect(lightOptions.scales.y.ticks.color).toBe('#3F3F46')
   })
 
   it('uses compact hour labels while keeping the full date in the tooltip', () => {

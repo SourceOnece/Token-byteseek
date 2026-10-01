@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <div class="space-y-4">
       <UsageStatsCards :stats="usageStats" :show-provider-cost="false" :show-standard-cost="false" />
 
       <div class="space-y-4">
@@ -23,7 +23,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ModelDistributionChart
             v-model:metric="modelDistributionMetric"
             :model-stats="requestedModelStats"
@@ -50,7 +50,7 @@
           />
         </div>
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <EndpointDistributionChart
             v-model:source="endpointDistributionSource"
             v-model:metric="endpointDistributionMetric"
@@ -79,7 +79,7 @@
       </div>
 
       <div class="card p-4">
-        <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center justify-between gap-2">
           <FilterDropdown :active-count="activeFilterCount" :columns="3" keep-mounted @reset="resetCurrentFilters">
             <template v-if="activeTab === 'errors'">
               <FilterField :label="t('usage.errors.keyName')">
@@ -130,7 +130,11 @@
 
           <div class="flex flex-wrap items-center justify-end gap-2">
             <button type="button" @click="refreshData" :disabled="activeTab === 'errors' ? errorLoading : loading" class="btn btn-secondary btn-icon" :title="t('common.refresh')">
-              <Icon name="refresh" size="sm" :class="(activeTab === 'errors' ? errorLoading : loading) ? 'animate-spin' : ''" />
+              <Icon
+                name="refresh"
+                size="sm"
+                :class="(activeTab === 'errors' ? errorLoading : loading) ? 'animate-spin' : ''"
+              />
             </button>
             <div class="relative" ref="columnDropdownRef">
               <button
@@ -142,21 +146,29 @@
                 <Icon name="grid" size="sm" />
                 <span class="hidden">{{ t('admin.users.columnSettings') }}</span>
               </button>
-              <div
-                v-if="showColumnDropdown"
-                class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
-              >
-                <button
-                  v-for="col in currentToggleableColumns"
-                  :key="col.key"
-                  type="button"
-                  @click="toggleCurrentColumn(col.key)"
-                  class="dropdown-item justify-between"
+              <MotionTransition name="dropdown-fade">
+                <div
+                  v-if="showColumnDropdown" :inert="!(showColumnDropdown) || undefined"
+                  class="dropdown right-0 top-full z-50 mt-1 max-h-menu w-48 overflow-y-auto"
                 >
-                  <span>{{ col.label }}</span>
-                  <Icon v-if="isCurrentColumnVisible(col.key)" name="check" size="sm" class="text-primary-500" />
-                </button>
-              </div>
+                  <button
+                    v-for="col in currentToggleableColumns"
+                    :key="col.key"
+                    type="button"
+                    @click="toggleCurrentColumn(col.key)"
+                    class="dropdown-item justify-between"
+                  >
+                    <span>{{ col.label }}</span>
+                    <Icon
+                      v-if="isCurrentColumnVisible(col.key)"
+                      name="check"
+                      size="sm"
+                      class="text-primary-500"
+                      :animate-on-hover="false"
+                    />
+                  </button>
+                </div>
+              </MotionTransition>
             </div>
             <IpGeoBatchToolbar
               v-if="activeTab === 'usage'"
@@ -180,8 +192,11 @@
         </button>
       </div>
 
-      <div v-if="activeTab === 'usage'" class="space-y-4" data-tour="team-usage-records">
-        <UsageTable column-order-storage-key="user-usage-column-order"
+      <!-- 表格与分页共用外框，底部分隔线和圆角由卡片统一收口。 -->
+      <div v-if="activeTab === 'usage'" v-content-reveal class="card overflow-hidden" data-tour="team-usage-records">
+        <UsageTable
+          flat
+          column-order-storage-key="user-usage-column-order"
           :data="usageLogs"
           :loading="loading"
           :columns="visibleColumns"
@@ -228,6 +243,9 @@
 <script setup lang="ts">
 import FilterField from '@/components/common/FilterField.vue'
 import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import MotionTransition from '@/components/common/MotionTransition.vue'
+import { vContentReveal } from '@/directives/contentReveal'
+
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -302,8 +320,6 @@ const errorFilter = ref<{ model: string | null; category: string; api_key_id: nu
   api_key_id: null,
   status_code: null,
 })
-const showFilterDropdown = ref(false)
-const filterPanelRef = ref<HTMLElement | null>(null)
 const activeFilterCount = computed(() => {
   const source = activeTab.value === 'errors' ? errorFilter.value : filters.value
   return Object.entries(source).filter(([key, value]) => !['start_date', 'end_date'].includes(key) && value !== null && value !== undefined && String(value) !== '').length
@@ -379,20 +395,21 @@ const endpointDistributionSource = ref<EndpointSource>('inbound')
 const activeTab = ref<'usage' | 'errors'>('usage')
 const errorViewEnabled = computed(() => appStore.cachedPublicSettings?.allow_user_view_error_requests ?? false)
 
-// 表单用 null 表示全部；发送请求时统一转换为省略参数。
+// 筛选框的“全部”选项值为 null，这几项必须初始化为 null 才能显示对应文案，发请求前再去掉。
 type UsageFilterState = Omit<UsageQueryParams, 'api_key_id' | 'group_id' | 'model' | 'request_type'> & {
   api_key_id: number | null
   group_id: number | null
   model: string | null
   request_type: UsageRequestType | null
 }
+
 const filters = ref<UsageFilterState>({
   start_date: startDate.value,
   end_date: endDate.value,
-  request_type: null,
   api_key_id: null,
   group_id: null,
   model: null,
+  request_type: null,
   billing_type: null,
   billing_mode: null,
   native_compaction_v2: null,
@@ -585,6 +602,26 @@ const applyFilters = () => {
   void loadChartData()
   void loadTeamMemberUsage()
   resetErrorRows()
+}
+
+// 重置只清空当前标签页的筛选条件，日期范围保持不变。
+const resetCurrentFilters = () => {
+  if (activeTab.value === 'errors') {
+    errorFilter.value = { model: '', category: '', api_key_id: null, status_code: null }
+    applyErrorFilters()
+    return
+  }
+  filters.value = {
+    ...filters.value,
+    api_key_id: null,
+    group_id: null,
+    model: null,
+    request_type: null,
+    billing_type: null,
+    billing_mode: null,
+    native_compaction_v2: null,
+  }
+  applyFilters()
 }
 
 const refreshData = () => {
@@ -834,12 +871,6 @@ const handleColumnClickOutside = (event: MouseEvent) => {
     showColumnDropdown.value = false
   }
 }
-const handleFilterClickOutside = (event: MouseEvent) => {
-  const target = event.target
-  if (target instanceof Node && filterPanelRef.value?.contains(target)) return
-  if (target instanceof Element && target.closest('.select-dropdown-portal')) return
-  showFilterDropdown.value = false
-}
 
 const loadFilterOptions = async () => {
   try {
@@ -969,7 +1000,6 @@ onMounted(() => {
   loadSavedColumns()
   loadSavedErrColumns()
   document.addEventListener('click', handleColumnClickOutside)
-  document.addEventListener('click', handleFilterClickOutside)
   void loadFilterOptions()
   refreshData()
 })
@@ -977,7 +1007,6 @@ onMounted(() => {
 onUnmounted(() => {
   abortController?.abort()
   document.removeEventListener('click', handleColumnClickOutside)
-  document.removeEventListener('click', handleFilterClickOutside)
 })
 
 watch(endpointDistributionSource, () => {
@@ -986,23 +1015,4 @@ watch(endpointDistributionSource, () => {
 
 
 // 重置只清空当前标签页的筛选条件，日期范围保持不变。
-const resetCurrentFilters = () => {
-  if (activeTab.value === 'errors') {
-    errorFilter.value = { model: '', category: '', api_key_id: null, status_code: null }
-    applyErrorFilters()
-    return
-  }
-  filters.value = {
-    ...filters.value,
-    api_key_id: null,
-    group_id: null,
-    model: null,
-    request_type: null,
-    billing_type: null,
-    billing_mode: null,
-    native_compaction_v2: null,
-  }
-  applyFilters()
-}
-
 </script>

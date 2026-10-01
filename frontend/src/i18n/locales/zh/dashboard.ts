@@ -221,7 +221,9 @@ export default {
       tooManyMappings: '复合 Key 最多支持 20 个分组映射',
       moveUp: '上移',
       moveDown: '下移'
-    },
+    ,
+moreMappings: '+{count}'
+},
     billing: {
       modeLabel: '结算方式',
       subscriptionLabel: '指定订阅',
@@ -661,7 +663,12 @@ export default {
     subscriptionRefreshFailed: '兑换成功，但订阅状态刷新失败。',
     userRefreshFailed: '兑换成功，但账户信息刷新失败。',
     pleaseEnterCode: '请输入兑换码'
-  },
+  ,
+balanceReceived: '余额已到账 {amount}',
+concurrencyReceived: '并发数 {count}',
+subscriptionReceived: '订阅已领取',
+dataRefreshFailed: '兑换成功，但数据刷新失败，请刷新页面查看。'
+},
 affiliate: {
     title: '邀请返利',
     description: '邀请新用户注册，并将返利额度转入账户余额',

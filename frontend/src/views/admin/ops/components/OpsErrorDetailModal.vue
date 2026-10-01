@@ -1,11 +1,6 @@
 <template>
   <BaseDialog :show="show" :title="title" width="full" :close-on-click-outside="true" @close="close">
-    <div v-if="loading" class="flex items-center justify-center py-16">
-      <div class="flex flex-col items-center gap-3">
-        <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
-        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('admin.ops.errorDetail.loading') }}</div>
-      </div>
-    </div>
+    <ContentSkeleton v-if="loading" variant="detail" :rows="8" class="p-6" />
 
     <div v-else-if="!detail" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
       {{ emptyText }}
@@ -176,9 +171,10 @@
                   @click="toggleUpstreamDetail(ev.id)"
                 >
                   <Icon
-                    :name="expandedUpstreamDetailIds.has(ev.id) ? 'chevronDown' : 'chevronRight'"
+                    name="chevronRight" class="transition-transform duration-normal" :class="{ 'rotate-90': expandedUpstreamDetailIds.has(ev.id) }"
                     size="xs"
                     :stroke-width="2"
+                    :animate-on-hover="false"
                   />
                   <span>
                     {{
@@ -204,10 +200,12 @@
 
             <div v-if="ev.message" class="mt-3 break-words text-sm font-medium text-gray-900 dark:text-white">{{ ev.message }}</div>
 
-            <pre
-              v-if="expandedUpstreamDetailIds.has(ev.id)"
-              class="mt-3 max-h-menu-sm overflow-auto rounded-surface border border-gray-200 bg-gray-50 p-3 text-xs text-gray-800 dark:border-dark-700 dark:bg-dark-950 dark:text-gray-100"
-            ><code>{{ prettyJSON(getUpstreamResponsePreview(ev)) }}</code></pre>
+            <Collapse :open="expandedUpstreamDetailIds.has(ev.id)" unmount-on-hide>
+              <pre
+
+                class="mt-3 max-h-menu-sm overflow-auto rounded-surface border border-gray-200 bg-gray-50 p-3 text-xs text-gray-800 dark:border-dark-700 dark:bg-dark-950 dark:text-gray-100"
+              ><code>{{ prettyJSON(getUpstreamResponsePreview(ev)) }}</code></pre>
+            </Collapse>
           </div>
         </div>
       </div>
@@ -226,6 +224,9 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import Collapse from '@/components/common/Collapse.vue'
+
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'

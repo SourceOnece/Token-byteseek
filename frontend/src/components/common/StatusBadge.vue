@@ -1,8 +1,12 @@
 <template>
-  <!-- 形状语义状态标：方块=正常运行 / 三角=警告停用 / 圆=错误告警 -->
   <div class="flex items-center gap-1.5">
-    <span :class="['bh-status-shape', shapeClass]" aria-hidden="true"></span>
-    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+    <span
+      :class="[
+        'inline-block h-2 w-2 rounded-full',
+        variantClass
+      ]"
+    ></span>
+    <span class="text-sm text-gray-700 dark:text-gray-300">
       {{ label }}
     </span>
   </div>
@@ -16,60 +20,20 @@ const props = defineProps<{
   label: string
 }>()
 
-const shapeClass = computed(() => {
+const variantClass = computed(() => {
   switch (props.status) {
     case 'active':
     case 'success':
-      return 'bh-status-square'
+      return 'bg-green-500'
     case 'disabled':
     case 'inactive':
     case 'warning':
-      return 'bh-status-triangle'
+      return 'bg-yellow-500'
     case 'error':
     case 'danger':
-      return 'bh-status-circle'
+      return 'bg-red-500'
     default:
-      return 'bh-status-neutral'
+      return 'bg-gray-400'
   }
 })
 </script>
-
-<style scoped>
-.bh-status-shape {
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-/* 方块：正常 / 启用 */
-.bh-status-square {
-  width: 9px;
-  height: 9px;
-  background: #059669;
-}
-
-/* 三角：警告 / 停用 */
-.bh-status-triangle {
-  width: 0;
-  height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-bottom: 10px solid var(--bh-yellow);
-  filter: drop-shadow(0 1px 0 rgba(20, 20, 20, 0.55));
-}
-
-/* 圆：错误 / 告警 */
-.bh-status-circle {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
-  background: var(--bh-red);
-}
-
-/* 未知状态：空心方 */
-.bh-status-neutral {
-  width: 9px;
-  height: 9px;
-  border: 2px solid var(--bh-ink);
-  background: transparent;
-}
-</style>

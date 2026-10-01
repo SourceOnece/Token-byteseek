@@ -6,35 +6,30 @@
       </h3>
       <div class="flex flex-wrap items-center justify-end gap-2">
         <div
+          v-segmented
           v-if="showSourceToggle"
-          class="inline-flex rounded-control border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-dark-800"
+          class="segmented"
         >
           <button
             type="button"
-            class="rounded-control px-2.5 py-1 text-xs font-medium transition-colors"
-            :class="source === 'inbound'
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+            class="segmented-item px-2.5 py-1 text-xs"
+            :class="{ 'segmented-item-active': source === 'inbound' }"
             @click="emit('update:source', 'inbound')"
           >
             {{ t('usage.inbound') }}
           </button>
           <button
             type="button"
-            class="rounded-control px-2.5 py-1 text-xs font-medium transition-colors"
-            :class="source === 'upstream'
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+            class="segmented-item px-2.5 py-1 text-xs"
+            :class="{ 'segmented-item-active': source === 'upstream' }"
             @click="emit('update:source', 'upstream')"
           >
             {{ t('usage.upstream') }}
           </button>
           <button
             type="button"
-            class="rounded-control px-2.5 py-1 text-xs font-medium transition-colors"
-            :class="source === 'path'
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+            class="segmented-item px-2.5 py-1 text-xs"
+            :class="{ 'segmented-item-active': source === 'path' }"
             @click="emit('update:source', 'path')"
           >
             {{ t('usage.path') }}
@@ -42,25 +37,23 @@
         </div>
 
         <div
+
+          v-segmented
           v-if="showMetricToggle"
-          class="inline-flex rounded-control border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-dark-800"
+          class="segmented"
         >
           <button
             type="button"
-            class="rounded-control px-2.5 py-1 text-xs font-medium transition-colors"
-            :class="metric === 'tokens'
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+            class="segmented-item px-2.5 py-1 text-xs"
+            :class="{ 'segmented-item-active': metric === 'tokens' }"
             @click="emit('update:metric', 'tokens')"
           >
             {{ t('admin.dashboard.metricTokens') }}
           </button>
           <button
             type="button"
-            class="rounded-control px-2.5 py-1 text-xs font-medium transition-colors"
-            :class="metric === 'actual_cost'
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'"
+            class="segmented-item px-2.5 py-1 text-xs"
+            :class="{ 'segmented-item-active': metric === 'actual_cost' }"
             @click="emit('update:metric', 'actual_cost')"
           >
             {{ t('admin.dashboard.metricActualCost') }}
@@ -68,9 +61,7 @@
         </div>
       </div>
     </div>
-    <div v-if="loading" class="flex h-48 items-center justify-center">
-      <LoadingSpinner />
-    </div>
+    <ChartSkeleton v-if="loading" variant="distribution" />
     <!-- 桌面端顶部对齐，避免数据较少时表格被圆环图垂直居中。 -->
     <div v-else-if="displayEndpointStats.length > 0 && chartData" class="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
       <div class="h-48 w-48 shrink-0">
@@ -90,15 +81,21 @@
           </thead>
           <tbody>
             <template v-for="item in displayEndpointStats" :key="item.endpoint">
-              <tr
-                class="border-t border-gray-100 transition-colors dark:border-gray-700"
+              <tr data-icon-trigger
+                class="border-t border-gray-100 transition-colors dark:border-dark-600"
                 :class="enableBreakdown ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700/40' : ''"
                 @click="enableBreakdown && toggleBreakdown(item.endpoint)"
               >
-                <td class="max-w-[180px] truncate py-1.5 font-medium" :class="enableBreakdown ? 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300' : 'text-gray-900 dark:text-white'" :title="item.endpoint">
+                <td class="max-w-[180px] truncate py-1.5 font-medium" :class="enableBreakdown ? 'text-primary-600 hover:text-primary-800 dark:text-primary-500 dark:hover:text-primary-500' : 'text-gray-900 dark:text-white'" :title="item.endpoint">
                   <span class="inline-flex items-center gap-1">
-                    <svg v-if="enableBreakdown && expandedKey === item.endpoint" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    <svg v-else-if="enableBreakdown" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <Icon
+                      v-if="enableBreakdown"
+                      name="chevronRight"
+                      size="xs"
+                      :animate-on-hover="false"
+                      class="h-3 w-3 shrink-0 transition-transform duration-normal"
+                      :class="{ 'rotate-90': expandedKey === item.endpoint }"
+                    />
                     {{ item.endpoint }}
                   </span>
                 </td>
@@ -115,14 +112,12 @@
                   {{ usdUnitSymbol }}{{ formatCost(item.cost) }}
                 </td>
               </tr>
-              <tr v-if="expandedKey === item.endpoint">
-                <td :colspan="distributionColspan" class="p-0">
+              <ExpandableTableRow :open="expandedKey === item.endpoint" :colspan="distributionColspan">
                   <UserBreakdownSubTable
                     :items="breakdownItems"
                     :loading="breakdownLoading"
                   />
-                </td>
-              </tr>
+                </ExpandableTableRow>
             </template>
           </tbody>
         </table>
@@ -135,18 +130,22 @@
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
+import ExpandableTableRow from '@/components/common/ExpandableTableRow.vue'
+import Icon from '@/components/icons/Icon.vue'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LogarithmicScale, Tooltip, Legend } from 'chart.js'
 import { Bar, Doughnut } from 'vue-chartjs'
-import { BH_CHART_PALETTE } from '@/utils/chartTheme'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import UserBreakdownSubTable from './UserBreakdownSubTable.vue'
 import { toLogarithmicDisplayValues } from '@/utils/chartDisplayScale'
 import { externalTooltipHandler, hideExternalTooltip } from '@/utils/chartExternalTooltip'
+import { CHART_PALETTE } from '@/composables/useChartTheme'
 import type { EndpointStat, UserBreakdownItem } from '@/types'
 import { getUserBreakdown } from '@/api/admin/dashboard'
+import { formatTokens } from '@/utils/format'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LogarithmicScale, Tooltip, Legend)
 
@@ -228,7 +227,7 @@ const toggleBreakdown = async (endpoint: string) => {
   }
 }
 
-const chartColors = [...BH_CHART_PALETTE]
+const chartColors = CHART_PALETTE
 
 const displayEndpointStats = computed(() => {
   const sourceStats = props.source === 'upstream'
@@ -343,17 +342,6 @@ const barOptions = computed(() => ({
     }
   }
 }))
-
-const formatTokens = (value: number): string => {
-  if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(2)}B`
-  } else if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(2)}M`
-  } else if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(2)}K`
-  }
-  return value.toLocaleString()
-}
 
 const formatNumber = (value: number): string => {
   return value.toLocaleString()

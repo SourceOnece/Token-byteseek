@@ -49,7 +49,9 @@ export default {
       "structured_output": "Structured output",
       "temperature": "Temperature",
       "attachment": "Attachments"
-    },
+    ,
+"modalities": "Modalities"
+},
     "modalities": {
       "text": "Text",
       "image": "Image",
@@ -64,5 +66,8 @@ export default {
       "local_override": "Local override"
     },
     "configDescription": "Description"
-  }
+  ,
+"searchConfigs": "Search attribute configuration names",
+"searchModels": "Search model names"
+}
 }

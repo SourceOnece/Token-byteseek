@@ -10,6 +10,8 @@ export { default as EmptyState } from './EmptyState.vue'
 export { default as LocaleSwitcher } from './LocaleSwitcher.vue'
 export { default as ExportProgressDialog } from './ExportProgressDialog.vue'
 export { default as UserAvatar } from './UserAvatar.vue'
+export { default as RuleListEditor } from './RuleListEditor.vue'
+export { default as ModelMappingEditor } from './ModelMappingEditor.vue'
 
 // Export types
 export type { Column } from './types'

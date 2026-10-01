@@ -1,6 +1,6 @@
 <template>
   <div
-    class="pagination-root flex items-center justify-between border-t-2 border-gray-950 bg-white px-4 py-3 dark:border-dark-200/60 dark:bg-dark-800 lg:px-6 sm:px-6"
+    class="pagination-root flex shrink-0 items-center justify-between border-t border-gray-200 bg-white px-4 py-3 dark:border-dark-700 dark:bg-dark-900 lg:bg-gray-50/80 lg:px-6 lg:py-2"
   >
     <div class="pagination-mobile flex flex-1 items-center justify-between lg:hidden">
       <!-- Mobile pagination -->
@@ -80,7 +80,7 @@
           class="pagination-control bh-page-btn relative inline-flex h-9 items-center rounded-l-control border border-gray-300 bg-white px-2 py-0 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800"
           :aria-label="t('pagination.previous')"
         >
-          <Icon name="chevronLeft" size="md" :stroke-width="2.5" />
+          <Icon name="chevronLeft" size="sm" :animate-on-hover="false" />
         </button>
 
         <!-- Page numbers -->
@@ -92,7 +92,7 @@
           :class="[
             'pagination-control bh-page-btn pagination-page-button relative inline-flex h-9 min-w-9 items-center justify-center border px-2 py-0 text-sm font-medium',
             pageNum === page
-              ? 'bh-page-btn-active z-10'
+              ? 'z-10 border-primary-500 bg-primary-50 text-primary-600 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
               : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-300 dark:hover:bg-dark-800',
             typeof pageNum !== 'number' && 'cursor-default'
           ]"
@@ -111,7 +111,7 @@
           class="pagination-control bh-page-btn relative inline-flex h-9 items-center rounded-r-control border border-gray-300 bg-white px-2 py-0 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800"
           :aria-label="t('pagination.next')"
         >
-          <Icon name="chevronRight" size="md" :stroke-width="2.5" />
+          <Icon name="chevronRight" size="sm" :animate-on-hover="false" />
         </button>
       </nav>
     </div>

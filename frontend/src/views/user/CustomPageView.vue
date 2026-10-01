@@ -2,11 +2,7 @@
   <AppLayout fit-viewport="all">
     <div class="custom-page-layout">
       <div class="card flex-1 min-h-0 overflow-hidden">
-        <div v-if="loading" class="flex h-full items-center justify-center py-12">
-          <div
-            class="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"
-          ></div>
-        </div>
+        <ContentSkeleton v-if="loading" variant="article" :rows="4" class="h-full overflow-hidden p-6" />
 
         <div
           v-else-if="!menuItem"
@@ -28,26 +24,28 @@
         </div>
 
         <div v-else-if="isMarkdownMode" class="flex h-full overflow-hidden">
-          <aside v-show="tocVisible" class="toc-sidebar">
-            <div class="toc-header">
-              <span class="toc-title">{{ t('customPage.toc') }}</span>
-              <button class="toc-close-btn" type="button" :title="t('customPage.hideToc')" @click="tocVisible = false">
-                <Icon name="chevronLeft" size="sm" />
-              </button>
-            </div>
-            <nav class="toc-nav">
-              <a
-                v-for="item in tocItems"
-                :key="item.id"
-                :href="'#' + item.id"
-                class="toc-item"
-                :class="[`toc-level-${item.level}`, { 'toc-active': activeHeadingId === item.id }]"
-                @click.prevent="scrollToHeading(item.id)"
-              >
-                {{ item.text }}
-              </a>
-            </nav>
-          </aside>
+          <MotionTransition persisted name="toc">
+            <aside v-show="tocVisible" class="toc-sidebar">
+              <div class="toc-header">
+                <span class="toc-title">{{ t('customPage.toc') }}</span>
+                <button class="toc-close-btn" type="button" :title="t('customPage.hideToc')" @click="tocVisible = false">
+                  <Icon name="chevronLeft" size="sm" :animate-on-hover="false" />
+                </button>
+              </div>
+              <nav class="toc-nav">
+                <a
+                  v-for="item in tocItems"
+                  :key="item.id"
+                  :href="'#' + item.id"
+                  class="toc-item"
+                  :class="[`toc-level-${item.level}`, { 'toc-active': activeHeadingId === item.id }]"
+                  @click.prevent="scrollToHeading(item.id)"
+                >
+                  {{ item.text }}
+                </a>
+              </nav>
+            </aside>
+          </MotionTransition>
 
           <button
             v-show="!tocVisible && tocItems.length > 0"
@@ -106,6 +104,9 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import MotionTransition from '@/components/common/MotionTransition.vue'
+
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -372,7 +373,7 @@ onUnmounted(() => {
 
 <style scoped>
 .custom-page-layout {
-  /* 高度由 AppLayout 的 flex 链分配,不再手写视口差值(旧 calc 里的 64px 顶栏已过时)。 */
+  /* AppLayout 锁定视口高度后，flex 链把页头下方的剩余空间分配给 iframe 或 Markdown 滚动区。 */
   @apply flex min-h-0 flex-1 flex-col;
 }
 
@@ -397,6 +398,37 @@ onUnmounted(() => {
   }
 }
 
+/* 桌面目录折叠实际宽度；窄屏抽屉只改变位移，不挤压正文。 */
+.toc-enter-active,
+.toc-leave-active {
+  transition: width var(--motion-layout) var(--motion-ease),
+    min-width var(--motion-layout) var(--motion-ease),
+    opacity var(--motion-layout) var(--motion-ease);
+}
+.toc-enter-from,
+.toc-leave-to {
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+}
+/* BREAKPOINT_SM 减 1，与目录原有窄屏定位一致。 */
+@media (max-width: 639px) {
+  .toc-enter-active,
+  .toc-leave-active {
+    transition: transform var(--motion-layout) var(--motion-ease), opacity var(--motion-layout) var(--motion-ease);
+  }
+  .toc-enter-from,
+  .toc-leave-to {
+    width: 70%;
+    min-width: 160px;
+    transform: translateX(-100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toc-enter-from,
+  .toc-leave-to { transform: none; }
+}
+
 .toc-header {
   @apply flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-dark-600;
 }
@@ -419,7 +451,7 @@ onUnmounted(() => {
 }
 
 .toc-item.toc-active {
-  @apply text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 font-medium;
+  @apply text-primary-600 dark:text-primary-500 bg-primary-50 dark:bg-primary-500/8 font-medium;
 }
 
 .toc-level-1 { padding-left: 8px; }
@@ -494,7 +526,7 @@ onUnmounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s, background 0.2s;
+  transition: opacity var(--motion-normal), background var(--motion-normal);
   font-family: inherit;
 }
 .copy-btn:hover { background: rgba(255, 255, 255, 0.25); }

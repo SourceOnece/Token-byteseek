@@ -133,6 +133,12 @@ const iconInfo = computed(() => iconKey.value ? modelIconData[iconKey.value] : n
 </script>
 
 <style scoped>
+/* 品牌图形与字母占位都作为图标展示，拖选文字时跳过它们。 */
+.model-icon,
+.model-icon-fallback {
+  @apply select-none;
+}
+
 .model-icon {
   flex-shrink: 0;
 }

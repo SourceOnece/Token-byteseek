@@ -2,7 +2,7 @@
   <div class="card">
     <!-- Header -->
     <div class="border-b border-gray-100 px-4 py-3 dark:border-dark-700">
-      <div class="flex items-center justify-between">
+      <div class="flex items-end justify-between">
         <div>
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">
             {{ t('admin.settings.payment.providerManagement') }}
@@ -38,9 +38,7 @@
     <!-- List -->
     <div class="p-4">
       <!-- Loading -->
-      <div v-if="loading && !providers.length" class="flex items-center justify-center py-6">
-        <div class="h-5 w-5 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
-      </div>
+      <ContentSkeleton v-if="loading && !providers.length" variant="list" :rows="3" class="py-4" />
 
       <!-- Provider cards (draggable) -->
       <VueDraggable
@@ -53,9 +51,7 @@
       >
         <div v-for="p in localProviders" :key="p.id" class="flex items-start gap-2">
           <div class="drag-handle mt-3 flex cursor-grab items-center text-gray-300 hover:text-gray-500 active:cursor-grabbing dark:text-dark-600 dark:hover:text-dark-400">
-            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
-            </svg>
+            <Icon name="grip" size="md" class="h-5 w-5" />
           </div>
           <div class="min-w-0 flex-1">
             <ProviderCard
@@ -93,6 +89,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { VueDraggable } from 'vue-draggable-plus'

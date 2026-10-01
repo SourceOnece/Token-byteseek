@@ -1,17 +1,15 @@
 <template>
   <div class="bg-gray-50/50 dark:bg-dark-700/30">
-    <div v-if="loading" class="flex items-center justify-center py-3">
-      <LoadingSpinner />
-    </div>
-    <div v-else-if="items.length === 0" class="py-2 text-center text-xs text-gray-400">
+    <div v-if="!loading && items.length === 0" class="py-2 text-center text-xs text-gray-400">
       {{ t('admin.dashboard.noDataAvailable') }}
     </div>
-    <table v-else class="w-full text-xs">
-      <tbody>
+    <table v-else :aria-busy="loading" class="w-full text-xs">
+      <TableSkeletonBody v-if="loading" :columns="4 + Number(showProviderCost) + Number(showStandardCost)" :rows="3" cell-class="px-3 py-2" />
+      <tbody v-else>
         <tr
           v-for="user in items"
           :key="user.user_id"
-          class="border-t border-gray-100/50 dark:border-gray-700/50"
+          class="border-t border-gray-100/50 dark:border-dark-600/50"
         >
           <td class="max-w-[120px] truncate py-1 pl-6 text-gray-600 dark:text-gray-300" :title="user.email">
             {{ user.email || `User #${user.user_id}` }}
@@ -38,10 +36,10 @@
 </template>
 
 <script setup lang="ts">
+import TableSkeletonBody from '@/components/common/TableSkeletonBody.vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import type { UserBreakdownItem } from '@/types'
 import { formatTokens } from '@/utils/format'
 

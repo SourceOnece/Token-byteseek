@@ -1,7 +1,8 @@
 <template>
   <div :class="flat ? 'p-4' : 'card p-6'">
     <div class="space-y-4">
-      <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center justify-between gap-2">
+        <!-- 未设置的条件可能是 undefined，统一按 null 显示，才能匹配各下拉框的“全部”选项 -->
         <FilterDropdown :active-count="activeFilterCount" :columns="3" keep-mounted @reset="resetPanelFilters">
           <FilterField v-if="mode === 'usage'" :label="t('admin.usage.teamFilter')">
             <Select :model-value="filters.team_id ?? null" @update:model-value="filters.team_id = $event" :options="teamOptions" searchable @change="emitChange" />
@@ -193,12 +194,13 @@
 </template>
 
 <script setup lang="ts">
-import FilterField from '@/components/common/FilterField.vue'
-import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, onMounted, onUnmounted, toRef, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { COMMON_ERROR_STATUS_CODES } from '@/utils/errorBadges'
 import { SEARCH_DEBOUNCE_MS } from '@/constants/ui'
@@ -242,8 +244,6 @@ const filters = toRef(props, 'modelValue')
 const userSearchRef = ref<HTMLElement | null>(null)
 const apiKeySearchRef = ref<HTMLElement | null>(null)
 const providerSearchRef = ref<HTMLElement | null>(null)
-const filterPanelRef = ref<HTMLElement | null>(null)
-const showFilterDropdown = ref(false)
 
 const userKeyword = ref('')
 const userResults = ref<SimpleUser[]>([])
@@ -420,6 +420,15 @@ const onClearApiKey = () => {
   emitChange()
 }
 
+// 面板内重置只清空筛选条件，日期范围保持不变；关键词由下方的 watch 跟随清空。
+const resetPanelFilters = () => {
+  clearPendingUserSearch()
+  for (const key of Object.keys(filters.value)) {
+    if (key !== 'start_date' && key !== 'end_date') filters.value[key] = undefined
+  }
+  emitChange()
+}
+
 const debounceProviderSearch = () => {
   if (providerSearchTimeout) clearTimeout(providerSearchTimeout)
   providerSearchTimeout = setTimeout(async () => {
@@ -467,12 +476,10 @@ const onDocumentClick = (e: MouseEvent) => {
   const clickedInsideUser = userSearchRef.value?.contains(target) ?? false
   const clickedInsideApiKey = apiKeySearchRef.value?.contains(target) ?? false
   const clickedInsideProvider = providerSearchRef.value?.contains(target) ?? false
-  const clickedInsideFilters = filterPanelRef.value?.contains(target) ?? false
 
   if (!clickedInsideUser) showUserDropdown.value = false
   if (!clickedInsideApiKey) showApiKeyDropdown.value = false
   if (!clickedInsideProvider) showProviderDropdown.value = false
-  if (!clickedInsideFilters) showFilterDropdown.value = false
 }
 
 watch(
@@ -552,15 +559,4 @@ const setUserKeyword = (email: string) => {
 const getUserSearchRevision = () => userSearchSequence
 
 defineExpose({ getUserSearchRevision, setUserKeyword })
-
-
-// 面板内重置只清空筛选条件，日期范围保持不变；关键词由下方的 watch 跟随清空。
-const resetPanelFilters = () => {
-  clearPendingUserSearch()
-  for (const key of Object.keys(filters.value)) {
-    if (key !== 'start_date' && key !== 'end_date') filters.value[key] = undefined
-  }
-  emitChange()
-}
-
 </script>

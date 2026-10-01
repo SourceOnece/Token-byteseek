@@ -1,58 +1,50 @@
 <template>
-  <section class="mt-3 border-t border-gray-200 pt-3 dark:border-dark-600">
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-      <div class="min-w-0 flex-1 sm:max-w-2xl">
-        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">
-          {{ t('admin.pricing.form.timePricing') }}
-        </label>
-        <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div class="min-w-0">
-            <label class="block text-xs text-gray-400">
-              {{ t('admin.pricing.form.timezone') }}
-            </label>
-            <Select
-              :model-value="modelValue.timezone"
-              :options="timezoneOptions"
-              :aria-label="t('admin.pricing.form.timezone')"
-              data-testid="time-pricing-timezone"
-              searchable
-              creatable
-              class="mt-1 w-full"
-              @update:model-value="updateTimezone"
-            />
-          </div>
-          <div class="min-w-0">
-            <label class="block text-xs text-gray-400">
-              {{ t('admin.pricing.form.timePricingDayScope') }}
-            </label>
-            <Select
-              :model-value="modelValue.weekdays_only"
-              :options="dayScopeOptions"
-              :aria-label="t('admin.pricing.form.timePricingDayScope')"
-              data-testid="time-pricing-day-scope"
-              class="mt-1 w-full"
-              @update:model-value="updateDayScope"
-            />
-          </div>
+  <RuleListEditor
+    class="mt-3 border-t border-gray-200 pt-3 dark:border-dark-600"
+    :items="modelValue.periods"
+    :title="t('admin.pricing.form.timePricing')"
+    :add-label="t('admin.pricing.form.addTimePeriod')"
+    :remove-label="t('admin.pricing.form.removeTimePeriod')"
+    variant="card"
+    :item-label="(index) => t('common.ruleIndex', { index: index + 1 })"
+    test-id="time-periods"
+    @add="addPeriod"
+    @remove="removePeriod"
+  >
+    <template #header-extra>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div class="min-w-0">
+          <label class="block text-xs text-gray-400">
+            {{ t('admin.pricing.form.timezone') }}
+          </label>
+          <Select
+            :model-value="modelValue.timezone"
+            :options="timezoneOptions"
+            :aria-label="t('admin.pricing.form.timezone')"
+            data-testid="time-pricing-timezone"
+            searchable
+            creatable
+            class="mt-1 w-full"
+            @update:model-value="updateTimezone"
+          />
+        </div>
+        <div class="min-w-0">
+          <label class="block text-xs text-gray-400">
+            {{ t('admin.pricing.form.timePricingDayScope') }}
+          </label>
+          <Select
+            :model-value="modelValue.weekdays_only"
+            :options="dayScopeOptions"
+            :aria-label="t('admin.pricing.form.timePricingDayScope')"
+            data-testid="time-pricing-day-scope"
+            class="mt-1 w-full"
+            @update:model-value="updateDayScope"
+          />
         </div>
       </div>
-      <button
-        type="button"
-        class="btn btn-secondary self-start px-3 text-xs sm:self-end"
-        data-testid="add-time-period"
-        @click="addPeriod"
-      >
-        <Icon name="plus" size="sm" class="mr-1" />
-        {{ t('admin.pricing.form.addTimePeriod') }}
-      </button>
-    </div>
-
-    <div v-if="modelValue.periods.length > 0" class="mt-3 space-y-3">
-      <div
-        v-for="(period, index) in modelValue.periods"
-        :key="index"
-        class="grid grid-cols-1 gap-2 border-t border-gray-200 pt-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_2rem] sm:items-end dark:border-dark-600"
-      >
+    </template>
+    <template #row="{ item: period, index }">
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <div class="min-w-0">
           <label :for="`${inputIdPrefix}-start-${index}`" class="block text-xs text-gray-400">
             {{ t('admin.pricing.form.startTime') }}
@@ -102,26 +94,16 @@
             @blur="formatMultiplier(index, ($event.target as HTMLInputElement).value)"
           />
         </div>
-        <button
-          type="button"
-          class="flex rounded-compact text-gray-400 hover:text-red-500 btn-icon-sm"
-          :title="t('admin.pricing.form.removeTimePeriod')"
-          :aria-label="t('admin.pricing.form.removeTimePeriod')"
-          :data-testid="`remove-time-period-${index}`"
-          @click="removePeriod(index)"
-        >
-          <Icon name="trash" size="sm" />
-        </button>
       </div>
-    </div>
-  </section>
+    </template>
+  </RuleListEditor>
 </template>
 
 <script setup lang="ts">
 import { computed, getCurrentInstance } from 'vue'
 import { useI18n } from 'vue-i18n'
+import RuleListEditor from '@/components/common/RuleListEditor.vue'
 import Select from '@/components/common/Select.vue'
-import Icon from '@/components/icons/Icon.vue'
 import {
   COMMON_TIMEZONES,
   formatTimezoneOffset,
@@ -168,8 +150,9 @@ function addPeriod() {
 }
 
 function updatePeriod(index: number, field: keyof TimePricingPeriodFormEntry, value: string) {
-  const periods = props.modelValue.periods.map((period, current) =>
-    current === index ? { ...period, [field]: value } : period)
+  // 保留时间段对象，连续输入和格式化不会让焦点离开当前行。
+  const periods = [...props.modelValue.periods]
+  periods[index][field] = value
   emit('update:modelValue', { ...props.modelValue, periods })
 }
 

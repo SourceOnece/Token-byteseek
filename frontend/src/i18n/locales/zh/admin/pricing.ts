@@ -592,7 +592,10 @@ riskControl: {
         syncModelsSuccess: '已同步 {count} 个新模型',
         syncModelsAlreadyUpToDate: '模型列表已是最新',
         syncModelsError: '同步模型失败'
-      }
+      ,
+imageUnitPrice: '每张价格',
+videoUnitPrice: '每秒价格'
+}
     },
 // Subscriptions Management
     subscriptions: {

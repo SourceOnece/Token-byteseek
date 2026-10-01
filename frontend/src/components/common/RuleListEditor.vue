@@ -179,7 +179,7 @@ const props = withDefaults(
     min: 0,
     removable: true,
     variant: 'line',
-    animated: false,
+    animated: true,
   },
 )
 
@@ -221,7 +221,7 @@ const addBlocked = computed(
 // 线形行之间只画分隔线；卡片形态各自带边框和浅底。
 const rowClass = computed(() =>
   props.variant === 'card'
-    ? 'card p-4'
+    ? 'rounded-surface border border-gray-200 bg-gray-50/50 p-4 dark:border-dark-600 dark:bg-dark-800/40'
     : 'border-b border-gray-200 pb-3 last:border-b-0 last:pb-0 dark:border-dark-600',
 )
 // 带序号头的卡片使用紧凑按钮，其余与 36px 输入框对齐。
@@ -230,7 +230,8 @@ const actionSizeClass = computed(() =>
 )
 const moveButtonClass =
   'text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-400 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-100'
-const removeButtonClass = 'btn btn-danger'
+const removeButtonClass =
+  'text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-400 dark:text-dark-400 dark:hover:bg-red-900/20 dark:hover:text-red-400'
 
 const resolveKey = (item: T, index: number): string | number => {
   if (props.itemKey) return props.itemKey(item, index)

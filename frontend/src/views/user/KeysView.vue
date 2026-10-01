@@ -2,8 +2,8 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
             <div class="flex min-w-0 flex-1 items-center gap-2">
               <SearchInput
                 v-model="filterSearch"
@@ -20,14 +20,14 @@
                 </FilterField>
               </FilterDropdown>
             </div>
-            <div class="flex shrink-0 justify-end gap-3">
+            <div class="flex shrink-0 justify-end gap-2">
               <button
                 @click="loadApiKeys"
                 :disabled="loading"
                 class="btn btn-secondary shrink-0 btn-icon"
                 :title="t('common.refresh')"
               >
-                <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+                <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
               </button>
               <div class="relative" ref="columnDropdownRef">
                 <button
@@ -35,32 +35,35 @@
                   class="btn btn-secondary shrink-0 btn-icon"
                   :title="t('keys.columnSettings')"
                 >
-                  <Icon name="grid" size="md" />
+                  <Icon name="grid" size="sm" />
                 </button>
-                <div
-                  v-if="showColumnDropdown"
-                  class="absolute right-0 top-full z-50 mt-2 max-h-80 w-52 overflow-y-auto rounded-control border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-800"
-                >
-                  <button
-                    v-for="column in toggleableColumns"
-                    :key="column.key"
-                    @click="toggleColumn(column.key)"
-                    class="dropdown-item-sm justify-between rounded-control"
+                <MotionTransition name="dropdown-fade">
+                  <div
+                    v-if="showColumnDropdown" :inert="!(showColumnDropdown) || undefined"
+                    class="dropdown right-0 top-full z-50 mt-2 max-h-menu w-52 overflow-y-auto p-2"
                   >
-                    <span>{{ column.label }}</span>
-                    <Icon
-                      v-if="isColumnVisible(column.key)"
-                      name="check"
-                      size="sm"
-                      class="text-primary-500"
-                      :stroke-width="2"
-                    />
-                  </button>
-                </div>
+                    <button
+                      v-for="column in toggleableColumns"
+                      :key="column.key"
+                      @click="toggleColumn(column.key)"
+                      class="dropdown-item-sm justify-between rounded-control"
+                    >
+                      <span>{{ column.label }}</span>
+                      <Icon
+                        v-if="isColumnVisible(column.key)"
+                        name="check"
+                        size="sm"
+                        class="text-primary-500"
+                        :stroke-width="2"
+                        :animate-on-hover="false"
+                      />
+                    </button>
+                  </div>
+                </MotionTransition>
               </div>
               <ScopeDropdown v-if="teamFeatureEnabled" v-model="scope" @change="onScopeChange" />
               <button @click="openCreateModal" class="btn btn-primary" data-tour="keys-create-btn">
-                <Icon name="plus" size="md" class="mr-2" />
+                <Icon name="plus" size="sm" class="mr-2" />
                 {{ t('keys.createKey') }}
               </button>
             </div>
@@ -81,7 +84,8 @@
       </template>
 
       <template #table>
-        <DataTable column-order-storage-key="user-keys-column-order"
+        <DataTable
+          column-order-storage-key="user-keys-column-order"
           :columns="columns"
           :data="apiKeys"
           :loading="loading"
@@ -119,6 +123,7 @@
                   name="check"
                   size="sm"
                   :stroke-width="2"
+                  :animate-on-hover="false"
                 />
                 <Icon v-else name="clipboard" size="sm" />
               </button>
@@ -143,25 +148,35 @@
               v-if="row.is_composite"
               type="button"
               data-test="composite-group-summary"
-              class="flex max-w-[22rem] flex-wrap items-center gap-1.5 rounded-control px-1 py-1 text-left hover:bg-gray-100 dark:hover:bg-dark-700"
+              class="-mx-1 -my-1 flex max-w-[22rem] flex-wrap items-center gap-1.5 rounded-control p-1 text-left transition duration-normal hover:bg-gray-100 dark:hover:bg-dark-700"
               :title="t('keys.composite.editMappings')"
               @click="editKey(row)"
             >
+              <!-- 复合 Key 用品牌色胶囊展示“前缀 / 分组”，超出部分折叠为计数胶囊。 -->
               <span
-                v-for="binding in row.composite_groups"
+                v-for="binding in visibleCompositeGroups(row)"
                 :key="`${row.id}-${binding.group_id}`"
-                class="inline-flex min-w-0 items-center gap-1 rounded-compact border border-gray-200 bg-gray-50 px-1.5 py-1 dark:border-dark-600 dark:bg-dark-800"
+                :class="[
+                  'inline-flex min-w-0 items-center gap-1.5 rounded-compact px-2 py-0.5 text-xs leading-5',
+                  compositeGroupChipClass(binding.group?.display_brand)
+                ]"
               >
-                <span class="max-w-24 truncate font-mono text-xs font-semibold text-primary-700 dark:text-primary-300">{{ binding.prefix }}</span>
-                <span class="text-gray-300 dark:text-dark-500">/</span>
-                <span class="max-w-28 truncate text-xs text-gray-600 dark:text-dark-300">{{ binding.group?.name || `#${binding.group_id}` }}</span>
+                <span class="max-w-24 truncate font-mono font-medium">{{ binding.prefix }}</span>
+                <span class="opacity-40">/</span>
+                <span class="max-w-28 truncate opacity-75">{{ binding.group?.name || `#${binding.group_id}` }}</span>
+              </span>
+              <span
+                v-if="hiddenCompositeGroupCount(row) > 0"
+                class="inline-flex items-center rounded-compact bg-gray-100 px-2 py-0.5 text-xs leading-5 text-gray-500 dark:bg-dark-800 dark:text-dark-400"
+              >
+                {{ t('keys.composite.moreMappings', { count: hiddenCompositeGroupCount(row) }) }}
               </span>
             </button>
             <div v-else class="group/dropdown relative">
               <button
                 :ref="(el) => setGroupButtonRef(row.id, el)"
                 @click="openGroupSelector(row)"
-                class="-mx-2 -my-1 flex cursor-pointer items-center gap-2 rounded-control px-2 py-1 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-dark-700"
+                class="-mx-2 -my-1 flex cursor-pointer items-center gap-2 rounded-control px-2 py-1 transition duration-normal hover:bg-gray-100 dark:hover:bg-dark-700"
                 :title="t('keys.clickToChangeGroup')"
               >
                 <GroupBadge
@@ -174,19 +189,12 @@
                 <span v-else class="text-sm text-gray-400 dark:text-dark-500">{{
                   t('keys.noGroup')
                 }}</span>
-                <svg
+                <Icon
+                  name="sort"
+                  size="xs"
+                  :animate-on-hover="false"
                   class="h-3.5 w-3.5 text-gray-400 opacity-60 transition-opacity group-hover/dropdown:opacity-100"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  stroke-width="2"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
-                  />
-                </svg>
+                />
               </button>
             </div>
           </template>
@@ -205,19 +213,21 @@
           </template>
 
           <template #cell-usage="{ row }">
+            <!-- 窄屏卡片的用量靠右排列，桌面表格保持左对齐。 -->
             <div class="text-sm">
-              <div v-if="usageLoading && !usageStats[row.id]" class="flex h-10 items-center text-gray-400">
-                <Icon name="refresh" size="sm" class="animate-spin" />
+              <div v-if="usageLoading && !usageStats[row.id]" class="flex h-10 flex-col items-end justify-center gap-2 lg:items-start" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+                <Skeleton :width="96" :height="12" />
+                <Skeleton :width="112" :height="12" />
               </div>
               <div v-else class="space-y-0.5">
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center justify-end gap-1.5 lg:justify-start">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('keys.today') }}:</span>
                   <span class="font-medium text-gray-900 dark:text-white">
                     {{ formatBalanceAmount(usageStats[row.id]?.today_actual_cost ?? 0, { fractionDigits: 4 }) }}
                   </span>
                 </div>
                 <!-- 批量接口的 total_actual_cost 统计近 30 天，使用对应文案标明范围。 -->
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center justify-end gap-1.5 lg:justify-start">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('keys.total') }}:</span>
                   <span class="font-medium text-gray-900 dark:text-white">
                     {{ formatBalanceAmount(usageStats[row.id]?.total_actual_cost ?? 0, { fractionDigits: 4 }) }}
@@ -226,7 +236,7 @@
               </div>
               <!-- Quota progress (if quota is set) -->
               <div v-if="row.quota > 0" class="mt-1.5">
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center justify-end gap-1.5 lg:justify-start">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('keys.quota') }}:</span>
                   <span :class="[
                     'font-medium',
@@ -240,7 +250,7 @@
                 <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       row.quota_used >= row.quota ? 'bg-red-500' :
                       row.quota_used >= row.quota * 0.8 ? 'bg-yellow-500' :
                       'bg-primary-500'
@@ -270,7 +280,7 @@
                 <div class="h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       row.usage_5h >= row.rate_limit_5h ? 'bg-red-500' :
                       row.usage_5h >= row.rate_limit_5h * 0.8 ? 'bg-yellow-500' :
                       'bg-emerald-500'
@@ -298,7 +308,7 @@
                 <div class="h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       row.usage_1d >= row.rate_limit_1d ? 'bg-red-500' :
                       row.usage_1d >= row.rate_limit_1d * 0.8 ? 'bg-yellow-500' :
                       'bg-emerald-500'
@@ -326,7 +336,7 @@
                 <div class="h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       row.usage_7d >= row.rate_limit_7d ? 'bg-red-500' :
                       row.usage_7d >= row.rate_limit_7d * 0.8 ? 'bg-yellow-500' :
                       'bg-emerald-500'
@@ -425,7 +435,7 @@
                 ]"
               >
                 <Icon v-if="row.status === 'active'" name="ban" size="sm" />
-                <Icon v-else name="checkCircle" size="sm" />
+                <Icon v-else name="checkCircle" size="sm" :animate-on-hover="false" />
                 <span class="text-xs">{{ row.status === 'active' ? t('keys.disable') : t('keys.enable') }}</span>
               </button>
               <button
@@ -580,55 +590,46 @@
           </Select>
         </div>
 
-        <div v-else class="space-y-3" data-test="composite-group-editor">
-          <div
-            v-for="(binding, index) in formData.composite_groups"
-            :key="binding.local_id"
-            class="grid min-w-0 grid-cols-1 items-start gap-2 rounded-control border border-gray-200 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(7rem,0.65fr)_auto] dark:border-dark-600"
-          >
-            <Select
-              v-model="binding.group_id"
-              :options="formGroupOptions"
-              :placeholder="t('keys.selectGroup')"
-              :searchable="true"
-              :disabled="formGroupsLoading"
-              class="min-w-0"
-            />
-            <div class="min-w-0">
-              <input
-                v-model="binding.prefix"
-                type="text"
-                maxlength="32"
-                class="input min-w-0 font-mono"
-                :class="{ 'border-red-500 dark:border-red-500': compositeBindingError(index) }"
-                :placeholder="t('keys.composite.prefixPlaceholder')"
+        <RuleListEditor
+          v-else
+          :items="formData.composite_groups"
+          :item-key="(binding) => binding.local_id"
+          :add-label="t('keys.composite.addMapping')"
+          add-placement="footer"
+          :min="1"
+          :max="20"
+          reorderable
+          data-test="composite-group-editor"
+          @add="addCompositeBinding"
+          @remove="removeCompositeBinding"
+          @move="moveCompositeBinding"
+        >
+          <template #row="{ item: binding, index }">
+            <div class="grid min-w-0 grid-cols-1 items-start gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(7rem,0.65fr)]">
+              <Select
+                v-model="binding.group_id"
+                :options="formGroupOptions"
+                :placeholder="t('keys.selectGroup')"
+                :searchable="true"
+                :disabled="formGroupsLoading"
+                class="min-w-0"
               />
-              <p v-if="compositeBindingError(index)" class="mt-1 text-xs text-red-500">
-                {{ compositeBindingError(index) }}
-              </p>
+              <div class="min-w-0">
+                <input
+                  v-model="binding.prefix"
+                  type="text"
+                  maxlength="32"
+                  class="input min-w-0 font-mono"
+                  :class="{ 'input-error': compositeBindingError(index) }"
+                  :placeholder="t('keys.composite.prefixPlaceholder')"
+                />
+                <p v-if="compositeBindingError(index)" class="input-error-text">
+                  {{ compositeBindingError(index) }}
+                </p>
+              </div>
             </div>
-            <div class="flex items-center justify-end gap-1 sm:justify-start">
-              <button type="button" class="rounded-compact p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-700" :disabled="index === 0" :title="t('keys.composite.moveUp')" @click="moveCompositeBinding(index, -1)">
-                <Icon name="arrowUp" size="sm" />
-              </button>
-              <button type="button" class="rounded-compact p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-700" :disabled="index === formData.composite_groups.length - 1" :title="t('keys.composite.moveDown')" @click="moveCompositeBinding(index, 1)">
-                <Icon name="arrowDown" size="sm" />
-              </button>
-              <button type="button" class="rounded-compact p-1.5 text-red-500 hover:bg-red-50 disabled:opacity-30 dark:hover:bg-red-900/20" :disabled="formData.composite_groups.length <= 1" :title="t('common.delete')" @click="removeCompositeBinding(index)">
-                <Icon name="trash" size="sm" />
-              </button>
-            </div>
-          </div>
-          <button
-            type="button"
-            class="btn btn-secondary w-full"
-            :disabled="formData.composite_groups.length >= 20"
-            @click="addCompositeBinding"
-          >
-            <Icon name="plus" size="sm" class="mr-1.5" />
-            {{ t('keys.composite.addMapping') }}
-          </button>
-        </div>
+          </template>
+        </RuleListEditor>
 
         <!-- 单 Key Fast 策略使用项目统一选择框，系统策略仍在服务端最终裁决。 -->
         <div>
@@ -648,81 +649,25 @@
         </div>
 
         <!-- 模型重定向按行编辑，删除全部行会在更新时提交空对象。 -->
-        <div class="space-y-3" data-test="model-mapping-editor">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <label class="input-label mb-0">{{ t('keys.modelRedirect.label') }}</label><ModelRedirectHelp />
-              <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">
-                {{ t('keys.modelRedirect.hint') }}
-              </p>
-            </div>
-            <button
-              type="button"
-              class="btn btn-secondary shrink-0"
-              :disabled="formData.model_mapping_rows.length >= 100"
-              :title="t('keys.modelRedirect.addRule')"
-              data-test="model-mapping-add"
-              @click="addModelMappingRow"
-            >
-              <Icon name="plus" size="sm" class="mr-1.5" />
-              {{ t('keys.modelRedirect.addRule') }}
-            </button>
-          </div>
-
-          <p
-            v-if="formData.model_mapping_rows.length === 0"
-            class="rounded-control border border-dashed border-gray-200 px-3 py-4 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-dark-400"
-          >
-            {{ t('keys.modelRedirect.empty') }}
-          </p>
-
-          <div
-            v-for="(row, index) in formData.model_mapping_rows"
-            :key="row.local_id"
-            class="grid min-w-0 grid-cols-1 items-start gap-2 border-b border-gray-200 pb-3 last:border-b-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] dark:border-dark-600"
-            data-test="model-mapping-row"
-          >
-            <div class="min-w-0">
-              <input
-                v-model="row.source"
-                type="text"
-                class="input min-w-0 font-mono"
-                :class="{ 'border-red-500 dark:border-red-500': modelMappingRowErrors[row.local_id]?.source }"
-                :placeholder="t('keys.modelRedirect.sourcePlaceholder')"
-                :aria-label="t('keys.modelRedirect.source')"
-                :data-test="`model-mapping-source-${index}`"
-              />
-              <p v-if="modelMappingRowErrors[row.local_id]?.source" class="mt-1 text-xs text-red-500" role="alert">
-                {{ modelMappingRowErrors[row.local_id]?.source }}
-              </p>
-            </div>
-            <Icon name="arrowRight" size="sm" class="hidden text-gray-400 sm:mt-3 sm:block" />
-            <div class="min-w-0">
-              <input
-                v-model="row.target"
-                type="text"
-                class="input min-w-0 font-mono"
-                :class="{ 'border-red-500 dark:border-red-500': modelMappingRowErrors[row.local_id]?.target }"
-                :placeholder="t('keys.modelRedirect.targetPlaceholder')"
-                :aria-label="t('keys.modelRedirect.target')"
-                :data-test="`model-mapping-target-${index}`"
-              />
-              <p v-if="modelMappingRowErrors[row.local_id]?.target" class="mt-1 text-xs text-red-500" role="alert">
-                {{ modelMappingRowErrors[row.local_id]?.target }}
-              </p>
-            </div>
-            <button
-              type="button"
-              class="flex rounded-compact text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 btn-icon"
-              :title="t('common.delete')"
-              :aria-label="t('common.delete')"
-              :data-test="`model-mapping-remove-${index}`"
-              @click="removeModelMappingRow(index)"
-            >
-              <Icon name="trash" size="sm" />
-            </button>
-          </div>
-        </div>
+        <ModelMappingEditor
+          v-model="formData.model_mapping_rows"
+          :title="t('keys.modelRedirect.label')"
+          :hint="t('keys.modelRedirect.hint')"
+          :add-label="t('keys.modelRedirect.addRule')"
+          :empty-text="t('keys.modelRedirect.empty')"
+          :max="MODEL_REDIRECT_MAX_RULES"
+          :source-label="t('keys.modelRedirect.source')"
+          :target-label="t('keys.modelRedirect.target')"
+          :source-placeholder="t('keys.modelRedirect.sourcePlaceholder')"
+          :target-placeholder="t('keys.modelRedirect.targetPlaceholder')"
+          :field-errors="modelMappingFieldErrors"
+          test-id="model-mapping"
+          data-test="model-mapping-editor"
+        >
+          <template #title-suffix>
+            <ModelRedirectHelp />
+          </template>
+        </ModelMappingEditor>
 
         <!-- Custom Key Section (only for create) -->
         <div v-if="!showEditModal" class="space-y-3">
@@ -893,7 +838,7 @@
                 <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       selectedKey.usage_5h >= selectedKey.rate_limit_5h ? 'bg-red-500' :
                       selectedKey.usage_5h >= selectedKey.rate_limit_5h * 0.8 ? 'bg-yellow-500' :
                       'bg-green-500'
@@ -939,7 +884,7 @@
                 <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       selectedKey.usage_1d >= selectedKey.rate_limit_1d ? 'bg-red-500' :
                       selectedKey.usage_1d >= selectedKey.rate_limit_1d * 0.8 ? 'bg-yellow-500' :
                       'bg-green-500'
@@ -985,7 +930,7 @@
                 <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       selectedKey.usage_7d >= selectedKey.rate_limit_7d ? 'bg-red-500' :
                       selectedKey.usage_7d >= selectedKey.rate_limit_7d * 0.8 ? 'bg-yellow-500' :
                       'bg-green-500'
@@ -1027,7 +972,7 @@
                 :class="[
                   'rounded-control px-3 py-1.5 text-sm transition-colors',
                   formData.expiration_preset === days
-                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-700 dark:text-gray-400 dark:hover:bg-dark-600'
                 ]"
               >
@@ -1039,7 +984,7 @@
                 :class="[
                   'rounded-control px-3 py-1.5 text-sm transition-colors',
                   formData.expiration_preset === 'custom'
-                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-700 dark:text-gray-400 dark:hover:bg-dark-600'
                 ]"
               >
@@ -1080,26 +1025,13 @@
             class="btn btn-primary py-1.5"
             data-tour="key-form-submit"
           >
-            <svg
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
               v-if="submitting"
               class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            />
             {{
               submitting
                 ? t('keys.saving')
@@ -1141,8 +1073,16 @@
       </div>
       <template #footer>
         <div class="flex justify-end gap-3">
-          <button type="button" class="btn btn-secondary" @click="rotatedKey = null">{{ t('common.close') }}</button>
-          <button type="button" class="btn btn-primary" @click="rotatedKey && copyToClipboard(rotatedKey.key, rotatedKey.id)">{{ t('common.copy') }}</button>
+          <button type="button" class="btn btn-secondary" @click="rotatedKey = null">
+            {{ t('common.close') }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            @click="rotatedKey && copyToClipboard(rotatedKey.key, rotatedKey.id)"
+          >
+            {{ t('common.copy') }}
+          </button>
         </div>
       </template>
     </BaseDialog>
@@ -1237,66 +1177,70 @@
 
     <!-- Group Selector Dropdown (Teleported to body to avoid overflow clipping) -->
     <Teleport to="body">
-      <div
-        v-if="groupSelectorKeyId !== null && dropdownPosition"
-        ref="dropdownRef"
-        class="animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-max max-w-[calc(100vw-16px)] overflow-hidden rounded-control bg-white shadow-lg ring-1 ring-black/5 duration-200 sm:min-w-[380px] dark:bg-dark-800 dark:ring-white/10"
-        style="pointer-events: auto !important;"
-        :style="{
-          top: dropdownPosition.top !== undefined ? dropdownPosition.top + 'px' : undefined,
-          bottom: dropdownPosition.bottom !== undefined ? dropdownPosition.bottom + 'px' : undefined,
-          left: dropdownPosition.left + 'px'
-        }"
-      >
-        <!-- Search box -->
-        <div class="border-b border-gray-100 p-2 dark:border-dark-700">
-          <div class="relative">
-            <svg class="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              v-model="groupSearchQuery"
-              type="text"
-              class="w-full rounded-control border border-primary-900/10 bg-gray-50 py-1.5 pl-8 pr-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary-900/10 focus:ring-2 focus:ring-black/10 dark:border-dark-600 dark:bg-dark-700 dark:text-white dark:placeholder-gray-500 dark:focus:border-primary-600 dark:focus:ring-primary-600"
-              :placeholder="t('keys.searchGroup')"
-              @click.stop
-            />
+      <MotionTransition name="dropdown-fade">
+        <div
+          v-if="groupSelectorKeyId !== null && dropdownPosition" :inert="!(groupSelectorKeyId !== null && dropdownPosition) || undefined"
+          ref="dropdownRef"
+          class="dropdown animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-max max-w-[calc(100vw-16px)] overflow-hidden duration-normal sm:min-w-[380px] py-0"
+          style="pointer-events: auto !important;"
+          :style="{
+            top: dropdownPosition.top !== undefined ? dropdownPosition.top + 'px' : undefined,
+            bottom: dropdownPosition.bottom !== undefined ? dropdownPosition.bottom + 'px' : undefined,
+            left: dropdownPosition.left + 'px'
+          }"
+        >
+          <!-- Search box -->
+          <div class="border-b border-gray-100 p-2 dark:border-dark-700">
+            <div class="relative">
+              <Icon
+                name="search"
+                size="sm"
+                class="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                v-model="groupSearchQuery"
+                type="text"
+                class="w-full rounded-control border border-primary-900/10 bg-gray-50 py-1.5 pl-8 pr-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary-900/10 focus:ring-2 focus:ring-black/10 dark:border-dark-600 dark:bg-dark-700 dark:text-white dark:placeholder-gray-500 dark:focus:border-primary-600 dark:focus:ring-primary-600"
+                :placeholder="t('keys.searchGroup')"
+                @click.stop
+              />
+            </div>
           </div>
-        </div>
-        <!-- Group list -->
-        <div class="max-h-80 overflow-y-auto p-1.5">
-          <button
-            v-for="option in filteredGroupOptions"
-            :key="option.value ?? 'null'"
-            @click="changeGroup(selectedKeyForGroup!, option.value)"
-            :class="[
-              'flex w-full items-center justify-between rounded-control px-3 py-2.5 text-sm transition-colors',
-              'border-b border-gray-100 last:border-0 dark:border-dark-700',
-              selectedKeyForGroup?.group_id === option.value ||
-              (!selectedKeyForGroup?.group_id && option.value === null)
-                ? 'bg-primary-50 dark:bg-primary-900/20'
-                : 'hover:bg-gray-100 dark:hover:bg-dark-700'
-            ]"
-            :title="option.description || undefined"
-          >
-            <GroupOptionItem
-              :name="option.label"
-              :display-brand="option.displayBrand"
-              :rate-multiplier="option.rate"
-              :user-rate-multiplier="option.userRate"
-              :description="option.description"
-              :selected="
+          <!-- Group list -->
+          <div class="max-h-80 overflow-y-auto p-1.5">
+            <button
+              v-for="option in filteredGroupOptions"
+              :key="option.value ?? 'null'"
+              @click="changeGroup(selectedKeyForGroup!, option.value)"
+              :class="[
+                'flex w-full items-center justify-between rounded-control px-3 py-2.5 text-sm transition-colors',
+                'border-b border-gray-100 last:border-0 dark:border-dark-700',
                 selectedKeyForGroup?.group_id === option.value ||
                 (!selectedKeyForGroup?.group_id && option.value === null)
-              "
-            />
-          </button>
-          <!-- Empty state when search has no results -->
-          <div v-if="filteredGroupOptions.length === 0" class="py-4 text-center text-sm text-gray-400 dark:text-gray-500">
-            {{ t('keys.noGroupFound') }}
+                  ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
+                  : 'hover:bg-gray-100 dark:hover:bg-dark-700'
+              ]"
+              :title="option.description || undefined"
+            >
+              <GroupOptionItem
+                :name="option.label"
+                :display-brand="option.displayBrand"
+                :rate-multiplier="option.rate"
+                :user-rate-multiplier="option.userRate"
+                :description="option.description"
+                :selected="
+                  selectedKeyForGroup?.group_id === option.value ||
+                  (!selectedKeyForGroup?.group_id && option.value === null)
+                "
+              />
+            </button>
+            <!-- Empty state when search has no results -->
+            <div v-if="filteredGroupOptions.length === 0" class="py-4 text-center text-sm text-gray-400 dark:text-gray-500">
+              {{ t('keys.noGroupFound') }}
+            </div>
           </div>
         </div>
-      </div>
+      </MotionTransition>
     </Teleport>
   </AppLayout>
 </template>
@@ -1306,6 +1250,8 @@ import FilterField from '@/components/common/FilterField.vue'
 import ModelRedirectHelp from '@/components/keys/ModelRedirectHelp.vue'
 import FilterDropdown from '@/components/common/FilterDropdown.vue'
 import { getKeyGroupProtocols, KEY_GROUP_PROTOCOLS, KEY_GROUP_PROTOCOL_LABELS, KEY_GROUP_PROTOCOL_ICONS, type KeyGroupProtocol } from '@/utils/keyGroupProviders'
+import Skeleton from '@/components/common/Skeleton.vue'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 	import { watch, ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useRoute } from 'vue-router'
@@ -1330,6 +1276,8 @@ import PlatformIcon from '@/components/common/PlatformIcon.vue'
 	import Select from '@/components/common/Select.vue'
 	import Toggle from '@/components/common/Toggle.vue'
 	import SearchInput from '@/components/common/SearchInput.vue'
+	import RuleListEditor from '@/components/common/RuleListEditor.vue'
+	import ModelMappingEditor from '@/components/common/ModelMappingEditor.vue'
 	import Icon from '@/components/icons/Icon.vue'
 	import KeyActionMenu from '@/components/keys/KeyActionMenu.vue'
 	import UseKeyModal from '@/components/keys/UseKeyModal.vue'
@@ -1351,6 +1299,14 @@ import PlatformIcon from '@/components/common/PlatformIcon.vue'
 import type { Column } from '@/components/common/types'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import { formatDateTime } from '@/utils/format'
+import {
+  KEY_REDIRECT_RULES,
+  firstModelMappingIssue,
+  mappingRowsToRecord,
+  validateModelMappingRows,
+  type ModelMappingRow
+} from '@/utils/modelMappingRules'
+import { resolveProviderBrand } from '@/utils/providerBrand'
 import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import {
   buildCcSwitchImportDeeplink,
@@ -1391,6 +1347,34 @@ const formatBalancePair = (
 ) => {
   const separator = spaced ? ' / ' : '/'
   return `${formatBalanceAmount(used, { fractionDigits: usedDigits })}${separator}${formatBalanceAmount(limit, { fractionDigits: limitDigits })}`
+}
+
+// COMPOSITE_GROUP_PREVIEW_LIMIT 是列表中复合 Key 直接展示的映射胶囊数量上限。
+const COMPOSITE_GROUP_PREVIEW_LIMIT = 4
+
+// visibleCompositeGroups 返回表格中需要直接展示的复合映射。
+// 恰好只多出一条时直接全部展示，避免用计数胶囊替代单条映射。
+const visibleCompositeGroups = (row: ApiKey) => {
+  const groups = row.composite_groups ?? []
+  if (groups.length <= COMPOSITE_GROUP_PREVIEW_LIMIT + 1) {
+    return groups
+  }
+  return groups.slice(0, COMPOSITE_GROUP_PREVIEW_LIMIT)
+}
+
+// compositeGroupChipClass 返回复合映射胶囊的配色，与 GroupBadge 共用分组展示品牌的色板。
+// 未配置展示品牌时使用中性底色和内描边，与普通分组徽章保持一致。
+const compositeGroupChipClass = (displayBrand?: string | null) => {
+  const brand = displayBrand?.trim()
+  if (!brand) {
+    return 'ring-1 ring-inset bg-gray-100 text-gray-900 ring-gray-200 dark:bg-dark-800 dark:text-dark-50 dark:ring-dark-600'
+  }
+  return `ring-1 ring-inset ${resolveProviderBrand(brand).badgeClass}`
+}
+
+// hiddenCompositeGroupCount 返回被折叠的复合映射数量。
+const hiddenCompositeGroupCount = (row: ApiKey) => {
+  return (row.composite_groups?.length ?? 0) - visibleCompositeGroups(row).length
 }
 
 const allColumns = computed<Column[]>(() => [
@@ -1534,12 +1518,13 @@ const sortState = ref({
 const filterSearch = ref('')
 const filterStatus = ref('')
 const filterGroupId = ref<string | number>('')
-const showFilterDropdown = ref(false)
-const filterDropdownRef = ref<HTMLElement | null>(null)
 
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showDeleteDialog = ref(false)
+const rotationKey = ref<ApiKey | null>(null)
+const rotatedKey = ref<ApiKey | null>(null)
+const rotatingKey = ref(false)
 const showResetQuotaDialog = ref(false)
 const showResetRateLimitDialog = ref(false)
 const showUseKeyModal = ref(false)
@@ -1549,9 +1534,6 @@ const showColumnDropdown = ref(false)
 const pendingCcsRow = ref<ApiKey | null>(null)
 const tfImportKey = ref<ApiKey | null>(null)
 const selectedKey = ref<ApiKey | null>(null)
-const rotationKey = ref<ApiKey | null>(null)
-const rotatedKey = ref<ApiKey | null>(null)
-const rotatingKey = ref(false)
 const actionMenuKey = ref<ApiKey | null>(null)
 const actionMenuPosition = ref<{ top: number; left: number } | null>(null)
 const copiedKeyId = ref<number | null>(null)
@@ -1564,7 +1546,6 @@ const dropdownPosition = ref<{ top?: number; bottom?: number; left: number } | n
 const groupButtonRefs = ref<Map<number, HTMLElement>>(new Map())
 let abortController: AbortController | null = null
 let compositeBindingSequence = 0
-let modelMappingSequence = 0
 let formGroupsRequestID = 0
 
 // 新建本地映射行时使用稳定 ID，排序不会导致输入框重建。
@@ -1572,13 +1553,6 @@ const newCompositeBinding = (groupId: number | null = null, prefix = '') => ({
   local_id: ++compositeBindingSequence,
   group_id: groupId,
   prefix
-})
-
-// 模型重定向行使用稳定 ID，输入校验更新时不会重建相邻输入框。
-const newModelMappingRow = (source = '', target = '') => ({
-  local_id: ++modelMappingSequence,
-  source,
-  target
 })
 
 // 获取当前正在切换分组的 API Key。
@@ -1604,7 +1578,7 @@ const formData = ref({
   fast_mode_policy: 'follow_request' as ApiKeyFastModePolicy,
   billing_mode: 'auto' as ApiKeyBillingMode,
   preferred_subscription_id: null as number | null,
-  model_mapping_rows: [] as Array<ReturnType<typeof newModelMappingRow>>,
+  model_mapping_rows: [] as ModelMappingRow[],
   use_custom_key: false,
   custom_key: '',
   enable_ip_restriction: false,
@@ -1624,73 +1598,27 @@ const formData = ref({
   fallback_when_group_unavailable: true
 })
 
-type ModelMappingRowError = { source?: string; target?: string }
+const MODEL_REDIRECT_MAX_RULES = 100
 
 // 前端与后端共享相同的大小写敏感、单尾通配符和长度约束。
-const modelMappingRowErrors = computed<Record<number, ModelMappingRowError>>(() => {
-  const errors: Record<number, ModelMappingRowError> = {}
-  const sourceCounts = new Map<string, number>()
-  for (const row of formData.value.model_mapping_rows) {
-    const source = row.source.trim()
-    if (source) sourceCounts.set(source, (sourceCounts.get(source) ?? 0) + 1)
-  }
+const modelMappingIssues = computed(() =>
+  validateModelMappingRows(formData.value.model_mapping_rows, KEY_REDIRECT_RULES)
+)
 
-  for (const row of formData.value.model_mapping_rows) {
-    const source = row.source.trim()
-    const target = row.target.trim()
-    const rowError: ModelMappingRowError = {}
-    if (!source) {
-      rowError.source = t('keys.modelRedirect.sourceRequired')
-    } else if ([...source].length > 100) {
-      rowError.source = t('keys.modelRedirect.nameTooLong')
-    } else {
-      const wildcardCount = (source.match(/\*/g) ?? []).length
-      if (wildcardCount > 1 || (wildcardCount === 1 && !source.endsWith('*'))) {
-        rowError.source = t('keys.modelRedirect.sourceWildcardInvalid')
-      } else if ((sourceCounts.get(source) ?? 0) > 1) {
-        rowError.source = t('keys.modelRedirect.duplicateSource')
-      }
-    }
-
-    if (!target) {
-      rowError.target = t('keys.modelRedirect.targetRequired')
-    } else if ([...target].length > 100) {
-      rowError.target = t('keys.modelRedirect.nameTooLong')
-    } else if (target.includes('*')) {
-      rowError.target = t('keys.modelRedirect.targetWildcardInvalid')
-    } else if (source && source === target) {
-      rowError.target = t('keys.modelRedirect.selfMapping')
-    }
-    if (rowError.source || rowError.target) errors[row.local_id] = rowError
-  }
-  return errors
-})
+const modelMappingFieldErrors = computed(() =>
+  modelMappingIssues.value.map((issue) => ({
+    from: issue.from ? t(`keys.modelRedirect.${issue.from}`) : undefined,
+    to: issue.to ? t(`keys.modelRedirect.${issue.to}`) : undefined
+  }))
+)
 
 const modelMappingFormError = computed(() => {
-  if (formData.value.model_mapping_rows.length > 100) {
+  if (formData.value.model_mapping_rows.length > MODEL_REDIRECT_MAX_RULES) {
     return t('keys.modelRedirect.tooManyRules')
   }
-  for (const row of formData.value.model_mapping_rows) {
-    const error = modelMappingRowErrors.value[row.local_id]
-    if (error?.source) return error.source
-    if (error?.target) return error.target
-  }
-  return ''
+  const issue = firstModelMappingIssue(modelMappingIssues.value)
+  return issue ? t(`keys.modelRedirect.${issue}`) : ''
 })
-
-const addModelMappingRow = () => {
-  if (formData.value.model_mapping_rows.length >= 100) return
-  formData.value.model_mapping_rows.push(newModelMappingRow())
-}
-
-const removeModelMappingRow = (index: number) => {
-  formData.value.model_mapping_rows.splice(index, 1)
-}
-
-const buildModelMappingPayload = (): Record<string, string> =>
-  Object.fromEntries(
-    formData.value.model_mapping_rows.map((row) => [row.source.trim(), row.target.trim()])
-  )
 
 // 自定义Key验证
 const customKeyError = computed(() => {
@@ -1782,15 +1710,7 @@ const resetKeyFilters = () => {
   filterGroupId.value = ''
   filterStatus.value = ''
   pagination.value.page = 1
-  showFilterDropdown.value = false
   loadApiKeys()
-}
-
-const handleFilterClickOutside = (event: MouseEvent) => {
-  const target = event.target
-  if (target instanceof Node && filterDropdownRef.value?.contains(target)) return
-  if (target instanceof Element && target.closest('.select-dropdown-portal')) return
-  showFilterDropdown.value = false
 }
 
 const onFilterChange = () => {
@@ -1879,8 +1799,7 @@ const removeCompositeBinding = (index: number) => {
   formData.value.composite_groups.splice(index, 1)
 }
 
-const moveCompositeBinding = (index: number, offset: -1 | 1) => {
-  const target = index + offset
+const moveCompositeBinding = (index: number, target: number) => {
   if (target < 0 || target >= formData.value.composite_groups.length) return
   const [binding] = formData.value.composite_groups.splice(index, 1)
   if (binding) formData.value.composite_groups.splice(target, 0, binding)
@@ -2194,7 +2113,7 @@ const editKey = (key: ApiKey) => {
     preferred_subscription_id: key.preferred_subscription_id ?? null,
     model_mapping_rows: Object.entries(key.model_mapping ?? {})
       .sort(([left], [right]) => left.localeCompare(right))
-      .map(([source, target]) => newModelMappingRow(source, target)),
+      .map(([from, to]) => ({ from, to })),
     use_custom_key: false,
     custom_key: '',
     enable_ip_restriction: hasIPRestriction,
@@ -2252,7 +2171,7 @@ const openKeyActionMenu = (key: ApiKey, event: MouseEvent) => {
   // 固定高菜单(高度随 CCS 导入项显隐):下方放不下即整体上翻;窄屏保持右缘对齐触发器。
   const position = getFloatingPanelPosition(rect, window.innerWidth, window.innerHeight, {
     maxWidth: 192,
-    fixedHeight: publicSettings.value?.hide_ccs_import_button ? 138 : 178,
+    fixedHeight: publicSettings.value?.hide_ccs_import_button ? 178 : 218,
     viewportPadding: 8,
     gap: 4,
     pinLeftOnMobile: false
@@ -2355,6 +2274,7 @@ const handleRotate = async () => {
     // 只合并当前记录的新凭据，避免重新查询失败掩盖已经成功的轮换。
     apiKeys.value = apiKeys.value.map(key => key.id === updated.id ? { ...key, ...updated } : key)
     if (selectedKey.value?.id === updated.id) selectedKey.value = { ...selectedKey.value, ...updated }
+    if (copiedKeyId.value === updated.id) copiedKeyId.value = null
     rotationKey.value = null
     rotatedKey.value = updated
     appStore.showSuccess(t('keys.keyRotatedSuccess'))
@@ -2408,7 +2328,7 @@ const buildKeyFormPayload = () => {
     expiresInDays,
     expiresAt,
     rateLimitData,
-    modelMapping: buildModelMappingPayload()
+    modelMapping: mappingRowsToRecord(formData.value.model_mapping_rows)
   }
 }
 
@@ -2701,7 +2621,7 @@ const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
   const baseUrl = publicSettings.value?.api_base_url || window.location.origin
 
   const usageScript = buildCcSwitchUsageScript(baseUrl, balanceUnitName.value)
-  const providerName = (publicSettings.value?.site_name || 'sub2api').trim() || 'sub2api'
+  const providerName = (publicSettings.value?.site_name || 'tokenrouter').trim() || 'tokenrouter'
   const deeplink = buildCcSwitchImportDeeplink({
     baseUrl,
     model: ccModel.value,
@@ -2754,7 +2674,6 @@ function formatResetTime(resetAt: string | null): string {
 onMounted(async () => {
   loadSavedColumns()
   document.addEventListener('click', closeGroupSelector)
-  document.addEventListener('click', handleFilterClickOutside)
   resetTimer = setInterval(() => { now.value = new Date() }, 60000)
   await loadPublicSettings()
   await Promise.all([loadApiKeys(), loadGroups(), loadUserGroupRates(), loadBillingOptions(), loadFormGroups()])
@@ -2762,7 +2681,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('click', closeGroupSelector)
-  document.removeEventListener('click', handleFilterClickOutside)
   abortController?.abort()
 	if (resetTimer) clearInterval(resetTimer)
 })

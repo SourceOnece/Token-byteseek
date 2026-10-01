@@ -31,20 +31,19 @@ const IconStub = defineComponent({
   }
 })
 
-describe('Bauhaus control sizing', () => {
-  it('uses the Bauhaus baseline in shared controls while preserving compact page controls', () => {
+describe('36px control sizing', () => {
+  it('uses the 36px baseline in shared controls', () => {
     const globalStyle = readSource('../../../style.css')
     const selectSource = readSource('../Select.vue')
     const proxySelectorSource = readSource('../ProxySelector.vue')
     const dateRangePickerSource = readSource('../DateRangePicker.vue')
     const paginationSource = readSource('../Pagination.vue')
 
-    // 当前包豪斯表单采用 44px 触控基线，分页继续保留 36px 紧凑高度。
-    expect(globalStyle).toContain('@apply rounded-none px-4 py-2.5 text-sm font-bold;')
-    expect(globalStyle).toContain('@apply min-h-11;')
-    expect(globalStyle).toContain('@apply inline-flex h-11 w-11 items-center justify-center rounded-control p-0;')
-    expect(globalStyle).toContain('@apply w-full rounded-none px-4 py-2.5 text-sm font-medium;')
-    expect(globalStyle).toContain('@apply flex min-h-11 items-center gap-3 rounded-control py-2.5;')
+    expect(globalStyle).toContain('@apply rounded-control px-4 py-1.5 text-sm font-medium;')
+    expect(globalStyle).toContain('@apply min-h-9;')
+    expect(globalStyle).toContain('@apply inline-flex h-9 w-9 items-center justify-center rounded-control p-0;')
+    expect(globalStyle).toContain('@apply w-full rounded-control px-4 py-1.5 text-sm;')
+    expect(globalStyle).toContain('@apply flex h-9 items-center gap-3 rounded-control py-1.5;')
     // 三个下拉触发器以模板组合 input input-trigger 共享 36px 基线,不再各自复制配方。
     expect(selectSource).toContain("'input input-trigger'")
     expect(proxySelectorSource).toContain("'input input-trigger'")
@@ -53,14 +52,14 @@ describe('Bauhaus control sizing', () => {
       expect(source).not.toContain('@apply h-9 min-h-9 rounded-control px-4 py-1.5 text-sm;')
     }
     // 弹层内的确认按钮直接使用共享按钮配方。
-    expect(dateRangePickerSource).toContain('class="btn btn-primary"')
+    expect(dateRangePickerSource).toContain('class="btn btn-primary btn-sm h-8"')
     expect(dateRangePickerSource).not.toContain('.date-picker-apply')
     // 分页控件直接由模板里的 h-9 提供 36px 基线,不再有局部高度覆盖。
     expect(paginationSource).toContain('pagination-jump-button btn btn-ghost btn-sm h-9')
     expect(paginationSource).not.toContain('--pagination-control-height')
   })
 
-  it('renders every pagination button with the shared hard-edge control classes', () => {
+  it('renders every pagination button on the 36px baseline', () => {
     const wrapper = mount(Pagination, {
       props: {
         total: 30,
@@ -77,9 +76,7 @@ describe('Bauhaus control sizing', () => {
 
     const buttons = wrapper.findAll('button')
     expect(buttons.length).toBe(8)
-    const paginationButtons = buttons.filter((button) => !button.classes().includes('select-trigger'))
-    expect(paginationButtons.every((button) => button.classes().includes('pagination-control'))).toBe(true)
-    expect(paginationButtons.every((button) => button.classes().includes('bh-page-btn'))).toBe(true)
+    expect(buttons.every((button) => button.classes().includes('h-9'))).toBe(true)
   })
 
   it('keeps the latest page-specific sizing fixes explicit', () => {

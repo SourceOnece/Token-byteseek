@@ -1,10 +1,16 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
-      <div v-if="loading" class="flex justify-center py-12">
-        <div
-          class="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"
-        ></div>
+    <div class="space-y-4">
+      <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" aria-hidden="true">
+          <div v-for="card in 4" :key="card" class="card min-w-0 space-y-3 p-4">
+            <Skeleton width="55%" :height="12" />
+            <Skeleton width="75%" :height="28" />
+            <Skeleton width="65%" :height="12" />
+          </div>
+        </div>
+        <ContentSkeleton variant="form" :rows="2" class="card p-6" />
+        <ContentSkeleton variant="list" :rows="4" class="card p-6" />
       </div>
 
       <template v-else-if="detail">
@@ -85,7 +91,7 @@
         </div>
 
         <div class="card p-6">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('affiliate.transfer.title') }}</h3>
               <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">{{ t('affiliate.transfer.description') }}</p>
@@ -95,7 +101,13 @@
               :disabled="transferring || detail.aff_quota <= 0"
               @click="transferQuota"
             >
-              <Icon v-if="transferring" name="refresh" size="sm" class="animate-spin" />
+              <Icon
+                v-if="transferring"
+                name="refresh"
+                size="sm"
+                class="animate-spin"
+                :animate-on-hover="false"
+              />
               <Icon v-else name="swap" size="sm" />
               <span>{{ transferring ? t('affiliate.transfer.transferring') : t('affiliate.transfer.button') }}</span>
             </button>
@@ -141,6 +153,8 @@
 </template>
 
 <script setup lang="ts">
+import Skeleton from '@/components/common/Skeleton.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'

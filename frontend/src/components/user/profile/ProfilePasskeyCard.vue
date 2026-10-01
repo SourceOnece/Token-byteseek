@@ -1,6 +1,6 @@
 <template>
   <div class="card">
-    <div class="flex items-start justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+    <div class="flex items-end justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-700">
       <div>
         <h2 class="text-lg font-medium text-gray-900 dark:text-white">
           {{ t('profile.passkey.title') }}
@@ -29,35 +29,35 @@
         {{ t('profile.passkey.unsupported') }}
       </div>
       <div v-else>
-        <form
-          v-if="showAddForm"
-          class="mb-5 flex flex-col gap-3 rounded-control border border-gray-200 p-4 dark:border-dark-700 sm:flex-row sm:items-end"
-          @submit.prevent="addPasskey"
-        >
-          <div class="flex-1">
-            <label for="passkey-name" class="input-label">{{ t('profile.passkey.name') }}</label>
-            <input
-              id="passkey-name"
-              v-model="newName"
-              class="input"
-              maxlength="100"
-              :placeholder="t('profile.passkey.namePlaceholder')"
-              autofocus
-            />
-          </div>
-          <div class="flex gap-2">
-            <button type="button" class="btn btn-secondary" :disabled="busy" @click="cancelAdd">
-              {{ t('common.cancel') }}
-            </button>
-            <button type="submit" class="btn btn-primary" :disabled="busy">
-              {{ busy ? t('common.processing') : t('profile.passkey.continue') }}
-            </button>
-          </div>
-        </form>
+        <Collapse :open="showAddForm" unmount-on-hide>
+          <form
 
-        <div v-if="loading" class="flex justify-center py-6">
-          <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-500"></div>
-        </div>
+            class="mb-5 flex flex-col gap-3 rounded-control border border-gray-200 p-4 dark:border-dark-700 sm:flex-row sm:items-end"
+            @submit.prevent="addPasskey"
+          >
+            <div class="flex-1">
+              <label for="passkey-name" class="input-label">{{ t('profile.passkey.name') }}</label>
+              <input
+                id="passkey-name"
+                v-model="newName"
+                class="input"
+                maxlength="100"
+                :placeholder="t('profile.passkey.namePlaceholder')"
+                autofocus
+              />
+            </div>
+            <div class="flex gap-2">
+              <button type="button" class="btn btn-secondary" :disabled="busy" @click="cancelAdd">
+                {{ t('common.cancel') }}
+              </button>
+              <button type="submit" class="btn btn-primary" :disabled="busy">
+                {{ busy ? t('common.processing') : t('profile.passkey.continue') }}
+              </button>
+            </div>
+          </form>
+        </Collapse>
+
+        <ContentSkeleton v-if="loading" variant="list" :rows="3" class="py-4" />
 
         <div
           v-else-if="credentials.length === 0"
@@ -122,6 +122,9 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import Collapse from '@/components/common/Collapse.vue'
+
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { passkeyAPI, type PasskeyCredentialSummary } from '@/api'

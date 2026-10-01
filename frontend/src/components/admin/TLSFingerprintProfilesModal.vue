@@ -19,7 +19,7 @@
 
       <!-- 收集器 -->
       <div class="rounded-surface border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-800/60">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div class="flex items-center gap-2">
               <Icon name="beaker" size="sm" class="text-primary-600 dark:text-primary-400" />
@@ -106,7 +106,11 @@
               :disabled="collectorCapturesLoading"
               @click="refreshCollectorCaptures"
             >
-              <Icon name="refresh" size="sm" :class="['mr-1', collectorCapturesLoading ? 'animate-spin' : '']" />
+              <Icon
+                name="refresh"
+                size="sm"
+                :class="['mr-1', collectorCapturesLoading ? 'animate-spin' : '']"
+              />
               {{ t('admin.tlsFingerprintProfiles.collector.refreshCaptures') }}
             </button>
           </div>
@@ -204,7 +208,7 @@
                     {{ t('admin.tlsFingerprintProfiles.collector.copyYaml') }}
                   </button>
                   <button type="button" class="btn btn-primary btn-xs" @click="applyCapture(record)">
-                    <Icon name="check" size="xs" class="mr-1" />
+                    <Icon name="check" size="xs" class="mr-1" :animate-on-hover="false" />
                     {{ t('admin.tlsFingerprintProfiles.collector.applyCapture') }}
                   </button>
                 </div>
@@ -215,11 +219,8 @@
       </div>
 
       <!-- 模板列表 -->
-      <div v-if="loading" class="flex items-center justify-center py-8">
-        <Icon name="refresh" size="lg" class="animate-spin text-gray-400" />
-      </div>
 
-      <div v-else-if="profiles.length === 0" class="py-8 text-center">
+      <div v-if="!loading && profiles.length === 0" class="py-8 text-center">
         <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-dark-700">
           <Icon name="shield" size="lg" class="text-gray-400" />
         </div>
@@ -232,7 +233,7 @@
       </div>
 
       <div v-else class="max-h-96 overflow-auto rounded-control border border-gray-200 dark:border-dark-600">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
+        <table :aria-busy="loading" class="min-w-full divide-y divide-gray-200 dark:divide-dark-700">
           <thead class="sticky top-0 bg-gray-50 dark:bg-dark-700">
             <tr>
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -252,7 +253,8 @@
               </th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-800">
+          <TableSkeletonBody v-if="loading" :columns="5" cell-class="px-3 py-2" />
+          <tbody v-else class="divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-800">
             <tr v-for="profile in profiles" :key="profile.id" class="hover:bg-gray-50 dark:hover:bg-dark-700">
               <td class="px-3 py-2">
                 <div class="font-medium text-gray-900 dark:text-white text-sm">{{ profile.name }}</div>
@@ -497,7 +499,13 @@
             {{ t('common.cancel') }}
           </button>
           <button @click="handleSubmit" :disabled="submitting" class="btn btn-primary">
-            <Icon v-if="submitting" name="refresh" size="sm" class="mr-1 animate-spin" />
+            <Icon
+              v-if="submitting"
+              name="refresh"
+              size="sm"
+              class="mr-1 animate-spin"
+              :animate-on-hover="false"
+            />
             {{ showEditModal ? t('common.update') : t('common.create') }}
           </button>
         </div>
@@ -519,6 +527,7 @@
 </template>
 
 <script setup lang="ts">
+import TableSkeletonBody from '@/components/common/TableSkeletonBody.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import { computed, onUnmounted, ref, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'

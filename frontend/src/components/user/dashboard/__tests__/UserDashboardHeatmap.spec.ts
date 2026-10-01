@@ -91,6 +91,22 @@ describe('UserDashboardHeatmap', () => {
     localStorage.clear()
   })
 
+  it('首次请求未返回时也有占位格，成功后替换为日期数据', async () => {
+    let resolveTrend!: (value: typeof emptyTrend) => void
+    vi.mocked(usageAPI.getDashboardTrend).mockImplementationOnce(() => new Promise(resolve => { resolveTrend = resolve }))
+    const wrapper = await mountHeatmap()
+    expect(wrapper.findAll('[data-testid="heatmap-skeleton-cell"]').length).toBeGreaterThan(0)
+    expect(wrapper.find('[data-testid="heatmap-cell"]').exists()).toBe(false)
+    expect(wrapper.attributes('aria-busy')).toBe('true')
+
+    resolveTrend(emptyTrend)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="heatmap-skeleton-cell"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="heatmap-cell"]').exists()).toBe(true)
+    expect(wrapper.attributes('aria-busy')).toBe('false')
+    wrapper.unmount()
+  })
+
   it('按近三年整周范围请求按日趋势数据', async () => {
     vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue(emptyTrend)
 
@@ -119,8 +135,8 @@ describe('UserDashboardHeatmap', () => {
     expect(cells.length).toBe(FALLBACK_WEEKS * 7)
 
     // 有用量的今天为最高档且只有一天；未来占位格不可见
-    const activeCells = cells.filter((c) => c.classes().includes('bg-emerald-700'))
-    expect(activeCells.length).toBe(1)
+    const greenCells = cells.filter((c) => c.classes().includes('bg-green-700'))
+    expect(greenCells.length).toBe(1)
     const futureCount = cells.filter((c) => c.classes().includes('invisible')).length
     expect(cells.filter((c) => c.classes().includes('bg-gray-100')).length).toBe(cells.length - futureCount - 1)
   })
@@ -135,7 +151,7 @@ describe('UserDashboardHeatmap', () => {
 
     const wrapper = await mountHeatmap()
     const cells = wrapper.findAll('[data-testid="heatmap-cell"]')
-    const todayIndex = cells.findIndex((c) => c.classes().includes('bg-emerald-700'))
+    const todayIndex = cells.findIndex((c) => c.classes().includes('bg-green-700'))
     expect(todayIndex).toBeGreaterThan(0)
 
     await cells[todayIndex].trigger('mouseenter')
@@ -145,8 +161,8 @@ describe('UserDashboardHeatmap', () => {
     expect(tooltip.text()).toContain('dashboard.heatmapCost')
     expect(tooltip.text()).toContain('0.2')
     expect(tooltip.attributes('aria-hidden')).toBe('false')
-    expect(tooltip.attributes('style')).toContain('opacity var(--motion-fast)')
-    expect(tooltip.attributes('style')).toContain('opacity var(--motion-fast)')
+    expect(tooltip.attributes('style')).toContain('opacity var(--motion-fast) var(--motion-ease)')
+    expect(tooltip.attributes('style')).not.toMatch(/transition:.*(?:width|left) /)
 
     await wrapper.get('[data-testid="heatmap-grid-wrap"]').trigger('mouseleave')
     expect(wrapper.get('[data-testid="heatmap-tooltip"]').attributes('aria-hidden')).toBe('true')
@@ -166,7 +182,7 @@ describe('UserDashboardHeatmap', () => {
 
     const wrapper = await mountHeatmap()
     const cells = wrapper.findAll('[data-testid="heatmap-cell"]')
-    const todayIndex = cells.findIndex((c) => c.classes().includes('bg-emerald-700'))
+    const todayIndex = cells.findIndex((c) => c.classes().includes('bg-green-700'))
     await cells[todayIndex].trigger('mouseenter')
     const tooltipElement = wrapper.get('[data-testid="heatmap-tooltip"]').element
 

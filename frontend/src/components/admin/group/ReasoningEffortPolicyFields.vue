@@ -1,5 +1,5 @@
 <template>
-  <div class="bh-reasoning-policy space-y-4">
+  <div class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
     <div>
       <label :for="`${idPrefix}-max-effort`" class="input-label">
         {{ t("admin.groups.form.maxReasoningEffort") }}
@@ -33,35 +33,24 @@
       <p class="input-hint">{{ t("admin.groups.form.maxReasoningEffortOverLimitHint") }}</p>
     </div>
 
-    <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-      <div class="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <label class="input-label mb-0">
-            {{ t("admin.groups.form.reasoningEffortMappings") }}
-          </label>
-          <p class="input-hint mb-0">
-            {{ t("admin.groups.form.reasoningEffortMappingsHint") }}
-          </p>
-        </div>
-        <button
-          type="button"
-          class="btn btn-secondary btn-sm shrink-0"
-          @click="addGroup"
-        >
-          <Icon name="plus" size="sm" />
-          {{ t("admin.groups.form.addReasoningEffortMapping") }}
-        </button>
-      </div>
-
-      <div v-if="mappings.length > 0" class="space-y-2">
-        <div
-          v-for="group in mappings"
-          :key="group.id"
-          class="bh-policy-card space-y-3 p-3"
-        >
-          <div
-            class="grid grid-cols-1 items-start gap-3 md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)_2.75rem]"
-          >
+    <RuleListEditor
+      class="border-t border-gray-200 pt-6 dark:border-dark-600 md:col-span-2"
+      :items="mappings"
+      :item-key="(group) => group.id"
+      :title="t('admin.groups.form.reasoningEffortMappings')"
+      :hint="t('admin.groups.form.reasoningEffortMappingsHint')"
+      title-style="section"
+      :add-label="t('admin.groups.form.addReasoningEffortMapping')"
+      :empty-text="t('admin.groups.form.reasoningEffortMappingsEmpty')"
+      :remove-label="t('admin.groups.form.removeReasoningEffortMapping')"
+      variant="card"
+      :item-label="(index) => t('admin.groups.form.reasoningEffortMappingIndex', { index: index + 1 })"
+      @add="addGroup"
+      @remove="(index) => removeGroup(mappings[index].id)"
+    >
+      <template #row="{ item: group }">
+        <div class="space-y-4">
+          <div class="grid grid-cols-1 items-start gap-3 md:grid-cols-2">
             <div>
               <label :for="`${idPrefix}-${group.id}-match-type`" class="input-label">
                 {{ t("admin.groups.form.reasoningEffortMatchType") }}
@@ -79,16 +68,14 @@
               />
               <p
                 v-if="showValidation && groupErrors(group.id).match_type"
-                class="mt-1 text-xs text-red-600 dark:text-red-400"
+                class="input-error-text"
                 role="alert"
               >
                 {{ mappingErrorText(groupErrors(group.id).match_type) }}
               </p>
             </div>
 
-            <div class="hidden md:block" aria-hidden="true" />
-
-            <div class="col-start-1 row-start-2 min-w-0 md:col-start-3 md:row-start-1">
+            <div class="min-w-0">
               <label :for="`${idPrefix}-${group.id}-model`" class="input-label">
                 {{ t("admin.groups.form.reasoningEffortModel") }}
               </label>
@@ -104,105 +91,90 @@
                 @input="onModelInput(group.id, $event)"
               />
             </div>
-
-            <button
-              type="button"
-              class="bh-icon-action bh-icon-action-danger self-end"
-              :title="t('admin.groups.form.removeReasoningEffortMapping')"
-              :aria-label="t('admin.groups.form.removeReasoningEffortMapping')"
-              @click="removeGroup(group.id)"
-            >
-              <Icon name="trash" size="sm" />
-            </button>
           </div>
 
           <p
             v-if="showValidation && groupErrors(group.id).duplicateScope"
-            class="text-xs text-red-600 dark:text-red-400"
+            class="text-xs text-red-500"
             role="alert"
           >
             {{ mappingErrorText(groupErrors(group.id).duplicateScope) }}
           </p>
 
-          <div
-            v-for="pair in group.pairs"
-            :key="pair.id"
-            class="grid grid-cols-[minmax(0,1fr)_2.25rem] items-start gap-3 md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)_2.25rem]"
+          <RuleListEditor
+            :items="group.pairs"
+            :item-key="(pair) => pair.id"
+            :add-label="t('admin.groups.form.addReasoningEffortPair')"
+            add-placement="footer"
+            :remove-label="t('admin.groups.form.removeReasoningEffortPair')"
+            @add="addPair(group.id)"
+            @remove="(index) => removePair(group.id, group.pairs[index].id)"
           >
-            <div>
-              <label :for="`${idPrefix}-${pair.id}-from`" class="input-label">
-                {{ t("admin.groups.form.reasoningEffortFrom") }}
-              </label>
-              <Select
-                :id="`${idPrefix}-${pair.id}-from`"
-                :model-value="pair.from"
-                :options="reasoningEffortMappingOptions"
-                :placeholder="t('admin.groups.form.reasoningEffortFromPlaceholder')"
-                :error="showValidation && !!pairErrors(pair.id).from"
-                :aria-label="t('admin.groups.form.reasoningEffortFrom')"
-                :searchable="false"
-                clearable
-                @update:model-value="updatePair(group.id, pair.id, 'from', $event)"
-              />
-              <p
-                v-if="showValidation && pairErrors(pair.id).from"
-                class="mt-1 text-xs text-red-600 dark:text-red-400"
-                role="alert"
+            <template #header-extra>
+              <!-- 表头替代逐行标签，让删除按钮与选择框保持同一水平线。 -->
+              <div
+                class="hidden gap-2 pr-11 text-sm font-medium text-primary-900 md:grid md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)] dark:text-dark-50"
               >
-                {{ mappingErrorText(pairErrors(pair.id).from) }}
-              </p>
-            </div>
-
-            <div class="hidden h-11 items-center justify-center self-end text-gray-400 md:flex dark:text-dark-400">
-              <Icon name="arrowRight" size="sm" />
-            </div>
-
-            <div class="col-start-1 row-start-2 min-w-0 md:col-start-3 md:row-start-1">
-              <label :for="`${idPrefix}-${pair.id}-to`" class="input-label">
-                {{ t("admin.groups.form.reasoningEffortTo") }}
-              </label>
-              <Select
-                :id="`${idPrefix}-${pair.id}-to`"
-                :model-value="pair.to"
-                :options="reasoningEffortMappingOptions"
-                :placeholder="t('admin.groups.form.reasoningEffortToPlaceholder')"
-                :error="showValidation && !!pairErrors(pair.id).to"
-                :aria-label="t('admin.groups.form.reasoningEffortTo')"
-                :searchable="false"
-                clearable
-                @update:model-value="updatePair(group.id, pair.id, 'to', $event)"
-              />
-              <p
-                v-if="showValidation && pairErrors(pair.id).to"
-                class="mt-1 text-xs text-red-600 dark:text-red-400"
-                role="alert"
+                <span>{{ t("admin.groups.form.reasoningEffortFrom") }}</span>
+                <span />
+                <span>{{ t("admin.groups.form.reasoningEffortTo") }}</span>
+              </div>
+            </template>
+            <template #row="{ item: pair }">
+              <div
+                class="grid grid-cols-1 items-start gap-2 md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)]"
               >
-                {{ mappingErrorText(pairErrors(pair.id).to) }}
-              </p>
-            </div>
+                <div class="min-w-0">
+                  <Select
+                    :id="`${idPrefix}-${pair.id}-from`"
+                    :model-value="pair.from"
+                    :options="reasoningEffortMappingOptions"
+                    :placeholder="t('admin.groups.form.reasoningEffortFromPlaceholder')"
+                    :error="showValidation && !!pairErrors(pair.id).from"
+                    :aria-label="t('admin.groups.form.reasoningEffortFrom')"
+                    :searchable="false"
+                    clearable
+                    @update:model-value="updatePair(group.id, pair.id, 'from', $event)"
+                  />
+                  <p
+                    v-if="showValidation && pairErrors(pair.id).from"
+                    class="input-error-text"
+                    role="alert"
+                  >
+                    {{ mappingErrorText(pairErrors(pair.id).from) }}
+                  </p>
+                </div>
 
-            <button
-              type="button"
-              class="btn btn-ghost btn-icon col-start-2 row-start-2 self-end text-red-500 md:col-start-4 md:row-start-1"
-              :title="t('admin.groups.form.removeReasoningEffortPair')"
-              :aria-label="t('admin.groups.form.removeReasoningEffortPair')"
-              @click="removePair(group.id, pair.id)"
-            >
-              <Icon name="trash" size="sm" />
-            </button>
-          </div>
+                <div class="hidden h-9 items-center justify-center text-gray-400 md:flex dark:text-dark-400">
+                  <Icon name="arrowRight" size="sm" />
+                </div>
 
-          <button
-            type="button"
-            class="btn btn-secondary btn-sm"
-            @click="addPair(group.id)"
-          >
-            <Icon name="plus" size="sm" />
-            {{ t("admin.groups.form.addReasoningEffortPair") }}
-          </button>
+                <div class="min-w-0">
+                  <Select
+                    :id="`${idPrefix}-${pair.id}-to`"
+                    :model-value="pair.to"
+                    :options="reasoningEffortMappingOptions"
+                    :placeholder="t('admin.groups.form.reasoningEffortToPlaceholder')"
+                    :error="showValidation && !!pairErrors(pair.id).to"
+                    :aria-label="t('admin.groups.form.reasoningEffortTo')"
+                    :searchable="false"
+                    clearable
+                    @update:model-value="updatePair(group.id, pair.id, 'to', $event)"
+                  />
+                  <p
+                    v-if="showValidation && pairErrors(pair.id).to"
+                    class="input-error-text"
+                    role="alert"
+                  >
+                    {{ mappingErrorText(pairErrors(pair.id).to) }}
+                  </p>
+                </div>
+              </div>
+            </template>
+          </RuleListEditor>
         </div>
-      </div>
-    </div>
+      </template>
+    </RuleListEditor>
   </div>
 </template>
 
@@ -211,6 +183,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import Icon from "@/components/icons/Icon.vue";
 import Select from "@/components/common/Select.vue";
+import RuleListEditor from "@/components/common/RuleListEditor.vue";
 import {
   createReasoningEffortMappingPair,
   createReasoningEffortMappingRow,

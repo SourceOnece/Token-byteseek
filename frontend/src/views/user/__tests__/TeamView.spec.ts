@@ -103,7 +103,6 @@ const mountTeamView = async () => {
         AppLayout: AppLayoutStub,
         BaseDialog: true,
         ConfirmDialog: true,
-        LoadingSpinner: true,
         Icon: true,
         TeamInvitationDialog: true,
         TotpStepUpDialog: true,

@@ -30,13 +30,13 @@
     <template v-if="!isAuthenticated">
       <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
 
-      <header class="relative z-20 border-b-[3px] border-gray-950 bg-bh-paper px-4 dark:border-dark-100 dark:bg-dark-900 sm:px-6">
+      <header class="site-header relative z-20 border-b border-primary-900/10 px-4 sm:px-6">
         <nav class="mx-auto flex h-[var(--header-h)] max-w-7xl items-center justify-between gap-4">
           <router-link to="/home" class="flex min-w-0 items-center gap-2.5">
-            <span class="h-8 w-8 shrink-0 overflow-hidden border-2 border-gray-950 bg-white dark:border-dark-100">
+            <span class="h-8 w-8 shrink-0 overflow-hidden rounded-control shadow-sm">
               <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
             </span>
-            <span class="truncate text-base font-extrabold tracking-tight text-gray-950 dark:text-white">{{ siteName }}<span class="text-bh-red">.</span></span>
+            <span class="truncate text-base font-semibold text-gray-950 dark:text-white">{{ siteName }}</span>
           </router-link>
 
           <div class="flex items-center gap-2 sm:gap-3">
@@ -69,7 +69,7 @@
 
             <router-link
               to="/login"
-              class="inline-flex items-center border-2 border-gray-950 bg-bh-red px-4 py-2 text-xs font-extrabold text-white shadow-sm transition hover:translate-x-[-1px] hover:translate-y-[-1px] dark:border-dark-100"
+              class="inline-flex items-center rounded-full bg-gray-950 px-4 py-2 text-xs font-semibold text-white transition hover:bg-gray-800 dark:bg-white dark:text-dark-950 dark:hover:bg-dark-200"
             >
               {{ t('home.login') }}
             </router-link>
@@ -78,7 +78,7 @@
       </header>
     </template>
 
-    <section
+    <section v-content-reveal="!isAuthenticated && motionRoute?.path"
       :class="isAuthenticated
         ? 'space-y-4'
         : 'relative z-10 px-4 pb-12 pt-6 sm:px-6 lg:px-8'"
@@ -110,13 +110,10 @@
           </FilterDropdown>
         </div>
 
-        <div v-if="loading" class="card px-6 py-14 text-center">
-          <LoadingSpinner size="lg" />
-          <p class="mt-4 text-sm text-gray-500 dark:text-dark-400">{{ t('common.loading') }}</p>
-        </div>
+        <ModelMarketplaceSkeleton v-if="loading" />
 
         <div v-else-if="errorMessage" class="card border-red-200 p-6 dark:border-red-500/30">
-          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('common.error') }}</h2>
               <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">{{ errorMessage }}</p>
@@ -167,7 +164,7 @@
                     <template #trigger>
                       <span
                         data-testid="group-max-discount-tag"
-                        class="rounded-none border-2 border-gray-950 bg-bh-yellow px-3 py-1 text-xs font-extrabold text-gray-950 dark:border-dark-100"
+                        class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
                       >
                         {{ formatMaxDiscountOff(group.official_price_ratio) }}
                       </span>
@@ -180,9 +177,10 @@
                     :content="t('marketplace.rateMultiplierHint')"
                   >
                     <template #trigger>
+                      <!-- 倍率使用中性填充，深色底与卡片拉开层次。 -->
                       <span
                         data-testid="group-rate-multiplier-tag"
-                        class="rounded-none border-2 border-gray-950 bg-white px-3 py-1 text-xs font-extrabold text-gray-950 dark:border-dark-100 dark:bg-dark-900 dark:text-dark-100"
+                        class="rounded-full border border-gray-200/80 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-600 dark:border-dark-600 dark:bg-dark-700/60 dark:text-dark-200"
                       >
                         {{ formatRateMultiplierLabel(group.rate_multiplier) }}
                       </span>
@@ -191,7 +189,7 @@
                 </div>
 
                 <div class="flex items-start gap-3">
-                  <span class="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-none border-2 border-gray-950 bg-white dark:border-dark-100 dark:bg-dark-900">
+                  <span class="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-surface border border-gray-200 bg-white shadow-sm dark:border-dark-700 dark:bg-dark-950">
                     <ModelIcon :model="groupBrandIconModel(group)" size="28px" />
                   </span>
                   <div class="min-w-0">
@@ -215,23 +213,41 @@
               </div>
             </div>
 
-            <div class="grid min-w-0 grid-cols-1 items-start gap-3 p-4 md:grid-cols-2 lg:grid-cols-3 md:p-5">
+            <div class="grid min-w-0 grid-cols-1 items-start gap-4 p-4 md:grid-cols-2 lg:grid-cols-3 md:p-5">
               <!-- 显式单列和可收缩卡片阻止长定价内容撑大网格；大屏保持三列。 -->
               <article
                 v-for="model in group.models"
                 :key="`${group.id}-${model.id}`"
-                class="group min-w-0 max-w-full rounded-surface border-2 border-gray-950 bg-white p-4 transition hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow dark:border-dark-200/60 dark:bg-dark-900"
+                class="group min-w-0 max-w-full rounded-surface border border-gray-100 bg-gray-50/80 p-4 transition hover:-translate-y-0.5 hover:border-black/20 hover:shadow-sm dark:border-dark-700 dark:bg-dark-950/80 dark:hover:border-primary-500/50"
               >
                 <div class="flex min-w-0 flex-wrap items-start justify-between gap-2">
-                  <h3 class="min-w-0 flex-1 basis-32 truncate text-base font-semibold text-gray-950 dark:text-white">{{ model.display_name }}</h3>
+                  <div class="flex min-w-0 flex-1 basis-32 items-center">
+                    <h3 class="min-w-0 truncate text-base font-semibold text-gray-950 dark:text-white">{{ model.display_name }}</h3>
+                    <!-- 模型属性收进标题旁的信息图标，悬停或点击后以浮层展示，不占用卡片高度。 -->
+                    <HelpTooltip
+                      v-if="model.attributes"
+                      trigger="both"
+                      width-class="w-72"
+                      :closable="false"
+                      class="shrink-0"
+                    >
+                      <template #trigger>
+                        <button
+                          type="button"
+                          data-testid="model-attributes-trigger"
+                          class="inline-flex h-5 w-5 items-center justify-center rounded-full text-gray-400 transition-colors hover:text-gray-700 dark:text-dark-500 dark:hover:text-dark-200"
+                          :aria-label="t('admin.modelAttributes.details')"
+                        >
+                          <Icon name="infoCircle" size="sm" class="h-4 w-4" />
+                        </button>
+                      </template>
+                      <ModelAttributesSummary :attributes="model.attributes" variant="tooltip" />
+                    </HelpTooltip>
+                  </div>
                   <ModelCapabilityTags :model="model" />
                 </div>
                 <!-- ID 独占整行，避免跟随标题列被右侧能力图标挤窄。 -->
                 <ModelIdLabel :model-id="model.id" class="mt-1" />
-                <details v-if="model.attributes" class="mt-3 text-sm">
-                  <summary class="cursor-pointer text-gray-600 dark:text-dark-300">{{ t('admin.modelAttributes.details') }}</summary>
-                  <ModelAttributesSummary :attributes="model.attributes" class="mt-3" />
-                </details>
 
                 <!-- 价格预览改为无边框列表，避免卡片里再嵌套一层卡片。 -->
                 <div class="mt-4">
@@ -240,10 +256,10 @@
                       <div
                         v-for="row in compactPricingRows(model.pricing)"
                         :key="row.key"
-                        class="flex items-baseline justify-between gap-3 border-2 border-emerald-700 bg-emerald-50 px-2 py-1 text-sm dark:border-emerald-300 dark:bg-emerald-900/25"
+                        class="flex items-baseline justify-between gap-3 text-sm"
                       >
-                        <dt class="shrink-0 font-extrabold text-emerald-700 dark:text-emerald-300">{{ row.label }}</dt>
-                        <dd class="min-w-0 break-words text-right font-extrabold tabular-nums [overflow-wrap:anywhere] text-emerald-700 dark:text-emerald-200">{{ row.value }}</dd>
+                        <dt class="shrink-0 text-gray-500 dark:text-dark-400">{{ row.label }}</dt>
+                        <dd class="min-w-0 break-words text-right font-medium tabular-nums [overflow-wrap:anywhere] text-gray-900 dark:text-white">{{ row.value }}</dd>
                       </div>
                     </dl>
                   </template>
@@ -264,13 +280,15 @@
 </template>
 
 <script setup lang="ts">
-import FilterField from '@/components/common/FilterField.vue'
-import FilterDropdown from '@/components/common/FilterDropdown.vue'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { vContentReveal } from '@/directives/contentReveal'
+import { useRoute as useMotionRoute } from 'vue-router'
+const motionRoute = useMotionRoute()
+
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import ModelMarketplaceSkeleton from '@/components/marketplace/ModelMarketplaceSkeleton.vue'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import GroupAvailabilityBar from '@/components/marketplace/GroupAvailabilityBar.vue'
 import ModelCapabilityTags from '@/components/marketplace/ModelCapabilityTags.vue'
@@ -281,6 +299,8 @@ import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import SearchInput from '@/components/common/SearchInput.vue'
 import Select from '@/components/common/Select.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import ModelIdLabel from '@/components/common/ModelIdLabel.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { initTheme, useTheme } from '@/composables/useTheme'
@@ -314,12 +334,10 @@ const search = ref('')
 const selectedBrand = ref<string | 'all'>('all')
 const selectedPricingMode = ref<PricingFilter>('all')
 const selectedGroupId = ref<number | 'all'>('all')
-const showFilterDropdown = ref(false)
-const filterPanelRef = ref<HTMLElement | null>(null)
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 
-const siteName = computed(() => appStore.siteName || 'Sub2API')
+const siteName = computed(() => appStore.siteName || 'TokenRouter')
 const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
 const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl || ''))
 
@@ -434,7 +452,7 @@ function hasImagePricing(pricing: MarketplaceModelPricing): boolean {
     pricing.image_price_1k,
     pricing.image_price_2k,
     pricing.image_price_4k,
-  ].some(hasPositiveValue)
+  ].some((value) => typeof value === 'number' && Number.isFinite(value) && value >= 0)
 }
 
 function pricingKind(pricing: MarketplaceModelPricing): Exclude<PricingFilter, 'all'> {
@@ -450,19 +468,16 @@ function pricingKind(pricing: MarketplaceModelPricing): Exclude<PricingFilter, '
   return 'unpriced'
 }
 
-function resetFilters() {
-  search.value = ''
+// 面板内重置只清空下拉条件；空结果页的重置还会一并清空搜索词。
+function resetPanelFilters() {
   selectedBrand.value = 'all'
   selectedPricingMode.value = 'all'
   selectedGroupId.value = 'all'
-  showFilterDropdown.value = false
 }
 
-function handleFilterClickOutside(event: MouseEvent) {
-  const target = event.target
-  if (target instanceof Node && filterPanelRef.value?.contains(target)) return
-  if (target instanceof Element && target.closest('.select-dropdown-portal')) return
-  showFilterDropdown.value = false
+function resetFilters() {
+  search.value = ''
+  resetPanelFilters()
 }
 
 function formatMultiplier(multiplier: number): string {
@@ -527,7 +542,7 @@ function brandKey(label: string): string {
 }
 
 function brandBadgeClass(group: MarketplaceGroup): string {
-  const base = 'inline-flex items-center gap-1.5 rounded-none border-2 border-gray-950 px-3 py-1 text-xs font-bold dark:border-dark-100'
+  const base = 'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset'
   return `${base} ${resolveProviderBrand(groupBrandSource(group)).badgeClass}`
 }
 
@@ -691,7 +706,7 @@ function imagePricingRows(pricing: MarketplaceModelPricing): PricingRow[] {
   ]
 
   return values.flatMap((item) => {
-    if (!hasPositiveValue(item.price)) {
+    if (typeof item.price !== 'number' || !Number.isFinite(item.price) || item.price < 0) {
       return []
     }
 
@@ -721,7 +736,6 @@ async function fetchMarketplace() {
 }
 
 onMounted(async () => {
-  document.addEventListener('click', handleFilterClickOutside)
   initTheme()
   authStore.checkAuth()
   if (!appStore.publicSettingsLoaded) {
@@ -729,15 +743,5 @@ onMounted(async () => {
   }
   await fetchMarketplace()
 })
-
-onUnmounted(() => document.removeEventListener('click', handleFilterClickOutside))
-
-
-// 面板内重置只清空下拉条件；空结果页的重置还会一并清空搜索词。
-function resetPanelFilters() {
-  selectedBrand.value = 'all'
-  selectedPricingMode.value = 'all'
-  selectedGroupId.value = 'all'
-}
 
 </script>

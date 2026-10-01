@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-w-0 flex-nowrap items-center gap-3">
+  <div class="flex min-w-0 flex-nowrap items-center gap-2">
     <SearchInput
       :model-value="searchQuery"
       :placeholder="t('admin.providers.searchProviders')"
@@ -51,9 +51,9 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Select from '@/components/common/Select.vue'
-import SearchInput from '@/components/common/SearchInput.vue'
 import FilterDropdown from '@/components/common/FilterDropdown.vue'
 import FilterField from '@/components/common/FilterField.vue'
+import SearchInput from '@/components/common/SearchInput.vue'
 import type { AdminGroup } from '@/types'
 import { CONCRETE_PLATFORM_OPTIONS } from '@/constants/platforms'
 

@@ -22,7 +22,7 @@
         <Icon
           name="chevronDown"
           size="sm"
-          :class="['transition-transform duration-200', isOpen && 'rotate-180']"
+          :class="['transition-transform duration-normal', isOpen && 'rotate-180']"
           :animate-on-hover="false"
         />
       </span>
@@ -126,10 +126,10 @@
             </template>
           </div>
           <div class="flex shrink-0 items-center gap-2">
-            <button type="button" class="btn btn-secondary" @click="cancel">
+            <button type="button" class="btn btn-secondary btn-sm h-8" @click="cancel">
               {{ t('common.cancel') }}
             </button>
-            <button type="button" class="btn btn-primary" :disabled="selectingEnd" @click="apply">
+            <button type="button" class="btn btn-primary btn-sm h-8" :disabled="selectingEnd" @click="apply">
               {{ t('dates.apply') }}
             </button>
           </div>
@@ -701,7 +701,7 @@ onUnmounted(() => {
 /* 基线配方已与 .input 同源(模板 input input-trigger 组合),这里只保留展开态增量。
    展开态描边与 Select 一致，品牌色只用于选中的日期和快捷范围。 */
 .date-picker-trigger-open {
-  @apply border-primary-900/10 ring-2 ring-black/10 dark:border-dark-400 dark:ring-white/10;
+  @apply border-primary-900/10 ring-2 ring-black/10 dark:border-dark-400 dark:ring-white/6;
 }
 
 .date-picker-icon {
@@ -721,8 +721,7 @@ onUnmounted(() => {
   @apply bg-white dark:bg-dark-900;
   @apply rounded-surface;
   @apply border border-primary-900/10 dark:border-dark-600;
-  border: 2px solid var(--bh-ink);
-  box-shadow: var(--bh-shadow);
+  @apply shadow-lg shadow-black/10 dark:shadow-black/30;
   @apply overflow-y-auto;
 }
 
@@ -749,13 +748,13 @@ onUnmounted(() => {
   @apply flex items-center justify-between gap-2 rounded-control px-2.5 py-1.5 text-left text-sm;
   @apply text-gray-700 dark:text-gray-300;
   @apply hover:bg-gray-100 dark:hover:bg-dark-800 dark:hover:text-primary-500;
-  @apply transition-colors duration-150;
+  @apply transition-colors duration-fast;
   @apply max-sm:border max-sm:border-primary-900/10 max-sm:dark:border-dark-600;
 }
 
 .date-picker-preset-active {
   /* 与 Select 选中项同一配色：浅色灰底品牌字，深色淡品牌青底。 */
-  @apply bg-gray-100 text-primary-700 dark:bg-primary-500/10 dark:text-primary-500 dark:hover:bg-primary-500/10;
+  @apply bg-gray-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500 dark:hover:bg-primary-500/8;
   @apply font-medium;
 }
 
@@ -777,7 +776,7 @@ onUnmounted(() => {
 
 .date-picker-nav {
   @apply text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-dark-50;
-  @apply transition-colors duration-150;
+  @apply transition-colors duration-fast;
   @apply disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent;
 }
 
@@ -815,7 +814,7 @@ onUnmounted(() => {
   @apply relative flex h-9 w-9 items-center justify-center rounded-control text-sm tabular-nums;
   @apply text-gray-700 dark:text-gray-300;
   @apply hover:bg-gray-100 dark:hover:bg-dark-800;
-  @apply transition-colors duration-150;
+  @apply transition-colors duration-fast;
   @apply disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-transparent dark:disabled:text-dark-600;
 }
 
@@ -851,9 +850,4 @@ onUnmounted(() => {
 .date-picker-summary-value {
   @apply truncate font-medium text-gray-700 dark:text-dark-100;
 }
-/* 日期和快捷项用黄色强调，沿用原有直角按压控件。 */
-.date-picker-preset-active, .date-picker-day.date-picker-day-selected {
-  background: var(--bh-yellow); color: #141414; font-weight: 800;
-}
-.date-picker-nav:active, .date-picker-preset:active { transform: translate(1px, 1px); }
 </style>

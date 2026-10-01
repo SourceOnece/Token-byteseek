@@ -64,7 +64,6 @@ const mountScope = async (mode: 'dashboard' | 'usage') => {
     props: { mode },
     global: {
       stubs: {
-        LoadingSpinner: true,
         Select: true,
         Icon: true,
         BalanceAmount: {

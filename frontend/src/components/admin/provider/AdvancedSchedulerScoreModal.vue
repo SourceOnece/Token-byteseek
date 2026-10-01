@@ -24,7 +24,7 @@
       </div>
 
       <template v-else-if="response">
-        <header class="flex flex-col gap-3 border-b border-gray-200 pb-4 dark:border-dark-600 sm:flex-row sm:items-start sm:justify-between">
+        <header class="flex flex-col gap-3 border-b border-gray-200 pb-4 dark:border-dark-600 sm:flex-row sm:items-end sm:justify-between">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h4 class="truncate text-base font-semibold text-gray-900 dark:text-gray-100">{{ response.provider.name }}</h4>
@@ -69,7 +69,7 @@
                 :class="[
                   'flex min-h-12 flex-col justify-center rounded-control border px-3 text-left transition-colors',
                   activeGroupID === group.id
-                    ? 'border-primary-500 bg-primary-50 text-primary-800 dark:border-primary-500 dark:bg-primary-500/10 dark:text-primary-200'
+                    ? 'border-primary-500 bg-primary-50 text-primary-800 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 dark:border-dark-600 dark:bg-dark-800 dark:text-dark-300 dark:hover:border-dark-500'
                 ]"
                 @click="selectGroup(group.id)"
@@ -104,7 +104,12 @@
                     {{ detail.context.baseline ? t('admin.providers.advancedSchedulerScore.baseline') : t('admin.providers.advancedSchedulerScore.simulationActive') }}
                   </p>
                 </div>
-                <Icon name="chevronDown" size="sm" :class="['transition-transform', showScenario && 'rotate-180']" />
+                <Icon
+                  name="chevronDown"
+                  size="sm"
+                  :class="['transition-transform', showScenario && 'rotate-180']"
+                  :animate-on-hover="false"
+                />
               </button>
               <div v-if="showScenario" class="mt-4 grid gap-3 border-t border-gray-100 pt-4 dark:border-dark-700 md:grid-cols-3">
                 <label class="min-w-0">
@@ -216,17 +221,17 @@
                   </table>
                 </div>
                 <div class="mt-3 space-y-2 lg:hidden">
-                  <details v-for="metric in detail.metrics" :key="metric.key" class="rounded-control border border-gray-200 px-3 py-2 dark:border-dark-600">
-                    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm">
+                  <Disclosure summary-class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm" v-for="metric in detail.metrics" :key="metric.key" class="rounded-control border border-gray-200 px-3 py-2 dark:border-dark-600">
+                    <template #summary>
                       <span class="font-medium text-gray-900 dark:text-gray-100">{{ metricLabel(metric.key) }}</span>
                       <span class="font-mono text-xs text-gray-600 dark:text-dark-300">{{ formatNumber(metric.weighted_contribution) }}</span>
-                    </summary>
+                    </template>
                     <dl class="mt-3 grid gap-2 border-t border-gray-100 pt-3 text-xs dark:border-dark-700">
                       <div><dt class="text-gray-500 dark:text-dark-400">{{ t('admin.providers.advancedSchedulerScore.metricColumns.raw') }}</dt><dd class="mt-0.5 text-gray-800 dark:text-dark-200">{{ metric.raw_value }}</dd></div>
                       <div><dt class="text-gray-500 dark:text-dark-400">{{ t('admin.providers.advancedSchedulerScore.metricColumns.normalization') }}</dt><dd class="mt-0.5 break-words font-mono text-xs leading-5 text-gray-800 dark:text-dark-200">{{ metric.normalization }}</dd></div>
                       <div class="grid grid-cols-3 gap-2"><div><dt class="text-gray-500 dark:text-dark-400">{{ t('admin.providers.advancedSchedulerScore.metricColumns.normalized') }}</dt><dd class="mt-0.5 font-mono">{{ formatNumber(metric.normalized_value) }}</dd></div><div><dt class="text-gray-500 dark:text-dark-400">{{ t('admin.providers.advancedSchedulerScore.metricColumns.weight') }}</dt><dd class="mt-0.5 font-mono">{{ formatNumber(metric.weight) }}</dd></div><div><dt class="text-gray-500 dark:text-dark-400">{{ t('admin.providers.advancedSchedulerScore.metricColumns.contribution') }}</dt><dd class="mt-0.5 font-mono">{{ formatNumber(metric.weighted_contribution) }}</dd></div></div>
                     </dl>
-                  </details>
+                  </Disclosure>
                 </div>
               </section>
             </template>
@@ -278,6 +283,8 @@
 </template>
 
 <script setup lang="ts">
+import Disclosure from '@/components/common/Disclosure.vue'
+
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'

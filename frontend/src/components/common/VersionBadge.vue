@@ -27,11 +27,11 @@
       </button>
 
       <!-- Dropdown -->
-      <transition name="dropdown">
+      <MotionTransition name="dropdown-fade">
         <div
           v-if="dropdownOpen"
           ref="dropdownRef"
-          class="absolute left-0 z-50 mt-2 overflow-hidden whitespace-normal rounded-control border border-gray-200 bg-white shadow-lg transition-all duration-200 dark:border-dark-700 dark:bg-dark-800"
+          class="dropdown left-0 z-50 mt-2 overflow-hidden whitespace-normal transition duration-normal py-0"
           :class="rollbackPanelOpen && isReleaseBuild ? 'w-80' : 'w-64'"
         >
           <!-- Header with refresh button -->
@@ -74,23 +74,7 @@
 
           <div class="p-4">
             <!-- Loading state -->
-            <div v-if="loading" class="flex items-center justify-center py-6">
-              <svg class="h-6 w-6 animate-spin text-primary-500" fill="none" viewBox="0 0 24 24">
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-            </div>
+            <ContentSkeleton v-if="loading" variant="detail" :rows="4" class="py-4" />
 
             <!-- Content -->
             <template v-else>
@@ -108,17 +92,12 @@
                     v-if="!hasUpdate"
                     class="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
                   >
-                    <svg
+                    <Icon
+                      name="check"
+                      size="xs"
+                      :animate-on-hover="false"
                       class="h-3 w-3 text-green-600 dark:text-green-400"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fill-rule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clip-rule="evenodd"
-                      />
-                    </svg>
+                    />
                   </span>
                 </div>
                 <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">
@@ -173,15 +152,12 @@
                   <div
                     class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50"
                   >
-                    <svg
+                    <Icon
+                      name="check"
+                      size="sm"
+                      :animate-on-hover="false"
                       class="h-4 w-4 text-green-600 dark:text-green-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
+                    />
                   </div>
                   <div class="min-w-0 flex-1">
                     <p class="text-sm font-medium text-green-700 dark:text-green-300">
@@ -203,40 +179,14 @@
                   :disabled="restarting"
                   class="flex w-full items-center justify-center gap-2 rounded-control bg-green-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <svg
+                  <Icon
+                    name="loader"
+                    size="sm"
+                    :animate-on-hover="false"
                     v-if="restarting"
                     class="h-4 w-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  <svg
-                    v-else
-                    class="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
+                  />
+                  <Icon name="refresh" size="sm" v-else class="h-4 w-4" />
                   <template v-if="restarting">
                     <span>{{ t('version.restarting') }}</span>
                     <span v-if="restartCountdown > 0" class="tabular-nums"
@@ -274,33 +224,22 @@
                       v{{ latestVersion }}
                     </p>
                   </div>
-                  <svg
+                  <Icon
+                    name="chevronRight"
+                    size="sm"
+                    :animate-on-hover="false"
                     class="h-4 w-4 text-amber-500 transition-transform group-hover:translate-x-0.5 dark:text-amber-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
+                  />
                 </a>
                 <!-- Source build hint -->
                 <div
                   class="flex items-center gap-2 rounded-control border border-blue-200 bg-blue-50 p-2 dark:border-blue-800/50 dark:bg-blue-900/20"
                 >
-                  <svg
+                  <Icon
+                    name="infoCircle"
+                    size="xs"
                     class="h-3.5 w-3.5 flex-shrink-0 text-blue-500 dark:text-blue-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                  />
                   <p class="text-xs text-blue-600 dark:text-blue-400">
                     {{ t('version.sourceModeHint') }}
                   </p>
@@ -339,21 +278,13 @@
                   :disabled="updating"
                   class="flex w-full items-center justify-center gap-2 rounded-control bg-primary-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <svg v-if="updating" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+                  <Icon
+                    name="loader"
+                    size="sm"
+                    :animate-on-hover="false"
+                    v-if="updating"
+                    class="h-4 w-4 animate-spin"
+                  />
                   <Icon v-else name="download" size="sm" :stroke-width="2" />
                   {{ updating ? t('version.updating') : t('version.updateNow') }}
                 </button>
@@ -404,61 +335,31 @@
                       name="chevronDown"
                       size="xs"
                       :stroke-width="2"
-                      class="transition-transform duration-200"
+                      class="transition-transform duration-normal"
                       :class="{ 'rotate-180': rollbackPanelOpen }"
+                      :animate-on-hover="false"
                     />
                   </button>
 
-                  <transition name="rollback">
-                    <div v-if="rollbackPanelOpen" class="mt-2 space-y-2">
+                  <Collapse :open="rollbackPanelOpen" unmount-on-hide>
+                    <div class="mt-2 space-y-2">
                       <!-- 源码构建不支持在线回退，需要使用 git。 -->
                       <div
                         v-if="!isReleaseBuild"
                         class="flex items-center gap-2 rounded-control border border-blue-200 bg-blue-50 p-2 dark:border-blue-800/50 dark:bg-blue-900/20"
                       >
-                        <svg
+                        <Icon
+                          name="infoCircle"
+                          size="xs"
                           class="h-3.5 w-3.5 flex-shrink-0 text-blue-500 dark:text-blue-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
+                        />
                         <p class="min-w-0 flex-1 text-xs leading-4 text-blue-600 dark:text-blue-400">
                           {{ t('version.rollbackSourceHint') }}
                         </p>
                       </div>
 
                       <!-- 正在加载历史版本 -->
-                      <div
-                        v-else-if="rollbackVersionsLoading"
-                        class="flex items-center justify-center py-4"
-                      >
-                        <svg
-                          class="h-5 w-5 animate-spin text-primary-500"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            class="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            stroke-width="4"
-                          ></circle>
-                          <path
-                            class="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                      </div>
+                      <ContentSkeleton v-else-if="rollbackVersionsLoading" variant="list" :rows="3" class="py-4" />
 
                       <!-- 加载失败与重试 -->
                       <div v-else-if="rollbackVersionsError" class="space-y-2">
@@ -494,7 +395,7 @@
                           :key="item.version"
                           @click="selectRollbackVersion(item.version)"
                           :disabled="rollingBack"
-                          class="flex w-full items-center justify-between rounded-control border px-3 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                          class="flex w-full items-center justify-between rounded-control border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60"
                           :class="
                             selectedRollbackVersion === item.version
                               ? 'border-amber-300 bg-amber-50 shadow-sm dark:border-amber-700 dark:bg-amber-900/20'
@@ -531,8 +432,8 @@
                         </button>
 
                         <!-- 选中版本后显示不同部署方式的手动命令与确认按钮。 -->
-                        <transition name="rollback">
-                          <div v-if="selectedRollbackVersion" class="space-y-2">
+                        <Collapse :open="!!selectedRollbackVersion" unmount-on-hide>
+                          <div class="space-y-2">
                             <p class="px-0.5 text-xs text-gray-400 dark:text-dark-500">
                               {{ t('version.manualRollbackCommand') }}
                             </p>
@@ -604,26 +505,13 @@
                               :disabled="rollingBack"
                               class="flex w-full items-center justify-center gap-2 rounded-control bg-amber-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                              <svg
+                              <Icon
+                                name="loader"
+                                size="sm"
+                                :animate-on-hover="false"
                                 v-if="rollingBack"
                                 class="h-4 w-4 animate-spin"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                              >
-                                <circle
-                                  class="opacity-25"
-                                  cx="12"
-                                  cy="12"
-                                  r="10"
-                                  stroke="currentColor"
-                                  stroke-width="4"
-                                ></circle>
-                                <path
-                                  class="opacity-75"
-                                  fill="currentColor"
-                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                ></path>
-                              </svg>
+                              />
                               <Icon v-else name="clock" size="sm" :stroke-width="2" />
                               <span>{{
                                 rollingBack
@@ -634,16 +522,16 @@
                               }}</span>
                             </button>
                           </div>
-                        </transition>
+                        </Collapse>
                       </template>
                     </div>
-                  </transition>
+                  </Collapse>
                 </div>
               </div>
             </template>
           </div>
         </div>
-      </transition>
+      </MotionTransition>
     </template>
 
     <!-- Non-admin: Simple static version text -->
@@ -654,6 +542,10 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import Collapse from '@/components/common/Collapse.vue'
+
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
@@ -938,27 +830,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.dropdown-enter-active,
-.dropdown-leave-active {
-  transition: all 0.2s ease;
-}
-
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
-}
-
-.rollback-enter-active,
-.rollback-leave-active {
-  transition: all 0.2s ease;
-}
-
-.rollback-enter-from,
-.rollback-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
 
 .line-clamp-3 {
   display: -webkit-box;

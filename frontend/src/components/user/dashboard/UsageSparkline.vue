@@ -76,12 +76,12 @@ const endPoint = computed(() => {
 <style scoped>
 /* 描线用裁剪从左向右展开，non-scaling-stroke 下 stroke-dash 动画不可靠。上下留出余量，不裁掉线帽。 */
 .sparkline-wipe {
-  animation: sparkline-wipe var(--dash-sparkline-ms, 700ms) var(--motion-ease, cubic-bezier(.22,1,.36,1)) both;
+  animation: sparkline-wipe var(--dash-sparkline-ms, 700ms) var(--motion-ease) both;
 }
 
 .sparkline-end {
   transform: translate(-50%, -50%);
-  animation: sparkline-end var(--motion-normal, 200ms) var(--motion-ease, cubic-bezier(.22,1,.36,1)) var(--dash-sparkline-ms, 700ms) both;
+  animation: sparkline-end var(--motion-normal) var(--motion-ease) var(--dash-sparkline-ms, 700ms) both;
 }
 
 @keyframes sparkline-wipe {

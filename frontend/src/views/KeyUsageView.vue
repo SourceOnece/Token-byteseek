@@ -21,7 +21,7 @@
             class="rounded-control p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
             :title="t('home.viewDocs')"
           >
-            <Icon name="book" size="md" />
+            <Icon name="book" size="sm" />
           </a>
           <button
             @click="toggleTheme"
@@ -36,7 +36,7 @@
     </header>
 
     <!-- Main Content -->
-    <main class="relative z-10 flex-1 w-full max-w-5xl mx-auto px-6 py-12">
+    <main v-content-reveal="motionRoute?.path" class="relative z-10 flex-1 w-full max-w-5xl mx-auto px-6 py-12">
       <!-- Hero -->
       <div class="text-center mb-12">
         <h1 class="text-3xl sm:text-4xl font-bold tracking-tight mb-3 text-gray-900 dark:text-white">
@@ -49,45 +49,39 @@
 
       <!-- Input Section -->
       <div class="max-w-xl mx-auto mb-14">
-        <div class="flex gap-3">
+        <div class="flex gap-2">
           <div class="flex-1 relative">
             <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-500">
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
+              <Icon name="lock" size="md" class="w-5 h-5" />
             </div>
             <input
               v-model="apiKey"
               :type="keyVisible ? 'text' : 'password'"
               :placeholder="t('keyUsage.placeholder')"
-              class="input-ring h-9 w-full pl-12 pr-12 rounded-control border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 transition-all dark:border-dark-700 dark:bg-dark-900 dark:text-white dark:placeholder:text-dark-500"
+              class="input-ring h-9 w-full pl-12 pr-12 rounded-control border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 transition dark:border-dark-700 dark:bg-dark-900 dark:text-white dark:placeholder:text-dark-500"
               @keydown.enter="queryKey"
             />
             <button
               @click="keyVisible = !keyVisible"
               class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 dark:text-dark-500 dark:hover:text-white transition-colors"
             >
-              <svg v-if="!keyVisible" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-              <svg v-else class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-              </svg>
+              <Icon name="eyeOff" size="sm" v-if="!keyVisible" />
+              <Icon name="eye" size="sm" v-else />
             </button>
           </div>
           <button
             @click="queryKey"
             :disabled="isQuerying"
-            class="h-9 px-7 rounded-control bg-primary-500 hover:bg-primary-600 text-white font-medium text-sm transition-all active:scale-[0.97] flex items-center gap-2 whitespace-nowrap disabled:opacity-60"
+            class="h-9 px-7 rounded-control bg-primary-500 hover:bg-primary-600 text-white font-medium text-sm transition active:scale-[0.97] flex items-center gap-2 whitespace-nowrap disabled:opacity-60"
           >
-            <svg v-if="isQuerying" class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/>
-              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-            </svg>
-            <svg v-else class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
+              v-if="isQuerying"
+              class="w-4 h-4 animate-spin"
+            />
+            <Icon name="search" size="sm" v-else class="w-4 h-4" />
             {{ isQuerying ? t('keyUsage.querying') : t('keyUsage.query') }}
           </button>
         </div>
@@ -103,7 +97,7 @@
               v-for="range in dateRanges"
               :key="range.key"
               @click="setDateRange(range.key)"
-              class="text-xs px-3 py-1.5 rounded-control border transition-all"
+              class="text-xs px-3 py-1.5 rounded-control border transition"
               :class="currentRange === range.key
                 ? 'bg-primary-500 text-white border-primary-500'
                 : 'border-gray-200 bg-white text-gray-700 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200 hover:border-black/20 dark:hover:border-dark-600'"
@@ -132,8 +126,8 @@
       <!-- Results Container -->
       <div v-if="showResults">
         <!-- Loading Skeleton -->
-        <div v-if="showLoading" class="space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div v-if="showLoading" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="rounded-surface border border-gray-200 bg-white p-8 dark:border-dark-700 dark:bg-dark-900">
               <div class="skeleton h-5 w-24 mb-6"></div>
               <div class="flex justify-center"><div class="skeleton w-44 h-44 rounded-full"></div></div>
@@ -155,7 +149,7 @@
         </div>
 
         <!-- Result Content -->
-        <div v-else-if="resultData" class="space-y-6">
+        <div v-else-if="resultData" class="space-y-4">
           <!-- Status Badge -->
           <div v-if="statusInfo" class="fade-up flex items-center justify-center mb-2">
             <div class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-gray-200 bg-white/90 shadow-sm backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/90">
@@ -174,7 +168,7 @@
             <div
               v-for="(ring, i) in ringItems"
               :key="i"
-              class="fade-up rounded-surface border border-gray-200 bg-white/90 p-8 backdrop-blur-sm transition-all duration-300 hover:shadow-lg dark:border-dark-700 dark:bg-dark-900/90"
+              class="fade-up rounded-surface border border-gray-200 bg-white/90 p-8 backdrop-blur-sm transition duration-layout hover:shadow-lg dark:border-dark-700 dark:bg-dark-900/90"
               :class="`fade-up-delay-${Math.min(i + 1, 4)}`"
             >
               <div class="flex items-center justify-between mb-6">
@@ -182,13 +176,19 @@
                   {{ ring.title }}
                 </h3>
                 <!-- Clock icon -->
-                <svg v-if="ring.iconType === 'clock'" class="w-5 h-5 text-gray-400 dark:text-dark-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
+                <Icon
+                  name="clock"
+                  size="md"
+                  v-if="ring.iconType === 'clock'"
+                  class="w-5 h-5 text-gray-400 dark:text-dark-500"
+                />
                 <!-- Calendar icon -->
-                <svg v-else-if="ring.iconType === 'calendar'" class="w-5 h-5 text-gray-400 dark:text-dark-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
+                <Icon
+                  name="calendar"
+                  size="md"
+                  v-else-if="ring.iconType === 'calendar'"
+                  class="w-5 h-5 text-gray-400 dark:text-dark-500"
+                />
                 <BalanceIcon v-else size="md" class="text-gray-400 dark:text-dark-500" />
               </div>
               <div class="flex justify-center">
@@ -410,6 +410,7 @@
             rel="noopener noreferrer"
             class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
           >{{ t('home.docs') }}</a>
+
         </div>
       </div>
     </footer>
@@ -417,6 +418,10 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+import { useRoute as useMotionRoute } from 'vue-router'
+const motionRoute = useMotionRoute()
+
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
@@ -435,9 +440,10 @@ const { formatBalanceAmount } = useBalanceDisplay()
 
 // ==================== Site Settings (same as HomeView) ====================
 
-const siteName = computed(() => appStore.siteName || 'Sub2API')
+const siteName = computed(() => appStore.siteName || 'TokenRouter')
 const siteLogo = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
 const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl || ''))
+
 
 // ==================== Theme (same as HomeView) ====================
 
@@ -548,7 +554,7 @@ const RING_GRADIENTS = [
 const ringAnimated = ref(false)
 const displayPcts = ref<number[]>([])
 
-const ringTrackColor = computed(() => isDark.value ? '#222222' : '#F0F0EE')
+const ringTrackColor = computed(() => isDark.value ? '#27272A' : '#F0F0EE')
 
 interface RingItem {
   title: string
@@ -994,7 +1000,7 @@ onUnmounted(() => {
 <style scoped>
 /* 自定义日期输入在浅色模式使用中性焦点圈，暗色模式保留原品牌强调。 */
 .input-ring {
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: box-shadow var(--motion-normal) var(--motion-ease), border-color var(--motion-normal) var(--motion-ease);
 }
 .input-ring:focus {
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
@@ -1027,7 +1033,7 @@ onUnmounted(() => {
   border-radius: var(--radius-surface);
 }
 :global(.dark) .skeleton {
-  background: linear-gradient(90deg, #1F1F23 25%, #121215 50%, #1F1F23 75%);
+  background: linear-gradient(90deg, #17171A 25%, #0F0F10 50%, #17171A 75%);
   background-size: 200% 100%;
 }
 

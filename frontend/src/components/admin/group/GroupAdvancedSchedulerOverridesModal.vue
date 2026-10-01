@@ -74,7 +74,7 @@
             class="btn btn-primary"
             data-test="advanced-scheduler-overrides-save"
           >
-            <Icon name="check" size="sm" />
+            <Icon name="check" size="sm" :animate-on-hover="false" />
             {{ t('common.save') }}
           </button>
         </div>

@@ -21,8 +21,15 @@
         </span>
       </div>
 
-      <div v-if="loading && !summary" class="flex justify-center py-16">
-        <LoadingSpinner />
+      <div v-if="loading && !summary" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" aria-hidden="true">
+          <div v-for="card in 4" :key="card" class="card min-w-0 space-y-3 p-4">
+            <Skeleton width="55%" :height="12" />
+            <Skeleton width="75%" :height="28" />
+            <Skeleton width="65%" :height="12" />
+          </div>
+        </div>
+        <TeamMemberUsageCharts :series="[]" :loading="true" />
       </div>
 
       <template v-else>
@@ -58,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+import Skeleton from '@/components/common/Skeleton.vue'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
@@ -65,7 +73,6 @@ import type { AdminTeam } from '@/api/admin/teams'
 import type { TeamUsageSummary } from '@/api/team'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import BalanceAmount from '@/components/common/BalanceAmount.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import TeamMemberUsageCharts from '@/components/charts/TeamMemberUsageCharts.vue'
 import { useAppStore } from '@/stores/app'
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from '@/components/icons/Icon.vue'
 import { computed, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -40,8 +41,8 @@ const { isDark } = useChartTheme()
 const colors = computed(() => ({
   primary: '#00D2FF',
   primaryAlpha: '#00D2FF26',
-  grid: isDark.value ? '#29292E' : '#DDF4FC',
-  text: isDark.value ? '#D9D9DE' : '#2D4F68'
+  grid: isDark.value ? '#27272A' : '#DDF4FC',
+  text: isDark.value ? '#D4D4D8' : '#2D4F68'
 }))
 
 const totalRequests = computed(() => sumNumbers(props.points.map((p) => p.request_count)))
@@ -131,9 +132,7 @@ const options = computed(() => {
   <div class="flex h-full flex-col rounded-surface bg-white p-6 shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-900 dark:ring-dark-700">
     <div class="mb-4 flex shrink-0 items-center justify-between">
       <h3 class="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
-        <svg class="h-4 w-4 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10M7 12h6m-6 5h3" />
-        </svg>
+        <Icon name="filter" size="sm" class="h-4 w-4 text-primary-500" />
         {{ t('admin.ops.switchRateTrend') }}
         <HelpTooltip v-if="!props.fullscreen" :content="t('admin.ops.tooltips.switchRateTrend')" />
       </h3>

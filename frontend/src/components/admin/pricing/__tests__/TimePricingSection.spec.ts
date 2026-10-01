@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TimePricingSection from '../TimePricingSection.vue'
 import { createDefaultTimePricingForm } from '../types'
@@ -49,7 +49,7 @@ describe('TimePricingSection', () => {
       global: { stubs: { Select: SelectStub, Icon: true } },
     })
 
-    await wrapper.get('[data-testid="add-time-period"]').trigger('click')
+    await wrapper.get('[data-testid="time-periods-add"]').trigger('click')
     expect(wrapper.emitted('update:modelValue')?.[0]?.[0]).toEqual({
       timezone: 'Asia/Shanghai',
       weekdays_only: false,
@@ -114,4 +114,34 @@ describe('TimePricingSection', () => {
       periods: [{ ...value.periods[0], start_time: '00:00:00' }],
     })
   })
+
+  it('编辑和删除前一行后保留其余时段的输入框', async () => {
+    const value = {
+      timezone: 'Asia/Shanghai',
+      periods: [
+        { start_time: '08:00:00', end_time: '09:00:00', multiplier: '1.00' },
+        { start_time: '10:00:00', end_time: '11:00:00', multiplier: '2.00' },
+      ],
+    }
+    const wrapper = mount(TimePricingSection, {
+      attachTo: document.body,
+      props: {
+        modelValue: value,
+        'onUpdate:modelValue': updated => { void wrapper.setProps({ modelValue: updated }) },
+      },
+      global: { stubs: { Select: SelectStub, Icon: true, 'transition-group': true } },
+    })
+    const second = wrapper.findAll('input[inputmode="numeric"]')[2]
+    const input = second.element as HTMLInputElement
+    input.focus()
+    await second.setValue('10:30:00')
+    await flushPromises()
+    expect(document.activeElement).toBe(input)
+    await wrapper.get('[data-testid="time-periods-remove-0"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('input[inputmode="numeric"]')[0].element).toBe(input)
+    expect(input.value).toBe('10:30:00')
+    wrapper.unmount()
+  })
+
 })

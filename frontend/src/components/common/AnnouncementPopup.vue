@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <Transition name="pop-fade" @after-leave="handleAfterLeave">
+    <MotionTransition name="pop-fade" @after-leave="handleAfterLeave">
       <div
         v-if="displayedAnnouncement"
         class="fixed inset-0 z-announcement-raised flex items-center justify-center overflow-y-auto bg-[var(--overlay-bg)] p-3 backdrop-blur-sm sm:p-6"
@@ -27,7 +27,7 @@
               :aria-label="t('common.close')"
               @click="handleDismiss"
             >
-              <Icon name="x" size="md" :stroke-width="1.75" />
+              <Icon name="x" size="sm" :stroke-width="1.75" />
             </button>
 
             <h2 class="mt-4 break-words pr-10 text-lg font-semibold leading-7 text-gray-900 dark:text-white sm:text-xl">
@@ -86,11 +86,12 @@
           </footer>
         </section>
       </div>
-    </Transition>
+    </MotionTransition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
@@ -207,14 +208,14 @@ onBeforeUnmount(() => {
 }
 
 .announcement-popup-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--bh-scrollbar);
+  background: rgb(156 163 175 / 0.45);
   border: 2px solid transparent;
   border-radius: 9999px;
   background-clip: padding-box;
 }
 
 :global(.dark) .announcement-popup-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--bh-scrollbar);
+  background: rgb(82 82 91 / 0.7);
   border: 2px solid transparent;
   background-clip: padding-box;
 }

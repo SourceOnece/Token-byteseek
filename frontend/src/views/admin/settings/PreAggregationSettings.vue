@@ -1,6 +1,6 @@
 <template>
   <section class="card">
-    <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+    <div class="flex items-end justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700">
       <div class="flex min-w-0 items-start gap-3">
         <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
           <Icon name="database" size="md" />
@@ -25,9 +25,7 @@
       </button>
     </div>
 
-    <div v-if="loading && !state" class="flex min-h-40 items-center justify-center text-gray-400">
-      <Icon name="refresh" size="lg" class="animate-spin" />
-    </div>
+    <ContentSkeleton v-if="loading && !state" variant="form" :rows="4" class="py-4" />
 
     <div v-else-if="state" class="divide-y divide-gray-100 dark:divide-dark-700">
       <div class="grid gap-6 p-6 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
@@ -141,7 +139,11 @@
             :disabled="backfilling || !canBackfill"
             @click="startBackfill"
           >
-            <Icon :name="backfilling ? 'refresh' : 'play'" size="sm" :class="backfilling ? 'animate-spin' : ''" />
+            <Icon
+              :name="backfilling ? 'refresh' : 'play'"
+              size="sm"
+              :class="backfilling ? 'animate-spin' : ''"
+            />
             {{ t("admin.settings.preAggregation.startBackfill") }}
           </button>
         </div>
@@ -156,6 +158,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, defineComponent, h, onMounted, reactive, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api";

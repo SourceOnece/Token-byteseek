@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import Disclosure from '@/components/common/Disclosure.vue'
+
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -315,10 +317,10 @@ async function saveAllSettings() {
               <span
                 v-for="email in emailConfig.alert.recipients"
                 :key="email"
-                class="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                class="inline-flex items-center gap-2 rounded-full bg-primary-100 px-3 py-1 text-xs font-medium text-primary-700 dark:bg-primary-500/8 dark:text-primary-500"
               >
                 {{ email }}
-                <button type="button" class="text-blue-700/80 hover:text-blue-900" @click="removeRecipient('alert', email)">×</button>
+                <button type="button" class="text-primary-700/80 hover:text-primary-900" @click="removeRecipient('alert', email)">×</button>
               </span>
             </div>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -363,10 +365,10 @@ async function saveAllSettings() {
               <span
                 v-for="email in emailConfig.report.recipients"
                 :key="email"
-                class="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                class="inline-flex items-center gap-2 rounded-full bg-primary-100 px-3 py-1 text-xs font-medium text-primary-700 dark:bg-primary-500/8 dark:text-primary-500"
               >
                 {{ email }}
-                <button type="button" class="text-blue-700/80 hover:text-blue-900" @click="removeRecipient('report', email)">×</button>
+                <button type="button" class="text-primary-700/80 hover:text-primary-900" @click="removeRecipient('report', email)">×</button>
               </span>
             </div>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -454,10 +456,10 @@ async function saveAllSettings() {
       </div>
 
       <!-- 高级设置 -->
-      <details class="rounded-surface bg-gray-50 dark:bg-dark-950">
-        <summary class="cursor-pointer p-4 text-sm font-semibold text-gray-900 dark:text-white">
+      <Disclosure summary-class="cursor-pointer p-4 text-sm font-semibold text-gray-900 dark:text-white" class="rounded-surface bg-gray-50 dark:bg-dark-950">
+        <template #summary>
           {{ t('admin.ops.settings.advancedSettings') }}
-        </summary>
+        </template>
         <div class="space-y-4 px-4 pb-4">
           <!-- 数据保留策略 -->
           <div class="space-y-3">
@@ -641,7 +643,7 @@ async function saveAllSettings() {
 
           </div>
         </div>
-      </details>
+      </Disclosure>
     </div>
 
     <template #footer>

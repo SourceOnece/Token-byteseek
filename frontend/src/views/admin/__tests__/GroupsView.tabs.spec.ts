@@ -147,7 +147,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
   it('多个未完成映射跨页修改兼容功能后仍保留，校验会返回模型页', async () => {
     const wrapper = await open(mode, 'mixed', { routing_policy: { ...defaultRoutingPolicy(), features: '历史说明', features_config: { untouched: { openai: false } } } })
     await tab(wrapper, 'models')
-    const add = wrapper.get('[data-group-field="routing-policy"]').findAll('button').find(button => button.text() === 'common.add')!
+    const add = wrapper.get('[data-group-field="routing-policy"]').findAll('button').find(button => button.text() === 'admin.groups.routingPolicy.addMapping')!
     await add.trigger('click')
     await add.trigger('click')
     const targets = wrapper.findAll('input[aria-label="admin.groups.routingPolicy.target"]')
@@ -253,7 +253,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     await flushPromises()
     expect(wrapper.text()).not.toContain('admin.groups.openaiMessages.exactMappingTitle')
     await tab(wrapper, 'models')
-    await wrapper.get('[data-group-tab="models"]').findAll('button').find(button => button.text() === 'common.add')!.trigger('click')
+    await wrapper.get('[data-group-tab="models"]').findAll('button').find(button => button.text() === 'admin.groups.routingPolicy.addMapping')!.trigger('click')
     await wrapper.get('input[aria-label="admin.groups.routingPolicy.source"]').setValue('claude-sonnet-4-6')
     await wrapper.get('input[aria-label="admin.groups.routingPolicy.target"]').setValue('gpt-test')
     await tab(wrapper, 'models')

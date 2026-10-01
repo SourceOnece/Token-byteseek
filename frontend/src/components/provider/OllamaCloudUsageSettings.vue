@@ -19,9 +19,7 @@
       </span>
     </div>
 
-    <div v-if="loading" class="flex h-20 items-center justify-center text-gray-400">
-      <Icon name="refresh" size="sm" class="animate-spin" />
-    </div>
+    <ContentSkeleton v-if="loading" variant="form" :rows="3" class="py-4" />
     <template v-else>
       <div v-if="!state.encryption_key_configured" class="rounded-compact border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/20 dark:text-amber-200">
         {{ t('admin.providers.ollamaCloud.encryptionKeyRequired') }}
@@ -77,7 +75,7 @@
           data-testid="ollama-cloud-session-save"
           @click="saveSession"
         >
-          <Icon name="check" size="xs" class="mr-1.5" />
+          <Icon name="check" size="xs" class="mr-1.5" :animate-on-hover="false" />
           {{ t('common.save') }}
         </button>
         <button
@@ -136,6 +134,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'

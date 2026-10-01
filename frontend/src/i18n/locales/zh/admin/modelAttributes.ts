@@ -49,7 +49,9 @@ export default {
       "structured_output": "结构化输出",
       "temperature": "温度参数",
       "attachment": "附件支持"
-    },
+    ,
+"modalities": "模态"
+},
     "modalities": {
       "text": "文本",
       "image": "图片",
@@ -64,5 +66,8 @@ export default {
       "local_override": "本地覆盖"
     },
     "configDescription": "描述"
-  }
+  ,
+"searchConfigs": "搜索属性配置名称",
+"searchModels": "搜索模型名称"
+}
 }

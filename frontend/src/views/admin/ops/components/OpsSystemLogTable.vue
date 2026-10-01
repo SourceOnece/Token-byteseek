@@ -447,7 +447,7 @@ onMounted(async () => {
       <p v-if="health.last_error" class="mt-2 text-xs text-red-600 dark:text-red-400">最近写入错误：{{ health.last_error }}</p>
     </div>
 
-    <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-5">
+    <div class="mb-4 grid grid-cols-1 gap-2 md:grid-cols-5">
       <label class="text-xs text-gray-600 dark:text-gray-300">
         时间范围
         <Select v-model="filters.time_range" class="mt-1" :options="timeRangeOptions" />

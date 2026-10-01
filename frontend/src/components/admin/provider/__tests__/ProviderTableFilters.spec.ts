@@ -79,7 +79,7 @@ describe('ProviderTableFilters', () => {
       }
     })
 
-    await wrapper.get('[data-testid="provider-filters-toggle"]').trigger('click')
+    await wrapper.get('button[aria-label="common.filter"]').trigger('click')
 
     const selectComponents = wrapper.findAllComponents(SelectStub)
     const groupOptions = selectComponents.find(select => select.props('options').some((item: { value: string }) => item.value === '10'))?.props('options') as Array<{ value: string; label: string }>

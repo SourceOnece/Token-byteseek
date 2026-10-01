@@ -13,7 +13,7 @@
     <AppSidebar v-if="!hideSidebar" />
 
     <div
-      class="relative z-10 flex min-w-0 flex-col pt-[var(--header-h)] transition-all duration-300"
+      class="relative z-10 flex min-w-0 flex-col pt-[var(--header-h)] transition-[margin-left] duration-layout"
       :class="[
         columnClass,
         hideSidebar
@@ -24,11 +24,12 @@
       ]"
     >
       <!-- Main Content：布局组件统一负责空间分配,子页面不再复制父级尺寸或抵消内边距。 -->
-      <main
+      <main v-content-reveal="route.path"
         class="app-main flex min-w-0 flex-1 flex-col"
         :class="mainClass"
       >
-        <div v-if="pageTitle && !hidePageHeading" class="page-heading bh-page-heading mb-5 flex flex-shrink-0 flex-wrap items-start justify-between gap-3">
+        <!-- 操作区与标题说明块底部对齐；窄屏放不下时由 flex-wrap 换行。 -->
+        <div v-if="pageTitle && !hidePageHeading" class="page-heading mb-4 flex flex-shrink-0 flex-wrap items-end justify-between gap-3">
           <div>
             <h1 class="page-title">{{ pageTitle }}</h1>
             <p v-if="pageDescription" class="page-description">{{ pageDescription }}</p>
@@ -48,6 +49,8 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+
 import '@/styles/onboarding.css'
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
@@ -59,11 +62,13 @@ import { useOnboardingStore } from '@/stores/onboarding'
 import AppSidebar from './AppSidebar.vue'
 import AppHeader from './AppHeader.vue'
 
+// @project-doc docs/architecture/frontend_ui_conventions.md#layout_spacing
 interface Props {
   // 全屏工作区使用动态视口锁定布局，并在组件存续期间禁止页面滚动。
   fullViewport?: boolean
-  // 嵌入内容保留原页头/留白，同时获得可计算的视口高度。
+  // 保留页头与内边距，内容区按视口分配高度：true 仅在 lg 及以上生效，all 覆盖所有屏幕尺寸。
   fitViewport?: boolean | 'all'
+  // 页面已有标题时，可隐藏布局提供的标题和说明。
   hidePageHeading?: boolean
 }
 
@@ -80,17 +85,24 @@ const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 // 全屏工作区页面（如创作台）通过路由 meta 隐藏侧栏并取消内容区缩进。
 const hideSidebar = computed(() => route.meta.hideSidebar === true)
 const fullViewport = computed(() => props.fullViewport)
+
+// 锁定模式提供明确的高度，让页面内部的百分比高度和滚动区域能沿 flex 链解析。
 const shellClass = computed(() => {
   if (fullViewport.value) return 'fixed inset-0 h-[100dvh] overflow-hidden'
   if (props.fitViewport === 'all') return 'h-[100dvh] min-h-0 overflow-hidden'
-  return props.fitViewport ? 'min-h-screen lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden' : 'min-h-screen'
+  if (props.fitViewport) return 'min-h-screen lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden'
+  return 'min-h-screen'
 })
-const columnClass = computed(() => fullViewport.value || props.fitViewport === 'all'
-  ? 'h-full min-h-0' : props.fitViewport ? 'min-h-screen lg:h-full lg:min-h-0' : 'min-h-screen')
+const columnClass = computed(() => {
+  if (fullViewport.value || props.fitViewport === 'all') return 'h-full min-h-0'
+  if (props.fitViewport) return 'min-h-screen lg:h-full lg:min-h-0'
+  return 'min-h-screen'
+})
 const mainClass = computed(() => {
   if (fullViewport.value) return 'min-h-0 p-0'
   const padding = 'px-4 pb-4 pt-4 md:px-6 md:pb-6 lg:px-8 lg:pb-8'
-  return props.fitViewport === 'all' ? `${padding} min-h-0` : props.fitViewport ? `${padding} lg:min-h-0` : padding
+  if (props.fitViewport === 'all') return `${padding} min-h-0`
+  return props.fitViewport ? `${padding} lg:min-h-0` : padding
 })
 const isAdmin = computed(() => authStore.user?.role === 'admin')
 
@@ -140,24 +152,6 @@ onBeforeUnmount(() => {
 defineExpose({ replayTour })
 </script>
 
-<style scoped>
-/* 标题恢复旧版墨色基线和红方块，空间仍由当前 flex 布局分配。 */
-.bh-page-heading {
-  position: relative;
-  padding-bottom: 12px;
-  border-bottom: 3px solid var(--bh-ink);
-}
-.bh-page-heading::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: -6.5px;
-  width: 10px;
-  height: 10px;
-  background: var(--bh-red);
-}
-</style>
-
-<!-- 空间分配全部经模板 flex 链完成:wrapper(flex-col, min-h-screen 或全屏锁定)
+<!-- 空间分配全部经模板 flex 链完成:wrapper(flex-col, min-h-screen 或由视口模式锁定高度)
      → app-main(flex-1) → page-heading(自然高度) + 页面内容(需要撑满时自取 flex-1)。
      不再维护 --main-pad-* / --page-heading-space 等与模板 padding 平行的镜像变量。 -->

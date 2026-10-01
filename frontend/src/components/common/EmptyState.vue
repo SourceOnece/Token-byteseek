@@ -1,18 +1,12 @@
 <template>
   <div class="empty-state">
-    <!-- 几何构成画框：无数据时的包豪斯小海报 -->
-    <div class="bh-empty-canvas mb-6" aria-hidden="true">
+    <!-- Icon -->
+    <div
+      class="mb-5 flex h-20 w-20 items-center justify-center rounded-surface bg-gray-100 dark:bg-dark-800"
+    >
       <slot name="icon">
-        <template v-if="icon">
-          <component :is="icon" class="empty-state-icon h-10 w-10" />
-        </template>
-        <template v-else>
-          <span class="bh-empty-hatch"></span>
-          <span class="bh-empty-circle"></span>
-          <span class="bh-empty-square"></span>
-          <span class="bh-empty-triangle"></span>
-          <span class="bh-empty-bar"></span>
-        </template>
+        <component v-if="icon" :is="icon" class="empty-state-icon h-10 w-10" aria-hidden="true" />
+        <Icon name="inbox" size="md" v-else class="empty-state-icon h-10 w-10" />
       </slot>
     </div>
 
@@ -71,77 +65,3 @@ const displayTitle = computed(() => props.title || t('common.noData'))
 
 defineEmits(['action'])
 </script>
-
-<style scoped>
-.bh-empty-canvas {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 132px;
-  height: 96px;
-  border: 3px solid var(--bh-ink);
-  background: var(--bh-surface);
-  box-shadow: var(--bh-shadow-sm);
-  overflow: hidden;
-}
-
-.bh-empty-hatch {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    -45deg,
-    rgba(20, 20, 20, 0.05) 0 5px,
-    transparent 5px 14px
-  );
-}
-
-.dark .bh-empty-hatch {
-  background: repeating-linear-gradient(
-    -45deg,
-    rgba(244, 240, 230, 0.06) 0 5px,
-    transparent 5px 14px
-  );
-}
-
-.bh-empty-circle {
-  position: absolute;
-  left: 20px;
-  top: 18px;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
-  background: var(--bh-red);
-  opacity: 0.9;
-}
-
-.bh-empty-square {
-  position: absolute;
-  right: 24px;
-  top: 26px;
-  width: 26px;
-  height: 26px;
-  background: var(--bh-blue);
-  transform: rotate(12deg);
-}
-
-.bh-empty-triangle {
-  position: absolute;
-  left: 52px;
-  bottom: 12px;
-  width: 0;
-  height: 0;
-  border-left: 15px solid transparent;
-  border-right: 15px solid transparent;
-  border-bottom: 26px solid var(--bh-yellow);
-}
-
-.bh-empty-bar {
-  position: absolute;
-  left: 14px;
-  bottom: 20px;
-  width: 24px;
-  height: 5px;
-  background: var(--bh-ink);
-}
-</style>

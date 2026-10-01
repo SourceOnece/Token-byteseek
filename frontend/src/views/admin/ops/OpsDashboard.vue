@@ -2,7 +2,7 @@
   <component :is="isFullscreen ? 'div' : AppLayout" :class="isFullscreen ? 'ba-theme-shell flex min-h-screen flex-col justify-center' : ''">
     <div v-if="isFullscreen" class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
 
-    <div :class="[isFullscreen ? 'relative z-10 p-4 md:p-6' : '', 'space-y-6 pb-12']">
+    <div :class="[isFullscreen ? 'relative z-10 p-4 md:p-6' : '', 'space-y-4 pb-12']">
       <div
         v-if="errorMessage"
         class="rounded-surface bg-red-50 p-4 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400"
@@ -41,7 +41,7 @@
       />
 
       <!-- Row: Concurrency + Throughput -->
-      <div v-if="opsEnabled && !(loading && !hasLoadedOnce)" class="grid grid-cols-1 gap-6 lg:grid-cols-4">
+      <div v-if="opsEnabled && !(loading && !hasLoadedOnce)" class="grid grid-cols-1 gap-4 lg:grid-cols-4">
         <div class="h-[360px] lg:col-span-1">
           <OpsConcurrencyCard :platform-filter="platform" :group-id-filter="groupId" :refresh-token="dashboardRefreshToken" />
         </div>
@@ -69,7 +69,7 @@
       </div>
 
       <!-- Row: Visual Analysis (baseline 3-up grid) -->
-      <div v-if="opsEnabled && !(loading && !hasLoadedOnce)" class="grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div v-if="opsEnabled && !(loading && !hasLoadedOnce)" class="grid grid-cols-1 gap-4 md:grid-cols-3">
         <OpsLatencyChart
           :latency-data="latencyHistogram"
           :loading="loadingLatency"
@@ -91,7 +91,7 @@
       </div>
 
       <!-- Token 请求统计始终展示，并与顶部筛选器共享分组状态。 -->
-      <div v-if="opsEnabled && !(loading && !hasLoadedOnce)" class="grid grid-cols-1 gap-6">
+      <div v-if="opsEnabled && !(loading && !hasLoadedOnce)" class="grid grid-cols-1 gap-4">
         <OpsTokenStatsCard
           :platform-filter="platform"
           :group-id-filter="groupId"

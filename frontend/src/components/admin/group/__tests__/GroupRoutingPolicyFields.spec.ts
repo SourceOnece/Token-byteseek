@@ -6,7 +6,9 @@ import { cloneRoutingPolicy, defaultRoutingPolicy } from '../routingPolicy'
 import type { GroupRoutingPolicy } from '@/types'
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
-const stubs = { Select: true, ModelTagInput: true, Icon: true }
+const stubs = { Select: true, ModelTagInput: true, Icon: true, 'transition-group': true }
+const sourceInputs = (wrapper: ReturnType<typeof mount>) =>
+  wrapper.findAll('input[aria-label="admin.groups.routingPolicy.source"]')
 
 describe('分组独立路由策略', () => {
   it('空映射可以正常打开，表单不再显示策略总开关', () => {
@@ -47,5 +49,34 @@ describe('分组独立路由策略', () => {
     expect(source.model_mapping.alias).toBe('gpt-original')
     expect(source.allowed_models).toEqual(['gpt-original'])
     expect(source.features_config.codex_image_generation_bridge).toEqual({ openai: false })
+  })
+
+  it('外部改写映射时重建行，自身发布的映射不重建', async () => {
+    const policy = { ...defaultRoutingPolicy(), model_mapping: { alias: 'gpt-a' } }
+    const wrapper = mount(GroupRoutingPolicyFields, { props: { modelValue: policy }, global: { stubs } })
+    const firstInput = sourceInputs(wrapper)[0].element
+
+    await sourceInputs(wrapper)[0].setValue('alias-2')
+    const published = wrapper.emitted('update:modelValue')?.at(-1)?.[0] as GroupRoutingPolicy
+    expect(published.model_mapping).toEqual({ 'alias-2': 'gpt-a' })
+    await wrapper.setProps({ modelValue: published })
+    expect(sourceInputs(wrapper)[0].element).toBe(firstInput)
+
+    await wrapper.setProps({ modelValue: { ...policy, model_mapping: { other: 'gpt-b', next: 'gpt-c' } } })
+    expect(sourceInputs(wrapper).map((input) => (input.element as HTMLInputElement).value)).toEqual(['other', 'next'])
+  })
+
+  it('存在未完成的映射时阻止表单提交', async () => {
+    const wrapper = mount(
+      { components: { GroupRoutingPolicyFields }, template: '<form><GroupRoutingPolicyFields :model-value="policy" /></form>', data: () => ({ policy: defaultRoutingPolicy() }) },
+      { global: { stubs }, attachTo: document.body },
+    )
+    const form = wrapper.get('form').element as HTMLFormElement
+    expect(form.checkValidity()).toBe(true)
+
+    await wrapper.get('button').trigger('click')
+    expect(form.checkValidity()).toBe(false)
+    expect(wrapper.get('[role="alert"]').text()).toBe('admin.groups.routingPolicy.incompleteMapping')
+    wrapper.unmount()
   })
 })

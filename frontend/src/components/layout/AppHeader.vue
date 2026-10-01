@@ -1,25 +1,24 @@
 <template>
-  <header class="bh-header fixed inset-x-0 top-0 z-header">
-    <!-- 恢复旧版红黄蓝顶线，尺寸继续共享当前布局变量。 -->
-    <div class="bh-stripe absolute inset-x-0 top-0 !h-1" aria-hidden="true"><i></i><i></i><i></i></div>
+  <header class="site-header fixed inset-x-0 top-0 z-header border-b border-primary-900/10">
     <!-- 水平内边距与主内容区保持同一条链，两侧边缘在所有断点对齐。 -->
     <div class="flex h-[var(--header-h)] items-center justify-between gap-3 px-4 md:px-6 lg:px-8">
       <!-- 品牌固定在全局顶栏，避免与侧栏和页面标题争夺层级。 -->
-      <div class="flex min-w-0 shrink-0 items-center gap-2 max-[359px]:gap-1 sm:gap-4">
+      <div class="flex min-w-0 shrink-0 items-center gap-2 sm:gap-4">
         <button
-          @click="handlePrimaryNavigation"
-          :class="['btn-ghost btn-icon', !isCreativeStudio && 'lg:hidden']"
-          :aria-label="isCreativeStudio ? t('creative.canvas.backToDashboard') : t('common.toggleMenu')"
-          :title="isCreativeStudio ? t('creative.canvas.backToDashboard') : t('common.toggleMenu')"
+          v-if="!publicPage && !isCreativeStudio"
+          @click="appStore.toggleMobileSidebar()"
+          class="btn-ghost btn-icon lg:hidden"
+          :aria-label="t('common.toggleMenu')"
+          :title="t('common.toggleMenu')"
         >
-          <Icon :name="isCreativeStudio ? 'home' : 'menu'" size="md" />
+          <Icon name="menu" size="md" />
         </button>
 
         <!-- 版本标签与首页链接分离，避免按钮嵌套在链接内触发错误跳转。 -->
-        <div class="header-brand flex min-w-0 items-center gap-2.5 px-1.5 py-1">
+        <div class="header-brand flex min-w-0 items-center gap-2.5 rounded-control px-1.5 py-1 transition-colors hover:bg-primary-100/70 dark:hover:bg-dark-700">
           <router-link
             :to="homePath"
-            class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden border-2 border-gray-950 bg-white dark:border-dark-100 dark:bg-dark-800"
+            class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-control bg-primary-100 dark:bg-dark-800"
             :aria-label="siteName"
           >
             <img v-if="settingsLoaded" :src="siteLogo || '/logo.svg'" :alt="siteName" class="h-full w-full object-contain" />
@@ -27,27 +26,37 @@
           <span class="hidden min-w-0 sm:block">
             <router-link
               :to="homePath"
-              class="block max-w-44 truncate text-base font-extrabold leading-tight tracking-tight text-gray-950 dark:text-white"
-            >{{ siteName }}<span class="text-bh-red">.</span></router-link>
+              class="block max-w-44 truncate text-base font-bold leading-tight text-gray-900 dark:text-white"
+            >{{ siteName }}</router-link>
             <VersionBadge :version="siteVersion" />
           </span>
         </div>
+
+        <!-- 操作台的返回入口紧邻品牌右侧，与首页链接分开。 -->
+        <router-link
+          v-if="isCreativeStudio"
+          to="/dashboard"
+          class="btn-ghost btn-icon shrink-0"
+          :aria-label="t('creative.canvas.backToDashboard')"
+          :title="t('creative.canvas.backToDashboard')"
+        >
+          <Icon name="home" size="md" />
+        </router-link>
       </div>
 
-      <!-- 右侧状态项保持紧凑，作为全局提供商工具区。 -->
+      <!-- 右侧分为工具区和账户区：工具区是同尺寸图标按钮，账户区是余额按钮和头像。 -->
       <div class="header-status-actions">
         <div class="header-status-icon-group">
-          <!-- 手机也保留模型广场入口，复用本站路由、硬阴影和按压样式。 -->
           <router-link
-            v-if="user"
+            v-if="publicPage"
             to="/models"
-            class="header-status-icon-button"
-            data-testid="header-model-marketplace"
+            class="header-status-icon-button hidden sm:flex"
             :aria-label="t('nav.modelMarketplace')"
             :title="t('nav.modelMarketplace')"
           >
-            <Icon name="grid" size="md" />
+            <Icon name="modelMarketplace" size="md" />
           </router-link>
+
           <div v-if="user" class="hidden sm:block">
             <AnnouncementBell variant="status" />
           </div>
@@ -64,8 +73,14 @@
             <Icon name="book" size="md" />
           </a>
 
-          <!-- 主题切换在窄屏始终保留，公告和文档入口优先让出空间。 -->
+          <HeaderContactSupport />
+
+          <LocaleSwitcher variant="status" />
+          <VisualThemeSelector />
+
+          <!-- 登录后主题切换收进用户菜单，未登录时仍在顶栏保留入口。 -->
           <button
+            v-if="!user"
             type="button"
             data-testid="theme-toggle"
             class="header-status-icon-button"
@@ -73,38 +88,35 @@
             :title="isDark ? t('nav.lightMode') : t('nav.darkMode')"
             @click="toggleTheme"
           >
+            <!-- 太阳和月亮保留各自的颜色，让主题切换一眼可辨。 -->
             <Icon
               :name="isDark ? 'sun' : 'moon'"
               size="md"
-              :class="{ 'text-amber-500': isDark }"
+              :class="isDark ? 'text-amber-500' : 'text-blue-500'"
             />
           </button>
         </div>
 
-        <div class="header-status-divider hidden sm:block"></div>
-
-        <LocaleSwitcher variant="status" />
-
         <template v-if="user">
-          <SubscriptionProgressMini variant="status" />
+          <div class="header-status-divider hidden sm:block"></div>
 
-          <div class="header-status-balance hidden sm:flex">
-            <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">
-              {{ formatHeaderMoney(availableBalance) }}
+          <!-- 余额按钮右侧的状态点表示订阅用量，点击展开订阅详情；窄屏余额收进用户菜单。 -->
+          <SubscriptionProgressMini variant="status" class="hidden sm:block">
+            <span class="text-primary-900/60 dark:text-dark-400">{{ balanceUnitSymbol }}</span>
+            <span class="font-semibold tabular-nums text-primary-900 dark:text-dark-100">
+              {{ formatHeaderMoney(availableBalance, false) }}
             </span>
             <span
               v-if="frozenBalance > 0"
-              class="ml-2 text-xs font-medium text-amber-600 dark:text-amber-300"
+              class="ml-1 text-xs font-medium text-amber-600 dark:text-amber-300"
               :title="balanceFrozenLabel"
             >
               {{ balanceFrozenLabel }}
             </span>
-          </div>
-
-          <div class="header-status-divider hidden md:block"></div>
+          </SubscriptionProgressMini>
         </template>
 
-        <!-- 用户下拉菜单入口只保留头像和箭头，使状态栏节奏接近参考图。 -->
+        <!-- 用户下拉菜单入口只保留头像，尺寸与图标按钮等高。 -->
         <div v-if="user" class="relative" ref="dropdownRef">
           <button
             @click="toggleDropdown"
@@ -119,50 +131,67 @@
             />
           </button>
 
-          <!-- Dropdown Menu -->
-          <transition name="dropdown">
-            <div v-if="dropdownOpen" class="dropdown right-0 z-50 mt-2 w-64 origin-top-right animate-scale-in">
-              <!-- User Info -->
-              <div class="border-b border-primary-900/10 px-4 py-3 dark:border-dark-600">
-                <div class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ displayName }}
-                </div>
-                <div class="text-xs text-gray-500 dark:text-dark-400">{{ user.email }}</div>
-              </div>
-
-              <!-- Balance (mobile only) -->
-              <div class="border-b border-primary-900/10 px-4 py-2 dark:border-dark-600 sm:hidden">
-                <div class="text-xs text-gray-500 dark:text-dark-400">
-                  {{ t('common.balance') }}
-                </div>
-                <div class="text-sm font-semibold text-primary-600 dark:text-primary-400">
-                  {{ formatHeaderMoney(availableBalance) }}
-                </div>
-                <div v-if="frozenBalance > 0" class="mt-1 text-xs text-amber-600 dark:text-amber-300">
-                  {{ balanceFrozenText }} {{ formatHeaderMoney(frozenBalance) }}
-                </div>
-              </div>
-
-              <div class="py-1">
-                <router-link to="/profile" @click="closeDropdown" class="dropdown-item dropdown-item-brand">
-                  <Icon name="user" size="sm" />
-                  {{ t('nav.profile') }}
+          <!-- 用户菜单：账户卡、导航、联系方式和退出登录分区排列，菜单项内缩并使用圆角悬停底色。 -->
+          <MotionTransition name="dropdown-fade">
+            <div v-if="dropdownOpen" class="dropdown user-menu-panel right-0 z-50 mt-2 w-72 origin-top-right py-0">
+              <div class="menu-section">
+                <!-- 账户卡同时作为个人资料入口，右侧齿轮提示可进入设置。 -->
+                <router-link to="/profile" @click="closeDropdown" class="user-menu-card">
+                  <UserAvatar
+                    :avatar-url="avatarUrl"
+                    :user-id="user.id"
+                    :alt="displayName"
+                    size-class="h-9 w-9 shrink-0"
+                  />
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate text-sm font-medium text-primary-900 dark:text-dark-50">
+                      {{ displayName }}
+                    </span>
+                    <span class="block truncate text-xs text-primary-900/60 dark:text-dark-400">
+                      {{ user.email }}
+                    </span>
+                  </span>
+                  <Icon name="cog" size="sm" class="shrink-0 text-primary-900/45 dark:text-dark-400" />
                 </router-link>
 
-                <router-link to="/keys" @click="closeDropdown" class="dropdown-item dropdown-item-brand">
-                  <Icon name="key" size="sm" />
-                  {{ t('nav.apiKeys') }}
-                </router-link>
+                <!-- 窄屏顶栏不显示余额，放在账户卡下方。 -->
+                <div class="flex items-baseline justify-between gap-3 px-2.5 pb-1 pt-2 sm:hidden">
+                  <span class="text-xs text-primary-900/60 dark:text-dark-400">{{ t('common.balance') }}</span>
+                  <span class="text-right">
+                    <span class="block text-sm font-semibold tabular-nums text-primary-900 dark:text-dark-50">
+                      {{ formatHeaderMoney(availableBalance) }}
+                    </span>
+                    <span v-if="frozenBalance > 0" class="block text-xs text-amber-600 dark:text-amber-300">
+                      {{ balanceFrozenLabel }}
+                    </span>
+                  </span>
+                </div>
+              </div>
 
+              <!-- 导航分组与侧栏条目、图标和功能开关保持一致。 -->
+              <div v-for="group in menuNavGroups" :key="group.key" class="menu-section">
+                <router-link
+                  v-for="item in group.items"
+                  :key="item.path"
+                  :to="item.path"
+                  @click="closeDropdown"
+                  class="menu-item"
+                >
+                  <Icon :name="item.icon" size="md" class="shrink-0" />
+                  {{ item.label }}
+                </router-link>
+              </div>
+
+              <!-- 管理员附加入口：项目仓库和新手引导。 -->
+              <div v-if="authStore.isAdmin" class="menu-section">
                 <a
-                  v-if="authStore.isAdmin"
                   href="https://github.com/TokenFlux/TokenRouter"
                   target="_blank"
                   rel="noopener noreferrer"
                   @click="closeDropdown"
-                  class="dropdown-item dropdown-item-brand"
+                  class="menu-item"
                 >
-                  <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-5 w-5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
                     <path
                       fill-rule="evenodd"
                       clip-rule="evenodd"
@@ -172,105 +201,74 @@
                   {{ t('nav.github') }}
                 </a>
 
-              </div>
-
-              <!-- Contact Support (only show if configured) -->
-              <div
-                v-if="contactInfo"
-                class="header-contact-panel border-t-2 border-emerald-700 bg-emerald-50/90 px-4 py-3 dark:border-emerald-300 dark:bg-emerald-900/25"
-              >
-                <div class="flex items-center gap-2 text-xs font-extrabold text-emerald-800 dark:text-emerald-200">
-                  <svg
-                    class="h-3.5 w-3.5 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"
-                    />
-                  </svg>
-                  <span>{{ t('common.contactSupport') }}</span>
-                </div>
-                <ul class="mt-2 space-y-1.5">
-                  <li
-                    v-for="(entry, idx) in contactEntries"
-                    :key="idx"
-                    class="text-xs leading-relaxed"
-                  >
-                    <template v-if="entry.label">
-                      <span class="text-emerald-700 dark:text-emerald-300">{{ entry.label }}</span>
-                      <span class="text-emerald-600/70 dark:text-emerald-300/70">：</span>
-                    </template>
-                    <a
-                      v-if="entry.url"
-                      :href="entry.url"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="break-all font-mono font-extrabold text-emerald-800 underline decoration-2 underline-offset-2 hover:text-emerald-600 dark:text-emerald-100 dark:hover:text-emerald-200"
-                    >{{ entry.value }}</a>
-                    <span v-else class="break-all font-mono font-extrabold text-emerald-800 dark:text-emerald-100">{{ entry.value }}</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div v-if="showOnboardingButton" class="border-t border-primary-900/10 py-1 dark:border-dark-600">
-                <button @click="handleReplayGuide" class="dropdown-item dropdown-item-brand w-full">
-                  <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path
-                      d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 14a1 1 0 110 2 1 1 0 010-2zm1.07-7.75c0-.6-.49-1.25-1.32-1.25-.7 0-1.22.4-1.43 1.02a1 1 0 11-1.9-.62A3.41 3.41 0 0111.8 5c2.02 0 3.25 1.4 3.25 2.9 0 2-1.83 2.55-2.43 3.12-.43.4-.47.75-.47 1.23a1 1 0 01-2 0c0-1 .16-1.82 1.1-2.7.69-.64 1.82-1.05 1.82-2.06z"
-                    />
-                  </svg>
-                  {{ $t('onboarding.restartTour') }}
+                <button v-if="showOnboardingButton" type="button" @click="handleReplayGuide" class="menu-item">
+                  <Icon name="questionCircle" size="md" class="shrink-0" />
+                  {{ t('onboarding.restartTour') }}
                 </button>
               </div>
 
-              <div class="border-t border-primary-900/10 py-1 dark:border-dark-600">
-                <button
-                  @click="handleLogout"
-                  class="dropdown-item w-full text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-                >
-                  <svg
-                    class="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
-                    />
-                  </svg>
+              <div class="menu-section">
+                <button type="button" @click="handleLogout" class="menu-item menu-item-danger">
+                  <Icon name="logout" size="md" />
                   {{ t('nav.logout') }}
                 </button>
               </div>
+
+              <!-- 主题三段式切换放在菜单底部，使用共用的分段样式，与顶部账户卡同一种灰底。 -->
+              <div class="menu-section">
+                <div v-segmented class="segmented grid grid-cols-3 gap-1" role="radiogroup" :aria-label="t('nav.theme')">
+                  <button
+                    v-for="option in themeOptions"
+                    :key="option.mode"
+                    type="button"
+                    role="radio"
+                    :aria-checked="themeMode === option.mode"
+                    :aria-label="option.label"
+                    :title="option.label"
+                    :data-testid="`theme-mode-${option.mode}`"
+                    :class="['segmented-item flex items-center justify-center py-1.5', themeMode === option.mode && 'segmented-item-active']"
+                    @click="setThemeMode(option.mode)"
+                  >
+                    <Icon :name="option.icon" size="sm" />
+                  </button>
+                </div>
+              </div>
             </div>
-          </transition>
+          </MotionTransition>
         </div>
+
+        <router-link v-else-if="publicPage" to="/login" class="btn btn-primary">
+          {{ t('home.login') }}
+        </router-link>
       </div>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
+import VisualThemeSelector from '@/components/common/VisualThemeSelector.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import UserAvatar from '@/components/common/UserAvatar.vue'
+import HeaderContactSupport from '@/components/layout/HeaderContactSupport.vue'
 import Icon from '@/components/icons/Icon.vue'
+import type { IconName } from '@/components/icons'
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeUrl } from '@/utils/url'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
-import { useTheme } from '@/composables/useTheme'
+import { useTheme, type ThemeMode } from '@/composables/useTheme'
+
+// 公开页面复用品牌和账户区，只省略侧栏开关并补充访客入口。
+withDefaults(defineProps<{ publicPage?: boolean }>(), {
+  publicPage: false
+})
 
 const router = useRouter()
 const route = useRoute()
@@ -278,8 +276,8 @@ const { t } = useI18n()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
-const { formatBalanceAmount } = useBalanceDisplay()
-const { isDark, toggleTheme } = useTheme()
+const { formatBalanceAmount, balanceUnitSymbol } = useBalanceDisplay()
+const { isDark, themeMode, setThemeMode, toggleTheme } = useTheme()
 
 const user = computed(() => authStore.user)
 const isCreativeStudio = computed(() => route.path === '/creative')
@@ -289,43 +287,51 @@ const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRela
 const siteVersion = computed(() => appStore.siteVersion)
 const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 const dropdownOpen = ref(false)
-const dropdownRef = ref<HTMLElement | null>(null)
-const contactInfo = computed(() => appStore.contactInfo)
 
-// 联系客服是自由文本(如"闲聊群(QQ)：123，TG群：https://t.me/xxx"),
-// 按逗号/分号拆条,再按冒号拆"标签：值",URL 渲染为可点击链接
-interface ContactEntry {
+interface MenuNavItem {
+  path: string
   label: string
-  value: string
-  url: string
+  icon: IconName
 }
 
-const contactEntries = computed<ContactEntry[]>(() => {
-  const raw = contactInfo.value?.trim()
-  if (!raw) return []
-  return raw
-    .split(/[，,;；\n]+/)
-    .map(part => part.trim())
-    .filter(Boolean)
-    .map(part => {
-      // 找第一个不属于协议(://)的冒号作为"标签：值"分隔符
-      let sep = -1
-      for (let i = 0; i < part.length; i++) {
-        const ch = part[i]
-        if (ch === '：') { sep = i; break }
-        if (ch === ':' && part.slice(i, i + 3) !== '://') { sep = i; break }
-      }
-      let label = ''
-      let value = part
-      if (sep > 0) {
-        label = part.slice(0, sep).trim()
-        value = part.slice(sep + 1).trim()
-      }
-      const url = /^https?:\/\/\S+$/.test(value) ? value : ''
-      return { label, value, url }
-    })
-    .filter(e => e.value)
+// 用户菜单导航分组：常用入口在前，账单相关在后；按功能开关过滤，与侧栏的显示条件一致。
+const menuNavGroups = computed(() => {
+  const settings = appStore.cachedPublicSettings
+  const paymentEnabled = settings?.payment_enabled === true
+  const groups: Array<{ key: string; items: Array<MenuNavItem | false> }> = [
+    {
+      key: 'workspace',
+      items: [
+        { path: '/profile', label: t('nav.profile'), icon: 'userCircle' },
+        { path: '/dashboard', label: t('nav.dashboard'), icon: 'dashboard' },
+        { path: '/usage', label: t('nav.usage'), icon: 'chart' },
+        { path: '/keys', label: t('nav.apiKeys'), icon: 'key' },
+        settings?.team_enabled !== false && { path: '/team', label: t('nav.team'), icon: 'users' }
+      ]
+    },
+    {
+      key: 'billing',
+      items: [
+        paymentEnabled && { path: '/purchase', label: t('nav.buySubscription'), icon: 'recharge' },
+        { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: 'creditCard' },
+        paymentEnabled && { path: '/orders', label: t('nav.myOrders'), icon: 'orderList' },
+        { path: '/redeem', label: t('nav.redeem'), icon: 'gift' },
+        settings?.affiliate_enabled === true && { path: '/affiliate', label: t('nav.affiliate'), icon: 'affiliate' }
+      ]
+    }
+  ]
+  return groups.map(group => ({
+    key: group.key,
+    items: group.items.filter((item): item is MenuNavItem => Boolean(item))
+  }))
 })
+
+const themeOptions = computed<Array<{ mode: ThemeMode; icon: IconName; label: string }>>(() => [
+  { mode: 'light', icon: 'sun', label: t('nav.lightMode') },
+  { mode: 'dark', icon: 'moon', label: t('nav.darkMode') },
+  { mode: 'system', icon: 'monitor', label: t('nav.systemTheme') }
+])
+const dropdownRef = ref<HTMLElement | null>(null)
 const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
 const availableBalance = computed(() => Number(user.value?.balance || 0))
@@ -342,18 +348,6 @@ const displayName = computed(() => {
   if (!user.value) return ''
   return user.value.username || user.value.email?.split('@')[0] || ''
 })
-
-function toggleMobileSidebar() {
-  appStore.toggleMobileSidebar()
-}
-
-function handlePrimaryNavigation() {
-  if (isCreativeStudio.value) {
-    void router.push('/dashboard')
-    return
-  }
-  toggleMobileSidebar()
-}
 
 function toggleDropdown() {
   dropdownOpen.value = !dropdownOpen.value
@@ -379,8 +373,9 @@ function handleReplayGuide() {
   onboardingStore.replay()
 }
 
-function formatHeaderMoney(value: number) {
-  return formatBalanceAmount(Number.isFinite(value) ? value : 0, { fractionDigits: 2 })
+// withSymbol 为 false 时只返回数字，供顶栏余额按钮单独排版货币符号。
+function formatHeaderMoney(value: number, withSymbol = true) {
+  return formatBalanceAmount(Number.isFinite(value) ? value : 0, { fractionDigits: 2, withSymbol })
 }
 
 function handleClickOutside(event: MouseEvent) {
@@ -399,31 +394,12 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.bh-header {
-  background: var(--bh-paper);
-  border-bottom: 3px solid var(--bh-ink);
-}
-
-.dark .bh-header {
-  background: #1c1a16;
-}
-
 .header-status-actions {
-  @apply ml-auto flex min-w-0 shrink-0 items-center gap-1 sm:gap-3.5;
+  @apply ml-auto flex min-w-0 shrink-0 items-center gap-2 sm:gap-5;
 }
 
 .header-brand {
   max-width: min(18rem, 42vw);
-}
-
-/* 极窄屏压缩品牌与工具间距，保留可点击尺寸和全部入口。 */
-@media (max-width: 359px) {
-  .header-brand {
-    padding-inline: 0;
-  }
-  .header-status-actions {
-    gap: 2px;
-  }
 }
 
 .header-status-icon-group {
@@ -431,47 +407,22 @@ onBeforeUnmount(() => {
 }
 
 .header-status-divider {
-  @apply h-9 w-0.5 shrink-0;
-  background: var(--bh-ink);
-  opacity: 0.75;
-}
-
-.header-status-icon-button {
-  @apply flex h-9 w-9 items-center justify-center rounded-none text-gray-900 transition-colors dark:text-dark-100;
-}
-
-.header-status-icon-button:hover {
-  background: var(--bh-yellow);
-  color: #141414;
-}
-
-.header-status-balance {
-  @apply h-8 min-w-[104px] items-center justify-center rounded-none px-3;
-  background: var(--bh-yellow);
-  border: 2px solid var(--bh-ink);
-}
-
-.header-status-balance :deep(span) {
-  color: #141414 !important;
+  @apply h-5 w-px shrink-0 bg-primary-900/10 dark:bg-dark-600;
 }
 
 .header-status-user-button {
-  @apply flex h-10 w-10 items-center justify-center rounded-none border-2 border-transparent transition-colors;
+  @apply flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-primary-200/70 transition-shadow hover:ring-primary-300 dark:ring-dark-600 dark:hover:ring-dark-400;
 }
 
-.header-status-user-button:hover {
-  border-color: var(--bh-ink);
-  background: var(--bh-yellow);
+/* 菜单较长时不超出视口，超出部分在面板内滚动。 */
+.user-menu-panel {
+  max-height: calc(100dvh - var(--header-h) - 1rem);
+  @apply overflow-y-auto;
 }
 
-.dropdown-enter-active,
-.dropdown-leave-active {
-  transition: all 0.2s ease;
-}
-
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
+/* 账户卡常驻浅灰底，与下方普通菜单项区分层级，底色与底部主题切换的轨道一致。 */
+.user-menu-card {
+  @apply flex items-center gap-3 rounded-control bg-gray-50 px-2.5 py-2 transition-colors hover:bg-gray-100;
+  @apply dark:bg-dark-800 dark:hover:bg-dark-700;
 }
 </style>

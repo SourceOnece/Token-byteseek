@@ -1,19 +1,20 @@
 <template>
-  <Transition name="modal" @after-leave="afterLeave">
   <!-- 不 teleport:与四个迁移前组件的渲染位置一致,嵌套在 BaseDialog 内时层级由 zIndex 决胜。 -->
-  <div v-if="show" class="fixed inset-0 z-modal overflow-y-auto" :style="zIndexStyle" @click.self="handleOverlay">
-    <div class="flex min-h-full items-center justify-center p-4">
-      <div class="fixed inset-0 bg-[var(--overlay-bg)] transition-opacity" @click="handleOverlay"></div>
+  <MotionTransition name="modal" appear @after-leave="handleAfterLeave">
+    <div v-if="show" :inert="!show || undefined" role="dialog" aria-modal="true" class="fixed inset-0 z-modal overflow-y-auto" :style="zIndexStyle" @click.self="handleOverlay">
+      <div class="flex min-h-full items-center justify-center p-4">
+        <div class="fixed inset-0 bg-[var(--overlay-bg)]" @click="handleOverlay"></div>
 
-      <div ref="dialogRef" tabindex="-1" class="relative w-full max-w-md transform rounded-surface bg-white p-6 shadow-xl transition-all dark:bg-dark-800 sm:rounded-dialog">
-        <slot />
+        <div ref="dialogRef" tabindex="-1" class="auth-dialog-content relative w-full max-w-md transform rounded-surface bg-white p-6 shadow-xl dark:bg-dark-800 sm:rounded-dialog">
+          <slot />
+        </div>
       </div>
     </div>
-  </div>
-  </Transition>
+  </MotionTransition>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 // 安全凭证流程(TOTP 设置/禁用/登录验证/提权)的居中卡片弹窗壳。
 // 与 BaseDialog 的管理台对话框是两个有意的风格族:居中图标头、无右上角 X、整卡 p-6。
 import { computed, ref } from 'vue'
@@ -33,11 +34,13 @@ const props = withDefaults(defineProps<{
   closeOnOverlay: true
 })
 
-// 凭证弹窗与普通弹窗共用堆栈，关闭时不抢走新弹窗的焦点。
+const emit = defineEmits<{ (e: 'close'): void; (e: 'after-leave'): void }>()
 const dialogRef = ref<HTMLElement | null>(null)
 const { afterLeave } = useDialogLifecycle(() => props.show, dialogRef)
-
-const emit = defineEmits<{ (e: 'close'): void }>()
+function handleAfterLeave() {
+  afterLeave()
+  if (!props.show) emit('after-leave')
+}
 
 const zIndexStyle = computed(() => (props.zIndex !== Z_INDEX.MODAL ? { zIndex: props.zIndex } : undefined))
 const handleOverlay = () => {

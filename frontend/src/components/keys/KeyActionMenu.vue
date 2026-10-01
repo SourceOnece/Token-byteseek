@@ -1,44 +1,47 @@
 <template>
   <Teleport to="body">
-    <div v-if="show && apiKey && position">
-      <div class="fixed inset-0 z-menu-overlay" aria-hidden="true" @click="emit('close')"></div>
-      <div
-        :id="`key-action-menu-${apiKey.id}`"
-        class="action-menu bh-action-menu w-48 overflow-hidden"
-        :style="{ top: `${position.top}px`, left: `${position.left}px` }"
-        role="menu"
-        :aria-label="t('common.actions')"
-        @click.stop
-      >
-        <div class="py-1">
-          <button type="button" class="dropdown-item" role="menuitem" @click="emitAction('use')">
-            <Icon name="terminal" size="sm" class="text-emerald-500" :stroke-width="2" />
-            {{ t('keys.useKey') }}
-          </button>
-          <button type="button" class="dropdown-item" role="menuitem" @click="emitAction('import-tf')">
-            <Icon name="upload" size="sm" class="text-blue-500" :stroke-width="2" />
-            {{ t('keys.importToTf') }}
-          </button>
-          <button v-if="allowImport" type="button" class="dropdown-item" role="menuitem" @click="emitAction('import')">
-            <Icon name="upload" size="sm" class="text-amber-700 dark:text-amber-300" :stroke-width="2" />
-            {{ t('keys.importToCcSwitch') }}
-          </button>
-          <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
-          <button type="button" class="dropdown-item" role="menuitem" @click="emitAction('rotate')">
-            <Icon name="refresh" size="sm" class="text-primary-500" :stroke-width="2" />
-            {{ t('keys.rotateKey') }}
-          </button>
-          <button type="button" class="dropdown-item text-red-600 dark:text-red-400" role="menuitem" @click="emitAction('delete')">
-            <Icon name="trash" size="sm" class="text-red-500 dark:text-red-400" :stroke-width="2" />
-            {{ t('common.delete') }}
-          </button>
+
+      <div v-if="show && apiKey && position" class="fixed inset-0 z-menu-overlay" aria-hidden="true" @click="emit('close')"></div>
+      <MotionTransition name="dropdown-fade">
+        <div
+          v-if="show && apiKey && position"
+          :id="`key-action-menu-${apiKey.id}`"
+          class="action-menu w-48 overflow-hidden"
+          :style="{ top: `${position.top}px`, left: `${position.left}px` }"
+          role="menu"
+          :aria-label="t('common.actions')"
+          @click.stop
+        >
+          <div class="py-1">
+            <button type="button" class="dropdown-item" role="menuitem" @click="emitAction('use')">
+              <Icon name="terminal" size="sm" class="text-emerald-500" :stroke-width="2" />
+              {{ t('keys.useKey') }}
+            </button>
+            <button type="button" class="dropdown-item" role="menuitem" @click="emitAction('import-tf')">
+              <Icon name="upload" size="sm" class="text-blue-500" :stroke-width="2" />
+              {{ t('keys.importToTf') }}
+            </button>
+            <button v-if="allowImport" type="button" class="dropdown-item" role="menuitem" @click="emitAction('import')">
+              <Icon name="upload" size="sm" class="text-violet-500" :stroke-width="2" />
+              {{ t('keys.importToCcSwitch') }}
+            </button>
+            <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
+            <button type="button" class="dropdown-item" role="menuitem" @click="emitAction('rotate')">
+              <Icon name="refresh" size="sm" class="text-primary-500" :stroke-width="2" />
+              {{ t('keys.rotateKey') }}
+            </button>
+            <button type="button" class="dropdown-item text-red-600 dark:text-red-400" role="menuitem" @click="emitAction('delete')">
+              <Icon name="trash" size="sm" class="text-red-500 dark:text-red-400" :stroke-width="2" />
+              {{ t('common.delete') }}
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
+      </MotionTransition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'

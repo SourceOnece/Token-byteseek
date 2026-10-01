@@ -15,10 +15,10 @@
           :aria-expanded="settingsOpen"
           @click="settingsOpen = !settingsOpen"
         >
-          <Icon name="cog" size="md" />
+          <Icon name="cog" size="sm" />
         </button>
         <!-- 向下展开的设置面板：清空画布 / 清空本机创作数据 -->
-        <Transition name="pop-float">
+        <MotionTransition name="pop-float">
           <div
             v-if="settingsOpen"
             class="settings-pop-float absolute left-0 top-12 w-64 rounded-surface border border-primary-900/10 bg-white/95 p-3 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-900/95"
@@ -40,7 +40,7 @@
               {{ t('creative.history.clearData') }}
             </button>
           </div>
-        </Transition>
+        </MotionTransition>
       </div>
 
       <!-- 聊天式输入框：固定底部居中，不随选中图片移动 -->
@@ -66,10 +66,16 @@
       <!-- 生成状态胶囊：仅桌面端左下角显示，移动端隐藏以避免占用画布空间 -->
       <div
         v-if="pillState && !pillHidden"
-        class="bh-creative-status-pill absolute left-1/2 top-28 z-10 hidden max-w-[calc(100%-6rem)] -translate-x-1/2 items-center gap-2 px-3 py-1.5 text-xs lg:bottom-3 lg:left-3 lg:top-auto lg:flex lg:max-w-[calc(100%-24rem)] lg:translate-x-0"
+        class="absolute left-1/2 top-28 z-10 hidden max-w-[calc(100%-6rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-primary-900/10 bg-white/90 px-3 py-1.5 text-xs shadow-md backdrop-blur dark:border-dark-600 dark:bg-dark-900/90 lg:bottom-3 lg:left-3 lg:top-auto lg:flex lg:max-w-[calc(100%-24rem)] lg:translate-x-0"
         :class="pillState.toneClass"
       >
-        <Icon v-if="pillState.spinning" name="refresh" size="sm" class="animate-spin" />
+        <Icon
+          v-if="pillState.spinning"
+          name="refresh"
+          size="sm"
+          class="animate-spin"
+          :animate-on-hover="false"
+        />
         <span class="whitespace-nowrap font-medium">{{ pillState.text }}</span>
         <span v-if="pillState.detail" class="truncate text-gray-500 dark:text-dark-400">{{ pillState.detail }}</span>
       </div>
@@ -88,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 /**
  * 创作台主视图：全幅无限画布 + 聊天式输入框。
  * - 输入框固定底部居中（早期试过跟随选中图片，缩放场景下位置不稳定，按用户要求回退为固定）
@@ -336,44 +343,7 @@ async function onClearLocalData(): Promise<void> {
 <style scoped>
 /* 设置面板动效用全局 pop-float,锚点方向(左上锚、向上收起)用局部变量表达。 */
 .settings-pop-float {
-  --pop-origin: top left;
-  --pop-shift: -6px;
-}
-
-/* 创作台控件统一使用包豪斯硬边和仪表盘硬阴影。 */
-.bh-creative-icon-button,
-.bh-creative-popover,
-.bh-creative-panel-button,
-.bh-creative-status-pill {
-  border: 2px solid var(--bh-ink);
-  background: var(--bh-surface);
-  box-shadow: var(--bh-shadow-sm);
-}
-
-.bh-creative-icon-button {
-  color: var(--bh-ink);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
-}
-
-.bh-creative-icon-button:hover,
-.bh-creative-panel-button:hover {
-  background: var(--bh-yellow);
-  color: var(--bh-ink);
-}
-
-.bh-creative-icon-button:active,
-.bh-creative-panel-button:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--bh-shadow-ink);
-}
-
-.bh-creative-popover {
-  background: var(--bh-surface);
-}
-
-.bh-creative-status-pill {
-  border-left: 8px solid var(--bh-blue);
-  font-weight: 800;
+  --pop-shift: calc(-1 * var(--motion-shift));
 }
 
 /* 信封沿运行时计算的向量匀速飞行，透明度收尾避免落到历史按钮上时产生遮挡。 */

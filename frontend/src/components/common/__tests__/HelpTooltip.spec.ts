@@ -1,3 +1,4 @@
+import { nextMotionFrame } from '@/__tests__/helpers/motion'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
@@ -26,6 +27,7 @@ describe('HelpTooltip', () => {
     const trigger = wrapper.get('.group')
     await trigger.trigger('mouseenter')
     await trigger.trigger('click')
+    await nextMotionFrame()
     expect(getTooltipElement().style.display).toBe('none')
     await wrapper.setProps({ open: true })
     await nextTick()
@@ -38,6 +40,7 @@ describe('HelpTooltip', () => {
     }
     expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false])
     await wrapper.setProps({ open: false })
+    await nextMotionFrame()
     expect(getTooltipElement().style.display).toBe('none')
     await wrapper.setProps({ open: true })
     expect(getTooltipElement().style.display).not.toBe('none')
@@ -74,6 +77,8 @@ describe('HelpTooltip', () => {
     const trigger = wrapper.get('.group')
     const tooltip = getTooltipElement()
 
+    await nextMotionFrame()
+
     expect(tooltip.style.display).toBe('none')
 
     await trigger.trigger('mouseenter')
@@ -82,6 +87,7 @@ describe('HelpTooltip', () => {
 
     await trigger.trigger('mouseleave')
     await nextTick()
+    await nextMotionFrame()
     expect(tooltip.style.display).toBe('none')
 
     wrapper.unmount()
@@ -112,6 +118,7 @@ describe('HelpTooltip', () => {
 
     tooltip.dispatchEvent(new MouseEvent('mouseleave', { relatedTarget: null }))
     await nextTick()
+    await nextMotionFrame()
     expect(tooltip.style.display).toBe('none')
 
     wrapper.unmount()
@@ -129,6 +136,8 @@ describe('HelpTooltip', () => {
     const trigger = wrapper.get('.group')
     const tooltip = getTooltipElement()
 
+    await nextMotionFrame()
+
     expect(tooltip.style.display).toBe('none')
 
     await trigger.trigger('click')
@@ -142,6 +151,7 @@ describe('HelpTooltip', () => {
     }
     closeButton.click()
     await nextTick()
+    await nextMotionFrame()
     expect(tooltip.style.display).toBe('none')
 
     await trigger.trigger('click')
@@ -150,6 +160,7 @@ describe('HelpTooltip', () => {
 
     document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     await nextTick()
+    await nextMotionFrame()
     expect(tooltip.style.display).toBe('none')
 
     wrapper.unmount()
@@ -174,6 +185,7 @@ describe('HelpTooltip', () => {
 
     await trigger.trigger('mouseleave')
     await nextTick()
+    await nextMotionFrame()
     expect(tooltip.style.display).toBe('none')
 
     await trigger.trigger('click')
@@ -186,6 +198,7 @@ describe('HelpTooltip', () => {
 
     document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     await nextTick()
+    await nextMotionFrame()
     expect(tooltip.style.display).toBe('none')
 
     wrapper.unmount()

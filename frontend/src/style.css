@@ -2,37 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================================
-   ByteSeek Bauhaus Theme
-   三原色 + 黑 + 纸白 / 几何 / 直角 / 硬阴影
-   与 docs.byteseek.ai 同源的设计语言
-   ============================================================ */
-
 @layer base {
   :root {
-    /* 包豪斯主题与原生布局尺寸共存。 */
-    --bh-red: #e1251b;
-    --bh-blue: #1450a3;
-    --bh-yellow: #ffcc00;
-    --bh-ink: #141414;
-    --bh-paper: #f4f0e6;
-    --bh-surface: #ffffff;
-    --bh-shadow-ink: #141414;
-    --bh-border: 3px solid var(--bh-ink);
-    --bh-shadow: 4px 4px 0 0 var(--bh-shadow-ink);
-    --bh-shadow-sm: 4px 4px 0 0 var(--bh-shadow-ink);
-    --bh-scrollbar: #c7c7c7;
-    --bh-scrollbar-hover: #a9a9a9;
+    /* 动效时长只在这里定义；CSS 与命令式内容淡入读取同一组变量。 */
+    --motion-fast: 150ms;
+    --motion-normal: 200ms;
+    --motion-layout: 220ms;
+    --motion-exit: var(--motion-fast);
+    --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+    --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+    --motion-shift: 4px;
     /* 布局尺寸唯一来源:顶栏高度与侧栏展开/折叠宽度,
        布局组件与页面的高度、偏移计算一律引用这些变量,不再各自写字面量。 */
     --header-h: 3.5rem;
     --sidebar-w: 14rem;
     --sidebar-w-collapsed: 4.5rem;
-    /* 包豪斯统一直角；保留语义 token，供当前组件共享。 */
-    --radius-compact: 0px;
-    --radius-control: 0px;
-    --radius-surface: 0px;
-    --radius-dialog: 0px;
+    /* 圆角 token：语义档位的唯一数值来源,raw CSS 只允许引用这些变量;
+       整体圆润取向:紧凑 6 / 控件 8 / 表面 12 / 弹窗 16。 */
+    --radius-compact: 6px;
+    --radius-control: 8px;
+    --radius-surface: 12px;
+    --radius-dialog: 16px;
     /* 浮层层级语义阶梯:数值唯一来源,tailwind zIndex 扩展与 constants/overlay.ts 的
        Z_INDEX 只引用/镜像这里的值(契约测试锁定三轨一致)。梯队由低到高:
        图表 tooltip 与侧栏遮罩(30) → 侧栏(40) → 顶栏与弹窗(50,同级靠 DOM 顺序决胜) →
@@ -56,26 +46,124 @@
     --z-help-tooltip: 99999;
     --z-tour: 100000000;
     --z-teleport-dropdown: 100000020;
-    /* 遮罩透明度两档:标准 / 强调(破坏性操作与重要确认);dark 变体由调用点自行叠加。 */
+    /* 遮罩透明度两档：常规 / 强遮罩，深色模式在 html.dark 中整体加深。 */
     --overlay-bg: rgb(0 0 0 / 0.5);
     --overlay-bg-strong: rgb(0 0 0 / 0.7);
     /* 浮层面板最大高度档位:紧凑菜单 240 / 常规菜单 320 / 内容面板 420。 */
     --max-h-menu-sm: 15rem;
     --max-h-menu: 20rem;
     --max-h-panel: 26.25rem;
+    /* 页面底色与滚动条轨道同源：浅色 #FCFCFE，深色使用近黑底色。 */
+    --page-bg: #FCFCFE;
   }
 
-  .dark {
-    --bh-ink: #f4f0e6;
-    --bh-paper: #1c1a16;
-    --bh-surface: #26231d;
-    --bh-shadow-ink: rgba(244, 240, 230, 0.6);
-    --bh-scrollbar: #9b9b9b;
-    --bh-scrollbar-hover: #c2c2c2;
+  html.dark {
+    --page-bg: #0A0A0B;
+    --overlay-bg: rgb(0 0 0 / 0.7);
+    --overlay-bg-strong: rgb(0 0 0 / 0.85);
   }
 
   * {
-    @apply border-gray-950/70 dark:border-dark-200/50;
+    @apply border-primary-900/10 dark:border-dark-600;
+  }
+
+  /* 控件内的文字、SVG 和图片不参与拖选，正文和输入内容仍可复制。 */
+  button,
+  [role='button'] {
+    @apply select-none;
+  }
+
+  button img,
+  [role='button'] img {
+    -webkit-user-drag: none;
+  }
+
+  /* 单选框和范围滑块继续使用浏览器原生控件。 */
+  input[type='radio'],
+  input[type='range'] {
+    accent-color: theme('colors.primary.600');
+  }
+
+  /* 保留原生复选框语义，统一细线勾选标记与选中、取消动画。 */
+  :where(input[type='checkbox']) {
+    --checkbox-fill: theme('colors.primary.700');
+    appearance: none;
+    display: inline-grid;
+    place-items: center;
+    width: 1rem;
+    height: 1rem;
+    padding: 0;
+    flex-shrink: 0;
+    vertical-align: middle;
+    border: 1px solid theme('colors.gray.300');
+    border-radius: var(--radius-compact);
+    background-color: white;
+    transition:
+      background-color var(--motion-fast) var(--motion-ease),
+      border-color var(--motion-fast) var(--motion-ease);
+  }
+
+  input[type='checkbox']::before {
+    content: '';
+    width: 100%;
+    height: 100%;
+    background-color: white;
+    /* 使用通用 check 图标的路径，描边为 1.75，避免平台原生粗勾的差异。 */
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 12 9 17L20 6' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+    opacity: 0;
+    transform: scale(0.65);
+    transition:
+      opacity var(--motion-fast) var(--motion-ease),
+      transform var(--motion-fast) var(--motion-ease);
+  }
+
+  input[type='checkbox']:checked,
+  input[type='checkbox']:indeterminate {
+    border-color: var(--checkbox-fill);
+    background-color: var(--checkbox-fill);
+  }
+
+  input[type='checkbox']:checked::before,
+  input[type='checkbox']:indeterminate::before {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  input[type='checkbox']:indeterminate::before {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12h14' stroke='black' stroke-width='1.75' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+
+  input[type='checkbox']:focus-visible {
+    outline: 2px solid var(--checkbox-fill);
+    outline-offset: 2px;
+  }
+
+  input[type='checkbox']:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  html.dark input[type='checkbox'] {
+    --checkbox-fill: theme('colors.primary.600');
+    border-color: theme('borderColor.dark.500');
+    background-color: theme('colors.dark.950');
+  }
+
+  html.dark input[type='checkbox']:checked,
+  html.dark input[type='checkbox']:indeterminate {
+    border-color: var(--checkbox-fill);
+    background-color: var(--checkbox-fill);
+  }
+
+  /* 高对比度模式交回系统绘制，确保勾选与半选状态仍可辨认。 */
+  @media (forced-colors: active) {
+    input[type='checkbox'] {
+      appearance: auto;
+    }
+
+    input[type='checkbox']::before {
+      display: none;
+    }
   }
 
   html {
@@ -83,86 +171,35 @@
     width: 100%;
     min-width: 0;
     color-scheme: light;
-    scrollbar-color: var(--bh-scrollbar) transparent;
+    scrollbar-color: rgba(18, 167, 232, 0.26) transparent;
     scrollbar-width: thin;
-    background: var(--bh-paper);
+    background: var(--page-bg);
   }
 
   html.dark {
     color-scheme: dark;
-    scrollbar-color: var(--bh-scrollbar) #1c1a16;
-    background: #1c1a16;
+    scrollbar-color: rgba(161, 161, 170, 0.45) var(--page-bg);
   }
 
   body {
-    @apply text-gray-950 dark:text-dark-50;
+    @apply text-gray-900 dark:text-dark-100;
     @apply min-h-screen;
     width: 100%;
     min-width: 0;
     margin: 0;
     overflow-x: hidden;
-    background: var(--bh-paper);
+    background: var(--page-bg);
   }
 
-  /* 全站底层纹理：网格、正方形、三角形与缓慢移动的圆环共同构成包豪斯背景。 */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 0; /* check-ui-allow: 本地几何层叠，不属于全局浮层。 */
-    pointer-events: none;
-    background-image:
-      linear-gradient(rgba(255, 204, 0, 0.055), rgba(255, 204, 0, 0.055)),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 190 166'%3E%3Cpolygon points='95,4 186,162 4,162' fill='%231450a3' fill-opacity='.07'/%3E%3C/svg%3E"),
-      linear-gradient(rgba(20, 20, 20, 0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(20, 20, 20, 0.025) 1px, transparent 1px);
-    background-repeat: no-repeat, no-repeat, repeat, repeat;
-    background-size: 170px 170px, 190px 166px, 36px 36px, 36px 36px;
-    background-position: 8vw 72vh, 76vw 8vh, 0 0, 0 0;
-    animation: bh-grid-drift 28s linear infinite;
-  }
-
-  body::after {
-    content: '';
-    position: fixed;
-    right: -14vw;
-    bottom: -24vw;
-    z-index: 0; /* check-ui-allow: 本地几何层叠，不属于全局浮层。 */
-    width: min(60vw, 860px);
-    height: min(60vw, 860px);
-    border: 3px solid rgba(225, 37, 27, 0.09);
-    border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
-    box-shadow: inset 0 0 0 28px rgba(20, 80, 163, 0.025);
-    pointer-events: none;
-    animation: bh-global-orbit 34s linear infinite;
-  }
-
+  /* 视觉视口缩放后仍让应用根节点占满屏幕，避免右侧出现固定空白带。 */
   #app {
-    position: relative;
-    z-index: 1; /* check-ui-allow: 本地几何层叠，不属于全局浮层。 */
     width: 100%;
     min-width: 0;
     max-width: 100%;
   }
 
   .dark body {
-    background: #1c1a16;
-  }
-
-  .dark body::before {
-    background-image:
-      linear-gradient(rgba(255, 204, 0, 0.04), rgba(255, 204, 0, 0.04)),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 190 166'%3E%3Cpolygon points='95,4 186,162 4,162' fill='%235581c2' fill-opacity='.11'/%3E%3C/svg%3E"),
-      linear-gradient(rgba(244, 240, 230, 0.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(244, 240, 230, 0.035) 1px, transparent 1px);
-    background-repeat: no-repeat, no-repeat, repeat, repeat;
-    background-size: 170px 170px, 190px 166px, 36px 36px, 36px 36px;
-    background-position: 8vw 72vh, 76vw 8vh, 0 0, 0 0;
-  }
-
-  .dark body::after {
-    border-color: rgba(225, 37, 27, 0.13);
-    box-shadow: inset 0 0 0 28px rgba(85, 129, 194, 0.035);
+    scrollbar-color: rgba(161, 161, 170, 0.45) var(--page-bg);
   }
 
   /* 主题切换时临时关闭局部过渡，避免背景、卡片和文字不同步。 */
@@ -173,30 +210,7 @@
     transition: none !important;
   }
 
-  @keyframes bh-grid-drift {
-    from { transform: translate3d(0, 0, 0); }
-    to { transform: translate3d(36px, 36px, 0); }
-  }
-
-  @keyframes bh-global-orbit {
-    from { transform: rotate(0deg) translate3d(0, 0, 0); }
-    50% { transform: rotate(180deg) translate3d(-2vw, -1vh, 0); }
-    to { transform: rotate(360deg) translate3d(0, 0, 0); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    body::before,
-    body::after {
-      animation: none;
-    }
-  }
-
-  /* 标题层级：厚重几何 */
-  h1, h2, h3, h4 {
-    letter-spacing: -0.01em;
-  }
-
-  /* 自定义滚动条 - Firefox */
+  /* 自定义滚动条 - 仅针对 Firefox，避免 Chrome 取消 webkit 的全局定制 */
   @supports (-moz-appearance:none) {
     :where(
       .overflow-y-auto,
@@ -209,7 +223,53 @@
       .code-block
     ) {
       scrollbar-width: thin;
-      scrollbar-color: var(--bh-scrollbar) transparent;
+      scrollbar-color: transparent transparent;
+    }
+
+    :where(
+      .overflow-y-auto,
+      .overflow-x-auto,
+      .table-wrapper,
+      .table-container,
+      .modal-body,
+      .dialog-body,
+      .sidebar-nav,
+      .code-block
+    ):hover,
+    :where(
+      .overflow-y-auto,
+      .overflow-x-auto,
+      .table-wrapper,
+      .table-container,
+      .modal-body,
+      .dialog-body,
+      .sidebar-nav,
+      .code-block
+    ):focus-within {
+      scrollbar-color: rgba(0, 210, 255, 0.35) transparent;
+    }
+
+    .dark :where(
+      .overflow-y-auto,
+      .overflow-x-auto,
+      .table-wrapper,
+      .table-container,
+      .modal-body,
+      .dialog-body,
+      .sidebar-nav,
+      .code-block
+    ):hover,
+    .dark :where(
+      .overflow-y-auto,
+      .overflow-x-auto,
+      .table-wrapper,
+      .table-container,
+      .modal-body,
+      .dialog-body,
+      .sidebar-nav,
+      .code-block
+    ):focus-within {
+      scrollbar-color: rgba(161, 161, 170, 0.35) transparent;
     }
   }
 
@@ -225,24 +285,31 @@
 
   html.dark::-webkit-scrollbar-track,
   html.dark body::-webkit-scrollbar-track {
-    background-color: #1c1a16;
+    background-color: var(--page-bg);
   }
 
   html::-webkit-scrollbar-thumb,
   body::-webkit-scrollbar-thumb {
-    background-color: var(--bh-scrollbar);
+    @apply rounded-full;
+    background-color: rgba(18, 167, 232, 0.26);
     background-clip: padding-box;
-    border: 2px solid transparent;
+    border: 3px solid transparent;
+    transition: background-color var(--motion-normal) ease;
   }
 
   html.dark::-webkit-scrollbar-thumb,
   html.dark body::-webkit-scrollbar-thumb {
-    background-color: var(--bh-scrollbar);
+    background-color: rgba(161, 161, 170, 0.45);
   }
 
   html::-webkit-scrollbar-thumb:hover,
   body::-webkit-scrollbar-thumb:hover {
-    background-color: var(--bh-scrollbar-hover);
+    background-color: rgba(18, 167, 232, 0.46);
+  }
+
+  html.dark::-webkit-scrollbar-thumb:hover,
+  html.dark body::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(161, 161, 170, 0.65);
   }
 
   :where(
@@ -281,7 +348,31 @@
     .sidebar-nav,
     .code-block
   )::-webkit-scrollbar-thumb {
-    background-color: var(--bh-scrollbar);
+    @apply rounded-full bg-transparent;
+    transition: background-color var(--motion-normal) ease;
+  }
+
+  :where(
+    .overflow-y-auto,
+    .overflow-x-auto,
+    .table-wrapper,
+    .table-container,
+    .modal-body,
+    .dialog-body,
+    .sidebar-nav,
+    .code-block
+  ):hover::-webkit-scrollbar-thumb,
+  :where(
+    .overflow-y-auto,
+    .overflow-x-auto,
+    .table-wrapper,
+    .table-container,
+    .modal-body,
+    .dialog-body,
+    .sidebar-nav,
+    .code-block
+  ):focus-within::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 210, 255, 0.32);
   }
 
   .dark :where(
@@ -293,8 +384,18 @@
     .dialog-body,
     .sidebar-nav,
     .code-block
-  )::-webkit-scrollbar-thumb {
-    background-color: var(--bh-scrollbar);
+  ):hover::-webkit-scrollbar-thumb,
+  .dark :where(
+    .overflow-y-auto,
+    .overflow-x-auto,
+    .table-wrapper,
+    .table-container,
+    .modal-body,
+    .dialog-body,
+    .sidebar-nav,
+    .code-block
+  ):focus-within::-webkit-scrollbar-thumb {
+    background-color: rgba(161, 161, 170, 0.3);
   }
 
   :where(
@@ -307,142 +408,112 @@
     .sidebar-nav,
     .code-block
   )::-webkit-scrollbar-thumb:hover {
-    background-color: var(--bh-scrollbar-hover);
+    background-color: rgba(0, 210, 255, 0.48);
   }
 
-  /* 选中文本：黄底墨字 */
+  .dark :where(
+    .overflow-y-auto,
+    .overflow-x-auto,
+    .table-wrapper,
+    .table-container,
+    .modal-body,
+    .dialog-body,
+    .sidebar-nav,
+    .code-block
+  )::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(161, 161, 170, 0.5);
+  }
+
+  /* 选中文本样式 */
   ::selection {
-    background: var(--bh-yellow);
-    color: #141414;
+    @apply bg-primary-500/20 text-primary-900 dark:bg-primary-500/30 dark:text-white;
   }
 
-  /* 原生复选框 / 单选框 / 进度控件统一包豪斯蓝 */
-  input[type='checkbox'],
-  input[type='radio'],
-  progress {
-    accent-color: #1450a3;
-  }
 
-  /* 键帽 */
-  kbd {
-    padding: 1px 6px;
-    border: 2px solid var(--bh-ink);
-    border-bottom-width: 3px;
-    background: var(--bh-surface);
-    font-family: 'Geist Mono Variable', ui-monospace, monospace;
-    font-size: 0.75em;
-    font-weight: 700;
-  }
 }
 
 @layer components {
-  /* ============ 按钮：黑框 + 硬阴影 + 位移交互 ============ */
+  /* ============ 按钮样式 ============ */
   .btn {
-    @apply inline-flex items-center justify-center gap-2;
-    @apply rounded-none px-4 py-2.5 text-sm font-bold;
-    @apply min-h-11;
-    @apply border-2 border-gray-950 dark:border-dark-100;
-    box-shadow: 3px 3px 0 0 var(--bh-shadow-ink);
-    @apply transition-all duration-150 ease-out;
-    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
-    @apply disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  .btn:hover:not(:disabled) {
-    transform: translate(-2px, -2px);
-    box-shadow: 5px 5px 0 0 var(--bh-shadow-ink);
-  }
-
-  .btn:active:not(:disabled) {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0 0 var(--bh-shadow-ink);
-  }
-
-  .btn:disabled {
-    box-shadow: none;
-    transform: none;
-  }
-
-  /* 非 btn 组件（首页控制台、订阅状态）复用相同的按压反馈。 */
-  .bh-pressable {
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    box-shadow: 3px 3px 0 0 var(--bh-shadow-ink);
-  }
-
-  .bh-pressable:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 5px 5px 0 0 var(--bh-shadow-ink);
-  }
-
-  .bh-pressable:active {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0 0 var(--bh-shadow-ink);
+    @apply inline-flex select-none items-center justify-center gap-2;
+    @apply rounded-control px-4 py-1.5 text-sm font-medium;
+    /* 常规按钮与输入控件共用 36px 基线，保持工具栏在不同页面对齐。 */
+    @apply min-h-9;
+    @apply shadow-none;
+    @apply transition duration-fast ease-standard;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:ring-offset-2 dark:focus:ring-offset-dark-900;
+    @apply disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50;
+    @apply active:scale-[0.98];
   }
 
   .btn-primary {
-    @apply bg-primary-600 text-white;
-    @apply hover:bg-primary-700;
+    /* 按钮保持纯色和平面边界，避免出现渐变、发光或外投影。 */
+    @apply bg-primary-600;
+    @apply text-white shadow-none;
+    @apply hover:bg-primary-700 hover:shadow-none;
   }
 
   .btn-secondary {
-    @apply bg-white dark:bg-dark-800;
-    @apply text-gray-950 dark:text-dark-50;
-    @apply hover:bg-bh-yellow hover:text-gray-950 dark:hover:bg-dark-700 dark:hover:text-white;
+    @apply bg-white dark:bg-dark-950;
+    @apply text-primary-900 dark:text-dark-50;
+    @apply border border-primary-900/10 dark:border-dark-600;
+    @apply shadow-none hover:bg-gray-50 dark:hover:bg-dark-700;
+    @apply hover:border-black/20 dark:hover:border-dark-500;
+    @apply focus:border-primary-900/10 focus:ring-black/10 dark:focus:border-dark-400 dark:focus:ring-white/6;
   }
 
   .btn-ghost {
-    @apply border-transparent bg-transparent text-gray-900 dark:text-dark-100;
-    @apply hover:bg-bh-yellow/80 hover:text-gray-950 dark:hover:bg-dark-800 dark:hover:text-white;
-    box-shadow: none;
-  }
-
-  .btn-ghost:hover:not(:disabled),
-  .btn-ghost:active:not(:disabled) {
-    transform: none;
-    box-shadow: none;
+    @apply bg-transparent text-primary-900/90 dark:text-dark-100;
+    @apply hover:bg-primary-100 dark:hover:bg-dark-700;
   }
 
   .btn-danger {
-    @apply bg-accent-500 text-white;
-    @apply hover:bg-accent-600;
+    @apply bg-red-600;
+    @apply text-white shadow-none;
+    @apply hover:bg-red-700 hover:shadow-none;
   }
 
   .btn-success {
-    @apply bg-emerald-600 text-white;
-    @apply hover:bg-emerald-700;
+    @apply bg-emerald-600;
+    @apply text-white shadow-none;
+    @apply hover:bg-emerald-700 hover:shadow-none;
   }
 
   .btn-warning {
-    @apply bg-bh-yellow text-gray-950;
-    @apply hover:bg-amber-400;
+    @apply bg-amber-500;
+    @apply text-white shadow-none;
+    @apply hover:bg-amber-600 hover:shadow-none;
   }
 
   .btn-stripe {
-    @apply bg-[#635bff] text-white;
-    @apply hover:bg-[#5851ea];
+    @apply bg-[#635bff] text-white shadow-none;
+    @apply hover:bg-[#5851ea] hover:shadow-none;
+    @apply dark:bg-[#7a73ff];
+    @apply dark:hover:bg-[#635bff];
   }
 
   .btn-airwallex {
-    @apply bg-gray-950 text-white;
-    @apply hover:bg-gray-800;
+    @apply bg-[#14171A] text-white shadow-none;
+    @apply hover:bg-[#20252a] hover:shadow-none;
     @apply dark:bg-[#7AF0C4] dark:text-gray-950;
     @apply dark:hover:bg-[#62d9ad];
   }
 
   .btn-alipay {
-    @apply bg-[#00AEEF] text-white;
-    @apply hover:bg-[#009dd6];
+    @apply bg-[#00AEEF] text-white shadow-none;
+    @apply hover:bg-[#009dd6] hover:shadow-none;
+    @apply active:bg-[#008cbe];
   }
 
   .btn-wxpay {
-    @apply bg-[#2BB741] text-white;
-    @apply hover:bg-[#24a038];
+    @apply bg-[#2BB741] text-white shadow-none;
+    @apply hover:bg-[#24a038] hover:shadow-none;
+    @apply active:bg-[#1d8a2f];
   }
 
   .btn-sm {
-    @apply rounded-none px-3 py-1.5 text-xs;
+    @apply rounded-control px-3 py-1.5 text-xs;
     @apply min-h-0;
-    box-shadow: 2px 2px 0 0 var(--bh-shadow-ink);
   }
 
   /* 显式紧凑尺寸用于表单内的小控件，不被工具栏基线覆盖。
@@ -455,92 +526,50 @@
   }
 
   .btn-md {
-    @apply rounded-none px-4 py-2 text-sm;
+    @apply rounded-control px-4 py-2 text-sm;
   }
 
   .btn-lg {
-    @apply rounded-none px-6 py-3 text-base;
+    @apply rounded-control px-6 py-3 text-base;
   }
 
   .btn-icon {
-    @apply inline-flex h-11 w-11 items-center justify-center rounded-control p-0;
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-control p-0;
   }
 
-  /* 分页沿用紧凑高度，但边框、阴影和按压反馈与全站同源。 */
-  .bh-page-btn {
-    border: 2px solid var(--bh-ink);
-    box-shadow: var(--bh-shadow-sm);
-    border-radius: 0;
-    transition: transform 150ms, box-shadow 150ms;
-  }
-  .bh-page-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--bh-shadow-ink); }
-  .bh-page-btn:focus-visible { outline: 2px solid var(--bh-blue); outline-offset: 3px; }
-  .bh-page-btn:disabled { box-shadow: none; }
-
-  /* 旧版页码选中态使用黄底红杠，保留现有分页与跳转交互。 */
-  .bh-page-btn-active {
-    background: var(--bh-yellow);
-    color: #141414;
-    box-shadow: inset 0 -4px 0 0 var(--bh-red), var(--bh-shadow-sm);
-    font-weight: 800;
-  }
-
-  .bh-total-chip {
-    display: inline-block;
-    padding: 0 6px;
-    border: 2px solid var(--bh-ink);
-    background: var(--bh-yellow);
-    color: #141414;
-    font-family: 'Geist Mono Variable', ui-monospace, monospace;
-    font-weight: 800;
-  }
-
-  /* 图标按钮两档：常规 44px 与紧凑 32px。 */
+  /* 图标按钮两档:常规 36px(.btn-icon)与紧凑 32px(.btn-icon-sm),与控件基线同一体系。 */
   .btn-icon-sm {
     @apply inline-flex h-8 w-8 items-center justify-center rounded-control p-0;
   }
 
   /* ============ 输入框样式 ============ */
   .input {
-    @apply w-full rounded-none px-4 py-2.5 text-sm font-medium;
-    @apply min-h-11;
-    @apply bg-white dark:bg-dark-800;
-    @apply border-2 border-gray-950 dark:border-dark-200/70;
-    @apply text-gray-950 dark:text-dark-50;
-    @apply placeholder:font-normal placeholder:text-gray-500 dark:placeholder:text-dark-300;
-    @apply transition-all duration-150;
-    @apply focus:outline-none;
-    @apply disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-dark-900;
-  }
-
-  .input:focus {
-    border-color: var(--bh-blue);
-    box-shadow: 3px 3px 0 0 var(--bh-blue);
-  }
-
-  .dark .input:focus {
-    border-color: #5581c2;
-    box-shadow: 3px 3px 0 0 #5581c2;
+    @apply w-full rounded-control px-4 py-1.5 text-sm;
+    /* 单行输入框与按钮保持同一基线，文本域仍可由 rows 自然撑开。 */
+    @apply min-h-9;
+    @apply bg-white dark:bg-dark-950;
+    @apply border border-primary-900/10 dark:border-dark-600;
+    @apply text-gray-900 dark:text-dark-50;
+    @apply placeholder:text-primary-900/45 dark:placeholder:text-dark-400;
+    @apply transition duration-fast;
+    @apply focus:border-primary-900/10 focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:border-dark-400 dark:focus:ring-white/6;
+    @apply disabled:cursor-not-allowed disabled:bg-primary-100 dark:disabled:bg-dark-950;
   }
 
   .input-error {
-    border-color: var(--bh-red) !important;
-  }
-
-  .input-error:focus {
-    box-shadow: 3px 3px 0 0 var(--bh-red);
+    @apply border-red-500 focus:border-red-500 focus:ring-red-500/30;
   }
 
   .input-label {
-    @apply mb-1.5 block text-sm font-bold text-gray-950 dark:text-dark-50;
+    @apply mb-1.5 block text-sm font-medium text-primary-900 dark:text-dark-50;
   }
 
   .input-hint {
-    @apply mt-1 text-xs font-medium text-gray-600 dark:text-dark-200;
+    @apply mt-1 text-xs text-primary-900/80 dark:text-dark-300;
   }
 
   .input-error-text {
-    @apply mt-1 text-xs font-bold text-accent-600 dark:text-accent-400;
+    @apply mt-1 text-xs text-red-500;
   }
 
   /* 选择器/日期控件的触发器与 .input 共用同一份尺寸与边框配方(模板 class="input input-trigger"
@@ -549,7 +578,7 @@
   .input-trigger {
     @apply flex items-center gap-2;
     @apply cursor-pointer;
-    @apply hover:border-primary-600 dark:hover:border-primary-400;
+    @apply hover:border-black/20 dark:hover:border-dark-500;
   }
 
   /* 输入框图标区域:图标位与文本留白由同一组变量推导(留白 = inset + 图标占位 slot),
@@ -611,41 +640,43 @@
     -moz-appearance: textfield;
   }
 
-  /* ============ 玻璃效果 → 实心纸面 ============ */
+  /* ============ 玻璃效果 ============ */
   .glass {
-    @apply bg-bh-paper dark:bg-dark-900;
+    @apply bg-white/80 backdrop-blur-xl dark:bg-dark-900/90;
   }
 
   .glass-card {
-    @apply bg-white dark:bg-dark-800;
-    @apply rounded-none;
-    @apply border-2 border-gray-950 dark:border-dark-200/60;
-    box-shadow: var(--bh-shadow-sm);
-    @apply transition-all duration-200;
+    @apply bg-white/75 dark:bg-dark-900;
+    @apply backdrop-blur-xl;
+    @apply rounded-surface;
+    @apply border border-primary-900/10 dark:border-dark-600;
+    @apply shadow-none;
+    @apply transition duration-layout;
   }
 
-  /* ============ 卡片：黑框 + 硬阴影 ============ */
+  /* ============ 卡片样式 ============ */
   .card {
-    @apply bg-white dark:bg-dark-800;
-    @apply rounded-none;
-    @apply border-2 border-gray-950 dark:border-dark-200/60;
-    box-shadow: var(--bh-shadow-sm);
-    @apply transition-all duration-200;
+    @apply bg-white dark:bg-dark-900;
+    @apply rounded-surface;
+    @apply border border-primary-900/10 dark:border-dark-600;
+    @apply shadow-none;
+    @apply transition duration-layout;
   }
 
-  .card-hover:hover {
-    transform: translate(-3px, -3px);
-    box-shadow: var(--bh-shadow-sm);
+  .card-hover {
+    @apply hover:-translate-y-0.5 hover:shadow-none;
+    @apply hover:border-black/20 dark:hover:border-dark-500;
   }
 
   .card-glass {
-    @apply bg-white dark:bg-dark-800;
-    @apply border-2 border-gray-950 dark:border-dark-200/60;
-    box-shadow: var(--bh-shadow-sm);
+    @apply bg-white/75 dark:bg-dark-900;
+    @apply backdrop-blur-xl;
+    @apply border border-primary-900/10 dark:border-dark-600;
+    @apply shadow-none;
   }
 
   .card-header {
-    @apply border-b-2 border-gray-950 dark:border-dark-200/60;
+    @apply border-b border-primary-900/10 dark:border-dark-600;
     @apply px-6 py-4;
   }
 
@@ -654,70 +685,53 @@
   .stat-card {
     @apply card p-4;
     @apply flex items-start gap-4;
-    position: relative;
-    overflow: hidden;
   }
 
   .stat-icon {
-    @apply h-12 w-12 rounded-none;
+    @apply h-12 w-12 rounded-control;
     @apply flex items-center justify-center;
-    @apply border-2 border-gray-950 dark:border-dark-100;
     @apply text-xl;
   }
 
   .stat-icon-primary {
-    background: var(--bh-blue);
-    @apply text-white;
+    @apply bg-primary-100 text-primary-600 dark:bg-primary-500/20 dark:text-primary-100;
   }
 
   .stat-icon-success {
-    @apply bg-emerald-600 text-white;
+    @apply bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400;
   }
 
   .stat-icon-warning {
-    background: var(--bh-yellow);
-    @apply text-gray-950;
+    @apply bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400;
   }
 
   .stat-icon-danger {
-    background: var(--bh-red);
-    @apply text-white;
+    @apply bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400;
   }
 
   .stat-value {
-    @apply text-2xl font-extrabold tabular-nums text-gray-950 dark:text-white truncate;
+    @apply text-2xl font-bold text-gray-900 dark:text-white truncate;
   }
 
   .stat-label {
-    @apply text-sm font-bold text-gray-600 dark:text-dark-200;
+    @apply text-sm text-primary-900/80 dark:text-dark-300;
   }
 
   .stat-trend {
-    @apply mt-1 flex items-center gap-1 text-xs font-bold;
+    @apply mt-1 flex items-center gap-1 text-xs font-medium;
   }
 
   .stat-trend-up {
-    @apply text-emerald-700 dark:text-emerald-400;
+    @apply text-emerald-600 dark:text-emerald-400;
   }
 
   .stat-trend-down {
-    @apply text-accent-600 dark:text-accent-400;
+    @apply text-red-600 dark:text-red-400;
   }
 
-  /* 管理仪表盘统计卡与用户仪表盘共用的几何图标板。 */
-  .bh-dashboard-plate {
-    @apply flex h-10 w-10 shrink-0 items-center justify-center;
-    border: 2px solid var(--bh-ink);
-  }
-
-  .bh-dashboard-stat-label {
-    @apply text-xs font-extrabold uppercase tracking-widest text-gray-600 dark:text-dark-200;
-  }
-
-  /* ============ 表格：黄头黑框 ============ */
+  /* ============ 表格样式 ============ */
   .table-container {
-    @apply overflow-x-auto rounded-none border-2 border-gray-950 dark:border-dark-200/60;
-    box-shadow: var(--bh-shadow-sm);
+    @apply overflow-x-auto rounded-surface border border-primary-900/10 dark:border-dark-600;
   }
 
   .table {
@@ -725,17 +739,17 @@
   }
 
   .table th {
-    @apply px-4 py-3 text-left font-extrabold;
-    background: var(--bh-yellow);
-    color: #141414;
-    border-bottom: 2px solid var(--bh-ink);
-    letter-spacing: 0.02em;
+    /* 与 DataTable 统一的中性紧凑表头:py-2 + text-xs,不再使用品牌底色。 */
+    @apply px-4 py-2 text-left text-xs font-medium tracking-wider;
+    @apply text-gray-500 dark:text-dark-300;
+    @apply bg-gray-50 dark:bg-dark-900;
+    @apply border-b border-primary-900/10 dark:border-dark-600;
   }
 
   .table td {
-    @apply px-4 py-3 font-medium;
+    @apply px-4 py-3;
     @apply text-gray-900 dark:text-dark-100;
-    @apply border-b border-gray-950/25 dark:border-dark-200/25;
+    @apply border-b border-primary-900/10 dark:border-dark-700;
   }
 
   .table tr:last-child td {
@@ -743,69 +757,70 @@
   }
 
   .table tbody tr {
-    @apply transition-colors duration-100;
+    @apply transition-colors duration-fast;
+    @apply hover:bg-primary-50 dark:hover:bg-dark-800;
   }
 
-  .table tbody tr:hover {
-    background: rgba(255, 204, 0, 0.14);
-  }
-
-  .dark .table tbody tr:hover {
-    background: rgba(255, 204, 0, 0.08);
-  }
-
-  /* ============ 徽章：方块标签 ============ */
+  /* ============ 徽章样式 ============ */
   .badge {
     @apply inline-flex items-center gap-1;
-    @apply rounded-none border px-2 py-0.5 text-xs font-bold;
-    @apply border-gray-950 dark:border-dark-100;
+    @apply rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
 
   .badge-primary {
-    background: var(--bh-blue);
-    @apply text-white;
+    @apply bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-200;
   }
 
   .badge-success {
-    @apply bg-emerald-600 text-white;
+    @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400;
   }
 
   .badge-warning {
-    background: var(--bh-yellow);
-    color: #141414;
+    @apply bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400;
   }
 
   .badge-danger {
-    background: var(--bh-red);
-    @apply text-white;
+    @apply bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400;
   }
 
   .badge-gray {
-    @apply bg-bh-paper text-gray-950 dark:bg-dark-700 dark:text-dark-50;
+    @apply bg-primary-100 text-primary-900 dark:bg-dark-700 dark:text-dark-200;
   }
 
   .badge-purple {
-    @apply bg-purple-700 text-white;
+    @apply bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400;
   }
 
   /* ============ 下拉菜单 ============ */
   /* 纯容器配方:定位(z-index/偏移/动画)由调用点按场景叠加。 */
   .dropdown {
     @apply absolute;
+    @apply bg-white dark:bg-dark-900;
     @apply rounded-control;
-    background: var(--bh-surface);
-    border: 2px solid var(--bh-ink);
-    box-shadow: var(--bh-shadow-sm);
+    @apply border border-primary-900/10 dark:border-dark-600;
+    @apply shadow-lg;
     @apply py-1;
   }
 
-  /* 菜单项两档密度:常规 px-4 / 紧凑 px-3,其余配方一致。
-     基色是全站行动菜单的中性灰;品牌色导航菜单(AppHeader)叠加 .dropdown-item-brand。 */
+  /* ============ 信息提示 ============ */
+  /* 深底提示面板:浅色为深底白字,深色与卡片同层并描 dark-600 边;定位、尺寸、留白和阴影由调用点叠加。 */
+  .tooltip-panel {
+    @apply bg-gray-900 text-white ring-1 ring-white/10;
+    @apply dark:bg-dark-900 dark:text-dark-100 dark:ring-dark-600;
+  }
+
+  /* 提示箭头:与面板同色的旋转方块,半嵌入面板边缘;调用点补定位和朝外的两条边,如向下为 border-b border-r。 */
+  .tooltip-caret {
+    @apply absolute h-2 w-2 rotate-45 border-transparent bg-gray-900;
+    @apply dark:border-dark-600 dark:bg-dark-900;
+  }
+
+  /* 菜单项两档密度:常规 px-4 / 紧凑 px-3,其余配方一致,基色是全站行动菜单的中性灰。 */
   .dropdown-item,
   .dropdown-item-sm {
-    @apply flex w-full items-center gap-2 py-2 text-sm font-semibold;
-    color: var(--bh-ink);
-    border-left: 4px solid transparent;
+    @apply flex w-full items-center gap-2 py-2 text-sm;
+    @apply text-gray-700 dark:text-gray-300;
+    @apply hover:bg-gray-100 dark:hover:bg-dark-700;
     @apply cursor-pointer transition-colors;
   }
 
@@ -817,72 +832,72 @@
     @apply px-3;
   }
 
-  /* 品牌色档:定义在基色之后,同优先级下覆盖文字与 hover 底色。 */
-  .dropdown-item-brand {
-    color: var(--bh-ink);
+  /* 顶栏工具区图标按钮:AppHeader 及其拆出的子组件(如联系客服)共用。 */
+  .header-status-icon-button {
+    @apply flex h-9 w-9 items-center justify-center rounded-control text-primary-900 transition-colors hover:bg-primary-100 dark:text-dark-100 dark:hover:bg-dark-700 dark:hover:text-white;
   }
 
-  .dropdown-item:hover:not(:disabled),
-  .dropdown-item-sm:hover:not(:disabled),
-  .dropdown-item:focus-visible,
-  .dropdown-item-sm:focus-visible {
-    background: rgba(255, 204, 0, 0.25);
-    border-left-color: var(--bh-red);
+  /* 内缩菜单:面板配 .dropdown py-0,内容按 .menu-section 分区,相邻分区自动加分隔线。
+     菜单项四周留白、悬停显示圆角底色,用于顶栏用户菜单、联系客服这类导航型浮层。 */
+  .menu-section {
+    @apply p-1.5;
   }
 
-  .dark .dropdown-item:hover:not(:disabled),
-  .dark .dropdown-item-sm:hover:not(:disabled) {
-    background: rgba(255, 204, 0, 0.12);
+  .menu-section + .menu-section {
+    @apply border-t border-primary-900/10 dark:border-dark-700;
+  }
+
+  .menu-heading {
+    @apply px-2.5 pb-1 pt-1.5 text-xs font-medium text-primary-900/50 dark:text-dark-400;
+  }
+
+  /* 悬停配色与 .sidebar-link 一致:淡品牌底色,文字和图标一起转为品牌色。 */
+  .menu-item {
+    @apply flex w-full items-center gap-3 rounded-control px-2.5 py-2 text-left text-sm font-medium;
+    @apply text-primary-900 dark:text-dark-100;
+    @apply transition duration-fast;
+    @apply hover:bg-primary-100 dark:hover:bg-dark-800;
+    @apply hover:text-primary-700 dark:hover:text-primary-500;
+  }
+
+  .menu-item-danger {
+    @apply text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300;
   }
 
   /* 行动菜单容器(teleport 到 body 的表格行操作浮层):宽度/滚动由调用点补充。
      action-menu-content 是外部点击关闭的 JS 钩子,迁移时保留。 */
   .action-menu {
     @apply fixed z-action-menu rounded-control;
-    background: var(--bh-surface);
-    border: 2px solid var(--bh-ink);
-    box-shadow: var(--bh-shadow-sm);
+    @apply bg-white shadow-lg ring-1 ring-black/5;
+    @apply dark:bg-dark-900 dark:ring-dark-600;
   }
 
   /* ============ 模态框 ============ */
   .modal-overlay {
     @apply fixed inset-0 z-modal;
     background-color: var(--overlay-bg);
+    @apply backdrop-blur-sm;
     @apply flex items-center justify-center p-2 sm:p-4;
   }
 
   .modal-content {
     @apply w-full;
     @apply max-h-[95vh] sm:max-h-[90vh];
-    @apply bg-white dark:bg-dark-800;
-    @apply rounded-none;
-    border: 3px solid var(--bh-ink);
-    box-shadow: var(--bh-shadow);
+    @apply bg-white dark:bg-dark-900;
+    @apply rounded-surface shadow-2xl sm:rounded-dialog;
+    @apply border border-primary-900/10 dark:border-dark-600;
     @apply flex flex-col;
   }
 
   .modal-header {
-    border-bottom: 3px solid var(--bh-ink);
-    @apply px-4 py-3;
+    @apply border-b border-primary-900/10 px-4 py-3 dark:border-dark-600;
     @apply sm:px-6 sm:py-4;
     @apply flex items-center justify-between;
     @apply flex-shrink-0;
-    position: relative;
-  }
-
-  .modal-header::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 8px;
-    background: var(--bh-red);
   }
 
   .modal-title {
-    @apply text-lg font-extrabold text-gray-950 dark:text-white;
-    letter-spacing: 0.01em;
+    @apply text-lg font-semibold text-gray-900 dark:text-white;
   }
 
   .modal-body {
@@ -892,208 +907,209 @@
   }
 
   .modal-footer {
-    border-top: 3px solid var(--bh-ink);
-    @apply px-4 py-3;
+    @apply border-t border-primary-900/10 px-4 py-3 dark:border-dark-600;
     @apply sm:px-6 sm:py-4;
     @apply flex items-center justify-end gap-3;
     @apply flex-shrink-0;
-    background: var(--bh-paper);
   }
 
-  .dark .modal-footer {
-    background: #211f1a;
-  }
-
+  /* 防止body滚动的工具类 */
   body.modal-open {
     overflow: hidden;
   }
 
-  .modal-enter-active {
-    transition: opacity 250ms ease-out;
+}
+
+/* Vue 在运行时添加过渡类，必须留在 Tailwind layer 外，避免构建按静态类名裁剪。 */
+/* @project-doc docs/architecture/frontend_ui_conventions.md#ui_motion */
+.fade-enter-active,
+.fade-slow-enter-active,
+.modal-enter-active,
+.pop-fade-enter-active {
+  transition: opacity var(--motion-fast) var(--motion-ease);
+}
+
+.fade-leave-active,
+.fade-slow-leave-active,
+.modal-leave-active,
+.pop-fade-leave-active {
+  transition: opacity var(--motion-exit) var(--motion-ease-exit);
+  pointer-events: none;
+}
+
+.fade-enter-from,
+.fade-leave-to,
+.fade-slow-enter-from,
+.fade-slow-leave-to,
+.modal-enter-from,
+.modal-leave-to,
+.pop-fade-enter-from,
+.pop-fade-leave-to {
+  opacity: 0;
+}
+
+/* 外层与面板保持同一时长，Vue 等到整个弹窗退出后再清理焦点及滚动锁。 */
+.modal-enter-active,
+.pop-fade-enter-active {
+  transition-duration: var(--motion-layout);
+}
+
+.modal-enter-active .modal-content,
+.modal-enter-active .auth-dialog-content,
+.pop-fade-enter-active > section {
+  transition: transform var(--motion-layout) var(--motion-ease);
+}
+
+.modal-leave-active .modal-content,
+.modal-leave-active .auth-dialog-content,
+.pop-fade-leave-active > section {
+  transition: transform var(--motion-exit) var(--motion-ease-exit);
+}
+
+.modal-enter-from .modal-content,
+.modal-leave-to .modal-content,
+.modal-enter-from .auth-dialog-content,
+.modal-leave-to .auth-dialog-content,
+.pop-fade-enter-from > section,
+.pop-fade-leave-to > section {
+  transform: scale(0.98);
+}
+
+/* 浮层位置即时跟随锚点，只有面板的透明度和短距离位移参与动画。 */
+.dropdown-fade-enter-active,
+.pop-float-enter-active,
+.motion-list-enter-active {
+  transition: opacity var(--motion-normal) var(--motion-ease),
+    transform var(--motion-normal) var(--motion-ease);
+}
+
+.dropdown-fade-leave-active,
+.pop-float-leave-active,
+.motion-list-leave-active {
+  transition: opacity var(--motion-exit) var(--motion-ease-exit),
+    transform var(--motion-exit) var(--motion-ease-exit);
+  pointer-events: none;
+}
+
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(var(--dropdown-shift, calc(-1 * var(--motion-shift))));
+}
+
+.pop-float-enter-from,
+.pop-float-leave-to {
+  opacity: 0;
+  transform: translateY(var(--pop-shift, var(--motion-shift)));
+}
+
+.motion-list-enter-from,
+.motion-list-leave-to {
+  opacity: 0;
+  transform: translateY(var(--motion-shift));
+}
+
+.motion-list-move {
+  transition: transform var(--motion-normal) var(--motion-ease);
+}
+
+.motion-list-leave-active {
+  position: absolute;
+  width: var(--motion-list-width);
+}
+
+.motion-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  min-width: 0;
+}
+
+.motion-collapse-inner {
+  min-height: 0;
+  min-width: 0;
+}
+
+.motion-collapse-moving > .motion-collapse-inner {
+  overflow: hidden;
+}
+
+.collapse-enter-active,
+.collapse-leave-active {
+  transition: grid-template-rows var(--motion-layout) var(--motion-ease),
+    opacity var(--motion-layout) var(--motion-ease);
+}
+
+.collapse-enter-from,
+.collapse-leave-to {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+/* 退出节点保留供绘制，但不能再接收鼠标；键盘隔离由组件的 inert 完成。 */
+.collapse-leave-active,
+.modal-leave-active *,
+.pop-fade-leave-active *,
+.motion-list-leave-active * {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 1ms;
+    --motion-normal: 1ms;
+    --motion-layout: 1ms;
+    --motion-shift: 0px;
   }
 
-  .modal-leave-active {
-    transition: opacity 200ms ease-in;
-  }
-
-  .modal-enter-from,
-  .modal-leave-to {
-    opacity: 0;
-  }
-
-  .modal-enter-active .modal-content {
-    transition: transform 250ms ease-out, opacity 250ms ease-out;
-  }
-
-  .modal-leave-active .modal-content {
-    transition: transform 200ms ease-in, opacity 200ms ease-in;
-  }
+  html { scroll-behavior: auto; }
 
   .modal-enter-from .modal-content,
-  .modal-leave-to .modal-content {
-    transform: translate(8px, 8px);
-    opacity: 0;
-  }
-
-  .modal-enter-to .modal-content,
-  .modal-leave-from .modal-content {
-    transform: translate(0, 0);
-    opacity: 1;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .modal-enter-active,
-    .modal-leave-active,
-    .modal-enter-active .modal-content,
-    .modal-leave-active .modal-content {
-      transition-duration: 1ms;
-      transition-delay: 0ms;
-    }
-
-    .modal-enter-from .modal-content,
-    .modal-leave-to .modal-content {
-      transform: none;
-    }
-  }
-
-  /* ============ 通用过渡配方(全局,供 <Transition name> 引用) ============ */
-  /* fade:通用淡入淡出,默认 0.2s;调用点可用 --fade-duration-enter/leave 覆盖单侧时长
-     (如侧栏遮罩 200ms 进 / 150ms 退)。 */
-  .fade-enter-active {
-    transition: opacity var(--fade-duration-enter, var(--fade-duration, 0.2s)) ease-out;
-  }
-
-  .fade-leave-active {
-    transition: opacity var(--fade-duration-leave, var(--fade-duration, 0.2s)) ease-in;
-  }
-
-  .fade-enter-from,
-  .fade-leave-to {
-    opacity: 0;
-  }
-
-  /* fade-slow:页面级区块切换(auth 页、兑换页等),0.3s 并带轻微上移。 */
-  .fade-slow-enter-active,
-  .fade-slow-leave-active {
-    transition:
-      opacity 0.3s ease,
-      transform 0.3s ease;
-  }
-
-  .fade-slow-enter-from,
-  .fade-slow-leave-to {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-
-  /* pop-fade:公告类浮层的淡入淡出,内层 section 面板同步轻微缩放位移。 */
-  .pop-fade-enter-active {
-    transition: opacity 0.18s ease;
-  }
-
-  .pop-fade-leave-active {
-    transition: opacity 0.14s ease;
-  }
-
-  .pop-fade-enter-active > section,
-  .pop-fade-leave-active > section {
-    transition:
-      transform 0.18s ease,
-      opacity 0.18s ease;
-  }
-
-  .pop-fade-enter-from,
-  .pop-fade-leave-to {
-    opacity: 0;
-  }
-
+  .modal-leave-to .modal-content,
+  .modal-enter-from .auth-dialog-content,
+  .modal-leave-to .auth-dialog-content,
   .pop-fade-enter-from > section,
-  .pop-fade-leave-to > section {
-    transform: scale(0.98) translateY(4px);
-    opacity: 0;
-  }
-
-  /* dropdown-fade:下拉面板展开收起(0.2s,轻微下移)。
-     只动画透明度与位移,位置数值由 JS 按触发器计算,不参与过渡。 */
-  .dropdown-fade-enter-active,
-  .dropdown-fade-leave-active {
-    transition:
-      opacity 0.2s ease,
-      transform 0.2s ease;
-  }
-
-  .dropdown-fade-enter-from,
-  .dropdown-fade-leave-to {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-
-  /* pop-float:锚定浮层的展开动效(200ms 缓出,位移+缩放)。锚点方向由调用点用
-     --pop-origin 与 --pop-shift 表达,默认值对应"向上展开"的弹层。 */
-  .pop-float-enter-active,
-  .pop-float-leave-active {
-    transform-origin: var(--pop-origin, bottom center);
-    transition:
-      opacity 200ms ease,
-      transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
-    will-change: opacity, transform;
-  }
-
+  .pop-fade-leave-to > section,
   .pop-float-enter-from,
   .pop-float-leave-to {
-    opacity: 0;
-    transform: translateY(var(--pop-shift, 8px)) scale(0.97);
+    transform: none;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .fade-enter-active,
-    .fade-leave-active,
-    .fade-slow-enter-active,
-    .fade-slow-leave-active,
-    .pop-fade-enter-active,
-    .pop-fade-leave-active,
-    .pop-fade-enter-active > section,
-    .pop-fade-leave-active > section,
-    .dropdown-fade-enter-active,
-    .dropdown-fade-leave-active,
-    .pop-float-enter-active,
-    .pop-float-leave-active {
-      transition-duration: 1ms;
-      transition-delay: 0ms;
-    }
+  .btn:active { transform: none; }
+}
 
-    .fade-slow-enter-from,
-    .fade-slow-leave-to,
-    .pop-fade-enter-from > section,
-    .pop-fade-leave-to > section,
-    .dropdown-fade-enter-from,
-    .dropdown-fade-leave-to,
-    .pop-float-enter-from,
-    .pop-float-leave-to {
-      transform: none;
-    }
+@layer components {
+  /* ============ 顶栏与侧边栏 ============ */
+  .site-header {
+    @apply bg-white/80 backdrop-blur-xl;
   }
 
-  /* ============ 侧边栏 ============ */
+  /* 深色导航外壳与页面同底色，分割线比控件边框更淡；顶栏不透出下层内容。 */
+  .dark .site-header,
+  .dark .sidebar {
+    @apply border-dark-800;
+    background-color: var(--page-bg);
+  }
+
+  .dark .site-header {
+    @apply backdrop-blur-none;
+  }
+
   .sidebar {
     @apply fixed bottom-0 left-0 z-sidebar;
     width: var(--sidebar-w);
-    background: var(--bh-paper);
-    border-right: 3px solid var(--bh-ink);
+    @apply bg-white;
+    @apply border-r border-primary-900/10;
     @apply flex flex-col;
-    @apply transition-transform duration-300;
+    @apply transition-transform duration-layout;
     transition-property: width, transform;
     top: var(--header-h);
-  }
-
-  .dark .sidebar {
-    background: #1c1a16;
   }
 
   .sidebar-nav {
     @apply flex-1 overflow-y-auto px-3 py-4;
   }
 
+  /* 时间控件在容器足够宽时保留语义标签，窄屏时隐藏标签避免换行。 */
   .time-controls {
     container-type: inline-size;
   }
@@ -1109,34 +1125,22 @@
   }
 
   .sidebar-link {
-    @apply flex min-h-11 items-center gap-3 rounded-control py-2.5;
+    @apply flex h-9 items-center gap-3 rounded-control py-1.5;
     /* 水平内边距落在 4px 网格上(此前的 17px/14px 是魔数);折叠态由 sidebar-link-collapsed 另行覆盖。 */
     @apply px-4;
     @apply overflow-hidden;
-    @apply text-sm font-bold;
-    @apply text-gray-800 dark:text-dark-100;
-    @apply transition-all duration-150;
-    border: 2px solid transparent;
-  }
-
-  .sidebar-link:hover {
-    background: rgba(255, 204, 0, 0.35);
-    @apply text-gray-950 dark:text-white;
-  }
-
-  .dark .sidebar-link:hover {
-    background: rgba(255, 204, 0, 0.14);
+    @apply text-sm font-medium;
+    @apply text-primary-900 dark:text-dark-100;
+    @apply transition duration-fast;
+    @apply hover:bg-primary-100 dark:hover:bg-dark-800;
+    @apply hover:text-primary-700 dark:hover:text-primary-500;
   }
 
   .sidebar-link-active {
-    background: var(--bh-yellow) !important;
-    color: #141414 !important;
-    border-color: var(--bh-ink);
-    box-shadow: inset 6px 0 0 0 var(--bh-red);
-  }
-
-  .dark .sidebar-link-active {
-    border-color: rgba(244, 240, 230, 0.85);
+    /* 深色导航以淡品牌色底和品牌色文字标记当前位置，悬停保留选中底色。 */
+    @apply bg-primary-100 dark:bg-primary-500/8;
+    @apply text-primary-700 dark:text-primary-500;
+    @apply hover:bg-primary-200 dark:hover:bg-primary-500/8;
   }
 
   .sidebar-section {
@@ -1145,36 +1149,21 @@
 
   .sidebar-section-title {
     @apply mb-2 px-3;
-    @apply text-xs font-extrabold uppercase tracking-widest;
-    @apply text-gray-600 dark:text-dark-300;
+    @apply text-xs font-semibold tracking-wider;
+    @apply text-primary-900/80 dark:text-dark-400;
   }
 
-  /* ============ 页面头部：红色几何标 ============ */
+  /* ============ 页面头部 ============ */
   .page-header {
     @apply mb-6;
   }
 
   .page-title {
-    @apply text-2xl font-extrabold text-gray-950 dark:text-white;
-    position: relative;
-    padding-left: 20px;
-    letter-spacing: -0.01em;
-  }
-
-  .page-title::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 10px;
-    height: 1.05em;
-    background: var(--bh-red);
+    @apply text-2xl font-bold text-gray-900 dark:text-white;
   }
 
   .page-description {
-    @apply mt-1 text-sm font-medium text-gray-600 dark:text-dark-200;
-    padding-left: 20px;
+    @apply mt-1 text-sm text-primary-900/90 dark:text-dark-300;
   }
 
   /* ============ 空状态 ============ */
@@ -1185,91 +1174,124 @@
 
   .empty-state-icon {
     @apply mb-4 h-16 w-16;
-    @apply text-gray-400 dark:text-dark-400;
+    @apply text-primary-300 dark:text-dark-500;
   }
 
   .empty-state-title {
-    @apply mb-1 text-lg font-extrabold text-gray-950 dark:text-white;
+    @apply mb-1 text-lg font-medium text-gray-900 dark:text-white;
   }
 
   .empty-state-description {
-    @apply max-w-sm text-sm font-medium text-gray-600 dark:text-dark-200;
+    @apply max-w-sm text-sm text-primary-900/90 dark:text-dark-300;
   }
 
   /* ============ 加载状态 ============ */
   .spinner {
-    @apply h-5 w-5 rounded-full border-[3px] border-current border-t-transparent;
+    @apply h-5 w-5 rounded-full border-2 border-current border-t-transparent;
     @apply animate-spin;
   }
 
+  /* 加载提示保留静态形状；所有既有转圈入口共用系统动画偏好。 */
+  @media (prefers-reduced-motion: reduce) {
+    html .spinner,
+    html .animate-spin {
+      animation: none;
+    }
+  }
+
   .skeleton {
-    @apply animate-pulse rounded-compact bg-primary-200 dark:bg-dark-700;
+    /* 占位块只展示结构，使用中性色，并尊重系统减少动画设置。 */
+    @apply animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700 motion-reduce:animate-none;
   }
 
   /* ============ 分隔线 ============ */
   .divider {
-    @apply my-4 h-0.5 bg-gray-950/80 dark:bg-dark-200/50;
+    @apply my-4 h-px bg-primary-200 dark:bg-white/8;
   }
 
   /* ============ 标签页 ============ */
   .tabs {
-    @apply flex gap-0 p-0;
-    @apply rounded-none;
-    border: 2px solid var(--bh-ink);
-    @apply bg-white dark:bg-dark-800;
+    @apply flex gap-1 p-1;
+    @apply rounded-control bg-primary-100/80 dark:bg-dark-950;
   }
 
   .tab {
-    @apply rounded-none px-4 py-2 text-sm font-bold;
-    @apply text-gray-700 dark:text-dark-200;
-    @apply transition-all duration-150;
-  }
-
-  .tab:hover {
-    @apply text-gray-950 dark:text-white;
-    background: rgba(255, 204, 0, 0.25);
+    @apply rounded-compact px-4 py-2 text-sm font-medium;
+    @apply text-primary-900/90 dark:text-dark-300;
+    @apply transition duration-fast;
+    @apply hover:text-primary-900 dark:hover:text-white;
   }
 
   .tab-active {
-    background: var(--bh-yellow) !important;
-    color: #141414 !important;
-    box-shadow: inset 0 -4px 0 0 var(--bh-red);
+    @apply bg-white dark:bg-primary-500/8;
+    @apply text-primary-900 dark:text-primary-500;
+    @apply shadow-none dark:ring-1 dark:ring-primary-500/15;
+  }
+
+  .dark .tab-active {
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), 0 0 #0000;
+  }
+
+  /* ============ 分段切换 ============ */
+  /* 中性底色的分段控件，选中背景由 vSegmented 定位，尺寸由调用方用工具类决定。
+     选中项白底加描边：浅色下轨道与白底接近，只靠阴影分不清边界。 */
+  .segmented {
+    @apply relative inline-flex rounded-control border border-gray-200 bg-gray-50 p-0.5;
+    @apply dark:border-dark-600 dark:bg-dark-800;
+  }
+
+  .segmented-item {
+    @apply relative rounded-control font-medium transition-colors duration-fast;
+    @apply text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200;
+  }
+
+  .segmented-item-active {
+    @apply bg-white text-gray-900 shadow-sm ring-1 ring-gray-300;
+    @apply hover:text-gray-900 dark:bg-dark-700 dark:text-white dark:ring-dark-600 dark:hover:text-white;
+  }
+
+  /* 共用一块背景，切换时连续移动；首次显示直接落在选中项，不从原点滑入。 */
+  .segmented[data-segmented-ready]::before {
+    content: '';
+    @apply pointer-events-none absolute left-0 top-0 rounded-control bg-white shadow-sm ring-1 ring-gray-300;
+    @apply dark:bg-dark-700 dark:ring-dark-600;
+    width: var(--segmented-width);
+    height: var(--segmented-height);
+    transform: translate(var(--segmented-x), var(--segmented-y));
+    transition:
+      transform var(--motion-normal) var(--motion-ease),
+      width var(--motion-normal) var(--motion-ease),
+      height var(--motion-normal) var(--motion-ease);
+  }
+
+  .segmented[data-segmented-ready] > .segmented-item-active {
+    background-color: transparent;
+    box-shadow: none;
   }
 
   /* ============ 进度条 ============ */
   .progress {
-    @apply h-2.5 overflow-hidden rounded-none;
-    border: 2px solid var(--bh-ink);
-    @apply bg-white dark:bg-dark-900;
+    @apply h-2 overflow-hidden rounded-full bg-primary-100 dark:bg-dark-700;
   }
 
   .progress-bar {
-    @apply h-full;
-    background: var(--bh-blue);
-    @apply transition-all duration-300;
+    @apply h-full bg-gradient-to-r from-primary-500 to-primary-300;
+    @apply transition-[width,background-color] duration-layout;
   }
 
   /* ============ 代码块 ============ */
   .code {
-    @apply font-mono text-sm font-bold;
-    background: var(--bh-yellow);
-    color: #141414;
-    border: 1.5px solid var(--bh-ink);
+    @apply font-mono text-sm;
+    @apply bg-primary-100 dark:bg-dark-950;
     @apply rounded-compact px-1.5 py-0.5;
-  }
-
-  .dark .code {
-    background: #6b5d00;
-    color: #f4f0e6;
+    @apply text-primary-700 dark:text-primary-300;
   }
 
   .code-block {
     @apply font-mono text-sm;
-    background: #141414;
-    color: #f4f0e6;
-    border: 2px solid var(--bh-ink);
-    box-shadow: var(--bh-shadow-sm);
-    @apply overflow-x-auto rounded-none p-4;
+    @apply bg-gray-900 text-gray-100;
+    @apply dark:bg-dark-950 dark:border dark:border-dark-600;
+    @apply overflow-x-auto rounded-surface p-4;
   }
 
   /* ============ Tour Description ============ */
@@ -1290,30 +1312,27 @@
   }
 
   .tour-info-box {
-    @apply rounded-control border-2 border-gray-950 border-l-8 bg-white px-3 py-2 text-xs font-medium text-gray-950;
-    border-left-color: var(--bh-blue) !important;
-    @apply dark:bg-dark-800 dark:text-dark-50;
+    @apply rounded-control border-l-4 border-blue-500 bg-blue-50 px-3 py-2 text-xs text-blue-900;
+    @apply dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-200;
   }
 
   .tour-success-box {
-    @apply rounded-control border-2 border-gray-950 border-l-8 bg-white px-3 py-2 text-xs font-medium text-gray-950;
-    border-left-color: #059669 !important;
-    @apply dark:bg-dark-800 dark:text-dark-50;
+    @apply rounded-control border-l-4 border-emerald-500 bg-emerald-50 px-3 py-2 text-xs text-emerald-900;
+    @apply dark:border-emerald-400 dark:bg-emerald-950/40 dark:text-emerald-200;
   }
 
   .tour-warning-box {
-    @apply rounded-control border-2 border-gray-950 border-l-8 bg-white px-3 py-2 text-xs font-medium text-gray-950;
-    border-left-color: var(--bh-yellow) !important;
-    @apply dark:bg-dark-800 dark:text-dark-50;
+    @apply rounded-control border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-xs text-amber-900;
+    @apply dark:border-amber-400 dark:bg-amber-950/40 dark:text-amber-200;
   }
 
   .tour-error-box {
-    @apply rounded-control border-2 border-gray-950 border-l-8 bg-white px-3 py-2 text-xs font-medium text-gray-950;
-    border-left-color: var(--bh-red) !important;
-    @apply dark:bg-dark-800 dark:text-dark-50;
+    @apply rounded-control border-l-4 border-red-500 bg-red-50 px-3 py-2 text-xs text-red-900;
+    @apply dark:border-red-400 dark:bg-red-950/40 dark:text-red-200;
   }
 
   /* ============ 表格页面布局优化 ============ */
+  /* 横向禁止边界回弹，纵向到顶或到底后继续把滚动传递给外层页面。 */
   table,
   :where(.table-wrapper, .table-container, .table-scroll-container),
   :where(.overflow-auto, .overflow-x-auto, .overflow-y-auto):has(table) {
@@ -1321,412 +1340,81 @@
     overscroll-behavior-y: auto;
   }
 
+  /* 表格容器 - 默认仅支持水平滚动 */
   .table-wrapper {
     overflow-x: auto;
   }
 
+  /* 固定表头沿用单元格分隔线，不再叠加阴影。 */
   .table-wrapper thead.sticky {
     box-shadow: none;
-  }
-
-  /* ============================================================
-     包豪斯专用组件类（供视图直接使用）
-     ============================================================ */
-
-  /* 黑底标语标签（kicker） */
-  .bh-kicker {
-    @apply inline-block px-4 py-2 text-xs font-extrabold uppercase;
-    letter-spacing: 0.28em;
-    background: var(--bh-ink);
-    color: var(--bh-paper);
-  }
-
-  /* 三原色条纹 */
-  .bh-stripe {
-    display: flex;
-    height: 8px;
-    width: 100%;
-  }
-
-  .bh-stripe > i {
-    flex: 1;
-    display: block;
-  }
-
-  .bh-stripe > i:nth-child(1) { background: var(--bh-red); }
-  .bh-stripe > i:nth-child(2) { background: var(--bh-yellow); }
-  .bh-stripe > i:nth-child(3) { background: var(--bh-blue); }
-
-  /* 硬边框块（白底卡片，带交互位移） */
-  .bh-block {
-    @apply block bg-white dark:bg-dark-800;
-    border: 3px solid var(--bh-ink);
-    box-shadow: var(--bh-shadow);
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-  }
-
-  a.bh-block:hover,
-  .bh-block-hover:hover {
-    transform: translate(-5px, -5px);
-    box-shadow: var(--bh-shadow-sm);
-  }
-
-  /* 几何形状 */
-  .bh-shape-circle {
-    border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
-    background: var(--bh-red);
-  }
-
-  .bh-shape-square {
-    background: var(--bh-blue);
-  }
-
-  .bh-shape-square-yellow {
-    background: var(--bh-yellow);
-    border: 3px solid #141414;
-  }
-
-  .bh-shape-ring {
-    border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
-    border: 8px solid var(--bh-blue);
-    background: transparent;
-  }
-
-  .bh-shape-triangle {
-    width: 0;
-    height: 0;
-    background: transparent !important;
-    border-left: 14px solid transparent;
-    border-right: 14px solid transparent;
-    border-bottom: 24px solid var(--bh-yellow);
-  }
-
-  /* 标记式小标题：红色竖块前缀，用于卡片头部 */
-  .bh-marker-title {
-    position: relative;
-    padding-left: 14px;
-    font-weight: 800;
-    color: var(--bh-ink);
-  }
-
-  .bh-marker-title::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 7px;
-    height: 1em;
-    background: var(--bh-red);
-  }
-
-  /* 帮助提示：墨底纸字 + 黄色侧标 */
-  .bh-tooltip {
-    background: #141414;
-    border: 2px solid #141414;
-    border-left: 6px solid var(--bh-yellow);
-    box-shadow: 4px 4px 0 0 rgba(20, 20, 20, 0.32);
-  }
-
-  .dark .bh-tooltip {
-    border-color: rgba(244, 240, 230, 0.4);
-    border-left-color: var(--bh-yellow);
-  }
-
-  /* 跑马灯黑带 */
-  .bh-marquee {
-    background: #141414;
-    color: #f4f0e6;
-    overflow: hidden;
-    border-top: 3px solid var(--bh-ink);
-    border-bottom: 3px solid var(--bh-ink);
-    padding: 12px 0;
-  }
-
-  .bh-marquee-track {
-    display: flex;
-    width: max-content;
-    align-items: center;
-    animation: bhMarquee 26s linear infinite;
-    will-change: transform;
-  }
-
-  /* 走马灯移动半个复制轨道，回到同一首词时不会出现跳帧。 */
-  @keyframes bhMarquee {
-    from { transform: translate3d(0, 0, 0); }
-    to { transform: translate3d(-50%, 0, 0); }
-  }
-
-  .bh-marquee:hover .bh-marquee-track {
-    animation-play-state: paused;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .bh-marquee-track {
-      animation: none;
-    }
   }
 }
 
 @layer utilities {
-  /* 新旧开关共用包豪斯蓝，保持所有页面的激活态一致。 */
-  .group-switch-active,
+  /* 通用开关的启用态统一使用品牌蓝。 */
   .toggle-active {
-    background-color: #1450a3;
+    background-color: rgb(18, 167, 232);
   }
 
-  /* 上游新增的组级策略控件沿用全站硬边、硬阴影和直角交互。 */
-  .bh-policy-section,
-  .bh-policy-card {
-    border: 2px solid var(--bh-ink);
-    background: var(--bh-surface);
-    box-shadow: var(--bh-shadow-sm);
-  }
-
-  .bh-policy-section {
-    border-left: 8px solid var(--bh-yellow);
-  }
-
-  .bh-reasoning-policy > div:last-child {
-    border-top-width: 3px;
-    border-top-color: var(--bh-ink);
-  }
-
-  .bh-policy-card:nth-child(3n + 1) {
-    border-left: 8px solid var(--bh-red);
-  }
-
-  .bh-policy-card:nth-child(3n + 2) {
-    border-left: 8px solid var(--bh-yellow);
-  }
-
-  .bh-policy-card:nth-child(3n) {
-    border-left: 8px solid var(--bh-blue);
-  }
-
-  .bh-icon-action {
-    display: flex;
-    width: 2.75rem;
-    height: 2.75rem;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid var(--bh-ink);
-    background: var(--bh-surface);
-    color: var(--bh-ink);
-    box-shadow: 3px 3px 0 0 var(--bh-shadow-ink);
-    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
-  }
-
-  .bh-icon-action:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 5px 5px 0 0 var(--bh-shadow-ink);
-  }
-
-  .bh-icon-action:active {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0 0 var(--bh-shadow-ink);
-  }
-
-  .bh-icon-action-danger:hover {
-    background: var(--bh-red);
-    color: #fff;
-  }
-
-  .bh-switch {
-    align-items: center;
-    border: 2px solid var(--bh-ink);
-    box-shadow: 3px 3px 0 0 var(--bh-shadow-ink);
-  }
-
-  .bh-switch:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 0 var(--bh-shadow-ink);
-  }
-
-  .bh-switch:active {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0 0 var(--bh-shadow-ink);
-  }
-
-  .bh-switch-thumb {
-    border: 2px solid var(--bh-ink);
-    box-shadow: none !important;
-  }
-
-  /* TF CLI 导入弹窗：把上游新增的状态块收敛为包豪斯硬边信息板。 */
-  .bh-tf-import-heading {
-    border-bottom: 3px solid var(--bh-ink);
-  }
-
-  .bh-tf-import-icon {
-    border: 2px solid var(--bh-ink);
-    background: var(--bh-yellow);
-    color: #141414;
-    box-shadow: 3px 3px 0 0 var(--bh-shadow-ink);
-  }
-
-  .bh-tf-status {
-    border: 2px solid var(--bh-ink);
-    box-shadow: var(--bh-shadow-sm);
-  }
-
-  .bh-tf-status-success {
-    border-left: 8px solid #059669;
-    background: #e7f5ed;
-    color: #075b3d;
-  }
-
-  .bh-tf-status-warning {
-    border-left: 8px solid var(--bh-yellow);
-    background: #fff7cc;
-    color: #141414;
-  }
-
-  .bh-tf-status-neutral {
-    border-left: 8px solid var(--bh-blue);
-    background: var(--bh-surface);
-    color: var(--bh-ink);
-  }
-
-  .bh-tf-status-danger {
-    border-left: 8px solid var(--bh-red);
-    background: #fbe8e6;
-    color: #7a130e;
-  }
-
-  .bh-tf-import-facts {
-    border-top: 2px solid var(--bh-ink);
-    border-bottom: 2px solid var(--bh-ink);
-    border-color: var(--bh-ink);
-  }
-
-  .bh-tf-import-facts > div {
-    border-color: rgba(20, 20, 20, 0.24);
-  }
-
-  .bh-menu-item {
-    border-left: 4px solid transparent;
-    font-weight: 700;
-    transition: background-color 0.12s ease, border-color 0.12s ease;
-  }
-
-  .bh-menu-item:hover {
-    border-left-color: var(--bh-red);
-    background: rgba(255, 204, 0, 0.22);
-  }
-
-  /* 浅色主题统一加深常规次级文字 */
+  /* 浅色主题统一加深常规次级文字，暗色主题继续使用各组件原有的颜色。 */
   html:not(.dark) :is(
     .text-gray-500,
     .text-primary-900\/65,
     .text-primary-900\/70,
     .text-primary-900\/75
   ) {
-    color: #57534a;
+    color: #426177;
   }
 
-  /* 深色同样保留硬阴影，背景沿用旧版纸色与几何构成。 */
+  .dark [class*="shadow-"] {
+    --tw-shadow: 0 0 #0000 !important;
+    --tw-shadow-colored: 0 0 #0000 !important;
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow) !important;
+  }
+
+  .dark .card,
+  .dark .glass-card,
+  .dark .card-glass {
+    box-shadow: none !important;
+  }
+
+  .dark .dropdown,
+  .dark .modal-content,
+  .dark .dialog-container {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  /* 全局背景统一引用 --page-bg。 */
   .ba-theme-shell {
     width: 100%;
     min-width: 0;
     max-width: 100%;
     overflow-x: clip;
-    background: var(--bh-paper);
+    background: var(--page-bg);
   }
 
-  .dark .ba-theme-shell {
-    background: #1c1a16;
-  }
-
-  /* 背景幕布：纸色 + 隐约的几何构成 */
   .ba-theme-backdrop {
     overflow: hidden;
-    background-color: var(--bh-paper);
-    background-image:
-      radial-gradient(circle at 88% 10%, rgba(225, 37, 27, 0.06) 0 220px, transparent 221px),
-      radial-gradient(circle at 8% 82%, transparent 0 70px, rgba(20, 80, 163, 0.055) 71px 110px, transparent 111px),
-      linear-gradient(rgba(255, 204, 0, 0.10), rgba(255, 204, 0, 0.10)),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 190 166'%3E%3Cpolygon points='95,4 186,162 4,162' fill='%231450a3' fill-opacity='.055'/%3E%3C/svg%3E");
-    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
-    background-size: auto, auto, 260px 260px, 190px 166px;
-    background-position: center, center, 104% 112%, 76% 8%;
+    background: var(--page-bg);
   }
 
   .ba-theme-backdrop::before {
-    content: '';
-    position: absolute;
-    left: -12vw;
-    top: 18vh;
-    width: min(42vw, 520px);
-    height: min(42vw, 520px);
-    border: 3px solid rgba(20, 80, 163, 0.17);
-    border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
-    box-shadow: inset 0 0 0 24px rgba(20, 80, 163, 0.035);
-    transform: rotate(-18deg);
-    animation: bh-backdrop-orbit 24s linear infinite;
-  }
-
-  .dark .ba-theme-backdrop {
-    background-color: #1c1a16;
-    background-image:
-      radial-gradient(circle at 88% 10%, rgba(225, 37, 27, 0.08) 0 220px, transparent 221px),
-      radial-gradient(circle at 8% 82%, transparent 0 70px, rgba(85, 129, 194, 0.08) 71px 110px, transparent 111px),
-      linear-gradient(rgba(255, 204, 0, 0.05), rgba(255, 204, 0, 0.05)),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 190 166'%3E%3Cpolygon points='95,4 186,162 4,162' fill='%235581c2' fill-opacity='.08'/%3E%3C/svg%3E");
-    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
-    background-size: auto, auto, 260px 260px, 190px 166px;
-    background-position: center, center, 104% 112%, 76% 8%;
+    content: none;
   }
 
   .dark .ba-theme-backdrop::before {
-    content: '';
-    border-color: rgba(85, 129, 194, 0.22);
-    box-shadow: inset 0 0 0 24px rgba(85, 129, 194, 0.045);
+    content: none;
   }
 
-  .ba-theme-backdrop::after {
-    content: '';
-    position: absolute;
-    right: -8vw;
-    bottom: 12vh;
-    width: min(34vw, 420px);
-    height: min(34vw, 420px);
-    border: 3px solid rgba(225, 37, 27, 0.16);
-    background: repeating-linear-gradient(
-      135deg,
-      rgba(225, 37, 27, 0.08) 0 12px,
-      transparent 12px 26px
-    );
-    transform: rotate(22deg);
-    animation: bh-backdrop-drift 18s ease-in-out infinite;
-  }
-
-  .dark .ba-theme-backdrop::after {
-    border-color: rgba(225, 37, 27, 0.2);
-    background: repeating-linear-gradient(
-      135deg,
-      rgba(225, 37, 27, 0.11) 0 12px,
-      transparent 12px 26px
-    );
-  }
-
-  @keyframes bh-backdrop-orbit {
-    from { transform: rotate(-18deg) translate3d(0, 0, 0); }
-    50% { transform: rotate(162deg) translate3d(3vw, -2vh, 0); }
-    to { transform: rotate(342deg) translate3d(0, 0, 0); }
-  }
-
-  @keyframes bh-backdrop-drift {
-    0%, 100% { transform: rotate(22deg) translate3d(0, 0, 0); }
-    50% { transform: rotate(30deg) translate3d(-2vw, 2vh, 0); }
-  }
-
-  /* 文字"渐变" → 包豪斯红纯色 */
+  /* 文字渐变 */
   .text-gradient {
-    color: var(--bh-red);
-    background: none;
-    -webkit-text-fill-color: currentColor;
+    @apply bg-gradient-to-r from-primary-500 to-accent-500 bg-clip-text text-transparent;
+  }
+
+  /* 玻璃效果 */
+  .glass {
+    @apply bg-white/80 backdrop-blur-xl dark:bg-dark-900/90;
   }
 
   /* 隐藏滚动条 */
@@ -1745,453 +1433,5 @@
 
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  /* 展示字体工具类 */
-  .font-display-black {
-    font-family: 'Archivo Black', 'Plus Jakarta Sans Variable', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    font-weight: 400;
-  }
-}
-
-/* ============================================================
-   全局强制覆盖（置于文件末尾，胜过工具类）
-   把散落在各视图中的浅灰边框统一为墨色硬边
-   ============================================================ */
-
-html:not(.dark) :is(
-  [class*='border-gray-200'],
-  [class*='border-gray-100'],
-  [class*='border-primary-900/10'],
-  [class*='border-primary-100'],
-  [class*='border-primary-200']
-) {
-  border-color: rgba(20, 20, 20, 0.82);
-}
-
-.dark :is(
-  [class*='border-dark-600'],
-  [class*='border-dark-700'],
-  [class*='border-dark-800']
-) {
-  border-color: rgba(244, 240, 230, 0.28);
-}
-
-/* 深色模式的硬阴影统一换为纸色 */
-.dark [class*='shadow-'] {
-  --tw-shadow-color: rgba(244, 240, 230, 0.6);
-}
-
-/* 标准阴影统一为仪表盘卡片的 4px 硬边；shadow-none 仍由调用方明确关闭。 */
-html :where(
-  .shadow,
-  .shadow-sm,
-  .shadow-md,
-  .shadow-lg,
-  .shadow-xl,
-  .shadow-2xl,
-  .shadow-card,
-  .shadow-card-hover,
-  .shadow-glass,
-  .shadow-glass-sm,
-  .shadow-glow,
-  .shadow-glow-lg,
-  .shadow-bh,
-  .shadow-bh-sm,
-  .shadow-bh-lg,
-  .shadow-bh-xl
-) {
-  --tw-shadow: var(--bh-shadow-sm) !important;
-  --tw-shadow-colored: var(--bh-shadow-sm) !important;
-  box-shadow: var(--bh-shadow-sm) !important;
-}
-
-/* 磨砂玻璃 → 实心（包豪斯拒绝朦胧） */
-[class*='backdrop-blur'] {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-/* 账号、分组和 Key 操作浮层共用硬边；独立位移保留浮层的定位变换。 */
-.bh-action-menu {
-  border: 2px solid var(--bh-ink);
-  border-radius: 0;
-  background: var(--bh-surface);
-  box-shadow: var(--bh-shadow-sm);
-  color: var(--bh-ink);
-}
-
-.bh-action-menu button {
-  border-left: 4px solid transparent;
-  font-weight: 700;
-  transition: translate 120ms ease, background-color 120ms ease, border-color 120ms ease;
-}
-
-.bh-action-menu button:hover:not(:disabled),
-.bh-action-menu button:focus-visible {
-  border-left-color: var(--bh-red);
-  /* 覆盖各菜单 scoped 深色悬停规则，避免墨字落到旧深色背景上。 */
-  background: var(--bh-yellow) !important;
-  color: #141414 !important;
-}
-
-.bh-action-menu button:focus-visible {
-  outline: 2px solid var(--bh-blue);
-  outline-offset: -2px;
-}
-
-/* 黄底高亮时图标跟随墨色文字，避免深色主题的黄色图标失去对比度。 */
-.bh-action-menu button:hover:not(:disabled) svg,
-.bh-action-menu button:focus-visible svg { color: inherit; }
-
-.bh-action-menu button:active:not(:disabled) { translate: 2px 1px; }
-
-@media (prefers-reduced-motion: reduce) {
-  .bh-action-menu button { transition: none; }
-}
-
-/* ============ 用量排行：海报式领奖台与秩序列表 ============ */
-.ranking-podium {
-  align-items: stretch;
-}
-
-.rank-podium-card {
-  min-height: 220px;
-  border: 3px solid var(--bh-ink) !important;
-  box-shadow: var(--bh-shadow-sm) !important;
-  background: var(--bh-surface) !important;
-  color: var(--bh-ink);
-}
-
-.rank-podium-card.rank-card-gold {
-  background: var(--bh-yellow) !important;
-  color: #141414;
-}
-
-.rank-podium-card.rank-card-red {
-  background: var(--bh-red) !important;
-  color: #fff;
-}
-
-.rank-podium-card.rank-card-blue {
-  background: var(--bh-blue) !important;
-  color: #fff;
-}
-
-.rank-podium-card.rank-card-neutral {
-  background: var(--bh-surface) !important;
-}
-
-.rank-podium-sweep {
-  width: 9rem;
-  height: 9rem;
-  border: 3px solid currentColor;
-  opacity: 0.12;
-  animation: rank-orbit 14s linear infinite;
-}
-
-.rank-podium-mark {
-  position: absolute;
-  top: 14px;
-  right: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.rank-podium-index {
-  color: #fff;
-  font-family: 'Archivo Black', 'Plus Jakarta Sans Variable', system-ui, sans-serif;
-  font-size: 1.65rem;
-  line-height: 1;
-  letter-spacing: -0.04em;
-}
-
-.rank-podium-shape {
-  display: block;
-  flex: none;
-}
-
-.rank-podium-shape-1 {
-  width: 0;
-  height: 0;
-  border-right: 8px solid transparent;
-  border-bottom: 14px solid #fff;
-  border-left: 8px solid transparent;
-}
-
-.rank-podium-shape-2 {
-  width: 14px;
-  height: 14px;
-  background: #fff;
-}
-
-.rank-podium-shape-3 {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
-  background: #fff;
-}
-
-.rank-podium-badge,
-.rank-row-badge {
-  border: 2px solid currentColor;
-  padding: 0.35rem 0.6rem;
-  font-family: 'Geist Mono Variable', ui-monospace, monospace;
-  letter-spacing: 0.04em;
-}
-
-.rank-badge-gold {
-  background: #fff;
-  color: #9a7300;
-}
-
-.rank-badge-red {
-  background: #fff;
-  color: var(--bh-red);
-}
-
-.rank-badge-blue {
-  background: #fff;
-  color: var(--bh-blue);
-}
-
-.rank-badge-neutral {
-  background: var(--bh-paper);
-  color: var(--bh-ink);
-}
-
-.rank-primary-value {
-  display: inline-block;
-  padding: 0.35rem 0.7rem;
-  border: 3px solid var(--bh-ink);
-  background: var(--bh-surface);
-  color: var(--bh-red);
-  font-family: 'Geist Mono Variable', ui-monospace, monospace;
-  font-size: clamp(1.5rem, 4vw, 2.15rem);
-  font-weight: 900;
-  line-height: 1.1;
-}
-
-/* 排名指标继承名次色：第一红、第二黄、第三蓝。 */
-.rank-value-red {
-  color: var(--bh-red) !important;
-}
-
-.rank-value-yellow {
-  color: #9a7300 !important;
-}
-
-.rank-value-blue {
-  color: var(--bh-blue) !important;
-}
-
-.rank-primary-label,
-.rank-secondary-metrics,
-.rank-secondary-metrics p:last-child {
-  font-weight: 800;
-  color: currentColor;
-}
-
-.rank-list,
-.ranking-list {
-  overflow: hidden;
-  border: 3px solid var(--bh-ink);
-  background: var(--bh-surface);
-  box-shadow: var(--bh-shadow-sm);
-}
-
-.rank-list-header,
-.ranking-list-header {
-  border-bottom: 3px solid var(--bh-ink);
-  background: var(--bh-yellow);
-}
-
-.ranking-list-header p { color: #57534a; }
-
-.ranking-list-title {
-  position: relative;
-  padding-left: 16px;
-  color: #141414;
-  font-size: 1rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-}
-
-.ranking-list-title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  background: var(--bh-red);
-  transform: translateY(-50%) rotate(45deg);
-}
-
-.ranking-date-stamp {
-  border: 2px solid var(--bh-ink);
-  background: var(--bh-surface);
-  padding: 0.3rem 0.55rem;
-  color: var(--bh-ink);
-  font-family: 'Geist Mono Variable', ui-monospace, monospace;
-  font-size: 0.7rem;
-  font-weight: 800;
-}
-
-.ranking-list-body {
-  background: var(--bh-surface);
-}
-
-.ranking-row {
-  border-bottom: 1px solid rgba(20, 20, 20, 0.2);
-}
-
-.ranking-row:last-child {
-  border-bottom: 0;
-}
-
-.ranking-row:hover {
-  background: rgba(255, 204, 0, 0.14) !important;
-}
-
-.ranking-row.rank-card-gold {
-  background: rgba(255, 204, 0, 0.16);
-  border-left: 6px solid var(--bh-yellow);
-}
-
-.ranking-row.rank-card-red {
-  background: rgba(225, 37, 27, 0.08);
-  border-left: 6px solid var(--bh-red);
-}
-
-.ranking-row.rank-card-blue {
-  background: rgba(20, 80, 163, 0.08);
-  border-left: 6px solid var(--bh-blue);
-}
-
-.ranking-empty {
-  border: 3px dashed var(--bh-ink);
-  background: var(--bh-surface);
-}
-
-.ranking-error {
-  border: 3px solid var(--bh-red);
-  border-left-width: 10px;
-  background: rgba(225, 37, 27, 0.1);
-  color: var(--bh-red);
-}
-
-.ranking-empty-icon {
-  border: 3px solid var(--bh-ink);
-  background: var(--bh-yellow);
-}
-
-@keyframes rank-orbit {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* 管理端排行表：黄底表头、几何名次章、主指标色块。 */
-.usage-ranking-admin-header {
-  border-bottom: 3px solid var(--bh-ink);
-  background: var(--bh-paper);
-}
-
-.usage-ranking-admin-table {
-  border-collapse: collapse;
-  background: var(--bh-surface);
-}
-
-.usage-ranking-admin-table thead {
-  background: var(--bh-yellow);
-  color: #141414;
-}
-
-.usage-ranking-admin-table th {
-  border-bottom: 2px solid var(--bh-ink);
-  color: #141414;
-}
-
-.usage-ranking-admin-table td {
-  border-bottom: 1px solid rgba(20, 20, 20, 0.2);
-}
-
-.usage-ranking-admin-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.usage-ranking-admin-row:hover {
-  background: rgba(255, 204, 0, 0.14);
-}
-
-.usage-ranking-sort:hover,
-.usage-ranking-sort-active {
-  background: rgba(20, 20, 20, 0.12);
-  color: #141414;
-}
-
-.rank-admin-badge-gold {
-  background: var(--bh-yellow);
-  color: #141414;
-}
-
-.rank-admin-badge-blue {
-  background: var(--bh-blue);
-  color: #fff;
-}
-
-.rank-admin-badge-red {
-  background: var(--bh-red);
-  color: #fff;
-}
-
-.usage-ranking-admin-row.rank-admin-row-red {
-  background: rgba(225, 37, 27, 0.07);
-  box-shadow: inset 6px 0 0 var(--bh-red);
-}
-
-.usage-ranking-admin-row.rank-admin-row-gold {
-  background: rgba(255, 204, 0, 0.14);
-  box-shadow: inset 6px 0 0 var(--bh-yellow);
-}
-
-.usage-ranking-admin-row.rank-admin-row-blue {
-  background: rgba(20, 80, 163, 0.07);
-  box-shadow: inset 6px 0 0 var(--bh-blue);
-}
-
-.usage-ranking-total {
-  color: var(--bh-blue);
-}
-
-.usage-ranking-cost {
-  color: var(--bh-red);
-}
-
-.rank-podium-card.rank-card-gold h3,
-.rank-podium-card.rank-card-gold .rank-primary-label,
-.rank-podium-card.rank-card-gold .rank-secondary-metrics,
-.rank-podium-card.rank-card-red h3,
-.rank-podium-card.rank-card-red .rank-primary-label,
-.rank-podium-card.rank-card-red .rank-secondary-metrics,
-.rank-podium-card.rank-card-blue h3,
-.rank-podium-card.rank-card-blue .rank-primary-label,
-.rank-podium-card.rank-card-blue .rank-secondary-metrics {
-  color: #fff !important;
-}
-
-/* 大卡未装框的指标数字统一白色；白底主指标框继续保留对应名次色。 */
-.rank-podium-card .rank-secondary-metrics :is(
-  .rank-value-red,
-  .rank-value-yellow,
-  .rank-value-blue
-) {
-  color: #fff !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rank-podium-sweep {
-    animation: none;
   }
 }

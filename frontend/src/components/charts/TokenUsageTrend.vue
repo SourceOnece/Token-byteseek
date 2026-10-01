@@ -1,11 +1,9 @@
 <template>
   <div class="card p-4">
-    <h3 class="bh-marker-title mb-4 text-sm dark:text-white">
+    <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
       {{ t('admin.dashboard.tokenUsageTrend') }}
     </h3>
-    <div v-if="loading" class="flex h-48 items-center justify-center">
-      <LoadingSpinner />
-    </div>
+    <ChartSkeleton v-if="loading" variant="plot" />
     <div v-else-if="trendData.length > 0 && chartData" class="h-48">
       <Line :data="chartData" :options="lineOptions" />
     </div>
@@ -33,8 +31,7 @@ import {
   Filler
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
-import '@/utils/chartTheme'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { useChartTheme, CHART_SERIES_COLORS, CHART_TICK_FONT_SIZE, CHART_LEGEND_FONT_SIZE } from '@/composables/useChartTheme'
 import { externalTooltipHandler, hideExternalTooltip } from '@/utils/chartExternalTooltip'
@@ -68,12 +65,11 @@ const props = withDefaults(defineProps<{
 })
 
 // 文字/网格走主题档位,序列色用共享语义色板(数值与迁移前逐项相同)。
-const { colors: themeColors, isDark } = useChartTheme()
+const { colors: themeColors } = useChartTheme()
 const chartColors = computed(() => ({
   text: themeColors.value.text,
   grid: themeColors.value.grid,
-  ...CHART_SERIES_COLORS,
-  cacheHitRate: isDark.value ? '#F4F0E6' : CHART_SERIES_COLORS.cacheHitRate
+  ...CHART_SERIES_COLORS
 }))
 
 // 小时粒度只在坐标轴展示时分，完整时间仍由 tooltip 标题保留。

@@ -1,28 +1,38 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
-      <div v-if="loading" class="flex items-center justify-center py-16">
-        <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
+    <div class="space-y-4">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 class="page-title">{{ t('admin.riskControl.title') }}</h1>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.description') }}</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" class="btn btn-secondary shrink-0 btn-icon" :disabled="loading || statusLoading" :title="t('admin.riskControl.refreshStatus')" @click="loadStatus(false)">
+            <Icon name="refresh" size="sm" :class="statusLoading ? 'animate-spin' : ''" />
+          </button>
+          <button type="button" class="btn btn-primary inline-flex items-center gap-2" :disabled="loading" @click="openSettings">
+            <Icon name="cog" size="sm" />
+            {{ t('admin.riskControl.openSettings') }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" aria-hidden="true">
+          <div v-for="card in 4" :key="card" class="card min-w-0 space-y-3 p-4">
+            <Skeleton width="55%" :height="12" />
+            <Skeleton width="75%" :height="28" />
+            <Skeleton width="65%" :height="12" />
+          </div>
+        </div>
+        <div class="grid gap-4 xl:grid-cols-2">
+          <ContentSkeleton variant="form" :rows="4" class="card p-6" />
+          <ContentSkeleton variant="list" :rows="5" class="card p-6" />
+        </div>
       </div>
 
       <template v-else>
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 class="page-title">{{ t('admin.riskControl.title') }}</h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.description') }}</p>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <button type="button" class="btn btn-secondary shrink-0 btn-icon" :disabled="statusLoading" :title="t('admin.riskControl.refreshStatus')" @click="loadStatus(false)">
-              <Icon name="refresh" size="sm" :class="statusLoading ? 'animate-spin' : ''" />
-            </button>
-            <button type="button" class="btn btn-primary inline-flex items-center gap-2" @click="openSettings">
-              <Icon name="cog" size="sm" />
-              {{ t('admin.riskControl.openSettings') }}
-            </button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div
             v-for="item in overviewItems"
             :key="item.key"
@@ -55,7 +65,7 @@
         <div
           v-if="showPreBlockRuntimeCard"
           data-test="pre-block-runtime-cards"
-          class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]"
+          class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]"
         >
           <div data-test="pre-block-sync-card" class="card">
             <div class="flex flex-col gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700 lg:flex-row lg:items-center lg:justify-between">
@@ -177,7 +187,7 @@
                   <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ queueUsagePercent }}</span>
                 </div>
                 <div class="mt-4 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700">
-                  <div class="h-full rounded-full bg-primary-500 transition-all duration-300" :style="queueUsageStyle"></div>
+                  <div class="h-full rounded-full bg-primary-500 transition-[width,background-color] duration-layout" :style="queueUsageStyle"></div>
                 </div>
               </div>
 
@@ -229,9 +239,9 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card overflow-hidden">
           <div class="flex flex-col gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('admin.riskControl.records') }}</h2>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.recordsHint') }}</p>
@@ -242,13 +252,13 @@
               </button>
             </div>
 
-            <div class="inline-flex rounded-control bg-gray-100 p-1 dark:bg-dark-700">
+            <div v-segmented class="segmented">
               <button
                 v-for="tab in recordTabs"
                 :key="tab.id"
                 type="button"
-                class="rounded-control px-3 py-1.5 text-sm font-medium transition-colors"
-                :class="activeRecordTab === tab.id ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-800 dark:text-white' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+                class="segmented-item px-3 py-1.5 text-sm"
+                :class="{ 'segmented-item-active': activeRecordTab === tab.id }"
                 @click="switchRecordTab(tab.id)"
               >
                 {{ tab.label }}
@@ -275,7 +285,7 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
+            <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-6">
               <Select v-if="activeRecordTab === 'moderation'" v-model="filters.result" :options="resultOptions" @change="reloadLogsFromFirstPage" />
               <Select v-if="activeRecordTab === 'moderation'" v-model="filters.group_id" :options="groupFilterOptions" @change="reloadLogsFromFirstPage" />
               <Select v-if="activeRecordTab === 'moderation'" v-model="filters.endpoint" :options="endpointOptions" @change="reloadLogsFromFirstPage" />
@@ -367,7 +377,12 @@
                         :disabled="unbanningUserID === row.user_id"
                         @click="unbanUser(row)"
                       >
-                        <Icon name="checkCircle" size="xs" :class="unbanningUserID === row.user_id ? 'animate-spin' : ''" />
+                        <Icon
+                          name="checkCircle"
+                          size="xs"
+                          :class="unbanningUserID === row.user_id ? 'animate-spin' : ''"
+                          :animate-on-hover="false"
+                        />
                         {{ unbanningUserID === row.user_id ? t('common.processing') : t('admin.riskControl.unbanUser') }}
                       </button>
                     </td>
@@ -386,7 +401,11 @@
                         @click="openInputDetail(row)"
                       >
                         <span class="min-w-0 flex-1 truncate">{{ inputSummaryText(row) }}</span>
-                        <Icon name="eye" size="xs" class="flex-shrink-0 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-500" />
+                        <Icon
+                          name="eye"
+                          size="xs"
+                          class="flex-shrink-0 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-500"
+                        />
                       </button>
                     </td>
                   </tr>
@@ -449,7 +468,12 @@
                         :disabled="unbanningUserID === row.user_id"
                         @click="unbanCyberUser(row)"
                       >
-                        <Icon name="checkCircle" size="xs" :class="unbanningUserID === row.user_id ? 'animate-spin' : ''" />
+                        <Icon
+                          name="checkCircle"
+                          size="xs"
+                          :class="unbanningUserID === row.user_id ? 'animate-spin' : ''"
+                          :animate-on-hover="false"
+                        />
                         {{ unbanningUserID === row.user_id ? t('common.processing') : t('admin.riskControl.unbanUser') }}
                       </button>
                     </td>
@@ -462,7 +486,11 @@
                         @click="openCyberDetail(row)"
                       >
                         <span class="min-w-0 flex-1 truncate">{{ cyberSummaryText(row) }}</span>
-                        <Icon name="eye" size="xs" class="flex-shrink-0 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-500" />
+                        <Icon
+                          name="eye"
+                          size="xs"
+                          class="flex-shrink-0 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-500"
+                        />
                       </button>
                     </td>
                   </tr>
@@ -490,7 +518,7 @@
               :key="tab.id"
               type="button"
               class="inline-flex h-9 items-center whitespace-nowrap rounded-control px-3 py-1.5 text-sm font-medium transition-colors"
-              :class="activeSettingsTab === tab.id ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-dark-700 dark:hover:text-white'"
+              :class="activeSettingsTab === tab.id ? 'bg-primary-50 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-dark-700 dark:hover:text-white'"
               @click="activeSettingsTab = tab.id"
             >
               {{ tab.label }}
@@ -749,7 +777,10 @@
                               :title="isStoredApiKeyPendingDelete(row) ? t('admin.riskControl.undoDeleteApiKey') : t('admin.riskControl.deleteApiKey')"
                               @click="toggleDeleteStoredApiKey(row)"
                             >
-                              <Icon :name="isStoredApiKeyPendingDelete(row) ? 'refresh' : 'trash'" size="xs" />
+                              <Icon
+                                :name="isStoredApiKeyPendingDelete(row) ? 'refresh' : 'trash'"
+                                size="xs"
+                              />
                             </button>
                           </div>
                         </div>
@@ -796,7 +827,11 @@
                         class="inline-flex shrink-0 items-center gap-1 rounded-compact px-2 py-1 font-medium text-primary-600 transition-colors hover:bg-primary-50 hover:text-primary-700 dark:text-primary-300 dark:hover:bg-primary-900/20"
                         @click="apiKeyRowsExpanded = !apiKeyRowsExpanded"
                       >
-                        <Icon :name="apiKeyRowsExpanded ? 'chevronUp' : 'chevronDown'" size="xs" />
+                        <Icon
+                          name="chevronDown" class="transition-transform duration-normal" :class="{ 'rotate-180': apiKeyRowsExpanded }"
+                          size="xs"
+                          :animate-on-hover="false"
+                        />
                         {{ apiKeyRowsExpanded ? t('admin.riskControl.collapseApiKeyRows') : t('admin.riskControl.expandApiKeyRows') }}
                       </button>
                     </div>
@@ -841,24 +876,24 @@
           </div>
 
           <div v-else-if="activeSettingsTab === 'scope'" class="space-y-5">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('admin.riskControl.groupScope') }}</h3>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.groupScopeHint') }}</p>
               </div>
-              <div class="inline-flex rounded-control bg-gray-100 p-1 dark:bg-dark-700">
+              <div v-segmented class="segmented">
                 <button
                   type="button"
-                  class="rounded-control px-3 py-1.5 text-sm font-medium transition-colors"
-                  :class="configForm.all_groups ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-800 dark:text-white' : 'text-gray-500 dark:text-gray-400'"
+                  class="segmented-item px-3 py-1.5 text-sm"
+                  :class="{ 'segmented-item-active': configForm.all_groups }"
                   @click="configForm.all_groups = true"
                 >
                   {{ t('admin.riskControl.allGroups') }}
                 </button>
                 <button
                   type="button"
-                  class="rounded-control px-3 py-1.5 text-sm font-medium transition-colors"
-                  :class="!configForm.all_groups ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-800 dark:text-white' : 'text-gray-500 dark:text-gray-400'"
+                  class="segmented-item px-3 py-1.5 text-sm"
+                  :class="{ 'segmented-item-active': !configForm.all_groups }"
                   @click="configForm.all_groups = false"
                 >
                   {{ t('admin.riskControl.selectedGroups') }}
@@ -877,7 +912,7 @@
                   :key="group.id"
                   type="button"
                   class="flex min-h-20 items-center justify-between rounded-control border p-4 text-left transition-colors"
-                  :class="isGroupSelected(group.id) ? 'border-primary-300 bg-primary-50 dark:border-primary-700 dark:bg-primary-900/20' : 'border-gray-100 hover:bg-gray-50 dark:border-dark-700 dark:hover:bg-dark-700/60'"
+                  :class="isGroupSelected(group.id) ? 'border-primary-300 bg-primary-50 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500' : 'border-gray-100 hover:bg-gray-50 dark:border-dark-700 dark:hover:bg-dark-700/60'"
                   @click="toggleGroup(group.id)"
                 >
                   <span class="min-w-0">
@@ -888,7 +923,7 @@
                     class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border"
                     :class="isGroupSelected(group.id) ? 'border-primary-500 bg-primary-500 text-white' : 'border-gray-300 text-transparent dark:border-dark-500'"
                   >
-                    <Icon name="check" size="xs" :stroke-width="2" />
+                    <Icon name="check" size="xs" :stroke-width="2" :animate-on-hover="false" />
                   </span>
                 </button>
                 <p v-if="filteredGroups.length === 0" class="text-sm text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.noGroups') }}</p>
@@ -913,7 +948,7 @@
                   type="button"
                   class="rounded-control border p-3 text-left transition-colors"
                   :class="configForm.model_filter_type === option.value
-                    ? 'border-primary-300 bg-primary-50 text-primary-900 shadow-sm dark:border-primary-700 dark:bg-primary-900/20 dark:text-primary-100'
+                    ? 'border-primary-300 bg-primary-50 text-primary-900 shadow-sm dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
                     : 'border-gray-100 hover:bg-gray-50 dark:border-dark-700 dark:hover:bg-dark-700/60'"
                   @click="setModelFilterType(option.value)"
                 >
@@ -925,7 +960,7 @@
                         ? 'border-primary-500 bg-primary-500 text-white'
                         : 'border-gray-300 text-transparent dark:border-dark-500'"
                     >
-                      <Icon name="check" size="xs" :stroke-width="2" />
+                      <Icon name="check" size="xs" :stroke-width="2" :animate-on-hover="false" />
                     </span>
                   </div>
                   <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ option.description }}</p>
@@ -1104,7 +1139,7 @@
           </div>
 
           <div v-else-if="activeSettingsTab === 'riskThresholds'" class="space-y-5">
-            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('admin.riskControl.riskThresholds') }}</h3>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.riskThresholdsHint') }}</p>
@@ -1178,7 +1213,7 @@
                   type="button"
                   class="rounded-control border p-3 text-left transition-colors"
                   :class="configForm.keyword_blocking_mode === option.value
-                    ? 'border-primary-300 bg-primary-50 text-primary-900 shadow-sm dark:border-primary-700 dark:bg-primary-900/20 dark:text-primary-100'
+                    ? 'border-primary-300 bg-primary-50 text-primary-900 shadow-sm dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
                     : 'border-gray-100 hover:bg-gray-50 dark:border-dark-700 dark:hover:bg-dark-700/60'"
                   @click="configForm.keyword_blocking_mode = option.value"
                 >
@@ -1190,7 +1225,7 @@
                         ? 'border-primary-500 bg-primary-500 text-white'
                         : 'border-gray-300 text-transparent dark:border-dark-500'"
                     >
-                      <Icon name="check" size="xs" :stroke-width="2" />
+                      <Icon name="check" size="xs" :stroke-width="2" :animate-on-hover="false" />
                     </span>
                   </div>
                   <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ option.description }}</p>
@@ -1239,8 +1274,8 @@
           <div class="flex justify-end gap-2">
             <button type="button" class="btn btn-secondary" @click="settingsOpen = false">{{ t('common.cancel') }}</button>
             <button type="button" class="btn btn-primary inline-flex items-center gap-2" :disabled="saving" @click="saveConfig">
-              <Icon v-if="saving" name="refresh" size="sm" class="animate-spin" />
-              <Icon v-else name="check" size="sm" />
+              <Icon v-if="saving" name="refresh" size="sm" class="animate-spin" :animate-on-hover="false" />
+              <Icon v-else name="check" size="sm" :animate-on-hover="false" />
               {{ saving ? t('common.saving') : t('admin.riskControl.saveConfig') }}
             </button>
           </div>
@@ -1284,9 +1319,7 @@
             </div>
           </div>
 
-          <div v-if="inputDetailLoading" class="flex min-h-40 items-center justify-center text-gray-500 dark:text-gray-400">
-            <Icon name="refresh" size="md" class="animate-spin" />
-          </div>
+          <ContentSkeleton v-if="inputDetailLoading" variant="article" :rows="2" class="py-4" />
 
           <div v-else class="space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -1377,9 +1410,7 @@
             </div>
           </div>
 
-          <div v-if="cyberDetailLoading" class="flex min-h-40 items-center justify-center text-gray-500 dark:text-gray-400">
-            <Icon name="refresh" size="md" class="animate-spin" />
-          </div>
+          <ContentSkeleton v-if="cyberDetailLoading" variant="article" :rows="2" class="py-4" />
 
           <div v-else class="space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -1448,6 +1479,9 @@
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
+import Skeleton from '@/components/common/Skeleton.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'

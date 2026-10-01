@@ -1,48 +1,51 @@
 <template>
   <Teleport to="body">
-    <div v-if="show && group && position">
-      <div class="fixed inset-0 z-menu-overlay" aria-hidden="true" @click="emit('close')"></div>
-      <div
-        :id="`group-action-menu-${group.id}`"
-        class="action-menu bh-action-menu w-48 overflow-y-auto"
-        :style="{ top: `${position.top}px`, left: `${position.left}px`, maxHeight: `calc(100dvh - ${position.top + 8}px)` }"
-        role="menu"
-        :aria-label="t('common.actions')"
-        @click.stop
-      >
-        <div class="py-1">
-          <button
-            type="button"
-            data-testid="group-duplicate"
-            class="dropdown-item min-h-9 disabled:cursor-not-allowed disabled:opacity-50"
-            role="menuitem"
-            :title="duplicating ? t('admin.groups.duplicating') : t('admin.groups.duplicate')"
-            :disabled="duplicating"
-            @click="emitAction('duplicate')"
-          >
-            <Icon name="copy" size="sm" class="text-bh-blue dark:text-primary-300" />
-            {{ duplicating ? t('admin.groups.duplicating') : t('admin.groups.duplicate') }}
-          </button>
-          <button type="button" class="dropdown-item min-h-9" role="menuitem" @click="emitAction('rate-multipliers')">
-            <Icon name="dollar" size="sm" class="text-violet-500" />
-            {{ t('admin.groups.rateMultipliers') }}
-          </button>
-          <button type="button" class="dropdown-item min-h-9" role="menuitem" @click="emitAction('rpm-overrides')">
-            <Icon name="bolt" size="sm" class="text-amber-500" />
-            {{ t('admin.groups.rpmOverrides') }}
-          </button>
-          <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
-          <button type="button" class="dropdown-item min-h-9 text-red-600 dark:text-red-400" role="menuitem" @click="emitAction('delete')">
-            <Icon name="trash" size="sm" />
-            {{ t('common.delete') }}
-          </button>
+
+      <div v-if="show && group && position" class="fixed inset-0 z-menu-overlay" aria-hidden="true" @click="emit('close')"></div>
+      <MotionTransition name="dropdown-fade">
+        <div
+          v-if="show && group && position"
+          :id="`group-action-menu-${group.id}`"
+          class="action-menu w-48 overflow-y-auto"
+          :style="{ top: `${position.top}px`, left: `${position.left}px`, maxHeight: `calc(100dvh - ${position.top + 8}px)` }"
+          role="menu"
+          :aria-label="t('common.actions')"
+          @click.stop
+        >
+          <div class="py-1">
+            <button
+              type="button"
+              data-testid="group-duplicate"
+              class="dropdown-item min-h-9 disabled:cursor-not-allowed disabled:opacity-50"
+              role="menuitem"
+              :title="duplicating ? t('admin.groups.duplicating') : t('admin.groups.duplicate')"
+              :disabled="duplicating"
+              @click="emitAction('duplicate')"
+            >
+              <Icon name="copy" size="sm" class="text-blue-500" />
+              {{ duplicating ? t('admin.groups.duplicating') : t('admin.groups.duplicate') }}
+            </button>
+            <button type="button" class="dropdown-item min-h-9" role="menuitem" @click="emitAction('rate-multipliers')">
+              <Icon name="dollar" size="sm" class="text-violet-500" />
+              {{ t('admin.groups.rateMultipliers') }}
+            </button>
+            <button type="button" class="dropdown-item min-h-9" role="menuitem" @click="emitAction('rpm-overrides')">
+              <Icon name="bolt" size="sm" class="text-amber-500" />
+              {{ t('admin.groups.rpmOverrides') }}
+            </button>
+            <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
+            <button type="button" class="dropdown-item min-h-9 text-red-600 dark:text-red-400" role="menuitem" @click="emitAction('delete')">
+              <Icon name="trash" size="sm" />
+              {{ t('common.delete') }}
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
+      </MotionTransition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'

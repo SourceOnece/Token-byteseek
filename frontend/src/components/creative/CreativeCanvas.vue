@@ -13,7 +13,7 @@
 
     <!-- 浮动工具栏（顶部居中，含移动端；窄屏限宽并换行，圆角保持与桌面端一致，避免与左上角设置、右上角历史按钮重叠）：上传 | 局部重绘画笔组 | 删除选中 / 清空 -->
     <div
-        class="creative-toolbar absolute left-1/2 top-3 z-10 flex max-sm:w-fit max-sm:max-w-[calc(100%-7.5rem)] max-sm:flex-wrap max-sm:justify-center -translate-x-1/2 items-center gap-1.5 px-2 py-1.5"
+      class="absolute left-1/2 top-3 z-10 flex max-sm:w-fit max-sm:max-w-[calc(100%-7.5rem)] max-sm:flex-wrap max-sm:justify-center -translate-x-1/2 items-center gap-1.5 rounded-full border border-primary-900/10 bg-white/90 px-2 py-1.5 shadow-md backdrop-blur dark:border-dark-600 dark:bg-dark-900/90"
     >
       <!-- 上传图片：裁剪确认后直接放上画布当前视角中心 -->
       <button type="button" class="canvas-tool-btn" :title="t('creative.panel.uploadSource')" @click="fileInputRef?.click()">
@@ -47,13 +47,11 @@
         :title="t('creative.canvas.boxSelect')"
         @click="setBoxSelectMode(!boxSelectMode)"
       >
-        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2">
-          <rect x="4" y="4" width="16" height="16" rx="2" />
-        </svg>
+        <Icon name="selection" size="sm" class="h-4 w-4" stroke-dasharray="3 2" />
       </button>
 
       <!-- 画笔组：仅局部重绘模式可用（选中图片后自动进入涂抹，可用开关暂停去移动视角） -->
-      <Transition name="canvas-toolbar-extension">
+      <MotionTransition name="canvas-toolbar-extension">
         <div v-if="isInpaint" class="canvas-toolbar-extension">
           <span class="mx-0.5 h-5 w-px flex-none bg-primary-900/10 dark:bg-dark-600"></span>
           <button
@@ -83,9 +81,7 @@
             :title="t('creative.canvas.undoMask')"
             @click="undoMask"
           >
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-            </svg>
+            <Icon name="undo" size="sm" class="h-4 w-4" />
           </button>
           <!-- 画笔粗细滑块：8–96（固定高度与工具栏按钮同高；轨道/滑块配色见 .brush-size） -->
           <div class="flex flex-none items-center gap-1.5 px-1">
@@ -108,9 +104,7 @@
             :title="t('creative.canvas.shapeRound')"
             @click="setBrushShape('round')"
           >
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="12" cy="12" r="5" />
-            </svg>
+            <Icon name="circle" size="sm" class="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -119,12 +113,10 @@
             :title="t('creative.canvas.shapeSquare')"
             @click="setBrushShape('square')"
           >
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="7" y="7" width="10" height="10" />
-            </svg>
+            <Icon name="square" size="sm" class="h-4 w-4" />
           </button>
         </div>
-      </Transition>
+      </MotionTransition>
 
       <span class="mx-0.5 h-5 w-px bg-primary-900/10 dark:bg-dark-600"></span>
       <!-- 删除选中图片 -->
@@ -167,6 +159,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 /**
  * 创作台无限画布（fabric 7）
  * - 逻辑尺寸跟随容器；空白处拖拽或普通 wheel 平移视角，触控板捏合（ctrlKey wheel）与移动端双指手势缩放（0.2–3）
@@ -1937,23 +1930,17 @@ defineExpose({
 .dot-grid {
   /* 禁止浏览器接管双指手势，交由画布实现缩放与平移。 */
   touch-action: none;
-  background-color: var(--bh-paper);
-  background-image:
-    linear-gradient(rgba(20, 20, 20, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(20, 20, 20, 0.035) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image: radial-gradient(circle, rgb(15 23 42 / 0.12) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 /* 拖放期间给画布边缘提供稳定反馈，不改变图片与 Fabric 对象尺寸。 */
 .drop-target-active {
-  box-shadow: inset 0 0 0 3px var(--bh-blue);
+  box-shadow: inset 0 0 0 2px rgb(124 58 237 / 0.45);
 }
 
 .dark .dot-grid {
-  background-color: #1c1a16;
-  background-image:
-    linear-gradient(rgba(244, 240, 230, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(244, 240, 230, 0.055) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgb(255 255 255 / 0.14) 1px, transparent 1px);
 }
 
 /* mask 独立画布只展示，不拦截主画布的指针事件；整层透明度避免笔迹重叠变深 */
@@ -1968,16 +1955,8 @@ defineExpose({
   @apply dark:text-gray-300 dark:hover:bg-dark-700 dark:hover:text-gray-100;
 }
 
-.creative-toolbar {
-  border: 3px solid var(--bh-ink);
-  background: var(--bh-surface);
-  box-shadow: var(--bh-shadow-sm);
-}
-
 .canvas-tool-btn-active {
-  border-color: var(--bh-ink);
-  background: var(--bh-yellow);
-  color: var(--bh-ink);
+  @apply bg-primary-600/10 text-primary-700 dark:text-primary-300;
 }
 
 /* 桌面端让新增画笔组带动工具条平滑扩展；窄屏保留原有逐项换行，并淡入新增控件。 */
@@ -1995,10 +1974,10 @@ defineExpose({
 .canvas-toolbar-extension-enter-active,
 .canvas-toolbar-extension-leave-active {
   transition:
-    max-width 280ms cubic-bezier(0.22, 1, 0.36, 1),
-    max-height 280ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 280ms ease,
-    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    max-width var(--motion-layout) var(--motion-ease),
+    max-height var(--motion-layout) var(--motion-ease),
+    opacity var(--motion-layout) var(--motion-ease),
+    transform var(--motion-layout) var(--motion-ease);
   will-change: max-width, max-height, opacity, transform;
 }
 
@@ -2018,8 +1997,8 @@ defineExpose({
   .canvas-toolbar-extension-enter-active > *,
   .canvas-toolbar-extension-leave-active > * {
     transition:
-      opacity 160ms ease,
-      transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+      opacity var(--motion-fast) var(--motion-ease),
+      transform var(--motion-layout) var(--motion-ease);
   }
 
   .canvas-toolbar-extension-enter-from > *,
@@ -2044,7 +2023,7 @@ defineExpose({
 }
 
 .dark .brush-size::-webkit-slider-runnable-track {
-  background: rgb(41 41 46);
+  background: rgb(39 39 42);
 }
 
 .brush-size::-webkit-slider-thumb {
@@ -2065,7 +2044,7 @@ defineExpose({
 }
 
 .dark .brush-size::-moz-range-track {
-  background: rgb(41 41 46);
+  background: rgb(39 39 42);
 }
 
 .brush-size::-moz-range-thumb {

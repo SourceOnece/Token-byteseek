@@ -96,12 +96,13 @@ const unpricedPricing: MarketplaceModelPricing = {
 }
 
 describe('ModelPricingPanel', () => {
-  it('显式 Max 倍率沿用标准绿和 Fast 黄，未设置时不显示', async () => {
+  it('显式 Max 倍率保留，皮肤通过当前价格模式区分重点色', async () => {
     const wrapper = mountPanel(marketplaceModel('m1', { ...fastPricing, max_reasoning_effort_multiplier: 2 }))
     await wrapper.get('[data-testid="model-pricing-toggle"]').trigger('click')
-    expect(wrapper.get('[data-testid="pricing-max-multiplier"]').classes()).toContain('text-emerald-700')
+    expect(wrapper.get('[data-testid="pricing-max-multiplier"]').text()).toContain('Max × 2')
+    expect(wrapper.attributes('data-price-mode')).toBe('standard')
     await wrapper.get('[data-testid="pricing-fast-switch"]').findAll('button')[1].trigger('click')
-    expect(wrapper.get('[data-testid="pricing-max-multiplier"]').classes()).toContain('text-amber-800')
+    expect(wrapper.attributes('data-price-mode')).toBe('fast')
     await wrapper.setProps({ model: marketplaceModel('m1', fastPricing) })
     expect(wrapper.find('[data-testid="pricing-max-multiplier"]').exists()).toBe(false)
     wrapper.unmount()
@@ -116,16 +117,16 @@ describe('ModelPricingPanel', () => {
   it('点击触发条展开收起面板，右下角箭头同步切换方向', async () => {
     const wrapper = mountPanel(marketplaceModel('m1', tokenPricing))
     const toggle = wrapper.get('[data-testid="model-pricing-toggle"]')
-    const drawer = wrapper.find('.grid')
+    const drawer = wrapper.get('.motion-collapse')
 
     expect(toggle.attributes('aria-expanded')).toBe('false')
     expect(toggle.get('.icon-stub[data-icon="chevronDown"]').exists()).toBe(true)
-    expect(drawer.classes()).toContain('grid-rows-[0fr]')
+    expect((drawer.element as HTMLElement).style.display).toBe('none')
 
     await toggle.trigger('click')
     expect(toggle.attributes('aria-expanded')).toBe('true')
-    expect(toggle.get('.icon-stub[data-icon="chevronUp"]').exists()).toBe(true)
-    expect(wrapper.find('.grid').classes()).toContain('grid-rows-[1fr]')
+    expect(toggle.get('.icon-stub[data-icon="chevronDown"]').classes()).toContain('rotate-180')
+    expect((drawer.element as HTMLElement).style.display).not.toBe('none')
 
     await toggle.trigger('click')
     expect(toggle.attributes('aria-expanded')).toBe('false')

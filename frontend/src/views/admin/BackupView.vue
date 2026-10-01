@@ -1,5 +1,5 @@
 <template>
-    <div class="space-y-6">
+    <div class="space-y-4">
       <!-- 备份存储配置 -->
       <div class="card p-6">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -181,7 +181,7 @@
 
       <!-- 备份操作 -->
       <div class="card p-6">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h3 class="text-base font-semibold text-gray-900 dark:text-white">
               {{ t('admin.backup.operations.title') }}
@@ -286,12 +286,12 @@
 
     <!-- Cloudflare R2 配置教程弹窗 -->
     <teleport to="body">
-      <transition name="modal">
+      <MotionTransition name="modal">
         <div v-if="showR2Guide" class="fixed inset-0 z-50 flex items-center justify-center p-4" @mousedown.self="showR2Guide = false">
           <div class="fixed inset-0 bg-[var(--overlay-bg)]" @click="showR2Guide = false"></div>
           <div class="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-surface bg-white p-6 shadow-2xl dark:bg-dark-800 sm:rounded-dialog">
             <button type="button" class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="showR2Guide = false">
-              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              <Icon name="x" size="sm" />
             </button>
 
             <h2 class="mb-4 text-lg font-bold text-gray-900 dark:text-white">{{ t('admin.backup.r2Guide.title') }}</h2>
@@ -365,11 +365,11 @@
             </div>
           </div>
         </div>
-      </transition>
+      </MotionTransition>
     </teleport>
     <!-- 分卷下载链接 -->
     <teleport to="body">
-      <transition name="modal">
+      <MotionTransition name="modal">
         <div
           v-if="downloadPartsModalOpen"
           class="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -408,12 +408,13 @@
             </div>
           </div>
         </div>
-      </transition>
+      </MotionTransition>
     </teleport>
     <TotpStepUpDialog :controller="backupStepUp" />
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api'
@@ -965,7 +966,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .modal-enter-active,
 .modal-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--motion-normal) var(--motion-ease);
 }
 .modal-enter-from,
 .modal-leave-to {

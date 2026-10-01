@@ -105,9 +105,14 @@ export default {
         withSuffix: '{time} 后解除'
       }
     }
-  },
+  ,
+ruleIndex: '规则 #{index}'
+},
 // Navigation
   nav: {
+    visualTheme: '界面主题',
+    tokenfluxTheme: 'TokenFlux',
+    bauhausTheme: '包豪斯',
     dashboard: '仪表盘',
     modelMarketplace: '模型广场',
     usageRanking: '用量排行',
@@ -156,7 +161,11 @@ export default {
     paymentPlans: '订阅套餐',
     riskControl: '风控中心',
     auditLogs: '操作日志'
-  },
+  ,
+userSubscriptions: '用户订阅',
+systemTheme: '跟随系统',
+theme: '主题'
+},
 // Auth
   auth: {
     welcomeBack: '欢迎回来',

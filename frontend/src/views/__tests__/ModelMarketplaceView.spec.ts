@@ -218,6 +218,20 @@ describe('ModelMarketplaceView', () => {
     copyToClipboard.mockClear()
   })
 
+  it('取数期间保留模型卡片占位，不提前显示空状态', async () => {
+    let resolveModels!: (value: MarketplaceGroup[]) => void
+    getMarketplaceModels.mockImplementationOnce(() => new Promise(resolve => { resolveModels = resolve }))
+    const wrapper = await mountMarketplace()
+    expect(wrapper.find('[data-testid="marketplace-skeleton"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('marketplace.emptyTitle')
+
+    resolveModels(marketplaceFixture())
+    await flushPromises()
+    expect(wrapper.find('[data-testid="marketplace-skeleton"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-testid="marketplace-group-section"]')).toHaveLength(4)
+    wrapper.unmount()
+  })
+
   it('默认按分组-模型展示', async () => {
     const wrapper = await mountMarketplace()
 

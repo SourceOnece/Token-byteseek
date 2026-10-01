@@ -1,19 +1,18 @@
-/** @type {import('tailwindcss').Config} */
+// 边线透明度与 /70 等修饰符相乘，避免修饰符把低对比边框重新提亮。
+const darkEdgeColor = (opacity) => ({ opacityValue = '1' }) =>
+  `rgb(252 252 254 / calc(${opacity} * ${opacityValue}))`
 
-// ============================================================
-// ByteSeek Bauhaus Theme
-// 三原色（红/蓝/黄）+ 黑 + 纸白 / 直角 / 硬阴影 / 几何
-// 与 docs.byteseek.ai 文档站同源的设计语言
-// ============================================================
-
-const BH = {
-  red: '#E1251B',
-  blue: '#1450A3',
-  yellow: '#FFCC00',
-  ink: '#141414',
-  paper: '#F4F0E6'
+// 深色边线独立于文字和表面色阶，border、divide、ring 共用同一强度。
+const darkEdges = {
+  400: darkEdgeColor(0.3),
+  500: darkEdgeColor(0.125),
+  600: darkEdgeColor(0.078),
+  700: darkEdgeColor(0.04),
+  800: darkEdgeColor(0.031),
+  900: darkEdgeColor(0.02)
 }
 
+/** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
   darkMode: 'class',
@@ -30,6 +29,13 @@ export default {
       full: '9999px'
     },
     extend: {
+      borderColor: { dark: darkEdges },
+      divideColor: { dark: darkEdges },
+      ringColor: { dark: darkEdges },
+      opacity: {
+        6: '0.06',
+        8: '0.08'
+      },
       // 浮层层级语义档:数值唯一来源是 style.css :root 的 --z-* 变量,这里只做 var() 引用。
       // --z-tour(driver.js 外部约束)有意不暴露为工具类,防止业务代码依附第三方层级。
       zIndex: {
@@ -57,86 +63,82 @@ export default {
         panel: 'var(--max-h-panel)'
       },
       colors: {
-        // 包豪斯命名色，供视图直接使用
-        bh: {
-          red: BH.red,
-          blue: BH.blue,
-          yellow: BH.yellow,
-          ink: BH.ink,
-          paper: BH.paper
-        },
-        // 主色调 - 包豪斯蓝（主要操作、链接、激活态）
+        bh: {"red":"#E1251B","blue":"rgb(var(--theme-primary-600) / <alpha-value>)","yellow":"#FFCC00","ink":"#141414","paper":"#F4F0E6"},
+        // 主色调 - Blue Archive 蓝白主题
         primary: {
-          50: '#F0F4FA',
-          100: '#DFE8F5',
-          200: '#B9CCE8',
-          300: '#8BAAD8',
-          400: '#5581C2',
-          500: '#1450A3',
-          600: '#1450A3',
-          700: '#0F3D7D',
-          800: '#0B2D5C',
-          900: '#081F40',
-          950: '#051225'
-        },
-        // 辅助色 - 包豪斯红（强调、品牌）
+  "50": "rgb(var(--theme-primary-50) / <alpha-value>)",
+  "100": "rgb(var(--theme-primary-100) / <alpha-value>)",
+  "200": "rgb(var(--theme-primary-200) / <alpha-value>)",
+  "300": "rgb(var(--theme-primary-300) / <alpha-value>)",
+  "400": "rgb(var(--theme-primary-400) / <alpha-value>)",
+  "500": "rgb(var(--theme-primary-500) / <alpha-value>)",
+  "600": "rgb(var(--theme-primary-600) / <alpha-value>)",
+  "700": "rgb(var(--theme-primary-700) / <alpha-value>)",
+  "800": "rgb(var(--theme-primary-800) / <alpha-value>)",
+  "900": "rgb(var(--theme-primary-900) / <alpha-value>)",
+  "950": "rgb(var(--theme-primary-950) / <alpha-value>)"
+},
+        // 辅助色 - 冰白到品牌深蓝
         accent: {
-          50: '#FCF0EF',
-          100: '#F9DEDC',
-          200: '#F2B7B3',
-          300: '#EB8F89',
-          400: '#E55A51',
-          500: '#E1251B',
-          600: '#C21F16',
-          700: '#9E1912',
-          800: '#7A130E',
-          900: '#560D0A',
-          950: '#3B0906'
-        },
-        // 中性色 - 暖调纸灰，向纸色靠拢
+  "50": "rgb(var(--theme-accent-50) / <alpha-value>)",
+  "100": "rgb(var(--theme-accent-100) / <alpha-value>)",
+  "200": "rgb(var(--theme-accent-200) / <alpha-value>)",
+  "300": "rgb(var(--theme-accent-300) / <alpha-value>)",
+  "400": "rgb(var(--theme-accent-400) / <alpha-value>)",
+  "500": "rgb(var(--theme-accent-500) / <alpha-value>)",
+  "600": "rgb(var(--theme-accent-600) / <alpha-value>)",
+  "700": "rgb(var(--theme-accent-700) / <alpha-value>)",
+  "800": "rgb(var(--theme-accent-800) / <alpha-value>)",
+  "900": "rgb(var(--theme-accent-900) / <alpha-value>)",
+  "950": "rgb(var(--theme-accent-950) / <alpha-value>)"
+},
+        // 覆盖默认 gray/slate:Tailwind 默认值偏蓝(#1f2937/#0f172a 等),深色模式下会残留蓝调
+        // 统一映射到中性 zinc 色相,与 dark 色阶同一体系
         gray: {
-          50: '#FAF8F2',
-          100: '#F4F0E6',
-          200: '#E6E1D3',
-          300: '#D2CCBB',
-          400: '#A39E8F',
-          500: '#736F63',
-          600: '#57534A',
-          700: '#403D36',
-          800: '#2B2925',
-          900: '#1C1A16',
-          950: '#141414'
-        },
+  "50": "rgb(var(--theme-gray-50) / <alpha-value>)",
+  "100": "rgb(var(--theme-gray-100) / <alpha-value>)",
+  "200": "rgb(var(--theme-gray-200) / <alpha-value>)",
+  "300": "rgb(var(--theme-gray-300) / <alpha-value>)",
+  "400": "rgb(var(--theme-gray-400) / <alpha-value>)",
+  "500": "rgb(var(--theme-gray-500) / <alpha-value>)",
+  "600": "rgb(var(--theme-gray-600) / <alpha-value>)",
+  "700": "rgb(var(--theme-gray-700) / <alpha-value>)",
+  "800": "rgb(var(--theme-gray-800) / <alpha-value>)",
+  "900": "rgb(var(--theme-gray-900) / <alpha-value>)",
+  "950": "rgb(var(--theme-gray-950) / <alpha-value>)"
+},
         slate: {
-          50: '#FAF8F2',
-          100: '#F4F0E6',
-          200: '#E6E1D3',
-          300: '#D2CCBB',
-          400: '#A39E8F',
-          500: '#736F63',
-          600: '#57534A',
-          700: '#403D36',
-          800: '#2B2925',
-          900: '#1C1A16',
-          950: '#141414'
-        },
-        // 深色模式背景 - 暖黑（墨色纸背面），950 略亮于 900 作提升面
+  "50": "rgb(var(--theme-slate-50) / <alpha-value>)",
+  "100": "rgb(var(--theme-slate-100) / <alpha-value>)",
+  "200": "rgb(var(--theme-slate-200) / <alpha-value>)",
+  "300": "rgb(var(--theme-slate-300) / <alpha-value>)",
+  "400": "rgb(var(--theme-slate-400) / <alpha-value>)",
+  "500": "rgb(var(--theme-slate-500) / <alpha-value>)",
+  "600": "rgb(var(--theme-slate-600) / <alpha-value>)",
+  "700": "rgb(var(--theme-slate-700) / <alpha-value>)",
+  "800": "rgb(var(--theme-slate-800) / <alpha-value>)",
+  "900": "rgb(var(--theme-slate-900) / <alpha-value>)",
+  "950": "rgb(var(--theme-slate-950) / <alpha-value>)"
+},
+        // @project-doc docs/architecture/frontend_ui_conventions.md#dark_colors
+        // 深色文字与表面色阶；边框强度由 darkEdges 单独定义。
         dark: {
-          50: '#F4F0E6',
-          100: '#EAE5D8',
-          200: '#CFC9B8',
-          300: '#9E998B',
-          400: '#736F63',
-          500: '#55524A',
-          600: '#3A3831',
-          700: '#2F2D27',
-          800: '#26231D',
-          900: '#1C1A16',
-          950: '#211F1A'
-        }
+  "50": "rgb(var(--theme-dark-50) / <alpha-value>)",
+  "100": "rgb(var(--theme-dark-100) / <alpha-value>)",
+  "200": "rgb(var(--theme-dark-200) / <alpha-value>)",
+  "300": "rgb(var(--theme-dark-300) / <alpha-value>)",
+  "400": "rgb(var(--theme-dark-400) / <alpha-value>)",
+  "500": "rgb(var(--theme-dark-500) / <alpha-value>)",
+  "600": "rgb(var(--theme-dark-600) / <alpha-value>)",
+  "700": "rgb(var(--theme-dark-700) / <alpha-value>)",
+  "800": "rgb(var(--theme-dark-800) / <alpha-value>)",
+  "900": "rgb(var(--theme-dark-900) / <alpha-value>)",
+  "950": "rgb(var(--theme-dark-950) / <alpha-value>)"
+}
       },
       fontFamily: {
-        // 正文继续用 Plus Jakarta Sans（几何人文无衬线），中文回退系统字体
+        display: ["\"Archivo Black\"","\"Plus Jakarta Sans Variable\"","system-ui","PingFang SC","Microsoft YaHei","sans-serif"],
+        // 英文使用 OpenRouter 的开源字体，中文继续按现有系统字体顺序回退。
         sans: [
           '"Plus Jakarta Sans Variable"',
           'system-ui',
@@ -151,15 +153,6 @@ export default {
           'Microsoft YaHei',
           'sans-serif'
         ],
-        // 展示字体：Archivo Black —— 厚重几何，海报级标题专用
-        display: [
-          '"Archivo Black"',
-          '"Plus Jakarta Sans Variable"',
-          'system-ui',
-          'PingFang SC',
-          'Microsoft YaHei',
-          'sans-serif'
-        ],
         mono: [
           '"Geist Mono Variable"',
           'ui-monospace',
@@ -171,35 +164,43 @@ export default {
         ]
       },
       boxShadow: {
-        // 包豪斯硬阴影：无模糊、纯位移。深色模式由 style.css 统一换成纸色阴影。
-        // 所有标准阴影统一使用仪表盘卡片的 4px 硬阴影，避免页面层级各自为政。
-        DEFAULT: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        sm: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        md: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        lg: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        xl: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        '2xl': `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        glass: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        'glass-sm': `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        glow: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        'glow-lg': `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        card: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        'card-hover': `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        'inner-glow': `inset 0 0 0 2px var(--bh-shadow-ink, #141414)`,
-        'bh-sm': `3px 3px 0 0 var(--bh-shadow-ink, #141414)`,
-        bh: `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        'bh-lg': `4px 4px 0 0 var(--bh-shadow-ink, #141414)`,
-        'bh-xl': `4px 4px 0 0 var(--bh-shadow-ink, #141414)`
-      },
+  "DEFAULT": "var(--skin-shadow-DEFAULT)",
+  "sm": "var(--skin-shadow-sm)",
+  "md": "var(--skin-shadow-md)",
+  "lg": "var(--skin-shadow-lg)",
+  "xl": "var(--skin-shadow-xl)",
+  "2xl": "var(--skin-shadow-2xl)",
+  "glass": "var(--skin-shadow-glass)",
+  "glass-sm": "var(--skin-shadow-glass-sm)",
+  "glow": "var(--skin-shadow-glow)",
+  "glow-lg": "var(--skin-shadow-glow-lg)",
+  "card": "var(--skin-shadow-card)",
+  "card-hover": "var(--skin-shadow-card-hover)",
+  "inner-glow": "var(--skin-shadow-inner-glow)",
+  "bh-sm": "var(--skin-shadow-bh-sm)",
+  "bh": "var(--skin-shadow-bh)",
+  "bh-lg": "var(--skin-shadow-bh-lg)",
+  "bh-xl": "var(--skin-shadow-bh-xl)"
+},
       backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        // 包豪斯不用渐变——映射为纯色块
-        'gradient-primary': `linear-gradient(0deg, ${BH.blue} 0%, ${BH.blue} 100%)`,
-        'gradient-dark': 'linear-gradient(0deg, #1C1A16 0%, #1C1A16 100%)',
-        'gradient-glass': 'linear-gradient(0deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 100%)',
-        'mesh-gradient': 'none',
-        // 三原色条纹（红/黄/蓝），用于顶栏或分隔装饰
-        'bh-stripe': `linear-gradient(90deg, ${BH.red} 0%, ${BH.red} 33.34%, ${BH.yellow} 33.34%, ${BH.yellow} 66.67%, ${BH.blue} 66.67%, ${BH.blue} 100%)`
+  "gradient-radial": "var(--skin-bg-gradient-radial)",
+  "gradient-primary": "var(--skin-bg-gradient-primary)",
+  "gradient-dark": "var(--skin-bg-gradient-dark)",
+  "gradient-glass": "var(--skin-bg-gradient-glass)",
+  "mesh-gradient": "var(--skin-bg-mesh-gradient)",
+  "bh-stripe": "linear-gradient(90deg, #E1251B 0%, #E1251B 33.34%, #FFCC00 33.34%, #FFCC00 66.67%, #1450A3 66.67%, #1450A3 100%)"
+},
+      // 动效变量由 style.css 持有，工具类只负责引用。
+      transitionDuration: {
+        DEFAULT: 'var(--motion-fast)',
+        fast: 'var(--motion-fast)',
+        normal: 'var(--motion-normal)',
+        layout: 'var(--motion-layout)',
+      },
+      transitionTimingFunction: {
+        DEFAULT: 'var(--motion-ease)',
+        standard: 'var(--motion-ease)',
+        exit: 'var(--motion-ease-exit)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
@@ -209,12 +210,7 @@ export default {
         'scale-in': 'scaleIn 0.2s ease-out',
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         shimmer: 'shimmer 2s linear infinite',
-        glow: 'glow 2s ease-in-out infinite alternate',
-        'bh-rise': 'bhRise 0.6s ease-out both',
-        'bh-float': 'bhFloat 5s ease-in-out infinite',
-        'bh-bob': 'bhBob 3.2s ease-in-out infinite',
-        'bh-spin-slow': 'bhSpin 14s linear infinite',
-        'bh-marquee': 'bhMarquee 22s linear infinite'
+        glow: 'glow 2s ease-in-out infinite alternate'
       },
       keyframes: {
         fadeIn: {
@@ -242,32 +238,12 @@ export default {
           '100%': { backgroundPosition: '200% 0' }
         },
         glow: {
-          '0%': { boxShadow: `4px 4px 0 0 var(--bh-yellow, #FFCC00)` },
-          '100%': { boxShadow: `6px 6px 0 0 var(--bh-yellow, #FFCC00)` }
-        },
-        bhRise: {
-          from: { opacity: '0', transform: 'translateY(26px)' },
-          to: { opacity: '1', transform: 'translateY(0)' }
-        },
-        bhFloat: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-22px)' }
-        },
-        bhBob: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' }
-        },
-        bhSpin: {
-          from: { transform: 'rotate(0deg)' },
-          to: { transform: 'rotate(360deg)' }
-        },
-        bhMarquee: {
-          from: { transform: 'translateX(0)' },
-          to: { transform: 'translateX(-50%)' }
+          '0%': { boxShadow: '0 0 20px rgba(0, 210, 255, 0.28)' },
+          '100%': { boxShadow: '0 0 30px rgba(18, 167, 232, 0.4)' }
         }
       },
       backdropBlur: {
-        xs: '0px'
+        xs: '2px'
       }
     }
   },

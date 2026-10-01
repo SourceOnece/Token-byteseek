@@ -793,7 +793,10 @@ affiliates: {
           "group_mapped": "分组映射后模型",
           "upstream": "最终上游模型"
         }
-      },
+      ,
+"addMapping": "添加映射",
+"mappingEmpty": "未配置模型映射"
+},
       providerFilters: {
         title: '提供商过滤控制',
         oauthOnly: '仅允许 OAuth 提供商',
@@ -942,7 +945,10 @@ affiliates: {
         priorityLabel: '优先级',
         priorityHint: '数值越小优先级越高，用于提供商调度',
         statusLabel: '状态'
-      },
+      ,
+reasoningEffortMappingIndex: '映射 #{index}',
+reasoningEffortMappingsEmpty: '未配置推理强度映射'
+},
       exclusiveObj: {
         yes: '是',
         no: '否'
@@ -1238,7 +1244,9 @@ affiliates: {
         noRulesHint: '添加路由规则以将特定模型请求优先路由到指定提供商',
         searchProviderPlaceholder: '搜索提供商...',
         providersHint: '选择此模型模式优先使用的提供商'
-      },
+      ,
+ruleIndex: '规则 #{index}'
+},
       claudeMaxSimulation: {
         title: 'Claude Max 用量模拟',
         tooltip:

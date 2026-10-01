@@ -2,7 +2,7 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="input-icon-wrap w-full sm:w-72">
             <Icon
               name="search"
@@ -35,7 +35,8 @@
       </template>
 
       <template #table>
-        <DataTable column-order-storage-key="admin-teams-column-order"
+        <DataTable
+          column-order-storage-key="admin-teams-column-order"
           :columns="columns"
           :data="paginatedTeams"
           :loading="loading"
@@ -205,9 +206,7 @@
       width="wide"
       @close="closeDetails"
     >
-      <div v-if="detailsLoading" class="flex justify-center py-12">
-        <LoadingSpinner />
-      </div>
+      <ContentSkeleton v-if="detailsLoading" variant="detail" :rows="6" class="py-4" />
       <div v-else-if="detailsTeam" class="space-y-6">
         <div class="flex flex-wrap items-center justify-between gap-3 rounded-control border border-gray-200 bg-gray-50 px-4 py-3 dark:border-dark-700 dark:bg-dark-800">
           <div>
@@ -283,6 +282,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
@@ -295,7 +295,6 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'

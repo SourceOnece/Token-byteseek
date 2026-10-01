@@ -1,5 +1,5 @@
 <template>
-  <AuthCardDialog @close="$emit('close')">
+  <AuthCardDialog :show="show" @after-leave="$emit('after-leave')" @close="$emit('close')">
         <!-- Header -->
         <div class="mb-6 text-center">
           <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
@@ -11,11 +11,9 @@
         </div>
 
         <!-- Step 0: Identity Verification -->
-        <div v-if="step === 0" class="space-y-6">
+        <div v-if="step === 0" v-content-reveal class="space-y-6">
           <!-- Loading verification method -->
-          <div v-if="methodLoading" class="flex items-center justify-center py-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-          </div>
+          <ContentSkeleton v-if="methodLoading" variant="form" :rows="2" class="py-4" />
 
           <template v-else>
             <!-- Email verification -->
@@ -74,7 +72,7 @@
         </div>
 
         <!-- Step 1: Show QR Code -->
-        <div v-if="step === 1" class="space-y-6">
+        <div v-if="step === 1" v-content-reveal class="space-y-6">
           <!-- QR Code and Secret -->
           <template v-if="setupData">
             <div class="flex justify-center">
@@ -96,9 +94,7 @@
                   class="rounded-compact p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-700"
                   @click="copySecret"
                 >
-                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
-                  </svg>
+                  <Icon name="clipboard" size="sm" />
                 </button>
               </div>
             </div>
@@ -120,7 +116,7 @@
         </div>
 
         <!-- Step 2: Verify Code -->
-        <div v-if="step === 2" class="space-y-6">
+        <div v-if="step === 2" v-content-reveal class="space-y-6">
           <form @submit.prevent="handleVerify">
             <div class="mb-6">
               <label class="input-label text-center block mb-3">
@@ -166,6 +162,10 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import { vContentReveal } from '@/directives/contentReveal'
+
+import Icon from '@/components/icons/Icon.vue'
 import AuthCardDialog from '@/components/common/AuthCardDialog.vue'
 import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -175,7 +175,10 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 import type { TotpSetupResponse } from '@/types'
 import QRCode from 'qrcode'
 
+withDefaults(defineProps<{ show?: boolean }>(), { show: true })
+
 const emit = defineEmits<{
+  'after-leave': []
   close: []
   success: []
 }>()

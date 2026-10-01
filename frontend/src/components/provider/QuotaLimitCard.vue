@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import Collapse from '@/components/common/Collapse.vue'
+
+import Icon from '@/components/icons/Icon.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -135,10 +138,15 @@ const dailyFixedHint = computed(() =>
   <div class="rounded-control border border-gray-200 dark:border-dark-600">
       <!-- Header: toggle + collapse -->
       <div class="flex items-center justify-between p-4" :class="{ 'pb-0': localEnabled && !collapsed }">
-        <div class="flex items-center gap-2 flex-1 cursor-pointer" @click="localEnabled && (collapsed = !collapsed)">
-          <svg v-if="localEnabled" class="h-4 w-4 text-gray-400 transition-transform" :class="{ '-rotate-90': collapsed }" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-          </svg>
+        <div data-icon-trigger class="flex items-center gap-2 flex-1 cursor-pointer" @click="localEnabled && (collapsed = !collapsed)">
+          <Icon
+            name="chevronDown"
+            size="sm"
+            :animate-on-hover="false"
+            v-if="localEnabled"
+            class="h-4 w-4 text-gray-400 transition-transform"
+            :class="{ '-rotate-90': collapsed }"
+          />
           <div>
             <label class="input-label mb-0 cursor-pointer">{{ t('admin.providers.quotaLimitToggle') }}</label>
             <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
@@ -150,84 +158,86 @@ const dailyFixedHint = computed(() =>
       </div>
 
       <!-- Collapsible content -->
-      <div v-if="localEnabled && !collapsed" class="space-y-2 p-4 pt-3">
-        <!-- Daily quota -->
-        <QuotaDimensionRow
-          dim="daily"
-          :label="t('admin.providers.quotaDailyLimit')"
-          :limit="dailyLimit"
-          :quota-notify-global-enabled="quotaNotifyGlobalEnabled"
-          :notify-enabled="props.quotaNotifyDailyEnabled"
-          :notify-threshold="props.quotaNotifyDailyThreshold"
-          :notify-threshold-type="props.quotaNotifyDailyThresholdType"
-          :reset-mode="dailyResetMode"
-          :reset-hour="dailyResetHour"
-          :reset-day="null"
-          :reset-timezone="resetTimezone"
-          :hint-rolling="t('admin.providers.quotaDailyLimitHint')"
-          :hint-fixed="dailyFixedHint"
-          :hour-options="hourOptions"
-          :day-options="dayOptions"
-          :timezone-options="timezoneOptions"
-          @update:limit="emit('update:dailyLimit', $event)"
-          @update:notify-enabled="emit('update:quotaNotifyDailyEnabled', $event)"
-          @update:notify-threshold="emit('update:quotaNotifyDailyThreshold', $event)"
-          @update:notify-threshold-type="emit('update:quotaNotifyDailyThresholdType', $event)"
-          @update:reset-mode="emit('update:dailyResetMode', $event)"
-          @update:reset-hour="emit('update:dailyResetHour', $event)"
-          @update:reset-timezone="emit('update:resetTimezone', $event)"
-        />
+      <Collapse :open="localEnabled && !collapsed" unmount-on-hide>
+        <div class="space-y-2 p-4 pt-3">
+          <!-- Daily quota -->
+          <QuotaDimensionRow
+            dim="daily"
+            :label="t('admin.providers.quotaDailyLimit')"
+            :limit="dailyLimit"
+            :quota-notify-global-enabled="quotaNotifyGlobalEnabled"
+            :notify-enabled="props.quotaNotifyDailyEnabled"
+            :notify-threshold="props.quotaNotifyDailyThreshold"
+            :notify-threshold-type="props.quotaNotifyDailyThresholdType"
+            :reset-mode="dailyResetMode"
+            :reset-hour="dailyResetHour"
+            :reset-day="null"
+            :reset-timezone="resetTimezone"
+            :hint-rolling="t('admin.providers.quotaDailyLimitHint')"
+            :hint-fixed="dailyFixedHint"
+            :hour-options="hourOptions"
+            :day-options="dayOptions"
+            :timezone-options="timezoneOptions"
+            @update:limit="emit('update:dailyLimit', $event)"
+            @update:notify-enabled="emit('update:quotaNotifyDailyEnabled', $event)"
+            @update:notify-threshold="emit('update:quotaNotifyDailyThreshold', $event)"
+            @update:notify-threshold-type="emit('update:quotaNotifyDailyThresholdType', $event)"
+            @update:reset-mode="emit('update:dailyResetMode', $event)"
+            @update:reset-hour="emit('update:dailyResetHour', $event)"
+            @update:reset-timezone="emit('update:resetTimezone', $event)"
+          />
 
-        <!-- Weekly quota -->
-        <QuotaDimensionRow
-          dim="weekly"
-          :label="t('admin.providers.quotaWeeklyLimit')"
-          :limit="weeklyLimit"
-          :quota-notify-global-enabled="quotaNotifyGlobalEnabled"
-          :notify-enabled="props.quotaNotifyWeeklyEnabled"
-          :notify-threshold="props.quotaNotifyWeeklyThreshold"
-          :notify-threshold-type="props.quotaNotifyWeeklyThresholdType"
-          :reset-mode="weeklyResetMode"
-          :reset-hour="weeklyResetHour"
-          :reset-day="weeklyResetDay"
-          :reset-timezone="resetTimezone"
-          :hint-rolling="t('admin.providers.quotaWeeklyLimitHint')"
-          :hint-fixed="weeklyFixedHint"
-          :hour-options="hourOptions"
-          :day-options="dayOptions"
-          :timezone-options="timezoneOptions"
-          @update:limit="emit('update:weeklyLimit', $event)"
-          @update:notify-enabled="emit('update:quotaNotifyWeeklyEnabled', $event)"
-          @update:notify-threshold="emit('update:quotaNotifyWeeklyThreshold', $event)"
-          @update:notify-threshold-type="emit('update:quotaNotifyWeeklyThresholdType', $event)"
-          @update:reset-mode="emit('update:weeklyResetMode', $event)"
-          @update:reset-hour="emit('update:weeklyResetHour', $event)"
-          @update:reset-day="emit('update:weeklyResetDay', $event)"
-          @update:reset-timezone="emit('update:resetTimezone', $event)"
-        />
+          <!-- Weekly quota -->
+          <QuotaDimensionRow
+            dim="weekly"
+            :label="t('admin.providers.quotaWeeklyLimit')"
+            :limit="weeklyLimit"
+            :quota-notify-global-enabled="quotaNotifyGlobalEnabled"
+            :notify-enabled="props.quotaNotifyWeeklyEnabled"
+            :notify-threshold="props.quotaNotifyWeeklyThreshold"
+            :notify-threshold-type="props.quotaNotifyWeeklyThresholdType"
+            :reset-mode="weeklyResetMode"
+            :reset-hour="weeklyResetHour"
+            :reset-day="weeklyResetDay"
+            :reset-timezone="resetTimezone"
+            :hint-rolling="t('admin.providers.quotaWeeklyLimitHint')"
+            :hint-fixed="weeklyFixedHint"
+            :hour-options="hourOptions"
+            :day-options="dayOptions"
+            :timezone-options="timezoneOptions"
+            @update:limit="emit('update:weeklyLimit', $event)"
+            @update:notify-enabled="emit('update:quotaNotifyWeeklyEnabled', $event)"
+            @update:notify-threshold="emit('update:quotaNotifyWeeklyThreshold', $event)"
+            @update:notify-threshold-type="emit('update:quotaNotifyWeeklyThresholdType', $event)"
+            @update:reset-mode="emit('update:weeklyResetMode', $event)"
+            @update:reset-hour="emit('update:weeklyResetHour', $event)"
+            @update:reset-day="emit('update:weeklyResetDay', $event)"
+            @update:reset-timezone="emit('update:resetTimezone', $event)"
+          />
 
-        <!-- Total quota -->
-        <QuotaDimensionRow
-          dim="total"
-          :label="t('admin.providers.quotaTotalLimit')"
-          :limit="totalLimit"
-          :quota-notify-global-enabled="quotaNotifyGlobalEnabled"
-          :notify-enabled="props.quotaNotifyTotalEnabled"
-          :notify-threshold="props.quotaNotifyTotalThreshold"
-          :notify-threshold-type="props.quotaNotifyTotalThresholdType"
-          :reset-mode="null"
-          :reset-hour="null"
-          :reset-day="null"
-          :reset-timezone="null"
-          :hint-rolling="t('admin.providers.quotaTotalLimitHint')"
-          hint-fixed=""
-          :hour-options="hourOptions"
-          :day-options="dayOptions"
-          @update:limit="emit('update:totalLimit', $event)"
-          @update:notify-enabled="emit('update:quotaNotifyTotalEnabled', $event)"
-          @update:notify-threshold="emit('update:quotaNotifyTotalThreshold', $event)"
-          @update:notify-threshold-type="emit('update:quotaNotifyTotalThresholdType', $event)"
-        />
-      </div>
+          <!-- Total quota -->
+          <QuotaDimensionRow
+            dim="total"
+            :label="t('admin.providers.quotaTotalLimit')"
+            :limit="totalLimit"
+            :quota-notify-global-enabled="quotaNotifyGlobalEnabled"
+            :notify-enabled="props.quotaNotifyTotalEnabled"
+            :notify-threshold="props.quotaNotifyTotalThreshold"
+            :notify-threshold-type="props.quotaNotifyTotalThresholdType"
+            :reset-mode="null"
+            :reset-hour="null"
+            :reset-day="null"
+            :reset-timezone="null"
+            :hint-rolling="t('admin.providers.quotaTotalLimitHint')"
+            hint-fixed=""
+            :hour-options="hourOptions"
+            :day-options="dayOptions"
+            @update:limit="emit('update:totalLimit', $event)"
+            @update:notify-enabled="emit('update:quotaNotifyTotalEnabled', $event)"
+            @update:notify-threshold="emit('update:quotaNotifyTotalThreshold', $event)"
+            @update:notify-threshold-type="emit('update:quotaNotifyTotalThresholdType', $event)"
+          />
+        </div>
+      </Collapse>
   </div>
 </template>

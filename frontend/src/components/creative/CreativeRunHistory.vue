@@ -9,7 +9,7 @@
     :aria-expanded="open"
     @click="open = !open"
   >
-    <HistoryIcon />
+    <Icon name="history" />
     <!-- 活动任务数量：保持在图标右上角，不展开历史也能感知后台进度。 -->
     <span
       v-if="props.activeRunCount > 0"
@@ -20,7 +20,7 @@
   </button>
 
   <!-- 悬浮历史列表：点击展开 / 收起，选择行后不自动收起 -->
-  <Transition name="pop-float">
+  <MotionTransition name="pop-float">
     <div
       v-if="open"
       class="history-pop-float absolute right-3 top-14 z-20 flex max-h-[70%] w-80 flex-col overflow-hidden rounded-surface border border-primary-900/10 bg-white/95 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-900/95"
@@ -73,6 +73,7 @@
                 size="sm"
                 class="flex-shrink-0 text-gray-400 transition-transform dark:text-dark-400"
                 :class="expandedRunId === run.id && 'rotate-180'"
+                :animate-on-hover="false"
               />
             </div>
             <div class="mt-1 flex items-center gap-2 text-xs text-gray-400 dark:text-dark-400">
@@ -91,13 +92,18 @@
           </button>
 
           <!-- 进行中的任务只显示加载状态，终态任务才显示素材与操作按钮。 -->
-          <Transition name="history-details">
+          <MotionTransition name="history-details">
             <div v-if="expandedRunId === run.id" class="history-details-grid">
               <div class="min-h-0 overflow-hidden">
                 <div class="space-y-2 border-t border-primary-900/10 px-3 pb-3 pt-2 dark:border-dark-600">
                   <div v-if="isActive(run)" class="flex items-center gap-3 py-2 text-xs text-gray-500 dark:text-dark-300">
                     <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-control border border-primary-900/10 bg-gray-50 dark:border-dark-600 dark:bg-dark-950">
-                      <Icon name="refresh" size="md" class="animate-spin text-primary-500" />
+                      <Icon
+                        name="refresh"
+                        size="md"
+                        class="animate-spin text-primary-500"
+                        :animate-on-hover="false"
+                      />
                     </div>
                     <div class="min-w-0">
                       <span class="block">{{ t(`creative.status.${run.status}`, run.status) }}</span>
@@ -158,7 +164,7 @@
                 </div>
               </div>
             </div>
-          </Transition>
+          </MotionTransition>
         </div>
       </div>
       <p v-else-if="!studio.loadingHistory.value" class="py-6 text-center text-xs text-gray-400 dark:text-dark-400">
@@ -166,10 +172,11 @@
       </p>
     </div>
     </div>
-  </Transition>
+  </MotionTransition>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 /**
  * 创作 run 历史（悬浮层）：
  * - 画布右上角图标按钮展开 / 收起；列表每行 = 状态徽章 + 模型名 + 时间（+ 实际费用）
@@ -177,7 +184,7 @@
  *   图片支持拖到画布，且「导入到画布」和「下载」按钮统一放在图片下方并排展示；本地素材缺失时按钮禁用并展示缺失占位
  * - 进行中的任务只展示加载状态，不提供素材操作或取消入口
  */
-import { h, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { saveAs } from 'file-saver'
 import Icon from '@/components/icons/Icon.vue'
@@ -295,32 +302,6 @@ function downloadOutput(runId: string, outputIndex: number, mimeType?: string): 
   saveAs(asset.blob, `creative-${runId.slice(0, 12)}-${outputIndex}.${extension}`)
 }
 
-// 历史（回旋时钟）图标：手写 SVG，仿 🕘 样式，风格对齐 AppSidebar 内手写图标
-const HistoryIcon = {
-  render: () =>
-    h(
-      'svg',
-      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5', class: 'h-5 w-5' },
-      [
-        h('path', {
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round',
-          d: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8',
-        }),
-        h('path', {
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round',
-          d: 'M3 3v5h5',
-        }),
-        h('path', {
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round',
-          d: 'M12 7v5l4 2',
-        }),
-      ],
-    ),
-}
-
 function isActive(run: CreativeRun): boolean {
   return !CREATIVE_RUN_TERMINAL_STATUSES.includes(run.status)
 }
@@ -367,43 +348,11 @@ async function refresh(): Promise<void> {
 </script>
 
 <style scoped>
-/* 历史入口与面板采用同一组硬边阴影，避免创作台出现玻璃卡片。 */
-.creative-history-button,
-.creative-history-panel,
-.creative-history-item {
-  border: 2px solid var(--bh-ink);
-  background: var(--bh-surface);
-  box-shadow: var(--bh-shadow-sm);
-}
-
-.creative-history-button {
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
-}
-
-.creative-history-button:hover {
-  background: var(--bh-yellow);
-  transform: translate(-2px, -2px);
-}
-
-.creative-history-button:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--bh-shadow-ink);
-}
-
-.creative-history-panel {
-  background: var(--bh-surface);
-}
-
-.creative-history-item {
-  box-shadow: none;
-}
-
 /* 历史面板从右上入口展开；条目详情使用网格轨道实现真实高度折叠。 */
 /* 历史面板动效用全局 pop-float,锚点方向(右上锚、向上收起)用局部变量表达;
    条目详情折叠(history-details)是网格轨道动画,保留本地。 */
 .history-pop-float {
-  --pop-origin: top right;
-  --pop-shift: -6px;
+  --pop-shift: calc(-1 * var(--motion-shift));
 }
 
 .history-details-grid {
@@ -415,8 +364,8 @@ async function refresh(): Promise<void> {
 .history-details-leave-active {
   overflow: hidden;
   transition:
-    grid-template-rows 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    grid-template-rows var(--motion-layout) var(--motion-ease),
+    opacity var(--motion-layout) var(--motion-ease);
 }
 
 .history-details-enter-from,

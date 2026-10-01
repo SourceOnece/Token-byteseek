@@ -78,8 +78,8 @@
               @click="showPassword = !showPassword"
               class="input-icon-right text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
-              <Icon v-if="showPassword" name="eyeOff" size="md" />
-              <Icon v-else name="eye" size="md" />
+              <Icon v-if="showPassword" name="eyeOff" size="sm" />
+              <Icon v-else name="eye" size="sm" />
             </button>
           </div>
           <p class="input-hint">
@@ -126,7 +126,11 @@
           </label>
           <div class="input-icon-wrap input-icon-lg">
             <div class="input-icon">
-              <Icon name="key" size="md" :class="invitationValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'" />
+              <Icon
+                name="key"
+                size="md"
+                :class="invitationValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'"
+              />
             </div>
             <input
               id="invitation_code"
@@ -143,27 +147,34 @@
             />
             <!-- Validation indicator -->
             <div v-if="invitationValidating" class="input-icon-right">
-              <svg class="h-4 w-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <Icon
+                name="loader"
+                size="sm"
+                :animate-on-hover="false"
+                class="h-4 w-4 animate-spin text-gray-400"
+              />
             </div>
             <div v-else-if="invitationValidation.valid" class="input-icon-right">
-              <Icon name="checkCircle" size="md" class="text-green-500" />
+              <Icon name="checkCircle" size="md" class="text-green-500" :animate-on-hover="false" />
             </div>
             <div v-else-if="invitationValidation.invalid || errors.invitation_code" class="input-icon-right">
               <Icon name="exclamationCircle" size="md" class="text-red-500" />
             </div>
           </div>
           <!-- Invitation code validation result -->
-          <transition name="fade-slow">
+          <MotionTransition name="fade-slow">
             <div v-if="invitationValidation.valid" class="mt-2 flex items-center gap-2 rounded-control bg-green-50 px-3 py-2 dark:bg-green-900/20">
-              <Icon name="checkCircle" size="sm" class="text-green-600 dark:text-green-400" />
+              <Icon
+                name="checkCircle"
+                size="sm"
+                class="text-green-600 dark:text-green-400"
+                :animate-on-hover="false"
+              />
               <span class="text-sm text-green-700 dark:text-green-400">
                 {{ t('auth.invitationCodeValid') }}
               </span>
             </div>
-          </transition>
+          </MotionTransition>
         </div>
 
         <!-- 推广邀请码输入（可选） -->
@@ -195,7 +206,11 @@
           </label>
           <div class="input-icon-wrap input-icon-lg">
             <div class="input-icon">
-              <Icon name="gift" size="md" :class="promoValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'" />
+              <Icon
+                name="gift"
+                size="md"
+                :class="promoValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'"
+              />
             </div>
             <input
               id="promo_code"
@@ -212,27 +227,29 @@
             />
             <!-- Validation indicator -->
             <div v-if="promoValidating" class="input-icon-right">
-              <svg class="h-4 w-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <Icon
+                name="loader"
+                size="sm"
+                :animate-on-hover="false"
+                class="h-4 w-4 animate-spin text-gray-400"
+              />
             </div>
             <div v-else-if="promoValidation.valid" class="input-icon-right">
-              <Icon name="checkCircle" size="md" class="text-green-500" />
+              <Icon name="checkCircle" size="md" class="text-green-500" :animate-on-hover="false" />
             </div>
             <div v-else-if="promoValidation.invalid" class="input-icon-right">
               <Icon name="exclamationCircle" size="md" class="text-red-500" />
             </div>
           </div>
           <!-- Promo code validation result -->
-          <transition name="fade-slow">
+          <MotionTransition name="fade-slow">
             <div v-if="promoValidation.valid" class="mt-2 flex items-center gap-2 rounded-control bg-green-50 px-3 py-2 dark:bg-green-900/20">
               <Icon name="gift" size="sm" class="text-green-600 dark:text-green-400" />
               <span class="text-sm text-green-700 dark:text-green-400">
                 {{ t('auth.promoCodeValid', { amount: formatBalanceAmount(promoValidation.bonusAmount, { fractionDigits: 2 }) }) }}
               </span>
             </div>
-          </transition>
+          </MotionTransition>
         </div>
 
         <!-- Turnstile Widget -->
@@ -273,27 +290,14 @@
           :disabled="registrationActionDisabled || (!agreementGateActive && turnstileEnabled && !turnstileToken)"
           class="btn btn-primary w-full"
         >
-          <svg
+          <Icon
+            name="loader"
+            size="sm"
+            :animate-on-hover="false"
             v-if="isLoading"
             class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            ></circle>
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-          <Icon v-else name="userPlus" size="md" class="mr-2" />
+          />
+          <Icon v-else name="userPlus" size="sm" class="mr-2" />
           {{
             isLoading
               ? t('auth.processing')
@@ -364,6 +368,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -387,6 +392,11 @@ import {
   validateInvitationCode
 } from '@/api/auth'
 import { buildAuthErrorMessage } from '@/utils/authError'
+import {
+  LOGIN_AGREEMENT_STORAGE_KEY,
+  hasAcceptedLoginAgreement,
+  revokeLoginAgreement
+} from '@/utils/loginAgreement'
 import { extractApiErrorCode, extractI18nErrorMessage } from '@/utils/apiError'
 import {
   formatRegistrationEmailSuffixWhitelistForMessage,
@@ -401,7 +411,6 @@ import {
 import type { LoginAgreementDocument, PublicSettings } from '@/types'
 
 const { t, locale } = useI18n()
-const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
 
 // ==================== Router & Stores ====================
 
@@ -626,7 +635,7 @@ function resolveLocalizedSiteName(settings: PublicSettings | null): string {
   const isZh = String(locale.value).toLowerCase().startsWith('zh')
   const primary = isZh ? settings?.site_name_zh : settings?.site_name_en
   const secondary = isZh ? settings?.site_name_en : settings?.site_name_zh
-  return firstConfiguredText(primary, secondary, settings?.site_name, 'Sub2API')
+  return firstConfiguredText(primary, secondary, settings?.site_name, 'TokenRouter')
 }
 
 function firstConfiguredText(...values: Array<string | undefined>): string {
@@ -664,22 +673,6 @@ function applyLoginAgreementSettings(settings: {
     loginAgreementEnabled.value && !agreementAccepted.value && loginAgreementMode.value !== 'checkbox'
 }
 
-function hasAcceptedLoginAgreement(revision: string): boolean {
-  if (!revision) {
-    return false
-  }
-  try {
-    const raw = localStorage.getItem(LOGIN_AGREEMENT_STORAGE_KEY)
-    if (!raw) {
-      return false
-    }
-    const parsed = JSON.parse(raw) as { revision?: string }
-    return parsed.revision === revision
-  } catch {
-    return false
-  }
-}
-
 function acceptLoginAgreement(): void {
   if (loginAgreementRevision.value) {
     localStorage.setItem(
@@ -696,7 +689,7 @@ function acceptLoginAgreement(): void {
 }
 
 function rejectLoginAgreement(): void {
-  localStorage.removeItem(LOGIN_AGREEMENT_STORAGE_KEY)
+  revokeLoginAgreement()
   agreementAccepted.value = false
   showAgreementModal.value = false
   showAgreementHint.value = false

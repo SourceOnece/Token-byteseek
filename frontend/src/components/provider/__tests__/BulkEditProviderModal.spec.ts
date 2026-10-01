@@ -971,9 +971,8 @@ describe('BulkEditProviderModal', () => {
     await wrapper.get('[data-testid="bulk-edit-openai-compact-mode-select"] input').setValue(true)
     await wrapper.get('#bulk-edit-openai-compact-model-mapping-enabled').setValue(true)
     await wrapper.get('[data-testid="bulk-edit-openai-compact-model-mapping-add"]').trigger('click')
-    const inputs = wrapper.findAll('[data-testid="bulk-edit-openai-compact-model-mapping-input"]')
-    await inputs[0].setValue('gpt-5.4')
-    await inputs[1].setValue('gpt-5.4-openai-compact')
+    await wrapper.get('[data-testid="bulk-edit-openai-compact-model-mapping-source-0"]').setValue('gpt-5.4')
+    await wrapper.get('[data-testid="bulk-edit-openai-compact-model-mapping-target-0"]').setValue('gpt-5.4-openai-compact')
     await wrapper.get('#bulk-edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 

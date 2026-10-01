@@ -131,6 +131,7 @@ const badgeClass = computed(() => {
   if (brandName.value) {
     return `ring-1 ring-inset ${resolveProviderBrand(brandName.value).badgeClass}`
   }
-  return 'bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-400'
+  // 未指定品牌时，与复合分组共用中性配色，并用内描边明确徽章边缘。
+  return 'ring-1 ring-inset bg-gray-100 text-gray-900 ring-gray-200 dark:bg-dark-800 dark:text-dark-50 dark:ring-dark-600'
 })
 </script>

@@ -26,7 +26,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="manual"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.manualAuth')
@@ -37,7 +37,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="cookie"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.cookieAutoAuth')
@@ -48,7 +48,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="refresh_token"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t(getOAuthKey('refreshTokenAuth'))
@@ -59,7 +59,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="sso_cookie"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t(getOAuthKey('ssoCookieAuth'))
@@ -70,7 +70,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="mobile_refresh_token"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.openai.mobileRefreshTokenAuth', '手动输入 Mobile RT')
@@ -81,7 +81,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="session_token"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t(getOAuthKey('sessionTokenAuth'))
@@ -92,7 +92,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="access_token"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.openai.accessTokenAuth', '手动输入 AT')
@@ -103,7 +103,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="codex_session"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.openai.codexSessionAuth')
@@ -114,7 +114,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="agent_identity"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.openai.agentIdentityAuth')
@@ -125,7 +125,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="codex_pat"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.openai.codexPatAuth')
@@ -188,26 +188,13 @@
               :disabled="loading || !refreshTokenInput.trim()"
               @click="handleValidateRefreshToken"
             >
-              <svg
+              <Icon
+                name="loader"
+                size="sm"
+                :animate-on-hover="false"
                 v-if="loading"
                 class="-ml-1 mr-2 h-4 w-4 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
+              />
               <Icon v-else name="sparkles" size="sm" class="mr-2" />
               {{
                 loading
@@ -267,26 +254,13 @@
               :disabled="loading || !ssoCookieInput.trim()"
               @click="handleImportSSO"
             >
-              <svg
+              <Icon
+                name="loader"
+                size="sm"
+                :animate-on-hover="false"
                 v-if="loading"
                 class="-ml-1 mr-2 h-4 w-4 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
+              />
               <Icon v-else name="sparkles" size="sm" class="mr-2" />
               {{ loading ? t(getOAuthKey('convertingSSO')) : t(getOAuthKey('convertSSOAndCreate')) }}
             </button>
@@ -342,26 +316,13 @@
               :disabled="loading || !codexSessionInput.trim()"
               @click="handleImportCodexSession"
             >
-              <svg
+              <Icon
+                name="loader"
+                size="sm"
+                :animate-on-hover="false"
                 v-if="loading"
                 class="-ml-1 mr-2 h-4 w-4 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
+              />
               <Icon v-else name="sparkles" size="sm" class="mr-2" />
               {{
                 loading
@@ -416,26 +377,13 @@
               :disabled="loading || !codexPATInput.trim()"
               @click="handleImportCodexPAT"
             >
-              <svg
+              <Icon
+                name="loader"
+                size="sm"
+                :animate-on-hover="false"
                 v-if="loading"
                 class="-ml-1 mr-2 h-4 w-4 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
+              />
               <Icon v-else name="sparkles" size="sm" class="mr-2" />
               {{
                 loading
@@ -471,22 +419,10 @@
                 <button
                   v-if="showHelp"
                   type="button"
-                  class="text-blue-500 hover:text-blue-600"
+                  class="text-primary-500 hover:text-primary-600"
                   @click="showHelpDialog = !showHelpDialog"
                 >
-                  <svg
-                    class="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
-                    />
-                  </svg>
+                  <Icon name="questionCircle" size="sm" class="h-4 w-4" />
                 </button>
               </label>
               <textarea
@@ -548,26 +484,13 @@
               :disabled="loading || !sessionKeyInput.trim()"
               @click="handleCookieAuth"
             >
-              <svg
+              <Icon
+                name="loader"
+                size="sm"
+                :animate-on-hover="false"
                 v-if="loading"
                 class="-ml-1 mr-2 h-4 w-4 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
+              />
               <Icon v-else name="sparkles" size="sm" class="mr-2" />
               {{
                 loading
@@ -605,11 +528,9 @@
                       href="https://console.cloud.google.com/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      class="inline-flex items-center gap-1 text-xs font-normal text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                      class="inline-flex items-center gap-1 text-xs font-normal text-primary-500 hover:text-primary-600 dark:text-primary-500"
                     >
-                      <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
-                      </svg>
+                      <Icon name="questionCircle" size="xs" class="h-3 w-3" />
                       {{ t('admin.providers.oauth.gemini.howToGetProjectId') }}
                     </a>
                   </label>
@@ -630,26 +551,13 @@
                     class="btn btn-primary text-sm"
                     @click="handleGenerateUrl"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="loading"
                       class="-ml-1 mr-2 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     <Icon v-else name="plus" size="sm" class="mr-2" />
                     {{
                       loading
@@ -716,26 +624,13 @@
                   class="btn btn-primary text-sm"
                   @click="handleGenerateUrl"
                 >
-                  <svg
+                  <Icon
+                    name="loader"
+                    size="sm"
+                    :animate-on-hover="false"
                     v-if="loading"
                     class="-ml-1 mr-2 h-4 w-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+                  />
                   <Icon v-else name="link" size="sm" class="mr-2" />
                   {{ loading ? t('admin.providers.oauth.generating') : oauthGenerateAuthUrl }}
                 </button>
@@ -754,26 +649,14 @@
                       :aria-label="t('admin.providers.oauth.copyAuthUrl')"
                       @click="handleCopyUrl"
                     >
-                      <svg
-                        v-if="!copied"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
-                        />
-                      </svg>
+                      <Icon name="clipboard" size="sm" v-if="!copied" class="h-4 w-4" />
                       <Icon
                         v-else
                         name="check"
                         size="sm"
                         class="text-green-500"
                         :stroke-width="2"
+                        :animate-on-hover="false"
                       />
                     </button>
                     <a
@@ -790,7 +673,7 @@
                   <button
                     type="button"
                     :disabled="loading"
-                    class="text-xs text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-blue-400"
+                    class="text-xs text-primary-600 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-500"
                     @click="handleRegenerate"
                   >
                     <Icon name="refresh" size="xs" class="mr-1 inline" />

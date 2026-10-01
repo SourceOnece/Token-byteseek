@@ -8,20 +8,45 @@
           @change="onDateRangeChange"
         />
         <button @click="loadDashboard" :disabled="loading" class="btn btn-secondary shrink-0 btn-icon" :title="t('common.refresh')">
-          <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+          <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
         </button>
       </div>
     </template>
-    <div class="space-y-6">
+    <div class="space-y-4">
       <!-- Dashboard Content -->
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <LoadingSpinner />
+      <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4" aria-hidden="true">
+          <div v-for="card in 5" :key="card" class="card min-w-0 space-y-3 p-4">
+            <Skeleton width="55%" :height="12" />
+            <Skeleton width="75%" :height="28" />
+            <Skeleton width="65%" :height="12" />
+          </div>
+        </div>
+        <DailyRevenueChart :data="[]" :loading="true" />
+        <div class="card p-4">
+          <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.admin.purchaseDistribution') }}</h3>
+          <div class="grid gap-4 xl:grid-cols-3">
+            <ChartSkeleton variant="distribution" height="208px" />
+            <ChartSkeleton variant="distribution" height="208px" />
+            <ContentSkeleton :rows="3" />
+          </div>
+        </div>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div class="card p-4">
+            <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.admin.paymentDistribution') }}</h3>
+            <ContentSkeleton :rows="3" />
+          </div>
+          <div class="card p-4">
+            <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.admin.topUsers') }}</h3>
+            <ContentSkeleton :rows="3" />
+          </div>
+        </div>
       </div>
       <template v-else-if="stats">
         <OrderStatsCards :stats="stats" />
         <DailyRevenueChart :data="stats.daily_series || []" :loading="loading" />
         <PurchaseDistributionChart :items="stats.purchase_distribution || []" />
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div class="card p-4">
             <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.admin.paymentDistribution') }}</h3>
             <div v-if="!stats.payment_methods?.length" class="flex h-32 items-center justify-center text-sm text-gray-500 dark:text-gray-400">{{ t('payment.admin.noData') }}</div>
@@ -63,6 +88,9 @@
 </template>
 
 <script setup lang="ts">
+import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
+import Skeleton from '@/components/common/Skeleton.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -70,7 +98,6 @@ import { adminPaymentAPI } from '@/api/admin/payment'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import type { CurrencyAmounts, DashboardStats, TopUserPaymentStats } from '@/types/payment'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Icon from '@/components/icons/Icon.vue'
 import OrderStatsCards from '@/components/admin/payment/OrderStatsCards.vue'

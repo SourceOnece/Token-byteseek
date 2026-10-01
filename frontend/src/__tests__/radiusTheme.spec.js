@@ -7,7 +7,7 @@ import tailwindConfig from '../../tailwind.config.js'
 
 // 固定全站圆角契约：工具类一律经 var() 引用 :root 变量,数值只在 style.css 维护一份。
 const styleCss = readFileSync(
-  resolve(dirname(fileURLToPath(import.meta.url)), '../style.css'),
+  resolve(dirname(fileURLToPath(import.meta.url)), '../styles/visual-palette.css'),
   'utf8'
 )
 
@@ -23,7 +23,7 @@ describe('ByteSeek 包豪斯直角主题', () => {
     })
   })
 
-  it(':root 保持四级语义令牌，包豪斯统一直角', () => {
+  it('所选包豪斯皮肤统一直角，默认 TokenFlux 保留原生 token', () => {
     expect(styleCss).toContain('--radius-compact: 0px')
     expect(styleCss).toContain('--radius-control: 0px')
     expect(styleCss).toContain('--radius-surface: 0px')

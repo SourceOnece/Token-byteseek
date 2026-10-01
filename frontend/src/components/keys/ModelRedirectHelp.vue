@@ -21,7 +21,7 @@ function animateArrival(event: AnimationEvent, node: string) {
 
 // 示例独立于表单；打开提示或重播时重新挂载，让动画从请求阶段开始。
 const stages = [
-  { label: 'request', icon: 'grid', arrival: 0 },
+  { label: 'request', icon: 'monitor', arrival: 0 },
   { label: 'match', icon: 'key', arrival: 0.32 },
   { label: 'target', icon: 'server', arrival: 0.78 },
 ] as const
@@ -104,7 +104,7 @@ const targetModel = 'gpt-6-luna'
                   :animate-on-hover="false"
                   :animation-active="arrivedNodes.has(stage.label)"
                 />
-                <span class="redirect-node-check absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-control bg-gray-900 text-emerald-400 dark:bg-dark-900">
+                <span class="redirect-node-check absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gray-900 text-emerald-400 dark:bg-dark-900">
                   <Icon name="check" size="xs" :animate-on-hover="false" />
                 </span>
               </span>
@@ -162,7 +162,7 @@ const targetModel = 'gpt-6-luna'
 .redirect-node,
 .redirect-node-check {
   animation-duration: var(--motion-fast);
-  animation-timing-function: var(--motion-ease, cubic-bezier(.22,1,.36,1));
+  animation-timing-function: var(--motion-ease);
   animation-fill-mode: forwards;
   animation-delay: calc(var(--node-arrival) * var(--redirect-duration));
 }

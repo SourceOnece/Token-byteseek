@@ -1,17 +1,19 @@
 <template>
   <AppLayout>
-    <div class="mx-auto max-w-6xl space-y-6">
-      <!-- Loading State -->
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <div
-          class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"
-        ></div>
-      </div>
+    <!-- 设置内容填满主区，切换页签时卡片宽度保持一致。 -->
+    <div class="w-full min-w-0 space-y-4">
+      <!-- 设置尚未返回时，先保留页签和表单控件的位置。 -->
+      <SettingsSkeleton v-if="loading" />
 
       <!-- Settings Form -->
-      <form v-else @submit.prevent="saveSettings" class="space-y-6" novalidate>
+      <form v-else @submit.prevent="saveSettings" class="space-y-4" novalidate>
         <!-- Tab Navigation -->
-        <div class="settings-tabs-shell">
+        <div
+          :class="[
+            'settings-tabs-shell',
+            activeTab === 'gateway' && 'settings-tabs-shell-stacked',
+          ]"
+        >
           <nav
             ref="settingsTabsScrollRef"
             class="settings-tabs-scroll"
@@ -87,7 +89,7 @@
         </div>
 
         <!-- Tab: Security — Admin API Key -->
-        <div v-show="activeTab === 'security'" class="space-y-6">
+        <div v-show="activeTab === 'security'" v-content-reveal="activeTab === 'security'" class="space-y-4">
           <!-- Admin API Key Settings -->
           <div class="card">
             <div
@@ -118,15 +120,7 @@
               </div>
 
               <!-- Loading State -->
-              <div
-                v-if="adminApiKeyLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="adminApiKeyLoading" variant="form" :rows="1" />
 
               <!-- No Key Configured -->
               <div
@@ -142,26 +136,13 @@
                   :disabled="adminApiKeyOperating"
                   class="btn btn-primary btn-sm h-9"
                 >
-                  <svg
+                  <Icon
+                    name="loader"
+                    size="sm"
+                    :animate-on-hover="false"
                     v-if="adminApiKeyOperating"
                     class="mr-1 h-4 w-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+                  />
                   {{
                     adminApiKeyOperating
                       ? t("admin.settings.adminApiKey.creating")
@@ -245,13 +226,13 @@
 
         <!-- Tab: Gateway -->
         <div
-          v-show="activeTab === 'gateway'"
+          v-show="activeTab === 'gateway'" v-content-reveal="activeTab === 'gateway'"
           ref="gatewayContentStartRef"
-          class="gateway-settings-content space-y-6"
+          class="gateway-settings-content space-y-4"
         >
           <!-- Overload Cooldown (529) Settings -->
           <div
-            v-show="activeGatewaySection === 'general'"
+            v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
             class="card"
             data-testid="gateway-card-overload-cooldown"
           >
@@ -266,15 +247,7 @@
               </p>
             </div>
             <div class="space-y-5 p-6">
-              <div
-                v-if="overloadCooldownLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="overloadCooldownLoading" variant="form" :rows="3" />
 
               <template v-else>
                 <div class="flex items-center justify-between">
@@ -289,30 +262,32 @@
                   <Toggle v-model="overloadCooldownForm.enabled" />
                 </div>
 
-                <div
-                  v-if="overloadCooldownForm.enabled"
-                  class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.overloadCooldown.cooldownMinutes") }}
-                    </label>
-                    <input
-                      v-model.number="overloadCooldownForm.cooldown_minutes"
-                      type="number"
-                      min="1"
-                      max="120"
-                      class="input w-32"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        t("admin.settings.overloadCooldown.cooldownMinutesHint")
-                      }}
-                    </p>
+                <Collapse :open="overloadCooldownForm.enabled" unmount-on-hide>
+                  <div
+
+                    class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
+                  >
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.overloadCooldown.cooldownMinutes") }}
+                      </label>
+                      <input
+                        v-model.number="overloadCooldownForm.cooldown_minutes"
+                        type="number"
+                        min="1"
+                        max="120"
+                        class="input w-32"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{
+                          t("admin.settings.overloadCooldown.cooldownMinutesHint")
+                        }}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </Collapse>
 
                 <div
                   class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700"
@@ -323,26 +298,13 @@
                     :disabled="overloadCooldownSaving"
                     class="btn btn-primary btn-sm h-9"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="overloadCooldownSaving"
                       class="mr-1 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     {{
                       overloadCooldownSaving
                         ? t("common.saving")
@@ -356,7 +318,7 @@
 
           <!-- OpenAI OAuth 403 Cooldown Settings -->
         <div
-          v-show="activeGatewaySection === 'openai'"
+          v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
           class="card"
           data-testid="gateway-card-openai-403-cooldown"
         >
@@ -369,10 +331,7 @@
             </p>
           </div>
           <div class="space-y-5 p-6">
-            <div v-if="openAI403CooldownLoading" class="flex items-center gap-2 text-gray-500">
-              <div class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"></div>
-              {{ t('common.loading') }}
-            </div>
+            <ContentSkeleton v-if="openAI403CooldownLoading" variant="form" :rows="3" />
 
             <template v-else>
               <div class="flex items-center justify-between">
@@ -387,75 +346,77 @@
                 <Toggle v-model="openAI403CooldownForm.enabled" />
               </div>
 
-              <div
-                v-if="openAI403CooldownForm.enabled"
-                class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div>
-                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t('admin.settings.openAI403Cooldown.cooldownMinutes') }}
-                  </label>
-                  <input
-                    v-model.number="openAI403CooldownForm.cooldown_minutes"
-                    type="number"
-                    min="1"
-                    max="120"
-                    class="input w-32"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t('admin.settings.openAI403Cooldown.cooldownMinutesHint') }}
-                  </p>
-                </div>
-
-                <div class="flex items-center justify-between">
-                  <div>
-                    <label class="font-medium text-gray-900 dark:text-white">
-                      {{ t('admin.settings.openAI403Cooldown.errorOnThresholdEnabled') }}
-                    </label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ t('admin.settings.openAI403Cooldown.errorOnThresholdEnabledHint') }}
-                    </p>
-                  </div>
-                  <Toggle v-model="openAI403CooldownForm.error_on_threshold_enabled" />
-                </div>
-
+              <Collapse :open="openAI403CooldownForm.enabled" unmount-on-hide>
                 <div
-                  v-if="openAI403CooldownForm.error_on_threshold_enabled"
-                  class="grid gap-4 sm:grid-cols-2"
+
+                  class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
                 >
                   <div>
                     <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {{ t('admin.settings.openAI403Cooldown.thresholdCount') }}
+                      {{ t('admin.settings.openAI403Cooldown.cooldownMinutes') }}
                     </label>
                     <input
-                      v-model.number="openAI403CooldownForm.threshold_count"
+                      v-model.number="openAI403CooldownForm.cooldown_minutes"
                       type="number"
                       min="1"
-                      max="20"
+                      max="120"
                       class="input w-32"
                     />
                     <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t('admin.settings.openAI403Cooldown.thresholdCountHint') }}
+                      {{ t('admin.settings.openAI403Cooldown.cooldownMinutesHint') }}
                     </p>
                   </div>
 
-                  <div>
-                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {{ t('admin.settings.openAI403Cooldown.thresholdWindowMinutes') }}
-                    </label>
-                    <input
-                      v-model.number="openAI403CooldownForm.threshold_window_minutes"
-                      type="number"
-                      min="1"
-                      max="1440"
-                      class="input w-32"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t('admin.settings.openAI403Cooldown.thresholdWindowMinutesHint') }}
-                    </p>
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <label class="font-medium text-gray-900 dark:text-white">
+                        {{ t('admin.settings.openAI403Cooldown.errorOnThresholdEnabled') }}
+                      </label>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">
+                        {{ t('admin.settings.openAI403Cooldown.errorOnThresholdEnabledHint') }}
+                      </p>
+                    </div>
+                    <Toggle v-model="openAI403CooldownForm.error_on_threshold_enabled" />
+                  </div>
+
+                  <div
+                    v-if="openAI403CooldownForm.error_on_threshold_enabled"
+                    class="grid gap-4 sm:grid-cols-2"
+                  >
+                    <div>
+                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {{ t('admin.settings.openAI403Cooldown.thresholdCount') }}
+                      </label>
+                      <input
+                        v-model.number="openAI403CooldownForm.threshold_count"
+                        type="number"
+                        min="1"
+                        max="20"
+                        class="input w-32"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t('admin.settings.openAI403Cooldown.thresholdCountHint') }}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {{ t('admin.settings.openAI403Cooldown.thresholdWindowMinutes') }}
+                      </label>
+                      <input
+                        v-model.number="openAI403CooldownForm.threshold_window_minutes"
+                        type="number"
+                        min="1"
+                        max="1440"
+                        class="input w-32"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t('admin.settings.openAI403Cooldown.thresholdWindowMinutesHint') }}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Collapse>
 
               <div class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700">
                 <button
@@ -464,26 +425,13 @@
                   :disabled="openAI403CooldownSaving"
                   class="btn btn-primary btn-sm h-9"
                 >
-                  <svg
+                  <Icon
+                    name="loader"
+                    size="sm"
+                    :animate-on-hover="false"
                     v-if="openAI403CooldownSaving"
                     class="mr-1 h-4 w-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+                  />
                   {{ openAI403CooldownSaving ? t('common.saving') : t('common.save') }}
                 </button>
               </div>
@@ -492,7 +440,7 @@
         </div>
 
         <div
-          v-show="activeGatewaySection === 'openai'"
+          v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
           data-testid="gateway-card-openai-oauth-defaults"
         >
           <OpenAIOAuthImportDefaultsSettings />
@@ -500,7 +448,7 @@
 
         <!-- Rate Limit Cooldown (429) Settings -->
         <div
-          v-show="activeGatewaySection === 'general'"
+          v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
           class="card"
           data-testid="gateway-card-rate-limit-cooldown"
         >
@@ -515,15 +463,7 @@
               </p>
             </div>
             <div class="space-y-5 p-6">
-              <div
-                v-if="rateLimit429CooldownLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="rateLimit429CooldownLoading" variant="form" :rows="3" />
 
               <template v-else>
                 <div class="flex items-center justify-between">
@@ -538,36 +478,38 @@
                   <Toggle v-model="rateLimit429CooldownForm.enabled" />
                 </div>
 
-                <div
-                  v-if="rateLimit429CooldownForm.enabled"
-                  class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{
-                        t(
-                          "admin.settings.rateLimit429Cooldown.cooldownSeconds",
-                        )
-                      }}
-                    </label>
-                    <input
-                      v-model.number="rateLimit429CooldownForm.cooldown_seconds"
-                      type="number"
-                      min="1"
-                      max="7200"
-                      class="input w-32"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        t(
-                          "admin.settings.rateLimit429Cooldown.cooldownSecondsHint",
-                        )
-                      }}
-                    </p>
+                <Collapse :open="rateLimit429CooldownForm.enabled" unmount-on-hide>
+                  <div
+
+                    class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
+                  >
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{
+                          t(
+                            "admin.settings.rateLimit429Cooldown.cooldownSeconds",
+                          )
+                        }}
+                      </label>
+                      <input
+                        v-model.number="rateLimit429CooldownForm.cooldown_seconds"
+                        type="number"
+                        min="1"
+                        max="7200"
+                        class="input w-32"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{
+                          t(
+                            "admin.settings.rateLimit429Cooldown.cooldownSecondsHint",
+                          )
+                        }}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </Collapse>
 
                 <div
                   class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700"
@@ -578,26 +520,13 @@
                     :disabled="rateLimit429CooldownSaving"
                     class="btn btn-primary btn-sm h-9"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="rateLimit429CooldownSaving"
                       class="mr-1 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     {{
                       rateLimit429CooldownSaving
                         ? t("common.saving")
@@ -611,7 +540,7 @@
 
         <!-- Stream Timeout Settings -->
         <div
-          v-show="activeGatewaySection === 'general'"
+          v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
           class="card"
           data-testid="gateway-card-stream-timeout"
         >
@@ -627,15 +556,7 @@
             </div>
             <div class="space-y-5 p-6">
               <!-- Loading State -->
-              <div
-                v-if="streamTimeoutLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="streamTimeoutLoading" variant="form" :rows="4" />
 
               <template v-else>
                 <!-- Enable Stream Timeout -->
@@ -652,94 +573,96 @@
                 </div>
 
                 <!-- Settings - Only show when enabled -->
-                <div
-                  v-if="streamTimeoutForm.enabled"
-                  class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <!-- Action -->
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.streamTimeout.action") }}
-                    </label>
-                    <Select
-                      v-model="streamTimeoutForm.action"
-                      :options="streamTimeoutActionOptions"
-                      class="w-64"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.streamTimeout.actionHint") }}
-                    </p>
-                  </div>
+                <Collapse :open="streamTimeoutForm.enabled" unmount-on-hide>
+                  <div
 
-                  <!-- Temp Unsched Minutes (only show when action is temp_unsched) -->
-                  <div v-if="streamTimeoutForm.action === 'temp_unsched'">
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.streamTimeout.tempUnschedMinutes") }}
-                    </label>
-                    <input
-                      v-model.number="streamTimeoutForm.temp_unsched_minutes"
-                      type="number"
-                      min="1"
-                      max="60"
-                      class="input w-32"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        t("admin.settings.streamTimeout.tempUnschedMinutesHint")
-                      }}
-                    </p>
-                  </div>
+                    class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
+                  >
+                    <!-- Action -->
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.streamTimeout.action") }}
+                      </label>
+                      <Select
+                        v-model="streamTimeoutForm.action"
+                        :options="streamTimeoutActionOptions"
+                        class="w-64"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.streamTimeout.actionHint") }}
+                      </p>
+                    </div>
 
-                  <!-- Threshold Count -->
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.streamTimeout.thresholdCount") }}
-                    </label>
-                    <input
-                      v-model.number="streamTimeoutForm.threshold_count"
-                      type="number"
-                      min="1"
-                      max="10"
-                      class="input w-32"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.streamTimeout.thresholdCountHint") }}
-                    </p>
-                  </div>
+                    <!-- Temp Unsched Minutes (only show when action is temp_unsched) -->
+                    <div v-if="streamTimeoutForm.action === 'temp_unsched'">
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.streamTimeout.tempUnschedMinutes") }}
+                      </label>
+                      <input
+                        v-model.number="streamTimeoutForm.temp_unsched_minutes"
+                        type="number"
+                        min="1"
+                        max="60"
+                        class="input w-32"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{
+                          t("admin.settings.streamTimeout.tempUnschedMinutesHint")
+                        }}
+                      </p>
+                    </div>
 
-                  <!-- Threshold Window Minutes -->
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{
-                        t("admin.settings.streamTimeout.thresholdWindowMinutes")
-                      }}
-                    </label>
-                    <input
-                      v-model.number="
-                        streamTimeoutForm.threshold_window_minutes
-                      "
-                      type="number"
-                      min="1"
-                      max="60"
-                      class="input w-32"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        t(
-                          "admin.settings.streamTimeout.thresholdWindowMinutesHint",
-                        )
-                      }}
-                    </p>
+                    <!-- Threshold Count -->
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.streamTimeout.thresholdCount") }}
+                      </label>
+                      <input
+                        v-model.number="streamTimeoutForm.threshold_count"
+                        type="number"
+                        min="1"
+                        max="10"
+                        class="input w-32"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.streamTimeout.thresholdCountHint") }}
+                      </p>
+                    </div>
+
+                    <!-- Threshold Window Minutes -->
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{
+                          t("admin.settings.streamTimeout.thresholdWindowMinutes")
+                        }}
+                      </label>
+                      <input
+                        v-model.number="
+                          streamTimeoutForm.threshold_window_minutes
+                        "
+                        type="number"
+                        min="1"
+                        max="60"
+                        class="input w-32"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{
+                          t(
+                            "admin.settings.streamTimeout.thresholdWindowMinutesHint",
+                          )
+                        }}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </Collapse>
 
                 <!-- Save Button -->
                 <div
@@ -751,26 +674,13 @@
                     :disabled="streamTimeoutSaving"
                     class="btn btn-primary btn-sm h-9"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="streamTimeoutSaving"
                       class="mr-1 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     {{
                       streamTimeoutSaving
                         ? t("common.saving")
@@ -784,7 +694,7 @@
 
           <!-- 跨平台请求整流器 -->
           <div
-            v-show="activeGatewaySection === 'general'"
+            v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
             class="card"
             data-testid="gateway-card-request-rectifier"
           >
@@ -800,15 +710,7 @@
             </div>
             <div class="space-y-5 p-6">
               <!-- Loading State -->
-              <div
-                v-if="rectifierLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="rectifierLoading" variant="form" :rows="4" />
 
               <template v-else>
                 <!-- Master Toggle -->
@@ -825,127 +727,89 @@
                 </div>
 
                 <!-- Sub-toggles (only show when master is enabled) -->
-                <div
-                  v-if="rectifierForm.enabled"
-                  class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <!-- Thinking Signature Rectifier -->
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <label
-                        class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >{{
-                          t("admin.settings.rectifier.thinkingSignature")
-                        }}</label
-                      >
-                      <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{
-                          t("admin.settings.rectifier.thinkingSignatureHint")
-                        }}
-                      </p>
-                    </div>
-                    <Toggle
-                      v-model="rectifierForm.thinking_signature_enabled"
-                    />
-                  </div>
-
-                  <!-- Thinking Budget Rectifier -->
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <label
-                        class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >{{
-                          t("admin.settings.rectifier.thinkingBudget")
-                        }}</label
-                      >
-                      <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.rectifier.thinkingBudgetHint") }}
-                      </p>
-                    </div>
-                    <Toggle v-model="rectifierForm.thinking_budget_enabled" />
-                  </div>
-
-                  <!-- API Key Signature Rectifier -->
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <label
-                        class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >{{
-                          t("admin.settings.rectifier.apikeySignature")
-                        }}</label
-                      >
-                      <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.rectifier.apikeySignatureHint") }}
-                      </p>
-                    </div>
-                    <Toggle v-model="rectifierForm.apikey_signature_enabled" />
-                  </div>
-
-                  <!-- Custom Patterns (only when apikey_signature_enabled) -->
+                <Collapse :open="rectifierForm.enabled" unmount-on-hide>
                   <div
-                    v-if="rectifierForm.apikey_signature_enabled"
-                    class="ml-4 space-y-3 border-l-2 border-gray-200 pl-4 dark:border-dark-600"
+
+                    class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
                   >
-                    <div>
-                      <label
-                        class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >{{
-                          t("admin.settings.rectifier.apikeyPatterns")
-                        }}</label
-                      >
-                      <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.rectifier.apikeyPatternsHint") }}
-                      </p>
-                    </div>
-                    <div
-                      v-for="(
-                        _, index
-                      ) in rectifierForm.apikey_signature_patterns"
-                      :key="index"
-                      class="flex items-center gap-2"
-                    >
-                      <input
-                        v-model="rectifierForm.apikey_signature_patterns[index]"
-                        type="text"
-                        class="input input-sm flex-1"
-                        :placeholder="
-                          t('admin.settings.rectifier.apikeyPatternPlaceholder')
-                        "
-                      />
-                      <button
-                        type="button"
-                        @click="
-                          rectifierForm.apikey_signature_patterns.splice(
-                            index,
-                            1,
-                          )
-                        "
-                        class="btn btn-ghost btn-xs text-red-500 hover:text-red-700"
-                      >
-                        <svg
-                          class="h-4 w-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                    <!-- Thinking Signature Rectifier -->
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <label
+                          class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                          >{{
+                            t("admin.settings.rectifier.thinkingSignature")
+                          }}</label
                         >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                          {{
+                            t("admin.settings.rectifier.thinkingSignatureHint")
+                          }}
+                        </p>
+                      </div>
+                      <Toggle
+                        v-model="rectifierForm.thinking_signature_enabled"
+                      />
                     </div>
-                    <button
-                      type="button"
-                      @click="rectifierForm.apikey_signature_patterns.push('')"
-                      class="btn btn-ghost btn-xs text-primary-600 dark:text-primary-400"
+
+                    <!-- Thinking Budget Rectifier -->
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <label
+                          class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                          >{{
+                            t("admin.settings.rectifier.thinkingBudget")
+                          }}</label
+                        >
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                          {{ t("admin.settings.rectifier.thinkingBudgetHint") }}
+                        </p>
+                      </div>
+                      <Toggle v-model="rectifierForm.thinking_budget_enabled" />
+                    </div>
+
+                    <!-- API Key Signature Rectifier -->
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <label
+                          class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                          >{{
+                            t("admin.settings.rectifier.apikeySignature")
+                          }}</label
+                        >
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                          {{ t("admin.settings.rectifier.apikeySignatureHint") }}
+                        </p>
+                      </div>
+                      <Toggle v-model="rectifierForm.apikey_signature_enabled" />
+                    </div>
+
+                    <!-- Custom Patterns (only when apikey_signature_enabled) -->
+                    <RuleListEditor
+                      v-if="rectifierForm.apikey_signature_enabled"
+                      class="ml-4 border-l-2 border-gray-200 pl-4 dark:border-dark-600"
+                      :items="rectifierForm.apikey_signature_patterns"
+                      :title="t('admin.settings.rectifier.apikeyPatterns')"
+                      :hint="t('admin.settings.rectifier.apikeyPatternsHint')"
+                      :add-label="t('admin.settings.rectifier.addPattern')"
+                      :animated="false"
+                      test-id="rectifier-patterns"
+                      @add="rectifierForm.apikey_signature_patterns.push('')"
+                      @remove="rectifierForm.apikey_signature_patterns.splice($event, 1)"
                     >
-                      + {{ t("admin.settings.rectifier.addPattern") }}
-                    </button>
+                      <template #row="{ index }">
+                        <input
+                          v-model="rectifierForm.apikey_signature_patterns[index]"
+                          type="text"
+                          class="input"
+                          :placeholder="
+                            t('admin.settings.rectifier.apikeyPatternPlaceholder')
+                          "
+                        />
+                      </template>
+                    </RuleListEditor>
                   </div>
-                </div>
+                </Collapse>
 
                 <!-- Save Button -->
                 <div
@@ -957,26 +821,13 @@
                     :disabled="rectifierSaving"
                     class="btn btn-primary btn-sm h-9"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="rectifierSaving"
                       class="mr-1 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     {{
                       rectifierSaving ? t("common.saving") : t("common.save")
                     }}
@@ -987,7 +838,7 @@
           </div>
           <!-- Beta Policy Settings -->
           <div
-            v-show="activeGatewaySection === 'anthropic'"
+            v-show="activeGatewaySection === 'anthropic'" v-content-reveal="activeGatewaySection === 'anthropic'"
             class="card"
             data-testid="gateway-card-beta-policy"
           >
@@ -1003,15 +854,7 @@
             </div>
             <div class="space-y-5 p-6">
               <!-- Loading State -->
-              <div
-                v-if="betaPolicyLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="betaPolicyLoading" variant="form" :rows="5" />
 
               <template v-else>
                 <!-- Rule Cards -->
@@ -1105,91 +948,45 @@
                   </div>
 
                   <!-- Model Whitelist -->
-                  <div class="mt-3">
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.betaPolicy.modelWhitelist") }}
-                    </label>
-                    <p class="mb-2 text-xs text-gray-400 dark:text-gray-500">
-                      {{ t("admin.settings.betaPolicy.modelWhitelistHint") }}
-                    </p>
-                    <!-- Existing patterns -->
-                    <div
-                      v-for="(_, index) in rule.model_whitelist || []"
-                      :key="index"
-                      class="mb-1.5 flex items-center gap-2"
-                    >
+                  <RuleListEditor
+                    class="mt-3"
+                    :items="rule.model_whitelist || []"
+                    :title="t('admin.settings.betaPolicy.modelWhitelist')"
+                    :hint="t('admin.settings.betaPolicy.modelWhitelistHint')"
+                    :add-label="t('admin.settings.betaPolicy.addModelPattern')"
+                    :animated="false"
+                    @add="if (!rule.model_whitelist) rule.model_whitelist = []; rule.model_whitelist.push('');"
+                    @remove="rule.model_whitelist!.splice($event, 1)"
+                  >
+                    <template #footer>
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="text-xs text-gray-400 dark:text-gray-500"
+                          >{{
+                            t("admin.settings.betaPolicy.commonPatterns")
+                          }}:</span
+                        >
+                        <button
+                          v-for="pattern in commonModelPatterns"
+                          :key="pattern"
+                          type="button"
+                          class="rounded-compact border border-gray-200 px-2 py-0.5 text-xs text-gray-600 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-700 dark:hover:bg-primary-900/30 dark:hover:text-primary-300"
+                          @click="addQuickPattern(rule, pattern)"
+                        >
+                          {{ pattern }}
+                        </button>
+                      </div>
+                    </template>
+                    <template #row="{ index }">
                       <input
                         v-model="rule.model_whitelist![index]"
                         type="text"
-                        class="input input-sm flex-1"
+                        class="input"
                         :placeholder="
                           t('admin.settings.betaPolicy.modelPatternPlaceholder')
                         "
                       />
-                      <button
-                        type="button"
-                        @click="rule.model_whitelist!.splice(index, 1)"
-                        class="shrink-0 rounded-compact p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                      >
-                        <svg
-                          class="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                    <!-- Add pattern button -->
-                    <button
-                      type="button"
-                      @click="
-                        if (!rule.model_whitelist) rule.model_whitelist = [];
-                        rule.model_whitelist.push('');
-                      "
-                      class="mb-2 inline-flex items-center gap-1 text-xs text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                    >
-                      <svg
-                        class="h-3.5 w-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M12 4v16m8-8H4"
-                        />
-                      </svg>
-                      {{ t("admin.settings.betaPolicy.addModelPattern") }}
-                    </button>
-                    <!-- Common pattern chips -->
-                    <div class="flex flex-wrap items-center gap-1.5">
-                      <span class="text-xs text-gray-400 dark:text-gray-500"
-                        >{{
-                          t("admin.settings.betaPolicy.commonPatterns")
-                        }}:</span
-                      >
-                      <button
-                        v-for="pattern in commonModelPatterns"
-                        :key="pattern"
-                        type="button"
-                        class="rounded-compact border border-gray-200 px-2 py-0.5 text-xs text-gray-600 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-700 dark:hover:bg-primary-900/30 dark:hover:text-primary-300"
-                        @click="addQuickPattern(rule, pattern)"
-                      >
-                        {{ pattern }}
-                      </button>
-                    </div>
-                  </div>
+                    </template>
+                  </RuleListEditor>
 
                   <!-- Fallback Action (only when model_whitelist is non-empty) -->
                   <div
@@ -1240,26 +1037,13 @@
                     :disabled="betaPolicySaving"
                     class="btn btn-primary btn-sm h-9"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="betaPolicySaving"
                       class="mr-1 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     {{
                       betaPolicySaving ? t("common.saving") : t("common.save")
                     }}
@@ -1270,7 +1054,7 @@
           </div>
           <!-- OpenAI Fast/Flex Policy Settings -->
           <div
-            v-show="activeGatewaySection === 'openai'"
+            v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
             class="card"
             data-testid="gateway-card-openai-fast-policy"
           >
@@ -1285,349 +1069,244 @@
               </p>
             </div>
             <div class="space-y-5 p-6">
-              <!-- Empty state -->
-              <div
-                v-if="openaiFastPolicyForm.rules.length === 0"
-                class="rounded-control border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
+              <RuleListEditor
+                :items="openaiFastPolicyForm.rules"
+                variant="card"
+                :item-label="(index) => t('admin.settings.openaiFastPolicy.ruleHeader', { index: index + 1 })"
+                :add-label="t('admin.settings.openaiFastPolicy.addRule')"
+                :remove-label="t('admin.settings.openaiFastPolicy.removeRule')"
+                :empty-text="t('admin.settings.openaiFastPolicy.empty')"
+                add-placement="footer"
+                test-id="openai-fast-rules"
+                @add="addOpenAIFastPolicyRule"
+                @remove="removeOpenAIFastPolicyRule"
               >
-                {{ t("admin.settings.openaiFastPolicy.empty") }}
-              </div>
-
-              <!-- Rule Cards -->
-              <div
-                v-for="(rule, ruleIndex) in openaiFastPolicyForm.rules"
-                :key="ruleIndex"
-                class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
-              >
-                <div class="mb-3 flex items-center justify-between">
-                  <span
-                    class="text-sm font-medium text-gray-900 dark:text-white"
+                <template #row="{ item: rule, index: ruleIndex }">
+                  <div
+                    class="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400"
+                    :data-testid="`openai-fast-policy-summary-${ruleIndex}`"
                   >
-                    {{
-                      t("admin.settings.openaiFastPolicy.ruleHeader", {
-                        index: ruleIndex + 1,
-                      })
-                    }}
-                  </span>
-                  <button
-                    type="button"
-                    @click="removeOpenAIFastPolicyRule(ruleIndex)"
-                    class="rounded-compact p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                    :title="t('admin.settings.openaiFastPolicy.removeRule')"
-                  >
-                    <svg
-                      class="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                <div
-                  class="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400"
-                  :data-testid="`openai-fast-policy-summary-${ruleIndex}`"
-                >
-                  <span class="font-medium text-gray-700 dark:text-gray-300">
-                    {{
-                      t(
-                        hasOpenAIFastPolicyTargetModels(rule)
-                          ? "admin.settings.openaiFastPolicy.summaryTargetModels"
-                          : "admin.settings.openaiFastPolicy.summaryAllModels",
-                      )
-                    }}
-                  </span>
-                  <span aria-hidden="true">→</span>
-                  <span
-                    class="inline-flex items-center rounded-compact bg-primary-50 px-2 py-0.5 font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
-                  >
-                    {{ openaiFastPolicyActionSummary(rule.action) }}
-                  </span>
-                  <template v-if="hasOpenAIFastPolicyTargetModels(rule)">
-                    <span aria-hidden="true">·</span>
                     <span class="font-medium text-gray-700 dark:text-gray-300">
                       {{
                         t(
-                          "admin.settings.openaiFastPolicy.summaryOtherModels",
+                          hasOpenAIFastPolicyTargetModels(rule)
+                            ? "admin.settings.openaiFastPolicy.summaryTargetModels"
+                            : "admin.settings.openaiFastPolicy.summaryAllModels",
                         )
                       }}
                     </span>
                     <span aria-hidden="true">→</span>
                     <span
-                      class="inline-flex items-center rounded-compact bg-gray-100 px-2 py-0.5 font-medium text-gray-700 dark:bg-dark-600 dark:text-gray-300"
+                      class="inline-flex items-center rounded-compact bg-primary-50 px-2 py-0.5 font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
                     >
-                      {{
-                        openaiFastPolicyActionSummary(
-                          rule.fallback_action || "pass",
-                        )
-                      }}
+                      {{ openaiFastPolicyActionSummary(rule.action) }}
                     </span>
-                  </template>
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <!-- Service Tier -->
-                  <div>
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.openaiFastPolicy.serviceTier") }}
-                    </label>
-                    <Select
-                      :modelValue="rule.service_tier"
-                      @update:modelValue="
-                        rule.service_tier = $event as
-                          | 'all'
-                          | 'priority'
-                          | 'flex'
-                          | 'ultrafast'
-                      "
-                      :options="openaiFastPolicyTierOptions"
-                    />
-                  </div>
-
-                  <!-- Action -->
-                  <div>
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.openaiFastPolicy.action") }}
-                    </label>
-                    <Select
-                      :modelValue="rule.action"
-                      @update:modelValue="
-                        rule.action = $event as
-                          | 'pass'
-                          | 'filter'
-                          | 'block'
-                          | 'force_priority'
-                          | 'force_ultrafast'
-                      "
-                      :options="openaiFastPolicyActionOptions"
-                    />
-                  </div>
-
-                  <!-- Scope -->
-                  <div>
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.openaiFastPolicy.scope") }}
-                    </label>
-                    <Select
-                      :modelValue="rule.scope"
-                      @update:modelValue="
-                        rule.scope = $event as
-                          | 'all'
-                          | 'oauth'
-                          | 'apikey'
-                          | 'bedrock'
-                      "
-                      :options="openaiFastPolicyScopeOptions"
-                    />
-                  </div>
-                </div>
-
-                <!-- 用户范围 -->
-                <div class="mt-3">
-                  <label
-                    class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                  >
-                    {{ t("admin.settings.openaiFastPolicy.userIds") }}
-                  </label>
-                  <p class="mb-2 text-xs text-gray-400 dark:text-gray-500">
-                    {{ t("admin.settings.openaiFastPolicy.userIdsHint") }}
-                  </p>
-                  <OpenAIFastPolicyUserSelector
-                    :model-value="rule.user_ids || []"
-                    @update:model-value="rule.user_ids = $event"
-                  />
-                </div>
-
-                <!-- Error Message (only when action=block) -->
-                <div v-if="rule.action === 'block'" class="mt-3">
-                  <label
-                    class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                  >
-                    {{ t("admin.settings.openaiFastPolicy.errorMessage") }}
-                  </label>
-                  <input
-                    v-model="rule.error_message"
-                    type="text"
-                    class="input"
-                    :placeholder="
-                      t(
-                        'admin.settings.openaiFastPolicy.errorMessagePlaceholder',
-                      )
-                    "
-                  />
-                  <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                    {{ t("admin.settings.openaiFastPolicy.errorMessageHint") }}
-                  </p>
-                </div>
-
-                <!-- 目标模型；列表为空时规则对全部模型生效。 -->
-                <div
-                  class="mt-3"
-                  role="group"
-                  :aria-labelledby="`openai-fast-policy-models-label-${ruleIndex}`"
-                  :aria-describedby="`openai-fast-policy-models-hint-${ruleIndex}`"
-                >
-                  <label
-                    :id="`openai-fast-policy-models-label-${ruleIndex}`"
-                    class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                  >
-                    {{ t("admin.settings.openaiFastPolicy.modelWhitelist") }}
-                  </label>
-                  <p
-                    :id="`openai-fast-policy-models-hint-${ruleIndex}`"
-                    class="mb-2 text-xs text-gray-400 dark:text-gray-500"
-                  >
-                    {{
-                      t("admin.settings.openaiFastPolicy.modelWhitelistHint")
-                    }}
-                  </p>
-                  <div
-                    v-for="(_, patternIdx) in rule.model_whitelist || []"
-                    :key="patternIdx"
-                    class="mb-1.5 flex items-center gap-2"
-                  >
-                    <input
-                      v-model="rule.model_whitelist![patternIdx]"
-                      type="text"
-                      class="input input-sm flex-1"
-                      :placeholder="
-                        t(
-                          'admin.settings.openaiFastPolicy.modelPatternPlaceholder',
-                        )
-                      "
-                    />
-                    <button
-                      type="button"
-                      @click="
-                        removeOpenAIFastPolicyModelPattern(rule, patternIdx)
-                      "
-                      class="shrink-0 rounded-compact p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                    >
-                      <svg
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
+                    <template v-if="hasOpenAIFastPolicyTargetModels(rule)">
+                      <span aria-hidden="true">·</span>
+                      <span class="font-medium text-gray-700 dark:text-gray-300">
+                        {{
+                          t(
+                            "admin.settings.openaiFastPolicy.summaryOtherModels",
+                          )
+                        }}
+                      </span>
+                      <span aria-hidden="true">→</span>
+                      <span
+                        class="inline-flex items-center rounded-compact bg-gray-100 px-2 py-0.5 font-medium text-gray-700 dark:bg-dark-600 dark:text-gray-300"
                       >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
+                        {{
+                          openaiFastPolicyActionSummary(
+                            rule.fallback_action || "pass",
+                          )
+                        }}
+                      </span>
+                    </template>
                   </div>
-                  <button
-                    type="button"
-                    @click="addOpenAIFastPolicyModelPattern(rule)"
-                    class="mb-2 inline-flex items-center gap-1 text-xs text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                  >
-                    <svg
-                      class="h-3.5 w-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M12 4v16m8-8H4"
+                  <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <!-- Service Tier -->
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.openaiFastPolicy.serviceTier") }}
+                      </label>
+                      <Select
+                        :modelValue="rule.service_tier"
+                        @update:modelValue="
+                          rule.service_tier = $event as
+                            | 'all'
+                            | 'priority'
+                            | 'flex'
+                        "
+                        :options="openaiFastPolicyTierOptions"
                       />
-                    </svg>
-                    {{ t("admin.settings.openaiFastPolicy.addModelPattern") }}
-                  </button>
-                </div>
-
-                <!-- 其他模型处理方式；仅在目标模型列表非空时显示。 -->
-                <div
-                  v-if="hasOpenAIFastPolicyTargetModels(rule)"
-                  class="mt-3"
-                >
-                  <label
-                    class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                  >
-                    {{ t("admin.settings.openaiFastPolicy.fallbackAction") }}
-                  </label>
-                  <Select
-                    :modelValue="rule.fallback_action || 'pass'"
-                    @update:modelValue="
-                      rule.fallback_action = $event as
-                        | 'pass'
-                        | 'filter'
-                        | 'block'
-                        | 'force_priority'
-                          | 'force_ultrafast'
-                    "
-                    :options="openaiFastPolicyActionOptions"
-                  />
-                  <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                    {{
-                      t("admin.settings.openaiFastPolicy.fallbackActionHint")
-                    }}
-                  </p>
-                  <div v-if="rule.fallback_action === 'block'" class="mt-2">
+                    </div>
+                    <!-- Action -->
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.openaiFastPolicy.action") }}
+                      </label>
+                      <Select
+                        :modelValue="rule.action"
+                        @update:modelValue="
+                          rule.action = $event as
+                            | 'pass'
+                            | 'filter'
+                            | 'block'
+                            | 'force_priority'
+                            | 'force_ultrafast'
+                        "
+                        :options="openaiFastPolicyActionOptions"
+                      />
+                    </div>
+                    <!-- Scope -->
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.openaiFastPolicy.scope") }}
+                      </label>
+                      <Select
+                        :modelValue="rule.scope"
+                        @update:modelValue="
+                          rule.scope = $event as
+                            | 'all'
+                            | 'oauth'
+                            | 'apikey'
+                            | 'bedrock'
+                        "
+                        :options="openaiFastPolicyScopeOptions"
+                      />
+                    </div>
+                  </div>
+                  <div class="mt-3">
+                    <label
+                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                    >
+                      {{ t("admin.settings.openaiFastPolicy.userIds") }}
+                    </label>
+                    <p class="mb-2 text-xs text-gray-400 dark:text-gray-500">
+                      {{ t("admin.settings.openaiFastPolicy.userIdsHint") }}
+                    </p>
+                    <OpenAIFastPolicyUserSelector
+                      :model-value="rule.user_ids || []"
+                      @update:model-value="rule.user_ids = $event"
+                    />
+                  </div>
+                  <div v-if="rule.action === 'block'" class="mt-3">
+                    <label
+                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                    >
+                      {{ t("admin.settings.openaiFastPolicy.errorMessage") }}
+                    </label>
                     <input
-                      v-model="rule.fallback_error_message"
+                      v-model="rule.error_message"
                       type="text"
                       class="input"
                       :placeholder="
                         t(
-                          'admin.settings.openaiFastPolicy.fallbackErrorMessagePlaceholder',
+                          'admin.settings.openaiFastPolicy.errorMessagePlaceholder',
                         )
                       "
                     />
+                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                      {{ t("admin.settings.openaiFastPolicy.errorMessageHint") }}
+                    </p>
                   </div>
-                </div>
-              </div>
-
-              <!-- Add Rule Button -->
-              <div>
-                <button
-                  type="button"
-                  @click="addOpenAIFastPolicyRule"
-                  class="btn btn-secondary btn-sm h-9 inline-flex items-center gap-1"
-                >
-                  <svg
-                    class="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
+                  <div
+                    class="mt-3"
+                    role="group"
+                    :aria-labelledby="`openai-fast-policy-models-label-${ruleIndex}`"
+                    :aria-describedby="`openai-fast-policy-models-hint-${ruleIndex}`"
                   >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M12 4v16m8-8H4"
+                    <label
+                      :id="`openai-fast-policy-models-label-${ruleIndex}`"
+                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                    >
+                      {{ t("admin.settings.openaiFastPolicy.modelWhitelist") }}
+                    </label>
+                    <p
+                      :id="`openai-fast-policy-models-hint-${ruleIndex}`"
+                      class="mb-2 text-xs text-gray-400 dark:text-gray-500"
+                    >
+                      {{
+                        t("admin.settings.openaiFastPolicy.modelWhitelistHint")
+                      }}
+                    </p>
+                    <RuleListEditor
+                      :items="rule.model_whitelist || []"
+                      :add-label="t('admin.settings.openaiFastPolicy.addModelPattern')"
+                      add-placement="footer"
+                      :animated="false"
+                      :test-id="`openai-fast-models-${ruleIndex}`"
+                      @add="addOpenAIFastPolicyModelPattern(rule)"
+                      @remove="removeOpenAIFastPolicyModelPattern(rule, $event)"
+                    >
+                      <template #row="{ index: patternIdx }">
+                        <input
+                          v-model="rule.model_whitelist![patternIdx]"
+                          type="text"
+                          class="input"
+                          :placeholder="
+                            t(
+                              'admin.settings.openaiFastPolicy.modelPatternPlaceholder',
+                            )
+                          "
+                        />
+                      </template>
+                    </RuleListEditor>
+                  </div>
+                  <div
+                    v-if="hasOpenAIFastPolicyTargetModels(rule)"
+                    class="mt-3"
+                  >
+                    <label
+                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                    >
+                      {{ t("admin.settings.openaiFastPolicy.fallbackAction") }}
+                    </label>
+                    <Select
+                      :modelValue="rule.fallback_action || 'pass'"
+                      @update:modelValue="
+                        rule.fallback_action = $event as
+                          | 'pass'
+                          | 'filter'
+                          | 'block'
+                          | 'force_priority'
+                            | 'force_ultrafast'
+                      "
+                      :options="openaiFastPolicyActionOptions"
                     />
-                  </svg>
-                  {{ t("admin.settings.openaiFastPolicy.addRule") }}
-                </button>
-                <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                  {{ t("admin.settings.openaiFastPolicy.saveHint") }}
-                </p>
-              </div>
+                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                      {{
+                        t("admin.settings.openaiFastPolicy.fallbackActionHint")
+                      }}
+                    </p>
+                    <div v-if="rule.fallback_action === 'block'" class="mt-2">
+                      <input
+                        v-model="rule.fallback_error_message"
+                        type="text"
+                        class="input"
+                        :placeholder="
+                          t(
+                            'admin.settings.openaiFastPolicy.fallbackErrorMessagePlaceholder',
+                          )
+                        "
+                      />
+                    </div>
+                  </div>
+                </template>
+              </RuleListEditor>
+              <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('admin.settings.openaiFastPolicy.saveHint') }}</p>
             </div>
           </div>
         </div>
         <!-- /Tab: Gateway -->
 
         <!-- Tab: Security — Registration, Turnstile, LinuxDo -->
-        <div v-show="activeTab === 'security'" class="space-y-6">
+        <div v-show="activeTab === 'security'" v-content-reveal="activeTab === 'security'" class="space-y-4">
           <!-- Registration Settings -->
           <div class="card">
             <div
@@ -1820,20 +1499,22 @@
                 <Toggle v-model="form.invitation_code_enabled" />
               </div>
               <!-- Password Reset - Only show when email verification is enabled -->
-              <div
-                v-if="form.email_verify_enabled"
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.registration.passwordReset")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.registration.passwordResetHint") }}
-                  </p>
+              <Collapse :open="form.email_verify_enabled" unmount-on-hide>
+                <div
+
+                  class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
+                >
+                  <div>
+                    <label class="font-medium text-gray-900 dark:text-white">{{
+                      t("admin.settings.registration.passwordReset")
+                    }}</label>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                      {{ t("admin.settings.registration.passwordResetHint") }}
+                    </p>
+                  </div>
+                  <Toggle v-model="form.password_reset_enabled" />
                 </div>
-                <Toggle v-model="form.password_reset_enabled" />
-              </div>
+              </Collapse>
               <!-- 前端地址同时用于密码重置、团队邀请等外部邮件链接，必须始终可配置。 -->
               <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
                 <label
@@ -1959,65 +1640,67 @@
                 <Toggle v-model="form.api_key_acl_trust_forwarded_ip" />
               </div>
 
-              <div
-                v-if="form.api_key_acl_trust_forwarded_ip"
-                class="border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <label
-                  for="forwarded-client-ip-headers"
-                  class="font-medium text-gray-900 dark:text-white"
-                >
-                  {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeaders") }}
-                </label>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeadersHint") }}
-                </p>
+              <Collapse :open="form.api_key_acl_trust_forwarded_ip" unmount-on-hide>
                 <div
-                  class="mt-3 rounded-control border border-gray-300 bg-white p-2 dark:border-dark-500 dark:bg-dark-700"
+
+                  class="border-t border-gray-100 pt-4 dark:border-dark-700"
                 >
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span
-                      v-for="header in form.forwarded_client_ip_headers"
-                      :key="header"
-                      data-testid="forwarded-client-ip-header-tag"
-                      class="inline-flex items-center gap-1 rounded-compact bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 dark:bg-dark-600 dark:text-gray-200"
-                    >
-                      <span>{{ header }}</span>
-                      <button
-                        type="button"
-                        class="rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-gray-300 dark:hover:bg-dark-500 dark:hover:text-white"
-                        :aria-label="t('admin.settings.apiKeyAcl.removeForwardedClientIpHeader', { header })"
-                        @click="removeForwardedClientIpHeader(header)"
+                  <label
+                    for="forwarded-client-ip-headers"
+                    class="font-medium text-gray-900 dark:text-white"
+                  >
+                    {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeaders") }}
+                  </label>
+                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeadersHint") }}
+                  </p>
+                  <div
+                    class="mt-3 rounded-control border border-gray-300 bg-white p-2 dark:border-dark-500 dark:bg-dark-700"
+                  >
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span
+                        v-for="header in form.forwarded_client_ip_headers"
+                        :key="header"
+                        data-testid="forwarded-client-ip-header-tag"
+                        class="inline-flex items-center gap-1 rounded-compact bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 dark:bg-dark-600 dark:text-gray-200"
                       >
-                        <Icon
-                          name="x"
-                          size="xs"
-                          class="h-3.5 w-3.5"
-                          :stroke-width="2"
+                        <span>{{ header }}</span>
+                        <button
+                          type="button"
+                          class="rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-gray-300 dark:hover:bg-dark-500 dark:hover:text-white"
+                          :aria-label="t('admin.settings.apiKeyAcl.removeForwardedClientIpHeader', { header })"
+                          @click="removeForwardedClientIpHeader(header)"
+                        >
+                          <Icon
+                            name="x"
+                            size="xs"
+                            class="h-3.5 w-3.5"
+                            :stroke-width="2"
+                          />
+                        </button>
+                      </span>
+                      <div
+                        class="flex min-w-[220px] flex-1 items-center gap-1 rounded-compact border border-transparent px-2 py-1 focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:focus-within:border-primary-700 dark:focus-within:ring-0"
+                      >
+                        <input
+                          id="forwarded-client-ip-headers"
+                          v-model="forwardedClientIpHeaderDraft"
+                          data-testid="forwarded-client-ip-headers-input"
+                          type="text"
+                          class="w-full bg-transparent text-sm font-mono text-gray-900 outline-none placeholder:text-gray-400 dark:text-white dark:placeholder:text-gray-500"
+                          :placeholder="t('admin.settings.apiKeyAcl.forwardedClientIpHeadersPlaceholder')"
+                          @keydown="handleForwardedClientIpHeaderKeydown"
+                          @blur="commitForwardedClientIpHeaderDraft"
+                          @paste="handleForwardedClientIpHeaderPaste"
                         />
-                      </button>
-                    </span>
-                    <div
-                      class="flex min-w-[220px] flex-1 items-center gap-1 rounded-compact border border-transparent px-2 py-1 focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:focus-within:border-primary-700 dark:focus-within:ring-0"
-                    >
-                      <input
-                        id="forwarded-client-ip-headers"
-                        v-model="forwardedClientIpHeaderDraft"
-                        data-testid="forwarded-client-ip-headers-input"
-                        type="text"
-                        class="w-full bg-transparent text-sm font-mono text-gray-900 outline-none placeholder:text-gray-400 dark:text-white dark:placeholder:text-gray-500"
-                        :placeholder="t('admin.settings.apiKeyAcl.forwardedClientIpHeadersPlaceholder')"
-                        @keydown="handleForwardedClientIpHeaderKeydown"
-                        @blur="commitForwardedClientIpHeaderDraft"
-                        @paste="handleForwardedClientIpHeaderPaste"
-                      />
+                      </div>
                     </div>
                   </div>
+                  <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeadersRiskHint") }}
+                  </p>
                 </div>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeadersRiskHint") }}
-                </p>
-              </div>
+              </Collapse>
             </div>
           </div>
 
@@ -2041,15 +1724,7 @@
               </p>
             </div>
             <div class="space-y-5 p-6">
-              <div
-                v-if="panelRateLimitLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="panelRateLimitLoading" variant="form" :rows="4" />
 
               <template v-else>
                 <!-- 计数维度说明：按用户 ID 计数，反代部署无误伤 -->
@@ -2080,96 +1755,98 @@
                   <Toggle v-model="panelRateLimitForm.enabled" />
                 </div>
 
-                <div
-                  v-if="panelRateLimitForm.enabled"
-                  class="space-y-5 border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.panelRateLimit.userRpm") }}
-                      </label>
-                      <div class="flex items-center gap-2">
-                        <input
-                          v-model.number="panelRateLimitForm.user_rpm"
-                          data-testid="panel-rate-limit-user-rpm"
-                          type="number"
-                          min="0"
-                          max="100000"
-                          class="input w-32"
-                        />
-                        <span class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.panelRateLimit.perMinute") }}
-                        </span>
-                      </div>
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.panelRateLimit.userRpmHint") }}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.panelRateLimit.heavyRpm") }}
-                      </label>
-                      <div class="flex items-center gap-2">
-                        <input
-                          v-model.number="panelRateLimitForm.heavy_rpm"
-                          type="number"
-                          min="0"
-                          max="100000"
-                          class="input w-32"
-                        />
-                        <span class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.panelRateLimit.perMinute") }}
-                        </span>
-                      </div>
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.panelRateLimit.heavyRpmHint") }}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.panelRateLimit.publicIpRpm") }}
-                      </label>
-                      <div class="flex items-center gap-2">
-                        <input
-                          v-model.number="panelRateLimitForm.public_ip_rpm"
-                          type="number"
-                          min="0"
-                          max="100000"
-                          class="input w-32"
-                        />
-                        <span class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.panelRateLimit.perMinute") }}
-                        </span>
-                      </div>
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.panelRateLimit.publicIpRpmHint") }}
-                      </p>
-                    </div>
-                  </div>
-
+                <Collapse :open="panelRateLimitForm.enabled" unmount-on-hide>
                   <div
-                    class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
+
+                    class="space-y-5 border-t border-gray-100 pt-4 dark:border-dark-700"
                   >
-                    <div>
-                      <label class="font-medium text-gray-900 dark:text-white">{{
-                        t("admin.settings.panelRateLimit.exemptAdmin")
-                      }}</label>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.panelRateLimit.exemptAdminHint") }}
-                      </p>
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                      <div>
+                        <label
+                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                          {{ t("admin.settings.panelRateLimit.userRpm") }}
+                        </label>
+                        <div class="flex items-center gap-2">
+                          <input
+                            v-model.number="panelRateLimitForm.user_rpm"
+                            data-testid="panel-rate-limit-user-rpm"
+                            type="number"
+                            min="0"
+                            max="100000"
+                            class="input w-32"
+                          />
+                          <span class="text-sm text-gray-500 dark:text-gray-400">
+                            {{ t("admin.settings.panelRateLimit.perMinute") }}
+                          </span>
+                        </div>
+                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          {{ t("admin.settings.panelRateLimit.userRpmHint") }}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label
+                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                          {{ t("admin.settings.panelRateLimit.heavyRpm") }}
+                        </label>
+                        <div class="flex items-center gap-2">
+                          <input
+                            v-model.number="panelRateLimitForm.heavy_rpm"
+                            type="number"
+                            min="0"
+                            max="100000"
+                            class="input w-32"
+                          />
+                          <span class="text-sm text-gray-500 dark:text-gray-400">
+                            {{ t("admin.settings.panelRateLimit.perMinute") }}
+                          </span>
+                        </div>
+                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          {{ t("admin.settings.panelRateLimit.heavyRpmHint") }}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label
+                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                          {{ t("admin.settings.panelRateLimit.publicIpRpm") }}
+                        </label>
+                        <div class="flex items-center gap-2">
+                          <input
+                            v-model.number="panelRateLimitForm.public_ip_rpm"
+                            type="number"
+                            min="0"
+                            max="100000"
+                            class="input w-32"
+                          />
+                          <span class="text-sm text-gray-500 dark:text-gray-400">
+                            {{ t("admin.settings.panelRateLimit.perMinute") }}
+                          </span>
+                        </div>
+                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          {{ t("admin.settings.panelRateLimit.publicIpRpmHint") }}
+                        </p>
+                      </div>
                     </div>
-                    <Toggle v-model="panelRateLimitForm.exempt_admin" />
+
+                    <div
+                      class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
+                    >
+                      <div>
+                        <label class="font-medium text-gray-900 dark:text-white">{{
+                          t("admin.settings.panelRateLimit.exemptAdmin")
+                        }}</label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                          {{ t("admin.settings.panelRateLimit.exemptAdminHint") }}
+                        </p>
+                      </div>
+                      <Toggle v-model="panelRateLimitForm.exempt_admin" />
+                    </div>
                   </div>
-                </div>
+                </Collapse>
 
                 <div
                   class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700"
@@ -2181,26 +1858,13 @@
                     :disabled="panelRateLimitSaving"
                     class="btn btn-primary btn-sm h-9"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="panelRateLimitSaving"
                       class="mr-1 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     {{
                       panelRateLimitSaving
                         ? t("common.saving")
@@ -2242,377 +1906,379 @@
               </div>
 
               <!-- 启用后显示服务商配置 -->
-              <div
-                v-if="captchaMasterEnabled"
-                class="border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <!-- 服务商选择 -->
-                <div class="mb-6">
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.captcha.provider") }}
-                  </label>
-                  <div
-                    class="grid grid-cols-3 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700"
-                  >
-                    <button
-                      type="button"
-                      data-testid="captcha-provider-turnstile"
-                      class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
-                      :class="
-                        captchaProviderSelection === 'turnstile'
-                          ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                          : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                      "
-                      @click="selectCaptchaProvider('turnstile')"
-                    >
-                      {{ t("admin.settings.captcha.providerTurnstile") }}
-                    </button>
-                    <button
-                      type="button"
-                      data-testid="captcha-provider-tencent"
-                      class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
-                      :class="
-                        captchaProviderSelection === 'tencent'
-                          ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                          : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                      "
-                      @click="selectCaptchaProvider('tencent')"
-                    >
-                      {{ t("admin.settings.captcha.providerTencent") }}
-                    </button>
-                    <button
-                      type="button"
-                      data-testid="captcha-provider-aliyun"
-                      class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
-                      :class="
-                        captchaProviderSelection === 'aliyun'
-                          ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                          : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                      "
-                      @click="selectCaptchaProvider('aliyun')"
-                    >
-                      {{ t("admin.settings.captcha.providerAliyun") }}
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Cloudflare Turnstile 配置 -->
+              <Collapse :open="captchaMasterEnabled" unmount-on-hide>
                 <div
-                  v-if="captchaProviderSelection === 'turnstile'"
-                  class="grid grid-cols-1 gap-6"
+
+                  class="border-t border-gray-100 pt-4 dark:border-dark-700"
                 >
-                  <div>
+                  <!-- 服务商选择 -->
+                  <div class="mb-6">
                     <label
                       class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                     >
-                      {{ t("admin.settings.turnstile.siteKey") }}
+                      {{ t("admin.settings.captcha.provider") }}
                     </label>
-                    <input
-                      v-model="form.turnstile_site_key"
-                      type="text"
-                      class="input font-mono text-sm"
-                      placeholder="0x4AAAAAAA..."
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.turnstile.siteKeyHint") }}
-                      <a
-                        href="https://dash.cloudflare.com/"
-                        target="_blank"
-                        class="text-primary-600 hover:text-primary-500"
-                        >{{
-                          t("admin.settings.turnstile.cloudflareDashboard")
-                        }}</a
-                      >
-                    </p>
-                  </div>
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    <div
+                      class="grid grid-cols-3 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700"
                     >
-                      {{ t("admin.settings.turnstile.secretKey") }}
-                    </label>
-                    <input
-                      v-model="form.turnstile_secret_key"
-                      type="password"
-                      class="input font-mono text-sm"
-                      placeholder="0x4AAAAAAA..."
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        form.turnstile_secret_key_configured
-                          ? t(
-                              "admin.settings.turnstile.secretKeyConfiguredHint",
-                            )
-                          : t("admin.settings.turnstile.secretKeyHint")
-                      }}
-                    </p>
-                  </div>
-                </div>
-
-                <!-- 腾讯天御验证码配置 -->
-                <div v-else-if="captchaProviderSelection === 'tencent'">
-                  <div class="mb-6 max-w-sm">
-                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {{ t("admin.settings.tencentCaptcha.region") }}
-                    </label>
-                    <div class="grid grid-cols-2 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700">
                       <button
                         type="button"
-                        data-testid="tencent-captcha-region-cn"
-                        class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
+                        data-testid="captcha-provider-turnstile"
+                        class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
                         :class="
-                          form.tencent_captcha_region !== 'intl'
+                          captchaProviderSelection === 'turnstile'
                             ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                             : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                         "
-                        @click="form.tencent_captcha_region = 'cn'"
+                        @click="selectCaptchaProvider('turnstile')"
                       >
-                        {{ t("admin.settings.tencentCaptcha.regionCn") }}
+                        {{ t("admin.settings.captcha.providerTurnstile") }}
                       </button>
                       <button
                         type="button"
-                        data-testid="tencent-captcha-region-intl"
-                        class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
+                        data-testid="captcha-provider-tencent"
+                        class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
                         :class="
-                          form.tencent_captcha_region === 'intl'
+                          captchaProviderSelection === 'tencent'
                             ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                             : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                         "
-                        @click="form.tencent_captcha_region = 'intl'"
+                        @click="selectCaptchaProvider('tencent')"
                       >
-                        {{ t("admin.settings.tencentCaptcha.regionIntl") }}
+                        {{ t("admin.settings.captcha.providerTencent") }}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="captcha-provider-aliyun"
+                        class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
+                        :class="
+                          captchaProviderSelection === 'aliyun'
+                            ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                            : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
+                        "
+                        @click="selectCaptchaProvider('aliyun')"
+                      >
+                        {{ t("admin.settings.captcha.providerAliyun") }}
                       </button>
                     </div>
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.tencentCaptcha.regionHint") }}
-                    </p>
                   </div>
-                  <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <div class="md:col-span-2">
-                      <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                        {{ t("admin.settings.tencentCaptcha.appCredentialsTitle") }}
-                      </h3>
-                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.tencentCaptcha.appCredentialsHint") }}
-                      </p>
-                    </div>
-                    <div>
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ t("admin.settings.tencentCaptcha.appId") }}
-                      </label>
-                      <input
-                        v-model="form.tencent_captcha_app_id"
-                        type="text"
-                        inputmode="numeric"
-                        class="input font-mono text-sm"
-                        placeholder="123456789"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ t("admin.settings.tencentCaptcha.appSecretKey") }}
-                      </label>
-                      <input
-                        v-model="form.tencent_captcha_app_secret_key"
-                        type="password"
-                        autocomplete="new-password"
-                        class="input font-mono text-sm"
-                        :placeholder="t('admin.settings.tencentCaptcha.keepExisting')"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ form.tencent_captcha_app_secret_key_configured ? t("admin.settings.tencentCaptcha.configured") : t("admin.settings.tencentCaptcha.required") }}
-                      </p>
-                    </div>
-                    <div class="border-t border-gray-100 pt-5 md:col-span-2 dark:border-dark-700">
-                      <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                        {{ t("admin.settings.tencentCaptcha.cloudCredentialsTitle") }}
-                      </h3>
-                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.tencentCaptcha.cloudCredentialsHint") }}
-                      </p>
-                    </div>
-                    <div>
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ t("admin.settings.tencentCaptcha.cloudSecretId") }}
-                      </label>
-                      <input
-                        v-model="form.tencent_captcha_cloud_secret_id"
-                        type="password"
-                        autocomplete="new-password"
-                        class="input font-mono text-sm"
-                        :placeholder="t('admin.settings.tencentCaptcha.keepExisting')"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ form.tencent_captcha_cloud_secret_id_configured ? t("admin.settings.tencentCaptcha.configured") : t("admin.settings.tencentCaptcha.required") }}
-                      </p>
-                    </div>
-                    <div>
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ t("admin.settings.tencentCaptcha.cloudSecretKey") }}
-                      </label>
-                      <input
-                        v-model="form.tencent_captcha_cloud_secret_key"
-                        type="password"
-                        autocomplete="new-password"
-                        class="input font-mono text-sm"
-                        :placeholder="t('admin.settings.tencentCaptcha.keepExisting')"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ form.tencent_captcha_cloud_secret_key_configured ? t("admin.settings.tencentCaptcha.configured") : t("admin.settings.tencentCaptcha.required") }}
-                      </p>
-                    </div>
-                  </div>
-                  <p class="mt-5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.tencentCaptcha.camPermissionHint") }}
-                  </p>
-                  <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.tencentCaptcha.aidEncryptedHint") }}
-                  </p>
-                  <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-                    <a
-                      :href="tencentCaptchaLinks.console"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-primary-600 hover:text-primary-500"
-                    >
-                      {{ t("admin.settings.tencentCaptcha.openCaptchaConsole") }}
-                    </a>
-                    <a
-                      :href="tencentCaptchaLinks.cloudKeys"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-primary-600 hover:text-primary-500"
-                    >
-                      {{ t("admin.settings.tencentCaptcha.createCloudKeys") }}
-                    </a>
-                    <a
-                      :href="tencentCaptchaLinks.webDocs"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-primary-600 hover:text-primary-500"
-                    >
-                      {{ t("admin.settings.tencentCaptcha.openWebDocs") }}
-                    </a>
-                  </div>
-                </div>
 
-                <!-- 阿里云验证码 2.0 配置 -->
-                <div v-else class="grid grid-cols-1 gap-6">
-                  <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <!-- Cloudflare Turnstile 配置 -->
+                  <div
+                    v-if="captchaProviderSelection === 'turnstile'" v-content-reveal
+                    class="grid grid-cols-1 gap-6"
+                  >
                     <div>
                       <label
                         class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                       >
-                        {{ t("admin.settings.aliyunCaptcha.region") }}
+                        {{ t("admin.settings.turnstile.siteKey") }}
                       </label>
-                      <div
-                        class="grid grid-cols-2 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700"
+                      <input
+                        v-model="form.turnstile_site_key"
+                        type="text"
+                        class="input font-mono text-sm"
+                        placeholder="0x4AAAAAAA..."
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.turnstile.siteKeyHint") }}
+                        <a
+                          href="https://dash.cloudflare.com/"
+                          target="_blank"
+                          class="text-primary-600 hover:text-primary-500"
+                          >{{
+                            t("admin.settings.turnstile.cloudflareDashboard")
+                          }}</a
+                        >
+                      </p>
+                    </div>
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                       >
+                        {{ t("admin.settings.turnstile.secretKey") }}
+                      </label>
+                      <input
+                        v-model="form.turnstile_secret_key"
+                        type="password"
+                        class="input font-mono text-sm"
+                        placeholder="0x4AAAAAAA..."
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{
+                          form.turnstile_secret_key_configured
+                            ? t(
+                                "admin.settings.turnstile.secretKeyConfiguredHint",
+                              )
+                            : t("admin.settings.turnstile.secretKeyHint")
+                        }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- 腾讯天御验证码配置 -->
+                  <div v-else-if="captchaProviderSelection === 'tencent'">
+                    <div class="mb-6 max-w-sm">
+                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {{ t("admin.settings.tencentCaptcha.region") }}
+                      </label>
+                      <div class="grid grid-cols-2 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700">
                         <button
                           type="button"
+                          data-testid="tencent-captcha-region-cn"
                           class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
                           :class="
-                            form.aliyun_captcha_region !== 'sgp'
+                            form.tencent_captcha_region !== 'intl'
                               ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                               : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                           "
-                          @click="form.aliyun_captcha_region = 'cn'"
+                          @click="form.tencent_captcha_region = 'cn'"
                         >
-                          {{ t("admin.settings.aliyunCaptcha.regionCn") }}
+                          {{ t("admin.settings.tencentCaptcha.regionCn") }}
                         </button>
                         <button
                           type="button"
+                          data-testid="tencent-captcha-region-intl"
                           class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
                           :class="
-                            form.aliyun_captcha_region === 'sgp'
+                            form.tencent_captcha_region === 'intl'
                               ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
                               : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
                           "
-                          @click="form.aliyun_captcha_region = 'sgp'"
+                          @click="form.tencent_captcha_region = 'intl'"
                         >
-                          {{ t("admin.settings.aliyunCaptcha.regionSgp") }}
+                          {{ t("admin.settings.tencentCaptcha.regionIntl") }}
                         </button>
                       </div>
                       <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.aliyunCaptcha.regionHint") }}
+                        {{ t("admin.settings.tencentCaptcha.regionHint") }}
+                      </p>
+                    </div>
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                      <div class="md:col-span-2">
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                          {{ t("admin.settings.tencentCaptcha.appCredentialsTitle") }}
+                        </h3>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          {{ t("admin.settings.tencentCaptcha.appCredentialsHint") }}
+                        </p>
+                      </div>
+                      <div>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {{ t("admin.settings.tencentCaptcha.appId") }}
+                        </label>
+                        <input
+                          v-model="form.tencent_captcha_app_id"
+                          type="text"
+                          inputmode="numeric"
+                          class="input font-mono text-sm"
+                          placeholder="123456789"
+                        />
+                      </div>
+                      <div>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {{ t("admin.settings.tencentCaptcha.appSecretKey") }}
+                        </label>
+                        <input
+                          v-model="form.tencent_captcha_app_secret_key"
+                          type="password"
+                          autocomplete="new-password"
+                          class="input font-mono text-sm"
+                          :placeholder="t('admin.settings.tencentCaptcha.keepExisting')"
+                        />
+                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          {{ form.tencent_captcha_app_secret_key_configured ? t("admin.settings.tencentCaptcha.configured") : t("admin.settings.tencentCaptcha.required") }}
+                        </p>
+                      </div>
+                      <div class="border-t border-gray-100 pt-5 md:col-span-2 dark:border-dark-700">
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+                          {{ t("admin.settings.tencentCaptcha.cloudCredentialsTitle") }}
+                        </h3>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          {{ t("admin.settings.tencentCaptcha.cloudCredentialsHint") }}
+                        </p>
+                      </div>
+                      <div>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {{ t("admin.settings.tencentCaptcha.cloudSecretId") }}
+                        </label>
+                        <input
+                          v-model="form.tencent_captcha_cloud_secret_id"
+                          type="password"
+                          autocomplete="new-password"
+                          class="input font-mono text-sm"
+                          :placeholder="t('admin.settings.tencentCaptcha.keepExisting')"
+                        />
+                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          {{ form.tencent_captcha_cloud_secret_id_configured ? t("admin.settings.tencentCaptcha.configured") : t("admin.settings.tencentCaptcha.required") }}
+                        </p>
+                      </div>
+                      <div>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {{ t("admin.settings.tencentCaptcha.cloudSecretKey") }}
+                        </label>
+                        <input
+                          v-model="form.tencent_captcha_cloud_secret_key"
+                          type="password"
+                          autocomplete="new-password"
+                          class="input font-mono text-sm"
+                          :placeholder="t('admin.settings.tencentCaptcha.keepExisting')"
+                        />
+                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          {{ form.tencent_captcha_cloud_secret_key_configured ? t("admin.settings.tencentCaptcha.configured") : t("admin.settings.tencentCaptcha.required") }}
+                        </p>
+                      </div>
+                    </div>
+                    <p class="mt-5 text-xs text-gray-500 dark:text-gray-400">
+                      {{ t("admin.settings.tencentCaptcha.camPermissionHint") }}
+                    </p>
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      {{ t("admin.settings.tencentCaptcha.aidEncryptedHint") }}
+                    </p>
+                    <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                      <a
+                        :href="tencentCaptchaLinks.console"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-primary-600 hover:text-primary-500"
+                      >
+                        {{ t("admin.settings.tencentCaptcha.openCaptchaConsole") }}
+                      </a>
+                      <a
+                        :href="tencentCaptchaLinks.cloudKeys"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-primary-600 hover:text-primary-500"
+                      >
+                        {{ t("admin.settings.tencentCaptcha.createCloudKeys") }}
+                      </a>
+                      <a
+                        :href="tencentCaptchaLinks.webDocs"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-primary-600 hover:text-primary-500"
+                      >
+                        {{ t("admin.settings.tencentCaptcha.openWebDocs") }}
+                      </a>
+                    </div>
+                  </div>
+
+                  <!-- 阿里云验证码 2.0 配置 -->
+                  <div v-else class="grid grid-cols-1 gap-6">
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                      <div>
+                        <label
+                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                          {{ t("admin.settings.aliyunCaptcha.region") }}
+                        </label>
+                        <div
+                          class="grid grid-cols-2 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700"
+                        >
+                          <button
+                            type="button"
+                            class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
+                            :class="
+                              form.aliyun_captcha_region !== 'sgp'
+                                ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                                : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
+                            "
+                            @click="form.aliyun_captcha_region = 'cn'"
+                          >
+                            {{ t("admin.settings.aliyunCaptcha.regionCn") }}
+                          </button>
+                          <button
+                            type="button"
+                            class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
+                            :class="
+                              form.aliyun_captcha_region === 'sgp'
+                                ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
+                                : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
+                            "
+                            @click="form.aliyun_captcha_region = 'sgp'"
+                          >
+                            {{ t("admin.settings.aliyunCaptcha.regionSgp") }}
+                          </button>
+                        </div>
+                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          {{ t("admin.settings.aliyunCaptcha.regionHint") }}
+                        </p>
+                      </div>
+                      <div>
+                        <label
+                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                          {{ t("admin.settings.aliyunCaptcha.prefix") }}
+                        </label>
+                        <input
+                          v-model="form.aliyun_captcha_prefix"
+                          type="text"
+                          class="input font-mono text-sm"
+                          placeholder="14xxxxx"
+                        />
+                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          {{ t("admin.settings.aliyunCaptcha.prefixHint") }}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.aliyunCaptcha.sceneId") }}
+                      </label>
+                      <input
+                        v-model="form.aliyun_captcha_scene_id"
+                        type="text"
+                        class="input font-mono text-sm"
+                        placeholder="1cxxxxxx"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.aliyunCaptcha.sceneIdHint") }}
                       </p>
                     </div>
                     <div>
                       <label
                         class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                       >
-                        {{ t("admin.settings.aliyunCaptcha.prefix") }}
+                        {{ t("admin.settings.aliyunCaptcha.accessKeyId") }}
                       </label>
                       <input
-                        v-model="form.aliyun_captcha_prefix"
+                        v-model="form.aliyun_captcha_access_key_id"
                         type="text"
                         class="input font-mono text-sm"
-                        placeholder="14xxxxx"
+                        placeholder="LTAI..."
                       />
                       <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.aliyunCaptcha.prefixHint") }}
+                        {{ t("admin.settings.aliyunCaptcha.accessKeyIdHint") }}
+                      </p>
+                    </div>
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.aliyunCaptcha.accessKeySecret") }}
+                      </label>
+                      <input
+                        v-model="form.aliyun_captcha_access_key_secret"
+                        type="password"
+                        autocomplete="new-password"
+                        class="input font-mono text-sm"
+                        placeholder="••••••••"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{
+                          form.aliyun_captcha_access_key_secret_configured
+                            ? t(
+                                "admin.settings.aliyunCaptcha.accessKeySecretConfiguredHint",
+                              )
+                            : t("admin.settings.aliyunCaptcha.accessKeySecretHint")
+                        }}
                       </p>
                     </div>
                   </div>
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.aliyunCaptcha.sceneId") }}
-                    </label>
-                    <input
-                      v-model="form.aliyun_captcha_scene_id"
-                      type="text"
-                      class="input font-mono text-sm"
-                      placeholder="1cxxxxxx"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.aliyunCaptcha.sceneIdHint") }}
-                    </p>
-                  </div>
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.aliyunCaptcha.accessKeyId") }}
-                    </label>
-                    <input
-                      v-model="form.aliyun_captcha_access_key_id"
-                      type="text"
-                      class="input font-mono text-sm"
-                      placeholder="LTAI..."
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.aliyunCaptcha.accessKeyIdHint") }}
-                    </p>
-                  </div>
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.aliyunCaptcha.accessKeySecret") }}
-                    </label>
-                    <input
-                      v-model="form.aliyun_captcha_access_key_secret"
-                      type="password"
-                      autocomplete="new-password"
-                      class="input font-mono text-sm"
-                      placeholder="••••••••"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        form.aliyun_captcha_access_key_secret_configured
-                          ? t(
-                              "admin.settings.aliyunCaptcha.accessKeySecretConfiguredHint",
-                            )
-                          : t("admin.settings.aliyunCaptcha.accessKeySecretHint")
-                      }}
-                    </p>
-                  </div>
                 </div>
-              </div>
+              </Collapse>
             </div>
           </div>
 
@@ -2641,96 +2307,98 @@
                 <Toggle v-model="form.linuxdo_connect_enabled" />
               </div>
 
-              <div
-                v-if="form.linuxdo_connect_enabled"
-                class="border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div class="grid grid-cols-1 gap-6">
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.linuxdo.clientId") }}
-                    </label>
-                    <input
-                      v-model="form.linuxdo_connect_client_id"
-                      type="text"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.linuxdo.clientIdPlaceholder')
-                      "
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.linuxdo.clientIdHint") }}
-                    </p>
-                  </div>
+              <Collapse :open="form.linuxdo_connect_enabled" unmount-on-hide>
+                <div
 
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.linuxdo.clientSecret") }}
-                    </label>
-                    <input
-                      v-model="form.linuxdo_connect_client_secret"
-                      type="password"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        form.linuxdo_connect_client_secret_configured
-                          ? t(
-                              'admin.settings.linuxdo.clientSecretConfiguredPlaceholder',
-                            )
-                          : t('admin.settings.linuxdo.clientSecretPlaceholder')
-                      "
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        form.linuxdo_connect_client_secret_configured
-                          ? t(
-                              "admin.settings.linuxdo.clientSecretConfiguredHint",
-                            )
-                          : t("admin.settings.linuxdo.clientSecretHint")
-                      }}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.linuxdo.redirectUrl") }}
-                    </label>
-                    <input
-                      v-model="form.linuxdo_connect_redirect_url"
-                      type="url"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.linuxdo.redirectUrlPlaceholder')
-                      "
-                    />
-                    <div
-                      class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
-                    >
-                      <button
-                        type="button"
-                        class="btn btn-secondary btn-sm h-9 w-fit"
-                        @click="setAndCopyLinuxdoRedirectUrl"
+                  class="border-t border-gray-100 pt-4 dark:border-dark-700"
+                >
+                  <div class="grid grid-cols-1 gap-6">
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                       >
-                        {{ t("admin.settings.linuxdo.quickSetCopy") }}
-                      </button>
-                      <code
-                        v-if="linuxdoRedirectUrlSuggestion"
-                        class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
-                      >
-                        {{ linuxdoRedirectUrlSuggestion }}
-                      </code>
+                        {{ t("admin.settings.linuxdo.clientId") }}
+                      </label>
+                      <input
+                        v-model="form.linuxdo_connect_client_id"
+                        type="text"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.linuxdo.clientIdPlaceholder')
+                        "
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.linuxdo.clientIdHint") }}
+                      </p>
                     </div>
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.linuxdo.redirectUrlHint") }}
-                    </p>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.linuxdo.clientSecret") }}
+                      </label>
+                      <input
+                        v-model="form.linuxdo_connect_client_secret"
+                        type="password"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          form.linuxdo_connect_client_secret_configured
+                            ? t(
+                                'admin.settings.linuxdo.clientSecretConfiguredPlaceholder',
+                              )
+                            : t('admin.settings.linuxdo.clientSecretPlaceholder')
+                        "
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{
+                          form.linuxdo_connect_client_secret_configured
+                            ? t(
+                                "admin.settings.linuxdo.clientSecretConfiguredHint",
+                              )
+                            : t("admin.settings.linuxdo.clientSecretHint")
+                        }}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.linuxdo.redirectUrl") }}
+                      </label>
+                      <input
+                        v-model="form.linuxdo_connect_redirect_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.linuxdo.redirectUrlPlaceholder')
+                        "
+                      />
+                      <div
+                        class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+                      >
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-sm h-9 w-fit"
+                          @click="setAndCopyLinuxdoRedirectUrl"
+                        >
+                          {{ t("admin.settings.linuxdo.quickSetCopy") }}
+                        </button>
+                        <code
+                          v-if="linuxdoRedirectUrlSuggestion"
+                          class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
+                        >
+                          {{ linuxdoRedirectUrlSuggestion }}
+                        </code>
+                      </div>
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.linuxdo.redirectUrlHint") }}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Collapse>
             </div>
           </div>
 
@@ -2771,96 +2439,98 @@
                     <Toggle v-model="form.github_oauth_enabled" />
                   </div>
 
-                  <div v-if="form.github_oauth_enabled" class="mt-4 space-y-4">
-                    <div class="rounded-control bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
-                      <template v-if="isZhLocale">
-                        开通引导：GitHub Settings → Developer settings →
-                        <a
-                          data-testid="github-oauth-apps-guide-link"
-                          href="https://github.com/settings/developers"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="font-medium text-primary-600 hover:underline dark:text-primary-400"
-                        >OAuth Apps</a>
-                        → New OAuth App；Homepage URL 填站点域名，Authorization callback URL 填下面的后端回调地址。
-                      </template>
-                      <template v-else>
-                        Setup guide: GitHub Settings → Developer settings →
-                        <a
-                          data-testid="github-oauth-apps-guide-link"
-                          href="https://github.com/settings/developers"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="font-medium text-primary-600 hover:underline dark:text-primary-400"
-                        >OAuth Apps</a>
-                        → New OAuth App. Use your site origin as Homepage URL and the backend callback URL below as Authorization callback URL.
-                      </template>
-                    </div>
+                  <Collapse :open="form.github_oauth_enabled" unmount-on-hide>
+                    <div class="mt-4 space-y-4">
+                      <div class="rounded-control bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
+                        <template v-if="isZhLocale">
+                          开通引导：GitHub Settings → Developer settings →
+                          <a
+                            data-testid="github-oauth-apps-guide-link"
+                            href="https://github.com/settings/developers"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="font-medium text-primary-600 hover:underline dark:text-primary-400"
+                          >OAuth Apps</a>
+                          → New OAuth App；Homepage URL 填站点域名，Authorization callback URL 填下面的后端回调地址。
+                        </template>
+                        <template v-else>
+                          Setup guide: GitHub Settings → Developer settings →
+                          <a
+                            data-testid="github-oauth-apps-guide-link"
+                            href="https://github.com/settings/developers"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="font-medium text-primary-600 hover:underline dark:text-primary-400"
+                          >OAuth Apps</a>
+                          → New OAuth App. Use your site origin as Homepage URL and the backend callback URL below as Authorization callback URL.
+                        </template>
+                      </div>
 
-                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div>
+                          <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client ID</label>
+                          <input
+                            v-model="form.github_oauth_client_id"
+                            type="text"
+                            class="input font-mono text-sm"
+                            placeholder="GitHub OAuth Client ID"
+                          />
+                        </div>
+                        <div>
+                          <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client Secret</label>
+                          <input
+                            v-model="form.github_oauth_client_secret"
+                            type="password"
+                            class="input font-mono text-sm"
+                            :placeholder="
+                              form.github_oauth_client_secret_configured
+                                ? localText('密钥已配置，留空以保留当前值。', 'Secret configured. Leave empty to keep the current value.')
+                                : 'GitHub OAuth Client Secret'
+                            "
+                          />
+                        </div>
+                      </div>
+
                       <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client ID</label>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {{ localText("后端回调地址", "Backend Callback URL") }}
+                        </label>
                         <input
-                          v-model="form.github_oauth_client_id"
+                          v-model="form.github_oauth_redirect_url"
+                          type="url"
+                          class="input font-mono text-sm"
+                          placeholder="https://your-domain.com/api/v1/auth/oauth/github/callback"
+                        />
+                        <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-sm h-9 w-fit"
+                            @click="setAndCopyEmailOAuthRedirectUrl('github')"
+                          >
+                            {{ localText("生成并复制", "Generate and copy") }}
+                          </button>
+                          <code
+                            v-if="githubOAuthRedirectUrlSuggestion"
+                            class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
+                          >
+                            {{ githubOAuthRedirectUrlSuggestion }}
+                          </code>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {{ localText("前端回跳地址", "Frontend Callback URL") }}
+                        </label>
+                        <input
+                          v-model="form.github_oauth_frontend_redirect_url"
                           type="text"
                           class="input font-mono text-sm"
-                          placeholder="GitHub OAuth Client ID"
-                        />
-                      </div>
-                      <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client Secret</label>
-                        <input
-                          v-model="form.github_oauth_client_secret"
-                          type="password"
-                          class="input font-mono text-sm"
-                          :placeholder="
-                            form.github_oauth_client_secret_configured
-                              ? localText('密钥已配置，留空以保留当前值。', 'Secret configured. Leave empty to keep the current value.')
-                              : 'GitHub OAuth Client Secret'
-                          "
+                          placeholder="/auth/oauth/callback"
                         />
                       </div>
                     </div>
-
-                    <div>
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ localText("后端回调地址", "Backend Callback URL") }}
-                      </label>
-                      <input
-                        v-model="form.github_oauth_redirect_url"
-                        type="url"
-                        class="input font-mono text-sm"
-                        placeholder="https://your-domain.com/api/v1/auth/oauth/github/callback"
-                      />
-                      <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                        <button
-                          type="button"
-                          class="btn btn-secondary btn-sm h-9 w-fit"
-                          @click="setAndCopyEmailOAuthRedirectUrl('github')"
-                        >
-                          {{ localText("生成并复制", "Generate and copy") }}
-                        </button>
-                        <code
-                          v-if="githubOAuthRedirectUrlSuggestion"
-                          class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
-                        >
-                          {{ githubOAuthRedirectUrlSuggestion }}
-                        </code>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ localText("前端回跳地址", "Frontend Callback URL") }}
-                      </label>
-                      <input
-                        v-model="form.github_oauth_frontend_redirect_url"
-                        type="text"
-                        class="input font-mono text-sm"
-                        placeholder="/auth/oauth/callback"
-                      />
-                    </div>
-                  </div>
+                  </Collapse>
                 </div>
 
                 <div class="rounded-control border border-gray-200 p-4 dark:border-dark-700">
@@ -2881,127 +2551,131 @@
                     <Toggle v-model="form.google_oauth_enabled" />
                   </div>
 
-                  <div v-if="form.google_oauth_enabled" class="mt-4 space-y-4">
-                    <div class="rounded-control bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
-                      {{
-                        localText(
-                          "开通引导：Google Cloud Console → APIs & Services → OAuth consent screen 完成同意屏幕；Credentials → Create Credentials → OAuth client ID，类型选择 Web application，并把下面地址加入 Authorized redirect URIs。",
-                          "Setup guide: Google Cloud Console → APIs & Services → OAuth consent screen, then Credentials → Create Credentials → OAuth client ID, choose Web application, and add the URL below to Authorized redirect URIs.",
-                        )
-                      }}
-                    </div>
-
-                    <div class="border-t border-gray-200 pt-4 dark:border-dark-700">
-                      <div class="flex items-start justify-between gap-4">
-                        <div>
-                          <h4 class="text-sm font-medium text-gray-900 dark:text-white">
-                            Google One Tap
-                          </h4>
-                          <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                            {{
-                              localText(
-                                "在主页和登录页向未登录用户显示浏览器托管的 Google 账号选择器。",
-                                "Show the browser-managed Google account chooser to signed-out users on the home and login pages.",
-                              )
-                            }}
-                          </p>
-                        </div>
-                        <Toggle v-model="form.google_one_tap_enabled" />
+                  <Collapse :open="form.google_oauth_enabled" unmount-on-hide>
+                    <div class="mt-4 space-y-4">
+                      <div class="rounded-control bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
+                        {{
+                          localText(
+                            "开通引导：Google Cloud Console → APIs & Services → OAuth consent screen 完成同意屏幕；Credentials → Create Credentials → OAuth client ID，类型选择 Web application，并把下面地址加入 Authorized redirect URIs。",
+                            "Setup guide: Google Cloud Console → APIs & Services → OAuth consent screen, then Credentials → Create Credentials → OAuth client ID, choose Web application, and add the URL below to Authorized redirect URIs.",
+                          )
+                        }}
                       </div>
 
-                      <div v-if="form.google_one_tap_enabled" class="mt-3">
-                        <label class="mb-2 block text-xs font-medium text-gray-700 dark:text-gray-300">
-                          Authorized JavaScript origin
+                      <div class="border-t border-gray-200 pt-4 dark:border-dark-700">
+                        <div class="flex items-start justify-between gap-4">
+                          <div>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">
+                              Google One Tap
+                            </h4>
+                            <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                              {{
+                                localText(
+                                  "在主页和登录页向未登录用户显示浏览器托管的 Google 账号选择器。",
+                                  "Show the browser-managed Google account chooser to signed-out users on the home and login pages.",
+                                )
+                              }}
+                            </p>
+                          </div>
+                          <Toggle v-model="form.google_one_tap_enabled" />
+                        </div>
+
+                        <Collapse :open="form.google_one_tap_enabled" unmount-on-hide>
+                          <div class="mt-3">
+                            <label class="mb-2 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                              Authorized JavaScript origin
+                            </label>
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                              <code class="min-w-0 flex-1 select-all break-all rounded-compact bg-gray-50 px-2 py-1.5 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
+                                {{ googleOneTapOriginSuggestion }}
+                              </code>
+                              <button
+                                type="button"
+                                class="btn btn-secondary btn-sm h-9 w-fit"
+                                :disabled="!googleOneTapOriginSuggestion"
+                                @click="copyGoogleOneTapOrigin"
+                              >
+                                <Icon name="copy" size="sm" class="mr-1.5" />
+                                {{ localText("复制", "Copy") }}
+                              </button>
+                            </div>
+                            <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                              {{
+                                localText(
+                                  "请将该 Origin 加入 Google Cloud OAuth 客户端的 Authorized JavaScript origins；生产环境必须使用 HTTPS。",
+                                  "Add this origin to the OAuth client's Authorized JavaScript origins in Google Cloud; production requires HTTPS.",
+                                )
+                              }}
+                            </p>
+                          </div>
+                        </Collapse>
+                      </div>
+
+                      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div>
+                          <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client ID</label>
+                          <input
+                            v-model="form.google_oauth_client_id"
+                            type="text"
+                            class="input font-mono text-sm"
+                            placeholder="Google OAuth Client ID"
+                          />
+                        </div>
+                        <div>
+                          <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client Secret</label>
+                          <input
+                            v-model="form.google_oauth_client_secret"
+                            type="password"
+                            class="input font-mono text-sm"
+                            :placeholder="
+                              form.google_oauth_client_secret_configured
+                                ? localText('密钥已配置，留空以保留当前值。', 'Secret configured. Leave empty to keep the current value.')
+                                : 'Google OAuth Client Secret'
+                            "
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {{ localText("后端回调地址", "Backend Callback URL") }}
                         </label>
-                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                          <code class="min-w-0 flex-1 select-all break-all rounded-compact bg-gray-50 px-2 py-1.5 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
-                            {{ googleOneTapOriginSuggestion }}
-                          </code>
+                        <input
+                          v-model="form.google_oauth_redirect_url"
+                          type="url"
+                          class="input font-mono text-sm"
+                          placeholder="https://your-domain.com/api/v1/auth/oauth/google/callback"
+                        />
+                        <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                           <button
                             type="button"
                             class="btn btn-secondary btn-sm h-9 w-fit"
-                            :disabled="!googleOneTapOriginSuggestion"
-                            @click="copyGoogleOneTapOrigin"
+                            @click="setAndCopyEmailOAuthRedirectUrl('google')"
                           >
-                            <Icon name="copy" size="sm" class="mr-1.5" />
-                            {{ localText("复制", "Copy") }}
+                            {{ localText("生成并复制", "Generate and copy") }}
                           </button>
+                          <code
+                            v-if="googleOAuthRedirectUrlSuggestion"
+                            class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
+                          >
+                            {{ googleOAuthRedirectUrlSuggestion }}
+                          </code>
                         </div>
-                        <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                          {{
-                            localText(
-                              "请将该 Origin 加入 Google Cloud OAuth 客户端的 Authorized JavaScript origins；生产环境必须使用 HTTPS。",
-                              "Add this origin to the OAuth client's Authorized JavaScript origins in Google Cloud; production requires HTTPS.",
-                            )
-                          }}
-                        </p>
                       </div>
-                    </div>
 
-                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                       <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client ID</label>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {{ localText("前端回跳地址", "Frontend Callback URL") }}
+                        </label>
                         <input
-                          v-model="form.google_oauth_client_id"
+                          v-model="form.google_oauth_frontend_redirect_url"
                           type="text"
                           class="input font-mono text-sm"
-                          placeholder="Google OAuth Client ID"
-                        />
-                      </div>
-                      <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client Secret</label>
-                        <input
-                          v-model="form.google_oauth_client_secret"
-                          type="password"
-                          class="input font-mono text-sm"
-                          :placeholder="
-                            form.google_oauth_client_secret_configured
-                              ? localText('密钥已配置，留空以保留当前值。', 'Secret configured. Leave empty to keep the current value.')
-                              : 'Google OAuth Client Secret'
-                          "
+                          placeholder="/auth/oauth/callback"
                         />
                       </div>
                     </div>
-
-                    <div>
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ localText("后端回调地址", "Backend Callback URL") }}
-                      </label>
-                      <input
-                        v-model="form.google_oauth_redirect_url"
-                        type="url"
-                        class="input font-mono text-sm"
-                        placeholder="https://your-domain.com/api/v1/auth/oauth/google/callback"
-                      />
-                      <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                        <button
-                          type="button"
-                          class="btn btn-secondary btn-sm h-9 w-fit"
-                          @click="setAndCopyEmailOAuthRedirectUrl('google')"
-                        >
-                          {{ localText("生成并复制", "Generate and copy") }}
-                        </button>
-                        <code
-                          v-if="googleOAuthRedirectUrlSuggestion"
-                          class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
-                        >
-                          {{ googleOAuthRedirectUrlSuggestion }}
-                        </code>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ localText("前端回跳地址", "Frontend Callback URL") }}
-                      </label>
-                      <input
-                        v-model="form.google_oauth_frontend_redirect_url"
-                        type="text"
-                        class="input font-mono text-sm"
-                        placeholder="/auth/oauth/callback"
-                      />
-                    </div>
-                  </div>
+                  </Collapse>
                 </div>
               </div>
             </div>
@@ -3035,317 +2709,325 @@
                 />
               </div>
 
-              <div
-                v-if="form.wechat_connect_enabled"
-                class="space-y-6 border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div class="space-y-4">
-                  <div
-                    class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
-                  >
-                    <div class="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 class="font-medium text-gray-900 dark:text-white">
-                          {{ localText("PC 应用", "PC App") }}
-                        </h3>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          {{
-                            localText(
-                              "桌面浏览器通过微信开放平台扫码登录。可与公众号或移动应用同时存在。",
-                              "Desktop browsers sign in through WeChat Open Platform QR login. This can coexist with Official Account or Mobile App.",
-                            )
-                          }}
-                        </p>
-                      </div>
-                      <Toggle
-                        :model-value="form.wechat_connect_open_enabled"
-                        data-testid="wechat-connect-open-enabled"
-                        @update:model-value="handleWeChatOpenEnabledChange"
-                      />
-                    </div>
-                    <div
-                      v-if="form.wechat_connect_open_enabled"
-                      class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
-                    >
-                      <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          {{ localText("PC AppID", "PC App ID") }}
-                        </label>
-                        <input
-                          v-model="form.wechat_connect_open_app_id"
-                          data-testid="wechat-connect-open-app-id"
-                          type="text"
-                          class="input font-mono text-sm"
-                          :placeholder="
-                            localText(
-                              '微信开放平台 PC 应用 AppID',
-                              'WeChat Open Platform PC App ID',
-                            )
-                          "
-                        />
-                      </div>
-                      <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          {{ localText("PC AppSecret", "PC App Secret") }}
-                        </label>
-                        <input
-                          v-model="form.wechat_connect_open_app_secret"
-                          data-testid="wechat-connect-open-app-secret"
-                          type="password"
-                          class="input font-mono text-sm"
-                          :placeholder="
-                            form.wechat_connect_open_app_secret_configured
-                              ? localText(
-                                  '密钥已配置，留空以保留当前值。',
-                                  'Secret configured. Leave empty to keep the current value.',
-                                )
-                              : localText(
-                                  '微信开放平台 PC 应用 AppSecret',
-                                  'WeChat Open Platform PC App Secret',
-                                )
-                          "
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
-                  >
-                    <div class="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 class="font-medium text-gray-900 dark:text-white">
-                          {{ localText("公众号", "Official Account") }}
-                        </h3>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          {{
-                            localText(
-                              "仅在微信内浏览器可用；非微信环境下会显示不可用。",
-                              "Only available inside the WeChat browser. It is shown as unavailable outside WeChat.",
-                            )
-                          }}
-                        </p>
-                      </div>
-                      <Toggle
-                        :model-value="form.wechat_connect_mp_enabled"
-                        data-testid="wechat-connect-mp-enabled"
-                        @update:model-value="handleWeChatMPEnabledChange"
-                      />
-                    </div>
-                    <div
-                      v-if="form.wechat_connect_mp_enabled"
-                      class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
-                    >
-                      <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          {{ localText("公众号 AppID", "Official Account App ID") }}
-                        </label>
-                        <input
-                          v-model="form.wechat_connect_mp_app_id"
-                          data-testid="wechat-connect-mp-app-id"
-                          type="text"
-                          class="input font-mono text-sm"
-                          :placeholder="
-                            localText(
-                              '公众号 AppID',
-                              'Official Account App ID',
-                            )
-                          "
-                        />
-                      </div>
-                      <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          {{
-                            localText(
-                              "公众号 AppSecret",
-                              "Official Account App Secret",
-                            )
-                          }}
-                        </label>
-                        <input
-                          v-model="form.wechat_connect_mp_app_secret"
-                          data-testid="wechat-connect-mp-app-secret"
-                          type="password"
-                          class="input font-mono text-sm"
-                          :placeholder="
-                            form.wechat_connect_mp_app_secret_configured
-                              ? localText(
-                                  '密钥已配置，留空以保留当前值。',
-                                  'Secret configured. Leave empty to keep the current value.',
-                                )
-                              : localText(
-                                  '公众号 AppSecret',
-                                  'Official Account App Secret',
-                                )
-                          "
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
-                  >
-                    <div class="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 class="font-medium text-gray-900 dark:text-white">
-                          {{ localText("移动应用", "Mobile App") }}
-                        </h3>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          {{
-                            localText(
-                              "原生移动端通过微信 SDK 唤起授权，网页端不会直接发起该流程。",
-                              "Native mobile clients start authorization through the WeChat SDK. The web UI does not launch this flow directly.",
-                            )
-                          }}
-                        </p>
-                      </div>
-                      <Toggle
-                        :model-value="form.wechat_connect_mobile_enabled"
-                        data-testid="wechat-connect-mobile-enabled"
-                        @update:model-value="handleWeChatMobileEnabledChange"
-                      />
-                    </div>
-                    <div
-                      v-if="form.wechat_connect_mobile_enabled"
-                      class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
-                    >
-                      <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          {{ localText("移动应用 AppID", "Mobile App ID") }}
-                        </label>
-                        <input
-                          v-model="form.wechat_connect_mobile_app_id"
-                          data-testid="wechat-connect-mobile-app-id"
-                          type="text"
-                          class="input font-mono text-sm"
-                          :placeholder="
-                            localText(
-                              '移动应用 AppID',
-                              'Mobile App ID',
-                            )
-                          "
-                        />
-                      </div>
-                      <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          {{ localText("移动应用 AppSecret", "Mobile App Secret") }}
-                        </label>
-                        <input
-                          v-model="form.wechat_connect_mobile_app_secret"
-                          data-testid="wechat-connect-mobile-app-secret"
-                          type="password"
-                          class="input font-mono text-sm"
-                          :placeholder="
-                            form.wechat_connect_mobile_app_secret_configured
-                              ? localText(
-                                  '密钥已配置，留空以保留当前值。',
-                                  'Secret configured. Leave empty to keep the current value.',
-                                )
-                              : localText(
-                                  '移动应用 AppSecret',
-                                  'Mobile App Secret',
-                                )
-                          "
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
+              <Collapse :open="form.wechat_connect_enabled" unmount-on-hide>
                 <div
-                  v-if="
-                    form.wechat_connect_open_enabled &&
-                    (form.wechat_connect_mp_enabled ||
-                      form.wechat_connect_mobile_enabled)
-                  "
-                  class="rounded-control border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/10 dark:text-amber-300"
-                >
-                  {{
-                    localText(
-                      "如果同时启用 PC 应用和公众号/移动应用，这些应用需要挂在同一个微信开放平台主体下，否则 UnionID 无法稳定归并用户身份。",
-                      "When PC App is enabled together with Official Account or Mobile App, they should belong to the same WeChat Open Platform account so UnionID can merge identities reliably.",
-                    )
-                  }}
-                </div>
 
-                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  class="space-y-6 border-t border-gray-100 pt-4 dark:border-dark-700"
+                >
+                  <div class="space-y-4">
+                    <div
+                      class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
+                    >
+                      <div class="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 class="font-medium text-gray-900 dark:text-white">
+                            {{ localText("PC 应用", "PC App") }}
+                          </h3>
+                          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            {{
+                              localText(
+                                "桌面浏览器通过微信开放平台扫码登录。可与公众号或移动应用同时存在。",
+                                "Desktop browsers sign in through WeChat Open Platform QR login. This can coexist with Official Account or Mobile App.",
+                              )
+                            }}
+                          </p>
+                        </div>
+                        <Toggle
+                          :model-value="form.wechat_connect_open_enabled"
+                          data-testid="wechat-connect-open-enabled"
+                          @update:model-value="handleWeChatOpenEnabledChange"
+                        />
+                      </div>
+                      <Collapse :open="form.wechat_connect_open_enabled" unmount-on-hide>
+                        <div
+
+                          class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
+                        >
+                          <div>
+                            <label
+                              class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                            >
+                              {{ localText("PC AppID", "PC App ID") }}
+                            </label>
+                            <input
+                              v-model="form.wechat_connect_open_app_id"
+                              data-testid="wechat-connect-open-app-id"
+                              type="text"
+                              class="input font-mono text-sm"
+                              :placeholder="
+                                localText(
+                                  '微信开放平台 PC 应用 AppID',
+                                  'WeChat Open Platform PC App ID',
+                                )
+                              "
+                            />
+                          </div>
+                          <div>
+                            <label
+                              class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                            >
+                              {{ localText("PC AppSecret", "PC App Secret") }}
+                            </label>
+                            <input
+                              v-model="form.wechat_connect_open_app_secret"
+                              data-testid="wechat-connect-open-app-secret"
+                              type="password"
+                              class="input font-mono text-sm"
+                              :placeholder="
+                                form.wechat_connect_open_app_secret_configured
+                                  ? localText(
+                                      '密钥已配置，留空以保留当前值。',
+                                      'Secret configured. Leave empty to keep the current value.',
+                                    )
+                                  : localText(
+                                      '微信开放平台 PC 应用 AppSecret',
+                                      'WeChat Open Platform PC App Secret',
+                                    )
+                              "
+                            />
+                          </div>
+                        </div>
+                      </Collapse>
+                    </div>
+
+                    <div
+                      class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
+                    >
+                      <div class="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 class="font-medium text-gray-900 dark:text-white">
+                            {{ localText("公众号", "Official Account") }}
+                          </h3>
+                          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            {{
+                              localText(
+                                "仅在微信内浏览器可用；非微信环境下会显示不可用。",
+                                "Only available inside the WeChat browser. It is shown as unavailable outside WeChat.",
+                              )
+                            }}
+                          </p>
+                        </div>
+                        <Toggle
+                          :model-value="form.wechat_connect_mp_enabled"
+                          data-testid="wechat-connect-mp-enabled"
+                          @update:model-value="handleWeChatMPEnabledChange"
+                        />
+                      </div>
+                      <Collapse :open="form.wechat_connect_mp_enabled" unmount-on-hide>
+                        <div
+
+                          class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
+                        >
+                          <div>
+                            <label
+                              class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                            >
+                              {{ localText("公众号 AppID", "Official Account App ID") }}
+                            </label>
+                            <input
+                              v-model="form.wechat_connect_mp_app_id"
+                              data-testid="wechat-connect-mp-app-id"
+                              type="text"
+                              class="input font-mono text-sm"
+                              :placeholder="
+                                localText(
+                                  '公众号 AppID',
+                                  'Official Account App ID',
+                                )
+                              "
+                            />
+                          </div>
+                          <div>
+                            <label
+                              class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                            >
+                              {{
+                                localText(
+                                  "公众号 AppSecret",
+                                  "Official Account App Secret",
+                                )
+                              }}
+                            </label>
+                            <input
+                              v-model="form.wechat_connect_mp_app_secret"
+                              data-testid="wechat-connect-mp-app-secret"
+                              type="password"
+                              class="input font-mono text-sm"
+                              :placeholder="
+                                form.wechat_connect_mp_app_secret_configured
+                                  ? localText(
+                                      '密钥已配置，留空以保留当前值。',
+                                      'Secret configured. Leave empty to keep the current value.',
+                                    )
+                                  : localText(
+                                      '公众号 AppSecret',
+                                      'Official Account App Secret',
+                                    )
+                              "
+                            />
+                          </div>
+                        </div>
+                      </Collapse>
+                    </div>
+
+                    <div
+                      class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
+                    >
+                      <div class="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 class="font-medium text-gray-900 dark:text-white">
+                            {{ localText("移动应用", "Mobile App") }}
+                          </h3>
+                          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            {{
+                              localText(
+                                "原生移动端通过微信 SDK 唤起授权，网页端不会直接发起该流程。",
+                                "Native mobile clients start authorization through the WeChat SDK. The web UI does not launch this flow directly.",
+                              )
+                            }}
+                          </p>
+                        </div>
+                        <Toggle
+                          :model-value="form.wechat_connect_mobile_enabled"
+                          data-testid="wechat-connect-mobile-enabled"
+                          @update:model-value="handleWeChatMobileEnabledChange"
+                        />
+                      </div>
+                      <Collapse :open="form.wechat_connect_mobile_enabled" unmount-on-hide>
+                        <div
+
+                          class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
+                        >
+                          <div>
+                            <label
+                              class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                            >
+                              {{ localText("移动应用 AppID", "Mobile App ID") }}
+                            </label>
+                            <input
+                              v-model="form.wechat_connect_mobile_app_id"
+                              data-testid="wechat-connect-mobile-app-id"
+                              type="text"
+                              class="input font-mono text-sm"
+                              :placeholder="
+                                localText(
+                                  '移动应用 AppID',
+                                  'Mobile App ID',
+                                )
+                              "
+                            />
+                          </div>
+                          <div>
+                            <label
+                              class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                            >
+                              {{ localText("移动应用 AppSecret", "Mobile App Secret") }}
+                            </label>
+                            <input
+                              v-model="form.wechat_connect_mobile_app_secret"
+                              data-testid="wechat-connect-mobile-app-secret"
+                              type="password"
+                              class="input font-mono text-sm"
+                              :placeholder="
+                                form.wechat_connect_mobile_app_secret_configured
+                                  ? localText(
+                                      '密钥已配置，留空以保留当前值。',
+                                      'Secret configured. Leave empty to keep the current value.',
+                                    )
+                                  : localText(
+                                      '移动应用 AppSecret',
+                                      'Mobile App Secret',
+                                    )
+                              "
+                            />
+                          </div>
+                        </div>
+                      </Collapse>
+                    </div>
+                  </div>
+
+                  <Collapse :open="form.wechat_connect_open_enabled &&
+                      (form.wechat_connect_mp_enabled ||
+                        form.wechat_connect_mobile_enabled)" unmount-on-hide>
+                    <div
+
+                      class="rounded-control border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/10 dark:text-amber-300"
+                    >
+                      {{
+                        localText(
+                          "如果同时启用 PC 应用和公众号/移动应用，这些应用需要挂在同一个微信开放平台主体下，否则 UnionID 无法稳定归并用户身份。",
+                          "When PC App is enabled together with Official Account or Mobile App, they should belong to the same WeChat Open Platform account so UnionID can merge identities reliably.",
+                        )
+                      }}
+                    </div>
+                  </Collapse>
+
+                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{
+                          localText(
+                            "浏览器回调地址",
+                            "Browser Redirect URL",
+                          )
+                        }}
+                      </label>
+                      <input
+                        data-testid="wechat-connect-redirect-url"
+                        v-model="form.wechat_connect_redirect_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="t('admin.settings.wechatConnect.redirectUrlPlaceholder')"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{
+                          localText(
+                            "用于 PC 应用和公众号的网页回调。移动应用走原生 SDK 时不直接使用这个浏览器回调。",
+                            "Used by PC App and Official Account browser callbacks. Native mobile SDK flows do not start from this browser callback directly.",
+                          )
+                        }}
+                      </p>
+                      <div
+                        class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+                      >
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-sm h-9 w-fit"
+                          @click="setAndCopyWeChatRedirectUrl"
+                        >
+                          {{ t("admin.settings.wechatConnect.generateAndCopy") }}
+                        </button>
+                        <code
+                          v-if="wechatRedirectUrlSuggestion"
+                          class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
+                        >
+                          {{ wechatRedirectUrlSuggestion }}
+                        </code>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label
                       class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                     >
-                      {{
-                        localText(
-                          "浏览器回调地址",
-                          "Browser Redirect URL",
-                        )
-                      }}
+                      {{ t("admin.settings.wechatConnect.frontendRedirectUrlLabel") }}
                     </label>
                     <input
-                      data-testid="wechat-connect-redirect-url"
-                      v-model="form.wechat_connect_redirect_url"
-                      type="url"
+                      data-testid="wechat-connect-frontend-redirect-url"
+                      v-model="form.wechat_connect_frontend_redirect_url"
+                      type="text"
                       class="input font-mono text-sm"
-                      :placeholder="t('admin.settings.wechatConnect.redirectUrlPlaceholder')"
+                      :placeholder="t('admin.settings.wechatConnect.frontendRedirectUrlPlaceholder')"
                     />
                     <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        localText(
-                          "用于 PC 应用和公众号的网页回调。移动应用走原生 SDK 时不直接使用这个浏览器回调。",
-                          "Used by PC App and Official Account browser callbacks. Native mobile SDK flows do not start from this browser callback directly.",
-                        )
-                      }}
+                      {{ t("admin.settings.wechatConnect.frontendRedirectUrlHint") }}
                     </p>
-                    <div
-                      class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
-                    >
-                      <button
-                        type="button"
-                        class="btn btn-secondary btn-sm h-9 w-fit"
-                        @click="setAndCopyWeChatRedirectUrl"
-                      >
-                        {{ t("admin.settings.wechatConnect.generateAndCopy") }}
-                      </button>
-                      <code
-                        v-if="wechatRedirectUrlSuggestion"
-                        class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
-                      >
-                        {{ wechatRedirectUrlSuggestion }}
-                      </code>
-                    </div>
                   </div>
                 </div>
-
-                <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.wechatConnect.frontendRedirectUrlLabel") }}
-                  </label>
-                  <input
-                    data-testid="wechat-connect-frontend-redirect-url"
-                    v-model="form.wechat_connect_frontend_redirect_url"
-                    type="text"
-                    class="input font-mono text-sm"
-                    :placeholder="t('admin.settings.wechatConnect.frontendRedirectUrlPlaceholder')"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.wechatConnect.frontendRedirectUrlHint") }}
-                  </p>
-                </div>
-              </div>
+              </Collapse>
             </div>
           </div>
 
@@ -3374,266 +3056,268 @@
                 <Toggle v-model="form.dingtalk_connect_enabled" />
               </div>
 
-              <div
-                v-if="form.dingtalk_connect_enabled"
-                class="border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div class="grid grid-cols-1 gap-6">
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.dingtalk.clientId") }}
-                    </label>
-                    <input
-                      v-model="form.dingtalk_connect_client_id"
-                      type="text"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.dingtalk.clientIdPlaceholder')
-                      "
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.dingtalk.clientIdHint") }}
-                    </p>
-                  </div>
+              <Collapse :open="form.dingtalk_connect_enabled" unmount-on-hide>
+                <div
 
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.dingtalk.clientSecret") }}
-                    </label>
-                    <input
-                      v-model="form.dingtalk_connect_client_secret"
-                      type="password"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        form.dingtalk_connect_client_secret_configured
-                          ? t(
-                              'admin.settings.dingtalk.clientSecretConfiguredPlaceholder',
-                            )
-                          : t('admin.settings.dingtalk.clientSecretPlaceholder')
-                      "
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        form.dingtalk_connect_client_secret_configured
-                          ? t(
-                              "admin.settings.dingtalk.clientSecretConfiguredHint",
-                            )
-                          : t("admin.settings.dingtalk.clientSecretHint")
-                      }}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.dingtalk.redirectUrl") }}
-                    </label>
-                    <input
-                      v-model="form.dingtalk_connect_redirect_url"
-                      type="url"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.dingtalk.redirectUrlPlaceholder')
-                      "
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.dingtalk.redirectUrlHint") }}
-                    </p>
-                  </div>
-
-                  <!-- 企业限制策略 -->
-                  <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
-                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {{ t("admin.settings.dingtalk.corpPolicy.label") }}
-                    </label>
-                    <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.dingtalk.corpPolicy.hint") }}
-                    </p>
-                    <div class="space-y-2">
-                      <label class="flex cursor-pointer items-center gap-3">
-                        <input
-                          v-model="form.dingtalk_connect_corp_restriction_policy"
-                          type="radio"
-                          value="none"
-                          class="h-4 w-4 text-primary-600"
-                        />
-                        <span class="text-sm text-gray-700 dark:text-gray-300">
-                          {{ t("admin.settings.dingtalk.corpPolicy.none") }}
-                        </span>
-                      </label>
-                      <label class="flex cursor-pointer items-center gap-3">
-                        <input
-                          v-model="form.dingtalk_connect_corp_restriction_policy"
-                          type="radio"
-                          value="internal_only"
-                          class="h-4 w-4 text-primary-600"
-                        />
-                        <span class="text-sm text-gray-700 dark:text-gray-300">
-                          {{ t("admin.settings.dingtalk.corpPolicy.internalOnly") }}
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <!-- bypass_registration 开关（仅 internal_only 模式下可见可用） -->
-                  <div
-                    v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'"
-                    class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-dark-700"
-                  >
+                  class="border-t border-gray-100 pt-4 dark:border-dark-700"
+                >
+                  <div class="grid grid-cols-1 gap-6">
                     <div>
-                      <label class="font-medium text-gray-900 dark:text-white">{{
-                        t("admin.settings.dingtalk.bypassRegistration")
-                      }}</label>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.dingtalk.bypassRegistrationHint") }}
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.dingtalk.clientId") }}
+                      </label>
+                      <input
+                        v-model="form.dingtalk_connect_client_id"
+                        type="text"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.dingtalk.clientIdPlaceholder')
+                        "
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.dingtalk.clientIdHint") }}
                       </p>
                     </div>
-                    <Toggle v-model="form.dingtalk_connect_bypass_registration" />
-                  </div>
 
-                  <!-- 身份同步开关（仅 internal_only 模式下可见） -->
-                  <div
-                    v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'"
-                    class="pt-4 border-t border-gray-100 dark:border-dark-700 space-y-2"
-                  >
-                    <div class="flex items-center justify-between">
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.dingtalk.clientSecret") }}
+                      </label>
+                      <input
+                        v-model="form.dingtalk_connect_client_secret"
+                        type="password"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          form.dingtalk_connect_client_secret_configured
+                            ? t(
+                                'admin.settings.dingtalk.clientSecretConfiguredPlaceholder',
+                              )
+                            : t('admin.settings.dingtalk.clientSecretPlaceholder')
+                        "
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{
+                          form.dingtalk_connect_client_secret_configured
+                            ? t(
+                                "admin.settings.dingtalk.clientSecretConfiguredHint",
+                              )
+                            : t("admin.settings.dingtalk.clientSecretHint")
+                        }}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.dingtalk.redirectUrl") }}
+                      </label>
+                      <input
+                        v-model="form.dingtalk_connect_redirect_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.dingtalk.redirectUrlPlaceholder')
+                        "
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.dingtalk.redirectUrlHint") }}
+                      </p>
+                    </div>
+
+                    <!-- 企业限制策略 -->
+                    <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
+                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {{ t("admin.settings.dingtalk.corpPolicy.label") }}
+                      </label>
+                      <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.dingtalk.corpPolicy.hint") }}
+                      </p>
+                      <div class="space-y-2">
+                        <label class="flex cursor-pointer items-center gap-3">
+                          <input
+                            v-model="form.dingtalk_connect_corp_restriction_policy"
+                            type="radio"
+                            value="none"
+                            class="h-4 w-4 text-primary-600"
+                          />
+                          <span class="text-sm text-gray-700 dark:text-gray-300">
+                            {{ t("admin.settings.dingtalk.corpPolicy.none") }}
+                          </span>
+                        </label>
+                        <label class="flex cursor-pointer items-center gap-3">
+                          <input
+                            v-model="form.dingtalk_connect_corp_restriction_policy"
+                            type="radio"
+                            value="internal_only"
+                            class="h-4 w-4 text-primary-600"
+                          />
+                          <span class="text-sm text-gray-700 dark:text-gray-300">
+                            {{ t("admin.settings.dingtalk.corpPolicy.internalOnly") }}
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- bypass_registration 开关（仅 internal_only 模式下可见可用） -->
+                    <div
+                      v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'"
+                      class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-dark-700"
+                    >
                       <div>
                         <label class="font-medium text-gray-900 dark:text-white">{{
-                          t("admin.settings.dingtalk.syncDisplayName")
+                          t("admin.settings.dingtalk.bypassRegistration")
                         }}</label>
                         <p class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.dingtalk.syncDisplayNameHint") }}
+                          {{ t("admin.settings.dingtalk.bypassRegistrationHint") }}
                         </p>
                       </div>
-                      <Toggle v-model="form.dingtalk_connect_sync_display_name" />
+                      <Toggle v-model="form.dingtalk_connect_bypass_registration" />
                     </div>
-                    <div v-if="form.dingtalk_connect_sync_display_name" class="space-y-2">
-                      <div class="flex items-center gap-2">
-                        <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
-                          {{ t("admin.settings.dingtalk.syncDisplayNameTarget") }}
-                        </label>
-                        <input
-                          v-model="form.dingtalk_connect_sync_display_name_attr_key"
-                          type="text"
-                          placeholder="dingtalk_name"
-                          class="input text-sm flex-1 max-w-xs"
-                        />
+
+                    <!-- 身份同步开关（仅 internal_only 模式下可见） -->
+                    <div
+                      v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'"
+                      class="pt-4 border-t border-gray-100 dark:border-dark-700 space-y-2"
+                    >
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <label class="font-medium text-gray-900 dark:text-white">{{
+                            t("admin.settings.dingtalk.syncDisplayName")
+                          }}</label>
+                          <p class="text-sm text-gray-500 dark:text-gray-400">
+                            {{ t("admin.settings.dingtalk.syncDisplayNameHint") }}
+                          </p>
+                        </div>
+                        <Toggle v-model="form.dingtalk_connect_sync_display_name" />
                       </div>
-                      <div class="flex items-center gap-2">
-                        <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
-                          {{ t("admin.settings.dingtalk.syncAttrDisplayName") }}
-                        </label>
-                        <input
-                          v-model="form.dingtalk_connect_sync_display_name_attr_name"
-                          type="text"
-                          placeholder="钉钉姓名"
-                          class="input text-sm flex-1 max-w-xs"
-                        />
+                      <div v-if="form.dingtalk_connect_sync_display_name" class="space-y-2">
+                        <div class="flex items-center gap-2">
+                          <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
+                            {{ t("admin.settings.dingtalk.syncDisplayNameTarget") }}
+                          </label>
+                          <input
+                            v-model="form.dingtalk_connect_sync_display_name_attr_key"
+                            type="text"
+                            placeholder="dingtalk_name"
+                            class="input text-sm flex-1 max-w-xs"
+                          />
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
+                            {{ t("admin.settings.dingtalk.syncAttrDisplayName") }}
+                          </label>
+                          <input
+                            v-model="form.dingtalk_connect_sync_display_name_attr_name"
+                            type="text"
+                            placeholder="钉钉姓名"
+                            class="input text-sm flex-1 max-w-xs"
+                          />
+                        </div>
                       </div>
+                      <p v-if="form.dingtalk_connect_sync_display_name" class="text-xs text-gray-400 dark:text-gray-500">
+                        {{ t("admin.settings.dingtalk.syncDisplayNameTargetHint") }}
+                      </p>
                     </div>
-                    <p v-if="form.dingtalk_connect_sync_display_name" class="text-xs text-gray-400 dark:text-gray-500">
-                      {{ t("admin.settings.dingtalk.syncDisplayNameTargetHint") }}
-                    </p>
-                  </div>
-                  <div
-                    v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'"
-                    class="pt-4 border-t border-gray-100 dark:border-dark-700 space-y-2"
-                  >
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <label class="font-medium text-gray-900 dark:text-white">{{
-                          t("admin.settings.dingtalk.syncCorpEmail")
-                        }}</label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.dingtalk.syncCorpEmailHint") }}
-                        </p>
-                        <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                          {{ t("admin.settings.dingtalk.syncCorpEmailPermissionHint") }}
-                        </p>
+                    <div
+                      v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'"
+                      class="pt-4 border-t border-gray-100 dark:border-dark-700 space-y-2"
+                    >
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <label class="font-medium text-gray-900 dark:text-white">{{
+                            t("admin.settings.dingtalk.syncCorpEmail")
+                          }}</label>
+                          <p class="text-sm text-gray-500 dark:text-gray-400">
+                            {{ t("admin.settings.dingtalk.syncCorpEmailHint") }}
+                          </p>
+                          <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                            {{ t("admin.settings.dingtalk.syncCorpEmailPermissionHint") }}
+                          </p>
+                        </div>
+                        <Toggle v-model="form.dingtalk_connect_sync_corp_email" />
                       </div>
-                      <Toggle v-model="form.dingtalk_connect_sync_corp_email" />
+                      <div v-if="form.dingtalk_connect_sync_corp_email" class="space-y-2">
+                        <div class="flex items-center gap-2">
+                          <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
+                            {{ t("admin.settings.dingtalk.syncCorpEmailTarget") }}
+                          </label>
+                          <input
+                            v-model="form.dingtalk_connect_sync_corp_email_attr_key"
+                            type="text"
+                            placeholder="dingtalk_email"
+                            class="input text-sm flex-1 max-w-xs"
+                          />
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
+                            {{ t("admin.settings.dingtalk.syncAttrDisplayName") }}
+                          </label>
+                          <input
+                            v-model="form.dingtalk_connect_sync_corp_email_attr_name"
+                            type="text"
+                            placeholder="钉钉企业邮箱"
+                            class="input text-sm flex-1 max-w-xs"
+                          />
+                        </div>
+                      </div>
+                      <p v-if="form.dingtalk_connect_sync_corp_email" class="text-xs text-gray-400 dark:text-gray-500">
+                        {{ t("admin.settings.dingtalk.syncCorpEmailTargetHint") }}
+                      </p>
                     </div>
-                    <div v-if="form.dingtalk_connect_sync_corp_email" class="space-y-2">
-                      <div class="flex items-center gap-2">
-                        <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
-                          {{ t("admin.settings.dingtalk.syncCorpEmailTarget") }}
-                        </label>
-                        <input
-                          v-model="form.dingtalk_connect_sync_corp_email_attr_key"
-                          type="text"
-                          placeholder="dingtalk_email"
-                          class="input text-sm flex-1 max-w-xs"
-                        />
+                    <div
+                      v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'"
+                      class="pt-4 border-t border-gray-100 dark:border-dark-700 space-y-2"
+                    >
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <label class="font-medium text-gray-900 dark:text-white">{{
+                            t("admin.settings.dingtalk.syncDept")
+                          }}</label>
+                          <p class="text-sm text-gray-500 dark:text-gray-400">
+                            {{ t("admin.settings.dingtalk.syncDeptHint") }}
+                          </p>
+                          <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                            {{ t("admin.settings.dingtalk.syncDeptPermissionHint") }}
+                          </p>
+                        </div>
+                        <Toggle v-model="form.dingtalk_connect_sync_dept" />
                       </div>
-                      <div class="flex items-center gap-2">
-                        <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
-                          {{ t("admin.settings.dingtalk.syncAttrDisplayName") }}
-                        </label>
-                        <input
-                          v-model="form.dingtalk_connect_sync_corp_email_attr_name"
-                          type="text"
-                          placeholder="钉钉企业邮箱"
-                          class="input text-sm flex-1 max-w-xs"
-                        />
+                      <div v-if="form.dingtalk_connect_sync_dept" class="space-y-2">
+                        <div class="flex items-center gap-2">
+                          <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
+                            {{ t("admin.settings.dingtalk.syncDeptTarget") }}
+                          </label>
+                          <input
+                            v-model="form.dingtalk_connect_sync_dept_attr_key"
+                            type="text"
+                            placeholder="dingtalk_department"
+                            class="input text-sm flex-1 max-w-xs"
+                          />
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
+                            {{ t("admin.settings.dingtalk.syncAttrDisplayName") }}
+                          </label>
+                          <input
+                            v-model="form.dingtalk_connect_sync_dept_attr_name"
+                            type="text"
+                            placeholder="钉钉部门"
+                            class="input text-sm flex-1 max-w-xs"
+                          />
+                        </div>
                       </div>
+                      <p v-if="form.dingtalk_connect_sync_dept" class="text-xs text-gray-400 dark:text-gray-500">
+                        {{ t("admin.settings.dingtalk.syncDeptTargetHint") }}
+                      </p>
                     </div>
-                    <p v-if="form.dingtalk_connect_sync_corp_email" class="text-xs text-gray-400 dark:text-gray-500">
-                      {{ t("admin.settings.dingtalk.syncCorpEmailTargetHint") }}
-                    </p>
-                  </div>
-                  <div
-                    v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'"
-                    class="pt-4 border-t border-gray-100 dark:border-dark-700 space-y-2"
-                  >
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <label class="font-medium text-gray-900 dark:text-white">{{
-                          t("admin.settings.dingtalk.syncDept")
-                        }}</label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.dingtalk.syncDeptHint") }}
-                        </p>
-                        <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                          {{ t("admin.settings.dingtalk.syncDeptPermissionHint") }}
-                        </p>
-                      </div>
-                      <Toggle v-model="form.dingtalk_connect_sync_dept" />
-                    </div>
-                    <div v-if="form.dingtalk_connect_sync_dept" class="space-y-2">
-                      <div class="flex items-center gap-2">
-                        <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
-                          {{ t("admin.settings.dingtalk.syncDeptTarget") }}
-                        </label>
-                        <input
-                          v-model="form.dingtalk_connect_sync_dept_attr_key"
-                          type="text"
-                          placeholder="dingtalk_department"
-                          class="input text-sm flex-1 max-w-xs"
-                        />
-                      </div>
-                      <div class="flex items-center gap-2">
-                        <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
-                          {{ t("admin.settings.dingtalk.syncAttrDisplayName") }}
-                        </label>
-                        <input
-                          v-model="form.dingtalk_connect_sync_dept_attr_name"
-                          type="text"
-                          placeholder="钉钉部门"
-                          class="input text-sm flex-1 max-w-xs"
-                        />
-                      </div>
-                    </div>
-                    <p v-if="form.dingtalk_connect_sync_dept" class="text-xs text-gray-400 dark:text-gray-500">
-                      {{ t("admin.settings.dingtalk.syncDeptTargetHint") }}
-                    </p>
                   </div>
                 </div>
-              </div>
+              </Collapse>
             </div>
           </div>
 
@@ -3662,387 +3346,389 @@
                 <Toggle v-model="form.oidc_connect_enabled" />
               </div>
 
-              <div
-                v-if="form.oidc_connect_enabled"
-                class="space-y-6 border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.providerName") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_provider_name"
-                      type="text"
-                      class="input"
-                      :placeholder="
-                        t('admin.settings.oidc.providerNamePlaceholder')
-                      "
-                    />
+              <Collapse :open="form.oidc_connect_enabled" unmount-on-hide>
+                <div
+
+                  class="space-y-6 border-t border-gray-100 pt-4 dark:border-dark-700"
+                >
+                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.providerName") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_provider_name"
+                        type="text"
+                        class="input"
+                        :placeholder="
+                          t('admin.settings.oidc.providerNamePlaceholder')
+                        "
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.clientId") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_client_id"
+                        type="text"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.oidc.clientIdPlaceholder')
+                        "
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.clientSecret") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_client_secret"
+                        type="password"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          form.oidc_connect_client_secret_configured
+                            ? t(
+                                'admin.settings.oidc.clientSecretConfiguredPlaceholder',
+                              )
+                            : t('admin.settings.oidc.clientSecretPlaceholder')
+                        "
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{
+                          form.oidc_connect_client_secret_configured
+                            ? t("admin.settings.oidc.clientSecretConfiguredHint")
+                            : t("admin.settings.oidc.clientSecretHint")
+                        }}
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.clientId") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_client_id"
-                      type="text"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.oidc.clientIdPlaceholder')
-                      "
-                    />
+                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.issuerUrl") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_issuer_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.oidc.issuerUrlPlaceholder')
+                        "
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.discoveryUrl") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_discovery_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.oidc.discoveryUrlPlaceholder')
+                        "
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.authorizeUrl") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_authorize_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.oidc.authorizeUrlPlaceholder')
+                        "
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.tokenUrl") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_token_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.oidc.tokenUrlPlaceholder')
+                        "
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.userinfoUrl") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_userinfo_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.oidc.userinfoUrlPlaceholder')
+                        "
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.jwksUrl") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_jwks_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="t('admin.settings.oidc.jwksUrlPlaceholder')"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.clientSecret") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_client_secret"
-                      type="password"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        form.oidc_connect_client_secret_configured
-                          ? t(
-                              'admin.settings.oidc.clientSecretConfiguredPlaceholder',
-                            )
-                          : t('admin.settings.oidc.clientSecretPlaceholder')
-                      "
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        form.oidc_connect_client_secret_configured
-                          ? t("admin.settings.oidc.clientSecretConfiguredHint")
-                          : t("admin.settings.oidc.clientSecretHint")
-                      }}
-                    </p>
-                  </div>
-                </div>
+                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.scopes") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_scopes"
+                        type="text"
+                        class="input font-mono text-sm"
+                        :placeholder="t('admin.settings.oidc.scopesPlaceholder')"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.oidc.scopesHint") }}
+                      </p>
+                    </div>
 
-                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.issuerUrl") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_issuer_url"
-                      type="url"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.oidc.issuerUrlPlaceholder')
-                      "
-                    />
-                  </div>
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.redirectUrl") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_redirect_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.oidc.redirectUrlPlaceholder')
+                        "
+                      />
+                      <div
+                        class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+                      >
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-sm h-9 w-fit"
+                          @click="setAndCopyOIDCRedirectUrl"
+                        >
+                          {{ t("admin.settings.oidc.quickSetCopy") }}
+                        </button>
+                        <code
+                          v-if="oidcRedirectUrlSuggestion"
+                          class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
+                        >
+                          {{ oidcRedirectUrlSuggestion }}
+                        </code>
+                      </div>
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.oidc.redirectUrlHint") }}
+                      </p>
+                    </div>
 
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.discoveryUrl") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_discovery_url"
-                      type="url"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.oidc.discoveryUrlPlaceholder')
-                      "
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.authorizeUrl") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_authorize_url"
-                      type="url"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.oidc.authorizeUrlPlaceholder')
-                      "
-                    />
+                    <div class="lg:col-span-2">
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.frontendRedirectUrl") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_frontend_redirect_url"
+                        type="text"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.oidc.frontendRedirectUrlPlaceholder')
+                        "
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.oidc.frontendRedirectUrlHint") }}
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.tokenUrl") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_token_url"
-                      type="url"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.oidc.tokenUrlPlaceholder')
-                      "
-                    />
+                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.tokenAuthMethod") }}
+                      </label>
+                      <Select
+                        v-model="form.oidc_connect_token_auth_method"
+                        :options="oidcTokenAuthMethodOptions"
+                        class="font-mono text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.clockSkewSeconds") }}
+                      </label>
+                      <input
+                        v-model.number="form.oidc_connect_clock_skew_seconds"
+                        type="number"
+                        min="0"
+                        max="600"
+                        class="input"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.allowedSigningAlgs") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_allowed_signing_algs"
+                        type="text"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.oidc.allowedSigningAlgsPlaceholder')
+                        "
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.userinfoUrl") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_userinfo_url"
-                      type="url"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.oidc.userinfoUrlPlaceholder')
-                      "
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.jwksUrl") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_jwks_url"
-                      type="url"
-                      class="input font-mono text-sm"
-                      :placeholder="t('admin.settings.oidc.jwksUrlPlaceholder')"
-                    />
-                  </div>
-                </div>
-
-                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.scopes") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_scopes"
-                      type="text"
-                      class="input font-mono text-sm"
-                      :placeholder="t('admin.settings.oidc.scopesPlaceholder')"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.oidc.scopesHint") }}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.redirectUrl") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_redirect_url"
-                      type="url"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.oidc.redirectUrlPlaceholder')
-                      "
-                    />
+                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div
-                      class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+                      class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
                     >
-                      <button
-                        type="button"
-                        class="btn btn-secondary btn-sm h-9 w-fit"
-                        @click="setAndCopyOIDCRedirectUrl"
+                      <div>
+                        <label class="font-medium text-gray-900 dark:text-white">
+                          {{ t("admin.settings.oidc.usePkce") }}
+                        </label>
+                      </div>
+                      <Toggle
+                        v-model="form.oidc_connect_use_pkce"
+                        data-testid="oidc-connect-use-pkce"
+                      />
+                    </div>
+
+                    <div
+                      class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
+                    >
+                      <div>
+                        <label class="font-medium text-gray-900 dark:text-white">
+                          {{ t("admin.settings.oidc.validateIdToken") }}
+                        </label>
+                      </div>
+                      <Toggle
+                        v-model="form.oidc_connect_validate_id_token"
+                        data-testid="oidc-connect-validate-id-token"
+                      />
+                    </div>
+
+                    <div
+                      class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
+                    >
+                      <div>
+                        <label class="font-medium text-gray-900 dark:text-white">
+                          {{ t("admin.settings.oidc.requireEmailVerified") }}
+                        </label>
+                      </div>
+                      <Toggle
+                        v-model="form.oidc_connect_require_email_verified"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                       >
-                        {{ t("admin.settings.oidc.quickSetCopy") }}
-                      </button>
-                      <code
-                        v-if="oidcRedirectUrlSuggestion"
-                        class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
+                        {{ t("admin.settings.oidc.userinfoEmailPath") }}
+                      </label>
+                      <input
+                        v-model="form.oidc_connect_userinfo_email_path"
+                        type="text"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.oidc.userinfoEmailPathPlaceholder')
+                        "
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                       >
-                        {{ oidcRedirectUrlSuggestion }}
-                      </code>
-                    </div>
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.oidc.redirectUrlHint") }}
-                    </p>
-                  </div>
-
-                  <div class="lg:col-span-2">
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.frontendRedirectUrl") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_frontend_redirect_url"
-                      type="text"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.oidc.frontendRedirectUrlPlaceholder')
-                      "
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.oidc.frontendRedirectUrlHint") }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.tokenAuthMethod") }}
-                    </label>
-                    <Select
-                      v-model="form.oidc_connect_token_auth_method"
-                      :options="oidcTokenAuthMethodOptions"
-                      class="font-mono text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.clockSkewSeconds") }}
-                    </label>
-                    <input
-                      v-model.number="form.oidc_connect_clock_skew_seconds"
-                      type="number"
-                      min="0"
-                      max="600"
-                      class="input"
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.allowedSigningAlgs") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_allowed_signing_algs"
-                      type="text"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.oidc.allowedSigningAlgsPlaceholder')
-                      "
-                    />
-                  </div>
-                </div>
-
-                <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                  <div
-                    class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
-                  >
-                    <div>
-                      <label class="font-medium text-gray-900 dark:text-white">
-                        {{ t("admin.settings.oidc.usePkce") }}
+                        {{ t("admin.settings.oidc.userinfoIdPath") }}
                       </label>
+                      <input
+                        v-model="form.oidc_connect_userinfo_id_path"
+                        type="text"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.oidc.userinfoIdPathPlaceholder')
+                        "
+                      />
                     </div>
-                    <Toggle
-                      v-model="form.oidc_connect_use_pkce"
-                      data-testid="oidc-connect-use-pkce"
-                    />
-                  </div>
 
-                  <div
-                    class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
-                  >
                     <div>
-                      <label class="font-medium text-gray-900 dark:text-white">
-                        {{ t("admin.settings.oidc.validateIdToken") }}
+                      <label
+                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ t("admin.settings.oidc.userinfoUsernamePath") }}
                       </label>
+                      <input
+                        v-model="form.oidc_connect_userinfo_username_path"
+                        type="text"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.oidc.userinfoUsernamePathPlaceholder')
+                        "
+                      />
                     </div>
-                    <Toggle
-                      v-model="form.oidc_connect_validate_id_token"
-                      data-testid="oidc-connect-validate-id-token"
-                    />
-                  </div>
-
-                  <div
-                    class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
-                  >
-                    <div>
-                      <label class="font-medium text-gray-900 dark:text-white">
-                        {{ t("admin.settings.oidc.requireEmailVerified") }}
-                      </label>
-                    </div>
-                    <Toggle
-                      v-model="form.oidc_connect_require_email_verified"
-                    />
                   </div>
                 </div>
-
-                <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.userinfoEmailPath") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_userinfo_email_path"
-                      type="text"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.oidc.userinfoEmailPathPlaceholder')
-                      "
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.userinfoIdPath") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_userinfo_id_path"
-                      type="text"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.oidc.userinfoIdPathPlaceholder')
-                      "
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.oidc.userinfoUsernamePath") }}
-                    </label>
-                    <input
-                      v-model="form.oidc_connect_userinfo_username_path"
-                      type="text"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.oidc.userinfoUsernamePathPlaceholder')
-                      "
-                    />
-                  </div>
-                </div>
-              </div>
+              </Collapse>
             </div>
           </div>
         </div>
         <!-- /Tab: Security — Registration, Turnstile, LinuxDo, OIDC -->
 
         <!-- Tab: Users -->
-        <div v-show="activeTab === 'users'" class="space-y-6">
+        <div v-show="activeTab === 'users'" v-content-reveal="activeTab === 'users'" class="space-y-4">
           <!-- Default Settings -->
           <div class="card">
             <div
@@ -4132,68 +3818,29 @@
                 </div>
               </div>
 
-              <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
-                <div class="mb-3 flex items-center justify-between">
-                  <div>
-                    <label class="font-medium text-gray-900 dark:text-white">
-                      {{ t("admin.settings.defaults.defaultSubscriptions") }}
-                    </label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{
-                        t("admin.settings.defaults.defaultSubscriptionsHint")
-                      }}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn btn-secondary btn-sm h-9"
-                    @click="addDefaultSubscription"
-                    :disabled="subscriptionPlans.length === 0"
-                  >
-                    {{ t("admin.settings.defaults.addDefaultSubscription") }}
-                  </button>
-                </div>
-
-                <div
-                  v-if="form.default_subscriptions.length === 0"
-                  class="rounded-compact border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
-                >
-                  {{ t("admin.settings.defaults.defaultSubscriptionsEmpty") }}
-                </div>
-
-                <div v-else class="space-y-3">
-                  <div
-                    v-for="(item, index) in form.default_subscriptions"
-                    :key="`default-sub-${index}`"
-                    class="grid grid-cols-1 gap-3 rounded-compact border border-gray-200 p-3 md:grid-cols-[1fr_auto] dark:border-dark-600"
-                  >
-                    <div>
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
-                        {{ t("admin.settings.defaults.subscriptionGroup") }}
-                      </label>
-                      <Select
-                        v-model="item.plan_id"
-
-                        :options="defaultSubscriptionPlanOptions"
-                        :placeholder="
-                          t('admin.settings.defaults.subscriptionGroup')
-                        "
-                      />
-                    </div>
-                    <div class="flex items-end">
-                      <button
-                        type="button"
-                        class="btn btn-secondary w-full text-red-600 hover:text-red-700 dark:text-red-400"
-                        @click="removeDefaultSubscription(index)"
-                      >
-                        {{ t("common.delete") }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <RuleListEditor
+                class="border-t border-gray-100 pt-4 dark:border-dark-700"
+                :items="form.default_subscriptions"
+                :title="t('admin.settings.defaults.defaultSubscriptions')"
+                :hint="t('admin.settings.defaults.defaultSubscriptionsHint')"
+                :add-label="t('admin.settings.defaults.addDefaultSubscription')"
+                :empty-text="t('admin.settings.defaults.defaultSubscriptionsEmpty')"
+                :add-disabled="subscriptionPlans.length === 0"
+                test-id="default-subscriptions"
+                @add="addDefaultSubscription"
+                @remove="removeDefaultSubscription"
+              >
+                <template #row="{ item }">
+                  <Select
+                    v-model="item.plan_id"
+                    :aria-label="t('admin.settings.defaults.subscriptionGroup')"
+                  :options="defaultSubscriptionPlanOptions"
+                    :placeholder="
+                      t('admin.settings.defaults.subscriptionGroup')
+                    "
+                  />
+                </template>
+              </RuleListEditor>
             </div>
           </div>
 
@@ -4314,80 +3961,28 @@
                       />
                     </div>
 
-                    <div class="mb-3 flex items-center justify-between">
-                      <div>
-                        <label
-                          class="font-medium text-gray-900 dark:text-white"
-                        >
-                          {{ t("admin.settings.authSourceDefaults.defaultSubscriptionsLabel") }}
-                        </label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.authSourceDefaults.defaultSubscriptionsHint") }}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        class="btn btn-secondary btn-sm h-9"
-                        @click="
-                          addAuthSourceDefaultSubscription(authSource.source)
-                        "
-                        :disabled="subscriptionPlans.length === 0"
-                      >
-                        {{
-                          t("admin.settings.defaults.addDefaultSubscription")
-                        }}
-                      </button>
-                    </div>
-
-                    <div
-                      v-if="
-                        authSourceDefaults[authSource.source].subscriptions
-                          .length === 0
-                      "
-                      class="rounded-compact border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
+                    <RuleListEditor
+                      :items="authSourceDefaults[authSource.source].subscriptions"
+                      :title="t('admin.settings.authSourceDefaults.defaultSubscriptionsLabel')"
+                      :hint="t('admin.settings.authSourceDefaults.defaultSubscriptionsHint')"
+                      :add-label="t('admin.settings.defaults.addDefaultSubscription')"
+                      :empty-text="t('admin.settings.authSourceDefaults.noSourceSubscriptions')"
+                      :add-disabled="subscriptionPlans.length === 0"
+                      :test-id="`auth-source-${authSource.source}-subscriptions`"
+                      @add="addAuthSourceDefaultSubscription(authSource.source)"
+                      @remove="removeAuthSourceDefaultSubscription(authSource.source, $event)"
                     >
-                      {{ t("admin.settings.authSourceDefaults.noSourceSubscriptions") }}
-                    </div>
-
-                    <div v-else class="space-y-3">
-                      <div
-                        v-for="(item, index) in authSourceDefaults[
-                          authSource.source
-                        ].subscriptions"
-                        :key="`${authSource.source}-sub-${index}`"
-                        class="grid grid-cols-1 gap-3 rounded-compact border border-gray-200 p-3 md:grid-cols-[1fr_auto] dark:border-dark-600"
-                      >
-                        <div>
-                          <label
-                            class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                          >
-                            {{ t("admin.settings.defaults.subscriptionGroup") }}
-                          </label>
-                          <Select
-                            v-model="item.plan_id"
-
-                            :options="defaultSubscriptionPlanOptions"
-                            :placeholder="
-                              t('admin.settings.defaults.subscriptionGroup')
-                            "
-                          />
-                        </div>
-                        <div class="flex items-end">
-                          <button
-                            type="button"
-                            class="btn btn-secondary w-full text-red-600 hover:text-red-700 dark:text-red-400"
-                            @click="
-                              removeAuthSourceDefaultSubscription(
-                                authSource.source,
-                                index,
-                              )
-                            "
-                          >
-                            {{ t("common.delete") }}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                      <template #row="{ item }">
+                        <Select
+                          v-model="item.plan_id"
+                          :aria-label="t('admin.settings.defaults.subscriptionGroup')"
+                        :options="defaultSubscriptionPlanOptions"
+                          :placeholder="
+                            t('admin.settings.defaults.subscriptionGroup')
+                          "
+                        />
+                      </template>
+                    </RuleListEditor>
                   </div>
                 </div>
               </div>
@@ -4397,10 +3992,10 @@
         <!-- /Tab: Users -->
 
         <!-- Tab: Gateway — Claude Code, Scheduling -->
-        <div v-show="activeTab === 'gateway'" class="space-y-6">
+        <div v-show="activeTab === 'gateway'" v-content-reveal="activeTab === 'gateway'" class="space-y-4">
           <!-- Claude Code Settings -->
           <div
-            v-show="activeGatewaySection === 'anthropic'"
+            v-show="activeGatewaySection === 'anthropic'" v-content-reveal="activeGatewaySection === 'anthropic'"
             class="card"
             data-testid="gateway-card-claude-code"
           >
@@ -4456,7 +4051,7 @@
 
           <!-- Ollama Cloud 用量设置 -->
           <div
-            v-show="activeGatewaySection === 'ollamaCloud'"
+            v-show="activeGatewaySection === 'ollamaCloud'" v-content-reveal="activeGatewaySection === 'ollamaCloud'"
             class="card"
             data-testid="ollama-cloud-usage-global-settings"
           >
@@ -4469,10 +4064,7 @@
               </p>
             </div>
             <div class="space-y-5 p-6">
-              <div v-if="ollamaCloudUsageLoading" class="flex items-center gap-2 text-gray-500">
-                <div class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="ollamaCloudUsageLoading" variant="form" :rows="3" />
               <template v-else>
                 <div class="flex items-center justify-between gap-4">
                   <div>
@@ -4489,44 +4081,46 @@
                     data-testid="ollama-cloud-usage-global-enabled"
                   />
                 </div>
-                <div v-if="ollamaCloudUsageForm.enabled" class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700">
-                  <div>
-                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300" for="ollama-cloud-usage-debounce">
-                      {{ t("admin.settings.ollamaCloudUsage.debounceMinutes") }}
-                    </label>
-                    <input
-                      id="ollama-cloud-usage-debounce"
-                      v-model.number="ollamaCloudUsageForm.debounce_minutes"
-                      type="number"
-                      min="1"
-                      max="60"
-                      class="input w-32"
-                      data-testid="ollama-cloud-usage-global-debounce"
-                      @keydown.enter.prevent="saveOllamaCloudUsageSettings"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.ollamaCloudUsage.debounceHint") }}
-                    </p>
+                <Collapse :open="ollamaCloudUsageForm.enabled" unmount-on-hide>
+                  <div class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700">
+                    <div>
+                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300" for="ollama-cloud-usage-debounce">
+                        {{ t("admin.settings.ollamaCloudUsage.debounceMinutes") }}
+                      </label>
+                      <input
+                        id="ollama-cloud-usage-debounce"
+                        v-model.number="ollamaCloudUsageForm.debounce_minutes"
+                        type="number"
+                        min="1"
+                        max="60"
+                        class="input w-32"
+                        data-testid="ollama-cloud-usage-global-debounce"
+                        @keydown.enter.prevent="saveOllamaCloudUsageSettings"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.ollamaCloudUsage.debounceHint") }}
+                      </p>
+                    </div>
+                    <div>
+                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300" for="ollama-cloud-usage-interval">
+                        {{ t("admin.settings.ollamaCloudUsage.intervalMinutes") }}
+                      </label>
+                      <input
+                        id="ollama-cloud-usage-interval"
+                        v-model.number="ollamaCloudUsageForm.interval_minutes"
+                        type="number"
+                        min="15"
+                        max="1440"
+                        class="input w-32"
+                        data-testid="ollama-cloud-usage-global-interval"
+                        @keydown.enter.prevent="saveOllamaCloudUsageSettings"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.ollamaCloudUsage.intervalHint") }}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300" for="ollama-cloud-usage-interval">
-                      {{ t("admin.settings.ollamaCloudUsage.intervalMinutes") }}
-                    </label>
-                    <input
-                      id="ollama-cloud-usage-interval"
-                      v-model.number="ollamaCloudUsageForm.interval_minutes"
-                      type="number"
-                      min="15"
-                      max="1440"
-                      class="input w-32"
-                      data-testid="ollama-cloud-usage-global-interval"
-                      @keydown.enter.prevent="saveOllamaCloudUsageSettings"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.ollamaCloudUsage.intervalHint") }}
-                    </p>
-                  </div>
-                </div>
+                </Collapse>
                 <div class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700">
                   <button
                     type="button"
@@ -4547,7 +4141,8 @@
             v-show="
               activeGatewaySection === 'general' ||
               activeGatewaySection === 'openai'
-            "
+            " v-content-reveal="activeGatewaySection === 'general' ||
+              activeGatewaySection === 'openai'"
             class="card"
             data-testid="gateway-card-scheduling"
           >
@@ -4575,10 +4170,9 @@
             </div>
             <div class="p-6">
               <div
-                v-show="activeGatewaySection === 'general'"
+                v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
                 data-testid="gateway-scheduling-general"
               >
-
 
                 <div class="mt-5 border-t border-gray-100 pt-5 dark:border-dark-700">
                   <div class="mb-3">
@@ -4702,11 +4296,11 @@
               </div>
 
               <section
-                v-show="activeGatewaySection === 'general'"
+                v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
                 class="mt-6 border-t border-gray-100 pt-6 dark:border-dark-700"
                 data-testid="gateway-scheduling-general-advanced"
               >
-                <div class="flex items-start justify-between gap-4">
+                <div class="flex items-end justify-between gap-4">
                   <div class="max-w-4xl">
                     <h3 class="text-base font-semibold text-gray-900 dark:text-white">
                       {{ t("admin.settings.scheduling.advancedTitle") }}
@@ -4729,7 +4323,7 @@
                         :aria-label="t('admin.settings.scheduling.advancedHelp.trigger')"
                         :title="t('admin.settings.scheduling.advancedHelp.trigger')"
                       >
-                        <Icon name="questionCircle" size="md" :stroke-width="1.75" />
+                        <Icon name="questionCircle" size="sm" :stroke-width="1.75" />
                       </button>
                     </template>
                     <div class="space-y-2.5">
@@ -4892,7 +4486,7 @@
               </section>
 
               <div
-                v-show="activeGatewaySection === 'openai'"
+                v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
                 class="border-t border-gray-100 pt-5 dark:border-dark-700"
               >
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -4945,7 +4539,10 @@
               activeGatewaySection === 'openai' ||
               activeGatewaySection === 'grok' ||
               activeGatewaySection === 'antigravity'
-            "
+            " v-content-reveal="activeGatewaySection === 'anthropic' ||
+              activeGatewaySection === 'openai' ||
+              activeGatewaySection === 'grok' ||
+              activeGatewaySection === 'antigravity'"
             class="card"
             data-testid="gateway-card-forwarding"
           >
@@ -4965,7 +4562,7 @@
             </div>
             <div class="p-6">
               <div
-                v-show="activeGatewaySection === 'grok'"
+                v-show="activeGatewaySection === 'grok'" v-content-reveal="activeGatewaySection === 'grok'"
                 class="space-y-5"
                 data-testid="gateway-forwarding-grok"
               >
@@ -5019,7 +4616,7 @@
               </div>
 
               <div
-                v-show="activeGatewaySection === 'anthropic'"
+                v-show="activeGatewaySection === 'anthropic'" v-content-reveal="activeGatewaySection === 'anthropic'"
                 class="space-y-5"
                 data-testid="gateway-forwarding-anthropic"
               >
@@ -5232,7 +4829,7 @@
 
               <!-- Antigravity UA 版本 -->
               <div
-                v-show="activeGatewaySection === 'antigravity'"
+                v-show="activeGatewaySection === 'antigravity'" v-content-reveal="activeGatewaySection === 'antigravity'"
                 data-testid="gateway-forwarding-antigravity"
               >
                 <label
@@ -5264,7 +4861,7 @@
               </div>
 
               <div
-                v-show="activeGatewaySection === 'openai'"
+                v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
                 class="space-y-5"
                 data-testid="gateway-forwarding-openai"
               >
@@ -5332,7 +4929,7 @@
           </div>
           <!-- 跨平台用户提示词替换 -->
           <div
-            v-show="activeGatewaySection === 'general'"
+            v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
             class="card"
             data-testid="gateway-card-user-prompt-replacement"
           >
@@ -5351,142 +4948,125 @@
                 <Toggle v-model="form.user_prompt_replacement_config.enabled" />
               </div>
             </div>
-            <div class="space-y-5 p-6">
-              <div class="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm h-9"
-                  @click="addUserPromptReplacementRule"
-                >
-                  {{ t("admin.settings.userPromptReplacement.addRule") }}
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm h-9"
-                  @click="resetUserPromptReplacementRules"
-                >
-                  {{ t("admin.settings.userPromptReplacement.resetDefault") }}
-                </button>
-              </div>
-
-              <div
-                v-if="form.user_prompt_replacement_config.rules.length === 0"
-                class="rounded-control border border-dashed border-gray-300 p-4 text-center text-sm text-gray-400 dark:border-dark-600"
+            <div class="p-6">
+              <RuleListEditor
+                :items="form.user_prompt_replacement_config.rules"
+                variant="card"
+                :item-label="(index) => t('common.ruleIndex', { index: index + 1 })"
+                :add-label="t('admin.settings.userPromptReplacement.addRule')"
+                :empty-text="t('admin.settings.userPromptReplacement.empty')"
+                test-id="prompt-replacement-rules"
+                @add="addUserPromptReplacementRule"
+                @remove="removeUserPromptReplacementRule"
               >
-                {{ t("admin.settings.userPromptReplacement.empty") }}
-              </div>
-
-              <div
-                v-for="(rule, index) in form.user_prompt_replacement_config.rules"
-                :key="rule.id || index"
-                class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
-              >
-                <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div class="flex min-w-0 flex-1 items-center gap-3">
-                    <Toggle v-model="rule.enabled" />
-                    <input
-                      v-model="rule.name"
-                      type="text"
-                      class="input min-w-0 flex-1 text-sm"
-                      :placeholder="
-                        t('admin.settings.userPromptReplacement.namePlaceholder')
-                      "
-                    />
-                  </div>
+                <template #header-actions>
                   <button
                     type="button"
-                    class="btn btn-secondary btn-sm h-9 text-red-600 hover:text-red-700 dark:text-red-400"
-                    @click="removeUserPromptReplacementRule(index)"
+                    class="btn btn-secondary"
+                    @click="resetUserPromptReplacementRules"
                   >
-                    {{ t("common.delete") }}
+                    {{ t("admin.settings.userPromptReplacement.resetDefault") }}
                   </button>
-                </div>
-
-                <div class="grid gap-4 lg:grid-cols-6">
-                  <div class="lg:col-span-4">
-                    <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.userPromptReplacement.pattern") }}
-                    </label>
-                    <textarea
-                      v-model="rule.pattern"
-                      rows="3"
-                      class="input font-mono text-xs"
-                      :placeholder="
-                        t('admin.settings.userPromptReplacement.patternPlaceholder')
-                      "
-                    />
+                </template>
+                <template #row="{ item: rule }">
+                  <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex min-w-0 flex-1 items-center gap-3">
+                      <Toggle v-model="rule.enabled" />
+                      <input
+                        v-model="rule.name"
+                        type="text"
+                        class="input min-w-0 flex-1 text-sm"
+                        :placeholder="
+                          t('admin.settings.userPromptReplacement.namePlaceholder')
+                        "
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.userPromptReplacement.targetGroup") }}
-                    </label>
-                    <input
-                      v-model.number="rule.target_group"
-                      type="number"
-                      min="0"
-                      step="1"
-                      class="input text-sm"
-                    />
+                  <div class="grid gap-4 lg:grid-cols-6">
+                    <div class="lg:col-span-4">
+                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.userPromptReplacement.pattern") }}
+                      </label>
+                      <textarea
+                        v-model="rule.pattern"
+                        rows="3"
+                        class="input font-mono text-xs"
+                        :placeholder="
+                          t('admin.settings.userPromptReplacement.patternPlaceholder')
+                        "
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.userPromptReplacement.targetGroup") }}
+                      </label>
+                      <input
+                        v-model.number="rule.target_group"
+                        type="number"
+                        min="0"
+                        step="1"
+                        class="input text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.userPromptReplacement.replacementType") }}
+                      </label>
+                      <Select
+                        v-model="rule.replacement_type"
+                        :options="userPromptReplacementTypeOptions"
+                        class="text-sm"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.userPromptReplacement.replacementType") }}
-                    </label>
-                    <Select
-                      v-model="rule.replacement_type"
-                      :options="userPromptReplacementTypeOptions"
-                      class="text-sm"
-                    />
+                  <div class="mt-4 grid gap-4 md:grid-cols-3">
+                    <div v-if="rule.replacement_type === 'static'">
+                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.userPromptReplacement.staticText") }}
+                      </label>
+                      <input
+                        v-model="rule.static_text"
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="
+                          t('admin.settings.userPromptReplacement.staticTextPlaceholder')
+                        "
+                      />
+                    </div>
+                    <div v-if="rule.replacement_type !== 'static'">
+                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.userPromptReplacement.timezone") }}
+                      </label>
+                      <Select
+                        v-model="rule.timezone"
+                        :options="userPromptReplacementTimezoneOptions"
+                        searchable
+                        creatable
+                        :creatable-prefix="
+                          t('admin.settings.userPromptReplacement.useTimezone')
+                        "
+                        class="text-sm"
+                      />
+                    </div>
+                    <div v-if="rule.replacement_type === 'current_time'">
+                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.userPromptReplacement.timeFormat") }}
+                      </label>
+                      <input
+                        v-model="rule.time_format"
+                        type="text"
+                        class="input font-mono text-sm"
+                        placeholder="2006-01-02"
+                      />
+                    </div>
                   </div>
-                </div>
-
-                <div class="mt-4 grid gap-4 md:grid-cols-3">
-                  <div v-if="rule.replacement_type === 'static'">
-                    <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.userPromptReplacement.staticText") }}
-                    </label>
-                    <input
-                      v-model="rule.static_text"
-                      type="text"
-                      class="input text-sm"
-                      :placeholder="
-                        t('admin.settings.userPromptReplacement.staticTextPlaceholder')
-                      "
-                    />
-                  </div>
-                  <div v-if="rule.replacement_type !== 'static'">
-                    <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.userPromptReplacement.timezone") }}
-                    </label>
-                    <Select
-                      v-model="rule.timezone"
-                      :options="userPromptReplacementTimezoneOptions"
-                      searchable
-                      creatable
-                      :creatable-prefix="
-                        t('admin.settings.userPromptReplacement.useTimezone')
-                      "
-                      class="text-sm"
-                    />
-                  </div>
-                  <div v-if="rule.replacement_type === 'current_time'">
-                    <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.userPromptReplacement.timeFormat") }}
-                    </label>
-                    <input
-                      v-model="rule.time_format"
-                      type="text"
-                      class="input font-mono text-sm"
-                      placeholder="2006-01-02"
-                    />
-                  </div>
-                </div>
-              </div>
+                </template>
+              </RuleListEditor>
             </div>
           </div>
           <!-- Web Search Emulation -->
           <div
-            v-show="activeGatewaySection === 'anthropic'"
+            v-show="activeGatewaySection === 'anthropic'" v-content-reveal="activeGatewaySection === 'anthropic'"
             class="card"
             data-testid="gateway-card-web-search-emulation"
           >
@@ -5517,327 +5097,250 @@
               </div>
 
               <!-- Providers -->
-              <div v-if="webSearchConfig.enabled" class="space-y-4">
-                <div class="flex items-center justify-between">
-                  <label
-                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.webSearchEmulation.providers") }}
-                  </label>
-                  <button
-                    type="button"
-                    class="btn btn-secondary btn-sm h-9"
-                    @click="addWebSearchProvider"
-                  >
-                    {{ t("admin.settings.webSearchEmulation.addProvider") }}
-                  </button>
-                </div>
-
-                <div
-                  v-if="webSearchConfig.providers.length === 0"
-                  class="rounded-control border border-dashed border-gray-300 p-4 text-center text-sm text-gray-400 dark:border-dark-600"
+              <Collapse :open="webSearchConfig.enabled" unmount-on-hide>
+                <RuleListEditor
+                  :items="webSearchConfig.providers"
+                  variant="card"
+                  :title="t('admin.settings.webSearchEmulation.providers')"
+                  :add-label="t('admin.settings.webSearchEmulation.addProvider')"
+                  :remove-label="t('admin.settings.webSearchEmulation.removeProvider')"
+                  :empty-text="t('admin.settings.webSearchEmulation.noProviders')"
+                  test-id="web-search-providers"
+                  @add="addWebSearchProvider"
+                  @remove="removeWebSearchProvider"
                 >
-                  {{ t("admin.settings.webSearchEmulation.noProviders") }}
-                </div>
-
-                <div
-                  v-for="(provider, pIdx) in webSearchConfig.providers"
-                  :key="pIdx"
-                  class="rounded-control border border-gray-200 dark:border-dark-600"
-                >
-                  <!-- Collapsible header -->
-                  <div
-                    class="flex cursor-pointer items-center justify-between px-4 py-3"
-                    @click="toggleProviderExpand(pIdx)"
-                  >
-                    <div class="flex items-center gap-3">
-                      <svg
-                        class="h-4 w-4 text-gray-400 transition-transform"
-                        :class="{ 'rotate-90': expandedProviders[pIdx] }"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                      <Select
-                        v-model="provider.type"
-                        :options="[
-                          { value: 'brave', label: 'Brave Search' },
-                          { value: 'tavily', label: 'Tavily' },
-                        ]"
-                        class="w-36"
-                        @click.stop
-                      />
-                      <!-- Quota summary (always visible) -->
-                      <span class="text-xs text-gray-400">
-                        {{ provider.quota_used ?? 0 }} /
-                        {{
-                          provider.quota_limit != null &&
-                          provider.quota_limit > 0
-                            ? provider.quota_limit
-                            : "∞"
-                        }}
-                      </span>
-                      <span
-                        v-if="
-                          !expandedProviders[pIdx] &&
-                          provider.api_key_configured
-                        "
-                        class="text-xs text-green-500"
-                      >
-                        {{
-                          t(
-                            "admin.settings.webSearchEmulation.apiKeyConfigured",
-                          )
-                        }}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      class="text-red-500 hover:text-red-700 text-xs"
-                      @click.stop="removeWebSearchProvider(pIdx)"
+                  <template #row="{ item: provider, index: pIdx }">
+                    <!-- Collapsible header -->
+                    <div data-icon-trigger
+                      class="flex cursor-pointer flex-wrap items-center gap-3"
+                      @click="toggleProviderExpand(pIdx)"
                     >
-                      {{
-                        t("admin.settings.webSearchEmulation.removeProvider")
-                      }}
-                    </button>
-                  </div>
-
-                  <!-- Expanded content -->
-                  <div
-                    v-if="expandedProviders[pIdx]"
-                    class="space-y-3 border-t border-gray-100 px-4 pb-4 pt-3 dark:border-dark-700"
-                  >
-                    <!-- API Key with inline show/copy -->
-                    <div>
-                      <label class="text-xs text-gray-500">{{
-                        t("admin.settings.webSearchEmulation.apiKey")
-                      }}</label>
-                      <div class="relative">
-                        <input
-                          v-model="provider.api_key"
-                          :type="apiKeyVisible[pIdx] ? 'text' : 'password'"
-                          class="input w-full text-sm"
-                          :class="
-                            provider.api_key || provider.api_key_configured
-                              ? 'pr-16'
-                              : ''
-                          "
-                          :placeholder="
-                            provider.api_key_configured
-                              ? '••••••••'
-                              : t(
-                                  'admin.settings.webSearchEmulation.apiKeyPlaceholder',
-                                )
-                          "
+                      <div class="flex min-w-0 flex-wrap items-center gap-3">
+                        <Icon
+                          name="chevronRight"
+                          size="sm"
+                          :animate-on-hover="false"
+                          class="h-4 w-4 text-gray-400 transition-transform"
+                          :class="{ 'rotate-90': expandedProviders[pIdx] }"
                         />
-                        <div
-                          v-if="provider.api_key || provider.api_key_configured"
-                          class="absolute inset-y-0 right-0 flex items-center pr-1.5"
+                        <Select
+                          v-model="provider.type"
+                          :options="[
+                            { value: 'brave', label: 'Brave Search' },
+                            { value: 'tavily', label: 'Tavily' },
+                          ]"
+                          class="w-36"
+                          @click.stop
+                        />
+                        <!-- Quota summary (always visible) -->
+                        <span class="text-xs text-gray-400">
+                          {{ provider.quota_used ?? 0 }} /
+                          {{
+                            provider.quota_limit != null &&
+                            provider.quota_limit > 0
+                              ? provider.quota_limit
+                              : "∞"
+                          }}
+                        </span>
+                        <span
+                          v-if="
+                            !expandedProviders[pIdx] &&
+                            provider.api_key_configured
+                          "
+                          class="text-xs text-green-500"
                         >
-                          <button
-                            type="button"
-                            class="rounded-compact p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                            :title="
-                              apiKeyVisible[pIdx]
-                                ? t(
-                                    'admin.settings.webSearchEmulation.hideApiKey',
-                                  )
-                                : t(
-                                    'admin.settings.webSearchEmulation.showApiKey',
-                                  )
-                            "
-                            @click="apiKeyVisible[pIdx] = !apiKeyVisible[pIdx]"
+                          {{
+                            t(
+                              "admin.settings.webSearchEmulation.apiKeyConfigured",
+                            )
+                          }}
+                        </span>
+                      </div>
+                    </div>
+                    <!-- Expanded content -->
+                    <Collapse :open="expandedProviders[pIdx]" unmount-on-hide>
+                      <div
+                        class="mt-3 space-y-3 border-t border-gray-100 pt-3 dark:border-dark-700"
+                      >
+                        <!-- API Key with inline show/copy -->
+                        <div>
+                          <label class="text-xs text-gray-500">{{
+                            t("admin.settings.webSearchEmulation.apiKey")
+                          }}</label>
+                          <div class="relative">
+                            <input
+                              v-model="provider.api_key"
+                              :type="apiKeyVisible[pIdx] ? 'text' : 'password'"
+                              class="input w-full text-sm"
+                              :class="
+                                provider.api_key || provider.api_key_configured
+                                  ? 'pr-16'
+                                  : ''
+                              "
+                              :placeholder="
+                                provider.api_key_configured
+                                  ? '••••••••'
+                                  : t(
+                                      'admin.settings.webSearchEmulation.apiKeyPlaceholder',
+                                    )
+                              "
+                            />
+                            <div
+                              v-if="provider.api_key || provider.api_key_configured"
+                              class="absolute inset-y-0 right-0 flex items-center pr-1.5"
+                            >
+                              <button
+                                type="button"
+                                class="rounded-compact p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                :title="
+                                  apiKeyVisible[pIdx]
+                                    ? t(
+                                        'admin.settings.webSearchEmulation.hideApiKey',
+                                      )
+                                    : t(
+                                        'admin.settings.webSearchEmulation.showApiKey',
+                                      )
+                                "
+                                @click="apiKeyVisible[pIdx] = !apiKeyVisible[pIdx]"
+                              >
+                                <Icon name="eye" size="sm" v-if="!apiKeyVisible[pIdx]" class="h-4 w-4" />
+                                <Icon name="eyeOff" size="sm" v-else class="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                class="rounded-compact p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                :class="{
+                                  'opacity-30 cursor-not-allowed':
+                                    !provider.api_key,
+                                }"
+                                :title="
+                                  t('admin.settings.webSearchEmulation.copyApiKey')
+                                "
+                                :disabled="!provider.api_key"
+                                @click="copyApiKey(pIdx)"
+                              >
+                                <Icon name="copy" size="sm" class="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <!-- Quota + Subscription in compact row -->
+                        <div class="grid grid-cols-2 gap-3">
+                          <div>
+                            <label class="text-xs text-gray-500">{{
+                              t("admin.settings.webSearchEmulation.quotaLimit")
+                            }}</label>
+                            <input
+                              v-model="provider.quota_limit"
+                              type="number"
+                              min="1"
+                              class="input text-sm"
+                              :placeholder="'∞'"
+                            />
+                            <p class="mt-0.5 text-xs text-gray-400">
+                              {{
+                                t(
+                                  "admin.settings.webSearchEmulation.quotaLimitHint",
+                                )
+                              }}
+                            </p>
+                          </div>
+                          <div>
+                            <label class="text-xs text-gray-500">{{
+                              t("admin.settings.webSearchEmulation.subscribedAt")
+                            }}</label>
+                            <input
+                              :value="formatSubscribedAt(provider.subscribed_at)"
+                              type="date"
+                              class="input text-sm"
+                              @input="
+                                provider.subscribed_at = parseSubscribedAt(
+                                  ($event.target as HTMLInputElement).value,
+                                )
+                              "
+                            />
+                            <p class="mt-0.5 text-xs text-gray-400">
+                              {{
+                                t(
+                                  "admin.settings.webSearchEmulation.subscribedAtHint",
+                                )
+                              }}
+                            </p>
+                          </div>
+                        </div>
+                        <!-- Usage display -->
+                        <div class="flex items-center gap-2">
+                          <span class="text-xs text-gray-500"
+                            >{{
+                              t("admin.settings.webSearchEmulation.quotaUsage")
+                            }}:</span
                           >
-                            <svg
-                              v-if="!apiKeyVisible[pIdx]"
-                              class="h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                              />
-                            </svg>
-                            <svg
-                              v-else
-                              class="h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
-                              />
-                            </svg>
+                          <div
+                            v-if="
+                              provider.quota_limit != null &&
+                              provider.quota_limit > 0
+                            "
+                            class="flex-1 rounded-full bg-gray-200 dark:bg-dark-600"
+                            style="height: 6px"
+                          >
+                            <div
+                              class="h-full rounded-full transition-[width,background-color]"
+                              :class="
+                                quotaPercentage(provider) > 90
+                                  ? 'bg-red-500'
+                                  : quotaPercentage(provider) > 70
+                                    ? 'bg-yellow-500'
+                                    : 'bg-green-500'
+                              "
+                              :style="{
+                                width:
+                                  Math.min(quotaPercentage(provider), 100) + '%',
+                              }"
+                            />
+                          </div>
+                          <div v-else class="flex-1" />
+                          <span class="text-xs text-gray-500"
+                            >{{ provider.quota_used ?? 0 }} /
+                            {{
+                              provider.quota_limit != null &&
+                              provider.quota_limit > 0
+                                ? provider.quota_limit
+                                : "∞"
+                            }}</span
+                          >
+                          <button
+                            v-if="(provider.quota_used ?? 0) > 0"
+                            type="button"
+                            class="text-xs text-primary-600 hover:text-primary-700"
+                            @click="resetWebSearchUsage(pIdx)"
+                          >
+                            {{ t("admin.settings.webSearchEmulation.resetUsage") }}
                           </button>
+                        </div>
+                        <!-- Proxy + Test on same row -->
+                        <div class="flex items-end gap-3">
+                          <div class="flex-1">
+                            <label class="text-xs text-gray-500">{{
+                              t("admin.settings.webSearchEmulation.proxy")
+                            }}</label>
+                            <ProxySelector
+                              v-model="provider.proxy_id"
+                              :proxies="webSearchProxies"
+                            />
+                          </div>
                           <button
                             type="button"
-                            class="rounded-compact p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                            :class="{
-                              'opacity-30 cursor-not-allowed':
-                                !provider.api_key,
-                            }"
-                            :title="
-                              t('admin.settings.webSearchEmulation.copyApiKey')
-                            "
-                            :disabled="!provider.api_key"
-                            @click="copyApiKey(pIdx)"
+                            class="btn btn-secondary btn-sm h-9 whitespace-nowrap"
+                            @click="openTestDialog()"
                           >
-                            <svg
-                              class="h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                              />
-                            </svg>
+                            {{ t("admin.settings.webSearchEmulation.test") }}
                           </button>
                         </div>
                       </div>
-                    </div>
-
-                    <!-- Quota + Subscription in compact row -->
-                    <div class="grid grid-cols-2 gap-3">
-                      <div>
-                        <label class="text-xs text-gray-500">{{
-                          t("admin.settings.webSearchEmulation.quotaLimit")
-                        }}</label>
-                        <input
-                          v-model="provider.quota_limit"
-                          type="number"
-                          min="1"
-                          class="input text-sm"
-                          :placeholder="'∞'"
-                        />
-                        <p class="mt-0.5 text-xs text-gray-400">
-                          {{
-                            t(
-                              "admin.settings.webSearchEmulation.quotaLimitHint",
-                            )
-                          }}
-                        </p>
-                      </div>
-                      <div>
-                        <label class="text-xs text-gray-500">{{
-                          t("admin.settings.webSearchEmulation.subscribedAt")
-                        }}</label>
-                        <input
-                          :value="formatSubscribedAt(provider.subscribed_at)"
-                          type="date"
-                          class="input text-sm"
-                          @input="
-                            provider.subscribed_at = parseSubscribedAt(
-                              ($event.target as HTMLInputElement).value,
-                            )
-                          "
-                        />
-                        <p class="mt-0.5 text-xs text-gray-400">
-                          {{
-                            t(
-                              "admin.settings.webSearchEmulation.subscribedAtHint",
-                            )
-                          }}
-                        </p>
-                      </div>
-                    </div>
-
-                    <!-- Usage display -->
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs text-gray-500"
-                        >{{
-                          t("admin.settings.webSearchEmulation.quotaUsage")
-                        }}:</span
-                      >
-                      <div
-                        v-if="
-                          provider.quota_limit != null &&
-                          provider.quota_limit > 0
-                        "
-                        class="flex-1 rounded-full bg-gray-200 dark:bg-dark-600"
-                        style="height: 6px"
-                      >
-                        <div
-                          class="h-full rounded-full transition-all"
-                          :class="
-                            quotaPercentage(provider) > 90
-                              ? 'bg-red-500'
-                              : quotaPercentage(provider) > 70
-                                ? 'bg-yellow-500'
-                                : 'bg-green-500'
-                          "
-                          :style="{
-                            width:
-                              Math.min(quotaPercentage(provider), 100) + '%',
-                          }"
-                        />
-                      </div>
-                      <div v-else class="flex-1" />
-                      <span class="text-xs text-gray-500"
-                        >{{ provider.quota_used ?? 0 }} /
-                        {{
-                          provider.quota_limit != null &&
-                          provider.quota_limit > 0
-                            ? provider.quota_limit
-                            : "∞"
-                        }}</span
-                      >
-                      <button
-                        v-if="(provider.quota_used ?? 0) > 0"
-                        type="button"
-                        class="text-xs text-primary-600 hover:text-primary-700"
-                        @click="resetWebSearchUsage(pIdx)"
-                      >
-                        {{ t("admin.settings.webSearchEmulation.resetUsage") }}
-                      </button>
-                    </div>
-
-                    <!-- Proxy + Test on same row -->
-                    <div class="flex items-end gap-3">
-                      <div class="flex-1">
-                        <label class="text-xs text-gray-500">{{
-                          t("admin.settings.webSearchEmulation.proxy")
-                        }}</label>
-                        <ProxySelector
-                          v-model="provider.proxy_id"
-                          :proxies="webSearchProxies"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        class="btn btn-secondary btn-sm h-9 whitespace-nowrap"
-                        @click="openTestDialog()"
-                      >
-                        {{ t("admin.settings.webSearchEmulation.test") }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                    </Collapse>
+                  </template>
+                </RuleListEditor>
+              </Collapse>
             </div>
           </div>
 
@@ -5898,7 +5401,7 @@
             <a
               :href="r.url"
               target="_blank"
-              class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+              class="text-sm font-medium text-primary-600 hover:underline dark:text-primary-500"
               >{{ r.title }}</a
             >
             <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
@@ -5917,10 +5420,9 @@
         </div>
           </BaseDialog>
 
-
         <!-- 用量记录设置 -->
         <div
-          v-show="activeGatewaySection === 'general'"
+          v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
           class="card"
           data-testid="gateway-card-usage-records"
         >
@@ -5951,7 +5453,7 @@
         <!-- /Tab: Gateway — Claude Code, Scheduling -->
 
         <!-- Tab: General -->
-        <div v-show="activeTab === 'general'" class="space-y-6">
+        <div v-show="activeTab === 'general'" v-content-reveal="activeTab === 'general'" class="space-y-4">
           <PreAggregationSettings />
 
           <div class="card">
@@ -6434,135 +5936,79 @@
               </div>
 
               <!-- Custom Endpoints -->
-              <div>
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{ t("admin.settings.site.customEndpoints.title") }}
-                </label>
-                <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.site.customEndpoints.description") }}
-                </p>
-
-                <div class="space-y-3">
-                  <div
-                    v-for="(ep, index) in form.custom_endpoints"
-                    :key="index"
-                    class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
-                  >
-                    <div class="mb-3 flex items-center justify-between">
-                      <span
-                        class="text-sm font-medium text-gray-700 dark:text-gray-300"
+              <RuleListEditor
+                :items="form.custom_endpoints"
+                variant="card"
+                :title="t('admin.settings.site.customEndpoints.title')"
+                :hint="t('admin.settings.site.customEndpoints.description')"
+                :item-label="(index) => t('admin.settings.site.customEndpoints.itemLabel', { n: index + 1 })"
+                :add-label="t('admin.settings.site.customEndpoints.add')"
+                test-id="custom-endpoints"
+                @add="addEndpoint"
+                @remove="removeEndpoint"
+              >
+                <template #row="{ item: ep }">
+                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.site.customEndpoints.name") }}
+                      </label>
+                      <input
+                        v-model="ep.name"
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="
+                          t(
+                            'admin.settings.site.customEndpoints.namePlaceholder',
+                          )
+                        "
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
                       >
                         {{
-                          t("admin.settings.site.customEndpoints.itemLabel", {
-                            n: index + 1,
-                          })
+                          t("admin.settings.site.customEndpoints.endpointUrl")
                         }}
-                      </span>
-                      <button
-                        type="button"
-                        class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                        @click="removeEndpoint(index)"
-                      >
-                        <svg
-                          class="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
+                      </label>
+                      <input
+                        v-model="ep.endpoint"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t(
+                            'admin.settings.site.customEndpoints.endpointUrlPlaceholder',
+                          )
+                        "
+                      />
                     </div>
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div>
-                        <label
-                          class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                        >
-                          {{ t("admin.settings.site.customEndpoints.name") }}
-                        </label>
-                        <input
-                          v-model="ep.name"
-                          type="text"
-                          class="input text-sm"
-                          :placeholder="
-                            t(
-                              'admin.settings.site.customEndpoints.namePlaceholder',
-                            )
-                          "
-                        />
-                      </div>
-                      <div>
-                        <label
-                          class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                        >
-                          {{
-                            t("admin.settings.site.customEndpoints.endpointUrl")
-                          }}
-                        </label>
-                        <input
-                          v-model="ep.endpoint"
-                          type="url"
-                          class="input font-mono text-sm"
-                          :placeholder="
-                            t(
-                              'admin.settings.site.customEndpoints.endpointUrlPlaceholder',
-                            )
-                          "
-                        />
-                      </div>
-                      <div class="sm:col-span-2">
-                        <label
-                          class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                        >
-                          {{
-                            t(
-                              "admin.settings.site.customEndpoints.descriptionLabel",
-                            )
-                          }}
-                        </label>
-                        <input
-                          v-model="ep.description"
-                          type="text"
-                          class="input text-sm"
-                          :placeholder="
-                            t(
-                              'admin.settings.site.customEndpoints.descriptionPlaceholder',
-                            )
-                          "
-                        />
-                      </div>
+                    <div class="sm:col-span-2">
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{
+                          t(
+                            "admin.settings.site.customEndpoints.descriptionLabel",
+                          )
+                        }}
+                      </label>
+                      <input
+                        v-model="ep.description"
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="
+                          t(
+                            'admin.settings.site.customEndpoints.descriptionPlaceholder',
+                          )
+                        "
+                      />
                     </div>
                   </div>
-                </div>
-
-                <button
-                  type="button"
-                  class="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 px-4 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
-                  @click="addEndpoint"
-                >
-                  <svg
-                    class="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  {{ t("admin.settings.site.customEndpoints.add") }}
-                </button>
-              </div>
+                </template>
+              </RuleListEditor>
 
               <!-- Contact Info -->
               <div>
@@ -6668,182 +6114,89 @@
                 {{ t("admin.settings.customMenu.description") }}
               </p>
             </div>
-            <div class="space-y-4 p-6">
-              <!-- Existing menu items -->
-              <div
-                v-for="(item, index) in form.custom_menu_items"
-                :key="item.id || index"
-                class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
+            <div class="p-6">
+              <RuleListEditor
+                :items="form.custom_menu_items"
+                variant="card"
+                :item-label="(index) => t('admin.settings.customMenu.itemLabel', { n: index + 1 })"
+                :add-label="t('admin.settings.customMenu.add')"
+                :remove-label="t('admin.settings.customMenu.remove')"
+                add-placement="footer"
+                reorderable
+                test-id="custom-menu-items"
+                @add="addMenuItem"
+                @remove="removeMenuItem"
+                @move="(from, to) => moveMenuItem(from, to > from ? 1 : -1)"
               >
-                <div class="mb-3 flex items-center justify-between">
-                  <span
-                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{
-                      t("admin.settings.customMenu.itemLabel", { n: index + 1 })
-                    }}
-                  </span>
-                  <div class="flex items-center gap-2">
-                    <!-- Move up -->
-                    <button
-                      v-if="index > 0"
-                      type="button"
-                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
-                      :title="t('admin.settings.customMenu.moveUp')"
-                      @click="moveMenuItem(index, -1)"
-                    >
-                      <svg
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
+                <template #row="{ item }">
+                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <!-- Label -->
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
                       >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M5 15l7-7 7 7"
-                        />
-                      </svg>
-                    </button>
-                    <!-- Move down -->
-                    <button
-                      v-if="index < form.custom_menu_items.length - 1"
-                      type="button"
-                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
-                      :title="t('admin.settings.customMenu.moveDown')"
-                      @click="moveMenuItem(index, 1)"
-                    >
-                      <svg
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
+                        {{ t("admin.settings.customMenu.name") }}
+                      </label>
+                      <input
+                        v-model="item.label"
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="
+                          t('admin.settings.customMenu.namePlaceholder')
+                        "
+                      />
+                    </div>
+                    <!-- Visibility -->
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
                       >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </button>
-                    <!-- Delete -->
-                    <button
-                      type="button"
-                      class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                      :title="t('admin.settings.customMenu.remove')"
-                      @click="removeMenuItem(index)"
-                    >
-                      <svg
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
+                        {{ t("admin.settings.customMenu.visibility") }}
+                      </label>
+                      <Select v-model="item.visibility" :options="customMenuVisibilityOptions" class="text-sm" />
+                    </div>
+                    <!-- URL (full width) -->
+                    <div class="sm:col-span-2">
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
                       >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
+                        {{ t("admin.settings.customMenu.url") }}
+                      </label>
+                      <input
+                        v-model="item.url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.customMenu.urlPlaceholder')
+                        "
+                      />
+                    </div>
+                    <!-- SVG Icon (full width) -->
+                    <div class="sm:col-span-2">
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.customMenu.iconSvg") }}
+                      </label>
+                      <ImageUpload
+                        :model-value="item.icon_svg"
+                        mode="svg"
+                        size="sm"
+                        :upload-label="t('admin.settings.customMenu.uploadSvg')"
+                        :remove-label="t('admin.settings.customMenu.removeSvg')"
+                        @update:model-value="(v: string) => (item.icon_svg = v)"
+                      />
+                    </div>
                   </div>
-                </div>
-
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <!-- Label -->
-                  <div>
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.customMenu.name") }}
-                    </label>
-                    <input
-                      v-model="item.label"
-                      type="text"
-                      class="input text-sm"
-                      :placeholder="
-                        t('admin.settings.customMenu.namePlaceholder')
-                      "
-                    />
-                  </div>
-
-                  <!-- Visibility -->
-                  <div>
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.customMenu.visibility") }}
-                    </label>
-                    <Select v-model="item.visibility" :options="customMenuVisibilityOptions" class="text-sm" />
-                  </div>
-
-                  <!-- URL (full width) -->
-                  <div class="sm:col-span-2">
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.customMenu.url") }}
-                    </label>
-                    <input
-                      v-model="item.url"
-                      type="url"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.customMenu.urlPlaceholder')
-                      "
-                    />
-                  </div>
-
-                  <!-- SVG Icon (full width) -->
-                  <div class="sm:col-span-2">
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.customMenu.iconSvg") }}
-                    </label>
-                    <ImageUpload
-                      :model-value="item.icon_svg"
-                      mode="svg"
-                      size="sm"
-                      :upload-label="t('admin.settings.customMenu.uploadSvg')"
-                      :remove-label="t('admin.settings.customMenu.removeSvg')"
-                      @update:model-value="(v: string) => (item.icon_svg = v)"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Add button -->
-              <button
-                type="button"
-                class="flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
-                @click="addMenuItem"
-              >
-                <svg
-                  class="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                {{ t("admin.settings.customMenu.add") }}
-              </button>
+                </template>
+              </RuleListEditor>
             </div>
           </div>
 
           <!-- Home Featured Models -->
           <div class="card">
             <div
-              class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+              class="flex items-end justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700"
             >
               <div>
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -6868,64 +6221,29 @@
               </button>
             </div>
             <div class="space-y-4 p-6">
-              <div
-                v-for="(modelId, mIndex) in form.home_featured_models"
-                :key="modelId || mIndex"
-                class="flex items-center gap-2"
+              <RuleListEditor
+                :items="form.home_featured_models"
+                :add-label="localText('添加模型', 'Add model')"
+                :remove-label="localText('删除模型', 'Remove model')"
+                :max="homeFeaturedModelsMax"
+                :animated="false"
+                add-placement="footer"
+                reorderable
+                test-id="home-featured-models"
+                @add="form.home_featured_models.push('')"
+                @remove="removeHomeFeaturedModel"
+                @move="(from, to) => moveHomeFeaturedModel(from, to > from ? 1 : -1)"
               >
-                <Select
-                  v-model="form.home_featured_models[mIndex]"
-                  :options="homeFeaturedModelOptions"
-                  searchable
-                  class="flex-1"
-                  :placeholder="localText('选择模型', 'Select a model')"
-                />
-                <button
-                  v-if="mIndex > 0"
-                  type="button"
-                  class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
-                  :title="t('admin.settings.customMenu.moveUp')"
-                  @click="moveHomeFeaturedModel(mIndex, -1)"
-                >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
-                  </svg>
-                </button>
-                <button
-                  v-if="mIndex < form.home_featured_models.length - 1"
-                  type="button"
-                  class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
-                  :title="t('admin.settings.customMenu.moveDown')"
-                  @click="moveHomeFeaturedModel(mIndex, 1)"
-                >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                  :title="localText('删除模型', 'Remove model')"
-                  @click="removeHomeFeaturedModel(mIndex)"
-                >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <!-- Add model button -->
-              <button
-                type="button"
-                class="flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
-                :disabled="form.home_featured_models.length >= homeFeaturedModelsMax"
-                @click="form.home_featured_models.push('')"
-              >
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                {{ localText("添加模型", "Add model") }}
-              </button>
+                <template #row="{ index: mIndex }">
+                  <Select
+                    v-model="form.home_featured_models[mIndex]"
+                    :options="homeFeaturedModelOptions"
+                    searchable
+                    class="min-w-0"
+                    :placeholder="localText('选择模型', 'Select a model')"
+                  />
+                </template>
+              </RuleListEditor>
               <p
                 v-if="homeFeaturedModelOptions.length === 0"
                 class="text-xs text-gray-400 dark:text-gray-500"
@@ -6938,7 +6256,7 @@
           <!-- Footer Settings -->
           <div class="card">
             <div
-              class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+              class="flex items-end justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700"
             >
               <div>
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -6963,107 +6281,56 @@
             </div>
             <div class="space-y-4 p-6">
               <!-- Link groups -->
-              <div
-                v-for="(group, gIndex) in form.footer_links"
-                :key="gIndex"
-                class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
+              <RuleListEditor
+                :items="form.footer_links"
+                variant="card"
+                :item-label="(index) => localText(`分组 #${index + 1}`, `Group #${index + 1}`)"
+                :add-label="localText('添加分组', 'Add group')"
+                :remove-label="localText('删除分组', 'Remove group')"
+                add-placement="footer"
+                reorderable
+                test-id="footer-groups"
+                @add="addFooterGroup"
+                @remove="removeFooterGroup"
+                @move="(from, to) => moveFooterGroup(from, to > from ? 1 : -1)"
               >
-                <div class="mb-3 flex items-center justify-between gap-3">
-                  <input
-                    v-model="group.title"
-                    type="text"
-                    class="input max-w-xs text-sm font-medium"
-                    :placeholder="localText('分组标题，如：产品', 'Group title, e.g. Product')"
-                  />
-                  <div class="flex items-center gap-2">
-                    <button
-                      v-if="gIndex > 0"
-                      type="button"
-                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
-                      :title="t('admin.settings.customMenu.moveUp')"
-                      @click="moveFooterGroup(gIndex, -1)"
-                    >
-                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button
-                      v-if="gIndex < form.footer_links.length - 1"
-                      type="button"
-                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
-                      :title="t('admin.settings.customMenu.moveDown')"
-                      @click="moveFooterGroup(gIndex, 1)"
-                    >
-                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                      :title="localText('删除分组', 'Remove group')"
-                      @click="removeFooterGroup(gIndex)"
-                    >
-                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="space-y-2">
-                  <div
-                    v-for="(link, lIndex) in group.links"
-                    :key="lIndex"
-                    class="flex items-center gap-2"
-                  >
+                <template #row="{ item: group, index: gIndex }">
+                  <div class="space-y-3">
                     <input
-                      v-model="link.label"
+                      v-model="group.title"
                       type="text"
-                      class="input w-40 text-sm"
-                      :placeholder="localText('名称', 'Label')"
+                      class="input max-w-xs text-sm font-medium"
+                      :placeholder="localText('分组标题，如：产品', 'Group title, e.g. Product')"
                     />
-                    <input
-                      v-model="link.url"
-                      type="text"
-                      class="input flex-1 font-mono text-sm"
-                      :placeholder="localText('https://... 或 /models', 'https://... or /models')"
-                    />
-                    <button
-                      type="button"
-                      class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                      :title="localText('删除链接', 'Remove link')"
-                      @click="group.links.splice(lIndex, 1)"
+                    <RuleListEditor
+                      :items="group.links"
+                      :add-label="localText('添加链接', 'Add link')"
+                      :remove-label="localText('删除链接', 'Remove link')"
+                      add-placement="footer"
+                      :test-id="`footer-links-${gIndex}`"
+                      @add="group.links.push({ label: '', url: '' })"
+                      @remove="group.links.splice($event, 1)"
                     >
-                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+                      <template #row="{ item: link }">
+                        <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                          <input
+                            v-model="link.label"
+                            type="text"
+                            class="input text-sm"
+                            :placeholder="localText('名称', 'Label')"
+                          />
+                          <input
+                            v-model="link.url"
+                            type="text"
+                            class="input min-w-0 font-mono text-sm"
+                            :placeholder="localText('https://... 或 /models', 'https://... or /models')"
+                          />
+                        </div>
+                      </template>
+                    </RuleListEditor>
                   </div>
-                  <button
-                    type="button"
-                    class="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                    @click="group.links.push({ label: '', url: '' })"
-                  >
-                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
-                    {{ localText("添加链接", "Add link") }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Add group button -->
-              <button
-                type="button"
-                class="flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
-                @click="addFooterGroup"
-              >
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                {{ localText("添加分组", "Add group") }}
-              </button>
+                </template>
+              </RuleListEditor>
 
               <!-- Footer text -->
               <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
@@ -7083,7 +6350,7 @@
         <!-- /分页：通用设置 -->
 
         <!-- 分页：登录条款 -->
-        <div v-show="activeTab === 'agreement'" class="space-y-6">
+        <div v-show="activeTab === 'agreement'" v-content-reveal="activeTab === 'agreement'" class="space-y-4">
           <div class="card">
             <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
               <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -7139,7 +6406,7 @@
                       "
                       @click="form.login_agreement_mode = 'checkbox'"
                     >
-                      <Icon name="checkCircle" size="sm" />
+                      <Icon name="checkCircle" size="sm" :animate-on-hover="false" />
                       {{ localText("复选框", "Checkbox") }}
                     </button>
                   </div>
@@ -7167,125 +6434,94 @@
                 </div>
               </div>
 
-              <div>
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 class="text-sm font-medium text-gray-900 dark:text-white">
-                      {{ localText("协议文档", "Agreement documents") }}
-                    </h3>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        localText(
-                          "文档名称可自定义，内容按 Markdown 保存。可参考：服务条款、使用政策、支持的国家和地区、服务特定条款。",
-                          "Document titles are customizable and content is saved as Markdown.",
-                        )
-                      }}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn btn-primary btn-sm h-9 inline-flex items-center gap-1.5"
-                    @click="addLoginAgreementDocument"
-                  >
-                    <Icon name="plus" size="sm" />
-                    {{ localText("添加文档", "Add document") }}
-                  </button>
-                </div>
-
-                <div class="mt-4 space-y-3">
-                  <div
-                    v-for="(doc, index) in form.login_agreement_documents"
-                    :key="doc.id || index"
-                    class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800/60"
-                  >
-                    <div class="mb-3 flex items-center justify-between gap-3">
-                      <div class="flex min-w-0 items-center gap-3">
-                        <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
-                          <Icon
-                            :name="
-                              index === 1
-                                ? 'shield'
-                                : index === 2
-                                  ? 'globe'
-                                  : index === 3
-                                    ? 'cog'
-                                    : 'document'
-                            "
-                            size="sm"
-                          />
-                        </span>
-                        <div class="min-w-0">
-                          <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                            {{ doc.title || localText("未命名文档", "Untitled document") }}
-                          </p>
-                          <p class="truncate text-xs text-gray-500 dark:text-gray-400">
-                            {{ loginAgreementRoutePath(doc, index) }}
-                          </p>
-                        </div>
+              <RuleListEditor
+                :items="form.login_agreement_documents"
+                :title="localText('协议文档', 'Agreement documents')"
+                :hint="localText('文档名称可自定义，内容按 Markdown 保存。可参考：服务条款、使用政策、支持的国家和地区、服务特定条款。', 'Document titles are customizable and content is saved as Markdown.')"
+                :add-label="localText('添加文档', 'Add document')"
+                variant="card"
+                :item-label="(index) => localText(`文档 #${index + 1}`, `Document #${index + 1}`)"
+                :min="form.login_agreement_enabled ? 1 : 0"
+                test-id="login-agreement-documents"
+                @add="addLoginAgreementDocument"
+                @remove="removeLoginAgreementDocument"
+              >
+                <template #row="{ item: doc, index }">
+                  <div class="mb-3 flex items-center justify-between gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
+                      <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
+                        <Icon
+                          :name="
+                            index === 1
+                              ? 'shield'
+                              : index === 2
+                                ? 'globe'
+                                : index === 3
+                                  ? 'cog'
+                                  : 'document'
+                          "
+                          size="sm"
+                        />
+                      </span>
+                      <div class="min-w-0">
+                        <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                          {{ doc.title || localText("未命名文档", "Untitled document") }}
+                        </p>
+                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                          {{ loginAgreementRoutePath(doc, index) }}
+                        </p>
                       </div>
-                      <button
-                        type="button"
-                        class="rounded-control p-2 text-red-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-900/20"
-                        :disabled="
-                          form.login_agreement_enabled &&
-                          form.login_agreement_documents.length <= 1
-                        "
-                        @click="removeLoginAgreementDocument(index)"
-                      >
-                        <Icon name="trash" size="sm" />
-                      </button>
                     </div>
-
-                    <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                      <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                          {{ localText("文档名称", "Document title") }}
-                        </label>
+                  </div>
+                  <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    <div>
+                      <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {{ localText("文档名称", "Document title") }}
+                      </label>
+                      <input
+                        v-model="doc.title"
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="localText('例如：服务条款', 'Example: Terms of Service')"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {{ localText("路由标识", "Route slug") }}
+                      </label>
+                      <div class="flex overflow-hidden rounded-control border border-primary-900/10 bg-white focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:border-dark-600 dark:bg-dark-900 dark:focus-within:border-primary-500 dark:focus-within:ring-primary-500">
+                        <span class="inline-flex flex-shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-400">
+                          /legal/
+                        </span>
                         <input
-                          v-model="doc.title"
+                          v-model="doc.id"
                           type="text"
-                          class="input text-sm"
-                          :placeholder="localText('例如：服务条款', 'Example: Terms of Service')"
+                          class="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-0 dark:text-white dark:placeholder:text-dark-500"
+                          placeholder="usage-policy"
                         />
                       </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                          {{ localText("路由标识", "Route slug") }}
-                        </label>
-                        <div class="flex overflow-hidden rounded-control border border-primary-900/10 bg-white focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:border-dark-600 dark:bg-dark-900 dark:focus-within:border-primary-500 dark:focus-within:ring-primary-500">
-                          <span class="inline-flex flex-shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-400">
-                            /legal/
-                          </span>
-                          <input
-                            v-model="doc.id"
-                            type="text"
-                            class="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-0 dark:text-white dark:placeholder:text-dark-500"
-                            placeholder="usage-policy"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div class="mt-3">
-                      <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                        {{ localText("Markdown 内容", "Markdown content") }}
-                      </label>
-                        <textarea
-                          v-model="doc.content_md"
-                          rows="8"
-                          class="input font-mono text-sm"
-                          :placeholder="localText('在这里填写正式 Markdown 内容。', 'Write the final Markdown content here.')"
-                        ></textarea>
                     </div>
                   </div>
-                </div>
-              </div>
+                  <div class="mt-3">
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                      {{ localText("Markdown 内容", "Markdown content") }}
+                    </label>
+                      <textarea
+                        v-model="doc.content_md"
+                        rows="8"
+                        class="input font-mono text-sm"
+                        :placeholder="localText('在这里填写正式 Markdown 内容。', 'Write the final Markdown content here.')"
+                      ></textarea>
+                  </div>
+                </template>
+              </RuleListEditor>
             </div>
           </div>
         </div>
         <!-- /分页：登录条款 -->
 
         <!-- 分页：功能特性 -->
-        <div v-show="activeTab === 'features'" class="space-y-6">
+        <div v-show="activeTab === 'features'" v-content-reveal="activeTab === 'features'" class="space-y-4">
           <div class="card">
             <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
               <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -7374,7 +6610,7 @@
                 <div class="flex items-center gap-3">
                   <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700">
                     <div
-                      class="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                      class="h-full rounded-full bg-emerald-500 transition-[width,background-color] duration-layout"
                       :style="{ width: `${creativeWorkerUsagePercent}%` }"
                     ></div>
                   </div>
@@ -7384,106 +6620,80 @@
                 </div>
               </div>
 
-              <div class="mt-6 border-t border-gray-100 pt-5 dark:border-dark-700">
-                <div class="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 class="font-medium text-gray-900 dark:text-white">
-                      {{ t("admin.settings.features.creative.modelSettings.title") }}
-                    </h3>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.features.creative.modelSettings.description") }}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn btn-primary inline-flex items-center gap-1.5"
-                    :disabled="creativeModelCandidatesLoading || !creativeModelCandidates.some((candidate) => !form.creative_model_settings.some((item) => creativeModelSettingKey(item) === creativeModelSettingKey(candidate)))"
-                    @click="addCreativeModelSetting"
-                  >
-                    <Icon name="plus" size="sm" />
-                    {{ t("admin.settings.features.creative.modelSettings.add") }}
-                  </button>
-                </div>
-
-                <p v-if="creativeModelCandidatesLoading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.features.creative.modelSettings.loading") }}
-                </p>
-                <p v-else-if="creativeModelCandidatesError" class="mt-4 text-sm text-amber-600 dark:text-amber-400">
-                  {{ t("admin.settings.features.creative.modelSettings.loadError") }}
-                </p>
-
-                <!-- 模型能力列表：列头与行共用同一网格分栏，模型选择、能力开关、删除操作对齐，避免行内松散留白。 -->
-                <div
-                  v-if="form.creative_model_settings.length > 0"
-                  class="mt-4 overflow-hidden rounded-surface border border-gray-200 dark:border-dark-600"
-                >
+              <RuleListEditor
+                class="mt-6 border-t border-gray-100 pt-5 dark:border-dark-700"
+                :items="form.creative_model_settings"
+                :title="t('admin.settings.features.creative.modelSettings.title')"
+                :hint="t('admin.settings.features.creative.modelSettings.description')"
+                :add-label="t('admin.settings.features.creative.modelSettings.add')"
+                :remove-label="t('admin.settings.features.creative.modelSettings.remove')"
+                :empty-text="t('admin.settings.features.creative.modelSettings.empty')"
+                :add-disabled="creativeModelCandidatesLoading || !creativeModelCandidates.some((candidate) => !form.creative_model_settings.some((item) => creativeModelSettingKey(item) === creativeModelSettingKey(candidate)))"
+                test-id="creative-model-settings"
+                @add="addCreativeModelSetting"
+                @remove="removeCreativeModelSetting"
+              >
+                <template #header-extra>
+                  <p v-if="creativeModelCandidatesLoading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                    {{ t("admin.settings.features.creative.modelSettings.loading") }}
+                  </p>
+                  <p v-else-if="creativeModelCandidatesError" class="mt-4 text-sm text-amber-600 dark:text-amber-400">
+                    {{ t("admin.settings.features.creative.modelSettings.loadError") }}
+                  </p>
                   <div
-                    class="hidden items-center gap-4 border-b border-gray-100 bg-gray-50 px-4 py-2 text-xs font-medium text-gray-500 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto] dark:border-dark-700 dark:bg-dark-800/60 dark:text-dark-300"
+                    class="hidden grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-xs font-medium text-gray-500 sm:grid dark:text-dark-300"
                   >
-                    <span>{{ t("admin.settings.features.creative.modelSettings.modelColumn") }}</span>
-                    <span>{{ t("admin.settings.features.creative.modelSettings.operationsColumn") }}</span>
+                    <div class="grid grid-cols-2 items-center gap-4">
+                      <span>{{ t("admin.settings.features.creative.modelSettings.modelColumn") }}</span>
+                      <span>{{ t("admin.settings.features.creative.modelSettings.operationsColumn") }}</span>
+                    </div>
                     <span class="w-9" aria-hidden="true"></span>
                   </div>
-                  <div class="divide-y divide-gray-100 dark:divide-dark-700">
-                    <div
-                      v-for="(item, index) in form.creative_model_settings"
-                      :key="`${creativeModelSettingKey(item)}-${index}`"
-                      class="grid grid-cols-1 items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-4 dark:hover:bg-dark-800/40"
-                    >
-                      <div class="min-w-0">
-                        <Select
-                          :model-value="creativeModelSettingKey(item)"
-                          :options="creativeModelOptionsForRow(index)"
-                          :placeholder="t('admin.settings.features.creative.modelSettings.selectModel')"
-                          :searchable="'auto'"
-                          class="w-full sm:max-w-xs"
-                          @change="onCreativeModelSelected(index, $event)"
-                        />
-                        <p v-if="!creativeCandidateForSetting(item)" class="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                          {{ t("admin.settings.features.creative.modelSettings.unavailableHint") }}
-                        </p>
-                      </div>
-                      <!-- 能力开关：胶囊按钮替代原生复选框，选中态带对勾，禁用态沿用“至少保留一项能力”等约束。 -->
-                      <div class="flex flex-wrap items-center gap-2">
-                        <button
-                          v-for="operation in creativeOperationChoices"
-                          :key="operation"
-                          type="button"
-                          class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
-                          :class="[
-                            item.operations.includes(operation)
-                              ? 'border-primary-500/60 bg-primary-50 text-primary-700 dark:border-primary-500/50 dark:bg-primary-500/10 dark:text-primary-300'
-                              : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-dark-600 dark:text-dark-300 dark:hover:border-dark-400 dark:hover:text-dark-100',
-                            creativeOperationCheckboxDisabled(index, operation) && 'cursor-not-allowed opacity-50',
-                          ]"
-                          :disabled="creativeOperationCheckboxDisabled(index, operation)"
-                          :aria-pressed="item.operations.includes(operation)"
-                          @click="toggleCreativeOperation(index, operation, !item.operations.includes(operation))"
-                        >
-                          <Icon v-if="item.operations.includes(operation)" name="check" size="xs" />
-                          {{ t(`admin.settings.features.creative.modelSettings.operations.${operation}`) }}
-                        </button>
-                      </div>
+                </template>
+                <template #row="{ item, index }">
+                  <div class="grid grid-cols-1 items-center gap-3 sm:grid-cols-2 sm:gap-4">
+                    <div class="min-w-0">
+                      <Select
+                        :model-value="creativeModelSettingKey(item)"
+                        :options="creativeModelOptionsForRow(index)"
+                        :placeholder="t('admin.settings.features.creative.modelSettings.selectModel')"
+                        :searchable="'auto'"
+                        class="w-full sm:max-w-xs"
+                        @change="onCreativeModelSelected(index, $event)"
+                      />
+                      <p v-if="!creativeCandidateForSetting(item)" class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                        {{ t("admin.settings.features.creative.modelSettings.unavailableHint") }}
+                      </p>
+                    </div>
+                    <!-- 能力开关：胶囊按钮替代原生复选框，选中态带对勾，禁用态沿用“至少保留一项能力”等约束。 -->
+                    <div class="flex flex-wrap items-center gap-2">
                       <button
+                        v-for="operation in creativeOperationChoices"
+                        :key="operation"
                         type="button"
-                        class="btn-icon justify-self-start text-gray-500 hover:text-red-600 sm:justify-self-end dark:text-dark-300 dark:hover:text-red-400"
-                        :aria-label="t('admin.settings.features.creative.modelSettings.remove')"
-                        :title="t('admin.settings.features.creative.modelSettings.remove')"
-                        @click="removeCreativeModelSetting(index)"
+                        class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+                        :class="[
+                          item.operations.includes(operation)
+                            ? 'border-primary-500/60 bg-primary-50 text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
+                            : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-dark-600 dark:text-dark-300 dark:hover:border-dark-400 dark:hover:text-dark-100',
+                          creativeOperationCheckboxDisabled(index, operation) && 'cursor-not-allowed opacity-50',
+                        ]"
+                        :disabled="creativeOperationCheckboxDisabled(index, operation)"
+                        :aria-pressed="item.operations.includes(operation)"
+                        @click="toggleCreativeOperation(index, operation, !item.operations.includes(operation))"
                       >
-                        <Icon name="trash" size="sm" />
+                        <Icon
+                          v-if="item.operations.includes(operation)"
+                          name="check"
+                          size="xs"
+                          :animate-on-hover="false"
+                        />
+                        {{ t(`admin.settings.features.creative.modelSettings.operations.${operation}`) }}
                       </button>
                     </div>
                   </div>
-                </div>
-                <p
-                  v-else
-                  class="mt-4 flex items-center justify-center gap-2 rounded-surface border border-dashed border-gray-200 px-4 py-6 text-sm text-gray-500 dark:border-dark-600 dark:text-dark-300"
-                >
-                  <Icon name="infoCircle" size="sm" />
-                  {{ t("admin.settings.features.creative.modelSettings.empty") }}
-                </p>
-              </div>
+                </template>
+              </RuleListEditor>
             </div>
           </div>
 
@@ -7510,20 +6720,22 @@
               </div>
 
               <!-- 管理员充值返利仅在邀请返利总开关开启时可配置。 -->
-              <div
-                v-if="form.affiliate_enabled"
-                class="flex items-center justify-between gap-4 border-t border-gray-100 pt-5 dark:border-dark-700"
-              >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">
-                    {{ t("admin.settings.features.affiliate.adminRechargeRebate") }}
-                  </label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.features.affiliate.adminRechargeRebateHint") }}
-                  </p>
+              <Collapse :open="form.affiliate_enabled" unmount-on-hide>
+                <div
+
+                  class="flex items-center justify-between gap-4 border-t border-gray-100 pt-5 dark:border-dark-700"
+                >
+                  <div>
+                    <label class="font-medium text-gray-900 dark:text-white">
+                      {{ t("admin.settings.features.affiliate.adminRechargeRebate") }}
+                    </label>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                      {{ t("admin.settings.features.affiliate.adminRechargeRebateHint") }}
+                    </p>
+                  </div>
+                  <Toggle v-model="form.affiliate_admin_recharge_enabled" />
                 </div>
-                <Toggle v-model="form.affiliate_admin_recharge_enabled" />
-              </div>
+              </Collapse>
 
               <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
@@ -7644,24 +6856,26 @@
                   <Toggle v-model="form.cyber_session_block_enabled" />
                 </div>
 
-                <div
-                  v-if="form.cyber_session_block_enabled"
-                  class="mt-4 max-w-xs"
-                >
-                  <label class="input-label">
-                    {{ t("admin.settings.features.riskControl.cyberSessionBlockTTLSeconds") }}
-                  </label>
-                  <input
-                    v-model.number="form.cyber_session_block_ttl_seconds"
-                    type="number"
-                    min="1"
-                    step="1"
-                    class="input"
-                  />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.features.riskControl.cyberSessionBlockTTLSecondsHint") }}
-                  </p>
-                </div>
+                <Collapse :open="form.cyber_session_block_enabled" unmount-on-hide>
+                  <div
+
+                    class="mt-4 max-w-xs"
+                  >
+                    <label class="input-label">
+                      {{ t("admin.settings.features.riskControl.cyberSessionBlockTTLSeconds") }}
+                    </label>
+                    <input
+                      v-model.number="form.cyber_session_block_ttl_seconds"
+                      type="number"
+                      min="1"
+                      step="1"
+                      class="input"
+                    />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {{ t("admin.settings.features.riskControl.cyberSessionBlockTTLSecondsHint") }}
+                    </p>
+                  </div>
+                </Collapse>
               </div>
             </div>
           </div>
@@ -7670,7 +6884,7 @@
 
         <!-- Tab: Email -->
         <!-- Tab: Payment -->
-        <div v-show="activeTab === 'payment'" class="space-y-6">
+        <div v-show="activeTab === 'payment'" v-content-reveal="activeTab === 'payment'" class="space-y-4">
           <!-- Payment System Settings -->
           <div class="card">
             <div
@@ -7687,19 +6901,7 @@
                   rel="noopener noreferrer"
                   class="ml-2 inline-flex items-center text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
                 >
-                  <svg
-                    class="mr-0.5 h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
-                  </svg>
+                  <Icon name="externalLink" size="xs" class="mr-0.5 h-3.5 w-3.5" />
                   {{ t("admin.settings.payment.configGuide") }}
                 </a>
               </p>
@@ -7732,7 +6934,7 @@
                       v-model="form.payment_product_name_prefix"
                       type="text"
                       class="input"
-                      placeholder="Sub2API"
+                      placeholder="TokenRouter"
                     />
                   </div>
                   <div>
@@ -7754,7 +6956,7 @@
                       class="rounded-control border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300"
                     >
                       {{
-                        (form.payment_product_name_prefix || "Sub2API") +
+                        (form.payment_product_name_prefix || "TokenRouter") +
                         " 100 " +
                         (form.payment_product_name_suffix || "CNY")
                       }}
@@ -8185,7 +7387,7 @@
                       type="button"
                       @click="togglePaymentType(pt.value)"
                       :class="[
-                        'rounded-control border px-3 py-1.5 text-sm font-medium transition-all',
+                        'rounded-control border px-3 py-1.5 text-sm font-medium transition',
                         isPaymentTypeEnabled(pt.value)
                           ? 'border-primary-600 bg-primary-600 text-white shadow-sm'
                           : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-dark-500',
@@ -8203,19 +7405,7 @@
                       class="ml-1 text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300"
                     >
                       {{ t("admin.settings.payment.findProvider") }}
-                      <svg
-                        class="mb-0.5 ml-0.5 inline h-3 w-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                        />
-                      </svg>
+                      <Icon name="externalLink" size="xs" class="mb-0.5 ml-0.5 inline h-3 w-3" />
                     </a>
                   </p>
                 </div>
@@ -8275,7 +7465,7 @@
           />
         </div>
 
-        <div v-show="activeTab === 'email'" class="space-y-6">
+        <div v-show="activeTab === 'email'" v-content-reveal="activeTab === 'email'" class="space-y-4">
           <!-- Email disabled hint - show when email_verify_enabled is off -->
           <div v-if="!form.email_verify_enabled" class="card">
             <div class="p-6">
@@ -8298,234 +7488,212 @@
           </div>
 
           <!-- SMTP Settings - Only show when email verification is enabled -->
-          <div v-if="form.email_verify_enabled" class="card">
-            <div
-              class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <div>
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                  {{ t("admin.settings.smtp.title") }}
-                </h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.smtp.description") }}
-                </p>
-              </div>
-              <button
-                type="button"
-                @click="testSmtpConnection"
-                :disabled="testingSmtp || loadFailed"
-                class="btn btn-secondary btn-sm h-9"
-              >
-                <svg
-                  v-if="testingSmtp"
-                  class="h-4 w-4 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  ></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                {{
-                  testingSmtp
-                    ? t("admin.settings.smtp.testing")
-                    : t("admin.settings.smtp.testConnection")
-                }}
-              </button>
-            </div>
-            <div class="space-y-6 p-6">
-              <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.smtp.host") }}
-                  </label>
-                  <input
-                    v-model="form.smtp_host"
-                    type="text"
-                    class="input"
-                    :placeholder="t('admin.settings.smtp.hostPlaceholder')"
-                  />
-                </div>
-                <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.smtp.port") }}
-                  </label>
-                  <input
-                    v-model.number="form.smtp_port"
-                    type="number"
-                    min="1"
-                    max="65535"
-                    class="input"
-                    :placeholder="t('admin.settings.smtp.portPlaceholder')"
-                  />
-                </div>
-                <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.smtp.username") }}
-                  </label>
-                  <input
-                    v-model="form.smtp_username"
-                    type="text"
-                    class="input"
-                    :placeholder="t('admin.settings.smtp.usernamePlaceholder')"
-                  />
-                </div>
-                <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.smtp.password") }}
-                  </label>
-                  <input
-                    v-model="form.smtp_password"
-                    type="password"
-                    class="input"
-                    autocomplete="new-password"
-                    autocapitalize="off"
-                    spellcheck="false"
-                    @keydown="smtpPasswordManuallyEdited = true"
-                    @paste="smtpPasswordManuallyEdited = true"
-                    :placeholder="
-                      form.smtp_password_configured
-                        ? t('admin.settings.smtp.passwordConfiguredPlaceholder')
-                        : t('admin.settings.smtp.passwordPlaceholder')
-                    "
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      form.smtp_password_configured
-                        ? t("admin.settings.smtp.passwordConfiguredHint")
-                        : t("admin.settings.smtp.passwordHint")
-                    }}
-                  </p>
-                </div>
-                <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.smtp.fromEmail") }}
-                  </label>
-                  <input
-                    v-model="form.smtp_from_email"
-                    type="email"
-                    class="input"
-                    :placeholder="t('admin.settings.smtp.fromEmailPlaceholder')"
-                  />
-                </div>
-                <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.smtp.fromName") }}
-                  </label>
-                  <input
-                    v-model="form.smtp_from_name"
-                    type="text"
-                    class="input"
-                    :placeholder="t('admin.settings.smtp.fromNamePlaceholder')"
-                  />
-                </div>
-              </div>
-
-              <!-- Use TLS Toggle -->
+          <Collapse :open="form.email_verify_enabled" unmount-on-hide>
+            <div class="card">
               <div
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
+                class="flex items-end justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-700"
               >
                 <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.smtp.useTls")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.smtp.useTlsHint") }}
+                  <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    {{ t("admin.settings.smtp.title") }}
+                  </h2>
+                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {{ t("admin.settings.smtp.description") }}
                   </p>
-                </div>
-                <Toggle v-model="form.smtp_use_tls" />
-              </div>
-            </div>
-          </div>
-
-          <!-- Send Test Email - Only show when email verification is enabled -->
-          <div v-if="form.email_verify_enabled" class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.testEmail.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.testEmail.description") }}
-              </p>
-            </div>
-            <div class="p-6">
-              <div class="flex items-end gap-4">
-                <div class="flex-1">
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.testEmail.recipientEmail") }}
-                  </label>
-                  <input
-                    v-model="testEmailAddress"
-                    type="email"
-                    class="input"
-                    :placeholder="
-                      t('admin.settings.testEmail.recipientEmailPlaceholder')
-                    "
-                  />
                 </div>
                 <button
                   type="button"
-                  @click="sendTestEmail"
-                  :disabled="
-                    sendingTestEmail || !testEmailAddress || loadFailed
-                  "
-                  class="btn btn-secondary"
+                  @click="testSmtpConnection"
+                  :disabled="testingSmtp || loadFailed"
+                  class="btn btn-secondary btn-sm h-9"
                 >
-                  <svg
-                    v-if="sendingTestEmail"
+                  <Icon
+                    name="loader"
+                    size="sm"
+                    :animate-on-hover="false"
+                    v-if="testingSmtp"
                     class="h-4 w-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+                  />
                   {{
-                    sendingTestEmail
-                      ? t("admin.settings.testEmail.sending")
-                      : t("admin.settings.testEmail.sendTestEmail")
+                    testingSmtp
+                      ? t("admin.settings.smtp.testing")
+                      : t("admin.settings.smtp.testConnection")
                   }}
                 </button>
               </div>
+              <div class="space-y-6 p-6">
+                <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div>
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ t("admin.settings.smtp.host") }}
+                    </label>
+                    <input
+                      v-model="form.smtp_host"
+                      type="text"
+                      class="input"
+                      :placeholder="t('admin.settings.smtp.hostPlaceholder')"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ t("admin.settings.smtp.port") }}
+                    </label>
+                    <input
+                      v-model.number="form.smtp_port"
+                      type="number"
+                      min="1"
+                      max="65535"
+                      class="input"
+                      :placeholder="t('admin.settings.smtp.portPlaceholder')"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ t("admin.settings.smtp.username") }}
+                    </label>
+                    <input
+                      v-model="form.smtp_username"
+                      type="text"
+                      class="input"
+                      :placeholder="t('admin.settings.smtp.usernamePlaceholder')"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ t("admin.settings.smtp.password") }}
+                    </label>
+                    <input
+                      v-model="form.smtp_password"
+                      type="password"
+                      class="input"
+                      autocomplete="new-password"
+                      autocapitalize="off"
+                      spellcheck="false"
+                      @keydown="smtpPasswordManuallyEdited = true"
+                      @paste="smtpPasswordManuallyEdited = true"
+                      :placeholder="
+                        form.smtp_password_configured
+                          ? t('admin.settings.smtp.passwordConfiguredPlaceholder')
+                          : t('admin.settings.smtp.passwordPlaceholder')
+                      "
+                    />
+                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      {{
+                        form.smtp_password_configured
+                          ? t("admin.settings.smtp.passwordConfiguredHint")
+                          : t("admin.settings.smtp.passwordHint")
+                      }}
+                    </p>
+                  </div>
+                  <div>
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ t("admin.settings.smtp.fromEmail") }}
+                    </label>
+                    <input
+                      v-model="form.smtp_from_email"
+                      type="email"
+                      class="input"
+                      :placeholder="t('admin.settings.smtp.fromEmailPlaceholder')"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ t("admin.settings.smtp.fromName") }}
+                    </label>
+                    <input
+                      v-model="form.smtp_from_name"
+                      type="text"
+                      class="input"
+                      :placeholder="t('admin.settings.smtp.fromNamePlaceholder')"
+                    />
+                  </div>
+                </div>
+
+                <!-- Use TLS Toggle -->
+                <div
+                  class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
+                >
+                  <div>
+                    <label class="font-medium text-gray-900 dark:text-white">{{
+                      t("admin.settings.smtp.useTls")
+                    }}</label>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                      {{ t("admin.settings.smtp.useTlsHint") }}
+                    </p>
+                  </div>
+                  <Toggle v-model="form.smtp_use_tls" />
+                </div>
+              </div>
             </div>
-          </div>
+          </Collapse>
+
+          <!-- Send Test Email - Only show when email verification is enabled -->
+          <Collapse :open="form.email_verify_enabled" unmount-on-hide>
+            <div class="card">
+              <div
+                class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+              >
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                  {{ t("admin.settings.testEmail.title") }}
+                </h2>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {{ t("admin.settings.testEmail.description") }}
+                </p>
+              </div>
+              <div class="p-6">
+                <div class="flex items-end gap-4">
+                  <div class="flex-1">
+                    <label
+                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ t("admin.settings.testEmail.recipientEmail") }}
+                    </label>
+                    <input
+                      v-model="testEmailAddress"
+                      type="email"
+                      class="input"
+                      :placeholder="
+                        t('admin.settings.testEmail.recipientEmailPlaceholder')
+                      "
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    @click="sendTestEmail"
+                    :disabled="
+                      sendingTestEmail || !testEmailAddress || loadFailed
+                    "
+                    class="btn btn-secondary"
+                  >
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
+                      v-if="sendingTestEmail"
+                      class="h-4 w-4 animate-spin"
+                    />
+                    {{
+                      sendingTestEmail
+                        ? t("admin.settings.testEmail.sending")
+                        : t("admin.settings.testEmail.sendTestEmail")
+                    }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Collapse>
 
           <!-- 订阅到期提醒 -->
           <div class="card">
@@ -8578,27 +7746,29 @@
                 >
                 <Toggle v-model="form.balance_low_notify_enabled" />
               </div>
-              <div v-if="form.balance_low_notify_enabled">
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >{{ t("admin.settings.balanceNotify.threshold") }}</label
-                >
-                <div class="relative">
-                  <span
-                    class="input-icon text-gray-400"
-                    >{{ previewBalanceUnitSymbol }}</span>
-                  <input
-                    v-model.number="form.balance_low_notify_threshold"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    class="input input-has-icon input-icon-text"
-                  />
+              <Collapse :open="form.balance_low_notify_enabled" unmount-on-hide>
+                <div>
+                  <label
+                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >{{ t("admin.settings.balanceNotify.threshold") }}</label
+                  >
+                  <div class="relative">
+                    <span
+                      class="input-icon text-gray-400"
+                      >{{ previewBalanceUnitSymbol }}</span>
+                    <input
+                      v-model.number="form.balance_low_notify_threshold"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      class="input input-has-icon input-icon-text"
+                    />
+                  </div>
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {{ t("admin.settings.balanceNotify.thresholdHint") }}
+                  </p>
                 </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.balanceNotify.thresholdHint") }}
-                </p>
-              </div>
+              </Collapse>
               <div>
                 <label
                   class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -8637,63 +7807,47 @@
                 >
                 <Toggle v-model="form.provider_quota_notify_enabled" />
               </div>
-              <div v-if="form.provider_quota_notify_enabled">
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >{{ t("admin.settings.quotaNotify.emails") }}</label
+              <Collapse :open="form.provider_quota_notify_enabled" unmount-on-hide>
+                <RuleListEditor
+                  :items="form.provider_quota_notify_emails || []"
+                  :title="t('admin.settings.quotaNotify.emails')"
+                  :hint="t('admin.settings.quotaNotify.emailsHint')"
+                  :add-label="t('admin.settings.quotaNotify.addEmail')"
+                  test-id="quota-notify-emails"
+                  @add="addQuotaNotifyEmail"
+                  @remove="form.provider_quota_notify_emails.splice($event, 1)"
                 >
-                <div class="space-y-2">
-                  <div
-                    v-for="(entry, index) in form.provider_quota_notify_emails ||
-                    []"
-                    :key="index"
-                    class="flex items-center gap-2"
-                  >
-                    <label
-                      class="relative inline-flex items-center cursor-pointer shrink-0"
-                    >
-                      <Toggle
-                        :model-value="!entry.disabled"
-                        size="sm"
-                        off-class="bg-gray-200 dark:bg-gray-600"
-                        @update:model-value="entry.disabled = !entry.disabled"
+                  <template #row="{ item: entry }">
+                    <div class="flex items-center gap-2">
+                      <label
+                        class="relative inline-flex items-center cursor-pointer shrink-0"
+                      >
+                        <Toggle
+                          :model-value="!entry.disabled"
+                          size="sm"
+                          off-class="bg-gray-200 dark:bg-gray-600"
+                          @update:model-value="entry.disabled = !entry.disabled"
+                        />
+                      </label>
+                      <input
+                        v-model="entry.email"
+                        type="email"
+                        class="input min-w-0 flex-1"
+                        :placeholder="
+                          t('admin.settings.quotaNotify.emailPlaceholder')
+                        "
                       />
-                    </label>
-                    <input
-                      v-model="entry.email"
-                      type="email"
-                      class="input flex-1"
-                      :placeholder="
-                        t('admin.settings.quotaNotify.emailPlaceholder')
-                      "
-                    />
-                    <button
-                      @click="form.provider_quota_notify_emails.splice(index, 1)"
-                      class="btn btn-secondary px-2"
-                      type="button"
-                    >
-                      <Icon name="x" size="xs" class="h-4 w-4" />
-                    </button>
-                  </div>
-                  <button
-                    @click="addQuotaNotifyEmail"
-                    class="btn btn-secondary btn-sm h-9"
-                    type="button"
-                  >
-                    + {{ t("admin.settings.quotaNotify.addEmail") }}
-                  </button>
-                </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.quotaNotify.emailsHint") }}
-                </p>
-              </div>
+                    </div>
+                  </template>
+                </RuleListEditor>
+              </Collapse>
             </div>
           </div>
         </div>
         <!-- /Tab: Email -->
 
         <!-- Tab: Backup -->
-        <div v-show="activeTab === 'backup'">
+        <div v-show="activeTab === 'backup'" v-content-reveal="activeTab === 'backup'">
           <BackupSettings />
         </div>
 
@@ -8704,26 +7858,13 @@
             :disabled="saving || loadFailed"
             class="btn btn-primary"
           >
-            <svg
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
               v-if="saving"
               class="h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            />
             {{
               saving
                 ? t("admin.settings.saving")
@@ -8765,7 +7906,12 @@
 
 <script setup lang="ts">
 import { resolveSiteBillingMode, billingModeToSettings, type SiteBillingMode } from "@/utils/siteBillingMode"
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import { vContentReveal } from '@/directives/contentReveal'
+import Collapse from '@/components/common/Collapse.vue'
+
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import SettingsSkeleton from "@/components/admin/SettingsSkeleton.vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { adminAPI } from "@/api";
@@ -8813,6 +7959,7 @@ import BaseDialog from "@/components/common/BaseDialog.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import PaymentProviderList from "@/components/payment/PaymentProviderList.vue";
 import PaymentProviderDialog from "@/components/payment/PaymentProviderDialog.vue";
+import RuleListEditor from "@/components/common/RuleListEditor.vue";
 import Toggle from "@/components/common/Toggle.vue";
 import CodexTicketSettings from "@/components/admin/settings/CodexTicketSettings.vue";
 import ProxySelector from "@/components/common/ProxySelector.vue";
@@ -9488,7 +8635,7 @@ const form = reactive<SettingsForm>({
   force_email_on_third_party_signup: false,
   default_user_rpm_limit: 0,
   default_user_api_key_limit: 100,
-  site_name: "Sub2API",
+  site_name: "TokenRouter",
   site_logo: "",
   site_subtitle: "Subscription to API Conversion Platform",
   site_name_zh: "",
@@ -11164,7 +10311,7 @@ async function loadSettings() {
         (form as Record<string, unknown>)[key] = value;
       }
     }
-    form.site_name_zh = form.site_name_zh || settings.site_name || "Sub2API";
+    form.site_name_zh = form.site_name_zh || settings.site_name || "TokenRouter";
     form.site_name_en = form.site_name_en || "";
     form.site_subtitle_zh =
       form.site_subtitle_zh || settings.site_subtitle || "";
@@ -13153,14 +12300,19 @@ watch(
 <style scoped>
 /* ============ 系统设置 Tab 导航 ============ */
 .settings-tabs-shell {
-  @apply sticky z-20 -mx-1 rounded-control border border-gray-200 bg-white/90 p-1.5 backdrop-blur-xl dark:border-dark-600/70 dark:bg-dark-900/90;
+  @apply sticky z-20 -mx-1 rounded-full border border-gray-200 bg-white/90 p-1.5 backdrop-blur-xl dark:border-dark-600/70 dark:bg-dark-900/90;
   /* 顶栏高度 + 1.25rem 间距,合成原 4.75rem;顶栏调高时吸顶位置自动跟随。 */
   top: calc(var(--header-h) + 1.25rem);
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.9) inset;
 }
 
+/* 网关页多出一行二级标签，胶囊外壳改用弹窗圆角，避免两行高度下两端过度收拢。 */
+.settings-tabs-shell-stacked {
+  @apply rounded-dialog;
+}
+
 .settings-tabs-scroll {
-  @apply overflow-x-auto;
+  @apply overflow-x-auto rounded-full;
   -ms-overflow-style: none;
   scrollbar-width: none;
   scroll-padding-inline: 0.5rem;
@@ -13175,7 +12327,7 @@ watch(
 }
 
 .settings-tab {
-  @apply relative isolate flex h-9 min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-compact border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-200 ease-out dark:text-gray-300;
+  @apply relative isolate flex h-9 min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-fast ease-standard dark:text-gray-300;
 }
 
 @media (min-width: 768px) {
@@ -13193,7 +12345,7 @@ watch(
 }
 
 .settings-tab::before {
-  @apply absolute inset-0 -z-10 rounded-compact opacity-0 transition-opacity duration-200;
+  @apply absolute inset-0 -z-10 rounded-full opacity-0 transition-opacity duration-normal;
   content: "";
   background: linear-gradient(135deg, rgb(248 250 252 / 0.95), rgb(241 245 249 / 0.8));
 }
@@ -13208,7 +12360,7 @@ watch(
 }
 
 .settings-tab-active {
-  @apply border-primary-200/80 bg-white text-primary-700 shadow-sm dark:border-primary-400/30 dark:bg-dark-700/95 dark:text-primary-200;
+  @apply border-primary-200/80 bg-white text-primary-700 shadow-sm dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500;
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.92) inset;
 }
 
@@ -13216,19 +12368,8 @@ watch(
   opacity: 0;
 }
 
-.settings-tab-active::after {
-  position: absolute;
-  right: 0.75rem;
-  bottom: 0.25rem;
-  left: 0.75rem;
-  height: 2px;
-  border-radius: 9999px;
-  content: "";
-  background: linear-gradient(90deg, #14b8a6, #0ea5e9);
-}
-
 .settings-tab-icon {
-  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-control text-gray-500 transition-colors duration-200 dark:text-gray-400;
+  @apply flex h-7 w-7 shrink-0 items-center justify-center text-gray-500 transition-colors duration-normal dark:text-gray-400;
 }
 
 .settings-tab:hover .settings-tab-icon,
@@ -13237,7 +12378,7 @@ watch(
 }
 
 .settings-tab-active .settings-tab-icon {
-  @apply bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-300;
+  @apply text-primary-600 dark:text-primary-500;
 }
 
 .settings-tab-label {
@@ -13261,7 +12402,7 @@ watch(
 }
 
 .gateway-section-tab {
-  @apply flex h-9 min-w-[7.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-control border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-200 dark:text-gray-300;
+  @apply flex h-9 min-w-[7.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-normal dark:text-gray-300;
 }
 
 .gateway-section-tab:hover,
@@ -13305,8 +12446,8 @@ watch(
 <style>
 /* 暗色模式 Tab 覆盖必须放在非 scoped 样式块，避免生产构建丢弃后导致未激活 Tab 不可读。 */
 .dark .settings-tabs-shell {
-  border-color: rgb(63 63 70 / 0.65);
-  background: rgb(24 24 27 / 0.86);
+  border-color: theme('borderColor.dark.600');
+  background: rgb(15 15 16 / 0.86);
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset;
 }
 

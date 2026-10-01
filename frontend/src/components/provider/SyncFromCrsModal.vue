@@ -8,7 +8,7 @@
   >
     <!-- Step 1: Input credentials -->
     <form
-      v-if="currentStep === 'input'"
+      v-if="currentStep === 'input'" v-content-reveal
       id="sync-from-crs-form"
       class="space-y-4"
       @submit.prevent="handlePreview"
@@ -104,7 +104,7 @@
           <div class="flex gap-2">
             <button
               type="button"
-              class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
+              class="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-500"
               @click="selectAll"
             >{{ t('admin.providers.crsSelectAll') }}</button>
             <button
@@ -241,6 +241,8 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'

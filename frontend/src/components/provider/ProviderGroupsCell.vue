@@ -24,18 +24,11 @@
 
     <!-- Popover 显示完整列表 -->
     <Teleport to="body">
-      <Transition
-        enter-active-class="transition duration-150 ease-out"
-        enter-from-class="opacity-0 scale-95"
-        enter-to-class="opacity-100 scale-100"
-        leave-active-class="transition duration-100 ease-in"
-        leave-from-class="opacity-100 scale-100"
-        leave-to-class="opacity-0 scale-95"
-      >
+      <MotionTransition name="dropdown-fade">
         <div
           v-if="showPopover"
           ref="popoverRef"
-          class="fixed z-50 min-w-48 max-w-96 rounded-surface border border-gray-200 bg-white p-3 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+          class="fixed z-50 min-w-48 max-w-96 rounded-surface border border-gray-200 bg-white p-3 shadow-lg dark:border-dark-600 dark:bg-dark-900"
           :style="popoverStyle"
         >
           <div class="mb-2 flex items-center justify-between">
@@ -46,9 +39,7 @@
               @click="showPopover = false"
               class="rounded-compact p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-300"
             >
-              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <Icon name="x" size="xs" class="h-3.5 w-3.5" />
             </button>
           </div>
           <div class="flex flex-wrap gap-1.5 max-h-64 overflow-y-auto">
@@ -62,7 +53,7 @@
             />
           </div>
         </div>
-      </Transition>
+      </MotionTransition>
     </Teleport>
 
     <!-- 点击外部关闭 popover -->
@@ -76,6 +67,9 @@
 </template>
 
 <script setup lang="ts">
+import { useFloatingMotion } from '@/composables/useFloatingMotion'
+import MotionTransition from '@/components/common/MotionTransition.vue'
+import Icon from '@/components/icons/Icon.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import GroupBadge from '@/components/common/GroupBadge.vue'
@@ -145,6 +139,8 @@ const handleKeydown = (e: KeyboardEvent) => {
     showPopover.value = false
   }
 }
+
+useFloatingMotion(moreButtonRef, () => showPopover.value, () => { showPopover.value = false }, () => {})
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)

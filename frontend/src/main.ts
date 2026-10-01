@@ -5,6 +5,7 @@ import router from './router'
 import i18n, { initI18n } from './i18n'
 import { useAppStore } from '@/stores/app'
 import { initTheme } from '@/composables/useTheme'
+import { initVisualTheme } from '@/composables/useVisualTheme'
 import { updateFavicon } from '@/utils/branding'
 import { isIOSDevice } from '@/utils/device'
 // 在全局样式前加载自托管字体，确保 Tailwind 字体栈首次渲染即可命中。
@@ -15,6 +16,9 @@ import '@fontsource/archivo-black'
 // 在应用入口安全地初始化一次 Chart.js 主题，避免各路由按加载顺序得到不同默认值。
 import '@/utils/chartTheme'
 import './style.css'
+import './styles/visual-palette.css'
+import './styles/byteseek-components.css'
+import './styles/bauhaus.css'
 
 function initIOSViewportZoomFix() {
   // iOS Safari 在输入框字号小于 16px 时聚焦会自动放大页面，且失焦后不会恢复。
@@ -33,6 +37,7 @@ function initIOSViewportZoomFix() {
 async function bootstrap() {
   // 挂载前先应用主题，避免首屏出现明暗模式闪烁。
   initTheme()
+  initVisualTheme()
   initIOSViewportZoomFix()
 
   const app = createApp(App)

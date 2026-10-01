@@ -37,9 +37,15 @@
           <ProviderIcon v-if="modelBrandName" :brand="modelBrandName" size="13px" class="flex-shrink-0" />
           <Icon v-else name="sparkles" size="xs" class="flex-shrink-0" />
           <span class="max-w-28 truncate">{{ modelChipLabel }}</span>
-          <Icon name="chevronUp" size="xs" class="flex-shrink-0 transition-transform" :class="openPanel !== 'model' && 'rotate-180'" />
+          <Icon
+            name="chevronUp"
+            size="xs"
+            class="flex-shrink-0 transition-transform"
+            :class="openPanel !== 'model' && 'rotate-180'"
+            :animate-on-hover="false"
+          />
         </button>
-        <Transition name="pop-float">
+        <MotionTransition name="pop-float">
           <div
             v-if="openPanel === 'model'"
             class="chip-popover"
@@ -53,7 +59,7 @@
               :key="creativeOptionKey(option)"
               type="button"
               class="composer-option flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-dark-700"
-              :class="studio.selectedOptionKey.value === creativeOptionKey(option) && 'bg-primary-600/5 dark:bg-primary-900/20'"
+              :class="studio.selectedOptionKey.value === creativeOptionKey(option) && 'bg-primary-600/5 dark:bg-primary-500/8 dark:text-primary-500'"
               @click="selectModel(option)"
             >
               <ProviderIcon :brand="option.model" size="16px" class="flex-shrink-0" />
@@ -61,10 +67,16 @@
                 <span class="block truncate text-xs font-medium text-gray-800 dark:text-gray-100">{{ option.model }}</span>
                 <span class="block truncate text-xs text-gray-400 dark:text-dark-400">{{ option.group_name }}</span>
               </span>
-              <Icon v-if="studio.selectedOptionKey.value === creativeOptionKey(option)" name="check" size="sm" class="flex-shrink-0 text-primary-600 dark:text-primary-300" />
+              <Icon
+                v-if="studio.selectedOptionKey.value === creativeOptionKey(option)"
+                name="check"
+                size="sm"
+                class="flex-shrink-0 text-primary-600 dark:text-primary-300"
+                :animate-on-hover="false"
+              />
             </button>
           </div>
-        </Transition>
+        </MotionTransition>
       </span>
 
       <!-- 参数：弹层锚定在该按钮上方 -->
@@ -79,9 +91,15 @@
         >
           <Icon name="filter" size="xs" class="flex-shrink-0" />
           <span class="max-w-24 truncate">{{ paramsChipLabel }}</span>
-          <Icon name="chevronUp" size="xs" class="flex-shrink-0 transition-transform" :class="openPanel !== 'params' && 'rotate-180'" />
+          <Icon
+            name="chevronUp"
+            size="xs"
+            class="flex-shrink-0 transition-transform"
+            :class="openPanel !== 'params' && 'rotate-180'"
+            :animate-on-hover="false"
+          />
         </button>
-        <Transition name="pop-float">
+        <MotionTransition name="pop-float">
           <div
             v-if="openPanel === 'params'"
             class="chip-popover"
@@ -115,7 +133,13 @@
                     :class="studio.aspectRatio.value === ratio && 'param-chip-active'"
                     @click="setAspectRatio(ratio)"
                   >
-                    <Icon v-if="ratio === 'auto'" name="sparkles" size="xs" class="opacity-70" aria-hidden="true" />
+                    <Icon
+                      v-if="ratio === 'auto'"
+                      name="sparkles"
+                      size="xs"
+                      class="opacity-70"
+                      aria-hidden="true"
+                    />
                     <!-- 比例预览小方框：直观展示宽高比 -->
                     <span v-else class="ratio-preview" :style="ratioPreviewStyle(ratio)"></span>
                     {{ ratio }}
@@ -169,7 +193,7 @@
               </div>
             </div>
           </div>
-        </Transition>
+        </MotionTransition>
       </span>
 
       <!-- 操作：弹层锚定在该按钮上方 -->
@@ -184,9 +208,15 @@
         >
           <Icon name="swap" size="xs" class="flex-shrink-0" />
           <span class="max-w-24 truncate">{{ operationChipLabel }}</span>
-          <Icon name="chevronUp" size="xs" class="flex-shrink-0 transition-transform" :class="openPanel !== 'operation' && 'rotate-180'" />
+          <Icon
+            name="chevronUp"
+            size="xs"
+            class="flex-shrink-0 transition-transform"
+            :class="openPanel !== 'operation' && 'rotate-180'"
+            :animate-on-hover="false"
+          />
         </button>
-        <Transition name="pop-float">
+        <MotionTransition name="pop-float">
           <div
             v-if="openPanel === 'operation'"
             class="chip-popover"
@@ -200,17 +230,23 @@
               :key="op"
               type="button"
               class="composer-option flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-dark-700"
-              :class="studio.operation.value === op && 'bg-primary-600/5 dark:bg-primary-900/20'"
+              :class="studio.operation.value === op && 'bg-primary-600/5 dark:bg-primary-500/8 dark:text-primary-500'"
               @click="selectOperation(op)"
             >
               <span class="min-w-0 flex-1">
                 <span class="block text-xs font-medium text-gray-800 dark:text-gray-100">{{ t(`creative.operations.${op}`, op) }}</span>
                 <span class="block text-xs text-gray-400 dark:text-dark-400">{{ t(`creative.operationsDesc.${op}`) }}</span>
               </span>
-              <Icon v-if="studio.operation.value === op" name="check" size="sm" class="flex-shrink-0 text-primary-600 dark:text-primary-300" />
+              <Icon
+                v-if="studio.operation.value === op"
+                name="check"
+                size="sm"
+                class="flex-shrink-0 text-primary-600 dark:text-primary-300"
+                :animate-on-hover="false"
+              />
             </button>
           </div>
-        </Transition>
+        </MotionTransition>
       </span>
 
       <div class="ml-auto flex items-center gap-2">
@@ -225,7 +261,13 @@
           :title="t('creative.composer.send')"
           @click="emit('generate')"
         >
-          <Icon v-if="studio.busy.value" name="refresh" size="sm" class="animate-spin" />
+          <Icon
+            v-if="studio.busy.value"
+            name="refresh"
+            size="sm"
+            class="animate-spin"
+            :animate-on-hover="false"
+          />
           <Icon v-else name="arrowUp" size="sm" />
         </button>
       </div>
@@ -234,6 +276,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 /**
  * 创作台聊天式输入框（替代旧左侧面板）：
  * - 主体为提示词输入区 + 右下圆形发送按钮；左下三个调参 chip 展开模型 / 参数 / 操作面板
@@ -412,45 +455,14 @@ function autosize(): void {
   overflow-y: auto;
 }
 
-/* 创作输入框采用墨色硬边，发送按钮保持品牌红色几何焦点。 */
-.bh-creative-composer {
-  border: 3px solid var(--bh-ink);
-  background: var(--bh-surface);
-  box-shadow: var(--bh-shadow-sm);
-}
-
-.bh-creative-send {
-  border: 2px solid var(--bh-ink);
-  border-radius: 50%; /* check-ui-allow: 包豪斯圆形或半圆装饰，不是控件圆角。 */
-  background: var(--bh-red);
-  color: #fff;
-  box-shadow: 3px 3px 0 var(--bh-ink);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
-}
-
-.bh-creative-send:hover:not(:disabled) {
-  background: var(--bh-blue);
-  transform: translate(-2px, -2px);
-  box-shadow: 5px 5px 0 var(--bh-ink);
-}
-
-.bh-creative-send:active:not(:disabled) {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--bh-ink);
-}
-
 .composer-chip {
-  @apply inline-flex h-8 min-w-0 max-w-full items-center gap-1 rounded-none px-2.5 text-xs transition-colors;
-  border: 2px solid var(--bh-ink);
-  background: var(--bh-paper);
-  color: var(--bh-ink);
-  box-shadow: 2px 2px 0 var(--bh-ink);
+  @apply inline-flex h-8 min-w-0 max-w-full items-center gap-1 rounded-full border border-primary-900/10 bg-white px-2.5 text-xs text-gray-600 transition-colors;
+  @apply hover:border-black/20 hover:text-gray-900;
+  @apply dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-dark-400 dark:hover:text-gray-100;
 }
 
 .composer-chip-active {
-  border-color: var(--bh-blue);
-  background: var(--bh-yellow);
-  color: var(--bh-ink);
+  @apply border-primary-500/50 text-primary-700 dark:border-primary-500/50 dark:text-primary-300;
 }
 
 /* 调参弹层：锚定在所点击 chip 的正上方，内容超过视口时由内层滚动。
@@ -458,9 +470,7 @@ function autosize(): void {
 .chip-popover {
   @apply absolute bottom-full left-0 z-30 mb-2 w-[min(320px,calc(100vw-3.5rem))] overflow-hidden rounded-surface border border-primary-900/10 bg-white/95 shadow-xl backdrop-blur;
   @apply p-1.5;
-  border: 2px solid var(--bh-ink);
-  background: var(--bh-surface);
-  box-shadow: var(--bh-shadow-sm);
+  @apply dark:border-dark-600 dark:bg-dark-900/95;
 }
 
 /* 三类调参弹层共用同一套向上展开动效，离场也只用一条节奏，避免视觉顿点。 */
@@ -481,9 +491,7 @@ function autosize(): void {
 }
 
 .param-chip-active {
-  border-color: var(--bh-red);
-  background: var(--bh-yellow);
-  color: var(--bh-ink);
+  @apply border-primary-500 bg-primary-600/10 text-primary-700 dark:border-primary-500 dark:text-primary-300;
 }
 
 /* 比例预览小方框：内联尺寸由 ratioPreviewStyle 计算 */

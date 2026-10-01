@@ -1,13 +1,12 @@
 <template>
-  <!-- 旧版黄色图标格与输入格共边；保留当前防抖和搜索事件。 -->
-  <div class="flex w-full">
-    <span class="flex h-11 w-11 shrink-0 items-center justify-center border-2 border-gray-950 bg-bh-yellow text-gray-950 dark:border-dark-100" aria-hidden="true">
-      <Icon name="search" size="md" :stroke-width="2.5" />
-    </span>
+  <div class="input-icon-wrap w-full">
+    <div class="input-icon">
+      <Icon name="search" size="md" class="text-gray-400" />
+    </div>
     <input
       :value="modelValue"
       type="text"
-      class="input -ml-0.5 min-w-0 flex-1"
+      class="input input-has-icon"
       :placeholder="placeholder"
       @input="handleInput"
     />

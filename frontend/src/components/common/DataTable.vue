@@ -1,21 +1,21 @@
 <template>
-  <div v-if="!isDesktopViewport" class="space-y-3">
+  <div v-if="!isDesktopViewport" class="space-y-4" :aria-busy="loading">
     <template v-if="loading">
-      <div v-for="i in 5" :key="i" class="data-table-mobile-card bg-white p-4 dark:bg-dark-900">
+      <div v-for="i in 5" :key="i" class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900">
         <div class="space-y-3">
           <div v-for="column in dataColumns" :key="column.key" class="flex justify-between">
-            <div class="h-4 w-20 animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>
-            <div class="h-4 w-32 animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>
+            <Skeleton :width="80" :height="16" />
+            <Skeleton :width="128" :height="16" />
           </div>
           <div v-if="hasActionsColumn" class="border-t border-gray-200 pt-3 dark:border-dark-700">
-            <div class="h-8 w-full animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>
+            <Skeleton :height="32" />
           </div>
         </div>
       </div>
     </template>
 
     <template v-else-if="!data || data.length === 0">
-      <div class="data-table-mobile-card bg-white p-12 text-center dark:bg-dark-900">
+      <div class="rounded-surface border border-gray-200 bg-white p-12 text-center dark:border-dark-700 dark:bg-dark-900">
         <slot name="empty">
           <div class="flex flex-col items-center">
             <Icon
@@ -48,7 +48,7 @@
       <div
         v-for="(row, index) in sortedData"
         :key="resolveRowKey(row, index)"
-        class="data-table-mobile-card bg-white p-4 dark:bg-dark-900"
+        class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900"
         :class="{
           'cursor-pointer': clickableRows,
           'border-primary-300 bg-primary-50/40 dark:border-primary-700 dark:bg-primary-900/10': selectable && isRowSelected(row, index)
@@ -73,7 +73,7 @@
             :data-field="column.key"
             class="flex min-w-0 items-start justify-between gap-4"
           >
-            <span class="text-xs font-medium tracking-wider text-gray-500 dark:text-dark-400">
+            <span class="text-xs font-medium tracking-wider text-gray-500 dark:text-dark-300">
               {{ column.label }}
             </span>
             <div class="min-w-0 max-w-full text-right text-sm text-gray-900 dark:text-gray-100">
@@ -94,6 +94,7 @@
     v-else
     ref="tableWrapperRef"
     class="table-wrapper sticky-boundary-line"
+    :aria-busy="loading"
     :class="{
       'actions-expanded': actionsExpanded,
       'is-scrollable': isScrollable
@@ -103,12 +104,12 @@
     @dragleave="handleTableDragLeave"
   >
     <table class="w-full min-w-max divide-y divide-gray-200 dark:divide-dark-700">
-      <thead class="table-header">
+      <thead class="table-header bg-gray-50 dark:bg-dark-900">
         <tr>
           <th
             v-if="selectable"
             scope="col"
-            class="sticky-header-cell table-selection-cell py-3"
+            class="sticky-header-cell table-selection-cell py-2"
           >
             <input
               type="checkbox"
@@ -120,19 +121,21 @@
               @change="toggleAllVisible(($event.target as HTMLInputElement).checked)"
             />
           </th>
-          <th
+          <th data-icon-trigger
             v-for="(column, index) in orderedColumns"
             :key="column.key"
             :data-column-key="column.key"
             scope="col"
             :aria-sort="column.sortable ? getColumnAriaSort(column.key) : undefined"
             :class="[
-              'sticky-header-cell py-3 text-left text-sm font-extrabold tracking-wider',
-              getAdaptivePaddingClass(column),
-              { 'cursor-pointer hover:brightness-95': column.sortable },
-              { 'opacity-50': draggingColumn === column.key,
+              'sticky-header-cell py-2 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-dark-300',
+              getColumnLayoutClass(column),
+              { 'cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-700': column.sortable },
+              {
+                'opacity-50': draggingColumn === column.key,
                 'column-drop-before': dropTarget?.key === column.key && dropTarget.side === 'before',
-                'column-drop-after': dropTarget?.key === column.key && dropTarget.side === 'after' },
+                'column-drop-after': dropTarget?.key === column.key && dropTarget.side === 'after'
+              },
               getStickyColumnClass(column, index),
               column.class
             ]"
@@ -156,7 +159,7 @@
                 @keydown.left.prevent.stop="moveColumnByKeyboard(column.key, -1)"
                 @keydown.right.prevent.stop="moveColumnByKeyboard(column.key, 1)"
               >
-                <svg viewBox="0 0 16 16" class="h-4 w-4 pointer-events-none" fill="currentColor" aria-hidden="true"><circle cx="5" cy="4" r="1"/><circle cx="11" cy="4" r="1"/><circle cx="5" cy="8" r="1"/><circle cx="11" cy="8" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="11" cy="12" r="1"/></svg>
+                <Icon name="grip" size="sm" class="pointer-events-none" :animate-on-hover="false" />
               </button>
               <slot
                 :name="`header-${column.key}`"
@@ -171,37 +174,37 @@
                 class="inline-flex h-5 w-4 flex-col items-center justify-center"
                 aria-hidden="true"
               >
-                <svg
+                <Icon
+                  name="chevronUp"
+                  size="md"
+                  :animate-on-hover="false"
                   class="h-2.5 w-2.5"
                   :class="getSortIndicatorClass(column.key, 'asc')"
-                  fill="currentColor"
-                  viewBox="0 0 10 10"
-                >
-                  <path d="M5 2L1.5 6.5h7L5 2z" />
-                </svg>
-                <svg
+                />
+                <Icon
+                  name="chevronDown"
+                  size="md"
+                  :animate-on-hover="false"
                   class="-mt-0.5 h-2.5 w-2.5"
                   :class="getSortIndicatorClass(column.key, 'desc')"
-                  fill="currentColor"
-                  viewBox="0 0 10 10"
-                >
-                  <path d="M5 8L1.5 3.5h7L5 8z" />
-                </svg>
+                />
               </span>
             </div>
           </th>
         </tr>
       </thead>
       <tbody class="table-body divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900">
-        <!-- Loading skeleton -->
+        <!-- 表格按列占位，与移动端卡片共用骨架配方。 -->
         <tr v-if="loading" v-for="i in 5" :key="i">
           <td v-if="selectable" class="table-selection-cell py-3">
-            <div class="mx-auto h-4 w-4 animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>
+            <Skeleton :width="16" :height="16" class="mx-auto" />
           </td>
-          <td v-for="column in orderedColumns" :key="column.key" :class="['whitespace-nowrap py-3', getAdaptivePaddingClass(column)]">
-            <div class="animate-pulse">
-              <div class="h-4 w-3/4 rounded-compact bg-gray-200 dark:bg-dark-700"></div>
-            </div>
+          <td v-for="column in orderedColumns" :key="column.key" :class="['whitespace-nowrap py-3', getColumnLayoutClass(column)]">
+            <Skeleton
+              :width="column.key === 'select' ? 16 : '75%'"
+              :height="16"
+              :class="column.key === 'select' ? 'mx-auto' : ''"
+            />
           </td>
         </tr>
 
@@ -209,7 +212,7 @@
         <tr v-else-if="!data || data.length === 0">
           <td
             :colspan="tableColumnCount"
-            :class="['py-12 text-center text-gray-500 dark:text-dark-400', getAdaptivePaddingClass()]"
+            :class="['py-12 text-center text-gray-500 dark:text-dark-400', getColumnLayoutClass()]"
           >
             <slot name="empty">
               <div class="flex flex-col items-center">
@@ -246,7 +249,7 @@
             }"
             @click="clickableRows && emit('rowClick', item.row)"
           >
-            <td v-if="selectable" class="table-selection-cell py-3 text-center">
+            <td v-if="selectable" class="table-selection-cell py-3">
               <input
                 type="checkbox"
                 class="h-4 w-4 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
@@ -262,8 +265,8 @@
               :key="column.key"
               :data-column-key="column.key"
               :class="[
-                'whitespace-nowrap py-3 text-sm text-gray-900 dark:text-gray-100',
-                getAdaptivePaddingClass(column),
+                'whitespace-nowrap py-3 text-sm text-gray-900 dark:text-dark-100',
+                getColumnLayoutClass(column),
                 getStickyColumnClass(column, colIndex),
                 column.class
               ]"
@@ -295,8 +298,9 @@ import { useVirtualizer, observeElementRect as observeElementRectDefault } from 
 import { useI18n } from 'vue-i18n'
 import type { Column } from './types'
 import Icon from '@/components/icons/Icon.vue'
-import { useTableColumnOrder } from '@/composables/useTableColumnOrder'
+import Skeleton from './Skeleton.vue'
 import { TABLE_DESKTOP_MEDIA_QUERY } from '@/constants/layout'
+import { useTableColumnOrder } from '@/composables/useTableColumnOrder'
 
 const { t } = useI18n()
 
@@ -479,7 +483,7 @@ interface Props {
    * If provided, DataTable will load the stored sort state on mount.
    */
   sortStorageKey?: string
-  /** 稳定的表格标识启用列调序；偏好只保存在当前浏览器。 */
+  /** 提供稳定的表格标识以启用列拖拽，并在当前浏览器保存列顺序。 */
   columnOrderStorageKey?: string
   /**
    * Enable server-side sorting mode. When true, clicking sort headers
@@ -977,9 +981,9 @@ const hasSelectColumn = computed(() => {
 const getStickyColumnClass = (column: Column, index: number) => {
   const classes: string[] = []
 
-  // 选择列随横向滚动，当前第一个数据列贴边固定；调序不改变行选择。
-  const firstDataIndex = hasSelectColumn.value ? 1 : 0
-  if (props.stickyFirstColumn && index === firstDataIndex && column.key !== 'select') {
+  // 选择列随横向滚动移出，首个数据列在到达左边缘后固定。
+  const firstDataColumnIndex = hasSelectColumn.value ? 1 : 0
+  if (props.stickyFirstColumn && index === firstDataColumnIndex) {
     classes.push('sticky-col sticky-col-left')
   }
 
@@ -991,8 +995,9 @@ const getStickyColumnClass = (column: Column, index: number) => {
   return classes.join(' ')
 }
 
-// 根据列数自适应调整内边距
-const getAdaptivePaddingClass = (column?: Column) => {
+// 选择列单独控制宽度，其余列按列数调整内边距。
+const getColumnLayoutClass = (column?: Column) => {
+  // 自定义选择列与内置行选择使用相同的宽度和居中布局。
   if (column?.key === 'select') return 'table-selection-cell'
   const columnCount = props.columns.length
 
@@ -1063,25 +1068,9 @@ defineExpose({
 </script>
 
 <style scoped>
-/* 手柄保持原黄表头和墨色，插入位置以蓝线标记，只有列位置变化。 */
-.column-drag-handle {
-  @apply inline-flex h-6 w-5 shrink-0 cursor-grab items-center justify-center text-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 active:cursor-grabbing;
-}
-.column-drop-before { box-shadow: inset 3px 0 0 var(--bh-blue); }
-.column-drop-after { box-shadow: inset -3px 0 0 var(--bh-blue); }
-.table-wrapper .table-selection-cell { width: var(--select-col-width); min-width: var(--select-col-width); @apply px-3 text-center; }
-
-/* 移动端卡片与桌面表格共享仪表盘硬阴影，保证密钥等数据页视觉一致。 */
-.data-table-mobile-card {
-  border: 2px solid var(--bh-ink);
-  border-radius: 0;
-  box-shadow: var(--bh-shadow-sm);
-}
-
 /* 表格横向滚动 */
 .table-wrapper {
-  --select-col-width: 52px; /* 勾选列宽度：px-6 (24px*2) + checkbox (16px) */
-  --sticky-boundary-line-color: var(--bh-ink);
+  --sticky-boundary-line-color: rgb(228 228 231);
   position: relative;
   overflow-x: auto;
   overflow-y: auto;
@@ -1090,12 +1079,38 @@ defineExpose({
   isolation: isolate;
 }
 
-/* 深浅主题均使用黄底墨字，固定表头不能继承旧深灰背景导致黑字不可读。 */
+.dark .table-wrapper {
+  --sticky-boundary-line-color: theme('borderColor.dark.600');
+}
+
+/* 选择列布局由表格自身维护，避免外层页面的通用单元格样式覆盖。 */
+.table-wrapper .table-selection-cell {
+  @apply w-11 min-w-11 px-3 text-center;
+}
+
+/* 拖拽手柄与排序指示器同高，保持表头密度。 */
+.column-drag-handle {
+  @apply inline-flex h-5 w-4 shrink-0 cursor-grab items-center justify-center rounded-compact text-gray-400 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 active:cursor-grabbing dark:text-dark-400 dark:hover:text-primary-400;
+}
+
+.column-drop-before {
+  box-shadow: inset 3px 0 0 theme('colors.primary.500');
+}
+
+.column-drop-after {
+  box-shadow: inset -3px 0 0 theme('colors.primary.500');
+}
+
+/* 表头容器，确保在滚动时覆盖表体内容 */
 .table-wrapper .table-header {
   position: sticky;
   top: 0;
   z-index: 200; /* check-ui-allow: 表格内部局部堆叠上下文(固定列/表头),不入全局阶梯 */
-  background-color: var(--bh-yellow);
+  background-color: rgb(249 250 251);
+}
+
+.dark .table-wrapper .table-header {
+  background-color: rgb(15 15 16);
 }
 
 /* 表体保持在表头下方 */
@@ -1109,10 +1124,11 @@ defineExpose({
   position: sticky;
   top: 0;
   z-index: 210; /* 必须高于所有表体内容 */ /* check-ui-allow: 局部堆叠 */
-  background-color: var(--bh-yellow);
-  color: #141414;
-  font-weight: 800;
-  border-bottom: 2px solid var(--bh-ink);
+  background-color: rgb(249 250 251);
+}
+
+.dark .sticky-header-cell {
+  background-color: rgb(15 15 16);
 }
 
 /* Sticky 列基础样式 */
@@ -1121,19 +1137,9 @@ defineExpose({
   z-index: 20; /* 表体固定列 */ /* check-ui-allow: 局部堆叠 */
 }
 
-/* 单列固定（无勾选列时） */
+/* 首个数据列贴住左边缘，选择列不占用固定区域。 */
 .sticky-col-left {
   left: 0;
-}
-
-/* 双列固定（有勾选列时）：第一列（勾选） */
-.sticky-col-left-first {
-  left: 0;
-}
-
-/* 双列固定（有勾选列时）：第二列（名称） */
-.sticky-col-left-second {
-  left: var(--select-col-width);
 }
 
 /* 操作列固定 */
@@ -1148,17 +1154,24 @@ defineExpose({
 
 /* 表体 sticky 列背景 */
 tbody .sticky-col {
-  background-color: var(--bh-surface);
+  background-color: white;
+}
+
+.dark tbody .sticky-col {
+  background-color: rgb(15 15 16);
 }
 
 /* hover 状态保持 */
 tbody tr:hover .sticky-col {
-  background-color: var(--bh-paper);
+  background-color: rgb(249 250 251);
+}
+
+.dark tbody tr:hover .sticky-col {
+  background-color: rgb(23 23 26);
 }
 
 /* 所有固定列统一使用细线边界，避免滚动时出现渐变阴影带。 */
-.sticky-boundary-line.is-scrollable .sticky-col-left::after,
-.sticky-boundary-line.is-scrollable .sticky-col-left-second::after {
+.sticky-boundary-line.is-scrollable .sticky-col-left::after {
   content: '';
   position: absolute;
   top: 0;
@@ -1202,7 +1215,7 @@ tbody tr:hover .sticky-col {
   margin: 0 4px !important;
 }
 .dark .table-wrapper::-webkit-scrollbar-track {
-  background-color: transparent !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 .table-wrapper::-webkit-scrollbar-thumb {
@@ -1213,23 +1226,23 @@ tbody tr:hover .sticky-col {
   -webkit-appearance: none !important;
 }
 .table-wrapper::-webkit-scrollbar-thumb:hover {
-  background-color: var(--bh-scrollbar-hover) !important;
+  background-color: rgba(75, 85, 99, 0.9) !important;
 }
 
 .dark .table-wrapper::-webkit-scrollbar-thumb {
-  background-color: var(--bh-scrollbar) !important;
+  background-color: rgba(161, 161, 170, 0.45) !important;
 }
 .dark .table-wrapper::-webkit-scrollbar-thumb:hover {
-  background-color: var(--bh-scrollbar-hover) !important;
+  background-color: rgba(161, 161, 170, 0.65) !important;
 }
 
 @supports (-moz-appearance:none) {
   .table-wrapper {
     scrollbar-width: thin !important;
-    scrollbar-color: var(--bh-scrollbar) transparent !important;
+    scrollbar-color: rgba(156, 163, 175, 0.5) rgba(0, 0, 0, 0.03) !important;
   }
   .dark .table-wrapper {
-    scrollbar-color: var(--bh-scrollbar) transparent !important;
+    scrollbar-color: rgba(75, 85, 99, 0.5) rgba(255, 255, 255, 0.05) !important;
   }
 }
 </style>

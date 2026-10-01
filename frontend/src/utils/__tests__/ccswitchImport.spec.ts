@@ -30,7 +30,7 @@ describe('ccswitchImport utils', () => {
 
   const baseInput = {
     baseUrl: 'https://api.example.com',
-    providerName: 'Sub2API',
+    providerName: 'TokenRouter',
     apiKey: 'sk-test',
     model: 'configured-model',
     usageScript: 'return true'
