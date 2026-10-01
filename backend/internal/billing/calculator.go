@@ -35,11 +35,7 @@ func (s *Calculator) GetModelPricing(model string) (*ModelPricing, error) {
 	if s.catalog != nil {
 		raw = s.catalog.GetModelPricing(model)
 	}
-	price, fallback, err := purepricing.ResolveModelPricing(model, raw, s.fallbackPrices, s.options.ModelPolicy(model))
-	if fallback {
-		s.options.FallbackWarning(model)
-	}
-	return price, err
+	return purepricing.ResolveModelPricing(model, raw)
 }
 
 // GetModelPricingWithConfig 保留目录查价失败语义，覆盖计算由纯包完成。
@@ -75,7 +71,8 @@ func (s *Calculator) CalculateCostUnified(input CostInput) (*CostBreakdown, erro
 		// 无 Resolver，回退到旧路径
 		breakdown, err := s.CalculateCostInternal(input.Model, input.Tokens, input.RateMultiplier, input.ServiceTier, nil)
 		if err == nil {
-			applyCostBreakdownMultiplier(breakdown, maxReasoningEffortBillingMultiplier(input.Model, input.ReasoningEffort, nil))
+			price, _ := s.GetModelPricing(input.Model)
+			applyCostBreakdownMultiplier(breakdown, maxReasoningEffortBillingMultiplier(input.Model, input.ReasoningEffort, price))
 		}
 		return breakdown, err
 	}
@@ -89,6 +86,18 @@ func (s *Calculator) CalculateCostUnified(input CostInput) (*CostBreakdown, erro
 		})
 	}
 
+	// 只有明确的图片计费模式使用尺寸查价；按次价卡保留标签、上下文区间及默认价规则。
+	if resolved.Mode == purepricing.BillingModeImage {
+		price, err := s.resolvedImageUnitPrice(input.Model, input.SizeTier, resolved)
+		if err != nil {
+			return nil, err
+		}
+		copy := *resolved
+		copy.RequestTiers = nil
+		copy.DefaultPerRequestPrice = price
+		copy.DefaultPerRequestPricePresent = true
+		resolved = &copy
+	}
 	return purepricing.CalculateCost(resolved, s.ProjectCostInput(input, resolved))
 }
 
@@ -122,7 +131,7 @@ func (s *Calculator) CalculateCostInternal(model string, tokens UsageTokens, rat
 		return nil, err
 	}
 	if ConfigPricing == nil {
-		pricing = purepricing.ApplyDeepSeekPeakPricing(model, pricing, s.options.Now())
+		pricing = s.applyCatalogTimePricing(pricing, s.options.Now())
 	}
 
 	return s.ComputeTokenBreakdown(pricing, tokens, rateMultiplier, serviceTier, true), nil
@@ -135,26 +144,6 @@ func (s *Calculator) CalculateCostWithConfig(model string, tokens UsageTokens) (
 		multiplier = 1.0
 	}
 	return s.CalculateCost(model, tokens, multiplier)
-}
-
-// ListSupportedModels 列出所有支持的模型（现在总是返回true，因为有模糊匹配）
-func (s *Calculator) ListSupportedModels() []string {
-	models := make([]string, 0)
-	// 返回回退价格支持的模型系列
-	for model := range s.fallbackPrices {
-		models = append(models, model)
-	}
-	return models
-}
-
-// IsModelSupported 检查模型是否支持（现在总是返回true，因为有模糊匹配回退）
-func (s *Calculator) IsModelSupported(model string) bool {
-	// 所有Claude模型都有回退价格支持
-	modelLower := strings.ToLower(model)
-	return strings.Contains(modelLower, "claude") ||
-		strings.Contains(modelLower, "opus") ||
-		strings.Contains(modelLower, "sonnet") ||
-		strings.Contains(modelLower, "haiku")
 }
 
 // GetEstimatedCost 估算费用（用于前端展示）
@@ -178,8 +167,8 @@ func (s *Calculator) GetCatalogStatus() map[string]any {
 		return s.catalog.GetStatus()
 	}
 	return map[string]any{
-		"model_count":  len(s.fallbackPrices),
-		"last_updated": "using fallback",
+		"model_count":  0,
+		"last_updated": "unavailable",
 		"local_hash":   "N/A",
 	}
 }
@@ -210,13 +199,25 @@ func (s *Calculator) DisplayPricing(model string, rateMultiplier float64) ModelD
 		return unknownDisplayPricing()
 	}
 
-	return buildTokenDisplayPricing(pricing, rateMultiplier)
+	return buildTokenDisplayPricing(s.applyCatalogTimePricing(pricing, s.options.Now()), rateMultiplier)
 }
 
 // DisplayPricingWithResolvedMultipliers 优先使用已解析的共享价格配置价格计算展示价格。
 func (s *Calculator) DisplayPricingWithResolvedMultipliers(model string, rateMultiplier float64, resolved *ResolvedPricing) ModelDisplayPricing {
 	if rateMultiplier < 0 {
 		rateMultiplier = 0
+	}
+	if resolved != nil && resolved.Mode == purepricing.BillingModeImage {
+		if quote, ok := s.imageDisplayPricingWithResolved(model, rateMultiplier, resolved); ok {
+			return quote
+		}
+		return unknownDisplayPricing()
+	}
+	if resolved != nil && resolved.Mode == purepricing.BillingModePerRequest {
+		if quote, ok := displayPricingFromResolved(model, rateMultiplier, resolved); ok {
+			return quote
+		}
+		return unknownDisplayPricing()
 	}
 	if resolved.IsUnpriced() {
 		// 未配置价卡时，token 缺价不代表完整型号的独立按张报价也缺失。
@@ -227,6 +228,11 @@ func (s *Calculator) DisplayPricingWithResolvedMultipliers(model string, rateMul
 		}
 		return unknownDisplayPricing()
 	}
+	if resolved != nil && resolved.Source == PricingSourceCatalog && resolved.BasePricing != nil {
+		copy := *resolved
+		copy.BasePricing = s.applyCatalogTimePricing(resolved.BasePricing, s.options.Now())
+		resolved = &copy
+	}
 	if pricing, ok := displayPricingFromResolved(model, rateMultiplier, resolved); ok {
 		return pricing
 	}
@@ -235,20 +241,30 @@ func (s *Calculator) DisplayPricingWithResolvedMultipliers(model string, rateMul
 
 // imageDisplayPricing 只展示已知按张报价，不把聊天模型的图片元数据改成图片计费。
 func (s *Calculator) imageDisplayPricing(model string, rateMultiplier float64) (ModelDisplayPricing, bool) {
+	return s.imageDisplayPricingWithResolved(model, rateMultiplier, nil)
+}
+
+func (s *Calculator) imageDisplayPricingWithResolved(model string, rateMultiplier float64, resolved *ResolvedPricing) (ModelDisplayPricing, bool) {
 	raw := s.RawModelPricing(model)
-	_, knownImage := purepricing.GetDefaultGrokImagineImagePrice(model, purepricing.ImageBillingSize1K)
-	if !knownImage && !hasExplicitImageGenerationPricing(raw) && !looksLikeImageModel(model) && (raw == nil || !raw.TokenPricingAbsent) {
+	knownImage := raw != nil && len(raw.ImagePrices) > 0
+	if resolved == nil && !knownImage && !hasExplicitImageGenerationPricing(raw) && !looksLikeImageModel(model) && (raw == nil || !raw.TokenPricingAbsent) {
 		return ModelDisplayPricing{}, false
 	}
-	prices := make([]float64, 0, 3)
-	for _, size := range []string{"1K", "2K", "4K"} {
-		price, err := s.DefaultImagePrice(model, size)
+	prices := make([]float64, 3)
+	found := false
+	var sizes []string
+	for i, size := range []string{"1K", "2K", "4K"} {
+		price, err := purepricing.ResolveImageUnitPrice(resolved, raw, size)
 		if err != nil {
-			return ModelDisplayPricing{}, false
+			continue
 		}
-		prices = append(prices, price*rateMultiplier)
+		found = true
+		sizes = append(sizes, size)
+		prices[i] = price * rateMultiplier
 	}
-	return buildImageDisplayPricing(prices[0], prices[1], prices[2]), true
+	result := buildImageDisplayPricing(prices[0], prices[1], prices[2])
+	result.ImagePriceSizes = sizes
+	return result, found
 }
 
 // displayPricingFromResolved 委托纯定价实现，旧查询与配置投影保留在适配层。
@@ -271,12 +287,12 @@ func unknownDisplayPricing() ModelDisplayPricing { return purepricing.UnknownDis
 
 // CalculateWebSearchCost 委托纯定价实现，旧查询与配置投影保留在适配层。
 func (s *Calculator) CalculateWebSearchCost(callCount int, groupPrice *float64, rateMultiplier float64) *CostBreakdown {
-	return purepricing.CalculateWebSearchCost(callCount, groupPrice, rateMultiplier)
+	return purepricing.CalculateWebSearchCost(callCount, operationPrice("web_search", groupPrice, s.operationPrices().WebSearchPricePerCall), rateMultiplier)
 }
 
 // CalculateSearchCost 委托纯定价实现，旧查询与配置投影保留在适配层。
 func (s *Calculator) CalculateSearchCost(numCalls int, groupPricePer1k *float64, rateMultiplier float64) *CostBreakdown {
-	return purepricing.CalculateSearchCost(numCalls, groupPricePer1k, rateMultiplier)
+	return purepricing.CalculateSearchCost(numCalls, operationPrice("search", groupPricePer1k, s.operationPrices().SearchPricePer1k), rateMultiplier)
 }
 
 // audioPriceConfig 保留旧用量/定价类型入口。
@@ -284,7 +300,7 @@ type audioPriceConfig = purepricing.AudioPriceConfig
 
 // CalculateAudioCost 委托纯定价实现，旧查询与配置投影保留在适配层。
 func (s *Calculator) CalculateAudioCost(mode string, durationOrUnits float64, groupConfig *audioPriceConfig, rateMultiplier float64) *CostBreakdown {
-	return purepricing.CalculateAudioCost(mode, durationOrUnits, groupConfig, rateMultiplier)
+	return purepricing.CalculateAudioCost(mode, durationOrUnits, s.audioPrices(mode, groupConfig), rateMultiplier)
 }
 
 // CalculateImageCost 按精确的独立单张价计算费用，缺价时返回错误。
@@ -316,9 +332,6 @@ func (s *Calculator) CalculateVideoCost(model, resolution string, videoCount, du
 
 // DefaultImagePrice 只读取完整型号的独立按张价格，显式零价保持有效。
 func (s *Calculator) DefaultImagePrice(model, imageSize string) (float64, error) {
-	if price, ok := purepricing.GetDefaultGrokImagineImagePrice(model, imageSize); ok {
-		return purepricing.ValidateImageUnitPrice(price)
-	}
 	var raw *CatalogModelPricing
 	if s.catalog != nil {
 		raw = s.catalog.GetModelPricing(model)
@@ -352,15 +365,10 @@ func looksLikeImageModel(model string) bool { return purepricing.LooksLikeImageM
 
 // DefaultVideoPrice 只读取已登记的每秒价，不借用图片单价。
 func (s *Calculator) DefaultVideoPrice(model string, resolution string) (float64, error) {
-	if price, ok := getDefaultGrokImagineVideoPrice(model, resolution); ok {
+	if price, ok := purepricing.DefaultVideoPrice(s.RawModelPricing(model), resolution); ok {
 		return purepricing.ValidateImageUnitPrice(price)
 	}
 	return 0, fmt.Errorf("video pricing not found for model %s: %w", model, purepricing.ErrModelPricingUnavailable)
-}
-
-// getDefaultGrokImagineVideoPrice 委托唯一媒体定价规则。
-func getDefaultGrokImagineVideoPrice(model string, resolution string) (float64, bool) {
-	return purepricing.GetDefaultGrokImagineVideoPrice(model, resolution)
 }
 
 // PriceCatalog 暴露目录读取及既有维护操作，不向核心暴露文件或网络客户端。
@@ -373,37 +381,24 @@ type PriceCatalog interface {
 // CalculatorOptions 由 app 投影默认倍率、取时点和平台模型身份。
 type CalculatorOptions struct {
 	DefaultRateMultiplier float64
-	FallbackPrices        map[string]*ModelPricing
-	ModelPolicy           func(string) purepricing.ModelPolicy
 	Now                   func() time.Time
 	LoadLocation          func(string) (*time.Location, error)
-	FallbackWarning       func(string)
 }
 
 // Calculator 统一拥有查价及计费编排；价卡算法由 pricing 唯一实现。
 type Calculator struct {
-	catalog        PriceCatalog
-	options        CalculatorOptions
-	fallbackPrices map[string]*ModelPricing
+	catalog PriceCatalog
+	options CalculatorOptions
 }
 
 func NewCalculator(catalog PriceCatalog, options CalculatorOptions) *Calculator {
-	if options.FallbackPrices == nil {
-		options.FallbackPrices = purepricing.DefaultFallbackPrices()
-	}
-	if options.ModelPolicy == nil {
-		options.ModelPolicy = func(string) purepricing.ModelPolicy { return purepricing.ModelPolicy{} }
-	}
 	if options.Now == nil {
 		options.Now = time.Now
 	}
 	if options.LoadLocation == nil {
 		options.LoadLocation = time.LoadLocation
 	}
-	if options.FallbackWarning == nil {
-		options.FallbackWarning = func(string) {}
-	}
-	return &Calculator{catalog: catalog, options: options, fallbackPrices: options.FallbackPrices}
+	return &Calculator{catalog: catalog, options: options}
 }
 
 // ProjectCostInput 只投影已解析结果，保持查价懒加载与请求固定的取时点。
@@ -416,7 +411,11 @@ func (s *Calculator) ProjectCostInput(input CostInput, resolved *ResolvedPricing
 	if modelAt.IsZero() {
 		modelAt = s.options.Now()
 	}
-	return purepricing.CostInput{Model: input.Model, Tokens: input.Tokens, RequestCount: input.RequestCount, UsageUnits: input.UsageUnits, SizeTier: input.SizeTier, RateMultiplier: input.RateMultiplier, PricingAt: input.PricingAt, ModelPricingAt: modelAt, ModelPolicy: s.options.ModelPolicy(input.Model), ServiceTier: input.ServiceTier, ReasoningEffort: input.ReasoningEffort, TimePricingLocation: location}
+	var modelLocation *time.Location
+	if resolved != nil && resolved.BasePricing != nil && resolved.BasePricing.TimePricing != nil {
+		modelLocation, _ = s.options.LoadLocation(resolved.BasePricing.TimePricing.Timezone)
+	}
+	return purepricing.CostInput{ModelTimeLocation: modelLocation, Model: input.Model, Tokens: input.Tokens, RequestCount: input.RequestCount, UsageUnits: input.UsageUnits, SizeTier: input.SizeTier, RateMultiplier: input.RateMultiplier, PricingAt: input.PricingAt, ModelPricingAt: modelAt, ServiceTier: input.ServiceTier, ReasoningEffort: input.ReasoningEffort, TimePricingLocation: location}
 }
 
 type (

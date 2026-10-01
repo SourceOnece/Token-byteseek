@@ -15,7 +15,6 @@ func provideModelCatalogService(cfg *config.Config, remote provider.RemoteClient
 		DataDir:               cfg.Pricing.DataDir,
 		RemoteURL:             cfg.Pricing.RemoteURL,
 		FallbackFile:          cfg.Pricing.FallbackFile,
-		OverrideFile:          cfg.Pricing.OverrideFile,
 		CheckIntervalMinutes:  cfg.Pricing.CheckIntervalMinutes,
 		URLAllowlistEnabled:   cfg.Security.URLAllowlist.Enabled,
 		AllowInsecureHTTP:     cfg.Security.URLAllowlist.AllowInsecureHTTP,

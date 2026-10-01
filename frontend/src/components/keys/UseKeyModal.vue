@@ -21,23 +21,40 @@
       </div>
       <template v-else>
         <div class="flex flex-wrap gap-2" role="tablist">
-          <button v-for="client in clients" :key="client" type="button" role="tab" :aria-selected="activeClient === client" class="btn btn-secondary btn-sm" :class="{ 'text-primary-600': activeClient === client }" @click="activeClient = client">{{ CLIENT_LABELS[client] }}</button>
+          <button v-for="client in clients" :key="client" type="button" role="tab" :aria-selected="activeClient === client" class="btn btn-secondary btn-sm" :class="{ 'text-primary-600': activeClient === client }" @click="activeClient = client">
+            <Icon v-if="client === 'opencode'" name="terminal" size="sm" />
+            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill-rule="evenodd" class="shrink-0" aria-hidden="true">
+              <path v-for="(path, index) in modelIconData[CLIENT_ICON_KEYS[client]].paths" :key="index" :d="path" :fill="modelIconData[CLIENT_ICON_KEYS[client]].color" />
+            </svg>
+            {{ CLIENT_LABELS[client] }}
+          </button>
         </div>
-        <div>
-          <label class="input-label">{{ t('keys.useKeyModal.model') }}</label>
-          <Select v-model="selectedModel" :options="modelOptions" searchable :placeholder="t('keys.useKeyModal.selectModel')" />
-          <p v-if="!modelOptions.length" class="input-hint">{{ t('keys.useKeyModal.noModels') }}</p>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div :class="{ 'sm:col-span-2': activeClient === 'opencode' }">
+            <label class="input-label">{{ t('keys.useKeyModal.model') }}</label>
+            <Select v-model="selectedModel" :options="modelOptions" searchable :placeholder="t('keys.useKeyModal.selectModel')" />
+            <p v-if="!modelOptions.length" class="input-hint">{{ t('keys.useKeyModal.noModels') }}</p>
+          </div>
+          <div v-if="activeClient !== 'opencode'">
+            <label class="input-label">{{ t('keys.useKeyModal.shell') }}</label>
+            <Select v-model="shell" :options="shellOptions" />
+          </div>
         </div>
-        <Select v-if="activeClient !== 'opencode'" v-model="shell" :options="shellOptions" />
-        <div v-if="activeClient === 'codex'" class="space-y-3">
-          <label class="flex items-center justify-between gap-3 text-sm">
-            {{ t('keys.useKeyModal.directAuth') }}
+        <div v-if="activeClient === 'codex'" class="space-y-4">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-sm font-medium">{{ t('keys.useKeyModal.directAuth') }}</p>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('keys.useKeyModal.directAuthDescription') }}</p>
+            </div>
             <Toggle v-model="directAuth" />
-          </label>
-          <label v-if="websocketAllowed" class="flex items-center justify-between gap-3 text-sm">
-            Responses WebSocket
+          </div>
+          <div v-if="websocketAllowed" class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-sm font-medium">Responses WebSocket</p>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('keys.useKeyModal.websocketDescription') }}</p>
+            </div>
             <Toggle v-model="websocket" />
-          </label>
+          </div>
         </div>
         <!-- 配置块深浅主题均为黑色终端；标题和装饰不参与复制。 -->
         <div v-for="(file, index) in files" :key="file.path" class="code-block min-w-0 overflow-hidden !p-0">
@@ -62,9 +79,11 @@ import type { ApiKeyCompositeGroup, Group } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
+import Icon from '@/components/icons/Icon.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import { COPY_FEEDBACK_MS } from '@/constants/ui'
-import { availableClients, buildClientConfig, clientProtocol, CLIENT_LABELS, modelsForProtocol, type ClientKind, type ConfigShell } from '@/utils/clientConfig'
+import { modelIconData } from '@/utils/modelIconData'
+import { availableClients, buildClientConfig, clientProtocol, CLIENT_ICON_KEYS, CLIENT_LABELS, modelsForProtocol, type ClientKind, type ConfigShell } from '@/utils/clientConfig'
 
 const props = defineProps<{ show: boolean; apiKey: string; baseUrl: string; group?: Group | null; compositeGroups?: ApiKeyCompositeGroup[] }>()
 const emit = defineEmits<{ close: [] }>()

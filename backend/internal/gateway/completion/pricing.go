@@ -215,7 +215,8 @@ func (s *Recorder) CalculateTokenCost(
 		default:
 			cost, err = s.billingService.CalculateCostWithServiceTier(billingModel, tokens, multiplier, serviceTier)
 			if err == nil {
-				applyCostBreakdownMultiplier(cost, maxReasoningEffortBillingMultiplier(billingModel, stringValueOrEmpty(result.ReasoningEffort), nil))
+				price, _ := s.billingService.GetModelPricing(billingModel)
+				applyCostBreakdownMultiplier(cost, maxReasoningEffortBillingMultiplier(billingModel, stringValueOrEmpty(result.ReasoningEffort), price))
 			}
 		}
 	}

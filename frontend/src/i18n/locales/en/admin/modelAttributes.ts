@@ -13,7 +13,7 @@ export default {
     "unknown": "Unknown / not applicable",
     "none": "None",
     "routeDifferences": "Upstream routes have different attributes. Common capabilities and the lowest known limits are shown.",
-    "create": "Create attribute configuration",
+    "create": "Create config",
     "edit": "Edit attribute configuration",
     "details": "View attributes",
     "groups": "Associated groups",
@@ -33,6 +33,7 @@ export default {
       "actions": "Actions",
       "model": "Model",
       "provider": "Provider",
+      "capability": "Capability",
       "context": "Context",
       "output": "Output limit"
     },

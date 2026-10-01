@@ -11,39 +11,14 @@
                 class="min-w-0 flex-1 sm:w-56 sm:flex-none lg:w-48 xl:w-64"
                 @search="onFilterChange"
               />
-              <div ref="filterDropdownRef" class="relative shrink-0">
-                <button
-                  type="button"
-                  class="btn btn-secondary relative btn-icon"
-                  :aria-expanded="showFilterDropdown"
-                  :aria-label="t('common.filter')"
-                  :title="t('common.filter')"
-                  @click="showFilterDropdown = !showFilterDropdown"
-                >
-                  <Icon name="filter" size="sm" />
-                  <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-                    {{ activeFilterCount }}
-                  </span>
-                </button>
-                <div v-show="showFilterDropdown" class="absolute left-0 right-auto top-full z-modal-nested mt-2 w-[min(32rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 max-[639px]:left-auto max-[639px]:right-0" @click.stop>
-                  <div class="mb-3 flex items-center justify-between">
-                    <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                    <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetKeyFilters">
-                      {{ t('common.reset') }}
-                    </button>
-                  </div>
-                  <div class="space-y-3">
-                    <div>
-                      <label class="input-label">{{ t('keys.allGroups') }}</label>
-                      <Select :model-value="filterGroupId" :options="groupFilterOptions" @update:model-value="onGroupFilterChange" />
-                    </div>
-                    <div>
-                      <label class="input-label">{{ t('keys.allStatus') }}</label>
-                      <Select :model-value="filterStatus" :options="statusFilterOptions" @update:model-value="onStatusFilterChange" />
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <FilterDropdown :active-count="activeFilterCount" :columns="2" keep-mounted @reset="resetKeyFilters">
+                <FilterField :label="t('keys.group')">
+                  <Select data-test="keys-filter-group" :model-value="filterGroupId" :options="groupFilterOptions" @update:model-value="onGroupFilterChange" />
+                </FilterField>
+                <FilterField :label="t('common.status')">
+                  <Select data-test="keys-filter-status" :model-value="filterStatus" :options="statusFilterOptions" @update:model-value="onStatusFilterChange" />
+                </FilterField>
+              </FilterDropdown>
             </div>
             <div class="flex shrink-0 justify-end gap-3">
               <button
@@ -676,7 +651,7 @@
         <div class="space-y-3" data-test="model-mapping-editor">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <label class="input-label mb-0">{{ t('keys.modelRedirect.label') }}</label>
+              <label class="input-label mb-0">{{ t('keys.modelRedirect.label') }}</label><ModelRedirectHelp />
               <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">
                 {{ t('keys.modelRedirect.hint') }}
               </p>
@@ -1327,6 +1302,9 @@
 </template>
 
 <script setup lang="ts">
+import FilterField from '@/components/common/FilterField.vue'
+import ModelRedirectHelp from '@/components/keys/ModelRedirectHelp.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
 import { getKeyGroupProtocols, KEY_GROUP_PROTOCOLS, KEY_GROUP_PROTOCOL_LABELS, KEY_GROUP_PROTOCOL_ICONS, type KeyGroupProtocol } from '@/utils/keyGroupProviders'
 	import { watch, ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'

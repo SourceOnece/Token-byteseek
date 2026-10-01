@@ -12,7 +12,7 @@ import (
 func ModelsDevPrices(catalog *modelcatalog.Catalog) map[string]json.RawMessage {
 	result := map[string]json.RawMessage{}
 	for key, entry := range catalog.Entries {
-		if entry.Cost.Input == nil || entry.Cost.Output == nil {
+		if entry.Cost.Input == nil && entry.Cost.Output == nil {
 			continue
 		}
 		fields := modelsDevPriceFields(entry, entry.Cost)
@@ -85,10 +85,6 @@ func modelsDevPriceFields(entry modelcatalog.Entry, cost modelcatalog.Cost) map[
 		put("output_cost_per_token_priority", entry.Fast.Output)
 		put("cache_read_input_token_cost_priority", entry.Fast.CacheRead)
 		put("cache_creation_input_token_cost_priority", entry.Fast.CacheWrite)
-	}
-	if entry.FirstParty && entry.Provider == "anthropic" && strings.HasPrefix(entry.Model, "claude-") && cost.Input != nil && cost.CacheWrite != nil {
-		fields["cache_creation_input_token_cost_above_1hr"] = *cost.Input * 2 / 1e6
-		fields["price_sources"] = map[string]string{"cache_write_1h": "rule_supplement"}
 	}
 	return fields
 }

@@ -228,7 +228,7 @@ function imagePricingRows(pricing: MarketplaceModelPricing): PricingRow[] {
   ]
 
   return values.flatMap((item) => {
-    if (!hasPositiveValue(item.price)) {
+    if (typeof item.price !== 'number' || !Number.isFinite(item.price) || item.price < 0) {
       return []
     }
 
@@ -245,7 +245,7 @@ function hasImagePricing(pricing: MarketplaceModelPricing): boolean {
     pricing.image_price_1k,
     pricing.image_price_2k,
     pricing.image_price_4k,
-  ].some(hasPositiveValue)
+  ].some((value) => typeof value === 'number' && Number.isFinite(value) && value >= 0)
 }
 
 function pricingKind(pricing: MarketplaceModelPricing): 'token' | 'image' | 'unpriced' {

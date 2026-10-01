@@ -7,7 +7,7 @@ import (
 // CostInput 只携带本次计算的值快照，调用方决定数据来源和取时点。
 type CostInput struct {
 	ModelPricingAt      time.Time
-	ModelPolicy         ModelPolicy
+	ModelTimeLocation   *time.Location
 	Model               string
 	Tokens              UsageTokens
 	RequestCount        int
@@ -26,10 +26,4 @@ func ResolvedTimeMultiplier(resolved *ResolvedPricing, at time.Time, location *t
 		return 1
 	}
 	return resolved.ConfigPricing.TimePricing.MultiplierAt(at, location)
-}
-
-// ModelPolicy 是旧模型能力解析得到的价格策略投影，不携带模型目录或平台实现。
-type ModelPolicy struct {
-	NormalizedOpenAIModel string
-	IsGPT56               bool
 }

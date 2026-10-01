@@ -1,0 +1,326 @@
+{
+  "gemini-2.5-flash-image": {
+    "provider": "gemini",
+    "output_cost_per_token": 0.0000025,
+    "image_prices": {
+      "1K": 0.039
+    },
+    "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3-pro-image": {
+    "provider": "gemini",
+    "output_cost_per_token": 0.000012,
+    "image_prices": {
+      "1K": 0.134,
+      "2K": 0.134,
+      "4K": 0.24
+    },
+    "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3.1-flash-image": {
+    "provider": "gemini",
+    "output_cost_per_token": 0.000003,
+    "image_prices": {
+      "1K": 0.067,
+      "2K": 0.101,
+      "4K": 0.151
+    },
+    "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3.1-flash-lite-image": {
+    "provider": "gemini",
+    "output_cost_per_token": 0.0000015,
+    "image_prices": {
+      "1K": 0.0336
+    },
+    "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+    "verified_at": "2026-10-01"
+  },
+  "gpt-image-1": {
+    "provider": "openai",
+    "mode": "image_generation",
+    "input_cost_per_token": 0.000005,
+    "cache_read_input_token_cost": 0.00000125,
+    "input_cost_per_image_token": 0.00001,
+    "output_cost_per_image_token": 0.00004,
+    "source_url": "https://developers.openai.com/api/docs/models/gpt-image-1",
+    "verified_at": "2026-10-01",
+    "cache_read_input_image_token_cost": 0.0000025
+  },
+  "gpt-image-1-mini": {
+    "provider": "openai",
+    "mode": "image_generation",
+    "input_cost_per_token": 0.000002,
+    "cache_read_input_token_cost": 2e-7,
+    "input_cost_per_image_token": 0.0000025,
+    "output_cost_per_image_token": 0.000008,
+    "source_url": "https://developers.openai.com/api/docs/models/gpt-image-1-mini",
+    "verified_at": "2026-10-01",
+    "cache_read_input_image_token_cost": 2.5e-7
+  },
+  "gpt-image-1.5": {
+    "provider": "openai",
+    "mode": "image_generation",
+    "input_cost_per_token": 0.000005,
+    "cache_read_input_token_cost": 0.00000125,
+    "input_cost_per_image_token": 0.000008,
+    "output_cost_per_image_token": 0.000032,
+    "output_cost_per_token": 0.00001,
+    "source_url": "https://developers.openai.com/api/docs/models/gpt-image-1.5",
+    "verified_at": "2026-10-01",
+    "cache_read_input_image_token_cost": 0.000002
+  },
+  "grok-imagine-image": {
+    "provider": "xai",
+    "mode": "image_generation",
+    "image_prices": {
+      "1K": 0.02,
+      "2K": 0.02
+    },
+    "source_url": "https://docs.x.ai/developers/pricing",
+    "verified_at": "2026-10-01"
+  },
+  "grok-imagine-image-quality": {
+    "provider": "xai",
+    "mode": "image_generation",
+    "image_prices": {
+      "1K": 0.05,
+      "2K": 0.07
+    },
+    "source_url": "https://docs.x.ai/developers/pricing",
+    "verified_at": "2026-10-01"
+  },
+  "grok-imagine-video": {
+    "provider": "xai",
+    "mode": "video",
+    "video_prices": {
+      "480p": 0.05,
+      "720p": 0.07
+    },
+    "source_url": "https://docs.x.ai/developers/pricing",
+    "verified_at": "2026-10-01"
+  },
+  "grok-imagine-video-1.5": {
+    "provider": "xai",
+    "mode": "video",
+    "video_prices": {
+      "480p": 0.08,
+      "720p": 0.14,
+      "1080p": 0.25
+    },
+    "source_url": "https://docs.x.ai/developers/pricing",
+    "verified_at": "2026-10-01"
+  },
+  "_billing_defaults": {
+    "web_search_price_per_call": 0.01,
+    "audio_tts_price_per_million_chars": 15,
+    "audio_stt_price_per_hour": 0.1,
+    "sources": {
+      "web_search_price_per_call": "https://developers.openai.com/api/docs/pricing",
+      "audio_tts_price_per_million_chars": "https://docs.x.ai/developers/pricing",
+      "audio_stt_price_per_hour": "https://docs.x.ai/developers/pricing"
+    },
+    "verified_at": "2026-10-01"
+  },
+  "gpt-image-1.5-2025-12-16": {
+    "cache_read_input_image_token_cost": 0.000002,
+    "cache_read_input_token_cost": 0.00000125,
+    "input_cost_per_image_token": 0.000008,
+    "input_cost_per_token": 0.000005,
+    "provider": "openai",
+    "mode": "image_generation",
+    "output_cost_per_image_token": 0.000032,
+    "output_cost_per_token": 0.00001,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/resources/model-pricing/model_prices_and_context_window.json",
+    "verified_at": "2026-10-01"
+  },
+  "gpt-image-2": {
+    "cache_read_input_image_token_cost": 0.000002,
+    "cache_read_input_token_cost": 0.00000125,
+    "input_cost_per_image_token": 0.000008,
+    "input_cost_per_token": 0.000005,
+    "provider": "openai",
+    "mode": "image_generation",
+    "output_cost_per_image_token": 0.00003,
+    "output_cost_per_token": 0.00001,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/resources/model-pricing/model_prices_and_context_window.json",
+    "verified_at": "2026-10-01"
+  },
+  "gpt-image-2-2026-04-21": {
+    "cache_read_input_image_token_cost": 0.000002,
+    "cache_read_input_token_cost": 0.00000125,
+    "input_cost_per_image_token": 0.000008,
+    "input_cost_per_token": 0.000005,
+    "provider": "openai",
+    "mode": "image_generation",
+    "output_cost_per_image_token": 0.00003,
+    "output_cost_per_token": 0.00001,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/resources/model-pricing/model_prices_and_context_window.json",
+    "verified_at": "2026-10-01"
+  },
+  "gpt-image-2.5-flare": {
+    "cache_read_input_image_token_cost": 0.000002,
+    "cache_read_input_token_cost": 0.00000125,
+    "input_cost_per_image_token": 0.000008,
+    "input_cost_per_token": 0.000005,
+    "mode": "image_generation",
+    "output_cost_per_image_token": 0.00003,
+    "output_cost_per_token": 0,
+    "provider": "openai",
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/resources/model-pricing/model_prices_and_context_window.json",
+    "verified_at": "2026-10-01"
+  },
+  "gpt-image-2.5-flare-2026-09-08": {
+    "cache_read_input_image_token_cost": 0.000002,
+    "cache_read_input_token_cost": 0.00000125,
+    "input_cost_per_image_token": 0.000008,
+    "input_cost_per_token": 0.000005,
+    "mode": "image_generation",
+    "output_cost_per_image_token": 0.00003,
+    "output_cost_per_token": 0,
+    "provider": "openai",
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/resources/model-pricing/model_prices_and_context_window.json",
+    "verified_at": "2026-10-01"
+  },
+  "gpt-image-2.5-sunburst": {
+    "cache_read_input_image_token_cost": 0.000002,
+    "cache_read_input_token_cost": 0.00000125,
+    "input_cost_per_image_token": 0.000008,
+    "input_cost_per_token": 0.000005,
+    "mode": "image_generation",
+    "output_cost_per_image_token": 0.00003,
+    "output_cost_per_token": 0,
+    "provider": "openai",
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/resources/model-pricing/model_prices_and_context_window.json",
+    "verified_at": "2026-10-01"
+  },
+  "gpt-image-2.5-sunburst-2026-09-08": {
+    "cache_read_input_image_token_cost": 0.000002,
+    "cache_read_input_token_cost": 0.00000125,
+    "input_cost_per_image_token": 0.000008,
+    "input_cost_per_token": 0.000005,
+    "mode": "image_generation",
+    "output_cost_per_image_token": 0.00003,
+    "output_cost_per_token": 0,
+    "provider": "openai",
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/resources/model-pricing/model_prices_and_context_window.json",
+    "verified_at": "2026-10-01"
+  },
+  "gpt-6.1-sol": {
+    "cache_write_multiplier": 1.25,
+    "fast_multiplier": 2,
+    "provider": "openai",
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/internal/service/pricing_service.go",
+    "verified_at": "2026-10-01"
+  },
+  "gpt-6-astra": {
+    "provider": "openai",
+    "ultrafast_multiplier": 6,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/resources/model-pricing/model_prices_and_context_window.json",
+    "verified_at": "2026-10-01"
+  },
+  "grok-4.7": {
+    "provider": "xai",
+    "input_cost_per_token": 0.000002,
+    "output_cost_per_token": 0.000006,
+    "cache_read_input_token_cost": 5e-7,
+    "long_context_input_token_threshold": 200000,
+    "long_context_input_cost_multiplier": 2,
+    "long_context_output_cost_multiplier": 2,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/resources/model-pricing/model_prices_and_context_window.json",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3.7-flash-low": {
+    "provider": "gemini",
+    "mode": "chat",
+    "input_cost_per_token": 7.5e-7,
+    "output_cost_per_token": 0.00000375,
+    "cache_read_input_token_cost": 7.5e-8,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/internal/service/billing_service.go",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3.7-flash-medium": {
+    "provider": "gemini",
+    "mode": "chat",
+    "input_cost_per_token": 7.5e-7,
+    "output_cost_per_token": 0.00000375,
+    "cache_read_input_token_cost": 7.5e-8,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/internal/service/billing_service.go",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3.7-flash-high": {
+    "provider": "gemini",
+    "mode": "chat",
+    "input_cost_per_token": 7.5e-7,
+    "output_cost_per_token": 0.00000375,
+    "cache_read_input_token_cost": 7.5e-8,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/internal/service/billing_service.go",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3.7-flash-tiered": {
+    "provider": "gemini",
+    "mode": "chat",
+    "input_cost_per_token": 7.5e-7,
+    "output_cost_per_token": 0.00000375,
+    "cache_read_input_token_cost": 7.5e-8,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/internal/service/billing_service.go",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3.8-flash-low": {
+    "provider": "gemini",
+    "mode": "chat",
+    "input_cost_per_token": 7.5e-7,
+    "output_cost_per_token": 0.00000375,
+    "cache_read_input_token_cost": 7.5e-8,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/internal/service/billing_service.go",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3.8-flash-medium": {
+    "provider": "gemini",
+    "mode": "chat",
+    "input_cost_per_token": 7.5e-7,
+    "output_cost_per_token": 0.00000375,
+    "cache_read_input_token_cost": 7.5e-8,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/internal/service/billing_service.go",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3.8-flash-high": {
+    "provider": "gemini",
+    "mode": "chat",
+    "input_cost_per_token": 7.5e-7,
+    "output_cost_per_token": 0.00000375,
+    "cache_read_input_token_cost": 7.5e-8,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/internal/service/billing_service.go",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3.8-flash-tiered": {
+    "provider": "gemini",
+    "mode": "chat",
+    "input_cost_per_token": 7.5e-7,
+    "output_cost_per_token": 0.00000375,
+    "cache_read_input_token_cost": 7.5e-8,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/internal/service/billing_service.go",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3.7-flash": {
+    "provider": "gemini",
+    "mode": "chat",
+    "input_cost_per_token": 7.5e-7,
+    "output_cost_per_token": 0.00000375,
+    "cache_read_input_token_cost": 7.5e-8,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/internal/service/billing_service.go",
+    "verified_at": "2026-10-01"
+  },
+  "gemini-3.8-flash": {
+    "provider": "gemini",
+    "mode": "chat",
+    "input_cost_per_token": 7.5e-7,
+    "output_cost_per_token": 0.00000375,
+    "cache_read_input_token_cost": 7.5e-8,
+    "source_url": "https://github.com/Wei-Shaw/sub2api/blob/96f4c115c9749078f90cbf210a01d39baf3f53b6/backend/internal/service/billing_service.go",
+    "verified_at": "2026-10-01"
+  }
+}

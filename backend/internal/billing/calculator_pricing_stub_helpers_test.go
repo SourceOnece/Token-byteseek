@@ -13,7 +13,7 @@ import (
 // openAILadderCatalogJSON 模拟同步目录：长上下文使用 above_272k 绝对价字段，
 // 由解析层折算为统一计费核心使用的阈值和倍率。
 const openAILadderCatalogJSON = `{
-	"gpt-5.4": {"provider": "openai", "mode": "chat",
+	"gpt-5.4": {"provider": "openai", "mode": "chat", "fast_multiplier": 2, "flex_multiplier": 0.5,
 		"input_cost_per_token": 2.5e-06, "output_cost_per_token": 1.5e-05,
 		"cache_read_input_token_cost": 2.5e-07, "cache_creation_input_token_cost": 2.5e-06,
 		"input_cost_per_token_above_272k_tokens": 5e-06,

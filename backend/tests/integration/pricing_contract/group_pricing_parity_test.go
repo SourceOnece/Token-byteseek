@@ -296,7 +296,7 @@ func TestQoderGroupPricingConfigBlankPricesParity(t *testing.T) {
 	require.InDelta(t, 0.0025, costs[0], 1e-12)
 }
 
-// 保留内置来源，确保纯倍率不会意外禁用内置峰值定价；共享价格配置只覆盖同名倍率。
+// TestModifierCardsPreserveBuiltinPricingPolicy 验证纯倍率保留目录来源，且不会按型号追加峰值定价。
 func TestModifierCardsPreserveBuiltinPricingPolicy(t *testing.T) {
 	model := "deepseek-v4-flash"
 	card := routing.ModelPricingEntry{
@@ -319,10 +319,10 @@ func TestModifierCardsPreserveBuiltinPricingPolicy(t *testing.T) {
 					Tokens: purepricing.UsageTokens{InputTokens: 100}, RateMultiplier: 1, PricingAt: at, ServiceTier: "priority",
 				})
 				require.NoError(t, err)
-				expected := 100 * purepricing.DeepseekFlashOffPeakInputPrice * 3
+				expected := 100 * 2.2e-7 * 3
 
 				if hour >= 1 && hour < 4 {
-					expected *= 2 * 2 // 内置峰值与价卡分时各生效一次。
+					expected *= 2 // 仅显式价卡分时生效，不按型号追加峰值。
 				}
 				require.InDelta(t, expected, cost.TotalCost, 1e-12)
 			}

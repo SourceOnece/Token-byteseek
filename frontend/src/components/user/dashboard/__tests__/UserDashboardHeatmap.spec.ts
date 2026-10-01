@@ -1,7 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { defineComponent, h, ref } from 'vue'
 
 import UserDashboardHeatmap from '../UserDashboardHeatmap.vue'
+import { provideUsageChartState, type UsageChartState } from '../usageChartState'
 import { usageAPI } from '@/api/usage'
 import { formatDateLocalInput } from '@/utils/format'
 
@@ -25,6 +27,7 @@ vi.mock('@/composables/useBalanceDisplay', () => ({
 vi.mock('@/api/usage', () => ({
   usageAPI: {
     getDashboardTrend: vi.fn(),
+    getDashboardModels: vi.fn().mockResolvedValue({ models: [], start_date: '', end_date: '' }),
   },
 }))
 
@@ -41,8 +44,19 @@ const expectedRange = () => {
   return { start, end }
 }
 
+// 热力图读取页面提供的用量状态，用一层外壳提供并暴露给断言。
+let usageState: UsageChartState
+const selectedDays: string[] = []
+const heatmapRef = ref<{ reload: () => Promise<void> } | null>(null)
+const Harness = defineComponent({
+  setup() {
+    usageState = provideUsageChartState()
+    return () => h(UserDashboardHeatmap, { ref: heatmapRef, onSelectDay: (date: string) => selectedDays.push(date) })
+  },
+})
+
 const mountHeatmap = async () => {
-  const wrapper = mount(UserDashboardHeatmap, {
+  const wrapper = mount(Harness, {
     global: {
       stubs: { LoadingSpinner: true },
     },
@@ -73,6 +87,8 @@ const todayTrendPoint = (date: string) => ({
 describe('UserDashboardHeatmap', () => {
   beforeEach(() => {
     vi.mocked(usageAPI.getDashboardTrend).mockReset()
+    selectedDays.length = 0
+    localStorage.clear()
   })
 
   it('按近三年整周范围请求按日趋势数据', async () => {
@@ -106,7 +122,7 @@ describe('UserDashboardHeatmap', () => {
     const activeCells = cells.filter((c) => c.classes().includes('bg-emerald-700'))
     expect(activeCells.length).toBe(1)
     const futureCount = cells.filter((c) => c.classes().includes('invisible')).length
-    expect(cells.filter((c) => c.classes().includes('bg-gray-950/[0.07]')).length).toBe(cells.length - futureCount - 1)
+    expect(cells.filter((c) => c.classes().includes('bg-gray-100')).length).toBe(cells.length - futureCount - 1)
   })
 
   it('悬停格子时显示当天用量，无用量日期显示无用量', async () => {
@@ -129,8 +145,8 @@ describe('UserDashboardHeatmap', () => {
     expect(tooltip.text()).toContain('dashboard.heatmapCost')
     expect(tooltip.text()).toContain('0.2')
     expect(tooltip.attributes('aria-hidden')).toBe('false')
-    expect(tooltip.attributes('style')).toContain('left 400ms cubic-bezier(0.25, 1, 0.5, 1)')
-    expect(tooltip.attributes('style')).toContain('width 400ms cubic-bezier(0.25, 1, 0.5, 1)')
+    expect(tooltip.attributes('style')).toContain('opacity var(--motion-fast)')
+    expect(tooltip.attributes('style')).toContain('opacity var(--motion-fast)')
 
     await wrapper.get('[data-testid="heatmap-grid-wrap"]').trigger('mouseleave')
     expect(wrapper.get('[data-testid="heatmap-tooltip"]').attributes('aria-hidden')).toBe('true')
@@ -193,11 +209,54 @@ describe('UserDashboardHeatmap', () => {
   it('reload 会重新请求数据', async () => {
     vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue(emptyTrend)
 
-    const wrapper = await mountHeatmap()
+    await mountHeatmap()
     expect(usageAPI.getDashboardTrend).toHaveBeenCalledTimes(1)
 
-    await (wrapper.vm as unknown as { reload: () => Promise<void> }).reload()
+    await heatmapRef.value?.reload()
     await flushPromises()
     expect(usageAPI.getDashboardTrend).toHaveBeenCalledTimes(2)
+  })
+
+  it('点击格子把趋势图切到当天按小时查看，并标记为选中', async () => {
+    const { end } = expectedRange()
+    const today = formatDateLocalInput(end)
+    vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue({
+      ...emptyTrend,
+      trend: [todayTrendPoint(today)],
+    })
+
+    const wrapper = await mountHeatmap()
+    const cell = wrapper.get(`[data-date="${today}"]`)
+    expect(cell.attributes('role')).toBe('button')
+    expect(cell.attributes('tabindex')).toBe('0')
+    expect(cell.classes()).toContain('heatmap-cell-today')
+
+    await cell.trigger('click')
+    await flushPromises()
+
+    expect(selectedDays).toEqual([today])
+    expect(usageState.rangePreset.value).toBe('custom')
+    expect(usageState.activeRange.value.granularity).toBe('hour')
+    expect(wrapper.get(`[data-date="${today}"]`).attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get(`[data-date="${today}"]`).classes()).toContain('heatmap-cell-selected')
+  })
+
+  it('方向键在日期之间移动焦点，不会移到未来日期', async () => {
+    const { end } = expectedRange()
+    const today = formatDateLocalInput(end)
+    vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue(emptyTrend)
+
+    const wrapper = await mountHeatmap()
+    const yesterday = new Date(end)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayKey = formatDateLocalInput(yesterday)
+
+    await wrapper.get(`[data-date="${today}"]`).trigger('keydown', { key: 'ArrowUp' })
+    expect(wrapper.get(`[data-date="${yesterdayKey}"]`).attributes('tabindex')).toBe('0')
+    expect(wrapper.get(`[data-date="${today}"]`).attributes('tabindex')).toBe('-1')
+
+    await wrapper.get(`[data-date="${yesterdayKey}"]`).trigger('keydown', { key: 'ArrowDown' })
+    await wrapper.get(`[data-date="${today}"]`).trigger('keydown', { key: 'ArrowDown' })
+    expect(wrapper.get(`[data-date="${today}"]`).attributes('tabindex')).toBe('0')
   })
 })

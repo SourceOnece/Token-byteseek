@@ -2,13 +2,16 @@
   <div :class="variant === 'card' ? 'space-y-4' : 'space-y-2'" :data-testid="testId || undefined">
     <div v-if="hasHeader" class="flex items-end justify-between gap-2">
       <div class="min-w-0">
-        <h4
-          v-if="title && titleStyle === 'section'"
-          class="text-sm font-semibold text-primary-900 dark:text-dark-50"
-        >
-          {{ title }}
-        </h4>
-        <p v-else-if="title" class="input-label mb-0">{{ title }}</p>
+        <div class="flex items-center">
+          <h4
+            v-if="title && titleStyle === 'section'"
+            class="text-sm font-semibold text-primary-900 dark:text-dark-50"
+          >
+            {{ title }}
+          </h4>
+          <p v-else-if="title" class="input-label mb-0">{{ title }}</p>
+          <slot name="title-suffix" />
+        </div>
         <p v-if="hint && titleStyle === 'section'" class="input-hint">{{ hint }}</p>
         <p v-else-if="hint" class="mt-1 text-xs text-gray-500 dark:text-dark-400">
           {{ hint }}
@@ -188,6 +191,7 @@ const emit = defineEmits<{
 
 defineSlots<{
   row(props: { item: T; index: number }): unknown
+  'title-suffix'?(): unknown
   'header-actions'?(): unknown
   'header-extra'?(): unknown
   footer?(): unknown
@@ -202,7 +206,7 @@ const resolveObjectKey = createStableObjectKeyResolver<object>('rule-list-row')
 
 const hasHeader = computed(
   () =>
-    Boolean(props.title || props.hint || slots['header-actions']) ||
+    Boolean(props.title || props.hint || slots['title-suffix'] || slots['header-actions']) ||
     props.addPlacement === 'header',
 )
 const resolvedAddLabel = computed(() => props.addLabel || t('common.add'))

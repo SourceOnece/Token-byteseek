@@ -190,6 +190,7 @@ const mountView = async () => {
   const wrapper = mount(GroupsView, {
     global: {
       stubs: {
+        Teleport: true,
         AppLayout: AppLayoutStub,
         TablePageLayout: TablePageLayoutStub,
         DataTable: DataTableStub,

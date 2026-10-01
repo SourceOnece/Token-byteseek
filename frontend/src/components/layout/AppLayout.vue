@@ -32,6 +32,10 @@
           <div>
             <h1 class="page-title">{{ pageTitle }}</h1>
             <p v-if="pageDescription" class="page-description">{{ pageDescription }}</p>
+            <!-- 标题说明下方的补充信息，例如仪表盘的实时状态 -->
+            <div v-if="$slots['page-heading-meta']" class="mt-2">
+              <slot name="page-heading-meta" />
+            </div>
           </div>
           <div v-if="$slots['page-heading-actions']" class="shrink-0">
             <slot name="page-heading-actions" />

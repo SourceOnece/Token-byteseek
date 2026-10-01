@@ -51,9 +51,13 @@
 
 环境变量把点分键转成大写下划线，例如 `database.host` 对应 `DATABASE_HOST`，`gateway.max_body_size` 对应 `GATEWAY_MAX_BODY_SIZE`。`setDefaults` 还负责把所有 struct 键注册进 Viper，使纯环境变量部署能被 `Unmarshal` 看到；新增字段不能只加 `mapstructure` tag 而不注册默认/可达键。模型目录使用 `pricing.remote_url`（默认 `https://models.dev/catalog.json`）与 `pricing.check_interval_minutes`（默认 10 分钟），自动同步价格和展示属性。旧 `pricing.hash_check_interval_minutes` 及对应环境变量按下述兼容键优先级映射到新键。`pricing.hash_url`、`pricing.update_interval_hours` 已退役，旧输入被忽略，不再参与解析校验或运行时同步；fork 旧 catalog_format 格式选择也已退役。
 
-已知 Wei-Shaw、BerriAI 公共旧价格地址在内存中转换为 models.dev 地址，并补入新的下载域名；自定义地址保持不变，必须返回 models.dev 目录格式。配置文件不会被改写。`pricing.fallback_file` 默认指向 `resources/model-pricing/model_pricing_supplements.json`；旧的相对资源路径及 `/app/resources/` 打包路径仅在原文件不存在时迁移到新补充文件，已存在的自定义内容继续读取。旧目录缓存不再加载，也不会被删除。
+已知 Wei-Shaw、BerriAI 公共旧价格地址在内存中转换为 models.dev 地址，并补入新的下载域名；自定义地址保持不变，必须返回 models.dev 目录格式。配置文件不会被改写。官方价格补充通过 `go:embed` 编入二进制，`pricing.fallback_file` 默认为空，仅用于指定可选的自定义补充。原有路径兼容规则继续保留：旧的相对资源路径及 `/app/resources/` 打包路径仅在原文件不存在时迁移到同目录的 `model_pricing_supplements.json`；已存在的文件及其他自定义路径保持不变。只在内存中解析路径，不改写或创建部署文件；目标文件也不存在时仍使用内嵌补充。旧目录缓存不再加载，也不会被删除。
 
-本地补充填补缺失模型、媒体单价和生图文本输出价；`pricing.override_file` 按字段浅合并覆盖目录和补充层，`null` 删除字段。两层都必须是 JSON 对象，顶层 `null`、非对象条目及非法价格字段会拒绝更新，保留已发布目录并记录错误；文件不存在表示空层。修改和删除在下一次周期检查或管理员更新时生效，包括远程返回 304 或远程地址为空的场景。首次启动遇到损坏的本地层时，仍可发布不带该层的离线目录并保留错误，等待修复。
+目录已有字段（含零价）优先，其次是自定义补充，最后由内嵌补充填补有明确来源的缺失模型价格、媒体单价、生图文本输出价及显式商业规则。媒体尺寸表等复合字段整体选择，不合并不同来源的尺寸表。文件必须是 JSON 对象；顶层 `null`、非对象条目及非法价格字段拒绝更新，保留已发布目录并记录错误。自定义文件不存在表示该层为空，内嵌补充仍然生效；修改和删除在下一次周期检查或管理员更新时生效，包括远程返回 304 或远程地址为空的场景。首次启动遇到损坏的补充文件时，仍可发布带内嵌补充的离线目录并保留错误，等待修复。
+
+`pricing.override_file` 及 `PRICING_OVERRIDE_FILE` 已退役，不读取、监测或改写旧覆盖文件；非空旧键会在启动时提示弃用。管理员应在升级前将需要保留的用户售价转入现有价格配置并关联分组，提供商成本另行配置。不会自动迁移文件内容，也没有新增全局默认价卡。
+
+补充文件中的 `_billing_defaults` 是操作价格保留节点，可包含 `web_search_price_per_call`、`search_price_per_1k`、`audio_realtime_price_per_min`、`audio_tts_price_per_million_chars` 和 `audio_stt_price_per_hour`；单位与同名价格配置设置一致。自定义补充按字段叠加到内嵌操作默认价，管理员价格配置优先，显式零价表示免费；该节点不出现在模型、价格候选或属性列表中。
 
 本地 JSON 使用 `provider`，读取边界兼容 `litellm_provider`；同一条目同时提供时新字段优先，包括空值和 `null`。内部价格类型和来源分类使用目录中性名称，实际报价出处继续由 `source`、`price_sources` 区分。
 

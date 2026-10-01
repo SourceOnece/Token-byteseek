@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import FilterField from '@/components/common/FilterField.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Select from '@/components/common/Select.vue'
@@ -916,38 +918,22 @@ function handleToolbarRefresh() {
 
       <div class="flex flex-wrap items-center gap-3">
         <template v-if="!props.fullscreen">
-          <div ref="filterDropdownRef" class="relative">
-            <button
-              type="button"
-              class="flex rounded-control bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800 btn-icon-sm"
-              :aria-expanded="showFilterDropdown"
-              :aria-label="t('common.filter')"
-              :title="t('common.filter')"
-              @click="showFilterDropdown = !showFilterDropdown"
-            >
-              <Icon name="filter" size="sm" />
-              <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-xs font-bold text-white">
-                {{ activeFilterCount }}
-              </span>
-            </button>
-            <div
-              v-if="showFilterDropdown"
-              class="absolute left-0 right-auto top-full z-modal-nested mt-2 w-[calc(100vw-4rem)] max-w-[calc(100vw-4rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:w-[min(34rem,calc(100vw-2rem))] sm:max-w-[calc(100vw-2rem)]"
-              @click.stop
-            >
-              <div class="mb-3 flex items-center justify-between">
-                <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetOpsFilters">
-                  {{ t('common.reset') }}
-                </button>
-              </div>
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Select :model-value="platform" :options="platformOptions" @update:model-value="handlePlatformChange" />
-                <Select :model-value="groupId" :options="groupOptions" @update:model-value="handleGroupChange" />
-                <Select :model-value="timeRange" :options="timeRangeOptions" class="sm:col-span-2" @update:model-value="handleTimeRangeChange" />
-              </div>
-            </div>
-          </div>
+          <FilterDropdown
+            :active-count="activeFilterCount"
+            :columns="2"
+            trigger-class="flex rounded-control bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800 btn-icon-sm"
+            @reset="resetOpsFilters"
+          >
+            <FilterField :label="t('admin.ops.errorLog.platform')">
+              <Select :model-value="platform" :options="platformOptions" @update:model-value="handlePlatformChange" />
+            </FilterField>
+            <FilterField :label="t('admin.ops.errorLog.group')">
+              <Select :model-value="groupId" :options="groupOptions" @update:model-value="handleGroupChange" />
+            </FilterField>
+            <FilterField :label="t('admin.dashboard.timeRange')" empty-value="1h" full>
+              <Select :model-value="timeRange" :options="timeRangeOptions" @update:model-value="handleTimeRangeChange" />
+            </FilterField>
+          </FilterDropdown>
         </template>
 
         <div v-if="!props.fullscreen" class="ml-auto flex flex-wrap items-center gap-3">

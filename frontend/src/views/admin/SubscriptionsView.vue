@@ -65,58 +65,14 @@
             </div>
 
             <!-- Filters -->
-            <div ref="filterDropdownRef" class="relative shrink-0">
-              <button
-                ref="filterDropdownButtonRef"
-                type="button"
-                class="btn btn-secondary relative btn-icon"
-                :aria-expanded="showFilterDropdown"
-                :aria-label="t('common.filter')"
-                :title="t('common.filter')"
-                @click="toggleFilterDropdown"
-              >
-                <Icon name="filter" size="sm" />
-                <span
-                  v-if="activeFilterCount > 0"
-                  class="pointer-events-none absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
-                >
-                  {{ activeFilterCount }}
-                </span>
-              </button>
-
-              <Teleport to="body">
-                <div
-                  v-if="showFilterDropdown"
-                  class="fixed z-modal-nested max-w-[calc(100vw-2rem)] overflow-y-auto rounded-surface border border-gray-200 bg-white shadow-xl dark:border-dark-600 dark:bg-dark-900"
-                  :style="filterDropdownStyle"
-                  @click.stop
-                >
-                <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-dark-700">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                  <button
-                    v-if="activeFilterCount > 0"
-                    type="button"
-                    class="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                    @click="resetSubscriptionFilters"
-                  >
-                    {{ t('common.reset') }}
-                  </button>
-                </div>
-                <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
-                  <div>
-                    <label class="input-label">{{ t('admin.subscriptions.columns.status') }}</label>
-                    <Select v-model="filters.status" :options="statusOptions" :placeholder="t('admin.subscriptions.allStatus')" @change="applyFilters" />
-                  </div>
-                  <div>
-                    <label class="input-label">{{ t('admin.subscriptions.form.group') }}</label>
-                    <Select v-model="filters.plan_id" :options="planOptions" :placeholder="t('admin.announcements.form.selectPackages')" @change="applyFilters" />
-                  </div>
-                  <div class="sm:col-span-2">
-                  </div>
-                </div>
-                </div>
-              </Teleport>
-            </div>
+            <FilterDropdown :active-count="activeFilterCount" :columns="2" @reset="resetSubscriptionFilters">
+              <FilterField :label="t('admin.subscriptions.columns.status')">
+                <Select v-model="filters.status" :options="statusOptions" :placeholder="t('admin.subscriptions.allStatus')" @change="applyFilters" />
+              </FilterField>
+              <FilterField :label="t('admin.subscriptions.form.group')">
+                <Select v-model="filters.plan_id" :options="planOptions" :placeholder="t('admin.announcements.form.selectPackages')" @change="applyFilters" />
+              </FilterField>
+            </FilterDropdown>
           </div>
 
           <!-- Right: Actions -->
@@ -822,7 +778,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import FilterField from '@/components/common/FilterField.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
@@ -847,7 +805,6 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import UserAvatar from '@/components/common/UserAvatar.vue'
 import Select from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import {
   getRemainingDurationParts,
   getRemainingExpiryDuration,
@@ -1011,48 +968,6 @@ const columns = computed<Column[]>(() =>
 // Column dropdown state
 const showColumnDropdown = ref(false)
 const columnDropdownRef = ref<HTMLElement | null>(null)
-const showFilterDropdown = ref(false)
-const filterDropdownRef = ref<HTMLElement | null>(null)
-const filterDropdownButtonRef = ref<HTMLElement | null>(null)
-const filterDropdownPosition = reactive({
-  top: null as number | null,
-  bottom: null as number | null,
-  left: 16,
-  width: 512,
-  maxHeight: 0
-})
-const filterDropdownStyle = computed(() => ({
-  top: filterDropdownPosition.top == null ? 'auto' : `${filterDropdownPosition.top}px`,
-  bottom: filterDropdownPosition.bottom == null ? 'auto' : `${filterDropdownPosition.bottom}px`,
-  left: `${filterDropdownPosition.left}px`,
-  width: `${filterDropdownPosition.width}px`,
-  maxHeight: `${filterDropdownPosition.maxHeight}px`
-}))
-
-// 过滤面板挂载到 body 后按触发按钮重新定位，确保桌面端和窄屏都不越界。
-const updateFilterDropdownPosition = () => {
-  if (!showFilterDropdown.value) return
-  const trigger = filterDropdownButtonRef.value
-  if (!trigger) return
-  Object.assign(
-    filterDropdownPosition,
-    getFloatingPanelPosition(
-      trigger.getBoundingClientRect(),
-      document.documentElement.clientWidth || window.innerWidth,
-      window.innerHeight,
-      { maxWidth: 512, mobileBreakpoint: 768 }
-    )
-  )
-}
-
-const toggleFilterDropdown = async () => {
-  showFilterDropdown.value = !showFilterDropdown.value
-  if (showFilterDropdown.value) {
-    await nextTick()
-    updateFilterDropdownPosition()
-  }
-}
-
 // Filter options
 const statusOptions = computed(() => [
   { value: '', label: t('admin.subscriptions.allStatus') },
@@ -1714,9 +1629,6 @@ const handleClickOutside = (event: MouseEvent) => {
   if (columnDropdownRef.value && !columnDropdownRef.value.contains(target)) {
     showColumnDropdown.value = false
   }
-  if (filterDropdownRef.value && !filterDropdownRef.value.contains(target)) {
-    showFilterDropdown.value = false
-  }
 }
 
 onMounted(() => {
@@ -1725,15 +1637,11 @@ onMounted(() => {
   loadSubscriptions()
   loadPlans()
   document.addEventListener('click', handleClickOutside)
-  window.addEventListener('resize', updateFilterDropdownPosition)
-  window.addEventListener('scroll', updateFilterDropdownPosition, true)
 })
 
 onUnmounted(() => {
   userSearchGeneration++
   document.removeEventListener('click', handleClickOutside)
-  window.removeEventListener('resize', updateFilterDropdownPosition)
-  window.removeEventListener('scroll', updateFilterDropdownPosition, true)
   if (filterUserSearchTimeout) {
     clearTimeout(filterUserSearchTimeout)
   }

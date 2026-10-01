@@ -17,25 +17,15 @@ assert_line() {
   grep -Fqx "$line" "$file" || fail "$file is missing: $line"
 }
 
-# 多架构配置必须为每个镜像目标显式携带运行时资源。
-assert_count() {
-  file=$1
-  line=$2
-  expected=$3
-  actual=$(grep -Fxc "$line" "$file" || true)
-  [ "$actual" -eq "$expected" ] || fail "$file has $actual occurrences of '$line', expected $expected"
-}
-
-test -s backend/resources/model-pricing/model_pricing_supplements.json || \
+test -s backend/internal/modelcatalog/model_pricing_supplements.json || \
   fail 'pricing supplements are missing or empty'
 test -s backend/internal/modelcatalog/catalog.json.gz || \
   fail 'embedded models.dev catalog is missing or empty'
 test -s backend/internal/modelcatalog/LICENSE.models.dev || \
   fail 'models.dev license is missing or empty'
 
-assert_line Dockerfile.goreleaser 'COPY --chown=sub2api:sub2api backend/resources /app/resources'
-assert_line deploy/Dockerfile 'COPY --from=backend-builder --chown=sub2api:sub2api /app/backend/resources /app/resources'
-assert_count .goreleaser.yaml '      - backend/resources' 2
-assert_count .goreleaser.simple.yaml '      - backend/resources' 1
+# 官方补充与离线目录都由 Go 编译器嵌入，运行镜像无需另行复制价格资源。
+assert_line backend/internal/modelcatalog/catalog.go '//go:embed model_pricing_supplements.json'
+assert_line backend/internal/modelcatalog/catalog.go '//go:embed catalog.json.gz'
 
 printf 'docker runtime resources test passed\n'

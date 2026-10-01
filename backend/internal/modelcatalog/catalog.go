@@ -21,6 +21,16 @@ const RemoteURL = "https://models.dev/catalog.json"
 //go:embed catalog.json.gz
 var offlineData []byte
 
+// pricingSupplements 保存随版本发布的官方补充，运行时无需读取外部资源。
+//
+//go:embed model_pricing_supplements.json
+var pricingSupplements string
+
+// PricingSupplements 返回官方补充正文，调用者负责校验并合并自定义补充。
+func PricingSupplements() []byte {
+	return []byte(pricingSupplements)
+}
+
 // Offline 返回离线目录正文，调用者负责应用本地价格覆盖。
 func Offline() ([]byte, error) {
 	r, err := gzip.NewReader(bytes.NewReader(offlineData))

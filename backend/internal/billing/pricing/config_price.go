@@ -5,7 +5,7 @@ func ApplyConfigPrice(pricing *ModelPricing, configPricing *ModelPricingEntry) *
 	if configPricing == nil {
 		return pricing
 	}
-	// 防止修改 fallbackPrices 中的共享指针
+	// 防止修改 目录中的共享价格
 	cloned := *pricing
 	pricing = &cloned
 	ApplyConfigTokenPriceOverrides(pricing, configPricing)

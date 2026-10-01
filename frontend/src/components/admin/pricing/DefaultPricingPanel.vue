@@ -9,22 +9,14 @@
               <Icon name="search" size="md" class="input-icon text-gray-400 dark:text-gray-500" />
               <input v-model="search" class="input input-has-icon" :placeholder="t('admin.pricing.defaults.search')" :aria-label="t('admin.pricing.defaults.search')" />
             </div>
-            <div ref="filterDropdown" class="relative shrink-0" @keydown.esc.stop.prevent="showFilters = false">
-              <button type="button" class="btn btn-secondary relative btn-icon" :aria-label="t('common.filter')" :title="t('common.filter')" :aria-expanded="showFilters" @click="showFilters = !showFilters">
-                <Icon name="filter" size="sm" />
-                <span v-if="activeFilterCount" class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">{{ activeFilterCount }}</span>
-              </button>
-              <div v-if="showFilters" class="absolute left-auto right-0 top-full z-modal-nested mt-2 w-72 rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto" @click.stop>
-                <div class="mb-3 flex items-center justify-between">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                  <button v-if="activeFilterCount" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="platform = ''; mode = ''">{{ t('common.reset') }}</button>
-                </div>
-                <div class="space-y-3">
-                  <Select v-model="platform" :options="platformOptions" :aria-label="t('admin.pricing.defaults.columns.platform')" />
-                  <Select v-model="mode" :options="modeOptions" :aria-label="t('admin.pricing.defaults.columns.billing_mode')" />
-                </div>
-              </div>
-            </div>
+            <FilterDropdown :active-count="activeFilterCount" @reset="platform = ''; mode = ''">
+              <FilterField :label="t('admin.pricing.defaults.columns.platform')">
+                <Select v-model="platform" :options="platformOptions" :aria-label="t('admin.pricing.defaults.columns.platform')" />
+              </FilterField>
+              <FilterField :label="t('admin.pricing.defaults.columns.billing_mode')">
+                <Select v-model="mode" :options="modeOptions" :aria-label="t('admin.pricing.defaults.columns.billing_mode')" />
+              </FilterField>
+            </FilterDropdown>
           </div>
           <div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-3">
             <button type="button" class="btn btn-secondary btn-icon" :disabled="loading || updating" :title="t('common.refresh')" :aria-label="t('common.refresh')" @click="load">
@@ -115,6 +107,8 @@
 </template>
 
 <script setup lang="ts">
+import FilterField from '@/components/common/FilterField.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDebounceFn } from '@vueuse/core'

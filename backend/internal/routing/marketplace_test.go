@@ -232,6 +232,7 @@ func TestModelMarketplacePricingConfigImageInputPricingIsDisplayed(t *testing.T)
 
 func TestModelDisplayPricingImageInputFastRates(t *testing.T) {
 	fastModeMultiplier := 3.0
+	priorityMultiplier := 2.0
 	tests := []struct {
 		name          string
 		pricing       billingpricing.ModelPricing
@@ -239,11 +240,12 @@ func TestModelDisplayPricingImageInputFastRates(t *testing.T) {
 		wantFastImage float64
 	}{
 		{
-			name: "priority 倍率同步应用到图片输入价",
+			name: "显式 priority 倍率同步应用到图片输入价",
 			pricing: billingpricing.ModelPricing{
 				InputPricePerToken:      0.01,
 				ImageInputPricePerToken: 0.03,
 				SupportsServiceTier:     true,
+				FastMultiplier:          &priorityMultiplier,
 			},
 			wantImage:     0.06,
 			wantFastImage: 0.12,

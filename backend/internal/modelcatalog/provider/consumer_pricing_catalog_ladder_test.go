@@ -89,7 +89,7 @@ func TestParsePricingData_WarnsOrphanCacheTierFields(t *testing.T) {
 		"priority-orphan": {"provider": "openai", "mode": "chat",
 			"input_cost_per_token": 5e-06, "output_cost_per_token": 3e-05,
 			"cache_creation_input_token_cost_above_272k_tokens_priority": 2.5e-05}
-	}`, "")
+	}`)
 	data := service.Snapshot().Data
 	require.Equal(t, 200000, data["gemini-orphan"].LongContextInputTokenThreshold)
 	require.True(t, logSink.ContainsMessageAtLevel("gemini-orphan(cache_creation_input_token_cost_above_200k_tokens)", "warn"))
@@ -110,7 +110,7 @@ func TestParsePricingData_WarnsLopsidedLongContextLadder(t *testing.T) {
 			"input_cost_per_token": 4e-06, "output_cost_per_token": 2e-05,
 			"input_cost_per_token_above_272k_tokens": 8e-06,
 			"output_cost_per_token_above_272k_tokens": 3e-05}
-	}`, "")
+	}`)
 	data := service.Snapshot().Data
 	require.Equal(t, 272000, data["mixed-versions"].LongContextInputTokenThreshold)
 	require.True(t, logSink.ContainsMessageAtLevel("mixed-versions(input x1.60, output x1.00)", "warn"))

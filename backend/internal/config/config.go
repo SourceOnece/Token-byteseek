@@ -535,10 +535,8 @@ type PricingConfig struct {
 	RemoteURL string `mapstructure:"remote_url"`
 	// 本地数据目录
 	DataDir string `mapstructure:"data_dir"`
-	// 本地价格补充文件路径
+	// 可选的自定义价格补充文件路径；空值只使用目录和内嵌补充。
 	FallbackFile string `mapstructure:"fallback_file"`
-	// 覆盖补丁文件路径（可选）：按字段浅合并覆盖目录和回退数据
-	OverrideFile string `mapstructure:"override_file"`
 	// 目录与本地文件检查间隔（分钟）
 	CheckIntervalMinutes int `mapstructure:"check_interval_minutes"`
 }
@@ -1574,6 +1572,9 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 	trustedProxiesConfigured := viper.InConfig("server.trusted_proxies") ||
 		viper.IsSet("server.trusted_proxies") || trustedProxiesEnvConfigured
 
+	if strings.TrimSpace(viper.GetString("pricing.override_file")) != "" {
+		slog.Warn("pricing.override_file is retired and ignored; configure user prices in Pricing Management before upgrading")
+	}
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config error: %w", err)
@@ -2053,8 +2054,7 @@ func setDefaults() {
 	// Pricing 从 models.dev 同步统一目录，本地文件补充专用计费维度。
 	viper.SetDefault("pricing.remote_url", "https://models.dev/catalog.json")
 	viper.SetDefault("pricing.data_dir", "./data")
-	viper.SetDefault("pricing.fallback_file", "./resources/model-pricing/model_prices_and_context_window.json")
-	viper.SetDefault("pricing.override_file", "")
+	viper.SetDefault("pricing.fallback_file", "")
 	viper.SetDefault("pricing.check_interval_minutes", 10)
 
 	// Timezone (default to Asia/Shanghai for Chinese users)

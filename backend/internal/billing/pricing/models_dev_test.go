@@ -13,7 +13,7 @@ func TestModelsDevContextPricesAndCacheTTL(t *testing.T) {
 	require.NoError(t, err)
 	entries, _, err := ParsePricingEntries(ModelsDevPrices(catalog))
 	require.NoError(t, err)
-	base, _, err := ResolveModelPricing("claude-test", entries["claude-test"], nil, ModelPolicy{})
+	base, err := ResolveModelPricing("claude-test", entries["claude-test"])
 	require.NoError(t, err)
 	for _, tc := range []struct {
 		input int
@@ -23,7 +23,7 @@ func TestModelsDevContextPricesAndCacheTTL(t *testing.T) {
 		require.InDelta(t, float64(tc.input)*tc.price/1e6, cost.TotalCost, 1e-12)
 	}
 	cache := ComputeTokenBreakdown(base, UsageTokens{CacheCreationTokens: 30, CacheCreation5mTokens: 10, CacheCreation1hTokens: 20}, 1, "", true)
-	require.InDelta(t, (10*3.75+20*6)/1e6, cache.TotalCost, 1e-12)
+	require.InDelta(t, 30*3.75/1e6, cache.TotalCost, 1e-12)
 	intervals := LongContextDisplayPricingIntervals(base, 2)
 	require.Len(t, intervals, 3)
 	require.InDelta(t, 12e-6, intervals[1].InputPricePerToken, 1e-12)
@@ -38,15 +38,15 @@ func TestModelsDevExplicitFreeFastAndCacheTTL(t *testing.T) {
 	require.NoError(t, err)
 	entries, _, err := ParsePricingEntries(ModelsDevPrices(catalog))
 	require.NoError(t, err)
-	claude, _, err := ResolveModelPricing("claude-test", entries["claude-test"], nil, ModelPolicy{})
+	claude, err := ResolveModelPricing("claude-test", entries["claude-test"])
 	require.NoError(t, err)
 	usage := UsageTokens{CacheCreationTokens: 30, CacheCreation5mTokens: 10, CacheCreation1hTokens: 20}
 	cost := ComputeTokenBreakdown(claude, usage, 1, "priority", true)
-	require.InDelta(t, (10*7.5+20*12)/1e6, cost.TotalCost, 1e-12)
+	require.InDelta(t, 30*7.5/1e6, cost.TotalCost, 1e-12)
 	fast, ok := FastModeDisplayPricing(claude)
 	require.True(t, ok)
-	require.InDelta(t, 12e-6, fast.CacheCreation1hPrice, 1e-12)
-	gpt, _, err := ResolveModelPricing("gpt-5.5", entries["gpt-5.5"], nil, ModelPolicy{NormalizedOpenAIModel: "gpt-5.5"})
+	require.Zero(t, fast.CacheCreation1hPrice)
+	gpt, err := ResolveModelPricing("gpt-5.5", entries["gpt-5.5"])
 	require.NoError(t, err)
 	require.Zero(t, ComputeTokenBreakdown(gpt, UsageTokens{InputTokens: 10, OutputTokens: 10}, 1, "priority", true).TotalCost)
 }
@@ -54,7 +54,7 @@ func TestModelsDevExplicitFreeFastAndCacheTTL(t *testing.T) {
 func TestModelsDevExplicitZeroOneHourCachePrice(t *testing.T) {
 	entries, _, err := ParsePricingEntries(map[string]json.RawMessage{"claude-test": json.RawMessage(`{"source":"models.dev","input_cost_per_token":0.000003,"output_cost_per_token":0.000015,"cache_creation_input_token_cost":0.00000375,"cache_creation_input_token_cost_above_1hr":0}`)})
 	require.NoError(t, err)
-	base, _, err := ResolveModelPricing("claude-test", entries["claude-test"], nil, ModelPolicy{})
+	base, err := ResolveModelPricing("claude-test", entries["claude-test"])
 	require.NoError(t, err)
 	require.True(t, base.SupportsCacheBreakdown)
 	require.Zero(t, ComputeTokenBreakdown(base, UsageTokens{CacheCreationTokens: 10, CacheCreation1hTokens: 10}, 1, "", true).TotalCost)
@@ -63,7 +63,7 @@ func TestModelsDevExplicitZeroOneHourCachePrice(t *testing.T) {
 func TestModelsDevZeroCacheWriteDoesNotUseModelFallback(t *testing.T) {
 	entries, _, err := ParsePricingEntries(map[string]json.RawMessage{"gpt-5.6-sol": json.RawMessage(`{"source":"models.dev","input_cost_per_token":0.000003,"output_cost_per_token":0.000015,"cache_creation_input_token_cost":0}`)})
 	require.NoError(t, err)
-	base, _, err := ResolveModelPricing("gpt-5.6-sol", entries["gpt-5.6-sol"], nil, ModelPolicy{IsGPT56: true, NormalizedOpenAIModel: "gpt-5.6-sol"})
+	base, err := ResolveModelPricing("gpt-5.6-sol", entries["gpt-5.6-sol"])
 	require.NoError(t, err)
 	require.Zero(t, ComputeTokenBreakdown(base, UsageTokens{CacheCreationTokens: 10}, 1, "", true).TotalCost)
 }
@@ -83,12 +83,11 @@ func TestModelsDevImageOutputScope(t *testing.T) {
 	entries, _, err := ParsePricingEntries(ModelsDevPrices(catalog))
 	require.NoError(t, err)
 	for model, price := range map[string]float64{"deep-research-test": 12e-6, "gemini-text-test": 12e-6, "gemini-omni-test": 12e-6, "openrouter/gemini-image-test": 9e-6} {
-		value, _, err := ResolveModelPricing(model, entries[model], nil, ModelPolicy{})
+		value, err := ResolveModelPricing(model, entries[model])
 		require.NoError(t, err)
 		require.InDelta(t, price, value.OutputPricePerToken, 1e-12)
 	}
 	// 已知缺少文本价时，不借用跨模型或旧媒体兜底价。
-	fallback := map[string]*ModelPricing{"gemini-image-test": {InputPricePerToken: 2e-6, OutputPricePerToken: 99e-6}}
-	_, _, err = ResolveModelPricing("gemini-image-test", entries["gemini-image-test"], fallback, ModelPolicy{})
+	_, err = ResolveModelPricing("gemini-image-test", entries["gemini-image-test"])
 	require.ErrorIs(t, err, ErrModelPricingUnavailable)
 }

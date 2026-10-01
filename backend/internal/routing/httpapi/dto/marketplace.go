@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"slices"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
@@ -32,9 +33,9 @@ type ModelMarketplacePricing struct {
 	FastCacheReadPricePerToken    float64                           `json:"fast_cache_read_price_per_token,omitempty"`
 	FastImageOutputPricePerToken  float64                           `json:"fast_image_output_price_per_token,omitempty"`
 	ContextIntervals              []ModelMarketplacePricingInterval `json:"context_intervals,omitempty"`
-	ImagePrice1K                  float64                           `json:"image_price_1k,omitempty"`
-	ImagePrice2K                  float64                           `json:"image_price_2k,omitempty"`
-	ImagePrice4K                  float64                           `json:"image_price_4k,omitempty"`
+	ImagePrice1K                  *float64                          `json:"image_price_1k,omitempty"`
+	ImagePrice2K                  *float64                          `json:"image_price_2k,omitempty"`
+	ImagePrice4K                  *float64                          `json:"image_price_4k,omitempty"`
 }
 
 // ModelMarketplacePricingInterval 是前端模型广场展示用的上下文区间价格。
@@ -228,8 +229,20 @@ func modelMarketplacePricingFromRouting(pricing pricing.ModelDisplayPricing) Mod
 		FastCacheReadPricePerToken:    pricing.FastCacheReadPricePerToken,
 		FastImageOutputPricePerToken:  pricing.FastImageOutputPricePerToken,
 		ContextIntervals:              intervals,
-		ImagePrice1K:                  pricing.ImagePrice1K,
-		ImagePrice2K:                  pricing.ImagePrice2K,
-		ImagePrice4K:                  pricing.ImagePrice4K,
+		ImagePrice1K:                  imagePriceValue(pricing, "1K", pricing.ImagePrice1K),
+		ImagePrice2K:                  imagePriceValue(pricing, "2K", pricing.ImagePrice2K),
+		ImagePrice4K:                  imagePriceValue(pricing, "4K", pricing.ImagePrice4K),
 	}
+}
+
+// imagePriceValue 在 HTTP 中保留明确零价，缺失尺寸省略字段。
+func imagePriceValue(price pricing.ModelDisplayPricing, size string, value float64) *float64 {
+	if len(price.ImagePriceSizes) > 0 {
+		if !slices.Contains(price.ImagePriceSizes, size) {
+			return nil
+		}
+	} else if value == 0 {
+		return nil
+	}
+	return &value
 }

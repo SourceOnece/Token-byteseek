@@ -1,74 +1,5 @@
 package pricing
 
-import (
-	"strings"
-)
-
-func GetDefaultGrokImagineImagePrice(model string, imageSize string) (float64, bool) {
-	model = strings.ToLower(strings.TrimSpace(model))
-	switch model {
-	case "grok-imagine-image-2.0":
-		return GetGrokImagineImageTierPrice(
-			imageSize,
-			DefaultGrokImagineImage20Price1K,
-			DefaultGrokImagineImage20Price2K,
-		), true
-	case "grok-imagine-image-quality":
-		return GetGrokImagineImageTierPrice(
-			imageSize,
-			DefaultGrokImagineImageQualityPrice1K,
-			DefaultGrokImagineImageQualityPrice2K,
-		), true
-	case "grok-imagine-image":
-		return GetGrokImagineImageTierPrice(
-			imageSize,
-			DefaultGrokImagineImagePrice1K,
-			DefaultGrokImagineImagePrice2K,
-		), true
-	default:
-		return 0, false
-	}
-}
-
-func GetGrokImagineImageTierPrice(imageSize string, price1K float64, price2K float64) float64 {
-	switch NormalizeImageBillingTierOrDefault(imageSize) {
-	case ImageBillingSize1K:
-		return price1K
-	case ImageBillingSize2K, ImageBillingSize4K:
-		return price2K
-	default:
-		return price2K
-	}
-}
-
-func GetDefaultGrokImagineVideoPrice(model string, resolution string) (float64, bool) {
-	model = strings.ToLower(strings.TrimSpace(model))
-	switch model {
-	case "grok-imagine-video-1.5":
-		switch NormalizeVideoBillingResolutionOrDefault(resolution) {
-		case VideoBillingResolution480P:
-			return DefaultGrokImagineVideo15Price480P, true
-		case VideoBillingResolution720P:
-			return DefaultGrokImagineVideo15Price720P, true
-		case VideoBillingResolution1080P:
-			return DefaultGrokImagineVideo15Price1080P, true
-		default:
-			return DefaultGrokImagineVideo15Price480P, true
-		}
-	case "grok-imagine-video":
-		switch NormalizeVideoBillingResolutionOrDefault(resolution) {
-		case VideoBillingResolution480P:
-			return DefaultGrokImagineVideoPrice480P, true
-		case VideoBillingResolution720P, VideoBillingResolution1080P:
-			return DefaultGrokImagineVideoPrice720P, true
-		default:
-			return DefaultGrokImagineVideoPrice480P, true
-		}
-	default:
-		return 0, false
-	}
-}
-
 // CalculateImageCost 对显式单张价格计算费用，保持乘法顺序与负倍率回退。
 func CalculateImageCost(unitPrice float64, imageCount int, rateMultiplier float64) *CostBreakdown {
 	if imageCount <= 0 {
@@ -116,20 +47,28 @@ func HasImageUnitPrice(catalogPrice *CatalogModelPricing) bool {
 		catalogPrice.ImagePricePresent && catalogPrice.OutputCostPerImage == 0)
 }
 
-// DefaultImagePrice 对明确的目录报价应用尺寸倍率，布尔值区分显式零价与缺价。
-func DefaultImagePrice(catalogPrice *CatalogModelPricing, imageSize string) (float64, bool) {
-	if !HasImageUnitPrice(catalogPrice) {
+// DefaultImagePrice 按尺寸读取明确单价，不按固定倍率猜测更大尺寸。
+func DefaultImagePrice(price *CatalogModelPricing, size string) (float64, bool) {
+	if price == nil {
 		return 0, false
 	}
-	basePrice := catalogPrice.OutputCostPerImage
-
-	// 2K 尺寸 1.5 倍，4K 尺寸翻倍
-	if imageSize == "2K" {
-		return basePrice * 1.5, true
+	if value, ok := price.ImagePrices[NormalizeImageBillingTierOrDefault(size)]; ok {
+		return value, true
 	}
-	if imageSize == "4K" {
-		return basePrice * 2, true
+	if len(price.ImagePrices) > 0 {
+		return 0, false
 	}
+	if HasImageUnitPrice(price) {
+		return price.OutputCostPerImage, true
+	}
+	return 0, false
+}
 
-	return basePrice, true
+// DefaultVideoPrice 只读取相同型号、相同分辨率的每秒单价。
+func DefaultVideoPrice(price *CatalogModelPricing, resolution string) (float64, bool) {
+	if price == nil {
+		return 0, false
+	}
+	value, ok := price.VideoPrices[NormalizeVideoBillingResolutionOrDefault(resolution)]
+	return value, ok
 }

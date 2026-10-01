@@ -3,21 +3,14 @@ package pricing
 import (
 	"fmt"
 	"math"
-	"strings"
 )
 
 // ConfiguredImageUnitPrice 保持显式零价与未定价之间的区别。
 func ConfiguredImageUnitPrice(resolved *ResolvedPricing, size string) (float64, bool) {
-	var price float64
-	var found bool
-	if resolved != nil && (resolved.Mode == BillingModeImage || resolved.Mode == BillingModePerRequest) {
-		price, found = GetRequestTierPriceValue(resolved, strings.TrimSpace(size))
-		if !found && resolved.ConfigPricing != nil && resolved.ConfigPricing.PerRequestPrice != nil {
-			price, found = resolved.DefaultPerRequestPrice, true
-		}
+	if resolved == nil || resolved.Mode != BillingModeImage && resolved.Mode != BillingModePerRequest {
+		return 0, false
 	}
-
-	return price, found
+	return ResolveRequestUnitPrice(resolved, size, nil)
 }
 
 // ValidateImageUnitPrice 保留旧固定单张价的失败语义。
@@ -26,4 +19,16 @@ func ValidateImageUnitPrice(price float64) (float64, error) {
 		return 0, fmt.Errorf("invalid image unit price: %w", ErrModelPricingUnavailable)
 	}
 	return price, nil
+}
+
+// ResolveImageUnitPrice 仅为图片模式或无按次价卡的请求补目录单价；按次缺价不借用图片价。
+func ResolveImageUnitPrice(resolved *ResolvedPricing, catalog *CatalogModelPricing, size string) (float64, error) {
+	price, found := ConfiguredImageUnitPrice(resolved, size)
+	if !found && (resolved == nil || resolved.Mode != BillingModePerRequest) {
+		price, found = DefaultImagePrice(catalog, size)
+	}
+	if !found {
+		return 0, ErrModelPricingUnavailable
+	}
+	return ValidateImageUnitPrice(price)
 }

@@ -96,7 +96,7 @@ func TestAsyncImageUnitPricingUsesCardsAndPerImageFallback(t *testing.T) {
 	resolver = billingtestkit.SharedPriceResolver(billing, group.ID, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{Models: []string{model}, BillingMode: routing.BillingModeImage, Intervals: []routing.PricingInterval{{TierLabel: "512", PerRequestPrice: testPtrFloat64(0)}}}})
 	price, err = resolver.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: model, GroupID: &group.ID}, "2K")
 	require.NoError(t, err)
-	require.InDelta(t, 0.3, price, 1e-12)
+	require.InDelta(t, 0.2, price, 1e-12)
 	price, err = resolver.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: model, GroupID: &group.ID}, "512")
 	require.NoError(t, err)
 	require.Zero(t, price)
@@ -104,5 +104,5 @@ func TestAsyncImageUnitPricingUsesCardsAndPerImageFallback(t *testing.T) {
 	resolver = billingtestkit.SharedPriceResolver(billing, group.ID, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{Models: []string{model}, BillingMode: routing.BillingModeToken, ImageOutputPrice: testPtrFloat64(0.000009)}})
 	price, err = resolver.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: model, GroupID: &group.ID}, "2K")
 	require.NoError(t, err)
-	require.InDelta(t, 0.3, price, 1e-12)
+	require.InDelta(t, 0.2, price, 1e-12)
 }

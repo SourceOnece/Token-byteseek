@@ -86,7 +86,14 @@ describe('ProviderUpstreamUsageCell', () => {
     expect(wrapper.text()).toContain('Pro')
     expect(wrapper.text()).toContain('admin.providers.upstreamUsage.expiresAt')
     expect(wrapper.get('[data-testid="upstream-subscription-row"]').classes()).toContain('justify-end')
-    expect(wrapper.get('[data-testid="upstream-subscription-row"]').classes()).toContain('md:justify-start')
+    expect(wrapper.get('[data-testid="upstream-subscription-row"]').classes()).toContain('lg:justify-start')
+  })
+
+  it('查询中的骨架在移动端卡片里与结果一样靠右', () => {
+    const wrapper = mountCell({ loading: true })
+    const skeleton = wrapper.get('[data-testid="upstream-usage-skeleton"]')
+    expect(skeleton.classes()).toContain('items-end')
+    expect(skeleton.classes()).toContain('lg:items-start')
   })
 
   it('把无限量和错误状态分别显示，并保留重试按钮', async () => {

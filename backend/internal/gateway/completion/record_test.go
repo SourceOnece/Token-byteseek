@@ -68,7 +68,7 @@ func recordFixture() (*Recorder, *recordStore, *recordWriter, *Input, *[]string)
 	events := []string{}
 	funds := &recordStore{events: &events}
 	logs := &recordWriter{events: &events}
-	calculator := billing.NewCalculator(nil, billing.CalculatorOptions{DefaultRateMultiplier: 1})
+	calculator := billing.NewCalculator(recordPriceCatalog{}, billing.CalculatorOptions{DefaultRateMultiplier: 1})
 	recorder := NewRecorder(Dependencies{Calculator: calculator, Funds: funds, Models: recordModels{}, Logs: logs, Effects: recordEffects{&events}}, RecorderOptions{DefaultMultiplier: 1})
 	input := &Input{
 		Result:    &Result{Model: "claude-sonnet-4", Usage: TokenUsage{InputTokens: 10, OutputTokens: 2, CacheReadInputTokens: 3, CacheCreationInputTokens: 1}},
@@ -143,3 +143,15 @@ func TestSnapshotIsolatesQueueInputs(t *testing.T) {
 	require.Equal(t, 1, frozen.Result.ImageSizeBreakdown["1K"])
 	require.Equal(t, 2.0, frozen.Subscription.Plan.GroupRateMultipliers[7])
 }
+
+// recordPriceCatalog 仅为资金和日志时序测试提供明确目录价。
+type recordPriceCatalog struct{}
+
+func (recordPriceCatalog) GetModelPricing(model string) *pricing.CatalogModelPricing {
+	if model != "claude-sonnet-4" {
+		return nil
+	}
+	return &pricing.CatalogModelPricing{InputCostPerToken: 3e-6, OutputCostPerToken: 15e-6}
+}
+func (recordPriceCatalog) GetStatus() map[string]any { return nil }
+func (recordPriceCatalog) ForceUpdate() error        { return nil }

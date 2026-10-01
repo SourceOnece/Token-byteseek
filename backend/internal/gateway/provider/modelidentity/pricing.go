@@ -19,12 +19,3 @@ func LookupCandidates(model string) []string {
 func Identity(model string) billing.ModelIdentity {
 	return billing.ModelIdentity{Candidates: LookupCandidates(model)}
 }
-
-// PricingPolicy 把平台型号身份投影给唯一的纯定价规则。
-func PricingPolicy(model string) pricing.ModelPolicy {
-	normalized := NormalizeOpenAI(model)
-	return pricing.ModelPolicy{
-		NormalizedOpenAIModel: normalized,
-		IsGPT56:               IsGPT56(normalized),
-	}
-}

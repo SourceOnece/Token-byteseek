@@ -188,8 +188,8 @@ backend/
 │   │   ├── grok/                                        Grok token 估算的协议常量
 │   │   ├── openai/                                      Responses、Chat、媒体、WS、Codex 与用量报文
 │   │   └── wirejson/                                    保持报文结构的 JSON 读取与修改
-│   ├── modelcatalog/                                    models.dev 目录、供应商身份索引及展示属性值
-│   │   └── provider/                                   统一目录加载、条件同步、本地补充与覆盖、价格和属性原子快照
+│   ├── modelcatalog/                                    models.dev 目录、内嵌官方补充、供应商身份索引及展示属性值
+│   │   └── provider/                                   统一目录加载、条件同步、内嵌与自定义补充、价格和属性原子快照
 │   ├── routing/                                         分组、价格配置、模型目录和请求路线
 │   │   ├── accessview/                                  分组访问、能力、模型与调度配置的只读投影
 │   │   ├── capability/                                  平台、提供商、协议准入与单步转换纯规则

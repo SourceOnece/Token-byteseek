@@ -28,6 +28,7 @@ type RemoteClient interface {
 // Service 维护价格与展示属性共享的模型目录，统一加载、同步和原子发布。
 // @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup
 type Service struct {
+	billingDefaults  purepricing.OperationPrices
 	updateMu         sync.Mutex
 	modelCatalog     *modelcatalog.Catalog
 	catalogETag      string
@@ -39,7 +40,7 @@ type Service struct {
 	pricingData      map[string]*CatalogModelPricing
 	lastUpdated      time.Time
 	localHash        string
-	// fallback/override 文件在最近一次成功重建时的内容指纹，定时器据此判断是否
+	// 补充文件在最近一次成功重建时的内容指纹，定时器据此判断是否
 	// 需要从本地目录缓存重建叠加层。
 	customFilesHash string
 
@@ -85,7 +86,7 @@ func (s *Service) Stop() {
 }
 
 // startUpdateScheduler 启动定时调度器：每个周期先做远程目录条件同步（配置了 remote_url 时），
-// 再比对 fallback/override 文件指纹做本地热重载（配置了任一文件时）。两者都未配置则不启动。
+// 再比对补充文件指纹做本地热重载（配置了补充文件时）。远程与补充均未配置则不启动。
 func (s *Service) startUpdateScheduler() {
 	if s == nil || s.options == nil {
 		return
@@ -143,31 +144,26 @@ func (s *Service) syncWithRemote() error {
 	return s.updateModelsCatalog(false)
 }
 
-// hasCustomPricingFiles 报告是否配置了 fallback/override 任一文件路径（不要求文件存在）。
+// hasCustomPricingFiles 报告是否配置了补充文件路径（不要求文件存在）。
 func (s *Service) hasCustomPricingFiles() bool {
 	if s == nil || s.options == nil {
 		return false
 	}
-	return strings.TrimSpace(s.currentOptions().FallbackFile) != "" || strings.TrimSpace(s.currentOptions().OverrideFile) != ""
+	return strings.TrimSpace(s.currentOptions().FallbackFile) != ""
 }
 
-// customPricingFilesFingerprint 返回 fallback、override 两个文件当前内容的联合 sha256。
-// 每个文件以"长度前缀 + 正文"参与计算，不可读的文件按空正文处理；未配置任何文件返回空串。
+// customPricingFilesFingerprint 返回补充文件当前内容的 sha256。
+// 长度前缀和正文一起参与计算，不可读的文件按空正文处理；未配置时返回空串。
 func (s *Service) customPricingFilesFingerprint() string {
 	if !s.hasCustomPricingFiles() {
 		return ""
 	}
 	h := sha256.New()
-	for _, path := range []string{s.currentOptions().FallbackFile, s.currentOptions().OverrideFile} {
-		var body []byte
-		if p := strings.TrimSpace(path); p != "" {
-			body, _ = os.ReadFile(p)
-		}
-		var size [8]byte
-		binary.BigEndian.PutUint64(size[:], uint64(len(body)))
-		_, _ = h.Write(size[:])
-		_, _ = h.Write(body)
-	}
+	body, _ := os.ReadFile(strings.TrimSpace(s.currentOptions().FallbackFile))
+	var size [8]byte
+	binary.BigEndian.PutUint64(size[:], uint64(len(body)))
+	_, _ = h.Write(size[:])
+	_, _ = h.Write(body)
 	return hex.EncodeToString(h.Sum(nil))
 }
 
@@ -184,19 +180,24 @@ func loadLocalPricingEntries(path string) (map[string]json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
+	return decodePricingSupplement(body, path)
+}
+
+// decodePricingSupplement 对内嵌和外部补充使用相同的完整校验。
+func decodePricingSupplement(body []byte, source string) (map[string]json.RawMessage, error) {
 	entries, err := purepricing.DecodeCatalogEntries(body)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return nil, fmt.Errorf("%s: %w", source, err)
 	}
-	// 补丁可以不带价格，但已提供字段必须合法；被目录覆盖的补充字段也须校验。
+	// 补充可以不带价格，但已提供字段必须合法；被目录覆盖的补充字段也须校验。
 	_, diagnostics, _ := purepricing.ParsePricingEntries(entries)
 	if err := diagnostics.ValidationError(); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return nil, fmt.Errorf("%s: %w", source, err)
 	}
 	return entries, nil
 }
 
-// reloadIfCustomFilesChanged 比对 fallback/override 文件指纹，与最近一次重建时不同则从
+// reloadIfCustomFilesChanged 比对补充文件指纹，与最近一次重建时不同则从
 // 本地目录缓存重建内存数据。文件被删除视为该层清空，照常重建；文件存在但不可读或不是
 // JSON 对象时保留当前数据且不更新指纹，下一轮会再次尝试并重复告警。目录正文与远程同步
 // 锚点(localHash)不受本路径影响。
@@ -213,7 +214,7 @@ func (s *Service) reloadIfCustomFilesChanged() {
 	}
 }
 
-// reloadCustomPricingLayers 从缓存或内存目录重建本地补充及覆盖层。
+// reloadCustomPricingLayers 从缓存或内存目录重建本地补充层。
 func (s *Service) reloadCustomPricingLayers() error {
 	return s.loadModelsCatalog()
 }
@@ -241,7 +242,7 @@ func warnOrphanCacheTierFields(entries []string) {
 	if total > 20 {
 		entries = append(entries[:20], "...")
 	}
-	logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Warning: %d model(s) carry cache above-tier prices without a base cache price; that cache item bills at $0 until the catalog/override supplies the base: %s", total, strings.Join(entries, ", "))
+	logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Warning: %d model(s) carry cache above-tier prices without a base cache price; that cache item bills at $0 until the catalog/supplement supplies the base: %s", total, strings.Join(entries, ", "))
 }
 
 // warnDroppedLongContextLadders 在价格目录热更新时检测原有阶梯是否意外消失。
@@ -267,7 +268,7 @@ func warnDroppedLongContextLadders(old, next map[string]*CatalogModelPricing) {
 	if total > 20 {
 		dropped = append(dropped[:20], "...")
 	}
-	logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Warning: Long-context ladder dropped for %d model(s) after reload: %s (verify catalog/override data if unintended)", total, strings.Join(dropped, ", "))
+	logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Warning: Long-context ladder dropped for %d model(s) after reload: %s (verify catalog/supplement data if unintended)", total, strings.Join(dropped, ", "))
 }
 
 func (s *Service) validateCatalogURL(raw string) (string, error) {
@@ -336,7 +337,7 @@ func (s *Service) GetStatus() map[string]any {
 	}
 }
 
-// ForceUpdate 强制下载模型目录；远程地址为空时重载本地补充及覆盖。
+// ForceUpdate 强制下载模型目录；远程地址为空时重载本地补充。
 func (s *Service) ForceUpdate() error {
 	return s.updateModelsCatalog(true)
 }
@@ -378,7 +379,6 @@ type Options struct {
 	DataDir              string
 	RemoteURL            string
 	FallbackFile         string
-	OverrideFile         string
 	CheckIntervalMinutes int
 	URLAllowlistEnabled  bool
 	AllowInsecureHTTP    bool
@@ -397,6 +397,7 @@ func (s *Service) currentOptions() Options {
 
 // Snapshot 是可交给纯查询或测试消费者的独立目录快照。
 type Snapshot struct {
+	BillingDefaults            purepricing.OperationPrices
 	catalogIdentity            *modelcatalog.Catalog
 	Data                       map[string]*CatalogModelPricing
 	LastUpdated                time.Time
@@ -408,7 +409,7 @@ type Snapshot struct {
 func (s *Service) Snapshot() Snapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := Snapshot{catalogIdentity: s.modelCatalog, LastError: s.lastCatalogError, LastUpdated: s.lastUpdated, LocalHash: s.localHash, CustomFilesHash: s.customFilesHash}
+	out := Snapshot{BillingDefaults: s.billingDefaults.Clone(), catalogIdentity: s.modelCatalog, LastError: s.lastCatalogError, LastUpdated: s.lastUpdated, LocalHash: s.localHash, CustomFilesHash: s.customFilesHash}
 	if s.pricingData != nil {
 		out.Data = make(map[string]*CatalogModelPricing, len(s.pricingData))
 	}
@@ -426,6 +427,7 @@ func (s *Service) Snapshot() Snapshot {
 func NewServiceFromSnapshot(options Options, remote RemoteClient, snapshot Snapshot) *Service {
 	s := NewService(options, remote)
 	s.pricingData = snapshot.Data
+	s.billingDefaults = snapshot.BillingDefaults.Clone()
 	s.modelCatalog = snapshot.catalogIdentity
 	s.lastCatalogError = snapshot.LastError
 	s.lastUpdated = snapshot.LastUpdated

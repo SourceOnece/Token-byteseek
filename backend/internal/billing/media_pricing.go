@@ -13,10 +13,10 @@ func (r *PriceResolver) ResolveImageUnitPrice(ctx context.Context, input Pricing
 		return 0, pricing.ErrModelPricingUnavailable
 	}
 	resolved := r.Resolve(ctx, input)
-	price, found := pricing.ConfiguredImageUnitPrice(resolved, size)
-	if !found {
-		// 只接受完整型号的目录报价或静态价项，缺价不能生成通用单价。
-		return r.calculator.DefaultImagePrice(input.Model, pricing.NormalizeImageBillingTierOrDefault(size))
-	}
-	return pricing.ValidateImageUnitPrice(price)
+	return r.calculator.resolvedImageUnitPrice(input.Model, size, resolved)
+}
+
+// resolvedImageUnitPrice 为展示、预占和结算复用同一逐尺寸查价顺序。
+func (s *Calculator) resolvedImageUnitPrice(model, size string, resolved *ResolvedPricing) (float64, error) {
+	return pricing.ResolveImageUnitPrice(resolved, s.RawModelPricing(model), size)
 }

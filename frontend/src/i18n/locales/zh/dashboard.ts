@@ -4,18 +4,11 @@ export default {
     usageChart: {
       loadFailed: '加载用量失败，请重试',
       metricsLabel: '用量指标',
-      rangeLabel: '时间范围',
       metrics: {
         requests: '请求数',
         tokens: 'Token',
         cost: '消费',
         cacheHitRate: '缓存命中率'
-      },
-      ranges: {
-        '24h': '24 小时',
-        '7d': '7 天',
-        '30d': '30 天',
-        '90d': '90 天'
       },
       series: {
         input: '输入',
@@ -25,6 +18,10 @@ export default {
         actualCost: '实际扣费',
         total: '合计'
       },
+      currentPeriod: '本期',
+      previousPeriod: '上一周期',
+      peak: '峰值',
+      average: '均值',
       vsPrevious: '较上一周期',
       noPrevious: '上一周期无数据',
       byHour: '按小时',
@@ -55,7 +52,26 @@ export default {
     platformCount: '{count} 个平台',
     platformOther: '其他',
     tokenUsageTrend: 'Token 使用趋势',
+    live: {
+      rpm: 'RPM',
+      tpm: 'TPM',
+      rpmHint: '近 5 分钟平均每分钟请求数',
+      tpmHint: '近 5 分钟平均每分钟 Token 数',
+      latency: '平均耗时',
+      todayCost: '今日消费'
+    },
+    topModels: {
+      title: '模型排行',
+      subtitle: '按{metric}',
+      others: '其他模型（{count}）',
+      viewAll: '查看全部',
+      empty: '所选范围内暂无模型用量',
+      filterHint: '点击按此模型筛选',
+      clearFilter: '再次点击取消筛选',
+      hitRate: '命中率 {rate}'
+    },
     activityHeatmap: '用量热力图',
+    heatmapSelectDay: '点击查看当天按小时用量',
     heatmapLess: '少',
     heatmapMore: '多',
     heatmapNoUsage: '无用量',
@@ -228,6 +244,16 @@ export default {
     },
     modelRedirect: {
       label: '模型重定向',
+      help: {
+        title: '模型重定向如何工作？',
+        description: '客户端照常填写模型名，这个密钥会按规则把它换成目标模型，再交给后续路由。',
+        example: '示例规则',
+        replay: '重播',
+        request: '客户端',
+        match: '密钥规则',
+        target: '后续路由',
+        flow: '客户端请求 {from}，密钥规则将它替换为 {to}，再交给后续路由。'
+      },
       hint: '精确来源优先；来源可使用一个末尾 *，目标必须是具体模型。',
       addRule: '添加规则',
       empty: '未配置模型重定向规则',
@@ -276,9 +302,11 @@ export default {
     useKeyModal: {
       model: '请求模型',
       selectModel: '选择可请求模型',
+      shell: '终端环境',
       noModels: '此分组没有适用于当前客户端的模型',
       directAuth: '将 API Key 写入配置文件',
-
+      directAuthDescription: '开启后 Key 写入 config.toml，不再生成 auth.json，已有的登录信息不会被覆盖。',
+      websocketDescription: '通过 WebSocket 连接 Responses 接口，需要 Codex 客户端支持 WebSocket v2，不确定时保持关闭。',
       title: '使用 API 密钥',
       compositeDescription: '调用模型时，请在模型 ID 前添加对应分组前缀。',
       description: '将以下环境变量添加到您的终端配置文件或直接在终端中运行。',
@@ -922,6 +950,9 @@ affiliate: {
     startDate: '开始日期',
     endDate: '结束日期',
     apply: '应用',
-    selectDateRange: '选择日期范围'
+    selectDateRange: '选择日期范围',
+    selectEndDate: '请选择结束日期',
+    previousMonth: '上个月',
+    nextMonth: '下个月'
   },
 }

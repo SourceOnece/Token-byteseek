@@ -22,7 +22,7 @@ func (s defaultCatalogStub) ForceUpdate() error {
 
 func TestDefaultPriceUsesCatalogAndPreservesZero(t *testing.T) {
 	catalog := defaultCatalogStub{entries: map[string]*pricing.CatalogModelPricing{
-		"custom": {InputCostPerToken: 0, OutputCostPerToken: 0.000004, SupportsServiceTier: true, InputCostPerTokenPriority: 0, OutputCostPerTokenPriority: 0.000008, LongContextInputTokenThreshold: 100000, LongContextInputCostMultiplier: 2, LongContextOutputCostMultiplier: 1.5},
+		"custom": {CatalogRules: pricing.CatalogRules{FlexMultiplier: newFloatForCatalogTest(0.5)}, InputCostPerToken: 0, OutputCostPerToken: 0.000004, SupportsServiceTier: true, InputCostPerTokenPriority: 0, OutputCostPerTokenPriority: 0.000008, LongContextInputTokenThreshold: 100000, LongContextInputCostMultiplier: 2, LongContextOutputCostMultiplier: 1.5},
 	}}
 	calculator := NewCalculator(catalog, CalculatorOptions{})
 	row := calculator.DefaultModelPrice("custom", "openai", "token")
@@ -47,7 +47,7 @@ func TestDefaultPriceUsesCatalogAndPreservesZero(t *testing.T) {
 	require.NotContains(t, values, "long_context_input")
 	require.NotContains(t, values, "long_context_output")
 	require.Equal(t, "unpriced", calculator.DefaultModelPrice("unknown-model", "openai", "token").PriceStatus)
-	require.Equal(t, "priced", calculator.DefaultModelPrice("claude-sonnet-4", "anthropic", "token").PriceStatus)
+	require.Equal(t, "unpriced", calculator.DefaultModelPrice("claude-sonnet-4", "anthropic", "token").PriceStatus)
 }
 
 func TestDefaultPriceContextIntervalsUseInclusiveBoundary(t *testing.T) {
@@ -109,3 +109,5 @@ func TestDefaultMediaPriceRequiresKnownUnits(t *testing.T) {
 		require.NotEqual(t, "USD/image", price.Unit)
 	}
 }
+
+func newFloatForCatalogTest(value float64) *float64 { return &value }

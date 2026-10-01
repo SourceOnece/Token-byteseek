@@ -82,8 +82,10 @@ func TestTryModelFilePricing_AppliesLongContextPricing(t *testing.T) {
 }
 
 func TestTryModelFilePricing_AppliesServiceTierPricing(t *testing.T) {
+	flex := 0.5
 	bs := newTestBillingServiceWithPrices(map[string]*purepricing.ModelPricing{
 		"gpt-5.6-sol": {
+			FlexMultiplier:                     &flex,
 			InputPricePerToken:                 0.001,
 			InputPricePerTokenPriority:         0.002,
 			OutputPricePerToken:                0.002,

@@ -6,6 +6,7 @@ import UserDashboardUsageChart from '../UserDashboardUsageChart.vue'
 import UserDashboardUsageToolbar from '../UserDashboardUsageToolbar.vue'
 import { provideUsageChartState } from '../usageChartState'
 import Select from '@/components/common/Select.vue'
+import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import { Line } from 'vue-chartjs'
 import { usageAPI } from '@/api/usage'
 import { formatDayKey } from '../usageChartData'
@@ -95,6 +96,8 @@ const mountChart = async () => {
         Select: true,
         // 直接渲染筛选面板内容，便于断言各个筛选框
         FilterDropdown: { template: '<div><slot /></div>' },
+        RouterLink: { template: '<a><slot /></a>' },
+        ModelIcon: true,
       },
     },
   })
@@ -144,7 +147,12 @@ describe('UserDashboardUsageChart', () => {
     expect(wrapper.get('[data-testid="usage-metric-requests"]').text()).toContain('30')
     expect(wrapper.get('[data-testid="usage-delta-requests"]').text()).toContain('+50%')
     expect(wrapper.get('[data-testid="usage-delta-cost"]').text()).toContain('dashboard.usageChart.noPrevious')
-    expect(wrapper.get('[data-testid="usage-range-7d"]').attributes('aria-pressed')).toBe('true')
+    // 范围只由日期选择器表达，默认 7 天覆盖今天在内的 7 个日历日
+    const picker = wrapper.findComponent(DateRangePicker)
+    const start = new Date()
+    start.setDate(start.getDate() - 6)
+    expect(picker.props('startDate')).toBe(formatDayKey(start))
+    expect(picker.props('endDate')).toBe(today)
   })
 
   it('所选范围没有用量时显示空状态', async () => {
@@ -153,12 +161,12 @@ describe('UserDashboardUsageChart', () => {
     expect(wrapper.find('[data-testid="usage-chart-empty"]').exists()).toBe(true)
   })
 
-  it('切换快捷范围后按小时重新取数，并记住指标与范围', async () => {
+  it('日期选择器选近 24 小时后按小时重新取数，并记住指标与范围', async () => {
     vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue(trendOf([]) as any)
     const wrapper = await mountChart()
 
     await wrapper.get('[data-testid="usage-metric-cost"]').trigger('click')
-    await wrapper.get('[data-testid="usage-range-24h"]').trigger('click')
+    wrapper.findComponent(DateRangePicker).vm.$emit('change', { startDate: '2000-01-01', endDate: '2000-01-02', preset: 'last24Hours' })
     await flushPromises()
 
     const lastCall = vi.mocked(usageAPI.getDashboardTrend).mock.calls.at(-2)?.[0]
@@ -206,8 +214,18 @@ describe('UserDashboardUsageChart', () => {
     expect(calls).toHaveLength(2)
     expect(calls[0]).toMatchObject({ group_id: 3, request_type: 'sync', stream: false })
     expect(calls[0]).not.toHaveProperty('model')
-    // 筛选变化不重新读取模型候选
+    // 模型排行按筛选重新取数，候选项沿用不带筛选的结果
+    const modelCalls = vi.mocked(usageAPI.getDashboardModels).mock.calls
+    expect(modelCalls).toHaveLength(2)
+    expect(modelCalls[1][0]).toMatchObject({ group_id: 3, request_type: 'sync' })
+    expect(modelSelect.props('options')).toHaveLength(2)
+  })
+
+  it('没有筛选条件时，模型排行与模型候选共用一次请求', async () => {
+    vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue(trendOf([]) as any)
+    await mountChart()
     expect(usageAPI.getDashboardModels).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(usageAPI.getDashboardModels).mock.calls[0][0]).not.toHaveProperty('group_id')
   })
 
   it('工具栏刷新按钮通知页面刷新，刷新中禁用', async () => {
@@ -220,7 +238,7 @@ describe('UserDashboardUsageChart', () => {
     expect(button.attributes('disabled')).toBeDefined()
   })
 
-  it('Token 堆叠以缓存读取垫底，未结束的末段画虚线，并挂上悬停竖线插件', async () => {
+  it('Token 画成四条不堆叠的折线，未结束的末段画虚线，并挂上竖线和描线插件', async () => {
     const today = formatDayKey(new Date())
     vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue(
       trendOf([{ date: today, requests: 3, actual_cost: 1 }]) as any,
@@ -230,18 +248,78 @@ describe('UserDashboardUsageChart', () => {
 
     const datasets = line.props('data').datasets
     expect(datasets.map((item: { label: string }) => item.label)).toEqual([
-      'dashboard.usageChart.series.cacheRead',
-      'dashboard.usageChart.series.cacheCreation',
       'dashboard.usageChart.series.input',
       'dashboard.usageChart.series.output',
+      'dashboard.usageChart.series.cacheCreation',
+      'dashboard.usageChart.series.cacheRead',
     ])
     expect(datasets[0].cubicInterpolationMode).toBe('monotone')
+    // 线下不填充，纵轴不堆叠
+    expect(datasets.every((item: { fill: boolean }) => item.fill === false)).toBe(true)
+    expect(line.props('options').scales.y.stacked).toBeUndefined()
 
     // 默认 7 天范围包含今天，最后一段是虚线，之前的段是实线
     const lastIndex = line.props('data').labels.length - 1
     expect(datasets[0].segment.borderDash({ p1DataIndex: lastIndex })).toEqual([4, 4])
     expect(datasets[0].segment.borderDash({ p1DataIndex: lastIndex - 1 })).toBeUndefined()
 
-    expect(line.props('plugins').map((plugin: { id: string }) => plugin.id)).toContain('usageCrosshair')
+    expect(line.props('plugins').map((plugin: { id: string }) => plugin.id)).toEqual(['usageCrosshair', 'usageReveal'])
+  })
+
+  it('切换指标时重建图表，与首次打开播放同一套入场动画', async () => {
+    const today = formatDayKey(new Date())
+    vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue(trendOf([{ date: today, requests: 3 }]) as any)
+    const wrapper = await mountChart()
+    const before = wrapper.findComponent(Line).vm
+
+    await wrapper.get('[data-testid="usage-metric-requests"]').trigger('click')
+    expect(wrapper.findComponent(Line).vm).not.toBe(before)
+  })
+
+  it('单指标叠加上一周期虚线，可以从图例关闭', async () => {
+    const today = formatDayKey(new Date())
+    vi.mocked(usageAPI.getDashboardTrend)
+      .mockResolvedValueOnce(trendOf([{ date: today, requests: 30 }]) as any)
+      .mockResolvedValueOnce(trendOf([{ date: '2000-01-01', requests: 20 }]) as any)
+    const wrapper = await mountChart()
+    await wrapper.get('[data-testid="usage-metric-requests"]').trigger('click')
+
+    const datasets = () => wrapper.findComponent(Line).props('data').datasets
+    expect(datasets()).toHaveLength(2)
+    expect(datasets()[1]).toMatchObject({ previous: true, borderDash: [4, 4], order: 1 })
+    // 上一周期只取本期已有的时段数
+    expect(datasets()[1].data).toHaveLength(datasets()[0].data.length)
+
+    await wrapper.get('[data-testid="usage-series-previous"]').trigger('click')
+    expect(datasets()).toHaveLength(1)
+  })
+
+  it('模型排行跟随当前指标排序，点击后按模型筛选，再点一次取消', async () => {
+    vi.mocked(usageAPI.getDashboardModels).mockResolvedValue({
+      models: [
+        { model: 'gpt-4o', requests: 5, total_tokens: 900, actual_cost: 1, input_tokens: 0, output_tokens: 0, cache_creation_tokens: 0, cache_read_tokens: 0, cost: 1 },
+        { model: 'claude-opus', requests: 10, total_tokens: 100, actual_cost: 3, input_tokens: 0, output_tokens: 0, cache_creation_tokens: 0, cache_read_tokens: 0, cost: 3 },
+      ],
+      start_date: '',
+      end_date: '',
+    })
+    vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue(trendOf([]) as any)
+    const wrapper = await mountChart()
+
+    const order = () => wrapper.findAll('[data-testid^="top-model-"]').map((row) => row.attributes('data-testid'))
+    // 默认指标为 Token
+    expect(order()).toEqual(['top-model-gpt-4o', 'top-model-claude-opus'])
+    await wrapper.get('[data-testid="usage-metric-requests"]').trigger('click')
+    expect(order()).toEqual(['top-model-claude-opus', 'top-model-gpt-4o'])
+
+    vi.mocked(usageAPI.getDashboardTrend).mockClear()
+    await wrapper.get('[data-testid="top-model-claude-opus"]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(usageAPI.getDashboardTrend).mock.calls[0][0]).toMatchObject({ model: 'claude-opus' })
+    expect(wrapper.get('[data-testid="top-model-claude-opus"]').attributes('aria-pressed')).toBe('true')
+
+    await wrapper.get('[data-testid="top-model-claude-opus"]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(usageAPI.getDashboardTrend).mock.calls.at(-1)?.[0]).not.toHaveProperty('model')
   })
 })

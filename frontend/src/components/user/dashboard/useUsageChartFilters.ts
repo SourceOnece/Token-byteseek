@@ -5,7 +5,7 @@ import { userGroupsAPI } from '@/api/groups'
 import { teamAPI, type TeamAPIKey } from '@/api/team'
 import { usageAPI, type TrendParams } from '@/api/usage'
 import type { SelectOption } from '@/components/common/Select.vue'
-import type { UsageRequestType } from '@/types'
+import type { ModelStat, UsageRequestType } from '@/types'
 import { requestTypeToLegacyStream } from '@/utils/usageRequestType'
 import { formatQueryTime, type UsageRange } from './usageChartData'
 
@@ -141,6 +141,13 @@ export function useUsageChartFilters() {
     }
   }
 
+  // setModelOptions 用一次模型统计结果刷新候选项；已选模型即使不在结果里也保留，避免选中值被悄悄清空。
+  const setModelOptions = (models: ModelStat[]) => {
+    const names = new Set(models.map((item) => item.model).filter(Boolean))
+    if (filters.value.model) names.add(filters.value.model)
+    modelNames.value = [...names].sort()
+  }
+
   // 用递增序号丢弃过期的模型候选响应。
   let modelSeq = 0
   onScopeDispose(() => { modelSeq++ })
@@ -154,10 +161,7 @@ export function useUsageChartFilters() {
         end_date: formatQueryTime(range.endAt),
       })
       if (seq !== modelSeq) return
-      const names = new Set((response.models || []).map((item) => item.model).filter(Boolean))
-      // 已选模型即使不在新范围内也保留，避免选中值被悄悄清空。
-      if (filters.value.model) names.add(filters.value.model)
-      modelNames.value = [...names].sort()
+      setModelOptions(response.models || [])
     } catch (error) {
       console.error('Failed to load usage model options:', error)
     }
@@ -179,6 +183,7 @@ export function useUsageChartFilters() {
     billingModeOptions,
     compactionOptions,
     loadKeyAndGroupOptions,
+    setModelOptions,
     loadModelOptions,
     reset,
   }

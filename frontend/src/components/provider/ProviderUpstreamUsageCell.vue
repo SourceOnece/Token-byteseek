@@ -10,7 +10,8 @@
         {{ t('admin.providers.upstreamUsage.disabled') }}
       </span>
     </div>
-    <div v-if="queryEnabled && loading" class="space-y-1">
+    <!-- 移动端卡片整体右对齐，骨架条需与查询结果保持同侧。 -->
+    <div v-if="queryEnabled && loading" class="flex flex-col items-end gap-1 lg:items-start" data-testid="upstream-usage-skeleton">
       <div class="h-3 w-28 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
       <div class="h-3 w-36 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
     </div>
@@ -44,7 +45,7 @@
           {{ formatAmount(limit.limit, normalizedUsage?.unit) }}
         </div>
       </div>
-      <div v-if="subscriptionLabel || subscriptionExpiry" data-testid="upstream-subscription-row" class="flex flex-wrap items-center justify-end gap-1 text-xs text-gray-500 dark:text-gray-400 md:justify-start">
+      <div v-if="subscriptionLabel || subscriptionExpiry" data-testid="upstream-subscription-row" class="flex flex-wrap items-center justify-end gap-1 text-xs text-gray-500 dark:text-gray-400 lg:justify-start">
         <span v-if="subscriptionLabel" class="rounded-compact bg-sky-50 px-1.5 py-0.5 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
           {{ subscriptionLabel }}
         </span>

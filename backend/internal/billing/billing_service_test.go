@@ -7,7 +7,6 @@ import (
 	"context"
 	"log"
 	"math"
-	"strings"
 	"testing"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -138,36 +137,6 @@ func TestGetModelPricing_CaseInsensitive(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, p1.InputPricePerToken, p2.InputPricePerToken)
-}
-
-func TestGetModelPricing_FallbackWarnLoggedOncePerModel(t *testing.T) {
-	svc := newTestCalculator()
-	buf := captureStdLog(t)
-
-	for i := 0; i < 5; i++ {
-		pricing, err := svc.GetModelPricing("glm-5.2")
-		require.NoError(t, err)
-		require.NotNil(t, pricing)
-	}
-
-	got := strings.Count(buf.String(), "Using fallback pricing for model: glm-5.2")
-	require.Equal(t, 1, got, "同一模型的 fallback 警告每进程只应输出一次，实际日志：\n%s", buf.String())
-}
-
-func TestGetModelPricing_FallbackWarnPerModelNotGlobal(t *testing.T) {
-	svc := newTestCalculator()
-	buf := captureStdLog(t)
-
-	for i := 0; i < 3; i++ {
-		_, _ = svc.GetModelPricing("glm-5.2")
-		_, _ = svc.GetModelPricing("GLM-5.2")
-		_, _ = svc.GetModelPricing("glm-4.6")
-	}
-
-	out := buf.String()
-	require.Equal(t, 1, strings.Count(out, "model: glm-5.2"), out)
-	require.Equal(t, 1, strings.Count(out, "model: glm-4.6"), out)
-	require.Zero(t, strings.Count(out, "model: GLM-5.2"), out)
 }
 
 func TestGetModelPricing_GLM52UsesOwnPrice(t *testing.T) {
@@ -631,103 +600,6 @@ func TestCalculateCost_LongContextAppliesMultiplierToCacheCreation5mAnd1h(t *tes
 		"both 5m and 1h cache_creation prices should be scaled by LongContextInputMultiplier")
 }
 
-func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
-	prices := billingpricing.DefaultFallbackPrices()
-
-	tests := []struct {
-		name             string
-		model            string
-		expectedInput    float64
-		expectedOutput   *float64
-		expectedCache    *float64
-		expectNilPricing bool
-	}{
-		{name: "empty model", model: "   ", expectNilPricing: true},
-		{name: "claude opus 4.8", model: "claude-opus-4-8-20260528", expectedInput: 5e-6, expectNilPricing: true},
-		{name: "claude opus 4.6", model: "claude-opus-4.6-20260201", expectedInput: 5e-6, expectNilPricing: true},
-		{name: "claude opus 4.5 alt separator", model: "claude-opus-4-5-20260101", expectedInput: 5e-6, expectNilPricing: true},
-		{name: "claude generic model fallback sonnet", model: "claude-foo-bar", expectedInput: 3e-6, expectNilPricing: true},
-		{name: "gemini explicit fallback", model: "gemini-3-1-pro", expectedInput: 2e-6, expectNilPricing: true},
-		{name: "gemini unknown no fallback", model: "gemini-2.0-pro", expectNilPricing: true},
-		{name: "openai gpt5.4", model: "gpt-5.4", expectedInput: 2.5e-6},
-		{name: "openai gpt5.4 mini", model: "gpt-5.4-mini", expectedInput: 7.5e-7},
-		{name: "openai gpt6 astra", model: "gpt-6-astra-preview", expectedInput: 10e-6, expectedOutput: testPtrFloat64(50e-6), expectedCache: testPtrFloat64(1e-6), expectNilPricing: true},
-		{name: "openai gpt5.6 sol", model: "gpt-5.6-sol-max", expectedInput: 5e-6, expectedOutput: testPtrFloat64(30e-6), expectedCache: testPtrFloat64(0.5e-6), expectNilPricing: true},
-		{name: "openai gpt5.6 terra", model: "gpt-5.6-terra-max", expectedInput: 2e-6, expectedOutput: testPtrFloat64(12e-6), expectedCache: testPtrFloat64(0.2e-6), expectNilPricing: true},
-		{name: "openai gpt5.6 luna", model: "gpt-5.6-luna", expectedInput: 0.2e-6, expectedOutput: testPtrFloat64(1.2e-6), expectedCache: testPtrFloat64(0.02e-6)},
-		{name: "openai gpt5.3 codex", model: "gpt-5.3-codex", expectedInput: 1.5e-6},
-		{name: "openai gpt5.3 codex spark", model: "gpt-5.3-codex-spark", expectedInput: 1.5e-6, expectNilPricing: true},
-		{name: "openai legacy gpt5.1 falls back to gpt5.4", model: "gpt-5.1", expectedInput: 2.5e-6, expectNilPricing: true},
-		{name: "openai legacy gpt5.1 codex falls back to gpt5.3 codex", model: "gpt-5.1-codex", expectedInput: 1.5e-6, expectNilPricing: true},
-		{name: "openai legacy codex mini latest falls back to gpt5.3 codex", model: "codex-mini-latest", expectedInput: 1.5e-6, expectNilPricing: true},
-		{name: "openai unknown no fallback", model: "gpt-unknown-model", expectNilPricing: true},
-		{name: "deepseek v4 pro", model: "deepseek-v4-pro", expectedInput: 6.6e-7, expectedOutput: testPtrFloat64(1.98e-6), expectedCache: testPtrFloat64(2.2e-8)},
-		{name: "deepseek v4 flash", model: "deepseek-v4-flash", expectedInput: 2.2e-7, expectedOutput: testPtrFloat64(6.6e-7), expectedCache: testPtrFloat64(7e-9)},
-		{name: "deepseek v4 flash vision exp", model: "deepseek-v4-flash-vision-exp", expectedInput: 2.2e-7, expectedOutput: testPtrFloat64(6.6e-7), expectedCache: testPtrFloat64(7e-9)},
-		{name: "deepseek chat discontinued fallback", model: "deepseek-chat", expectedInput: 2.2e-7, expectedOutput: testPtrFloat64(6.6e-7), expectedCache: testPtrFloat64(7e-9), expectNilPricing: true},
-		{name: "deepseek reasoner discontinued fallback", model: "deepseek-reasoner", expectedInput: 2.2e-7, expectedOutput: testPtrFloat64(6.6e-7), expectedCache: testPtrFloat64(7e-9), expectNilPricing: true},
-		{name: "unknown deepseek fallback", model: "deepseek-foo", expectedInput: 2.2e-7, expectedOutput: testPtrFloat64(6.6e-7), expectedCache: testPtrFloat64(7e-9), expectNilPricing: true},
-		{name: "glm 5.2 ordering", model: "glm-5.2", expectedInput: 1.4e-6, expectedOutput: testPtrFloat64(4.4e-6), expectedCache: testPtrFloat64(0.26e-6)},
-		{name: "glm 5.1 ordering", model: "glm-5.1", expectedInput: 1.4e-6, expectedOutput: testPtrFloat64(4.4e-6), expectedCache: testPtrFloat64(0.26e-6)},
-		{name: "glm 5 turbo", model: "glm-5-turbo", expectedInput: 1.2e-6, expectedOutput: testPtrFloat64(4e-6), expectedCache: testPtrFloat64(0.24e-6)},
-		{name: "glm 5 base", model: "glm-5", expectedInput: 1e-6, expectedOutput: testPtrFloat64(3.2e-6), expectedCache: testPtrFloat64(0.2e-6)},
-		{name: "glm 4.7 flashx ordering", model: "glm-4.7-flashx", expectedInput: 0.07e-6, expectedOutput: testPtrFloat64(0.4e-6), expectedCache: testPtrFloat64(0.01e-6)},
-		{name: "glm 4.7 flash zero price", model: "glm-4.7-flash", expectedInput: 0, expectedOutput: testPtrFloat64(0)},
-		{name: "glm 4.7", model: "glm-4.7", expectedInput: 0.6e-6, expectedOutput: testPtrFloat64(2.2e-6), expectedCache: testPtrFloat64(0.11e-6)},
-		{name: "glm 4.6", model: "glm-4.6", expectedInput: 0.6e-6, expectedOutput: testPtrFloat64(2.2e-6), expectedCache: testPtrFloat64(0.11e-6)},
-		{name: "glm 4.5 flash zero price", model: "glm-4.5-flash", expectedInput: 0, expectedOutput: testPtrFloat64(0)},
-		{name: "glm 4.5 x ordering", model: "glm-4.5-x", expectedInput: 2.2e-6, expectedOutput: testPtrFloat64(8.9e-6), expectedCache: testPtrFloat64(0.45e-6)},
-		{name: "glm 4.5 airx ordering", model: "glm-4.5-airx", expectedInput: 1.1e-6, expectedOutput: testPtrFloat64(4.5e-6), expectedCache: testPtrFloat64(0.22e-6)},
-		{name: "glm 4.5 air ordering", model: "glm-4.5-air", expectedInput: 0.2e-6, expectedOutput: testPtrFloat64(1.1e-6), expectedCache: testPtrFloat64(0.03e-6)},
-		{name: "glm 4.5", model: "glm-4.5", expectedInput: 0.6e-6, expectedOutput: testPtrFloat64(2.2e-6), expectedCache: testPtrFloat64(0.11e-6)},
-		{name: "glm 4 32b", model: "glm-4-32b-0414-128k", expectedInput: 0.1e-6, expectedOutput: testPtrFloat64(0.1e-6)},
-		{name: "kimi for coding", model: "kimi-for-coding", expectedInput: 0.95e-6, expectedOutput: testPtrFloat64(4e-6), expectedCache: testPtrFloat64(0.15e-6)},
-		{name: "kimi k3", model: "kimi-k3", expectedInput: 3e-6, expectedOutput: testPtrFloat64(15e-6), expectedCache: testPtrFloat64(0.30e-6)},
-		{name: "kimi code k3", model: "k3", expectedInput: 3e-6, expectedOutput: testPtrFloat64(15e-6), expectedCache: testPtrFloat64(0.30e-6)},
-		{name: "kimi code k3 256k", model: "k3-256k", expectedInput: 3e-6, expectedOutput: testPtrFloat64(15e-6), expectedCache: testPtrFloat64(0.30e-6)},
-		{name: "kimi k3 vendor path", model: "moonshot/kimi-k3", expectedInput: 3e-6, expectedOutput: testPtrFloat64(15e-6), expectedCache: testPtrFloat64(0.30e-6), expectNilPricing: true},
-		{name: "kimi code k3 vendor path", model: "kimi-code/k3", expectedInput: 3e-6, expectedOutput: testPtrFloat64(15e-6), expectedCache: testPtrFloat64(0.30e-6), expectNilPricing: true},
-		{name: "kimi code k3 embedded name", model: "foo-k3-bar", expectNilPricing: true},
-		{name: "kimi code k3 vendor embedded name", model: "vendor/foo-k3", expectNilPricing: true},
-		{name: "kimi k30", model: "kimi-k30", expectNilPricing: true},
-		{name: "kimi k3 embedded name", model: "foo-kimi-k3-bar", expectNilPricing: true},
-		{name: "kimi k3 client context suffix", model: "kimi-k3[1m]", expectNilPricing: true},
-		{name: "kimi k3 vendor client context suffix", model: "moonshot/kimi-k3[1m]", expectNilPricing: true},
-		{name: "kimi k2.6 ordering", model: "kimi-k2.6", expectedInput: 0.95e-6, expectedOutput: testPtrFloat64(4e-6), expectedCache: testPtrFloat64(0.15e-6)},
-		{name: "kimi k2.5 ordering", model: "kimi-k2.5", expectedInput: 0.60e-6, expectedOutput: testPtrFloat64(3e-6), expectedCache: testPtrFloat64(0.098e-6)},
-		{name: "kimi k2 thinking ordering", model: "kimi-k2-thinking-preview", expectedInput: 0.56e-6, expectedOutput: testPtrFloat64(2.24e-6), expectedCache: testPtrFloat64(0.14e-6), expectNilPricing: true},
-		{name: "kimi k2 base", model: "kimi-k2", expectedInput: 0.56e-6, expectedOutput: testPtrFloat64(2.24e-6), expectedCache: testPtrFloat64(0.14e-6)},
-		{name: "minimax m3", model: "minimax-m3-long", expectedInput: 0.60e-6, expectedOutput: testPtrFloat64(2.40e-6), expectedCache: testPtrFloat64(0.12e-6), expectNilPricing: true},
-		{name: "minimax m2.7 highspeed ordering", model: "minimax-m2.7-highspeed", expectedInput: 0.60e-6, expectedOutput: testPtrFloat64(2.40e-6), expectedCache: testPtrFloat64(0.06e-6)},
-		{name: "minimax m2.7", model: "minimax-m2.7", expectedInput: 0.30e-6, expectedOutput: testPtrFloat64(1.20e-6), expectedCache: testPtrFloat64(0.06e-6)},
-		{name: "minimax m2.5", model: "minimax-m2.5", expectedInput: 0.30e-6, expectedOutput: testPtrFloat64(1.20e-6), expectedCache: testPtrFloat64(0.03e-6)},
-		{name: "minimax m2.1", model: "minimax-m2.1", expectedInput: 0.30e-6, expectedOutput: testPtrFloat64(1.20e-6), expectedCache: testPtrFloat64(0.03e-6)},
-		{name: "minimax m2", model: "minimax-m2", expectedInput: 0.30e-6, expectedOutput: testPtrFloat64(1.20e-6), expectedCache: testPtrFloat64(0.03e-6)},
-		{name: "doubao embedding vision", model: "doubao-embedding-vision-251215", expectedInput: 0.098e-6, expectedOutput: testPtrFloat64(0), expectNilPricing: true},
-		{name: "non supported family", model: "qwen-max", expectNilPricing: true},
-		{name: "doubao text embedding no fallback", model: "doubao-embedding-text-240515", expectNilPricing: true},
-		{name: "moonshot v1 not covered", model: "moonshot-v1-8k", expectNilPricing: true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			pricing := billingpricing.LookupFallbackPrice(prices, tt.model)
-			if tt.expectNilPricing {
-				require.Nil(t, pricing)
-				return
-			}
-			require.NotNil(t, pricing)
-			require.InDelta(t, tt.expectedInput, pricing.InputPricePerToken, 1e-12)
-			if tt.expectedOutput != nil {
-				require.InDelta(t, *tt.expectedOutput, pricing.OutputPricePerToken, 1e-12)
-			}
-			if tt.expectedCache != nil {
-				require.InDelta(t, *tt.expectedCache, pricing.CacheReadPricePerToken, 1e-14)
-			}
-		})
-	}
-}
-
 func TestGetModelPricing_DoubaoEmbeddingVisionImageInputRate(t *testing.T) {
 	svc := newTestCalculator()
 
@@ -915,16 +787,6 @@ func TestCalculateGrokImagineVideoCostUsesDefaultRateCard(t *testing.T) {
 	require.InDelta(t, 0.25, video15_1080P.TotalCost, 1e-10)
 }
 
-func TestIsModelSupported(t *testing.T) {
-	svc := newTestCalculator()
-
-	require.True(t, svc.IsModelSupported("claude-sonnet-4"))
-	require.True(t, svc.IsModelSupported("Claude-Opus-4.5"))
-	require.True(t, svc.IsModelSupported("claude-3-haiku"))
-	require.False(t, svc.IsModelSupported("gpt-4o"))
-	require.False(t, svc.IsModelSupported("gemini-pro"))
-}
-
 func TestCalculateCost_ZeroTokens(t *testing.T) {
 	svc := newTestCalculator()
 
@@ -969,24 +831,16 @@ func TestGetEstimatedCost(t *testing.T) {
 	require.True(t, est > 0)
 }
 
-func TestListSupportedModels(t *testing.T) {
-	svc := newTestCalculator()
-
-	models := svc.ListSupportedModels()
-	require.NotEmpty(t, models)
-	require.GreaterOrEqual(t, len(models), 6)
-}
-
 func TestGetCatalogStatus_NilService(t *testing.T) {
-	svc := newTestCalculator()
+	svc := billing.NewCalculator(nil, billing.CalculatorOptions{})
 
 	status := svc.GetCatalogStatus()
 	require.NotNil(t, status)
-	require.Equal(t, "using fallback", status["last_updated"])
+	require.Equal(t, "unavailable", status["last_updated"])
 }
 
 func TestForceUpdatePricing_NilService(t *testing.T) {
-	svc := newTestCalculator()
+	svc := billing.NewCalculator(nil, billing.CalculatorOptions{})
 
 	err := svc.ForceUpdatePricing()
 	require.Error(t, err)
@@ -1048,7 +902,7 @@ func TestGetModelPricing_Grok46OfficialFallback(t *testing.T) {
 }
 
 func TestGetModelPricing_Grok47OfficialFallback(t *testing.T) {
-	svc := newTestCalculator()
+	svc := newCalculator(&config.Config{}, newByteSeekOfflineCatalog(t))
 
 	for _, model := range []string{"grok-4.7"} {
 		model := model
@@ -1357,16 +1211,6 @@ func TestCalculateCost_LargeTokenCount(t *testing.T) {
 	require.False(t, math.IsInf(cost.TotalCost, 0))
 }
 
-func TestServiceTierCostMultiplier(t *testing.T) {
-	require.InDelta(t, 2.0, billingpricing.ServiceTierCostMultiplier("priority"), 1e-12)
-	require.InDelta(t, 2.0, billingpricing.ServiceTierCostMultiplier("fast"), 1e-12)
-	require.InDelta(t, 2.0, billingpricing.ServiceTierCostMultiplier(" Priority "), 1e-12)
-	require.InDelta(t, 2.0, billingpricing.ServiceTierCostMultiplier("ultrafast"), 1e-12)
-	require.InDelta(t, 0.5, billingpricing.ServiceTierCostMultiplier("flex"), 1e-12)
-	require.InDelta(t, 1.0, billingpricing.ServiceTierCostMultiplier(""), 1e-12)
-	require.InDelta(t, 1.0, billingpricing.ServiceTierCostMultiplier("default"), 1e-12)
-}
-
 func TestCalculateCostWithServiceTier_PricingConfigFlexMultiplier(t *testing.T) {
 	svc := newTestCalculator()
 	configPricing := &routing.ModelPricingEntry{
@@ -1546,7 +1390,7 @@ func TestBillingServiceGetModelPricing_OpenAIFallbackGpt52Variants(t *testing.T)
 	require.Nil(t, value)
 }
 
-func TestCalculateCostWithServiceTier_PriorityFallsBackToTierMultiplierWhenExplicitPriceMissing(t *testing.T) {
+func TestCalculateCostWithServiceTier_MissingPriorityDoesNotInventMultiplier(t *testing.T) {
 	svc := newCalculator(&config.Config{}, newCatalogFixture(catalogFixture{
 		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"custom-no-priority": {
@@ -1565,11 +1409,11 @@ func TestCalculateCostWithServiceTier_PriorityFallsBackToTierMultiplierWhenExpli
 	priorityCost, err := svc.CalculateCostWithServiceTier("custom-no-priority", tokens, 1.0, "priority")
 	require.NoError(t, err)
 
-	require.InDelta(t, baseCost.InputCost*2, priorityCost.InputCost, 1e-10)
-	require.InDelta(t, baseCost.OutputCost*2, priorityCost.OutputCost, 1e-10)
-	require.InDelta(t, baseCost.CacheCreationCost*2, priorityCost.CacheCreationCost, 1e-10)
-	require.InDelta(t, baseCost.CacheReadCost*2, priorityCost.CacheReadCost, 1e-10)
-	require.InDelta(t, baseCost.TotalCost*2, priorityCost.TotalCost, 1e-10)
+	require.InDelta(t, baseCost.InputCost, priorityCost.InputCost, 1e-10)
+	require.InDelta(t, baseCost.OutputCost, priorityCost.OutputCost, 1e-10)
+	require.InDelta(t, baseCost.CacheCreationCost, priorityCost.CacheCreationCost, 1e-10)
+	require.InDelta(t, baseCost.CacheReadCost, priorityCost.CacheReadCost, 1e-10)
+	require.InDelta(t, baseCost.TotalCost, priorityCost.TotalCost, 1e-10)
 }
 
 func TestGetModelPricing_OpenAIGpt52FallbacksExposePriorityPrices(t *testing.T) {

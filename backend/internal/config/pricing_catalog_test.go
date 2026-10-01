@@ -1,6 +1,9 @@
 package config
 
 import (
+	"bytes"
+	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,11 +18,10 @@ func TestPricingCatalogLegacySourceMigration(t *testing.T) {
 		"https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/refs/heads/main//model_prices_and_context_window.json",
 		"https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
 	} {
-		cfg := Config{Pricing: PricingConfig{RemoteURL: source, OverrideFile: "custom.json"}}
+		cfg := Config{Pricing: PricingConfig{RemoteURL: source}}
 		cfg.normalizePricingCatalogSource()
 		cfg.normalizePricingCatalogSource()
 		require.Equal(t, "https://models.dev/catalog.json", cfg.Pricing.RemoteURL)
-		require.Equal(t, "custom.json", cfg.Pricing.OverrideFile)
 		require.Equal(t, []string{"models.dev"}, cfg.Security.URLAllowlist.PricingHosts)
 	}
 	for _, source := range []string{
@@ -80,4 +82,62 @@ func TestPricingCatalogPackagedFallbackMigration(t *testing.T) {
 	cfg.Pricing.FallbackFile = "./custom/model_prices_and_context_window.json"
 	cfg.normalizePricingCatalogSource()
 	require.Equal(t, "./custom/model_prices_and_context_window.json", cfg.Pricing.FallbackFile)
+}
+
+// TestPricingCatalogSupplementConfig 验证默认不依赖外部文件，自定义路径及环境变量优先级保持有效。
+func TestPricingCatalogSupplementConfig(t *testing.T) {
+	for _, tc := range []struct {
+		name, yaml, env, want string
+	}{
+		{"default", "", "", ""},
+		{"custom yaml", "  fallback_file: ./custom/prices.json\n", "", "./custom/prices.json"},
+		{"custom env", "  fallback_file: ./custom/prices.json\n", "/data/custom.json", "/data/custom.json"},
+		{"explicit resource", "  fallback_file: ./resources/model-pricing/model_pricing_supplements.json\n", "", "./resources/model-pricing/model_pricing_supplements.json"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := "pricing:\n  remote_url: https://models.dev/catalog.json\n" + tc.yaml
+			file := prepareLegacyConfigTest(t, body)
+			t.Setenv("PRICING_FALLBACK_FILE", tc.env)
+			cfg, err := Load()
+			require.NoError(t, err)
+			require.Equal(t, tc.want, cfg.Pricing.FallbackFile)
+			saved, err := os.ReadFile(file)
+			require.NoError(t, err)
+			require.Equal(t, body, string(saved))
+		})
+	}
+}
+
+// TestRetiredPricingOverrideWarnsWithoutRewritingFiles 验证旧键只提示迁移，既不加载也不改写文件。
+func TestRetiredPricingOverrideWarnsWithoutRewritingFiles(t *testing.T) {
+	for _, env := range []bool{false, true} {
+		t.Run(fmt.Sprint(env), func(t *testing.T) {
+			legacy := filepath.Join(t.TempDir(), "old-prices.json")
+			require.NoError(t, os.WriteFile(legacy, []byte("invalid retired file"), 0o600))
+			body := "pricing:\n  remote_url: https://models.dev/catalog.json\n"
+			if !env {
+				body += "  override_file: " + legacy + "\n"
+			}
+			file := prepareLegacyConfigTest(t, body)
+			value := ""
+			if env {
+				value = legacy
+			}
+			t.Setenv("PRICING_OVERRIDE_FILE", value)
+			var logs bytes.Buffer
+			previous := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+			t.Cleanup(func() { slog.SetDefault(previous) })
+			cfg, err := Load()
+			require.NoError(t, err)
+			require.Equal(t, "https://models.dev/catalog.json", cfg.Pricing.RemoteURL)
+			require.Contains(t, logs.String(), "pricing.override_file is retired and ignored")
+			saved, err := os.ReadFile(file)
+			require.NoError(t, err)
+			require.Equal(t, body, string(saved))
+			data, err := os.ReadFile(legacy)
+			require.NoError(t, err)
+			require.Equal(t, "invalid retired file", string(data))
+		})
+	}
 }

@@ -9,12 +9,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 )
 
@@ -49,109 +47,85 @@ func (s *Service) ModelAttributes(model string) modelcatalog.Attributes {
 	return entry.Attributes
 }
 
-func (s *Service) buildModelsCatalog(body []byte) (*modelcatalog.Catalog, map[string]*CatalogModelPricing, error) {
+func (s *Service) buildModelsCatalog(body []byte) (*modelcatalog.Catalog, map[string]*CatalogModelPricing, pricing.OperationPrices, error) {
 	catalog, err := modelcatalog.Parse(body)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pricing.OperationPrices{}, err
 	}
 	raw := pricing.ModelsDevPrices(catalog)
-	// 本地补充仅填补模型或媒体维度缺口，不覆盖远程已有的普通 token 报价。
-	supplement, err := loadLocalPricingEntries(s.options.FallbackFile)
+	// 自定义补充先填缺口，官方补充再补齐剩余字段；目录已有值始终优先。
+	custom, err := loadLocalPricingEntries(s.options.FallbackFile)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pricing.OperationPrices{}, err
 	}
-	// 先应用精确键，再为同一原厂记录的其他查价键补齐空缺。
-	// 这样两种名称显式配置了不同补充价时，不受 map 遍历顺序影响。
-	for model, entry := range supplement {
-		if err := mergeMediaSupplement(raw, model, entry); err != nil {
-			return nil, nil, err
-		}
-	}
-	for model, entry := range supplement {
-		for _, alias := range catalog.FirstPartyAliases(model) {
-			if alias == model {
-				continue
-			}
-			if err := mergeMediaSupplement(raw, alias, entry); err != nil {
-				return nil, nil, err
-			}
-		}
-	}
-	overrides, err := loadLocalPricingEntries(s.options.OverrideFile)
+	builtin, err := decodePricingSupplement(modelcatalog.PricingSupplements(), "embedded pricing supplements")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pricing.OperationPrices{}, err
 	}
-	for model, patch := range overrides {
-		base, exists := raw[model]
-		if !exists {
-			var fields map[string]json.RawMessage
-			if err := json.Unmarshal(patch, &fields); err != nil || fields == nil {
-				return nil, nil, fmt.Errorf("invalid pricing override: %s", model)
-			}
-			fields["source"] = json.RawMessage(`"local_override"`)
-			raw[model], _ = json.Marshal(fields)
-			continue
+	for _, supplement := range []map[string]json.RawMessage{custom, builtin} {
+		if err := applyModelSupplements(raw, catalog, supplement); err != nil {
+			return nil, nil, pricing.OperationPrices{}, err
 		}
-		merged, valid := pricing.MergePricingOverrideEntry(base, patch)
-		if !valid {
-			return nil, nil, fmt.Errorf("invalid pricing override: %s", model)
-		}
-		var fields, patchFields map[string]json.RawMessage
-		_ = json.Unmarshal(merged, &fields)
-		_ = json.Unmarshal(patch, &patchFields)
-		var sources map[string]string
-		_ = json.Unmarshal(fields["price_sources"], &sources)
-		if sources == nil {
-			sources = map[string]string{}
-		}
-		for key, label := range map[string]string{
-			"input_cost_per_token":                      "input",
-			"output_cost_per_token":                     "output",
-			"cache_read_input_token_cost":               "cache_read",
-			"cache_creation_input_token_cost":           "cache_write",
-			"cache_creation_input_token_cost_above_1hr": "cache_write_1h",
-			"output_cost_per_image":                     "image",
-			"input_cost_per_image_token":                "image_input",
-			"output_cost_per_image_token":               "image_output",
-			"cache_read_input_image_token_cost":         "image_cache_read",
-		} {
-			if _, exists := patchFields[key]; exists {
-				sources[label] = "local_override"
+	}
+	// 操作价先加载官方默认值，再逐字段叠加自定义值，保留显式零价。
+	var defaults pricing.OperationPrices
+	for _, supplement := range []map[string]json.RawMessage{builtin, custom} {
+		if body := supplement[pricing.BillingDefaultsKey]; len(body) > 0 {
+			if err := json.Unmarshal(body, &defaults); err != nil {
+				return nil, nil, pricing.OperationPrices{}, err
 			}
 		}
-		fields["price_sources"], _ = json.Marshal(sources)
-		raw[model], _ = json.Marshal(fields)
+	}
+	if err := defaults.Validate(); err != nil {
+		return nil, nil, pricing.OperationPrices{}, err
 	}
 	if len(raw) == 0 {
-		return catalog, map[string]*CatalogModelPricing{}, nil
+		return catalog, map[string]*CatalogModelPricing{}, defaults, nil
 	}
 	prices, diagnostics, err := pricing.ParsePricingEntries(raw)
 	if validationErr := diagnostics.ValidationError(); validationErr != nil {
-		return nil, nil, validationErr
+		return nil, nil, pricing.OperationPrices{}, validationErr
 	}
 	// 合法的仅属性目录和无价格补丁可以发布空价格集合。
 	if err != nil && !errors.Is(err, pricing.ErrNoPricingEntries) {
-		return nil, nil, err
+		return nil, nil, pricing.OperationPrices{}, err
 	}
 	if prices == nil {
 		prices = map[string]*CatalogModelPricing{}
 	}
 	warnOrphanCacheTierFields(diagnostics.OrphanCacheTiers)
 	warnLopsidedLongContextLadders(diagnostics.LopsidedLadders)
-	var missing []string
-	for name := range overrides {
-		if _, exists := prices[name]; !exists {
-			missing = append(missing, name)
-		}
-	}
-	if len(missing) > 0 {
-		sort.Strings(missing)
-		logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Warning: override had no effect for %d model(s): %s (unknown model name, or patch-only entry without price fields)", len(missing), strings.Join(missing, ", "))
-	}
-	return catalog, prices, nil
+	return catalog, prices, defaults, nil
 }
 
-// mergeMediaSupplement 填补媒体单价及生图模型缺失的文本输出价，保留目录已有单价。
+// applyModelSupplements 先应用精确键，再补齐同一原厂记录的其他查价键。
+// 精确配置优先于别名传播，结果不依赖 map 遍历顺序。
+func applyModelSupplements(raw map[string]json.RawMessage, catalog *modelcatalog.Catalog, supplement map[string]json.RawMessage) error {
+	for model, entry := range supplement {
+		if model == pricing.BillingDefaultsKey {
+			continue
+		}
+		if err := mergeMediaSupplement(raw, model, entry); err != nil {
+			return err
+		}
+	}
+	for model, entry := range supplement {
+		if model == pricing.BillingDefaultsKey {
+			continue
+		}
+		for _, alias := range catalog.FirstPartyAliases(model) {
+			if alias == model {
+				continue
+			}
+			if err := mergeMediaSupplement(raw, alias, entry); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// mergeMediaSupplement 只填补允许的计费字段，目录已有值和零价均优先。
 func mergeMediaSupplement(raw map[string]json.RawMessage, model string, entry json.RawMessage) error {
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal(entry, &fields); err != nil {
@@ -163,6 +137,13 @@ func mergeMediaSupplement(raw map[string]json.RawMessage, model string, entry js
 	fields["source"] = json.RawMessage(`"local_supplement"`)
 	base, exists := raw[model]
 	if !exists {
+		sources := map[string]string{}
+		for key, label := range supplementFields {
+			if _, ok := fields[key]; ok {
+				sources[label] = "local_supplement"
+			}
+		}
+		fields["price_sources"], _ = json.Marshal(sources)
 		body, err := json.Marshal(fields)
 		if err != nil {
 			return err
@@ -183,13 +164,7 @@ func mergeMediaSupplement(raw map[string]json.RawMessage, model string, entry js
 	if sources == nil {
 		sources = map[string]string{}
 	}
-	for key, label := range map[string]string{
-		"output_cost_per_token":             "output",
-		"output_cost_per_image":             "image",
-		"output_cost_per_image_token":       "image_output",
-		"input_cost_per_image_token":        "image_input",
-		"cache_read_input_image_token_cost": "image_cache_read",
-	} {
+	for key, label := range supplementFields {
 		if _, exists := combined[key]; exists {
 			continue
 		}
@@ -212,11 +187,12 @@ func (s *Service) publishModelsCatalog(body []byte, updated time.Time, persist b
 	var catalog *modelcatalog.Catalog
 	var prices map[string]*CatalogModelPricing
 	var fingerprint string
+	var defaults pricing.OperationPrices
 	// 文件编辑可能与目录同步重叠，只发布来自同一组本地文件内容的价格投影。
 	for attempt := 0; attempt < 3; attempt++ {
 		before := s.customPricingFilesFingerprint()
 		var err error
-		catalog, prices, err = s.buildModelsCatalog(body)
+		catalog, prices, defaults, err = s.buildModelsCatalog(body)
 		if err != nil {
 			return err
 		}
@@ -254,6 +230,7 @@ func (s *Service) publishModelsCatalog(body []byte, updated time.Time, persist b
 	s.mu.Lock()
 	warnDroppedLongContextLadders(s.pricingData, prices)
 	s.modelCatalog, s.pricingData = catalog, prices
+	s.billingDefaults = defaults
 	s.catalogBody = append([]byte(nil), body...)
 	s.lastUpdated, s.localHash, s.lastCatalogError = updated, catalog.Version, ""
 	s.customFilesHash = fingerprint
@@ -316,6 +293,7 @@ func (s *Service) loadModelsCatalog() (err error) {
 		}
 		s.mu.Lock()
 		s.modelCatalog, s.pricingData = bootstrap.modelCatalog, bootstrap.pricingData
+		s.billingDefaults = bootstrap.billingDefaults
 		s.catalogBody = bootstrap.catalogBody
 		s.lastUpdated, s.localHash = bootstrap.lastUpdated, bootstrap.localHash
 		s.lastCatalogError = candidateErr.Error()
@@ -362,7 +340,7 @@ func (s *Service) updateModelsCatalog(force bool) (err error) {
 		return err
 	}
 	if unchanged {
-		// 304 只代表远程未变；仍须验证本地层，不能清除尚未修复的覆盖错误。
+		// 304 只代表远程未变；仍须验证本地层，不能清除尚未修复的补充文件错误。
 		s.mu.RLock()
 		current := append([]byte(nil), s.catalogBody...)
 		updated, fingerprint := s.lastUpdated, s.customFilesHash

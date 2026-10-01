@@ -33,6 +33,7 @@ export default {
       "actions": "操作",
       "model": "模型",
       "provider": "厂商",
+      "capability": "能力",
       "context": "上下文",
       "output": "输出上限"
     },

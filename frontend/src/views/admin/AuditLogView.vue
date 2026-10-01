@@ -4,26 +4,8 @@
       <!-- 筛选条件 -->
       <template #filters>
         <div class="flex items-center justify-between gap-3">
-            <div ref="filterPanelRef" class="relative shrink-0">
-              <button
-                type="button"
-                class="btn btn-secondary relative btn-icon"
-                :aria-expanded="showFilterDropdown"
-                :aria-label="t('common.filter')"
-                :title="t('common.filter')"
-                @click="showFilterDropdown = !showFilterDropdown"
-              >
-                <Icon name="filter" size="sm" />
-                <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-                  {{ activeFilterCount }}
-                </span>
-              </button>
-
-              <div v-show="showFilterDropdown" class="absolute -left-4 top-full z-modal-nested mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0" @click.stop>
-                <div class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                <div class="flex flex-wrap items-end gap-4">
-              <div class="w-full sm:w-auto sm:min-w-[240px]">
-                <label class="input-label">{{ t('admin.audit.filters.q') }}</label>
+            <FilterDropdown :active-count="activeFilterCount" :columns="3" keep-mounted @reset="resetAuditFilters">
+              <FilterField :label="t('admin.audit.filters.q')" :value-text="filters.q" @clear="clearAuditFilter('q')" full>
                 <div class="input-icon-wrap">
                   <Icon
                     name="search"
@@ -38,49 +20,33 @@
                     @keyup.enter="search"
                   />
                 </div>
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[200px]">
-                <label class="input-label">{{ t('admin.audit.filters.actorEmail') }}</label>
+              </FilterField>
+              <FilterField :label="t('admin.audit.filters.actorEmail')" :value-text="filters.actor_email" @clear="clearAuditFilter('actor_email')">
                 <input v-model.trim="filters.actor_email" type="text" class="input" @keyup.enter="search" />
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[180px]">
-                <label class="input-label">{{ t('admin.audit.filters.action') }}</label>
+              </FilterField>
+              <FilterField :label="t('admin.audit.filters.action')" :value-text="filters.action" @clear="clearAuditFilter('action')">
                 <input v-model.trim="filters.action" type="text" class="input" @keyup.enter="search" />
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[160px]">
-                <label class="input-label">{{ t('admin.audit.filters.clientIp') }}</label>
+              </FilterField>
+              <FilterField :label="t('admin.audit.filters.clientIp')" :value-text="filters.client_ip" @clear="clearAuditFilter('client_ip')">
                 <input v-model.trim="filters.client_ip" type="text" class="input" @keyup.enter="search" />
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[140px]">
-                <label class="input-label">{{ t('admin.audit.filters.method') }}</label>
+              </FilterField>
+              <FilterField :label="t('admin.audit.filters.method')">
                 <Select v-model="filters.method" :options="methodOptions" @change="search" />
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[170px]">
-                <label class="input-label">{{ t('admin.audit.filters.authMethod') }}</label>
+              </FilterField>
+              <FilterField :label="t('admin.audit.filters.authMethod')">
                 <Select v-model="filters.auth_method" :options="authMethodOptions" @change="search" />
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[140px]">
-                <label class="input-label">{{ t('admin.audit.filters.result') }}</label>
+              </FilterField>
+              <FilterField :label="t('admin.audit.filters.result')">
                 <Select v-model="filters.success" :options="resultOptions" @change="search" />
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[170px]">
-                <label class="input-label">{{ t('admin.dashboard.timeRange') }}</label>
+              </FilterField>
+              <FilterField :label="t('admin.dashboard.timeRange')">
                 <Select
                   :model-value="timeRange"
                   :options="timeRangeOptions"
                   @update:model-value="handleTimeRangeChange"
                 />
-              </div>
-                </div>
-              </div>
-            </div>
+              </FilterField>
+            </FilterDropdown>
 
             <div class="flex flex-wrap items-center justify-end gap-2">
               <button type="button" class="btn btn-primary whitespace-nowrap px-3 sm:px-4" :disabled="loading" @click="search">
@@ -363,6 +329,8 @@
   </AppLayout>
 </template>
 <script setup lang="ts">
+import FilterField from '@/components/common/FilterField.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI, type AuditLog } from '@/api/admin'
@@ -694,4 +662,22 @@ onMounted(() => {
 })
 
 onUnmounted(() => document.removeEventListener('click', handleFilterClickOutside))
+
+
+// 移除单个文本条件后立即重新查询。
+function clearAuditFilter(key: 'q' | 'actor_email' | 'action' | 'client_ip') {
+  filters[key] = ''
+  search()
+}
+
+
+// 清空全部筛选条件和时间范围后重新查询。
+function resetAuditFilters() {
+  for (const key of Object.keys(filters) as Array<keyof typeof filters>) filters[key] = ''
+  timeRange.value = ''
+  customStartTime.value = ''
+  customEndTime.value = ''
+  search()
+}
+
 </script>

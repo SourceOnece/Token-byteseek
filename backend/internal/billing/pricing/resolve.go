@@ -8,7 +8,6 @@ import (
 const (
 	PricingSourceConfig   = "pricing_config"
 	PricingSourceCatalog  = "catalog"
-	PricingSourceFallback = "fallback"
 	PricingSourceUnpriced = "unpriced"
 )
 
@@ -28,6 +27,8 @@ type ResolvedPricing struct {
 
 	// 按次/图片模式：默认价格（未命中层级时使用）
 	DefaultPerRequestPrice float64
+	// DefaultPerRequestPricePresent 区分明确的免费默认价与未配置。
+	DefaultPerRequestPricePresent bool `json:"-"`
 
 	// 来源标识
 	Source string // "pricing_config", "catalog", "fallback", "unpriced"
@@ -164,7 +165,7 @@ func ApplyTokenOverrides(chPricing *ModelPricingEntry, resolved *ResolvedPricing
 	if resolved.BasePricing == nil {
 		resolved.BasePricing = &ModelPricing{}
 	} else {
-		// 防止修改 fallbackPrices 中的共享指针
+		// 防止修改 目录中的共享价格
 		cloned := *resolved.BasePricing
 		resolved.BasePricing = &cloned
 	}
@@ -198,6 +199,7 @@ func ApplyRequestTierOverrides(chPricing *ModelPricingEntry, resolved *ResolvedP
 	resolved.RequestTiers = FilterValidRequestIntervals(chPricing.Intervals)
 	if chPricing.PerRequestPrice != nil {
 		resolved.DefaultPerRequestPrice = *chPricing.PerRequestPrice
+		resolved.DefaultPerRequestPricePresent = true
 	}
 }
 
@@ -423,8 +425,12 @@ func GetRequestTierPrice(resolved *ResolvedPricing, tierLabel string) float64 {
 }
 
 func GetRequestTierPriceValue(resolved *ResolvedPricing, tierLabel string) (float64, bool) {
+	tierLabel = strings.TrimSpace(tierLabel)
+	if resolved == nil || tierLabel == "" {
+		return 0, false
+	}
 	for _, tier := range resolved.RequestTiers {
-		if strings.EqualFold(tier.TierLabel, tierLabel) && tier.PerRequestPrice != nil {
+		if strings.EqualFold(strings.TrimSpace(tier.TierLabel), tierLabel) && tier.PerRequestPrice != nil {
 			return *tier.PerRequestPrice, true
 		}
 	}
@@ -440,10 +446,50 @@ func GetRequestTierPriceByContext(resolved *ResolvedPricing, totalContextTokens 
 	return price
 }
 
+// GetRequestTierPriceByContextValue 只匹配未声明标签的上下文区间，不能借用其他尺寸的单价。
 func GetRequestTierPriceByContextValue(resolved *ResolvedPricing, totalContextTokens int) (float64, bool) {
-	iv := FindMatchingInterval(resolved.RequestTiers, totalContextTokens)
-	if iv != nil && iv.PerRequestPrice != nil {
-		return *iv.PerRequestPrice, true
+	if resolved == nil {
+		return 0, false
+	}
+	for _, iv := range resolved.RequestTiers {
+		if strings.TrimSpace(iv.TierLabel) != "" {
+			continue
+		}
+		if totalContextTokens > iv.MinTokens && (iv.MaxTokens == nil || totalContextTokens <= *iv.MaxTokens) && iv.PerRequestPrice != nil {
+			return *iv.PerRequestPrice, true
+		}
+	}
+	return 0, false
+}
+
+// ResolveRequestUnitPrice 统一按次标签、上下文区间和默认价；未知上下文不能投影成固定单价。
+func ResolveRequestUnitPrice(resolved *ResolvedPricing, label string, totalContext *int) (float64, bool) {
+	if resolved == nil {
+		return 0, false
+	}
+	if value, found := GetRequestTierPriceValue(resolved, label); found {
+		return value, true
+	}
+	hasDefault := resolved.DefaultPerRequestPricePresent ||
+		resolved.DefaultPerRequestPrice > 0 ||
+		resolved.ConfigPricing != nil && resolved.ConfigPricing.PerRequestPrice != nil
+	if totalContext != nil {
+		if value, found := GetRequestTierPriceByContextValue(resolved, *totalContext); found {
+			return value, true
+		}
+	} else if resolved.Mode == BillingModePerRequest {
+		for _, iv := range resolved.RequestTiers {
+			if strings.TrimSpace(iv.TierLabel) != "" || iv.PerRequestPrice == nil {
+				continue
+			}
+			// 所有上下文价与明确默认价相同才可固定报价，包含整张价卡免费。
+			if !hasDefault || *iv.PerRequestPrice != resolved.DefaultPerRequestPrice {
+				return 0, false
+			}
+		}
+	}
+	if hasDefault {
+		return resolved.DefaultPerRequestPrice, true
 	}
 	return 0, false
 }

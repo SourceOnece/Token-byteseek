@@ -377,7 +377,7 @@ riskControl: {
         "details": "详细",
         "update": "更新目录",
         "updating": "正在更新…",
-        "updateHint": "立即从配置的价格来源更新目录，并重新应用本地覆盖。",
+        "updateHint": "更新模型目录和价格补充。自定义售价请在价格配置中设置并关联分组。",
         "updateSuccess": "价格目录已更新。",
         "updateError": "更新目录失败，请检查价格来源配置后重试。",
         "empty": "没有匹配的模型",

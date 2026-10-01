@@ -9,8 +9,6 @@ import (
 
 const PricingSourceCatalog = purepricing.PricingSourceCatalog
 
-const PricingSourceFallback = purepricing.PricingSourceFallback
-
 const PricingSourceUnpriced = purepricing.PricingSourceUnpriced
 
 // ResolvedPricing 保留旧解析结果入口，由纯定价包唯一拥有。

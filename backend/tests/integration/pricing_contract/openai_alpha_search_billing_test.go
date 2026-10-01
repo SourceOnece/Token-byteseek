@@ -5,9 +5,11 @@ package pricingcontract
 import (
 	"context"
 	"testing"
-	time "time"
+	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 
 	completion "github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -19,7 +21,7 @@ import (
 
 func TestCalculateWebSearchCostDefaultAndOverride(t *testing.T) {
 	t.Parallel()
-	s := newCalculatorWithPrices(nil, nil, map[string]*pricing.ModelPricing{})
+	s := alphaSearchCalculator()
 
 	// 默认价：官方 $10/1000 次 = 0.01/次
 	cost := s.CalculateWebSearchCost(1, nil, 1.0)
@@ -50,7 +52,7 @@ func TestCalculateWebSearchCostDefaultAndOverride(t *testing.T) {
 
 func TestCalculateOpenAIRecordUsageCostWebSearchPerCall(t *testing.T) {
 	t.Parallel()
-	svc := completion.NewRecorder(completion.Dependencies{Calculator: newCalculatorWithPrices(nil, nil, map[string]*pricing.ModelPricing{})}, completion.RecorderOptions{DefaultMultiplier: 1})
+	svc := completion.NewRecorder(completion.Dependencies{Calculator: alphaSearchCalculator()}, completion.RecorderOptions{DefaultMultiplier: 1})
 
 	groupID := int64(11)
 
@@ -76,4 +78,10 @@ func TestCalculateOpenAIRecordUsageCostWebSearchPerCall(t *testing.T) {
 	result.WebSearchCalls = 0
 	_, err = svc.CalculateOpenAIRecordUsageCostAt(context.Background(), gatewaycapture.ProjectOpenAICompletionResult(result, nil), apiKey, []string{"gpt-5.6-sol"}, 1.0, 1.0, 1.0, 1.0, pricing.UsageTokens{InputTokens: 10}, "", time.Time{})
 	require.Error(t, err)
+}
+
+// alphaSearchCalculator 显式提供操作目录价，普通 token 查询仍为空。
+func alphaSearchCalculator() *billing.Calculator {
+	catalog := provider.NewServiceFromSnapshot(provider.Options{}, nil, provider.Snapshot{BillingDefaults: pricing.OperationPrices{WebSearchPricePerCall: testPtrFloat64(0.01)}})
+	return billing.NewCalculator(catalog, billing.CalculatorOptions{})
 }

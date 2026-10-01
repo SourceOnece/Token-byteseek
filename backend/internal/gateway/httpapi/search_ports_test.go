@@ -8,11 +8,11 @@ import (
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/searchtools"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -59,7 +59,12 @@ func TestSearchNativePortsCompleteEachRequestOnce(t *testing.T) {
 			logs := &testkit.UsageLogStore{Inserted: true}
 			funds := &testkit.SettlementStore{}
 			fixture := testkit.NewRecording(logs, funds, nil, false)
-			fixture.Dependencies.Calculator = billingtestkit.Calculator(1.1, nil, map[string]*pricing.ModelPricing{"grok-web-search": {}, "grok-x-search": {}})
+			searchPrice := 5.0
+			catalogue := catalogprovider.NewServiceFromSnapshot(catalogprovider.Options{}, nil, catalogprovider.Snapshot{
+				Data:            map[string]*pricing.CatalogModelPricing{"grok-web-search": {}, "grok-x-search": {}},
+				BillingDefaults: pricing.OperationPrices{SearchPricePer1k: &searchPrice},
+			})
+			fixture.Dependencies.Calculator = billing.NewCalculator(catalogue, billing.CalculatorOptions{DefaultRateMultiplier: 1.1})
 			recorder := fixture.Core(nil, false)
 			ports := SearchPorts{Selector: target, Funding: admission.NewFundingAdmission(checks, nil), Recorder: recorder}
 			handler := NewSearchHandler(ports)

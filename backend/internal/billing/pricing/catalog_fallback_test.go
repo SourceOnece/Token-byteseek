@@ -14,7 +14,7 @@ func TestPricingUsesCompleteIdentity(t *testing.T) {
 	}}
 	for _, model := range []string{"claude-opus-5.5", "claude-opus-5-5-20260101", "gemini-3.9-flash-high", "gpt-5.6-sol-max", "vendor/gpt-5.6-sol", "gpt5.6sol"} {
 		require.Nil(t, query.GetModelPricing(model), model)
-		_, _, err := ResolveModelPricing(model, nil, DefaultFallbackPrices(), ModelPolicy{})
+		_, err := ResolveModelPricing(model, nil)
 		require.ErrorIs(t, err, ErrModelPricingUnavailable, model)
 	}
 	require.Same(t, price, query.GetModelPricing("claude-opus-5-5"))

@@ -10,10 +10,10 @@
           <div class="flex flex-wrap items-center gap-3">
             <input v-model="search" class="input min-w-0 flex-1 sm:max-w-xs" :placeholder="t('common.search')" :aria-label="t('common.search')" />
             <Select v-if="activeTab === 'configs'" v-model="status" :options="statusOptions" class="w-40" />
-            <template v-else>
-              <Select v-model="provider" :options="providerOptions" class="w-48" />
-              <Select v-model="capability" :options="capabilityOptions" class="w-48" />
-            </template>
+            <FilterDropdown v-else :active-count="Number(!!provider) + Number(!!capability)" @reset="provider = ''; capability = ''">
+              <FilterField :label="t('admin.modelAttributes.allProviders')"><Select v-model="provider" :options="providerOptions" /></FilterField>
+              <FilterField :label="t('admin.modelAttributes.allCapabilities')"><Select v-model="capability" :options="capabilityOptions" /></FilterField>
+            </FilterDropdown>
             <div class="ml-auto flex gap-2">
               <button class="btn btn-secondary btn-icon" :disabled="loading || updating" :aria-label="t('common.refresh')" @click="load"><Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" /></button>
               <button v-if="activeTab === 'configs'" class="btn btn-primary" @click="edit()"><Icon name="plus" size="md" class="mr-2" />{{ t('admin.modelAttributes.create') }}</button>
@@ -89,6 +89,8 @@
 </template>
 
 <script setup lang="ts">
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'

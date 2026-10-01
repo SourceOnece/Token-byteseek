@@ -7,6 +7,8 @@ import (
 
 // CatalogModelPricing 保存每 token 单价及目录元数据，存在性标记区分缺价和显式零价。
 type CatalogModelPricing struct {
+	CatalogRules
+	InputPricePresent           bool                  `json:"-"`
 	CacheCreation1hPricePresent bool                  `json:"-"`
 	PriorityInputPresent        bool                  `json:"-"`
 	PriorityOutputPresent       bool                  `json:"-"`
@@ -21,6 +23,7 @@ type CatalogModelPricing struct {
 	ImagePricePresent                   bool    `json:"-"`
 	ImageInputPricePresent              bool    `json:"-"`
 	ImageOutputPricePresent             bool    `json:"-"`
+	ImageCacheReadPricePresent          bool    `json:"-"`
 	InputCostPerToken                   float64 `json:"input_cost_per_token"`
 	InputCostPerTokenPriority           float64 `json:"input_cost_per_token_priority"`
 	OutputCostPerToken                  float64 `json:"output_cost_per_token"`
@@ -51,13 +54,14 @@ type CatalogModelPricing struct {
 	SupportsVideoInput        bool     `json:"supports_video_input"`
 
 	// TokenPricingAbsent 表示源数据缺少 token 定价；models.dev 要求输入和输出桶都存在。
-	// models.dev 缺价时直接返回未定价；旧格式的纯图片条目仍允许使用本地 token 回退价。
+	// models.dev 缺价时直接返回未定价；旧文件继续兼容单侧 token 单价。
 	// 独立图片计费可继续读取此类条目的媒体价格。
 	TokenPricingAbsent bool `json:"-"`
 }
 
 // CatalogRawEntry 使用指针保留原始价格字段的缺失与显式零值。
 type CatalogRawEntry struct {
+	CatalogRules
 	Source                              string                `json:"source,omitempty"`
 	PriceSources                        map[string]string     `json:"price_sources,omitempty"`
 	ContextPrices                       []CatalogContextPrice `json:"context_prices,omitempty"`
@@ -102,6 +106,7 @@ func CloneCatalogPrice(value *CatalogModelPricing) *CatalogModelPricing {
 		return nil
 	}
 	result := *value
+	result.CatalogRules = value.Clone()
 	result.SupportedModalities = slices.Clone(value.SupportedModalities)
 	result.SupportedOutputModalities = slices.Clone(value.SupportedOutputModalities)
 	if value.PriceSources != nil {

@@ -224,3 +224,15 @@ describe('ModelPricingPanel', () => {
     expect(wrapper.find('[data-testid="pricing-interval-switch"]').exists()).toBe(false)
   })
 })
+
+it('显示明确免费的图片尺寸，省略未定价尺寸', () => {
+  const wrapper = mountPanel(marketplaceModel('free-image-size', {
+    pricing_mode: 'image',
+    price_status: 'priced',
+    image_price_1k: 0,
+  }))
+  expect(wrapper.text()).toContain('1K')
+  expect(wrapper.text()).not.toContain('2K')
+  expect(wrapper.text()).not.toContain('4K')
+  expect(wrapper.text()).not.toContain('marketplace.unpriced')
+})

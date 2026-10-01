@@ -32,13 +32,13 @@ const fallbackOriginFixture = `{"providers":{
 	}}
 }}`
 
-func TestModelsCatalogFallbackOriginAndOverrides(t *testing.T) {
+func TestModelsCatalogFallbackOriginAndSupplements(t *testing.T) {
 	dir := t.TempDir()
-	patch := filepath.Join(dir, "override.json")
+	patch := filepath.Join(dir, "supplement.json")
 	service := NewService(Options{
 		DataDir:      dir,
 		RemoteURL:    "https://models.dev/catalog.json",
-		OverrideFile: patch,
+		FallbackFile: patch,
 	}, &catalogRemoteFixture{body: []byte(fallbackOriginFixture)})
 	require.NoError(t, service.ForceUpdate())
 	check := func(reader *Service, input float64) {
@@ -62,9 +62,9 @@ func TestModelsCatalogFallbackOriginAndOverrides(t *testing.T) {
 		"claude-opus-4-7":{"input_cost_per_token":0.000008,"output_cost_per_token":0.00004}
 	}`), 0o600))
 	require.NoError(t, service.ForceUpdate())
-	check(service, 0)
-	check(service.ReadOnlySnapshot(), 0)
-	// 本地新增的明确价格仍可供既有系列规则使用。
+	check(service, 5e-6)
+	check(service.ReadOnlySnapshot(), 5e-6)
+	// 本地补充可新增精确模型，但不能覆盖目录已有价。
 	require.InDelta(t, 8e-6, service.GetModelPricing("claude-opus-4-7").InputCostPerToken, 1e-12)
 }
 

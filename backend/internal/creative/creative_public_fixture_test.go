@@ -106,7 +106,7 @@ type creativeMediaCatalog struct{}
 
 func (creativeMediaCatalog) GetModelPricing(model string) *billing.CatalogModelPricing {
 	switch model {
-	case "gpt-image-1", "gpt-image-2", "gemini-2.5-flash-image", "gemini-3-pro-image", "gemini-3.1-flash-image", "grok-imagine-image-1.0":
+	case "gpt-image-1", "gpt-image-2", "gemini-2.5-flash-image", "gemini-3-pro-image", "gemini-3.1-flash-image", "grok-imagine-image-1.0", "grok-imagine-image-2.0":
 		return &billing.CatalogModelPricing{OutputCostPerImage: 0.134, ImagePricePresent: true, TokenPricingAbsent: true, Mode: "image_generation"}
 	default:
 		return nil
@@ -118,7 +118,7 @@ func (creativeMediaCatalog) ForceUpdate() error        { return errors.New("测�
 
 // newCreativeMediaCalculator 使用显式目录报价验证业务流程，禁止通用图片兜底。
 func newCreativeMediaCalculator() *billing.Calculator {
-	return billing.NewCalculator(creativeMediaCatalog{}, billing.CalculatorOptions{ModelPolicy: modelidentity.PricingPolicy})
+	return billing.NewCalculator(creativeMediaCatalog{}, billing.CalculatorOptions{})
 }
 
 // creativePriceFixture 只投影可选目录/解析器，价格算法与回退仍调用 billing。

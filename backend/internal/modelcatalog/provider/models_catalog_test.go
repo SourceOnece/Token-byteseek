@@ -35,7 +35,8 @@ func TestModelsCatalogAtomicUpdateAndUnpricedAttributes(t *testing.T) {
 	require.Equal(t, "No price", *s.ModelAttributes("attributes-only").DisplayName)
 	require.False(t, *s.ModelAttributes("attributes-only").Temperature)
 	price := s.GetModelPricing("claude-test")
-	require.InDelta(t, 6e-6, price.CacheCreationInputTokenCostAbove1hr, 1e-12)
+	require.False(t, price.CacheCreation1hPricePresent)
+	require.Zero(t, price.CacheCreationInputTokenCostAbove1hr)
 	require.Len(t, price.ContextPrices, 2)
 	before := s.AttributesSnapshot()
 	remote.body = []byte(`{"providers":{}}`)
@@ -51,12 +52,12 @@ func TestModelsCatalogAtomicUpdateAndUnpricedAttributes(t *testing.T) {
 	require.Empty(t, s.AttributesSnapshot().LastError)
 }
 
-func TestModelsCatalogOverrideAndConcurrentReaders(t *testing.T) {
+func TestModelsCatalogSupplementAndConcurrentReaders(t *testing.T) {
 	dir := t.TempDir()
-	file := filepath.Join(dir, "override.json")
+	file := filepath.Join(dir, "supplement.json")
 	require.NoError(t, os.WriteFile(file, []byte(`{"claude-test":{"cache_creation_input_token_cost_above_1hr":0.000012}}`), 0o600))
 	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture)}
-	s := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, OverrideFile: file}, remote)
+	s := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, FallbackFile: file}, remote)
 	require.NoError(t, s.ForceUpdate())
 	require.InDelta(t, 12e-6, s.GetModelPricing("claude-test").CacheCreationInputTokenCostAbove1hr, 1e-12)
 	var wg sync.WaitGroup
@@ -84,19 +85,19 @@ func TestModelsCatalogOfflineFirstStart(t *testing.T) {
 	require.FileExists(t, s.catalogFilePath())
 }
 
-func TestModelsCatalogBrokenOverrideBootAndRecovery(t *testing.T) {
+func TestModelsCatalogBrokenSupplementBootAndRecovery(t *testing.T) {
 	dir := t.TempDir()
-	patch := filepath.Join(dir, "override.json")
+	patch := filepath.Join(dir, "supplement.json")
 	require.NoError(t, os.WriteFile(patch, []byte("broken"), 0o600))
-	s := NewService(Options{DataDir: dir, OverrideFile: patch}, nil)
+	s := NewService(Options{DataDir: dir, FallbackFile: patch}, nil)
 	require.NoError(t, s.Initialize())
 	require.NotEmpty(t, s.AttributesSnapshot().LastError)
 	require.NotNil(t, s.ModelAttributes("claude-sonnet-4-5").Context)
 	require.Nil(t, s.GetModelPricing("claude-opus-4-6-thinking"))
-	require.NoError(t, os.WriteFile(patch, []byte(`{"claude-sonnet-4-5":{"input_cost_per_token":0.000007}}`), 0o600))
+	require.NoError(t, os.WriteFile(patch, []byte(`{"custom-model":{"input_cost_per_token":0.000007}}`), 0o600))
 	require.NoError(t, s.reloadCustomPricingLayers())
 	require.Empty(t, s.AttributesSnapshot().LastError)
-	require.InDelta(t, 7e-6, s.GetModelPricing("claude-sonnet-4-5").InputCostPerToken, 1e-12)
+	require.InDelta(t, 7e-6, s.GetModelPricing("custom-model").InputCostPerToken, 1e-12)
 }
 
 func TestModelsCatalogReadOnlyCacheStillServesOfflineData(t *testing.T) {
@@ -107,12 +108,12 @@ func TestModelsCatalogReadOnlyCacheStillServesOfflineData(t *testing.T) {
 	require.NotNil(t, s.ModelAttributes("claude-sonnet-4-5").Context)
 }
 
-// TestModelsCatalogConditionalUpdate 验证普通更新使用 ETag，强制更新清空条件，304 仍应用本地覆盖。
+// TestModelsCatalogConditionalUpdate 验证普通更新使用 ETag，强制更新清空条件，304 仍应用本地补充。
 func TestModelsCatalogConditionalUpdate(t *testing.T) {
 	dir := t.TempDir()
-	patch := filepath.Join(dir, "override.json")
+	patch := filepath.Join(dir, "supplement.json")
 	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture), etag: "v1"}
-	service := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, OverrideFile: patch}, remote)
+	service := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, FallbackFile: patch}, remote)
 	require.NoError(t, service.ForceUpdate())
 	require.NoError(t, service.syncWithRemote())
 	require.Equal(t, []string{"", "v1"}, remote.validators)
@@ -120,14 +121,14 @@ func TestModelsCatalogConditionalUpdate(t *testing.T) {
 	require.Equal(t, "", remote.validators[2])
 	before := service.Snapshot()
 	remote.unchanged = true
-	require.NoError(t, os.WriteFile(patch, []byte(`{"claude-test":{"input_cost_per_token":0}}`), 0o600))
+	require.NoError(t, os.WriteFile(patch, []byte(`{"custom-model":{"input_cost_per_token":0}}`), 0o600))
 	require.NoError(t, service.syncWithRemote())
-	require.Zero(t, service.GetModelPricing("claude-test").InputCostPerToken)
+	require.Zero(t, service.GetModelPricing("custom-model").InputCostPerToken)
 	require.Equal(t, before.LocalHash, service.Snapshot().LocalHash)
 	require.Equal(t, before.LastUpdated, service.Snapshot().LastUpdated)
 	require.NoError(t, os.Remove(patch))
 	require.NoError(t, service.syncWithRemote())
-	require.InDelta(t, 3e-6, service.GetModelPricing("claude-test").InputCostPerToken, 1e-12)
+	require.Nil(t, service.GetModelPricing("custom-model"))
 }
 
 // TestModelsCatalogRejectsLegacyRemote 验证自定义旧远程文件报迁移错误，内存和磁盘版本均保持不变。
@@ -159,14 +160,15 @@ func TestModelsCatalogDroppedAbsoluteTierWarns(t *testing.T) {
 	require.True(t, sink.ContainsMessageAtLevel("Long-context ladder dropped", "warn"))
 }
 
-// TestModelsCatalogAttributesOnlyWithUnknownPatch 验证没有价格的合法目录仍能发布属性，无效补丁只告警。
+// TestModelsCatalogAttributesOnlyWithUnknownPatch 验证没有价格的合法目录仍能发布属性，无价格补充不生成价格。
 func TestModelsCatalogAttributesOnlyWithUnknownPatch(t *testing.T) {
 	dir := t.TempDir()
-	file := filepath.Join(dir, "override.json")
+	file := filepath.Join(dir, "supplement.json")
 	require.NoError(t, os.WriteFile(file, []byte(`{"typo":{"long_context_input_token_threshold":0}}`), 0o600))
 	remote := &catalogRemoteFixture{body: []byte(`{"providers":{"openai":{"models":{"attributes-only":{"name":"No prices"}}}}}`)}
-	service := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, OverrideFile: file}, remote)
+	service := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, FallbackFile: file}, remote)
 	require.NoError(t, service.ForceUpdate())
-	require.Empty(t, service.Snapshot().Data)
+	require.NotContains(t, service.Snapshot().Data, "typo")
+	require.Nil(t, service.GetModelPricing("attributes-only"))
 	require.Equal(t, "No prices", *service.ModelAttributes("attributes-only").DisplayName)
 }

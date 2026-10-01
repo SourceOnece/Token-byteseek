@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -94,12 +95,42 @@ func ParsePricingEntries(rawData map[string]json.RawMessage) (map[string]*Catalo
 			continue
 		}
 
+		// 可空单价保留零值，负数和非有限值拒绝整次发布。
+		invalidAmount := false
+		value := reflect.ValueOf(entry)
+		fields := value.Type()
+		for i := 0; i < value.NumField(); i++ {
+			field := value.Field(i)
+			if field.Kind() == reflect.Pointer && field.Type().Elem().Kind() == reflect.Float64 && !field.IsNil() && !validAmount(field.Elem().Float()) {
+				invalidEntries = append(invalidEntries, fmt.Sprintf("%s: invalid %s", modelName, fields.Field(i).Tag.Get("json")))
+				invalidAmount = true
+			}
+		}
+		if invalidAmount {
+			continue
+		}
+		// 规则和补丁同样需要校验，不能因缺少基础价绕过更新验证。
+		if err := entry.Validate(); err != nil {
+			invalidEntries = append(invalidEntries, fmt.Sprintf("%s: %v", modelName, err))
+			continue
+		}
+		if modelName == BillingDefaultsKey {
+			var defaults OperationPrices
+			if err := json.Unmarshal(rawEntry, &defaults); err != nil {
+				invalidEntries = append(invalidEntries, fmt.Sprintf("%s: %v", modelName, err))
+			} else if err := defaults.Validate(); err != nil {
+				invalidEntries = append(invalidEntries, fmt.Sprintf("%s: %v", modelName, err))
+			}
+			continue
+		}
 		// 只保留有有效价格的条目
-		if entry.InputCostPerToken == nil && entry.OutputCostPerToken == nil && entry.OutputCostPerImage == nil && entry.OutputCostPerImageToken == nil && entry.InputCostPerImageToken == nil {
+		if entry.InputCostPerToken == nil && entry.OutputCostPerToken == nil && entry.OutputCostPerImage == nil && entry.OutputCostPerImageToken == nil && entry.InputCostPerImageToken == nil && len(entry.ImagePrices) == 0 && len(entry.VideoPrices) == 0 {
 			continue
 		}
 
 		pricing := &CatalogModelPricing{
+			InputPricePresent:           entry.InputCostPerToken != nil,
+			CatalogRules:                entry.Clone(),
 			CacheCreation1hPricePresent: entry.CacheCreationInputTokenCostAbove1hr != nil,
 			PriorityInputPresent:        entry.Source != "" && entry.InputCostPerTokenPriority != nil,
 			PriorityOutputPresent:       entry.Source != "" && entry.OutputCostPerTokenPriority != nil,
@@ -180,9 +211,14 @@ func ParsePricingEntries(rawData map[string]json.RawMessage) (map[string]*Catalo
 			pricing.InputCostPerImageToken = *entry.InputCostPerImageToken
 		}
 		if entry.CacheReadInputImageTokenCost != nil {
+			pricing.ImageCacheReadPricePresent = true
 			pricing.CacheReadInputImageTokenCost = *entry.CacheReadInputImageTokenCost
 		}
 
+		if err := deriveCatalogCachePrices(pricing); err != nil {
+			invalidEntries = append(invalidEntries, fmt.Sprintf("%s: %v", modelName, err))
+			continue
+		}
 		// 显式 long_context 字段（包括显式 0）优先于目录阶梯和 above 绝对价字段。
 		hasExplicitLongContext := entry.LongContextInputTokenThreshold != nil ||
 			entry.LongContextInputCostMultiplier != nil ||

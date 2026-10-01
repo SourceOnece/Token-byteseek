@@ -12,8 +12,7 @@ import (
 // TestModelsCatalogMediaQuotes 使用实际离线目录和管理页装配，区分输出能力与计费单位。
 func TestModelsCatalogMediaQuotes(t *testing.T) {
 	service := provider.NewService(provider.Options{
-		DataDir:      t.TempDir(),
-		FallbackFile: "../../resources/model-pricing/model_pricing_supplements.json",
+		DataDir: t.TempDir(),
 	}, nil)
 	require.NoError(t, service.Initialize())
 	calculator := billing.NewCalculator(service, billing.CalculatorOptions{})

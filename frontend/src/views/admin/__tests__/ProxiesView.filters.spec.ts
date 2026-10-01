@@ -19,6 +19,10 @@ vi.mock('vue-i18n', async () => ({
 const mountView = () => shallowMount(ProxiesView, {
   global: {
     stubs: {
+      Teleport: true,
+      FilterDropdown: false,
+      MotionTransition: { template: '<div><slot /></div>' },
+      FilterField: { template: '<div><slot /></div>' },
       AppLayout: { template: '<div><slot /></div>' },
       TablePageLayout: {
         template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
@@ -79,7 +83,8 @@ describe('proxy list filter pagination', () => {
       pages: 1
     }))
 
-    await filter.setValue(value)
+    // 上一次选项更新会触发面板重绘，模拟用户操作当前仍在页面内的控件。
+    await wrapper.get(`select[data-filter="${placeholder}"]`).setValue(value)
     await flushPromises()
 
     expect(listProxies).toHaveBeenLastCalledWith(

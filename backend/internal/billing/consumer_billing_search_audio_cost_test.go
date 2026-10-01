@@ -12,8 +12,8 @@ func TestCalculateSearchCost(t *testing.T) {
 	t.Parallel()
 	s := billingtestkit.Calculator(0, nil, map[string]*pricing.ModelPricing{})
 	require.Equal(t, 0.0, s.CalculateSearchCost(0, floatPtr(10), 1).ActualCost)
-	// 价格为 nil 时采用 xAI 官方默认每千次 5 美元，5 次调用费用为 0.025 美元。
-	require.InDelta(t, 0.025, s.CalculateSearchCost(5, nil, 1).ActualCost, 1e-9)
+	// 配置和目录均缺价时沿用零成本记录，不生成默认金额。
+	require.Zero(t, s.CalculateSearchCost(5, nil, 1).ActualCost)
 	// 显式配置为零表示免费。
 	require.Equal(t, 0.0, s.CalculateSearchCost(5, floatPtr(0), 1).ActualCost)
 	price := 10.0
@@ -32,10 +32,10 @@ func TestCalculateAudioCost(t *testing.T) {
 	require.InDelta(t, 1.5, s.CalculateAudioCost("tts", 0.1, cfg, 1).ActualCost, 1e-9)
 	require.InDelta(t, 0.25, s.CalculateAudioCost("stt", 0.5, cfg, 1).ActualCost, 1e-9)
 	require.Equal(t, 0.0, s.CalculateAudioCost("unknown", 1, cfg, 1).ActualCost)
-	// 配置为 nil 时采用官方默认价：think-fast-1 每分钟 0.05 美元、TTS 每百万字符 15 美元、REST STT 每小时 0.10 美元。
-	require.InDelta(t, 0.05, s.CalculateAudioCost("realtime", 1, nil, 1).ActualCost, 1e-9)
-	require.InDelta(t, 15.0, s.CalculateAudioCost("tts", 1, nil, 1).ActualCost, 1e-9)
-	require.InDelta(t, 0.10, s.CalculateAudioCost("stt", 1, nil, 1).ActualCost, 1e-9)
+	// 没有操作价格目录时各模式均不猜默认金额。
+	require.Zero(t, s.CalculateAudioCost("realtime", 1, nil, 1).ActualCost)
+	require.Zero(t, s.CalculateAudioCost("tts", 1, nil, 1).ActualCost)
+	require.Zero(t, s.CalculateAudioCost("stt", 1, nil, 1).ActualCost)
 	// 显式配置为零表示免费。
 	zero := 0.0
 	require.Equal(t, 0.0, s.CalculateAudioCost("realtime", 1, &pricing.AudioPriceConfig{RealtimePerMin: &zero}, 1).ActualCost)

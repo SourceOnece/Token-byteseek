@@ -4,18 +4,11 @@ export default {
     usageChart: {
       loadFailed: 'Could not load usage. Please retry.',
       metricsLabel: 'Usage metrics',
-      rangeLabel: 'Time range',
       metrics: {
         requests: 'Requests',
         tokens: 'Tokens',
         cost: 'Cost',
         cacheHitRate: 'Cache hit rate'
-      },
-      ranges: {
-        '24h': '24h',
-        '7d': '7d',
-        '30d': '30d',
-        '90d': '90d'
       },
       series: {
         input: 'Input',
@@ -25,6 +18,10 @@ export default {
         actualCost: 'Charged',
         total: 'Total'
       },
+      currentPeriod: 'This period',
+      previousPeriod: 'Previous period',
+      peak: 'Peak',
+      average: 'Avg',
       vsPrevious: 'vs previous period',
       noPrevious: 'No data for previous period',
       byHour: 'Hourly',
@@ -55,7 +52,26 @@ export default {
     platformCount: '{count} platforms',
     platformOther: 'Other',
     tokenUsageTrend: 'Token Usage Trend',
+    live: {
+      rpm: 'RPM',
+      tpm: 'TPM',
+      rpmHint: 'Average requests per minute over the last 5 minutes',
+      tpmHint: 'Average tokens per minute over the last 5 minutes',
+      latency: 'Avg latency',
+      todayCost: 'Spent today'
+    },
+    topModels: {
+      title: 'Top Models',
+      subtitle: 'By {metric}',
+      others: 'Other models ({count})',
+      viewAll: 'View all',
+      empty: 'No model usage in the selected range',
+      filterHint: 'Click to filter by this model',
+      clearFilter: 'Click again to clear the filter',
+      hitRate: '{rate} hit rate'
+    },
     activityHeatmap: 'Usage Activity',
+    heatmapSelectDay: 'Click to see hourly usage for this day',
     heatmapLess: 'Less',
     heatmapMore: 'More',
     heatmapNoUsage: 'No usage',
@@ -228,6 +244,16 @@ export default {
     },
     modelRedirect: {
       label: 'Model redirects',
+      help: {
+        title: 'How do model redirects work?',
+        description: 'The client sends a model name as usual. This key replaces it with the matching target before routing continues.',
+        example: 'Example rule',
+        replay: 'Replay',
+        request: 'Client',
+        match: 'Key rule',
+        target: 'Routing',
+        flow: 'The client requests {from}. The key rule replaces it with {to} before routing continues.'
+      },
       hint: 'Exact sources take priority. A source may use one trailing *, while targets must be concrete models.',
       addRule: 'Add rule',
       empty: 'No model redirect rules configured',
@@ -276,9 +302,11 @@ export default {
     useKeyModal: {
       model: 'Request model',
       selectModel: 'Select an available model',
+      shell: 'Shell',
       noModels: 'This group has no models available for this client',
       directAuth: 'Store the API key in the configuration file',
-
+      directAuthDescription: 'Writes the key to config.toml instead of generating auth.json, so any existing sign-in stays untouched.',
+      websocketDescription: 'Connects to the Responses API over WebSocket. Requires a Codex client with WebSocket v2 support; leave it off if unsure.',
       title: 'Use API Key',
       compositeDescription: 'Prefix each model ID with the group prefix when making requests.',
       description:
@@ -917,6 +945,9 @@ affiliate: {
     startDate: 'Start Date',
     endDate: 'End Date',
     apply: 'Apply',
-    selectDateRange: 'Select date range'
+    selectDateRange: 'Select date range',
+    selectEndDate: 'Select an end date',
+    previousMonth: 'Previous month',
+    nextMonth: 'Next month'
   },
 }

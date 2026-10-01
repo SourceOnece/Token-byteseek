@@ -61,31 +61,6 @@ func providePricingCatalog(calculator *billing.Calculator, prices *catalogprovid
 				}
 			}
 		}
-		for _, model := range frozen.ListSupportedModels() {
-			if _, exists := entries[model]; exists {
-				continue
-			}
-			platform := ""
-			switch {
-			case strings.HasPrefix(model, "claude"):
-				platform = "anthropic"
-			case strings.HasPrefix(model, "gpt"), strings.HasPrefix(model, "o1"), strings.HasPrefix(model, "o3"), strings.HasPrefix(model, "o4"):
-				platform = "openai"
-			case strings.HasPrefix(model, "gemini"):
-				platform = "gemini"
-			case strings.HasPrefix(model, "grok"):
-				platform = "grok"
-			case strings.HasPrefix(model, "deepseek"):
-				platform = "deepseek"
-			case strings.HasPrefix(model, "glm"):
-				platform = "zhipu"
-			case strings.HasPrefix(model, "kimi"), strings.HasPrefix(model, "moonshot"):
-				platform = "kimi"
-			default:
-				platform = "other"
-			}
-			entries[model] = platform
-		}
 		names := make([]string, 0, len(entries))
 		for model := range entries {
 			names = append(names, model)

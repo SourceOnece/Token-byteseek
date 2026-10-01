@@ -1,8 +1,9 @@
 <template>
-  <div class="card min-w-0 space-y-4 p-4" :aria-busy="loading">
+  <div class="space-y-4" :aria-busy="loading">
     <!-- 指标卡展示所选范围的合计与环比，点击后在下方折线图中查看该指标 -->
     <div
-      class="grid grid-cols-2 gap-2"
+      class="dash-rise-item grid grid-cols-2 gap-3"
+      :style="{ '--rise-i': 0 }"
       role="tablist"
       :aria-label="t('dashboard.usageChart.metricsLabel')"
     >
@@ -13,86 +14,141 @@
         role="tab"
         :data-testid="`usage-metric-${item.key}`"
         :aria-selected="metric === item.key"
-        class="metric-card btn flex min-w-0 items-center gap-2 p-3 text-left"
+        class="metric-card card bh-pressable flex min-w-0 flex-col gap-3 overflow-hidden p-4 text-left transition-colors duration-150"
         :class="metric === item.key
-          ? 'btn-warning'
-          : 'btn-secondary'"
+          ? 'bg-bh-yellow border-gray-950'
+          : 'hover:border-black/20 dark:hover:border-dark-500'"
         @click="selectMetric(item.key)"
       >
-        <div class="flex min-w-0 flex-1 flex-col gap-1">
-          <span class="text-xs" :class="metric === item.key ? 'text-gray-950' : 'text-gray-500 dark:text-dark-400'">{{ item.label }}</span>
-          <Skeleton v-if="!loaded" :width="96" :height="28" />
-          <span v-else class="truncate text-lg font-bold tabular-nums">{{ error ? '—' : item.value }}</span>
-          <span v-if="loaded && !error" class="truncate text-xs" :class="metric === item.key ? 'text-gray-800' : 'text-gray-500 dark:text-dark-400'" :data-testid="`usage-delta-${item.key}`">
-            <template v-if="item.delta">
-              <span :class="deltaToneClasses[item.delta.tone]">{{ item.delta.text }}</span>
-              {{ t('dashboard.usageChart.vsPrevious') }}
-            </template>
-            <template v-else>{{ t('dashboard.usageChart.noPrevious') }}</template>
+        <div class="flex min-w-0 items-center gap-2">
+          <span
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-compact"
+            :class="[METRIC_TONES[item.key].tile, METRIC_TONES[item.key].icon]"
+          >
+            <Icon :name="item.icon" size="sm" />
           </span>
+          <span class="truncate text-xs font-medium text-gray-500 dark:text-dark-400">{{ item.label }}</span>
         </div>
-        <!-- 只画走势线，选中的指标用品牌色 -->
-        <UsageSparkline
-          v-if="loaded && !error"
-          class="metric-sparkline h-10 w-20 shrink-0"
-          :class="metric === item.key ? 'text-primary-600 dark:text-primary-500' : 'text-gray-400 dark:text-dark-400'"
-          :values="item.series"
-          :data-testid="`usage-sparkline-${item.key}`"
-        />
+        <div class="flex min-w-0 items-end justify-between gap-3">
+          <Skeleton v-if="!loaded" :width="96" :height="32" />
+          <span v-else class="min-w-0 truncate text-2xl font-semibold tracking-tight tabular-nums text-gray-900 dark:text-dark-50">
+            <!-- 滚动中的数字只做视觉展示，读屏读取最终值 -->
+            <span aria-hidden="true">{{ error ? '—' : item.animatedValue }}</span>
+            <span class="sr-only">{{ item.value }}</span>
+          </span>
+          <!-- 只画走势线，选中的指标用品牌色 -->
+          <UsageSparkline
+            v-if="loaded && !error"
+            class="metric-sparkline h-8 w-20 shrink-0"
+            :class="metric === item.key ? 'text-primary-600 dark:text-primary-500' : 'text-gray-400 dark:text-dark-500'"
+            :values="item.series"
+            :data-testid="`usage-sparkline-${item.key}`"
+          />
+        </div>
+        <Skeleton v-if="!loaded" :width="120" :height="20" />
+        <span v-else class="flex min-w-0 items-center gap-2 text-xs text-gray-500 dark:text-dark-400" :data-testid="`usage-delta-${item.key}`">
+          <template v-if="item.delta">
+            <span
+              class="inline-flex shrink-0 items-center gap-1 rounded-control px-2 py-0.5 font-medium tabular-nums"
+              :class="deltaToneClasses[item.delta.tone]"
+            >
+              <Icon :name="deltaIcons[item.delta.tone]" size="xs" :animate-on-hover="false" />
+              {{ item.delta.text }}
+            </span>
+            <span class="metric-delta-label truncate">{{ t('dashboard.usageChart.vsPrevious') }}</span>
+          </template>
+          <span v-else class="truncate">{{ t('dashboard.usageChart.noPrevious') }}</span>
+        </span>
       </button>
     </div>
 
-    <!-- 折线图独立成卡，标题跟随当前指标 -->
-    <div>
-      <div class="mb-4 flex min-h-7 flex-wrap items-center justify-between gap-2">
-        <div class="flex items-baseline gap-2">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white" data-testid="usage-chart-title">{{ chartTitle }}</h3>
-          <span class="text-xs text-gray-500 dark:text-dark-400">{{ granularityHint }}</span>
+    <!-- 折线图与模型排行并排，窄于 xl 时排行排到图表下方 -->
+    <div class="dash-rise-item grid grid-cols-1 gap-4" :style="{ '--rise-i': 1 }">
+      <div ref="chartCardRef" class="card flex min-w-0 flex-col p-4 " data-testid="usage-chart-card">
+        <div class="mb-4 flex min-h-7 flex-wrap items-center justify-between gap-2">
+          <div class="flex items-baseline gap-2">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-dark-50" data-testid="usage-chart-title">{{ chartTitle }}</h3>
+            <span class="text-xs text-gray-500 dark:text-dark-400">{{ granularityHint }}</span>
+          </div>
+          <!-- 图例兼开关：Token 按分项开关，其余指标开关上一周期对比线 -->
+          <div class="flex flex-wrap gap-2">
+            <template v-if="metric === 'tokens'">
+              <button
+                v-for="series in tokenSeries"
+                :key="series.key"
+                type="button"
+                class="legend-chip"
+                :class="hiddenTokenSeries.includes(series.key) ? 'legend-chip-off' : 'legend-chip-on'"
+                :aria-pressed="!hiddenTokenSeries.includes(series.key)"
+                :data-testid="`usage-series-${series.key}`"
+                @click="toggleTokenSeries(series.key)"
+              >
+                <span
+                  class="h-2 w-2 rounded-full"
+                  :class="{ 'opacity-30': hiddenTokenSeries.includes(series.key) }"
+                  :style="{ backgroundColor: series.color }"
+                ></span>
+                {{ series.label }}
+              </button>
+            </template>
+            <template v-else>
+              <span class="legend-chip legend-chip-on" data-testid="usage-legend-current">
+                <span class="h-0.5 w-3 rounded-full" :style="{ backgroundColor: mainColor }"></span>
+                {{ t('dashboard.usageChart.currentPeriod') }}
+              </span>
+              <button
+                type="button"
+                class="legend-chip"
+                :class="showPrevious ? 'legend-chip-on' : 'legend-chip-off'"
+                :aria-pressed="showPrevious"
+                data-testid="usage-series-previous"
+                @click="showPrevious = !showPrevious"
+              >
+                <span class="w-3 border-t-2 border-dashed" :style="{ borderColor: themeColors.muted }" :class="{ 'opacity-30': !showPrevious }"></span>
+                {{ t('dashboard.usageChart.previousPeriod') }}
+              </button>
+            </template>
+          </div>
         </div>
-        <!-- Token 指标可以按分项开关堆叠面积 -->
-        <div v-if="metric === 'tokens'" class="flex flex-wrap gap-2">
-          <button
-            v-for="series in tokenSeries"
-            :key="series.key"
-            type="button"
-            class="btn btn-secondary btn-sm inline-flex items-center gap-2 text-xs"
-            :class="hiddenTokenSeries.includes(series.key)
-              ? 'text-gray-400 dark:text-dark-500'
-              : 'text-gray-700 dark:text-dark-100'"
-            :aria-pressed="!hiddenTokenSeries.includes(series.key)"
-            :data-testid="`usage-series-${series.key}`"
-            @click="toggleTokenSeries(series.key)"
+
+        <div class="relative h-64 sm:h-80">
+          <div v-if="error" role="alert" class="flex h-full flex-col items-center justify-center gap-3 text-red-600 dark:text-red-400"><span>{{ t('dashboard.usageChart.loadFailed') }}</span><button class="btn btn-secondary" @click="load">{{ t('common.retry') }}</button></div>
+          <ChartSkeleton v-else-if="!loaded" variant="plot" height="100%" />
+          <div
+            v-else-if="!hasUsage"
+            data-testid="usage-chart-empty"
+            class="flex h-full flex-col items-center justify-center gap-2 text-sm text-gray-500 dark:text-dark-400"
           >
+            <Icon name="chart" size="lg" class="text-gray-300 dark:text-dark-600" />
+            {{ t('dashboard.usageChart.empty') }}
+          </div>
+          <template v-else>
+            <!-- 切换指标或重新取数时重建图表，与首次打开播放同一套入场动画 -->
+            <Line ref="lineRef" :key="chartKey" :data="chartData" :options="chartOptions" :plugins="chartPlugins" />
+            <!-- 未结束时段的末端呼吸点，位置由图表插件在每次绘制后写入 -->
             <span
-              class="h-2 w-2 rounded-full"
-              :class="{ 'opacity-30': hiddenTokenSeries.includes(series.key) }"
-              :style="{ backgroundColor: series.color }"
-            ></span>
-            {{ series.label }}
-          </button>
+              v-if="livePoint"
+              data-testid="usage-live-point"
+              class="pointer-events-none absolute"
+              :style="{ left: `${livePoint.x}px`, top: `${livePoint.y}px`, color: mainColor }"
+              aria-hidden="true"
+            >
+              <span class="live-point-ping absolute -left-1.5 -top-1.5 h-3 w-3 animate-ping rounded-full bg-current opacity-60 motion-reduce:animate-none"></span>
+              <span class="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-current ring-2 ring-white dark:ring-dark-900"></span>
+            </span>
+          </template>
         </div>
       </div>
 
-      <div class="h-64 sm:h-80">
-        <div v-if="error" role="alert" class="flex h-full flex-col items-center justify-center gap-3 text-red-600 dark:text-red-400"><span>{{ t('dashboard.usageChart.loadFailed') }}</span><button class="btn btn-secondary" @click="load">{{ t('common.retry') }}</button></div>
-        <div v-else-if="!loaded" class="flex h-full items-center justify-center"><LoadingSpinner /></div>
-        <div
-          v-else-if="!hasUsage"
-          data-testid="usage-chart-empty"
-          class="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400"
-        >
-          {{ t('dashboard.usageChart.empty') }}
-        </div>
-        <Line v-else :data="chartData" :options="chartOptions" :plugins="[crosshairPlugin]" />
-      </div>
+      <UserDashboardTopModels class="" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
-import { usePreferredReducedMotion } from '@vueuse/core'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { usePreferredReducedMotion } from '@vueuse/core'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -100,35 +156,51 @@ import {
   PointElement,
   LineElement,
   Tooltip,
-  Filler,
+  type Chart,
+  type ChartDataset,
   type Plugin,
-  type ScriptableContext,
   type ScriptableLineSegmentContext,
   type TooltipItem,
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
 import Skeleton from '@/components/common/Skeleton.vue'
+import Icon from '@/components/icons/Icon.vue'
+// 使用已存在的包豪斯 SVG 图标类型。
+type IconName = NonNullable<InstanceType<typeof Icon>['$props']['name']>
 import UsageSparkline from './UsageSparkline.vue'
+import UserDashboardTopModels from './UserDashboardTopModels.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { useChartTheme, CHART_SERIES_COLORS, CHART_TICK_FONT_SIZE } from '@/composables/useChartTheme'
+import { useCountUp } from '@/composables/useCountUp'
 import { externalTooltipHandler, hideExternalTooltip } from '@/utils/chartExternalTooltip'
 import { formatNumberLocaleString as formatNumber, formatTokensK } from '@/utils/format'
+import type { TrendDataPoint } from '@/types'
 import { cacheHitRateOf } from './usageChartData'
-import { injectUsageChartState } from './usageChartState'
+import { CHART_REVEAL_MS, COUNT_UP_MS } from './dashboardMotion'
+import { METRIC_TONES } from './metricTones'
+import { injectUsageChartState, type UsageMetric } from './usageChartState'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
-
-onBeforeUnmount(hideExternalTooltip)
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip)
 
 type TokenSeriesKey = 'input_tokens' | 'output_tokens' | 'cache_creation_tokens' | 'cache_read_tokens'
 
-// 请求数和消费折线沿用包豪斯蓝，暗色用同源浅蓝保持对比。
+// 数据集上的自定义标记：previous 表示上一周期对比线。
+type UsageDataset = ChartDataset<'line', Array<number | null>> & {
+  previous?: boolean
+}
+
+// 请求数和消费折线使用品牌色，浅色取 primary-600，深色取 primary-500。
 const BRAND_LINE_COLOR = { light: '#1450A3', dark: '#97B7E8' }
-// Token 堆叠从下到上的顺序：占比最大的缓存读取垫底，输出等小量贴在曲线顶部更容易看清。
-const TOKEN_STACK_ORDER: TokenSeriesKey[] = ['cache_read_tokens', 'cache_creation_tokens', 'input_tokens', 'output_tokens']
-// 最后一个时段尚未结束时，末段折线使用的虚线样式。
+// 卡片底色，悬停点和峰值环的描边与之相同，看起来像镂空。
+const CARD_SURFACE = { light: '#FFFFFF', dark: '#0F0F10' }
+// 未结束时段与上一周期对比线的虚线样式。
 const OPEN_SEGMENT_DASH = [4, 4]
+const PREVIOUS_DASH = [4, 4]
+// 峰值与均值标签胶囊的尺寸。
+const LABEL_HEIGHT = 18
+const LABEL_PADDING_X = 6
+const LABEL_GAP = 10
 
 const { t } = useI18n()
 const { formatBalanceAmount } = useBalanceDisplay()
@@ -138,16 +210,21 @@ const {
   metric,
   activeRange,
   loading,
+  error,
+  load,
   loaded,
   current,
+  previous,
   previousTotals,
   totals,
   selectMetric,
-  error,
-  load,
 } = injectUsageChartState()
 
 const hiddenTokenSeries = ref<TokenSeriesKey[]>([])
+const showPrevious = ref(true)
+const lineRef = ref<{ chart?: Chart } | null>(null)
+const chartCardRef = ref<HTMLElement | null>(null)
+const livePoint = ref<{ x: number; y: number } | null>(null)
 
 const chartTitle = computed(() => t('dashboard.usageChart.trendTitle', {
   metric: t(`dashboard.usageChart.metrics.${metric.value}`),
@@ -158,9 +235,15 @@ const granularityHint = computed(() => (
 ))
 
 const deltaToneClasses = {
-  up: 'text-emerald-600 dark:text-emerald-400',
-  down: 'text-red-600 dark:text-red-400',
-  flat: 'text-gray-500 dark:text-dark-400',
+  up: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  down: 'bg-red-500/10 text-red-600 dark:text-red-400',
+  flat: 'bg-gray-100 text-gray-500 dark:bg-dark-800 dark:text-dark-300',
+}
+
+const deltaIcons: Record<keyof typeof deltaToneClasses, IconName> = {
+  up: 'trendingUp',
+  down: 'trendingDown',
+  flat: 'minus',
 }
 
 type Delta = { text: string; tone: keyof typeof deltaToneClasses }
@@ -187,37 +270,60 @@ const formatPercent = (value: number | null): string => (value === null ? '—' 
 // 小额消费保留 4 位小数，避免显示成 0.00。
 const formatCostTotal = (value: number): string => formatBalanceAmount(value, { fractionDigits: value >= 1 ? 2 : 4 })
 
+// metricValueOf 取某个时段在指定指标下的值，命中率没有输入时为 null。
+const metricValueOf = (point: TrendDataPoint, key: UsageMetric): number | null => {
+  if (key === 'tokens') return point.total_tokens
+  if (key === 'cost') return point.actual_cost
+  if (key === 'cacheHitRate') return cacheHitRateOf(point.input_tokens, point.cache_creation_tokens, point.cache_read_tokens)
+  return point.requests
+}
+
+// 指标卡数字从旧值滚动到新值；请求数滚动过程中取整，避免出现小数。
+const animatedRequests = useCountUp(() => totals.value.requests, COUNT_UP_MS)
+const animatedTokens = useCountUp(() => totals.value.tokens, COUNT_UP_MS)
+const animatedCost = useCountUp(() => totals.value.cost, COUNT_UP_MS)
+const animatedHitRate = useCountUp(() => totals.value.cacheHitRate ?? 0, COUNT_UP_MS)
+
 const metricTabs = computed(() => {
   const now = totals.value
   const prev = previousTotals.value
+  const seriesOf = (key: UsageMetric) => current.value.map((point) => metricValueOf(point, key))
   return [
     {
       key: 'requests' as const,
+      icon: 'arrowsUpDown' as IconName,
       label: t('dashboard.usageChart.metrics.requests'),
       value: formatNumber(now.requests),
+      animatedValue: formatNumber(Math.round(animatedRequests.value)),
       delta: percentDelta(now.requests, prev?.requests),
-      series: current.value.map((point) => point.requests),
+      series: seriesOf('requests'),
     },
     {
       key: 'tokens' as const,
+      icon: 'chart' as IconName,
       label: t('dashboard.usageChart.metrics.tokens'),
       value: formatTokensK(now.tokens),
+      animatedValue: formatTokensK(animatedTokens.value),
       delta: percentDelta(now.tokens, prev?.tokens),
-      series: current.value.map((point) => point.total_tokens),
+      series: seriesOf('tokens'),
     },
     {
       key: 'cost' as const,
+      icon: 'creditCard' as IconName,
       label: t('dashboard.usageChart.metrics.cost'),
       value: formatCostTotal(now.cost),
+      animatedValue: formatCostTotal(animatedCost.value),
       delta: percentDelta(now.cost, prev?.cost),
-      series: current.value.map((point) => point.actual_cost),
+      series: seriesOf('cost'),
     },
     {
       key: 'cacheHitRate' as const,
+      icon: 'database' as IconName,
       label: t('dashboard.usageChart.metrics.cacheHitRate'),
       value: formatPercent(now.cacheHitRate),
+      animatedValue: now.cacheHitRate === null ? '—' : formatPercent(animatedHitRate.value),
       delta: pointDelta(now.cacheHitRate, prev?.cacheHitRate),
-      series: current.value.map((point) => cacheHitRateOf(point.input_tokens, point.cache_creation_tokens, point.cache_read_tokens)),
+      series: seriesOf('cacheHitRate'),
     },
   ]
 })
@@ -232,11 +338,16 @@ const tokenSeries = computed(() => [
 const hasUsage = computed(() => totals.value.requests > 0 || totals.value.tokens > 0 || totals.value.cost > 0)
 
 // 横轴按粒度只显示时分或月日，完整时间留给提示标题。
-const axisLabels = computed(() => current.value.map((point) => (
-  activeRange.value.granularity === 'hour' ? point.date.slice(11, 16) : point.date.slice(5, 10)
-)))
+const shortLabel = (date: string): string => (
+  activeRange.value.granularity === 'hour' ? date.slice(11, 16) : date.slice(5, 10)
+)
+const axisLabels = computed(() => current.value.map((point) => shortLabel(point.date)))
 
 const brandColor = computed(() => (isDark.value ? BRAND_LINE_COLOR.dark : BRAND_LINE_COLOR.light))
+const surfaceColor = computed(() => (isDark.value ? CARD_SURFACE.dark : CARD_SURFACE.light))
+
+// 单指标主线的颜色，命中率沿用序列色。
+const mainColor = computed(() => (metric.value === 'cacheHitRate' ? CHART_SERIES_COLORS.cacheHitRate : brandColor.value))
 
 // 窗口包含当前时刻时，最后一个时段（今天或当前小时）还没结束，数据不完整。
 const openBucketIndex = computed(() => (
@@ -250,36 +361,20 @@ const segmentStyle = {
   ),
 }
 
-// gradientFill 生成从折线向下逐渐变淡的填充；图表尚未完成布局时先不填充。
-const gradientFill = (color: string) => (context: ScriptableContext<'line'>) => {
-  const { ctx, chartArea } = context.chart
-  if (!chartArea) return 'transparent'
-  const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-  gradient.addColorStop(0, `${color}40`)
-  gradient.addColorStop(1, `${color}00`)
-  return gradient
-}
-
-// lineDataset 生成统一样式的折线数据集；monotone 插值保证曲线不越过真实数据点。
-const lineDataset = (
-  label: string,
-  data: Array<number | null>,
-  color: string,
-  fill: boolean | string,
-  background: string | ((context: ScriptableContext<'line'>) => CanvasGradient | string),
-) => ({
+// lineDataset 生成统一样式的折线数据集；monotone 插值保证曲线不越过真实数据点，线下不填充。
+const lineDataset = (label: string, data: Array<number | null>, color: string): UsageDataset => ({
   label,
   data,
   borderColor: color,
-  backgroundColor: background,
+  backgroundColor: color,
   borderWidth: 2,
-  fill,
+  fill: false,
   cubicInterpolationMode: 'monotone' as const,
   segment: segmentStyle,
   pointRadius: 0,
-  pointHoverRadius: 4,
+  pointHoverRadius: 5,
   pointHoverBorderWidth: 2,
-  pointHoverBorderColor: isDark.value ? '#0F0F10' : '#FFFFFF',
+  pointHoverBorderColor: surfaceColor.value,
   pointHoverBackgroundColor: color,
   spanGaps: true,
 })
@@ -287,41 +382,41 @@ const lineDataset = (
 const chartData = computed(() => {
   const points = current.value
   if (metric.value === 'tokens') {
-    // 堆叠面积：第一层填到底，后续每层填到前一层，最上沿即可见分项之和。
-    const visible = TOKEN_STACK_ORDER
-      .filter((key) => !hiddenTokenSeries.value.includes(key))
-      .map((key) => tokenSeries.value.find((series) => series.key === key)!)
+    const visible = tokenSeries.value.filter((series) => !hiddenTokenSeries.value.includes(series.key))
     return {
       labels: axisLabels.value,
-      datasets: visible.map((series, index) => ({
-        ...lineDataset(series.label, points.map((point) => point[series.key]), series.color, index === 0 ? 'origin' : '-1', `${series.color}40`),
-        borderWidth: 1.5,
+      datasets: visible.map((series) => ({
+        ...lineDataset(series.label, points.map((point) => point[series.key]), series.color),
+        borderWidth: 1.75,
       })),
     }
   }
-  if (metric.value === 'cacheHitRate') {
-    return {
-      labels: axisLabels.value,
-      datasets: [lineDataset(
-        t('dashboard.usageChart.metrics.cacheHitRate'),
-        points.map((point) => cacheHitRateOf(point.input_tokens, point.cache_creation_tokens, point.cache_read_tokens)),
-        CHART_SERIES_COLORS.cacheHitRate,
-        'origin',
-        gradientFill(CHART_SERIES_COLORS.cacheHitRate),
-      )],
-    }
+  const datasets: UsageDataset[] = [lineDataset(
+    metric.value === 'cost' ? t('dashboard.usageChart.series.actualCost') : t(`dashboard.usageChart.metrics.${metric.value}`),
+    points.map((point) => metricValueOf(point, metric.value)),
+    mainColor.value,
+  )]
+  if (showPrevious.value && previous.value.length > 0) {
+    // 上一周期按下标与本期对齐，只取本期已有的时段；order 更大的数据集画在下层。
+    datasets.push({
+      label: t('dashboard.usageChart.previousPeriod'),
+      data: previous.value.slice(0, points.length).map((point) => metricValueOf(point, metric.value)),
+      borderColor: themeColors.value.muted,
+      backgroundColor: themeColors.value.muted,
+      borderWidth: 1.5,
+      borderDash: PREVIOUS_DASH,
+      fill: false,
+      cubicInterpolationMode: 'monotone' as const,
+      pointRadius: 0,
+      pointHoverRadius: 3,
+      pointHoverBorderWidth: 0,
+      pointHoverBackgroundColor: themeColors.value.muted,
+      spanGaps: true,
+      order: 1,
+      previous: true,
+    })
   }
-  const isCost = metric.value === 'cost'
-  return {
-    labels: axisLabels.value,
-    datasets: [lineDataset(
-      isCost ? t('dashboard.usageChart.series.actualCost') : t('dashboard.usageChart.metrics.requests'),
-      points.map((point) => (isCost ? point.actual_cost : point.requests)),
-      brandColor.value,
-      'origin',
-      gradientFill(brandColor.value),
-    )],
-  }
+  return { labels: axisLabels.value, datasets }
 })
 
 // formatAxisValue 格式化纵轴刻度，消费刻度不带货币符号以免挤占宽度。
@@ -332,31 +427,56 @@ const formatAxisValue = (value: number): string => {
   return formatNumber(value)
 }
 
-// formatTooltipValue 格式化提示中的单个数值。
-const formatTooltipValue = (value: number | null): string => {
+// formatValue 格式化提示和标注中的单个数值。
+const formatValue = (value: number | null): string => {
   if (value === null) return '—'
   if (metric.value === 'tokens') return formatTokensK(value)
   if (metric.value === 'cacheHitRate') return formatPercent(value)
   if (metric.value === 'cost') return formatBalanceAmount(value, { fractionDigits: 4 })
-  return formatNumber(value)
+  // 请求数的均值可能带小数，较大时取整，较小时保留一位。
+  return formatNumber(value >= 100 ? Math.round(value) : Math.round(value * 10) / 10)
 }
 
+// annotation 是单指标的峰值与均值；均值只统计已结束的时段，未结束的时段还在累计。
+const annotation = computed(() => {
+  if (metric.value === 'tokens' || !hasUsage.value) return null
+  const values = current.value.map((point) => metricValueOf(point, metric.value))
+  let peakIndex = -1
+  values.forEach((value, index) => {
+    if (value !== null && (peakIndex < 0 || value > (values[peakIndex] as number))) peakIndex = index
+  })
+  if (peakIndex < 0 || !values[peakIndex]) return null
+  const closed = values.filter((value, index): value is number => value !== null && index !== openBucketIndex.value)
+  const average = closed.length > 0 ? closed.reduce((sum, value) => sum + value, 0) / closed.length : null
+  return { peakIndex, peakValue: values[peakIndex] as number, average }
+})
+
 const chartOptions = computed(() => ({
-  animation: reducedMotion.value === 'reduce' ? false as const : undefined,
   responsive: true,
   maintainAspectRatio: false,
   interaction: { intersect: false, mode: 'index' as const },
+  // 标签胶囊画在绘图区上方，留出空间避免被裁切。
+  layout: { padding: { top: LABEL_HEIGHT / 2 } },
   plugins: {
     legend: { display: false },
     tooltip: {
       enabled: false,
       external: externalTooltipHandler,
-      // 堆叠时按从上到下的顺序列出分项，与图形层次一致。
-      itemSort: (a: TooltipItem<'line'>, b: TooltipItem<'line'>) => b.datasetIndex - a.datasetIndex,
+      // Token 按数值从大到小列出；单指标本期排在上一周期之前。
+      itemSort: (a: TooltipItem<'line'>, b: TooltipItem<'line'>) => (
+        metric.value === 'tokens'
+          ? ((b.raw as number | null) ?? 0) - ((a.raw as number | null) ?? 0)
+          : a.datasetIndex - b.datasetIndex
+      ),
       callbacks: {
         title: (items: TooltipItem<'line'>[]) => current.value[items[0]?.dataIndex]?.date ?? '',
-        label: (context: TooltipItem<'line'>) =>
-          `${context.dataset.label}: ${formatTooltipValue(context.raw as number | null)}`,
+        label: (context: TooltipItem<'line'>) => {
+          const dataset = context.dataset as UsageDataset
+          const value = formatValue(context.raw as number | null)
+          if (!dataset.previous) return `${dataset.label}: ${value}`
+          const previousDate = previous.value[context.dataIndex]?.date
+          return `${dataset.label}${previousDate ? ` (${shortLabel(previousDate)})` : ''}: ${value}`
+        },
         footer: (items: TooltipItem<'line'>[]) => {
           if (metric.value !== 'tokens' || items.length < 2) return ''
           const sum = items.reduce((total, item) => total + ((item.raw as number | null) ?? 0), 0)
@@ -377,10 +497,9 @@ const chartOptions = computed(() => ({
       },
     },
     y: {
-      stacked: metric.value === 'tokens',
       beginAtZero: true,
-      // 顶部留白，最高点不贴着图表上沿；命中率固定 0-100%。
-      ...(metric.value === 'cacheHitRate' ? { max: 100 } : { grace: '10%' }),
+      // 顶部留白，峰值标签不贴着图表上沿；命中率固定 0-100%。
+      ...(metric.value === 'cacheHitRate' ? { max: 100 } : { grace: '15%' }),
       grid: { color: themeColors.value.grid, drawTicks: false },
       border: { display: false, dash: [3, 3] },
       ticks: {
@@ -415,11 +534,151 @@ const crosshairPlugin: Plugin<'line'> = {
   },
 }
 
+// drawLabel 画一个圆角标签胶囊，x 为左边缘，y 为上边缘。
+const drawLabel = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, fill: string, color: string) => {
+  const width = ctx.measureText(text).width + LABEL_PADDING_X * 2
+  ctx.fillStyle = fill
+  ctx.beginPath()
+  if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, width, LABEL_HEIGHT, 0)
+  else ctx.rect(x, y, width, LABEL_HEIGHT)
+  ctx.fill()
+  ctx.fillStyle = color
+  ctx.fillText(text, x + LABEL_PADDING_X, y + LABEL_HEIGHT / 2)
+}
+
+// 描线进度 0-1，绘图区按进度从左向右裁剪；减少动态效果时始终为 1。
+let revealProgress = 1
+let revealFrame = 0
+
+// revealPlugin 按描线进度裁剪数据集，并在裁剪范围内画峰值与均值标注；描线完成后记录末端呼吸点的位置。
+const revealPlugin: Plugin<'line'> = {
+  id: 'usageReveal',
+  beforeDatasetsDraw(chart) {
+    const { ctx, chartArea } = chart
+    ctx.save()
+    if (revealProgress < 1) {
+      ctx.beginPath()
+      ctx.rect(chartArea.left - LABEL_GAP, 0, (chartArea.width + LABEL_GAP * 2) * revealProgress, chart.height)
+      ctx.clip()
+    }
+  },
+  afterDatasetsDraw(chart) {
+    drawAnnotations(chart)
+    chart.ctx.restore()
+  },
+  afterDraw(chart) {
+    updateLivePoint(chart)
+  },
+}
+
+// drawAnnotations 画均值虚线与峰值环，标签胶囊限制在绘图区内。
+const drawAnnotations = (chart: Chart) => {
+  const info = annotation.value
+  const meta = chart.getDatasetMeta(0)
+  if (!info || !meta || meta.hidden) return
+  const { ctx, chartArea, scales } = chart
+  ctx.font = `500 ${CHART_TICK_FONT_SIZE + 1}px ${ChartJS.defaults.font.family}`
+  ctx.textBaseline = 'middle'
+
+  if (info.average !== null) {
+    const y = scales.y.getPixelForValue(info.average)
+    ctx.save()
+    ctx.strokeStyle = themeColors.value.muted
+    ctx.globalAlpha = 0.6
+    ctx.lineWidth = 1
+    ctx.setLineDash([2, 4])
+    ctx.beginPath()
+    ctx.moveTo(chartArea.left, y)
+    ctx.lineTo(chartArea.right, y)
+    ctx.stroke()
+    ctx.restore()
+    const text = `${t('dashboard.usageChart.average')} · ${formatValue(info.average)}`
+    const width = ctx.measureText(text).width + LABEL_PADDING_X * 2
+    drawLabel(ctx, text, chartArea.right - width, y - LABEL_HEIGHT / 2, surfaceColor.value, themeColors.value.muted)
+  }
+
+  const point = meta.data[info.peakIndex]
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return
+  ctx.save()
+  ctx.strokeStyle = mainColor.value
+  ctx.fillStyle = surfaceColor.value
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(point.x, point.y, 4.5, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.stroke()
+  ctx.restore()
+  const text = `${t('dashboard.usageChart.peak')} · ${formatValue(info.peakValue)}`
+  const width = ctx.measureText(text).width + LABEL_PADDING_X * 2
+  const x = Math.min(Math.max(point.x - width / 2, chartArea.left), chartArea.right - width)
+  // 上方放不下时改放在峰值点下方。
+  const above = point.y - LABEL_GAP - LABEL_HEIGHT
+  const y = above >= chartArea.top - LABEL_HEIGHT / 2 ? above : point.y + LABEL_GAP
+  drawLabel(ctx, text, x, y, `${mainColor.value}26`, mainColor.value)
+}
+
+// updateLivePoint 记录未结束时段末端点的位置；描线未完成或该时段不存在时隐藏。
+const updateLivePoint = (chart: Chart) => {
+  const index = openBucketIndex.value
+  const meta = chart.getDatasetMeta(0)
+  const point = index === null || metric.value === 'tokens' || revealProgress < 1 ? null : meta?.data[index]
+  if (!point || meta.hidden || !Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+    if (livePoint.value) livePoint.value = null
+    return
+  }
+  if (livePoint.value?.x === point.x && livePoint.value?.y === point.y) return
+  livePoint.value = { x: point.x, y: point.y }
+}
+
+const chartPlugins = [crosshairPlugin, revealPlugin]
+
+const cancelReveal = () => {
+  if (revealFrame) cancelAnimationFrame(revealFrame)
+  revealFrame = 0
+}
+
+// playReveal 从左向右重新描线，每帧只重绘不重新布局。
+const playReveal = () => {
+  cancelReveal()
+  if (reducedMotion.value === 'reduce' || typeof requestAnimationFrame !== 'function') {
+    revealProgress = 1
+    return
+  }
+  revealProgress = 0
+  const startedAt = performance.now()
+  const tick = (now: number) => {
+    const progress = Math.min((now - startedAt) / CHART_REVEAL_MS, 1)
+    // 三次缓出：开头快，收尾放慢。
+    revealProgress = 1 - Math.pow(1 - progress, 3)
+    lineRef.value?.chart?.draw()
+    revealFrame = progress < 1 ? requestAnimationFrame(tick) : 0
+  }
+  revealFrame = requestAnimationFrame(tick)
+}
+
+// 图表的 key：切换指标或重新取数（范围、筛选、刷新）时递增，图表重建后从头播放入场动画，与首次打开一致。
+const chartVersion = ref(0)
+const chartKey = computed(() => `${metric.value}-${chartVersion.value}`)
+
+watch(current, () => {
+  chartVersion.value += 1
+  playReveal()
+})
+watch(metric, playReveal)
+
+onBeforeUnmount(() => {
+  cancelReveal()
+  hideExternalTooltip()
+})
+
 const toggleTokenSeries = (key: TokenSeriesKey) => {
   hiddenTokenSeries.value = hiddenTokenSeries.value.includes(key)
     ? hiddenTokenSeries.value.filter((item) => item !== key)
     : [...hiddenTokenSeries.value, key]
 }
+
+// 供页面在热力图选中某天后把图表滚动到可见区域。
+defineExpose({ chartCardRef })
 </script>
 
 <style scoped>
@@ -428,13 +687,31 @@ const toggleTokenSeries = (key: TokenSeriesKey) => {
   container-type: inline-size;
 }
 
-.metric-sparkline {
+.metric-sparkline,
+.metric-delta-label {
   display: none;
 }
 
 @container (min-width: 200px) {
-  .metric-sparkline {
+  .metric-sparkline,
+  .metric-delta-label {
     display: block;
   }
 }
+
+/* 图例兼开关的胶囊 */
+.legend-chip {
+  @apply inline-flex items-center gap-2 rounded-control border border-gray-200 px-3 py-1 text-xs transition-colors duration-150 dark:border-dark-600;
+}
+
+.legend-chip-on {
+  @apply text-gray-700 dark:text-dark-100;
+}
+
+.legend-chip-off {
+  @apply text-gray-400 dark:text-dark-500;
+}
+/* 选中卡片在深色主题也使用黄色实体底，避免卡片底色规则导致黑字落在深底。 */
+.metric-card[aria-selected="true"] { background: var(--bh-yellow) !important; color: #141414 !important; }
+.metric-card[aria-selected="true"] :deep(span) { color: #141414 !important; }
 </style>

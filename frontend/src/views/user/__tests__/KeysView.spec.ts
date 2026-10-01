@@ -931,10 +931,13 @@ describe('user KeysView column settings', () => {
     await flushPromises()
 
     const selects = wrapper.findAllComponents({ name: 'Select' })
-    await selects[0].vm.$emit('update:modelValue', 42)
+    const groupFilter = selects.find(select => select.attributes('data-test') === 'keys-filter-group')!
+    await groupFilter.vm.$emit('update:modelValue', 42)
     await flushPromises()
-    await selects[1].vm.$emit('update:modelValue', 'active')
+    const statusFilter = wrapper.findAllComponents({ name: 'Select' }).find(select => select.attributes('data-test') === 'keys-filter-status')!
+    await statusFilter.vm.$emit('update:modelValue', 'active')
     await flushPromises()
+    expect(wrapper.findAllComponents({ name: 'Select' }).find(select => select.attributes('data-test') === 'keys-filter-status')!.props('modelValue')).toBe('active')
 
     listKeys.mockClear()
 

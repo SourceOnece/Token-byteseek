@@ -1,12 +1,16 @@
 type FormControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLButtonElement
 const disabledControls = new WeakMap<Element, FormControl[]>()
 
-/** 退出画面不再参与交互和原生表单校验，避免待移除的必填字段阻止提交。 */
+/**
+ * 退出画面不再参与交互和原生表单校验，避免待移除的必填字段阻止提交。
+ * 交互由 inert 隔离；只有当前校验不通过的控件才需要禁用，其余控件保持原样，
+ * 免得退出动画期间闪出禁用态的底色。
+ */
 export function isolateLeavingElement(element: Element) {
   element.setAttribute('inert', '')
   if (disabledControls.has(element)) return
   const controls = Array.from(element.querySelectorAll<FormControl>('input, textarea, select, button'))
-    .filter(control => !control.disabled)
+    .filter(control => !control.disabled && !control.validity.valid)
   disabledControls.set(element, controls)
   controls.forEach(control => { control.disabled = true })
 }

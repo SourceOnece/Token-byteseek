@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
-// WithPriceCatalog 在独立目录快照上复用相同算法、平台规则和静态回退。
+// WithPriceCatalog 在独立目录快照上复用相同算法、数据规则。
 func (s *Calculator) WithPriceCatalog(catalog PriceCatalog) *Calculator {
 	out := *s
 	out.catalog = catalog
@@ -23,30 +23,32 @@ func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.Def
 		result.Prices = append(result.Prices, pricing.DefaultPriceValue{Key: key, Value: &value, Unit: unit})
 	}
 	raw := s.RawModelPricing(model)
-	result.Source = "local_supplement"
 	if raw != nil {
 		result.Source = raw.Source
 		result.PriceSources = maps.Clone(raw.PriceSources)
 	}
-	_, knownVideo := pricing.GetDefaultGrokImagineVideoPrice(model, pricing.VideoBillingResolution480P)
+	knownVideo := raw != nil && len(raw.VideoPrices) > 0
 	if knownVideo {
 		if result.PriceSources == nil {
 			result.PriceSources = map[string]string{}
 		}
 		result.BillingMode = "video"
 		for _, size := range []string{"480p", "720p", "1080p"} {
-			price, err := s.DefaultVideoPrice(model, size)
-			if err != nil {
-				result.Prices = nil
-				return result
+			price, ok := pricing.DefaultVideoPrice(raw, size)
+			if !ok {
+				continue
 			}
 			add(size, price, "USD/s")
-			result.PriceSources[size] = "local_supplement"
+			source := raw.PriceSources["video_prices"]
+			if source == "" {
+				source = raw.Source
+			}
+			result.PriceSources[size] = source
 		}
 		result.PriceStatus = "priced"
 		return result
 	}
-	_, knownImage := pricing.GetDefaultGrokImagineImagePrice(model, pricing.ImageBillingSize1K)
+	knownImage := raw != nil && len(raw.ImagePrices) > 0
 	imageModel := mode == "image" || pricing.HasExplicitImageGenerationPricing(raw) || pricing.LooksLikeImageModel(model)
 	// 聊天模型附带的图片元数据不切换 token 模式；纯按张价和明确的图片模型使用媒体单位。
 	hasImagePrice := knownImage || pricing.HasImageUnitPrice(raw) && (imageModel || raw.TokenPricingAbsent)
@@ -66,13 +68,14 @@ func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.Def
 			imageSource = result.Source
 		}
 		if knownImage {
-			imageSource = "local_supplement"
+			if source := raw.PriceSources["image_prices"]; source != "" {
+				imageSource = source
+			}
 		}
 		for _, size := range []string{"1K", "2K", "4K"} {
-			price, err := s.DefaultImagePrice(model, size)
-			if err != nil {
-				result.Prices = nil
-				return result
+			price, ok := pricing.DefaultImagePrice(raw, size)
+			if !ok {
+				continue
 			}
 			add(size, price, "USD/image")
 			if imageSource != "" {
@@ -81,7 +84,7 @@ func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.Def
 		}
 		result.PriceStatus = "priced"
 	}
-	base, err := s.GetModelPricing(model)
+	base, err := pricing.ResolveModelPricing(model, raw)
 	if err != nil || base == nil {
 		return result
 	}
@@ -90,7 +93,7 @@ func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.Def
 		result.BillingMode = "token"
 	}
 	result.PriceStatus = "priced"
-	base = pricing.ApplyDeepSeekPeakPricing(model, base, s.options.Now())
+	base = s.applyCatalogTimePricing(base, s.options.Now())
 	// 用一个计费单位复用实际算法，避免展示层重新实现 Fast、缓存和图片 token 回退。
 	// 长上下文报价需先越过阈值门槛才能触发倍率，与真实计费走同一条分支。
 	longGateTokens := 0
@@ -135,7 +138,7 @@ func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.Def
 		addTokenPrices("fast_", "priority", false)
 		hasFast = true
 	}
-	hasFlex := base.SupportsServiceTier
+	hasFlex := base.FlexMultiplier != nil
 	if hasFlex {
 		addTokenPrices("flex_", "flex", false)
 	}
@@ -182,9 +185,6 @@ func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.Def
 			}
 		}
 		base, result.Prices = root, rootPrices
-	}
-	if pricing.IsDeepSeekModel(model) {
-		add("peak", pricing.DeepseekPeakMultiplierAt(s.options.Now()), "multiplier")
 	}
 	return result
 }

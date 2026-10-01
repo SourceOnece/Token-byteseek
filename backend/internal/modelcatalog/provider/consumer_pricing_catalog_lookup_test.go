@@ -158,15 +158,10 @@ func TestCatalogLookupOpenAIDedicatedFallbackBeforeGenericBase(t *testing.T) {
 		"gpt-5.6": catalogLookupTestPricing(99e-6, "text"),
 		"gpt-6":   catalogLookupTestPricing(99e-6, "text"),
 	}})
-	for model, want := range map[string]*purepricing.CatalogModelPricing{
-		"gpt-5.4-mini": purepricing.OpenAIGPT54MiniFallbackPricing, "gpt-5.4-nano": purepricing.OpenAIGPT54NanoFallbackPricing,
-		"gpt-5.5-pro": purepricing.OpenAIGPT55ProFallbackPricing, "gpt-5.6-sol": purepricing.OpenAIGPT56SolPricing,
-		"gpt-5.6-terra": purepricing.OpenAIGPT56TerraPricing, "gpt-5.6-luna": purepricing.OpenAIGPT56LunaPricing,
-		"gpt-6-astra": purepricing.OpenAIGPT6AstraPricing,
-	} {
+	for _, model := range []string{"gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.5-pro", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra"} {
 		for _, suffix := range []string{"", "-high", "-20260905", "-2026-09-05"} {
 			if suffix == "" {
-				require.Same(t, want, svc.GetModelPricing(model+suffix))
+				require.Nil(t, svc.GetModelPricing(model+suffix))
 			} else {
 				require.Nil(t, svc.GetModelPricing(model+suffix))
 			}
