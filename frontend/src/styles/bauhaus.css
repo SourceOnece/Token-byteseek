@@ -90,10 +90,22 @@ html[data-visual-theme='bauhaus'] .toggle-control, html[data-visual-theme='bauha
 /* 图表强调保持与前版一致，选中状态不能在深色主题变成低对比。 */
 .rank-podium-shape { display: none; }
 html[data-visual-theme='bauhaus'] .rank-podium { border: 2px solid var(--bh-ink); box-shadow: var(--bh-shadow); }
-html[data-visual-theme='bauhaus'] .rank-podium[data-rank='1'] { background: #e1251b; }
-html[data-visual-theme='bauhaus'] .rank-podium[data-rank='2'] { background: #ffcc00; }
-html[data-visual-theme='bauhaus'] .rank-podium[data-rank='3'] { background: #1450a3; }
+/* 包豪斯从左到右按名次排列；TokenFlux 保留第二、一、三名领奖台布局。 */
+html[data-visual-theme='bauhaus'] .rank-podium[data-rank='1'] { background: var(--bh-red); order: 1; }
+html[data-visual-theme='bauhaus'] .rank-podium[data-rank='2'] { background: var(--bh-yellow); order: 2; }
+html[data-visual-theme='bauhaus'] .rank-podium[data-rank='3'] { background: var(--bh-blue); order: 3; }
 html[data-visual-theme='bauhaus'] .rank-podium :is(p, h3, span) { color: white; }
+html[data-visual-theme='bauhaus'] .rank-podium .rank-podium-badge { color: #141414; background: #fff; border-radius: 0; }
+/* 下方榜单的编号白底、数值按名次强调，不把上游浅色卡片色带入包豪斯。 */
+html[data-visual-theme='bauhaus'] .rank-list-row[data-rank='1'] { --rank-accent: var(--bh-red); }
+html[data-visual-theme='bauhaus'] .rank-list-row[data-rank='2'] { --rank-accent: #9a6700; }
+html[data-visual-theme='bauhaus'] .rank-list-row[data-rank='3'] { --rank-accent: var(--bh-blue); }
+html.dark[data-visual-theme='bauhaus'] .rank-list-row[data-rank='1'] { --rank-accent: #ff8178; }
+html.dark[data-visual-theme='bauhaus'] .rank-list-row[data-rank='2'] { --rank-accent: var(--bh-yellow); }
+html.dark[data-visual-theme='bauhaus'] .rank-list-row[data-rank='3'] { --rank-accent: #97b7e8; }
+html[data-visual-theme='bauhaus'] .rank-list-row { background: var(--bh-surface); }
+html[data-visual-theme='bauhaus'] .rank-list-badge { background: #fff; color: #141414; border: 2px solid #141414; }
+html[data-visual-theme='bauhaus'] .rank-list-row [data-testid='usage-ranking-row-metrics'] p:first-child { color: var(--rank-accent, var(--bh-ink)); }
 html[data-visual-theme='bauhaus'] .rank-podium .blur-2xl { display: none; }
 html[data-visual-theme='bauhaus'] .rank-podium-shape { display: block; position: absolute; right: 1rem; top: 1rem; width: 1.5rem; height: 1.5rem; background: white; }
 html[data-visual-theme='bauhaus'] .rank-podium-shape-1 { clip-path: polygon(50% 0,100% 100%,0 100%); }
@@ -118,3 +130,99 @@ html.dark[data-visual-theme='bauhaus'] .model-pricing-panel[data-price-mode='fas
 @media (prefers-reduced-motion: reduce) {
   html[data-visual-theme='bauhaus'] body::before, html[data-visual-theme='bauhaus'] body::after { animation: none; }
 }
+
+/* 下拉框的包豪斯细节只属于当前皮肤，默认样式复用 TokenFlux。 */
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal {
+  @apply w-max min-w-[200px];
+  @apply bg-white dark:bg-dark-800;
+  @apply rounded-none;
+  @apply overflow-hidden;
+  border: 2px solid var(--bh-ink);
+  box-shadow: var(--bh-shadow-sm);
+  pointer-events: auto !important;
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-search {
+  @apply flex items-center gap-2 px-3 py-2;
+  border-bottom: 2px solid var(--bh-ink);
+  background: rgba(255, 204, 0, 0.14);
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-search-input {
+  @apply flex-1 bg-transparent text-sm font-semibold;
+  @apply text-gray-950 dark:text-gray-100;
+  @apply placeholder:font-normal placeholder:text-gray-500 dark:placeholder:text-dark-300;
+  @apply focus:outline-none;
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-options {
+  @apply max-h-80 overflow-y-auto py-1 outline-none;
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-option {
+  @apply flex items-center justify-between gap-2;
+  @apply px-4 py-2.5 text-sm;
+  @apply text-gray-700 dark:text-gray-300;
+  @apply cursor-pointer transition-colors duration-fast;
+  @apply hover:bg-gray-50 dark:hover:bg-dark-800 dark:hover:text-primary-500;
+  pointer-events: auto !important;
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-option:hover {
+  background: rgba(255, 204, 0, 0.22);
+  border-left-color: var(--bh-red);
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-option-selected {
+  /* 深色选中项保留淡品牌色底，文字和勾选使用品牌青。 */
+  @apply bg-gray-100 dark:bg-primary-500/8 dark:hover:bg-primary-500/8;
+  @apply text-primary-700 dark:text-primary-500;
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-option-focused {
+  /* 键盘焦点与 hover 共用弱填充，选中项仍使用自己的底色。 */
+  @apply bg-gray-100 dark:bg-dark-800 dark:text-primary-500;
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-option-selected.select-option-focused {
+  @apply dark:bg-primary-500/8;
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-option-disabled {
+  @apply cursor-not-allowed opacity-40;
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-option-group {
+  @apply cursor-default select-none;
+  @apply text-xs font-extrabold uppercase tracking-widest;
+  background: var(--bh-ink) !important;
+  color: var(--bh-paper) !important;
+  border-left: none;
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-option-group:hover {
+  background: var(--bh-ink) !important;
+  border-left: none;
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-option-label {
+  @apply flex-1 min-w-0 truncate text-left;
+}
+
+html[data-visual-theme='bauhaus'] .select-dropdown-portal .select-empty {
+  @apply px-4 py-8 text-center text-sm font-bold;
+  @apply text-gray-600 dark:text-dark-300;
+}
+
+
+html[data-visual-theme='bauhaus'] .dialog-close-button { border: 2px solid transparent; color: var(--bh-ink); }
+html[data-visual-theme='bauhaus'] .dialog-close-button:hover { border-color: var(--bh-ink); background: var(--bh-red); color: #fff; }
+html[data-visual-theme='bauhaus'] :is(.filter-trigger-count, .filter-panel-count, .settings-tabs-shell, .settings-tab, .settings-gateway-tab) { border-radius: 0; }
+html[data-visual-theme='bauhaus'] .settings-tabs-shell { border: 2px solid var(--bh-ink); box-shadow: var(--bh-shadow-sm); background: var(--bh-surface); }
+
+/* 分页共用上游模板；包豪斯的边框和按压不污染默认皮肤。 */
+html[data-visual-theme='bauhaus'] .pagination-control { border: 2px solid var(--bh-ink); box-shadow: var(--bh-shadow-sm); }
+html[data-visual-theme='bauhaus'] .pagination-control:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--bh-shadow-ink); }
+html[data-visual-theme='bauhaus'] .pagination-control:disabled { box-shadow: none; }
+html[data-visual-theme='bauhaus'] .pagination-summary span { font-weight: 800; }

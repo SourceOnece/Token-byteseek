@@ -294,7 +294,7 @@ const TopRankCard = defineComponent({
           h('span', { class: `rank-podium-shape rank-podium-shape-${props.item.rank}`, 'aria-hidden': 'true' }),
           h('div', { class: `pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full blur-2xl ${theme.glow}` }),
           h('div', { class: 'relative flex items-start' }, [
-            h('span', { class: `inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${theme.badge}` }, [
+            h('span', { class: `rank-podium-badge inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${theme.badge}` }, [
               h(Icon, { name: theme.icon, size: 'xs' }),
               rankLabel(props.item.rank),
             ]),
@@ -341,10 +341,11 @@ const RankingRow = defineComponent({
       return h(
         'div',
         {
-          class: ['grid grid-cols-[auto_minmax(0,1fr)] gap-3 px-5 py-4 transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center', topClass].join(' '),
+          'data-rank': props.item.rank,
+          class: ['rank-list-row grid grid-cols-[auto_minmax(0,1fr)] gap-3 px-5 py-4 transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center', topClass].join(' '),
         },
         [
-          h('span', { class: `mt-1 inline-flex h-8 w-12 items-center justify-center rounded-control text-sm font-semibold ring-1 sm:mt-0 ${theme.badge}` }, rankLabel(props.item.rank)),
+          h('span', { class: `rank-list-badge mt-1 inline-flex h-8 w-12 items-center justify-center rounded-control text-sm font-semibold ring-1 sm:mt-0 ${theme.badge}` }, rankLabel(props.item.rank)),
           h('div', { class: 'flex min-w-0 items-center gap-3' }, [
             h(UserAvatar, rankingAvatarProps(props.item, 'h-10 w-10')),
             h('div', { class: 'min-w-0' }, [

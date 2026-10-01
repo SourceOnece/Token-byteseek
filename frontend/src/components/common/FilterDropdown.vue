@@ -193,8 +193,8 @@ defineExpose({ close: () => { open.value = false } })
 }
 
 .filter-trigger-count {
-  @apply pointer-events-none absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-compact px-1;
-  @apply bg-primary-600 text-xs font-bold leading-none text-white;
+  @apply pointer-events-none absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1;
+  @apply bg-primary-600 text-xs font-semibold leading-none text-white;
   @apply ring-2 ring-white dark:ring-dark-950;
 }
 
@@ -204,7 +204,7 @@ defineExpose({ close: () => { open.value = false } })
   @apply max-h-[min(70vh,42rem)];
   @apply bg-white dark:bg-dark-900;
   @apply rounded-surface border border-primary-900/10 dark:border-dark-600;
-
+  @apply shadow-lg shadow-black/10 dark:shadow-black/30;
 }
 
 /* 头部、已选条件和字段区之间不画分割线，只靠留白区分层次。 */
@@ -213,14 +213,14 @@ defineExpose({ close: () => { open.value = false } })
 }
 
 .filter-panel-count {
-  @apply inline-flex h-5 min-w-5 items-center justify-center rounded-compact px-1.5;
+  @apply inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5;
   @apply bg-primary-50 text-xs font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-400;
 }
 
 .filter-panel-reset {
   @apply inline-flex shrink-0 items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium;
   @apply text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-dark-50;
-  @apply transition-colors duration-150;
+  @apply transition-colors duration-fast;
   @apply disabled:pointer-events-none disabled:opacity-40;
 }
 
@@ -237,7 +237,7 @@ defineExpose({ close: () => { open.value = false } })
 .filter-chip-remove {
   @apply inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-compact;
   @apply text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-700 dark:hover:text-dark-100;
-  @apply transition-colors duration-150;
+  @apply transition-colors duration-fast;
 }
 
 .filter-panel-body {

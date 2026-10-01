@@ -559,24 +559,23 @@ onUnmounted(() => {
 <style>
 .select-dropdown-portal {
   @apply w-max min-w-[200px];
-  @apply bg-white dark:bg-dark-800;
-  @apply rounded-none;
+  @apply bg-white dark:bg-dark-900;
+  @apply rounded-control;
+  @apply border border-primary-900/10 dark:border-dark-600;
+  @apply shadow-lg shadow-black/10 dark:shadow-black/30;
   @apply overflow-hidden;
-  border: 2px solid var(--bh-ink);
-  box-shadow: var(--bh-shadow-sm);
   pointer-events: auto !important;
 }
 
 .select-dropdown-portal .select-search {
   @apply flex items-center gap-2 px-3 py-2;
-  border-bottom: 2px solid var(--bh-ink);
-  background: rgba(255, 204, 0, 0.14);
+  @apply border-b border-primary-900/10 dark:border-dark-600;
 }
 
 .select-dropdown-portal .select-search-input {
-  @apply flex-1 bg-transparent text-sm font-semibold;
-  @apply text-gray-950 dark:text-gray-100;
-  @apply placeholder:font-normal placeholder:text-gray-500 dark:placeholder:text-dark-300;
+  @apply flex-1 bg-transparent text-sm;
+  @apply text-gray-900 dark:text-gray-100;
+  @apply placeholder:text-gray-400 dark:placeholder:text-dark-400;
   @apply focus:outline-none;
 }
 
@@ -591,11 +590,6 @@ onUnmounted(() => {
   @apply cursor-pointer transition-colors duration-fast;
   @apply hover:bg-gray-50 dark:hover:bg-dark-800 dark:hover:text-primary-500;
   pointer-events: auto !important;
-}
-
-.select-dropdown-portal .select-option:hover {
-  background: rgba(255, 204, 0, 0.22);
-  border-left-color: var(--bh-red);
 }
 
 .select-dropdown-portal .select-option-selected {
@@ -619,15 +613,13 @@ onUnmounted(() => {
 
 .select-dropdown-portal .select-option-group {
   @apply cursor-default select-none;
-  @apply text-xs font-extrabold uppercase tracking-widest;
-  background: var(--bh-ink) !important;
-  color: var(--bh-paper) !important;
-  border-left: none;
+  @apply bg-gray-50 dark:bg-dark-900;
+  @apply text-xs font-bold uppercase tracking-wider;
+  @apply text-primary-900/90 dark:text-gray-400;
 }
 
 .select-dropdown-portal .select-option-group:hover {
-  background: var(--bh-ink) !important;
-  border-left: none;
+  @apply bg-gray-50 dark:bg-dark-900;
 }
 
 .select-dropdown-portal .select-option-label {
@@ -635,8 +627,8 @@ onUnmounted(() => {
 }
 
 .select-dropdown-portal .select-empty {
-  @apply px-4 py-8 text-center text-sm font-bold;
-  @apply text-gray-600 dark:text-dark-300;
+  @apply px-4 py-8 text-center text-sm;
+  @apply text-primary-900/90 dark:text-dark-400;
 }
 
 </style>

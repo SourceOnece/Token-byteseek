@@ -4,13 +4,14 @@
 
 本文记录前端设计 token 与组件样式的强制约定：圆角层级、间距网格、控件尺寸、菜单与浮层、弹窗、层级、断点、加载反馈、图标与动画时长、行列表编辑器、表格密度、深色配色角色、图表主题和字号下限。覆盖 `frontend/tailwind.config.js`、`frontend/src/style.css` 与全部 Vue 组件；不覆盖浅色配色主题和业务组件的局部布局。修改前端组件、样式或这两个文件前先读本文。
 
-本文的 TokenFlux 基线样式作为默认皮肤。ByteSeek 从 0.2.0-bh.002 提供包豪斯皮肤；两者共用组件、页面布局和业务状态，下文固定颜色/尺寸指默认 TokenFlux，包豪斯通过限定到根 data-visual-theme 的规则覆盖，不能全局覆盖默认皮肤。
+本文的 TokenFlux 基线样式作为默认皮肤。ByteSeek 从 0.2.0-bh.002 提供包豪斯皮肤；两者共用公共组件和业务状态；/home 按 bh.004 明确要求保留包豪斯原有构成，其它页面布局跟进 TokenFlux，下文固定颜色/尺寸指默认 TokenFlux，包豪斯通过限定到根 data-visual-theme 的规则覆盖，不能全局覆盖默认皮肤。
 
 ## ByteSeek 视觉皮肤
 
 - 管理员设置页使用自研 Select 保存站点皮肤 TokenFlux/包豪斯；公开设置与 HTML 注入统一下发，普通用户、访客和认证页不显示皮肤选择器。useVisualTheme 只接受站点配置，缺失/非法值默认 TokenFlux；该状态与 useTheme 的 light/dark/system 独立。站点更新只改变根属性及响应式图表色板，不重建路由或表单。
 - style.css 跟随上游组件/动画配方；styles/visual-palette.css 给 Tailwind 工具类提供可切换颜色和阴影；styles/bauhaus.css 的皮肤规则限定于包豪斯根属性；styles/byteseek-components.css 给原有专属组件提供公共外观。图表 useChartTheme 和 Chart.js 默认值跟随皮肤恢复，不能无条件套包豪斯默认值。
 - 包豪斯保留三原色、纸色、直角硬阴影、按压、三元素背景、满血绿/降智红/失败黄、标准价格绿/Fast 黄及红黄蓝前三名；深色上游去阴影规则由更精确的包豪斯规则覆盖。默认 TokenFlux 保持原生排版、颜色和动效。
+- /home 在 HomeView 内按站点皮肤选择呈现，包豪斯恢复不对称首屏、三元素轨道、九词走马灯和色块卡片，TokenFlux 保留上游模板；共同读取一份市场、统计、精选模型、站点文案和页脚配置，自定义 HTML/URL 首页始终优先，不因皮肤重复请求。顶栏继续共用 AppHeader，头像菜单不显示上游 GitHub 链接/图标。排行榜包豪斯按 1/2/3 红黄蓝、编号黑字白底，TokenFlux 保持原布局。公共 Select、关闭按钮、分页和筛选样式不得无条件采用包豪斯。
 - 用户仪表盘按上游使用四指标、用量趋势、Top 5、热力图、公告与快捷入口；没有额外旧八卡片与模型分布圆环，模型分布仍在使用记录及管理端。保留查询失败提示/重试，不把失败伪装为零用量。
 - 定制业务保持票据工作台/账号规则/导入模板/勾选批改、质量检测与调度、邮箱列、管理员响应模型、代理、分组白名单、批量 Key/订阅/用户操作、订阅显示策略。导入默认值的模型和映射继续双列，使用上游稳定行编辑器；票据随原保存动作提交。
 - BaseDialog 保留 showCloseButton，供批量任务锁定时隐藏关闭入口；上游 MotionTransition、嵌套 Esc、滚动锁、退出 inert、下拉定位和减少动画共同生效。已有分页数字输入、查询竞态、注册确认密码、导出条件快照和退款金额判断修复不得随整页迁移丢失。
@@ -195,7 +196,7 @@
 
 ## 通用图标
 
-通用界面图标统一使用 `components/icons/Icon.vue`，名称与 `IconName` 类型由同目录的 `registry.ts` 管理。图形采用 Lucide 风格，官方逐元素动效移植自 Lucide Animated，以 `motion-v` 运行；缺少官方动画的图形使用一次 400ms 的轻微缩放。源码版本和许可见图标目录的 README 与 LICENSE 文件。
+通用界面图标统一使用 `components/icons/Icon.vue`，名称与 `IconName` 类型由同目录的 `registry.ts` 管理。图形采用 Lucide 风格，官方逐元素动效移植自 Lucide Animated，以 `motion-v` 运行；缺少官方动画的图形使用一次 400ms 的轻微缩放。图形来源固定为 Lucide Animated 072c38b1b04ea738d90a084485ccaad4b890ddca 与 Lucide 66d8f9fc394b8530377e5f6112f0b8908ba01280，许可保留在图标目录的 LICENSE.lucide-animated 与 LICENSE.lucide。图形本身随 TokenFlux 同步，本地转为 Vue 单次播放并保留逐元素动画；原 React 外壳和上游循环不重复引入，运行时不请求图标 CDN。
 
 - 保留 `name`、`size`、`strokeWidth` 接口；默认描边为 1.75，颜色继承 `currentColor`。根节点只有一个 SVG，调用点的样式、事件、标签和显式尺寸透传。
 - 尺寸档位为 `xs` 12px、`sm` 16px、`md` 18px、`lg` 24px、`xl` 32px。侧栏一级导航和顶栏工具区使用 `md`（18px）；普通按钮、纯图标操作按钮、分页、选择框箭头、弹窗关闭按钮及侧栏子项统一使用 `sm`（16px），刷新、创建、编辑等操作保持同尺寸。表格内微型操作可保留 `xs`，快捷入口卡片的主图和媒体灯箱关闭图标保留 `lg`。侧栏自定义 SVG 与一级导航同尺寸。图标尺寸不改变按钮的点击区域。

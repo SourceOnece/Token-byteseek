@@ -8,6 +8,8 @@
 
 ## 文档
 
+- [近期更新、配置位置与双上游差异说明](recent_sync_and_configuration_guide.md)：通俗解释近期 TokenFlux 0.1.279～0.2.0、双皮肤修正、配置迁移和 sub2api 待同步项。读取时机：核对近期功能、配置入口、未同步原因或向运营者交接时读取。
+
 - [双上游差异优先与去重同步契约](dual_upstream_sync_contract.md)：先选 TokenRouter，再以选择后的 ByteSeek 核对 sub2api 剩余差异及覆盖证据。读取时机：每次上游咨询、差异评审、功能移植和同步前必须读取，与包豪斯契约共同遵循。
 
 - [部署与数据库迁移](deployment_and_migrations.md)：构建产物、运行方式、首次初始化、迁移约束和升级恢复边界。读取时机：修改 Docker/二进制发布、启动装配、数据库迁移、备份或升级时读取。
