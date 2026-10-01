@@ -112,13 +112,14 @@
         </div>
 
         <!-- ===== 数据统计：色顶方块 ===== -->
-        <div class="mt-16 grid grid-cols-2 gap-5 md:grid-cols-4 lg:mt-24">
+        <div class="mt-16 grid grid-cols-2 gap-5 lg:mt-24">
           <div
-            v-for="(card, index) in homeStatsCards"
+            v-for="card in homeStatsCards"
             :key="card.key"
+            :data-home-stat="card.key"
             class="home-stat-card border-[3px] border-gray-950 bg-white shadow transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 dark:border-dark-100 dark:bg-dark-800"
           >
-            <div class="h-2.5" :class="['bg-bh-red', 'bg-bh-yellow', 'bg-bh-blue', 'bg-gray-950 dark:bg-dark-100'][index % 4]"></div>
+            <div class="h-2.5" :class="card.accentClass"></div>
             <div class="px-5 pb-5 pt-4">
               <p class="min-h-[1.1em] text-3xl font-extrabold tabular-nums tracking-tight text-gray-950 dark:text-white md:text-4xl">
                 {{ card.value }}
@@ -587,10 +588,8 @@ import {
   resolveProviderBrandKey,
 } from '@/utils/providerBrand'
 
-type HomeStatsKey = 'today-tokens' | 'total-tokens' | 'total-users' | 'supported-models'
-type HomeStatsIcon = 'bolt' | 'database' | 'users' | 'grid'
+type HomeStatsKey = 'total-users' | 'supported-models'
 type HomeStepIcon = 'userPlus' | 'grid' | 'key'
-type HomeStatFormat = 'compact' | 'number'
 
 interface HomeProviderCategory {
   key: string
@@ -610,9 +609,7 @@ interface HomeStatsCard {
   key: HomeStatsKey
   label: string
   value: string
-  icon: HomeStatsIcon
-  iconWrapClass: string
-  iconClass: string
+  accentClass: string
 }
 
 interface HomeStep {
@@ -770,8 +767,6 @@ const homeStatsError = ref(false)
 const homeMarketplaceButtonIconIndex = ref(0)
 let homeMarketplaceButtonIconTimer: number | null = null
 const homeAnimatedStats = ref<Record<HomeStatsKey, number>>({
-  'today-tokens': 0,
-  'total-tokens': 0,
   'total-users': 0,
   'supported-models': 0,
 })
@@ -885,8 +880,6 @@ const featuredModels = computed<HomeFeaturedModel[]>(() => {
 })
 
 const homeStatAnimationTargets = computed<Record<HomeStatsKey, number | null>>(() => ({
-  'today-tokens': homeStatsLoading.value ? null : normalizedHomeStatTarget(homeStats.value?.today_tokens),
-  'total-tokens': homeStatsLoading.value ? null : normalizedHomeStatTarget(homeStats.value?.total_tokens),
   'total-users': homeStatsLoading.value ? null : normalizedHomeStatTarget(homeStats.value?.total_users),
   'supported-models': homeMarketplaceLoading.value ? null : normalizedHomeStatTarget(totalModelCount.value),
 }))
@@ -946,36 +939,16 @@ const supportedProviders = computed<HomeProviderSummary[]>(() => {
 
 const homeStatsCards = computed<HomeStatsCard[]>(() => [
   {
-    key: 'today-tokens',
-    label: t('home.stats.todayTokens'),
-    value: formatAnimatedHomeStat('today-tokens', homeStatAnimationTargets.value['today-tokens'], homeStatsLoading.value),
-    icon: 'bolt',
-    iconWrapClass: 'bg-sky-100 dark:bg-sky-500/15',
-    iconClass: 'text-sky-600 dark:text-sky-300',
-  },
-  {
-    key: 'total-tokens',
-    label: t('home.stats.totalTokens'),
-    value: formatAnimatedHomeStat('total-tokens', homeStatAnimationTargets.value['total-tokens'], homeStatsLoading.value),
-    icon: 'database',
-    iconWrapClass: 'bg-emerald-100 dark:bg-emerald-500/15',
-    iconClass: 'text-emerald-600 dark:text-emerald-300',
-  },
-  {
     key: 'total-users',
     label: t('home.stats.totalUsers'),
-    value: formatAnimatedHomeStat('total-users', homeStatAnimationTargets.value['total-users'], homeStatsLoading.value, 'number'),
-    icon: 'users',
-    iconWrapClass: 'bg-violet-100 dark:bg-violet-500/15',
-    iconClass: 'text-violet-600 dark:text-violet-300',
+    value: formatAnimatedHomeStat('total-users', homeStatAnimationTargets.value['total-users'], homeStatsLoading.value),
+    accentClass: 'bg-bh-blue',
   },
   {
     key: 'supported-models',
     label: t('home.stats.supportedModels'),
-    value: formatAnimatedHomeStat('supported-models', homeStatAnimationTargets.value['supported-models'], homeMarketplaceLoading.value, 'number'),
-    icon: 'grid',
-    iconWrapClass: 'bg-primary-100 dark:bg-primary-500/15',
-    iconClass: 'text-primary-600 dark:text-primary-300',
+    value: formatAnimatedHomeStat('supported-models', homeStatAnimationTargets.value['supported-models'], homeMarketplaceLoading.value),
+    accentClass: 'bg-gray-950 dark:bg-dark-100',
   },
 ])
 
@@ -1105,8 +1078,7 @@ function formatFeaturedDiscountOff(ratio?: number): string | null {
 function formatAnimatedHomeStat(
   key: HomeStatsKey,
   target: number | null,
-  loading: boolean,
-  format: HomeStatFormat = 'compact'
+  loading: boolean
 ): string {
   if (loading) {
     return '...'
@@ -1116,9 +1088,7 @@ function formatAnimatedHomeStat(
   }
 
   const value = homeAnimatedStats.value[key]
-  const formatted = format === 'compact'
-    ? formatAnimatedCompactNumber(value, target)
-    : formatWholeNumber(value)
+  const formatted = formatWholeNumber(value)
   return `${formatted}+`
 }
 
@@ -1127,38 +1097,6 @@ function formatMarketplaceStat(value: number): string {
     return '...'
   }
   return new Intl.NumberFormat(numberLocale.value).format(value)
-}
-
-function formatAnimatedCompactNumber(value: number, target: number): string {
-  const targetParts = new Intl.NumberFormat(numberLocale.value, {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).formatToParts(target)
-  const compactPart = targetParts.find(part => part.type === 'compact')?.value ?? ''
-  const scaledValue = compactPart ? scaleCompactValue(value, target) : value
-  const decimalDigits = compactPart && targetParts.some(part => part.type === 'fraction') ? 1 : 0
-  const numberText = new Intl.NumberFormat(numberLocale.value, {
-    minimumFractionDigits: decimalDigits,
-    maximumFractionDigits: decimalDigits,
-    useGrouping: false,
-  }).format(scaledValue)
-
-  return `${numberText}${compactPart}`
-}
-
-function scaleCompactValue(value: number, target: number): number {
-  const compactTargetNumber = Number(new Intl.NumberFormat(numberLocale.value, {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).formatToParts(target)
-    .filter(part => part.type === 'integer' || part.type === 'decimal' || part.type === 'fraction')
-    .map(part => part.value)
-    .join(''))
-  if (!Number.isFinite(compactTargetNumber) || compactTargetNumber <= 0) {
-    return value
-  }
-
-  return value / (target / compactTargetNumber)
 }
 
 function formatWholeNumber(value: number): string {

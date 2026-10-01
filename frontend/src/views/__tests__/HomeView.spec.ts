@@ -41,6 +41,20 @@ function renderHome() {
 }
 
 describe('站点主题首页', () => {
+  it.each(['zh', 'en'])('首页 %s 只保留用户和模型统计，两种主题都不展示 Token 总量', async language => {
+    locale.value = language
+    api.stats.mockResolvedValue({ today_tokens: 123456789, total_tokens: 987654321, total_users: 42 })
+    const wrapper = renderHome()
+    await flushPromises()
+    for (const skin of ['tokenflux', 'bauhaus']) {
+      setVisualTheme(skin)
+      await nextTick()
+      expect(wrapper.findAll('[data-home-stat]').map(card => card.attributes('data-home-stat'))).toEqual(['total-users', 'supported-models'])
+      expect(wrapper.text()).not.toMatch(/今日总 Token 量|历史总 Token 量|Today Total Tokens|Historical Total Tokens/)
+    }
+    expect(api.stats).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
   it('首页所有静态翻译键在中英文词典中均存在', () => {
     const source = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../HomeView.vue'), 'utf8')
     const keys = [...source.matchAll(/\bt\(['"]([^'"]+)['"]/g)].map(match => match[1])

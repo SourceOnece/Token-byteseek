@@ -127,8 +127,6 @@ batchImageGuide: {
       discountOff: 'Up to {percent}% off'
     },
     stats: {
-      todayTokens: 'Today Total Tokens',
-      totalTokens: 'Historical Total Tokens',
       totalUsers: 'Registered Users',
       supportedModels: 'Supported Models',
       providerTypes: 'model types',
