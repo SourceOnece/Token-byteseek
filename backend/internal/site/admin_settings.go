@@ -28,6 +28,7 @@ type AdminSettings struct {
 	PurchaseSubscriptionEnabled bool                     `json:"purchase_subscription_enabled"`
 	PurchaseSubscriptionURL     string                   `json:"purchase_subscription_url"`
 	SiteLogo                    string                   `json:"site_logo"`
+	SiteTheme                   string                   `json:"site_theme"`
 	SiteName                    string                   `json:"site_name"`
 	SiteNameEn                  string                   `json:"site_name_en"`
 	SiteNameZh                  string                   `json:"site_name_zh"`
@@ -47,7 +48,12 @@ const (
 
 // PrepareAdminSettings 只准备持久值，保留登录协议与表格配置的原规范化语义。
 func PrepareAdminSettings(settings *AdminSettings) (map[string]string, error) {
-	updates := map[string]string{}
+	// 缺省空值恢复默认；非空非法值拒绝，避免任意 CSS/脚本进入设置。
+	if settings.SiteTheme != "" && settings.SiteTheme != SiteThemeTokenFlux && settings.SiteTheme != SiteThemeBauhaus {
+		return nil, fmt.Errorf("invalid site_theme: choose tokenflux or bauhaus")
+	}
+	settings.SiteTheme = NormalizeSiteTheme(settings.SiteTheme)
+	updates := map[string]string{SettingKeySiteTheme: settings.SiteTheme}
 	updates[SettingKeySubscriptionEnabled] = strconv.FormatBool(settings.SubscriptionEnabled)
 	updates[SettingKeyFrontendURL] = settings.FrontendURL
 	settings.LoginAgreementMode = NormalizeLoginAgreementMode(settings.LoginAgreementMode)

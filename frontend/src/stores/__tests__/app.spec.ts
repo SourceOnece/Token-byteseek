@@ -322,6 +322,19 @@ describe('useAppStore', () => {
   // --- 公开设置 ---
 
   describe('公开设置加载', () => {
+    it('公开配置统一应用站点主题，读取失败保留当前有效主题', async () => {
+      const store = useAppStore()
+      localStorage.setItem('visual-theme', 'tokenflux')
+      vi.mocked(getPublicSettings).mockResolvedValue(createPublicSettings({ site_theme: 'bauhaus' }))
+      await store.fetchPublicSettings(true)
+      expect(document.documentElement.dataset.visualTheme).toBe('bauhaus')
+      vi.mocked(getPublicSettings).mockRejectedValue(new Error('offline'))
+      await store.fetchPublicSettings(true)
+      expect(document.documentElement.dataset.visualTheme).toBe('bauhaus')
+      vi.mocked(getPublicSettings).mockResolvedValue(createPublicSettings({ site_theme: 'tokenflux' }))
+      await store.fetchPublicSettings(true)
+      expect(document.documentElement.dataset.visualTheme).toBe('tokenflux')
+    })
     it('并发调用复用并等待同一个请求，包括 force 调用', async () => {
       const deferred = createDeferred<PublicSettings>()
       vi.mocked(getPublicSettings).mockReturnValue(deferred.promise)

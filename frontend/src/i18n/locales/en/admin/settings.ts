@@ -682,6 +682,8 @@ export default {
         siteSubtitlePlaceholder: 'Subscription to API Conversion Platform',
         siteSubtitleHint: 'Displayed on login and register pages',
         siteCopyTitle: 'Site Copy',
+        theme: 'Site theme',
+        themeHint: 'Applies across the site after saving. Users cannot switch themes; reload to apply.',
         siteCopyDescription: 'Configure localized site name, site title, and site subtitle.',
         siteNameZh: 'Site Name (Chinese)',
         siteNameZhPlaceholder: 'Sub2API',

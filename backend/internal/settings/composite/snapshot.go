@@ -151,6 +151,7 @@ type Snapshot struct {
 	GoogleOAuthRedirectURL            string
 	GoogleOAuthFrontendRedirectURL    string
 
+	SiteTheme                   string
 	SiteName                    string
 	SiteLogo                    string
 	SiteSubtitle                string

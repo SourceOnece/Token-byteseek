@@ -37,7 +37,7 @@ function initIOSViewportZoomFix() {
 async function bootstrap() {
   // 挂载前先应用主题，避免首屏出现明暗模式闪烁。
   initTheme()
-  initVisualTheme()
+  initVisualTheme(window.__APP_CONFIG__?.site_theme)
   initIOSViewportZoomFix()
 
   const app = createApp(App)

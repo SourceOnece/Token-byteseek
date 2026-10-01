@@ -68,6 +68,7 @@ func PublicInputKeys() []string {
 		"aliyun_captcha_prefix",
 		"aliyun_captcha_region",
 		"api_key_acl_trust_forwarded_ip",
+		SettingKeySiteTheme,
 		"site_name",
 		"site_logo",
 		"site_subtitle",

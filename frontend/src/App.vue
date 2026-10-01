@@ -119,8 +119,9 @@ onMounted(async () => {
     // If setup endpoint fails, assume normal mode and continue
   }
 
-  // Load public settings into appStore (will be cached for other components)
-  await appStore.fetchPublicSettings()
+  // 挂载后复核站点配置，避免多实例的旧 HTML 注入缓存长期覆盖管理员新主题。
+  // 失败时保留已注入的有效配置；同次加载的其它读取仍复用 store 的在途请求。
+  await appStore.fetchPublicSettings(true)
 
   // 站点设置加载后重新计算浏览器页签标题
   updateDocumentTitle()

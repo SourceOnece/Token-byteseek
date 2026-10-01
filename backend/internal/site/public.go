@@ -119,6 +119,7 @@ func (s *PublicService) GetPublicSettings(ctx context.Context) (*PublicSettings,
 		AliyunCaptchaSceneID:                settings[SettingKeyAliyunCaptchaSceneID],
 		AliyunCaptchaPrefix:                 settings[SettingKeyAliyunCaptchaPrefix],
 		AliyunCaptchaRegion:                 input.Auth.AliyunRegion,
+		SiteTheme:                           NormalizeSiteTheme(settings[SettingKeySiteTheme]),
 		SiteName:                            s.getStringOrDefault(settings, SettingKeySiteName, "Sub2API"),
 		SiteLogo:                            settings[SettingKeySiteLogo],
 		SiteSubtitle:                        s.getStringOrDefault(settings, SettingKeySiteSubtitle, "Subscription to API Conversion Platform"),
@@ -354,6 +355,7 @@ func (s *PublicService) GetPublicSettingsForInjection(ctx context.Context) (any,
 		AliyunCaptchaSceneID                string                   `json:"aliyun_captcha_scene_id,omitempty"`
 		AliyunCaptchaPrefix                 string                   `json:"aliyun_captcha_prefix,omitempty"`
 		AliyunCaptchaRegion                 string                   `json:"aliyun_captcha_region,omitempty"`
+		SiteTheme                           string                   `json:"site_theme"`
 		SiteName                            string                   `json:"site_name"`
 		SiteLogo                            string                   `json:"site_logo,omitempty"`
 		SiteSubtitle                        string                   `json:"site_subtitle,omitempty"`
@@ -442,6 +444,7 @@ func (s *PublicService) GetPublicSettingsForInjection(ctx context.Context) (any,
 		AliyunCaptchaSceneID:                settings.AliyunCaptchaSceneID,
 		AliyunCaptchaPrefix:                 settings.AliyunCaptchaPrefix,
 		AliyunCaptchaRegion:                 settings.AliyunCaptchaRegion,
+		SiteTheme:                           settings.SiteTheme,
 		SiteName:                            settings.SiteName,
 		SiteLogo:                            settings.SiteLogo,
 		SiteSubtitle:                        settings.SiteSubtitle,
@@ -732,5 +735,5 @@ const (
 )
 
 func PublicValueKeys() []string {
-	return []string{SettingKeySubscriptionEnabled, SettingBalancePayDisabled, SettingKeyAPIBaseURL, SettingKeyProviderQuotaNotifyEnabled, SettingKeyAffiliateEnabled, SettingKeyAliyunCaptchaEnabled, SettingKeyAliyunCaptchaPrefix, SettingKeyAliyunCaptchaSceneID, SettingKeyAllowUserViewErrorRequests, SettingKeyBackendModeEnabled, SettingKeyBalanceIconSVG, SettingKeyBalanceLowNotifyEnabled, SettingKeyBalanceLowNotifyRechargeURL, SettingKeyBalanceLowNotifyThreshold, SettingKeyBalanceUnitName, SettingKeyBalanceUnitSymbol, SettingKeyContactInfo, SettingKeyCreativeEnabled, SettingKeyCustomEndpoints, SettingKeyCustomMenuItems, SettingKeyDocURL, SettingKeyEmailVerifyEnabled, SettingKeyFooterLinks, SettingKeyFooterText, SettingKeyForceEmailOnThirdPartySignup, SettingKeyHideCcsImportButton, SettingKeyHomeContent, SettingKeyHomeFeaturedModels, SettingKeyInvitationCodeEnabled, SettingKeyLoginAgreementDocuments, SettingKeyLoginAgreementEnabled, SettingKeyLoginAgreementMode, SettingKeyLoginAgreementUpdatedAt, SettingKeyPasswordResetEnabled, SettingKeyPromoCodeEnabled, SettingKeyPurchaseSubscriptionEnabled, SettingKeyPurchaseSubscriptionURL, SettingKeyRegistrationEmailDomainQuotaEnabled, SettingKeyRegistrationEnabled, SettingKeyRiskControlEnabled, SettingKeySiteLogo, SettingKeySiteName, SettingKeySiteNameEn, SettingKeySiteNameZh, SettingKeySiteSubtitle, SettingKeySiteSubtitleEn, SettingKeySiteSubtitleZh, SettingKeySiteTitleEn, SettingKeySiteTitleZh, SettingKeyTableDefaultPageSize, SettingKeyTablePageSizeOptions, SettingKeyTencentCaptchaAppID, SettingKeyTencentCaptchaEnabled, SettingKeyTotpEnabled, SettingKeyTurnstileEnabled, SettingKeyTurnstileSiteKey, SettingKeyUserEmailChangeEnabled, SettingPaymentEnabled}
+	return []string{SettingKeySiteTheme, SettingKeySubscriptionEnabled, SettingBalancePayDisabled, SettingKeyAPIBaseURL, SettingKeyProviderQuotaNotifyEnabled, SettingKeyAffiliateEnabled, SettingKeyAliyunCaptchaEnabled, SettingKeyAliyunCaptchaPrefix, SettingKeyAliyunCaptchaSceneID, SettingKeyAllowUserViewErrorRequests, SettingKeyBackendModeEnabled, SettingKeyBalanceIconSVG, SettingKeyBalanceLowNotifyEnabled, SettingKeyBalanceLowNotifyRechargeURL, SettingKeyBalanceLowNotifyThreshold, SettingKeyBalanceUnitName, SettingKeyBalanceUnitSymbol, SettingKeyContactInfo, SettingKeyCreativeEnabled, SettingKeyCustomEndpoints, SettingKeyCustomMenuItems, SettingKeyDocURL, SettingKeyEmailVerifyEnabled, SettingKeyFooterLinks, SettingKeyFooterText, SettingKeyForceEmailOnThirdPartySignup, SettingKeyHideCcsImportButton, SettingKeyHomeContent, SettingKeyHomeFeaturedModels, SettingKeyInvitationCodeEnabled, SettingKeyLoginAgreementDocuments, SettingKeyLoginAgreementEnabled, SettingKeyLoginAgreementMode, SettingKeyLoginAgreementUpdatedAt, SettingKeyPasswordResetEnabled, SettingKeyPromoCodeEnabled, SettingKeyPurchaseSubscriptionEnabled, SettingKeyPurchaseSubscriptionURL, SettingKeyRegistrationEmailDomainQuotaEnabled, SettingKeyRegistrationEnabled, SettingKeyRiskControlEnabled, SettingKeySiteLogo, SettingKeySiteName, SettingKeySiteNameEn, SettingKeySiteNameZh, SettingKeySiteSubtitle, SettingKeySiteSubtitleEn, SettingKeySiteSubtitleZh, SettingKeySiteTitleEn, SettingKeySiteTitleZh, SettingKeyTableDefaultPageSize, SettingKeyTablePageSizeOptions, SettingKeyTencentCaptchaAppID, SettingKeyTencentCaptchaEnabled, SettingKeyTotpEnabled, SettingKeyTurnstileEnabled, SettingKeyTurnstileSiteKey, SettingKeyUserEmailChangeEnabled, SettingPaymentEnabled}
 }

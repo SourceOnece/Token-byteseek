@@ -783,6 +783,20 @@ async function openUsersTab(wrapper: ReturnType<typeof mountView>) {
 }
 
 describe("admin SettingsView payment visible method controls", () => {
+  it('加载管理员站点主题并随设置保存，保存后重新读取公开配置', async () => {
+    getSettings.mockResolvedValue({ ...baseSettingsResponse, site_theme: 'bauhaus' });
+    const wrapper = mountView();
+    await flushPromises();
+    const select = wrapper.get('[data-testid="admin-site-theme"]');
+    expect(select.element).toHaveProperty('value', 'bauhaus');
+    await select.setValue('tokenflux');
+    expect(updateSettings).not.toHaveBeenCalled();
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(updateSettings).toHaveBeenCalledWith(expect.objectContaining({ site_theme: 'tokenflux' }));
+    expect(fetchPublicSettings).toHaveBeenCalledWith(true);
+    wrapper.unmount();
+  });
   beforeEach(() => {
     getSettings.mockReset();
     getCreativeModelCandidates.mockReset();

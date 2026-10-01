@@ -147,6 +147,7 @@ type UpdateSettingsRequest struct {
 	GoogleOAuthFrontendRedirectURL string `json:"google_oauth_frontend_redirect_url"`
 
 	// OEM设置
+	SiteTheme                   string                           `json:"site_theme" binding:"omitempty,oneof=tokenflux bauhaus"`
 	SiteName                    string                           `json:"site_name"`
 	SiteLogo                    string                           `json:"site_logo"`
 	SiteSubtitle                string                           `json:"site_subtitle"`

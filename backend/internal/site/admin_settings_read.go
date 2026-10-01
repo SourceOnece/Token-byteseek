@@ -27,6 +27,7 @@ type AdminReadSettings struct {
 	PurchaseSubscriptionEnabled bool
 	PurchaseSubscriptionURL     string
 	SiteLogo                    string
+	SiteTheme                   string
 	SiteName                    string
 	SiteNameEn                  string
 	SiteNameZh                  string
@@ -53,6 +54,7 @@ func ReadAdminSettings(settings map[string]string) *AdminReadSettings {
 	result.LoginAgreementMode = NormalizeLoginAgreementMode(settings[SettingKeyLoginAgreementMode])
 	result.LoginAgreementUpdatedAt = loginAgreementUpdatedAt
 	result.LoginAgreementDocuments = loginAgreementDocuments
+	result.SiteTheme = NormalizeSiteTheme(settings[SettingKeySiteTheme])
 	result.SiteName = settingvalues.StringOrDefault(settings, SettingKeySiteName, "Sub2API")
 	result.SiteLogo = settings[SettingKeySiteLogo]
 	result.SiteSubtitle = settingvalues.StringOrDefault(settings, SettingKeySiteSubtitle, "Subscription to API Conversion Platform")

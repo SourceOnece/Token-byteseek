@@ -5767,6 +5767,19 @@
                 <Toggle v-model="form.backend_mode_enabled" />
               </div>
 
+              <!-- 主题随站点设置保存，普通用户和访客没有独立切换入口。 -->
+              <div class="max-w-md">
+                <label for="site-theme" class="input-label">{{ t('admin.settings.site.theme') }}</label>
+                <Select
+                  id="site-theme"
+                  v-model="form.site_theme"
+                  :options="[{ value: 'tokenflux', label: t('nav.tokenfluxTheme') }, { value: 'bauhaus', label: t('nav.bauhausTheme') }]"
+                  :aria-label="t('admin.settings.site.theme')"
+                  data-testid="admin-site-theme"
+                />
+                <p class="input-hint">{{ t('admin.settings.site.themeHint') }}</p>
+              </div>
+
               <!-- 站点文案 -->
               <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
                 <h3 class="text-sm font-medium text-gray-900 dark:text-white">
@@ -8635,6 +8648,7 @@ const form = reactive<SettingsForm>({
   force_email_on_third_party_signup: false,
   default_user_rpm_limit: 0,
   default_user_api_key_limit: 100,
+  site_theme: 'tokenflux' as 'tokenflux' | 'bauhaus',
   site_name: "TokenRouter",
   site_logo: "",
   site_subtitle: "Subscription to API Conversion Platform",
@@ -10832,6 +10846,7 @@ async function saveSettings() {
       force_email_on_third_party_signup: form.force_email_on_third_party_signup,
       default_user_rpm_limit: form.default_user_rpm_limit,
       default_user_api_key_limit: form.default_user_api_key_limit,
+      site_theme: form.site_theme,
       site_name: form.site_name_zh || form.site_name_en || form.site_name,
       site_logo: form.site_logo,
       site_subtitle:

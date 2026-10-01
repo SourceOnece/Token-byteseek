@@ -673,6 +673,8 @@ export default {
         siteSubtitleHint: '显示在登录和注册页面',
         siteSubtitlePlaceholder: '订阅转 API 转换平台',
         siteCopyTitle: '站点文案',
+        theme: '界面主题',
+        themeHint: '保存后全站统一使用。用户无切换入口，刷新后生效。',
         siteCopyDescription: '配置站点名称、站点标题和站点副标题的中英文内容',
         siteNameZh: '站点名称（中文）',
         siteNameZhPlaceholder: 'Sub2API',

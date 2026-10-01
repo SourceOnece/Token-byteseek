@@ -408,6 +408,9 @@ func DiffSettings(before *composite.Snapshot, after *composite.Snapshot, beforeA
 	if before.GoogleOAuthFrontendRedirectURL != after.GoogleOAuthFrontendRedirectURL {
 		changed = append(changed, "google_oauth_frontend_redirect_url")
 	}
+	if before.SiteTheme != after.SiteTheme {
+		changed = append(changed, "site_theme")
+	}
 	if before.SiteName != after.SiteName {
 		changed = append(changed, "site_name")
 	}

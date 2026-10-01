@@ -220,6 +220,7 @@ export interface LoginAgreementDocument {
 }
 
 export interface PublicSettings {
+  site_theme?: 'tokenflux' | 'bauhaus'
   registration_enabled: boolean
   email_verify_enabled: boolean
   force_email_on_third_party_signup: boolean

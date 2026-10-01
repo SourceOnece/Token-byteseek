@@ -489,6 +489,7 @@ export interface SystemSettings {
   force_email_on_third_party_signup?: boolean;
   // ── 平台限额（嵌套 JSON，系统层 + 7 auth-source 层）────────────────────────────────
   // OEM settings
+  site_theme?: 'tokenflux' | 'bauhaus';
   site_name: string;
   site_logo: string;
   site_subtitle: string;
@@ -827,6 +828,7 @@ export interface UpdateSettingsRequest {
   auth_source_default_google_grant_on_first_bind?: boolean;
   force_email_on_third_party_signup?: boolean;
   // ── 平台限额（嵌套 JSON，系统层 + 7 auth-source 层）────────────────────────────────
+  site_theme?: 'tokenflux' | 'bauhaus';
   site_name?: string;
   site_logo?: string;
   site_subtitle?: string;

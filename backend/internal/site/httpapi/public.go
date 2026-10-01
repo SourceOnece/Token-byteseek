@@ -65,6 +65,7 @@ func (h *PublicHandler) GetPublicSettings(c *gin.Context) {
 		AliyunCaptchaSceneID:                settings.AliyunCaptchaSceneID,
 		AliyunCaptchaPrefix:                 settings.AliyunCaptchaPrefix,
 		AliyunCaptchaRegion:                 settings.AliyunCaptchaRegion,
+		SiteTheme:                           settings.SiteTheme,
 		SiteName:                            settings.SiteName,
 		SiteLogo:                            settings.SiteLogo,
 		SiteSubtitle:                        settings.SiteSubtitle,

@@ -23,6 +23,7 @@ func (s *Snapshot) ApplySiteAdminReadSettings(value *site.AdminReadSettings) {
 	s.PurchaseSubscriptionEnabled = value.PurchaseSubscriptionEnabled
 	s.PurchaseSubscriptionURL = value.PurchaseSubscriptionURL
 	s.SiteLogo = value.SiteLogo
+	s.SiteTheme = value.SiteTheme
 	s.SiteName = value.SiteName
 	s.SiteNameEn = value.SiteNameEn
 	s.SiteNameZh = value.SiteNameZh

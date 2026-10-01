@@ -76,7 +76,6 @@
           <HeaderContactSupport />
 
           <LocaleSwitcher variant="status" />
-          <VisualThemeSelector />
 
           <!-- 登录后主题切换收进用户菜单，未登录时仍在顶栏保留入口。 -->
           <button
@@ -253,7 +252,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
-import VisualThemeSelector from '@/components/common/VisualThemeSelector.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import UserAvatar from '@/components/common/UserAvatar.vue'

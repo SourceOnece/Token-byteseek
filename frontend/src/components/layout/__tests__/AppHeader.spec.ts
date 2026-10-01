@@ -8,6 +8,11 @@ const componentPath = resolve(dirname(fileURLToPath(import.meta.url)), '../AppHe
 const componentSource = readFileSync(componentPath, 'utf8')
 
 describe('AppHeader theme toggle', () => {
+  it('keeps site skin selection out of the header and authentication page', () => {
+    expect(componentSource).not.toContain('VisualThemeSelector')
+    const authLayout = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../AuthLayout.vue'), 'utf8')
+    expect(authLayout).not.toContain('VisualThemeSelector')
+  })
   it('keeps the header theme button only for guests', () => {
     const themeIndex = componentSource.indexOf('data-testid="theme-toggle"')
     const themeStart = componentSource.lastIndexOf('<button', themeIndex)

@@ -133,6 +133,7 @@ type SystemSettings struct {
 	GoogleOAuthRedirectURL            string `json:"google_oauth_redirect_url"`
 	GoogleOAuthFrontendRedirectURL    string `json:"google_oauth_frontend_redirect_url"`
 
+	SiteTheme                     string                          `json:"site_theme"`
 	SiteName                      string                          `json:"site_name"`
 	SiteLogo                      string                          `json:"site_logo"`
 	SiteSubtitle                  string                          `json:"site_subtitle"`

@@ -4,6 +4,7 @@
  */
 
 import { defineStore } from 'pinia'
+import { setVisualTheme } from '@/composables/useVisualTheme'
 import { ref, computed } from 'vue'
 import type { Toast, ToastType, PublicSettings } from '@/types'
 import { i18n } from '@/i18n'
@@ -314,6 +315,8 @@ export const useAppStore = defineStore('app', () => {
    * Apply settings to store state (internal helper to avoid code duplication)
    */
   function applySettings(config: PublicSettings): void {
+    // 站点皮肤由管理员保存的公开配置驱动，所有用户与访客使用相同值。
+    setVisualTheme(config.site_theme)
     if (typeof window !== 'undefined') {
       window.__APP_CONFIG__ = { ...config }
     }

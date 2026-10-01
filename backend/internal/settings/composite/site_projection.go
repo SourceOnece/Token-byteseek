@@ -24,6 +24,7 @@ func (s *Snapshot) SiteAdminSettings() site.AdminSettings {
 		PurchaseSubscriptionEnabled: s.PurchaseSubscriptionEnabled,
 		PurchaseSubscriptionURL:     s.PurchaseSubscriptionURL,
 		SiteLogo:                    s.SiteLogo,
+		SiteTheme:                   s.SiteTheme,
 		SiteName:                    s.SiteName,
 		SiteNameEn:                  s.SiteNameEn,
 		SiteNameZh:                  s.SiteNameZh,
@@ -58,6 +59,7 @@ func (s *Snapshot) ApplySiteAdminSettings(value site.AdminSettings) {
 	s.PurchaseSubscriptionEnabled = value.PurchaseSubscriptionEnabled
 	s.PurchaseSubscriptionURL = value.PurchaseSubscriptionURL
 	s.SiteLogo = value.SiteLogo
+	s.SiteTheme = value.SiteTheme
 	s.SiteName = value.SiteName
 	s.SiteNameEn = value.SiteNameEn
 	s.SiteNameZh = value.SiteNameZh

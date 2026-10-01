@@ -8,7 +8,7 @@
 
 ## ByteSeek 视觉皮肤
 
-- VisualThemeSelector 使用自研 Select，下拉切换 TokenFlux/包豪斯，useVisualTheme 在挂载前读取 visual-theme 本地偏好；无记录默认 TokenFlux，存储不可用时仍能使用。该状态与 useTheme 的 light/dark/system 独立。切换只更新根属性及响应式图表色板，不重建路由或表单，也不调用服务端接口。
+- 管理员设置页使用自研 Select 保存站点皮肤 TokenFlux/包豪斯；公开设置与 HTML 注入统一下发，普通用户、访客和认证页不显示皮肤选择器。useVisualTheme 只接受站点配置，缺失/非法值默认 TokenFlux；该状态与 useTheme 的 light/dark/system 独立。站点更新只改变根属性及响应式图表色板，不重建路由或表单。
 - style.css 跟随上游组件/动画配方；styles/visual-palette.css 给 Tailwind 工具类提供可切换颜色和阴影；styles/bauhaus.css 的皮肤规则限定于包豪斯根属性；styles/byteseek-components.css 给原有专属组件提供公共外观。图表 useChartTheme 和 Chart.js 默认值跟随皮肤恢复，不能无条件套包豪斯默认值。
 - 包豪斯保留三原色、纸色、直角硬阴影、按压、三元素背景、满血绿/降智红/失败黄、标准价格绿/Fast 黄及红黄蓝前三名；深色上游去阴影规则由更精确的包豪斯规则覆盖。默认 TokenFlux 保持原生排版、颜色和动效。
 - 用户仪表盘按上游使用四指标、用量趋势、Top 5、热力图、公告与快捷入口；没有额外旧八卡片与模型分布圆环，模型分布仍在使用记录及管理端。保留查询失败提示/重试，不把失败伪装为零用量。

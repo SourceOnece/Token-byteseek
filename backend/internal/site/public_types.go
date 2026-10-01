@@ -32,6 +32,7 @@ type PublicSettings struct {
 	AliyunCaptchaSceneID                string
 	AliyunCaptchaPrefix                 string
 	AliyunCaptchaRegion                 string
+	SiteTheme                           string
 	SiteName                            string
 	SiteLogo                            string
 	SiteSubtitle                        string
