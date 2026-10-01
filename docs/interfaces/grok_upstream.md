@@ -126,13 +126,15 @@ Grok Build CLI 的模型配置必须指向 TokenRouter 对外地址（以 `/v1` 
 
 ## 环境变量
 
+bh.007 增量适配 sub2api d6adebd22：默认 CLI 1.0.46，最低合法覆盖 1.0.13；标识 grok-pager、模式 interactive，UA 使用当前运行平台/架构。CLI 精确主机请求统一携带 authenticate-response 标记，官方 API 回退删除 CLI mode/认证响应标记；XAI_GROK_CLI_VERSION 继续可覆盖。请求级工具缓存控制接受 X-TokenRouter-Grok-Client-Tool-Cache，缺失时才读 X-Sub2API-Grok-Client-Tool-Cache，新头显式 false 优先于旧头 true。标准账号协议、TLS 与模型调度不因此改变。
+
 - `XAI_OAUTH_CLIENT_ID`
 - `XAI_OAUTH_SCOPE`
 - `XAI_OAUTH_REDIRECT_URI`
 - `XAI_OAUTH_AUTHORIZE_URL`
 - `XAI_OAUTH_TOKEN_URL`
 - `XAI_BASE_URL`
-- `XAI_GROK_CLI_VERSION`：覆盖 Grok CLI 客户端版本；内置版本与最低允许版本均为 `0.2.114`，覆盖值必须是规范 SemVer 且不得低于该版本
+- `XAI_GROK_CLI_VERSION`：覆盖 Grok CLI 客户端版本；内置为 `1.0.46`，最低为 `1.0.13`，覆盖值必须是规范 SemVer 且不得低于最低版本。
 
 进程配置 `gateway.grok` 还包含 Free OAuth 提供商的本地滚动窗口软门禁：默认 24 小时、500000 token、95% 停调阈值和 60 秒统计缓存。只有明确标记为 Free 的提供商参与；未知或付费层级以及数据库/统计失败均 fail-open。管理端主动额度查询和导入探测不经过该软门禁。门禁裁决与缓存由 `provider.FreeQuotaGate` 拥有，app 投影配置、绑定 usage 批量统计和后台任务屏障；两条普通选择链分别共享自身缓存，高级调度器按实例保持独立缓存，首次缺失仍放行并后台刷新。
 

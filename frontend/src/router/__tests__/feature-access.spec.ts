@@ -8,6 +8,8 @@ type NavigationGuard = (
 
 const routerHarness = vi.hoisted(() => ({
   guard: null as NavigationGuard | null,
+  after: null as null | ((to: any, from: any, failure?: unknown) => void),
+  prefetch: vi.fn(),
 }))
 
 const authStore = vi.hoisted(() => ({
@@ -37,7 +39,7 @@ vi.mock('vue-router', () => ({
     beforeEach: vi.fn((guard: NavigationGuard) => {
       routerHarness.guard = guard
     }),
-    afterEach: vi.fn(),
+    afterEach: vi.fn((callback) => { routerHarness.after = callback }),
     onError: vi.fn(),
   })),
 }))
@@ -72,7 +74,7 @@ vi.mock('@/composables/useNavigationLoading', () => ({
 
 vi.mock('@/composables/useRoutePrefetch', () => ({
   useRoutePrefetch: () => ({
-    triggerPrefetch: vi.fn(),
+    triggerPrefetch: routerHarness.prefetch,
     cancelPendingPrefetch: vi.fn(),
     resetPrefetchState: vi.fn(),
   }),
@@ -112,11 +114,21 @@ describe('feature route guard', () => {
   })
 
   beforeEach(() => {
+    routerHarness.prefetch.mockClear()
     authStore.isAuthenticated = true
     authStore.isAdmin = false
     appStore.publicSettingsLoaded = false
     appStore.cachedPublicSettings = null
     appStore.fetchPublicSettings.mockReset()
+  })
+
+  it('失败导航不预取目标页面，成功导航仍预取', () => {
+    expect(routerHarness.after).not.toBeNull()
+    routerHarness.after!({ path: '/usage' }, {}, new Error('cancelled'))
+    expect(routerHarness.prefetch).not.toHaveBeenCalled()
+    const target = { path: '/dashboard' }
+    routerHarness.after!(target, {})
+    expect(routerHarness.prefetch).toHaveBeenCalledWith(target)
   })
 
   it('waits for the first public-settings request before deciding payment access', async () => {

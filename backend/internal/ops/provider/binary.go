@@ -18,9 +18,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 )
 
-const allowedDownloadHost = "github.com"
-const allowedAssetHost = "objects.githubusercontent.com"
-const maxDownloadSize = 500 * 1024 * 1024
+const (
+	allowedDownloadHost = "github.com"
+	allowedAssetHost    = "objects.githubusercontent.com"
+	maxDownloadSize     = 500 * 1024 * 1024
+)
 
 // BinaryDownload 只执行已选资产的技术读取。
 type BinaryDownload interface {
@@ -42,16 +44,26 @@ func NewBinaryInstaller(client BinaryDownload, executable func() (string, error)
 	}
 	return &BinaryInstaller{githubClient: client, executable: executable, rename: os.Rename}
 }
+
 func (s *BinaryInstaller) Apply(ctx context.Context, releaseAssets []ops.Asset) error {
 	// Find matching archive and checksum for current platform
 	archiveName := s.getArchiveName()
 	var downloadURL string
 	var checksumURL string
 
-	for _, asset := range releaseAssets {
-		if strings.Contains(asset.Name, archiveName) && !strings.HasSuffix(asset.Name, ".txt") {
-			downloadURL = asset.DownloadURL
+	// 资产顺序由发布服务决定，优先选择新品牌归档，旧归档用于历史版本回退。
+	for _, prefix := range []string{"byteseek_", "tokenrouter_", "sub2api_"} {
+		for _, asset := range releaseAssets {
+			if strings.HasPrefix(asset.Name, prefix) && strings.Contains(asset.Name, archiveName) && !strings.HasSuffix(asset.Name, ".txt") {
+				downloadURL = asset.DownloadURL
+				break
+			}
 		}
+		if downloadURL != "" {
+			break
+		}
+	}
+	for _, asset := range releaseAssets {
 		if asset.Name == "checksums.txt" {
 			checksumURL = asset.DownloadURL
 		}
@@ -111,7 +123,7 @@ func (s *BinaryInstaller) Apply(ctx context.Context, releaseAssets []ops.Asset) 
 	}
 
 	// Set executable permission before replacement
-	if err := os.Chmod(newBinaryPath, 0755); err != nil {
+	if err := os.Chmod(newBinaryPath, 0o755); err != nil {
 		return fmt.Errorf("chmod failed: %w", err)
 	}
 
@@ -270,6 +282,7 @@ func (s *BinaryInstaller) extractBinary(archivePath, destPath string) error {
 	// Handle tar archive
 	if strings.Contains(archivePath, ".tar") {
 		tr := tar.NewReader(reader)
+		legacyExtracted := false
 		for {
 			hdr, err := tr.Next()
 			if err == io.EOF {
@@ -294,7 +307,7 @@ func (s *BinaryInstaller) extractBinary(archivePath, destPath string) error {
 			}
 
 			// Only extract the specific binary we need
-			if baseName == "sub2api" || baseName == "sub2api.exe" {
+			if baseName == "tokenrouter" || baseName == "tokenrouter.exe" || baseName == "sub2api" || baseName == "sub2api.exe" {
 				// Additional security: limit file size (max 500MB)
 				const maxBinarySize = 500 * 1024 * 1024
 				if hdr.Size > maxBinarySize {
@@ -315,8 +328,15 @@ func (s *BinaryInstaller) extractBinary(archivePath, destPath string) error {
 				if err := out.Close(); err != nil {
 					return err
 				}
-				return nil
+				if baseName == "tokenrouter" || baseName == "tokenrouter.exe" {
+					return nil
+				}
+				// 旧文件仅作回退，继续查找同一归档中的新名称。
+				legacyExtracted = true
 			}
+		}
+		if legacyExtracted {
+			return nil
 		}
 		return fmt.Errorf("binary not found in archive")
 	}

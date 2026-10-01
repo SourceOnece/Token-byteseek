@@ -486,16 +486,10 @@ func TestAntigravityGatewayService_ForwardGemini_PreservesServerSideToolInvocati
 	require.NoError(t, json.Unmarshal(upstream.requestBodies[0], &wrapped))
 	request, ok := wrapped["request"].(map[string]any)
 	require.True(t, ok)
-	tools, ok := request["tools"].([]any)
+	toolConfig, ok := request["toolConfig"].(map[string]any)
 	require.True(t, ok)
-	require.Len(t, tools, 1)
-	tool, ok := tools[0].(map[string]any)
-	require.True(t, ok)
-	require.Contains(t, tool, "functionDeclarations")
-	require.NotContains(t, tool, "googleSearch")
-	if toolConfig, exists := request["toolConfig"].(map[string]any); exists {
-		require.NotContains(t, toolConfig, "includeServerSideToolInvocations")
-	}
+	require.Equal(t, true, toolConfig["includeServerSideToolInvocations"])
+	require.NotContains(t, toolConfig, "include_server_side_tool_invocations")
 }
 
 func TestAntigravityGatewayService_ForwardGemini_MissingProjectReturnsLocalError(t *testing.T) {

@@ -438,18 +438,18 @@ func TestApplyGrokCLIProxyHeaders(t *testing.T) {
 	})
 
 	t.Run("accepts a valid operator override", func(t *testing.T) {
-		t.Setenv("XAI_GROK_CLI_VERSION", "0.2.121-alpha.1")
+		t.Setenv("XAI_GROK_CLI_VERSION", "1.0.48-alpha.1")
 		req, err := http.NewRequest(http.MethodPost, "https://cli-chat-proxy.grok.com/v1/chat/completions", nil)
 		require.NoError(t, err)
 
 		applyGrokCLIProxyHeaders(req)
 
-		require.Equal(t, "0.2.121-alpha.1", req.Header.Get("x-grok-client-version"))
-		require.Equal(t, xai.CLIUserAgent("0.2.121-alpha.1"), req.Header.Get("User-Agent"))
+		require.Equal(t, "1.0.48-alpha.1", req.Header.Get("x-grok-client-version"))
+		require.Equal(t, xai.CLIUserAgent("1.0.48-alpha.1"), req.Header.Get("User-Agent"))
 	})
 
 	t.Run("rejects an unsafe override", func(t *testing.T) {
-		t.Setenv("XAI_GROK_CLI_VERSION", "0.2.121\r\nX-Injected: true")
+		t.Setenv("XAI_GROK_CLI_VERSION", "1.0.48\r\nX-Injected: true")
 		req, err := http.NewRequest(http.MethodPost, "https://cli-chat-proxy.grok.com/v1/responses", nil)
 		require.NoError(t, err)
 
@@ -471,7 +471,7 @@ func TestApplyGrokCLIProxyHeaders(t *testing.T) {
 	})
 
 	t.Run("rejects a prerelease override at the minimum version", func(t *testing.T) {
-		t.Setenv("XAI_GROK_CLI_VERSION", "0.2.120-beta.1")
+		t.Setenv("XAI_GROK_CLI_VERSION", "1.0.13-beta.1")
 		req, err := http.NewRequest(http.MethodPost, "https://cli-chat-proxy.grok.com/v1/responses", nil)
 		require.NoError(t, err)
 
@@ -484,10 +484,10 @@ func TestApplyGrokCLIProxyHeaders(t *testing.T) {
 	// 所有样本都高于固定版本，拒绝原因只能是 SemVer 格式非法，而不是版本过旧。
 	for _, version := range []string{
 		"0.2.0121",
-		"0.2.121-alpha..1",
+		"1.0.48-alpha..1",
 		"0.3",
 		"1",
-		"0.2.121+build.1",
+		"1.0.48+build.1",
 	} {
 		t.Run("rejects invalid semver "+version, func(t *testing.T) {
 			t.Setenv("XAI_GROK_CLI_VERSION", version)
@@ -502,7 +502,7 @@ func TestApplyGrokCLIProxyHeaders(t *testing.T) {
 	}
 
 	t.Run("leaves direct xAI API requests unchanged", func(t *testing.T) {
-		t.Setenv("XAI_GROK_CLI_VERSION", "0.2.95")
+		t.Setenv("XAI_GROK_CLI_VERSION", "1.0.48")
 		req, err := http.NewRequest(http.MethodPost, "https://api.x.ai/v1/responses", nil)
 		require.NoError(t, err)
 		req.Header.Set("User-Agent", "tokenrouter-grok/1.0")

@@ -50,5 +50,5 @@ func ApplyCLIHeaders(headers http.Header) {
 	headers.Set("X-Grok-Client-Version", version)
 	headers.Set("x-grok-client-version", version)
 	headers.Set("x-grok-client-identifier", CLIClientIdentifier)
-	headers.Set("X-Grok-Client-Mode", "interactive")
+	headers.Set("X-Grok-Client-Mode", CLIClientMode)
 }

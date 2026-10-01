@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	clientRequestIDHeader   = "X-Client-Request-ID"
-	internalRequestIDHeader = "X-Sub2API-Request-ID"
+	clientRequestIDHeader         = "X-Client-Request-ID"
+	internalRequestIDHeader       = "X-TokenRouter-Request-ID"
+	legacyInternalRequestIDHeader = "X-Sub2API-Request-ID"
 )
 
 // ClientRequestID 为请求生成内部关联 ID，并把调用方 ID 单独保存为 parent_client_request_id。
@@ -51,6 +52,7 @@ func ClientRequestID() gin.HandlerFunc {
 		c.Request = c.Request.WithContext(ctx)
 		// 内部关联头由服务独占；清除调用方伪造值，避免被其它转发路径带到上游。
 		c.Request.Header.Del(internalRequestIDHeader)
+		c.Request.Header.Del(legacyInternalRequestIDHeader)
 		// 只将关联 ID 写入响应；不把服务生成的内部 ID 加入上游请求。
 		if parentID != "" {
 			c.Header(clientRequestIDHeader, parentID)
@@ -59,6 +61,8 @@ func ClientRequestID() gin.HandlerFunc {
 		}
 		// 专用内部头只用于下游诊断响应，不加入出站上游请求。
 		c.Header(internalRequestIDHeader, internalID)
+		// 兼容仍按旧头读取诊断 ID 的客户端，两者不能产生不同身份。
+		c.Header(legacyInternalRequestIDHeader, internalID)
 		c.Next()
 	}
 }

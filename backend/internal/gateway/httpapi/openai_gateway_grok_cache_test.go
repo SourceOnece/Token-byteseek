@@ -1186,3 +1186,26 @@ func TestResolveGrokCacheIdentityConcurrentDeterminism(t *testing.T) {
 	}
 	require.NotEmpty(t, first)
 }
+
+// 新头显式关闭优先于旧头开启，只有缺失新头才兼容旧头。
+func TestGrokClientToolCacheHeaderNamePrecedence(t *testing.T) {
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(90145, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
+	body := []byte("{\"model\":\"grok\",\"tools\":[{\"type\":\"function\",\"name\":\"Read\",\"parameters\":{\"type\":\"object\"}}],\"tool_choice\":\"auto\"}")
+	c := newGrokCacheTestContext(90145)
+	c.Request.URL.Path = "/v1/chat/completions"
+	c.Request.Header.Set("X-Sub2API-Grok-Client-Tool-Cache", "prefer-cache")
+	c.Request.Header.Set("X-TokenRouter-Grok-Client-Tool-Cache", "false")
+	patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, provider, "isolated-id")
+	require.NoError(t, err)
+	require.JSONEq(t, string(body), string(patched))
+	c.Request.Header.Del("X-TokenRouter-Grok-Client-Tool-Cache")
+	legacy, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, provider, "isolated-id")
+	require.NoError(t, err)
+	c.Request.Header.Del("X-Sub2API-Grok-Client-Tool-Cache")
+	c.Request.Header.Set("X-TokenRouter-Grok-Client-Tool-Cache", "prefer-cache")
+	current, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, provider, "isolated-id")
+	require.NoError(t, err)
+	require.JSONEq(t, string(legacy), string(current))
+	require.NotEqual(t, string(body), string(current))
+}

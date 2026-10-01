@@ -40,7 +40,7 @@ RequestLogger
   -> embedded frontend and API routes
 ```
 
-`X-Request-ID` 是服务端请求关联 ID：长度和字符合法时沿用客户端值，否则生成 UUID，并写回响应和 request context。网关路由另外安装 `ClientRequestID`，始终为本服务生成内部请求 ID；合法的 `X-Client-Request-ID` 只作为调用方关联 ID 保存和回显，不参与权限或结算幂等。缺失或不安全时，响应中的 `X-Client-Request-ID` 回退为内部 ID；内部 ID 另通过 `X-Sub2API-Request-ID` 返回。服务生成的关联 ID 不主动加入上游请求，避免把网关内部头发送给供应商。
+`X-Request-ID` 是服务端请求关联 ID：长度和字符合法时沿用客户端值，否则生成 UUID，并写回响应和 request context。网关路由另外安装 `ClientRequestID`，始终为本服务生成内部请求 ID；合法的 `X-Client-Request-ID` 只作为调用方关联 ID 保存和回显，不参与权限或结算幂等。缺失或不安全时，响应中的 `X-Client-Request-ID` 回退为内部 ID；内部 ID 通过 `X-TokenRouter-Request-ID` 与兼容 `X-Sub2API-Request-ID` 返回同一值，调用方的两种同名头都会被清除。服务生成的关联 ID 不主动加入上游请求，避免把网关内部头发送给供应商。
 
 入口体积限制和错误采集按路由族叠加。网关在读取 JSON/multipart 之前应用通用或文本 body limit、client request ID、Ops error logger、endpoint 归一化和 API Key auth。面板接口使用全局/重查询限流和审计；高风险公开认证接口使用独立 Redis 限流并在依赖故障时 fail-close。
 

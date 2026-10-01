@@ -45,11 +45,13 @@ func NewAntigravityChatStreamAdapter(c *upstream.OutputContext, model string, in
 		chatState:      chatState,
 	}
 }
+
 func (a *antigravityChatStreamAdapter) Emit(event *protocolanthropic.AnthropicStreamEvent, writer *ClientWriter) {
 	for _, responseEvent := range bridge.AnthropicEventToResponsesEvents(bridge.Runtime{Now: time.Now, ReadRandom: rand.Read}, event, a.anthropicState) {
 		a.emitResponseEvent(&responseEvent, writer)
 	}
 }
+
 func (a *antigravityChatStreamAdapter) Finalize(writer *ClientWriter) {
 	for _, responseEvent := range bridge.FinalizeAnthropicResponsesStream(a.anthropicState) {
 		a.emitResponseEvent(&responseEvent, writer)
@@ -59,9 +61,11 @@ func (a *antigravityChatStreamAdapter) Finalize(writer *ClientWriter) {
 	}
 	writer.Write([]byte("data: [DONE]\n\n"))
 }
+
 func (a *antigravityChatStreamAdapter) WriteError(writer *ClientWriter, reason string) {
 	writer.Fprintf("data: {\"error\":{\"message\":%q,\"type\":\"upstream_error\"}}\n\n", reason)
 }
+
 func (a *antigravityChatStreamAdapter) emitResponseEvent(event *protocolopenai.ResponsesStreamEvent, writer *ClientWriter) {
 	for _, chunk := range bridge.ResponsesEventToChatChunks(event, a.chatState) {
 		a.writeChunk(chunk, writer)
@@ -100,19 +104,23 @@ func NewAntigravityResponsesStreamAdapter(
 		clientToolRestorer: bridge.NewResponsesClientToolStreamRestorer(clientToolMapping),
 	}
 }
+
 func (a *antigravityResponsesStreamAdapter) Emit(event *protocolanthropic.AnthropicStreamEvent, writer *ClientWriter) {
 	for _, responseEvent := range bridge.AnthropicEventToResponsesEvents(bridge.Runtime{Now: time.Now, ReadRandom: rand.Read}, event, a.anthropicState) {
 		a.emitResponseEvent(responseEvent, writer)
 	}
 }
+
 func (a *antigravityResponsesStreamAdapter) Finalize(writer *ClientWriter) {
 	for _, responseEvent := range bridge.FinalizeAnthropicResponsesStream(a.anthropicState) {
 		a.emitResponseEvent(responseEvent, writer)
 	}
 }
+
 func (a *antigravityResponsesStreamAdapter) WriteError(writer *ClientWriter, reason string) {
 	writer.Fprintf("event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"upstream_error\",\"message\":%q}}\n\n", reason)
 }
+
 func (a *antigravityResponsesStreamAdapter) emitResponseEvent(event protocolopenai.ResponsesStreamEvent, writer *ClientWriter) {
 	payload, err := json.Marshal(event)
 	if err != nil {
@@ -150,6 +158,8 @@ type antigravityCompatStreamSession struct {
 	firstTokenMs   *int
 	startTime      time.Time
 	meaningfulData bool
+	// 首字前心跳也已提交 HTTP，后续不得再按空流故障切换。
+	preContentKeepaliveSent bool
 }
 
 func NewAntigravityCompatStreamSession(
@@ -166,6 +176,7 @@ func NewAntigravityCompatStreamSession(
 		startTime: startTime,
 	}
 }
+
 func (s *antigravityCompatStreamSession) consume(line string) {
 	claudeEvents := s.processor.ProcessLine(strings.TrimRight(line, "\r\n"))
 	if len(claudeEvents) == 0 {
@@ -173,9 +184,11 @@ func (s *antigravityCompatStreamSession) consume(line string) {
 	}
 	s.consumeClaudeEvents(claudeEvents)
 }
+
 func (s *antigravityCompatStreamSession) hasMeaningfulData() bool {
 	return s.meaningfulData || s.processor.HasContent()
 }
+
 func (s *antigravityCompatStreamSession) finish() *StreamResult {
 	finalEvents, usage := s.processor.Finish()
 	MergeAntigravityCompatUsage(s.usage, usage)
@@ -183,11 +196,13 @@ func (s *antigravityCompatStreamSession) finish() *StreamResult {
 	s.adapter.Finalize(s.writer)
 	return s.result(s.writer.Disconnected())
 }
+
 func (s *antigravityCompatStreamSession) collectResult(clientDisconnect bool) *StreamResult {
 	_, usage := s.processor.Finish()
 	MergeAntigravityCompatUsage(s.usage, usage)
 	return s.result(clientDisconnect)
 }
+
 func (s *antigravityCompatStreamSession) result(clientDisconnect bool) *StreamResult {
 	return &StreamResult{
 		Usage:            s.usage,
@@ -195,6 +210,7 @@ func (s *antigravityCompatStreamSession) result(clientDisconnect bool) *StreamRe
 		ClientDisconnect: clientDisconnect,
 	}
 }
+
 func (s *antigravityCompatStreamSession) consumeClaudeEvents(data []byte) {
 	var eventType string
 	for _, line := range strings.Split(string(data), "\n") {
@@ -207,6 +223,7 @@ func (s *antigravityCompatStreamSession) consumeClaudeEvents(data []byte) {
 		}
 	}
 }
+
 func (s *antigravityCompatStreamSession) consumeClaudeData(eventType, payload string) {
 	var event protocolanthropic.AnthropicStreamEvent
 	if json.Unmarshal([]byte(payload), &event) != nil {
@@ -223,6 +240,7 @@ func (s *antigravityCompatStreamSession) consumeClaudeData(eventType, payload st
 	}
 	s.emitOrBuffer(event)
 }
+
 func (s *antigravityCompatStreamSession) emitOrBuffer(event protocolanthropic.AnthropicStreamEvent) {
 	if s.meaningfulData {
 		s.adapter.Emit(&event, s.writer)
@@ -242,6 +260,7 @@ func (s *antigravityCompatStreamSession) emitOrBuffer(event protocolanthropic.An
 	}
 	s.pendingEvents = nil
 }
+
 func IsMeaningfulAntigravityCompatEvent(event *protocolanthropic.AnthropicStreamEvent) bool {
 	if event == nil {
 		return false
@@ -261,6 +280,7 @@ func IsMeaningfulAntigravityCompatEvent(event *protocolanthropic.AnthropicStream
 	}
 	return false
 }
+
 func MergeAntigravityCompatUsage(dst *upstream.TokenUsage, src *protocolanthropic.ClaudeUsage) {
 	if dst == nil || src == nil {
 		return
@@ -271,6 +291,7 @@ func MergeAntigravityCompatUsage(dst *upstream.TokenUsage, src *protocolanthropi
 	dst.CacheReadInputTokens = src.CacheReadInputTokens
 	dst.ImageOutputTokens = src.ImageOutputTokens
 }
+
 func (s *ResponseAdapter) HandleAntigravityCompatStream(
 	c *upstream.OutputContext,
 	resp *http.Response,
@@ -279,6 +300,11 @@ func (s *ResponseAdapter) HandleAntigravityCompatStream(
 	adapter antigravityCompatStreamAdapter,
 	prefix string,
 ) (*StreamResult, error) {
+	return s.handleAntigravityCompatStreamWithTiming(c, resp, startTime, originalModel, adapter, prefix, 15*time.Second, 2*time.Minute)
+}
+
+// 时间参数仅供内部测试缩短等待；生产保持上游的 15 秒保活和两分钟首字上限。
+func (s *ResponseAdapter) handleAntigravityCompatStreamWithTiming(c *upstream.OutputContext, resp *http.Response, startTime time.Time, originalModel string, adapter antigravityCompatStreamAdapter, prefix string, interval, firstContentLimit time.Duration) (*StreamResult, error) {
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {
 		return nil, errors.New("streaming not supported")
@@ -306,12 +332,24 @@ func (s *ResponseAdapter) HandleAntigravityCompatStream(
 		defer keepaliveTicker.Stop()
 	}
 
+	deadline := startTime.Add(firstContentLimit)
+	preContentTimer := time.NewTimer(max(time.Until(startTime.Add(interval)), 0))
+	defer preContentTimer.Stop()
+	deadlineTimer := time.NewTimer(max(time.Until(deadline), 0))
+	defer deadlineTimer.Stop()
+	empty := func(reason string) (*StreamResult, error) {
+		return s.finishAntigravityPreContent(c, session, reason)
+	}
+
 	for {
 		select {
 		case event, open := <-events:
+			if !session.hasMeaningfulData() && !writer.Disconnected() && !time.Now().Before(deadline) {
+				return empty("stream_timeout")
+			}
 			if !open {
 				if !session.hasMeaningfulData() && !writer.Disconnected() {
-					return nil, AntigravityCompatEmptyStreamError(s.Options.Failover)
+					return empty("empty_stream")
 				}
 				return session.finish(), nil
 			}
@@ -327,7 +365,7 @@ func (s *ResponseAdapter) HandleAntigravityCompatStream(
 				return session.collectResult(true), nil
 			}
 			if !session.hasMeaningfulData() {
-				return nil, AntigravityCompatEmptyStreamError(s.Options.Failover)
+				return empty("stream_timeout")
 			}
 			logger.LegacyPrintf("service.antigravity_gateway", "Stream data interval timeout (%s)", prefix)
 			WriteAntigravityCompatStreamError(c, adapter, writer, "stream_timeout", s.Options.MarkCommitted)
@@ -337,9 +375,33 @@ func (s *ResponseAdapter) HandleAntigravityCompatStream(
 			if session.hasMeaningfulData() && !writer.Disconnected() {
 				writer.Write([]byte(": ping\n\n"))
 			}
+		case now := <-preContentTimer.C:
+			if !session.hasMeaningfulData() && !writer.Disconnected() {
+				if !now.Before(deadline) {
+					return empty("stream_timeout")
+				}
+				if writer.Write([]byte(": ping\n\n")) {
+					session.preContentKeepaliveSent = true
+				}
+				preContentTimer.Reset(interval)
+			}
+		case <-deadlineTimer.C:
+			if !session.hasMeaningfulData() && !writer.Disconnected() {
+				return empty("stream_timeout")
+			}
 		}
 	}
 }
+
+// 已发心跳只能写 SSE 错误，未提交输出才允许沿原空流换号。
+func (s *ResponseAdapter) finishAntigravityPreContent(c *upstream.OutputContext, session *antigravityCompatStreamSession, reason string) (*StreamResult, error) {
+	if session.preContentKeepaliveSent {
+		WriteAntigravityCompatStreamError(c, session.adapter, session.writer, reason, s.Options.MarkCommitted)
+		return session.collectResult(false), fmt.Errorf("antigravity pre-content stream failed: %s", reason)
+	}
+	return nil, AntigravityCompatEmptyStreamError(s.Options.Failover)
+}
+
 func (s *ResponseAdapter) StartAntigravityCompatScanner(
 	body io.Reader,
 ) (<-chan antigravityCompatScanEvent, func(), int) {
@@ -375,12 +437,14 @@ func (s *ResponseAdapter) StartAntigravityCompatScanner(
 	}()
 	return events, func() { close(done) }, maxLineSize
 }
+
 func (s *ResponseAdapter) AntigravityCompatStreamTimeout() time.Duration {
 	if false {
 		return 0
 	}
 	return time.Duration(s.Options.StreamDataIntervalTimeout) * time.Second
 }
+
 func (s *ResponseAdapter) NewAntigravityCompatKeepaliveTicker() (*time.Ticker, <-chan time.Time) {
 	if false {
 		return nil, nil
@@ -392,6 +456,7 @@ func (s *ResponseAdapter) NewAntigravityCompatKeepaliveTicker() (*time.Ticker, <
 	ticker := time.NewTicker(interval)
 	return ticker, ticker.C
 }
+
 func NewAntigravityCompatTimer(timeout time.Duration) (*time.Timer, <-chan time.Time) {
 	if timeout <= 0 {
 		return nil, nil
@@ -399,6 +464,7 @@ func NewAntigravityCompatTimer(timeout time.Duration) (*time.Timer, <-chan time.
 	timer := time.NewTimer(timeout)
 	return timer, timer.C
 }
+
 func ResetAntigravityCompatTimer(timer *time.Timer, timeout time.Duration) {
 	if timer == nil {
 		return
@@ -411,6 +477,7 @@ func ResetAntigravityCompatTimer(timer *time.Timer, timeout time.Duration) {
 	}
 	timer.Reset(timeout)
 }
+
 func (s *ResponseAdapter) HandleAntigravityCompatReadError(
 	c *upstream.OutputContext,
 	session *antigravityCompatStreamSession,
@@ -419,7 +486,7 @@ func (s *ResponseAdapter) HandleAntigravityCompatReadError(
 	prefix string,
 ) (*StreamResult, error) {
 	if !session.hasMeaningfulData() && !session.writer.Disconnected() {
-		return nil, AntigravityCompatEmptyStreamError(s.Options.Failover)
+		return s.finishAntigravityPreContent(c, session, "stream_read_error")
 	}
 	if disconnect, handled := HandleStreamReadError(err, session.writer.Disconnected(), prefix); handled {
 		return session.collectResult(disconnect), nil
@@ -432,6 +499,7 @@ func (s *ResponseAdapter) HandleAntigravityCompatReadError(
 	WriteAntigravityCompatStreamError(c, session.adapter, session.writer, "stream_read_error", s.Options.MarkCommitted)
 	return nil, fmt.Errorf("stream read error: %w", err)
 }
+
 func WriteAntigravityCompatStreamError(
 	c *upstream.OutputContext,
 	adapter antigravityCompatStreamAdapter,
@@ -442,10 +510,12 @@ func WriteAntigravityCompatStreamError(
 	adapter.WriteError(writer, reason)
 	mark()
 }
+
 func AntigravityCompatEmptyStreamError(failover func([]byte) error) error {
 	logger.LegacyPrintf("service.antigravity_gateway", "Empty Antigravity compatibility stream, triggering failover")
 	return failover([]byte(`{"error":"empty stream response from upstream"}`))
 }
+
 func (s *ResponseAdapter) HandleChatCompletionsStreamingFromAntigravity(
 	c *upstream.OutputContext,
 	resp *http.Response,
@@ -462,6 +532,7 @@ func (s *ResponseAdapter) HandleChatCompletionsStreamingFromAntigravity(
 		"antigravity chat completions stream",
 	)
 }
+
 func (s *ResponseAdapter) HandleResponsesStreamingFromAntigravity(
 	c *upstream.OutputContext,
 	resp *http.Response,

@@ -2,6 +2,23 @@ package anthropic
 
 import "testing"
 
+// 新环境名优先，空值兼容旧部署；非法新值不能偷偷回落到旧值。
+func TestCLIVersionEnvCompatibility(t *testing.T) {
+	t.Setenv("SUB2API_CLAUDE_CLI_VERSION", "2.1.251")
+	t.Setenv(CLIVersionEnv, "")
+	if got := cliVersionOverride(); got != "2.1.251" {
+		t.Fatalf("legacy version lost: %q", got)
+	}
+	t.Setenv(CLIVersionEnv, "2.2.0")
+	if got := resolveCLIVersion(cliVersionOverride()); got != "2.2.0" {
+		t.Fatalf("new version ignored: %q", got)
+	}
+	t.Setenv(CLIVersionEnv, "invalid")
+	if got := resolveCLIVersion(cliVersionOverride()); got != CLICurrentVersion {
+		t.Fatalf("invalid new value fell back to legacy: %q", got)
+	}
+}
+
 func TestIsSupportedCLIVersion(t *testing.T) {
 	cases := []struct {
 		name    string

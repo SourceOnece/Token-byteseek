@@ -263,7 +263,7 @@ func TestBuildTools_CustomTypeTools(t *testing.T) {
 	}
 }
 
-func TestBuildTools_PrefersFunctionsOverMixedWebSearch(t *testing.T) {
+func TestBuildTools_PreservesWebSearchAlongsideFunctions(t *testing.T) {
 	tools := []ClaudeTool{
 		{
 			Name:        "get_weather",
@@ -277,10 +277,13 @@ func TestBuildTools_PrefersFunctionsOverMixedWebSearch(t *testing.T) {
 	}
 
 	result := buildTools(tools)
-	require.Len(t, result, 1)
+	require.Len(t, result, 2)
 	require.Len(t, result[0].FunctionDeclarations, 1)
 	require.Equal(t, "get_weather", result[0].FunctionDeclarations[0].Name)
-	require.Nil(t, result[0].GoogleSearch)
+	require.NotNil(t, result[1].GoogleSearch)
+	require.NotNil(t, result[1].GoogleSearch.EnhancedContent)
+	require.NotNil(t, result[1].GoogleSearch.EnhancedContent.ImageSearch)
+	require.Equal(t, 5, result[1].GoogleSearch.EnhancedContent.ImageSearch.MaxResultCount)
 }
 
 func TestBuildGenerationConfig_ThinkingDynamicBudget(t *testing.T) {
@@ -530,7 +533,7 @@ func TestTransformClaudeToGeminiWithOptions_MessageRoles(t *testing.T) {
 	})
 }
 
-func TestTransformClaudeToGeminiWithOptions_PrefersFunctionsOverMixedWebSearch(t *testing.T) {
+func TestTransformClaudeToGeminiWithOptions_PreservesWebSearchAlongsideFunctions(t *testing.T) {
 	claudeReq := &ClaudeRequest{
 		Model: "claude-3-5-sonnet-latest",
 		Messages: []ClaudeMessage{
@@ -557,12 +560,13 @@ func TestTransformClaudeToGeminiWithOptions_PrefersFunctionsOverMixedWebSearch(t
 
 	var req V1InternalRequest
 	require.NoError(t, json.Unmarshal(body, &req))
-	require.Len(t, req.Request.Tools, 1)
+	require.Len(t, req.Request.Tools, 2)
 	require.Len(t, req.Request.Tools[0].FunctionDeclarations, 1)
 	require.Equal(t, "get_weather", req.Request.Tools[0].FunctionDeclarations[0].Name)
-	require.Nil(t, req.Request.Tools[0].GoogleSearch)
+	require.NotNil(t, req.Request.Tools[1].GoogleSearch)
 	require.NotNil(t, req.Request.ToolConfig)
-	require.Nil(t, req.Request.ToolConfig.IncludeServerSideToolInvocations)
+	require.NotNil(t, req.Request.ToolConfig.IncludeServerSideToolInvocations)
+	require.True(t, *req.Request.ToolConfig.IncludeServerSideToolInvocations)
 }
 
 func TestTransformClaudeToGeminiWithOptions_ToolInvocationFlagOnlyForMixedTools(t *testing.T) {
@@ -599,7 +603,8 @@ func TestTransformClaudeToGeminiWithOptions_ToolInvocationFlagOnlyForMixedTools(
 
 	mixed := transform(t, []ClaudeTool{functionTool, webSearchTool})
 	require.NotNil(t, mixed.Request.ToolConfig)
-	require.Nil(t, mixed.Request.ToolConfig.IncludeServerSideToolInvocations)
+	require.NotNil(t, mixed.Request.ToolConfig.IncludeServerSideToolInvocations)
+	require.True(t, *mixed.Request.ToolConfig.IncludeServerSideToolInvocations)
 }
 
 func TestTransformClaudeToGeminiWithOptions_GeminiReasoningSkipsInvalidArguments(t *testing.T) {
@@ -625,8 +630,7 @@ func TestTransformClaudeToGeminiWithOptions_GeminiReasoningSkipsInvalidArguments
 
 	var req V1InternalRequest
 	require.NoError(t, json.Unmarshal(body, &req))
-	require.NotNil(t, req.Request.ToolConfig)
-	require.Equal(t, "VALIDATED", req.Request.ToolConfig.FunctionCallingConfig.Mode)
+	require.Nil(t, req.Request.ToolConfig)
 	require.NotNil(t, req.Request.GenerationConfig)
 	require.Nil(t, req.Request.GenerationConfig.Temperature)
 	require.Nil(t, req.Request.GenerationConfig.TopP)

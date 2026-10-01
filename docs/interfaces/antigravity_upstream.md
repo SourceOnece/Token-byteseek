@@ -42,6 +42,8 @@ Claude Code 可把 base URL 指向部署地址的 `/antigravity`，认证值仍�
 
 ## 协议适配
 
+bh.007 按 TokenFlux 主体要求恢复混合工具：函数与内置搜索/代码执行可同时保留，转换链按其工具配置启用服务端调用，不再静默删内置工具。Gemini 原生透传保留调用方已有配置，Gemini Reasoning 无工具时沿上游省略无用 ToolConfig；原有 schema/签名修复与 Claude 顶层归属行清理继续保留。本地夹具验证协议行为，不承诺所有真实型号都接受该组合；上游拒绝仍沿原错误/重试链。
+
 通用 Claude/Gemini wire 变体、schema 清理、非流及 SSE 状态已由 `protocol` 唯一实现；与 OpenAI 兼容报文不同的 `max_tokens`、metadata、tools 形状保留明确变体。`upstream/antigravity` 拥有 v1internal 外壳、project/身份补丁、原生 session ID、模型回退和流式协议事实；提供商授权、项目发现、token 回填和健康写入归 `provider`。
 
 `gateway/httpapi.AntigravityExecutor` 负责 HTTP 错误展示和 Ops 投影，入站完成处理使用原生完成器。平台/模型判断选择 thinking/signature/tool 选项后传入 bridge，纯转换不反向读取这些平台状态。
@@ -80,6 +82,8 @@ Antigravity 默认目录只列出原生型号及同型号必要的内部路由�
 额度查询按提供商和模型 scope 保存上游 reset/remaining 状态，并可包含 AI Credits。429/503 分类区分模型限流、credits 耗尽和共享容量不足。上游提供商额度独立于用户余额、订阅和 Key 限额；使用记录的平台取实际执行提供商。提供商成本和用户售价分别解析，用户价格不因最终选择 Antigravity 提供商而改变。
 
 ## 失败与恢复
+
+bh.007 增量接入 sub2api 首字前保活：Chat/Responses 兼容 SSE 在 15 秒仍无语义内容时发注释心跳，首字等待最多两分钟；仅注释不能无限续期。首次心跳已提交 HTTP 200，后续空流、读取失败或超时必须发送流式错误，不能再返回允许换号的空流错误。立即空流且未提交输出时仍走原故障转移。成功内容到达后继续原解析、用量和完成逻辑，不影响原生 Messages/Gemini 非此兼容链。
 
 - 短 `RetryInfo` 可以在同提供商做一次受限等待；长模型限流标记模型/提供商并请求调度层切换。
 - 单提供商模式允许有总等待上限的退避重试，多提供商模式优先切换；Context 取消立即停止。

@@ -1734,6 +1734,8 @@ func configureConfigSource(setConfigFile, addConfigPath func(string)) {
 	addConfigPath("/app/data")
 	addConfigPath(".")
 	addConfigPath("./config")
+	// 兼容 TokenFlux 安装目录；显式 CONFIG_FILE/DATA_DIR 仍优先。
+	addConfigPath("/etc/tokenrouter")
 	addConfigPath("/etc/sub2api")
 }
 

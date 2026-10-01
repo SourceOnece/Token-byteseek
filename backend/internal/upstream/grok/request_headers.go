@@ -11,6 +11,7 @@ import (
 func DefaultGrokUpstreamUserAgent() string {
 	return CLIUserAgent(ResolveCLIVersion())
 }
+
 func ApplyDefaultGrokUpstreamHeaders(req *http.Request) {
 	if req == nil {
 		return
@@ -20,7 +21,9 @@ func ApplyDefaultGrokUpstreamHeaders(req *http.Request) {
 	req.Header.Set("User-Agent", DefaultGrokUpstreamUserAgent())
 	req.Header.Set("x-grok-client-version", ResolveCLIVersion())
 	req.Header.Set("x-grok-client-identifier", CLIClientIdentifier)
+	req.Header.Set("x-grok-client-mode", CLIClientMode)
 }
+
 func ApplyGrokRuntimeHeaders(req *http.Request, runtimeOriginator string) {
 	ApplyDefaultGrokUpstreamHeaders(req)
 	if req == nil {

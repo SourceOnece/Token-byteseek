@@ -1,5 +1,7 @@
 # 版本留档规则
 
+本次 [v0.2.0-bh.007](versions/v0_2_0_bh_007.md) 按全量 TokenFlux＋定制＋sub2api 增量目标推进；当前进行功能兼容收拢与 Grok 增量，整体实施中、未发布。
+
 本次 [v0.2.0-bh.006](versions/v0_2_0_bh_006.md) 按用户要求移除首页今日/历史 Token 总量卡片，保留用户数和模型数；接口、后台统计与计费不变，验证及三标签同 digest 发布完成、未部署。
 
 本次 [v0.2.0-bh.005](versions/v0_2_0_bh_005.md) 统一首页结构并修复词典、恢复排行横条浅色，适配 TokenFlux 六项更新及导入格式兼容；验证及 GHCR 固定/latest/bauhaus 同 digest 发布完成，未部署。

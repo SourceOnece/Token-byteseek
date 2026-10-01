@@ -27,7 +27,7 @@
 <a id="configuration_sources"></a>
 ## 进程配置来源
 
-`SUB2API_CLAUDE_CLI_VERSION` 属于 Claude 包初始化时读取的可选环境覆盖，不是数据库设置；四种 Compose 模板会透传，留空使用内置版本，修改后需重建应用容器。格式、最小版本和请求头/归因一致性见 [Anthropic 上游](anthropic_upstream.md)。
+`TOKENROUTER_CLAUDE_CLI_VERSION` 优先，缺省时兼容 `SUB2API_CLAUDE_CLI_VERSION`，属于 Claude 包初始化时读取的可选环境覆盖，不是数据库设置；四种 Compose 模板均透传，留空使用内置版本，修改后需重建应用容器。显式非法新值回退内置版本，不读旧值。格式、最小版本和请求头/归因一致性见 [Anthropic 上游](anthropic_upstream.md)。
 
 `config.load` 使用 Viper，最终优先级为：
 
@@ -40,7 +40,7 @@
 配置文件选择规则为：
 
 1. `CONFIG_FILE` 非空时只使用该显式文件路径。
-2. 否则按顺序搜索 `DATA_DIR`（若设置）、`/app/data`、当前目录、`./config`、`/etc/sub2api` 中的 `config.yaml`。
+2. 否则按顺序搜索 `DATA_DIR`（若设置）、`/app/data`、当前目录、`./config`、`/etc/tokenrouter`、`/etc/sub2api` 中的 `config.yaml`；已有显式路径优先级不变。
 3. 文件不存在允许继续使用默认值和环境变量；文件存在但 YAML 无法读取/解析则启动失败。
 
 `subscription_maintenance.worker_count`、`subscription_maintenance.queue_size` 及对应环境变量已退役。加载器忽略这些旧键，不启动订阅维护队列；其余已知配置仍按现有规则校验。
@@ -62,6 +62,8 @@
 本地 JSON 使用 `provider`，读取边界兼容 `litellm_provider`；同一条目同时提供时新字段优先，包括空值和 `null`。内部价格类型和来源分类使用目录中性名称，实际报价出处继续由 `source`、`price_sources` 区分。
 
 少量变量有显式绑定或专用解析：`ENABLE_SERVER_TIMING`，逗号分隔的 `SERVER_TRUSTED_PROXIES` 和 `SECURITY_FORWARDED_CLIENT_IP_HEADERS`，以及受兼容条件约束的旧 WeChat 变量。
+
+调试开关 `TOKENROUTER_DEBUG_MODEL_ROUTING`、`TOKENROUTER_DEBUG_GATEWAY_BODY`、`TOKENROUTER_DEBUG_CLAUDE_MIMIC` 兼容对应 `SUB2API_` 旧名；新名非空优先，显式 `0`/`false` 不继承旧名开启。未设置时保持关闭，不因同步打开请求正文日志。
 
 提供商改名后的六个启动配置项在加载时兼容旧名称：`gateway.max_account_switches`、`gateway.max_account_switches_gemini`，以及 `gateway.openai_ws` 下的 `max_conns_per_account`、`min_idle_per_account`、`max_idle_per_account`、`dynamic_max_conns_by_account_concurrency_enabled`。旧 YAML 键和对应大写环境变量均映射到 `provider` 新名称，保留原值；连接池隔离模式 `account` / `account_proxy` 分别规范为 `provider` / `provider_proxy`。映射只在内存中完成，不重写部署文件，适用于只读挂载和环境变量部署。
 

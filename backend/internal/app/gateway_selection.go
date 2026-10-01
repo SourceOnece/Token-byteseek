@@ -44,7 +44,7 @@ func provideSelectionShared(cache session.GatewayCache, concurrency *scheduler.C
 // selectionOptions 仅投影选择实际使用的启动配置，不用默认值覆写显式零值。
 func selectionOptions(cfg *config.Config) selection.Options {
 	options := selection.DefaultOptions()
-	value := strings.ToLower(strings.TrimSpace(os.Getenv("SUB2API_DEBUG_MODEL_ROUTING")))
+	value := strings.ToLower(strings.TrimSpace(productEnv("DEBUG_MODEL_ROUTING")))
 	options.DebugRouting = value == "1" || value == "true" || value == "yes" || value == "on"
 	if cfg == nil {
 		return options
@@ -126,4 +126,13 @@ func provideCompatibleSelection(generic *selection.Generic, gemini *selection.Ge
 
 func provideGeminiSelection(reads selection.Reads, shared selection.Shared, cfg *config.Config, quota *provider.GeminiPrecheck) *selection.Gemini {
 	return selection.NewGemini(selection.GeminiDependencies{Reads: reads, Shared: shared, QuotaPrecheck: quota}, selectionOptions(cfg))
+}
+
+// productEnv 优先读取新品牌变量；空值沿用未配置语义，显式零值不会回退。
+func productEnv(suffix string) string {
+	value := os.Getenv("TOKENROUTER_" + suffix)
+	if value != "" {
+		return value
+	}
+	return os.Getenv("SUB2API_" + suffix)
 }

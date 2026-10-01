@@ -19,10 +19,7 @@ const (
 	CLIClientVersionHeader = "x-grok-client-version"
 	// CLIClientVersion 是 Grok CLI 固定版本的唯一来源，repository 与 service
 	// 均基于它构造客户端身份；版本需与 https://x.ai/cli/stable 保持同步。
-	CLIClientVersion = "0.2.120"
-	// billingCLIUserAgent 是账单探测沿用的 pager/shell UA，
-	// 与 cli_identity.go 中 workspace 风格的 CLIUserAgent 不同。
-	billingCLIUserAgent = "grok-pager/" + CLIClientVersion + " grok-shell/" + CLIClientVersion + " (macos; aarch64)"
+	CLIClientVersion = "1.0.46"
 
 	BillingWeeklyPath  = "/billing?format=credits"
 	BillingMonthlyPath = "/billing"
@@ -106,7 +103,8 @@ func ApplyCLIBillingHeaders(req *http.Request, accessToken string) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(CLITokenAuthHeader, CLITokenAuthValue)
 	req.Header.Set(CLIClientVersionHeader, CLIClientVersion)
-	req.Header.Set("User-Agent", billingCLIUserAgent)
+	req.Header.Set("User-Agent", CLIUserAgent(CLIClientVersion))
+	req.Header.Set("x-grok-client-mode", CLIClientMode)
 }
 
 // ParseBillingPayload 解析 billing API 响应体。

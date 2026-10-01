@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
@@ -24,7 +23,7 @@ import (
 
 // 调试输出共享一个句柄；请求与完成工作退出后再关闭。
 func provideGatewayRequestDebug(manager *lifecycle.Manager) *requestdebug.Trace {
-	trace := requestdebug.New(os.Getenv("SUB2API_DEBUG_GATEWAY_BODY"), os.Getenv("SUB2API_DEBUG_CLAUDE_MIMIC"))
+	trace := requestdebug.New(productEnv("DEBUG_GATEWAY_BODY"), productEnv("DEBUG_CLAUDE_MIMIC"))
 	manager.Register(lifecycle.Hook{Name: "GatewayRequestDebug", StopOrder: 90, Stop: func(context.Context) error { return trace.Close() }})
 	return trace
 }

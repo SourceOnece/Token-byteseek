@@ -974,8 +974,9 @@ router.beforeEach(async (to, _from, next) => {
 /**
  * Navigation guard: End loading and trigger prefetch
  */
-router.afterEach((to) => {
-  // 结束导航加载状态
+router.afterEach((to, _from, failure) => {
+  // 与 TokenFlux 保持一致：取消、重复或失败的导航不能触发目标页预取。
+  if (failure) return
 
   // 懒初始化预加载（首次导航时创建，传入 router 实例）
   if (!routePrefetch) {

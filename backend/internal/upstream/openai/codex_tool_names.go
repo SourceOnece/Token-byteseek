@@ -9,8 +9,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
 )
 
-const CodexReservedPythonToolName = "python"
-const CodexPythonToolAlias = "python__sub2api"
+const (
+	CodexReservedPythonToolName = "python"
+	CodexPythonToolAlias        = "python__sub2api"
+)
+
+// 只兼容读入 TokenFlux 历史工具调用，不改现有对外别名和会话缓存。
+const tokenRouterPythonToolAlias = "python__tokenrouter"
 
 type CodexToolNameField struct {
 	object map[string]any
@@ -18,20 +23,45 @@ type CodexToolNameField struct {
 	name   string
 }
 
-// AliasOpenAIOAuthReservedToolNames avoids names reserved by the ChatGPT
-// Codex backend. It validates every declaration/reference before mutating so
-// collisions cannot leave a partially rewritten request.
+// AliasOpenAIOAuthReservedToolNames 改写 Codex 保留工具名。
+// 先验证全部声明和引用，避免名称冲突留下仅改写一部分的请求。
 func AliasOpenAIOAuthReservedToolNames(reqBody map[string]any) (map[string]string, bool, error) {
 	if reqBody == nil {
 		return nil, false, nil
 	}
 
 	fields := CollectOpenAIResponsesToolNameFields(reqBody)
+	// 历史调用已经使用 TokenFlux 别名时，本轮声明沿用该名字，保证续写与工具结果配对。
+	// 调用方显式声明的同名函数仍是普通工具，不能被当作网关保留别名。
+	alias := CodexPythonToolAlias
+	legacyCall, legacyDeclaration := false, false
+	for _, field := range fields {
+		if field.name != tokenRouterPythonToolAlias {
+			continue
+		}
+		if field.object["type"] == "function_call" {
+			legacyCall = true
+		} else {
+			legacyDeclaration = true
+		}
+	}
+	if legacyCall && !legacyDeclaration {
+		alias = tokenRouterPythonToolAlias
+	}
+	aliasName := func(name string) string {
+		if strings.EqualFold(strings.TrimSpace(name), CodexReservedPythonToolName) {
+			return alias
+		}
+		return name
+	}
 	owners := make(map[string]string)
 	reverse := make(map[string]string)
 	for _, field := range fields {
-		normalized := AliasOpenAIOAuthReservedToolName(field.name)
+		normalized := aliasName(field.name)
 		original := field.name
+		if alias == tokenRouterPythonToolAlias && field.name == tokenRouterPythonToolAlias {
+			original = CodexReservedPythonToolName
+		}
 		if normalized != field.name {
 			original = strings.TrimSpace(field.name)
 		}
@@ -47,7 +77,7 @@ func AliasOpenAIOAuthReservedToolNames(reqBody map[string]any) (map[string]strin
 		return nil, false, nil
 	}
 	for _, field := range fields {
-		if aliased := AliasOpenAIOAuthReservedToolName(field.name); aliased != field.name {
+		if aliased := aliasName(field.name); aliased != field.name {
 			field.object[field.key] = aliased
 		}
 	}

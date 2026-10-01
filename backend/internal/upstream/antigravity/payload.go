@@ -167,11 +167,6 @@ func GetPassthroughOrDefault(upstreamMsg, defaultMsg string) string {
 
 // CleanGeminiRequest 清理 Gemini 请求体中的 Schema
 func CleanGeminiRequest(body []byte) ([]byte, error) {
-	var err error
-	body, err = NormalizeInternalGeminiTools(body)
-	if err != nil {
-		return nil, err
-	}
 	var payload map[string]any
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return nil, err
@@ -235,8 +230,8 @@ func PreserveChatCompletionTokenLimit(request *protocolopenai.ChatCompletionsReq
 	}
 }
 
-// NormalizeInternalGeminiTools 清除 v1internal 不接受的混合内置工具，仅影响此平台。
-func NormalizeInternalGeminiTools(body []byte) ([]byte, error) {
+// 混合工具沿 TokenFlux 保留并启用服务器工具调用，不静默删除内置能力。
+func EnableMixedGeminiToolInvocations(body []byte) ([]byte, error) {
 	var request map[string]any
 	if err := json.Unmarshal(body, &request); err != nil {
 		return nil, err
@@ -250,9 +245,8 @@ func NormalizeInternalGeminiTools(body []byte) ([]byte, error) {
 				continue
 			}
 			_, hasSearch := tool["googleSearch"]
-			_, hasCode := tool["codeExecution"]
 			declarations, hasFunctions := tool["functionDeclarations"].([]any)
-			hasGoogleSearch = hasGoogleSearch || hasSearch || hasCode
+			hasGoogleSearch = hasGoogleSearch || hasSearch
 			hasFunctionDeclarations = hasFunctionDeclarations || hasFunctions && len(declarations) > 0
 		}
 	}
@@ -260,23 +254,11 @@ func NormalizeInternalGeminiTools(body []byte) ([]byte, error) {
 		return body, nil
 	}
 
-	tools, _ := request["tools"].([]any)
-	filtered := make([]any, 0, len(tools))
-	for _, raw := range tools {
-		tool, ok := raw.(map[string]any)
-		if !ok {
-			filtered = append(filtered, raw)
-			continue
-		}
-		delete(tool, "googleSearch")
-		delete(tool, "codeExecution")
-		if len(tool) > 0 {
-			filtered = append(filtered, tool)
-		}
+	toolConfig, _ := request["toolConfig"].(map[string]any)
+	if toolConfig == nil {
+		toolConfig = make(map[string]any)
+		request["toolConfig"] = toolConfig
 	}
-	request["tools"] = filtered
-	if toolConfig, ok := request["toolConfig"].(map[string]any); ok {
-		delete(toolConfig, "includeServerSideToolInvocations")
-	}
+	toolConfig["includeServerSideToolInvocations"] = true
 	return json.Marshal(request)
 }

@@ -64,8 +64,15 @@ func IsOpenAICompatMessagesBridgeBody(body []byte) bool {
 	if len(body) == 0 {
 		return false
 	}
-	if bytes.Contains(body, []byte(OpenAICompatClaudeCodeTodoGuardMarker)) {
+	if bytes.Contains(body, []byte(OpenAICompatClaudeCodeTodoGuardMarker)) || bytes.Contains(body, []byte(tokenRouterClaudeCodeTodoGuardMarker)) {
 		return true
+	}
+	// Go 等客户端会把尖括号编码为 Unicode 转义，按 JSON 值识别同一历史标记。
+	if bytes.Contains(body, []byte(`\u003c`)) {
+		var decoded map[string]any
+		if json.Unmarshal(body, &decoded) == nil && IsOpenAICompatMessagesBridgeRequestBody(decoded) {
+			return true
+		}
 	}
 	return IsOpenAICompatMessagesBridgePromptCacheKey(gjson.GetBytes(body, "prompt_cache_key").String())
 }
@@ -74,7 +81,7 @@ func IsOpenAICompatMessagesBridgeRequestBody(reqBody map[string]any) bool {
 	if reqBody == nil {
 		return false
 	}
-	if input, ok := reqBody["input"].([]any); ok && InputContainsText(input, OpenAICompatClaudeCodeTodoGuardMarker) {
+	if input, ok := reqBody["input"].([]any); ok && (InputContainsText(input, OpenAICompatClaudeCodeTodoGuardMarker) || InputContainsText(input, tokenRouterClaudeCodeTodoGuardMarker)) {
 		return true
 	}
 	return IsOpenAICompatMessagesBridgePromptCacheKey(openai.FirstNonEmptyString(reqBody["prompt_cache_key"]))
@@ -86,6 +93,9 @@ func IsOpenAICompatMessagesBridgePromptCacheKey(key string) bool {
 		strings.HasPrefix(key, "anthropic-cache-") ||
 		strings.HasPrefix(key, "anthropic-digest-")
 }
+
+// 两种历史桥接标记均可识别；新生成仍沿本地旧标记。
+const tokenRouterClaudeCodeTodoGuardMarker = "<tokenrouter-claude-code-todo-guard>"
 
 const (
 	OpenAICompatClaudeCodeTodoGuardMarker = "<sub2api-claude-code-todo-guard>"
@@ -101,7 +111,7 @@ func AppendOpenAICompatClaudeCodeTodoGuard(req *protocolopenai.ResponsesRequest)
 	if err := json.Unmarshal(req.Input, &items); err != nil {
 		return false
 	}
-	if len(items) == 0 || ResponsesInputItemsContainText(items, OpenAICompatClaudeCodeTodoGuardMarker) {
+	if len(items) == 0 || (ResponsesInputItemsContainText(items, OpenAICompatClaudeCodeTodoGuardMarker) || ResponsesInputItemsContainText(items, tokenRouterClaudeCodeTodoGuardMarker)) {
 		return false
 	}
 
@@ -142,7 +152,7 @@ func AppendOpenAICompatClaudeCodeTodoGuardToRequestBody(reqBody map[string]any) 
 	}
 
 	input, ok := reqBody["input"].([]any)
-	if !ok || len(input) == 0 || InputContainsText(input, OpenAICompatClaudeCodeTodoGuardMarker) {
+	if !ok || len(input) == 0 || (InputContainsText(input, OpenAICompatClaudeCodeTodoGuardMarker) || InputContainsText(input, tokenRouterClaudeCodeTodoGuardMarker)) {
 		return false
 	}
 
@@ -182,6 +192,10 @@ func ResponsesInputItemsContainText(items []protocolopenai.ResponsesInputItem, n
 		if strings.Contains(string(item.Content), needle) {
 			return true
 		}
+		var decoded any
+		if json.Unmarshal(item.Content, &decoded) == nil && InputContainsText([]any{decoded}, needle) {
+			return true
+		}
 	}
 	return false
 }
@@ -192,8 +206,11 @@ func InputContainsText(input []any, needle string) bool {
 		return false
 	}
 	for _, item := range input {
-		b, err := json.Marshal(item)
-		if err == nil && strings.Contains(string(b), needle) {
+		// 标记含尖括号，默认 Marshal 会转为 \u003c，不能用原字符串直接比较。
+		var b bytes.Buffer
+		encoder := json.NewEncoder(&b)
+		encoder.SetEscapeHTML(false)
+		if err := encoder.Encode(item); err == nil && strings.Contains(b.String(), needle) {
 			return true
 		}
 	}

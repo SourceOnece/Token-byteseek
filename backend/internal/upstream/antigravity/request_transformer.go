@@ -77,8 +77,8 @@ func TransformClaudeToGeminiWithOptions(claudeReq *ClaudeRequest, projectID, map
 	// 用于存储 tool_use id -> name 映射
 	toolIDToName := make(map[string]string)
 
-	// 客户端函数存在时保留函数工具，不触发纯内置搜索的降级模型。
-	useWebSearchRequest := hasWebSearchTool(claudeReq.Tools) && !hasClientFunctionTools(claudeReq.Tools)
+	// 保留 TokenFlux 的内置搜索与函数混合路由。
+	useWebSearchRequest := hasWebSearchTool(claudeReq.Tools)
 	requestType := "agent"
 	targetModel := mappedModel
 	if useWebSearchRequest {
@@ -133,11 +133,20 @@ func TransformClaudeToGeminiWithOptions(claudeReq *ClaudeRequest, projectID, map
 		SessionID: generateStableSessionID(contents),
 	}
 
-	// 无工具推理请求也需要 toolConfig；混合工具已由 buildTools 消解。
-	innerRequest.ToolConfig = &GeminiToolConfig{
-		FunctionCallingConfig: &GeminiFunctionCallingConfig{
-			Mode: "VALIDATED",
-		},
+	// 针对 Gemini Reasoning 模型（如 gemini-3.1-pro-high等）过滤强制空 ToolConfig
+	isReasoning := IsGeminiReasoningModel(targetModel)
+	if !isReasoning || len(tools) > 0 {
+		// 总是设置 toolConfig，与官方客户端一致
+		innerRequest.ToolConfig = &GeminiToolConfig{
+			FunctionCallingConfig: &GeminiFunctionCallingConfig{
+				Mode: "VALIDATED",
+			},
+		}
+		// 函数声明与 Google Search 混用时，上游要求显式开启服务端工具调用。
+		if hasMixedToolInvocations(tools) {
+			enabled := true
+			innerRequest.ToolConfig.IncludeServerSideToolInvocations = &enabled
+		}
 	}
 
 	if systemInstruction != nil {
@@ -413,6 +422,11 @@ func buildGenerationConfig(req *ClaudeRequest) *GeminiGenerationConfig {
 
 // hasWebSearchTool 委托显式选用的内部 Gemini 工具方言。
 func hasWebSearchTool(tools []ClaudeTool) bool { return bridge.InternalHasWebSearchTool(tools) }
+
+// hasMixedToolInvocations 复用纯工具方言判定。
+func hasMixedToolInvocations(tools []GeminiToolDeclaration) bool {
+	return bridge.InternalHasMixedToolInvocations(tools)
+}
 
 // buildTools 输出纯转换产生的诊断，保持原有工具处理行为。
 func buildTools(tools []ClaudeTool) []GeminiToolDeclaration {

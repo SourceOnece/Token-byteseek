@@ -3,6 +3,7 @@ package grok
 import (
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 
 	"golang.org/x/mod/semver"
@@ -15,7 +16,7 @@ const (
 	CLIProxyHost = "cli-chat-proxy.grok.com"
 
 	// CLIStableVersion 是 cli-chat-proxy 已知可用的最低客户端版本。
-	CLIStableVersion = "0.2.93"
+	CLIStableVersion = "1.0.13"
 
 	// CLIVersionEnv 是运维可选的 CLI 版本覆盖环境变量。
 	CLIVersionEnv = "XAI_GROK_CLI_VERSION"
@@ -24,7 +25,9 @@ const (
 	CLITokenAuth = "xai-grok-cli"
 
 	// CLIClientIdentifier 是 Grok shell/CLI 使用的 x-grok-client-identifier 值。
-	CLIClientIdentifier = "grok-shell"
+	CLIClientIdentifier = "grok-pager"
+	// CLIClientMode 与新版客户端的交互式请求保持一致。
+	CLIClientMode = "interactive"
 )
 
 // ResolveCLIVersion 返回受支持的 CLI 客户端版本。
@@ -52,7 +55,19 @@ func CLIUserAgent(version string) string {
 	if strings.TrimSpace(version) == "" {
 		version = CLIClientVersion
 	}
-	return "xai-grok-workspace/" + version
+	platform, arch := runtime.GOOS, runtime.GOARCH
+	if platform == "darwin" {
+		platform = "macos"
+	}
+	switch arch {
+	case "amd64":
+		arch = "x86_64"
+	case "arm64":
+		arch = "aarch64"
+	case "386":
+		arch = "x86"
+	}
+	return "grok-pager/" + version + " grok-shell/" + version + " (" + platform + "; " + arch + ")"
 }
 
 // ApplyCLIProxyHeaders 仅在目标为 cli-chat-proxy 时写入固定 Grok CLI 身份请求头，
@@ -68,5 +83,7 @@ func ApplyCLIProxyHeaders(req *http.Request) {
 	req.Header.Set("X-XAI-Token-Auth", CLITokenAuth)
 	req.Header.Set("x-grok-client-version", version)
 	req.Header.Set("x-grok-client-identifier", CLIClientIdentifier)
+	req.Header.Set("x-grok-client-mode", CLIClientMode)
+	req.Header.Set("x-authenticateresponse", "authenticate-response")
 	req.Header.Set("User-Agent", CLIUserAgent(version))
 }

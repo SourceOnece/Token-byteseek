@@ -8,18 +8,13 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
-
-	"golang.org/x/mod/semver"
 )
 
 const (
-	grokCLIProxyHost       = CLIProxyHost
-	grokOfficialAPIHost    = "api.x.ai"
-	grokCLIStableVersion   = CLIClientVersion
-	grokCLIVersionOverride = CLIVersionEnv
-	grokFallbackBodyLimit  = 64 << 10
+	grokCLIProxyHost      = CLIProxyHost
+	grokOfficialAPIHost   = "api.x.ai"
+	grokFallbackBodyLimit = 64 << 10
 )
 
 // AccessDeniedFallbackTransport 保持订阅 CLI 代理为 OAuth 主路由；仅当代理返回
@@ -121,6 +116,8 @@ func newGrokOfficialAPIFallbackRequest(req *http.Request) (*http.Request, error)
 	for _, header := range []string{
 		"X-XAI-Token-Auth",
 		"X-Grok-Client-Version",
+		"X-Grok-Client-Mode",
+		"X-Authenticateresponse",
 		"X-Grok-Client-Surface",
 		"X-UserID",
 		"X-Email",
@@ -170,27 +167,10 @@ type prefixedReadCloser struct {
 // 仅精确匹配 CLI 代理主机，避免改变直连 api.x.ai 的流量，并统一覆盖 Responses、
 // Chat Completions、媒体、额度探测和提供商测试请求。
 func ApplyTransportCLIHeaders(req *http.Request) {
-	if req == nil || req.URL == nil || !strings.EqualFold(strings.TrimSpace(req.URL.Hostname()), grokCLIProxyHost) {
-		return
-	}
-	if req.Header == nil {
-		req.Header = make(http.Header)
-	}
-	version := strings.TrimSpace(os.Getenv(grokCLIVersionOverride))
-	if !IsTransportCLIVersionSupported(version) {
-		version = grokCLIStableVersion
-	}
-	req.Header.Set("X-XAI-Token-Auth", CLITokenAuth)
-	req.Header.Set("x-grok-client-version", version)
-	req.Header.Set("x-grok-client-identifier", CLIClientIdentifier)
-	req.Header.Set("User-Agent", CLIUserAgent(version))
+	ApplyCLIProxyHeaders(req)
 }
 
 // IsTransportCLIVersionSupported 校验覆盖版本是否为规范 SemVer，且不低于内置最低版本。
 func IsTransportCLIVersionSupported(version string) bool {
-	canonical := "v" + version
-	minimum := "v" + CLIClientVersion
-	return semver.IsValid(canonical) &&
-		semver.Canonical(canonical) == canonical &&
-		semver.Compare(canonical, minimum) >= 0
+	return IsSupportedCLIVersion(version)
 }
