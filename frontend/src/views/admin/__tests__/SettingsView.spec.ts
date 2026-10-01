@@ -794,6 +794,10 @@ describe("admin SettingsView payment visible method controls", () => {
     await wrapper.find('form').trigger('submit');
     await flushPromises();
     expect(updateSettings).toHaveBeenCalledWith(expect.objectContaining({ site_theme: 'tokenflux' }));
+    // 保存整页时不能附带后端不接受的平台，否则主题也会一起被拒绝。
+    expect(updateSettings).toHaveBeenCalledWith(expect.objectContaining({
+      provider_scheduling_thresholds: { openai: 100, anthropic: 100, grok: 100, kimi: 100, zhipu: 100 },
+    }));
     expect(fetchPublicSettings).toHaveBeenCalledWith(true);
     wrapper.unmount();
   });

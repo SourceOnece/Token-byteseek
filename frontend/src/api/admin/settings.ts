@@ -52,20 +52,18 @@ type DefaultSubscriptionInput = Partial<DefaultSubscriptionSetting> & {
   group_id?: number | null;
 };
 
-export type SchedulingThresholdPlatformType = "openai" | "anthropic" | "grok" | "kimi" | "zhipu" | "minimax" | "opencode_go"
+export type SchedulingThresholdPlatformType = "openai" | "anthropic" | "grok" | "kimi" | "zhipu"
 
 export type ProviderSchedulingThresholdsMap = Record<SchedulingThresholdPlatformType, number>
 
 // 与后端 AllowedSchedulingThresholdPlatforms 保持一致（deepseek 为余额型，
-// 走余额检测而非用量阈值）。
+// 走余额检测而非用量阈值）。MiniMax/OpenCode 尚无后端阈值评估，不能随整页保存提交。
 export const SCHEDULING_THRESHOLD_PLATFORMS: SchedulingThresholdPlatformType[] = [
   "openai",
   "anthropic",
   "grok",
   "kimi",
   "zhipu",
-  "minimax",
-  "opencode_go",
 ]
 
 /** 将各平台自动停调阈值归一化到 1 到 100，100 表示关闭。 */

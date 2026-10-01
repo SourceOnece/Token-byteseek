@@ -94,6 +94,8 @@ setup 使用 `DATA_DIR > 可写 /app/data > 当前目录` 选择 `config.yaml` �
 <a id="runtime_settings"></a>
 ## 数据库运行时设置
 
+提供商自动停调阈值 `provider_scheduling_thresholds` 的设置表单与后端白名单一致，仅包含 OpenAI、Anthropic、Grok、Kimi、Zhipu；MiniMax/OpenCode 尚无这条阈值评估链，不能因其它平台类型已存在就加入整页保存载荷，否则会触发未知平台校验而拒绝整次保存。账号/网关平台支持与这项阈值配置支持是不同边界。
+
 site_theme 属于站点运行时设置，允许 tokenflux（默认）或 bauhaus；非空非法写入拒绝，省略字段保留旧值，缺键/历史无效值读取回退 tokenflux。管理员在“通用设置 → 站点设置”通过原设置 GET/PUT 读写；公开设置和 HTML 注入只下发当前值用于渲染，不提供普通用户写入口。更新后通知本实例 HTML 缓存失效；前端挂载时再强制复核公开配置，避免其它实例的旧 HTML 长期覆盖数据库新值，失败时保留已注入配置。已打开页面不主动推送，用户刷新或下一次加载时跟随；明暗模式仍是原有独立偏好。
 
 usage、audit、ops 的静态参数由 app 投影为各模块 Options；动态 Ops 设置与日志配置继续由原数据库键控制。统一预聚合控制器位于 `settings/preaggregation`，仍有十五秒缓存及原更新通知，不新增设置格式或发布订阅协议。运行日志的应用、持久化失败后回滚和清理 Reload 顺序保持不变。
