@@ -91,7 +91,7 @@ func newGatewaySessionLimitFixture(t *testing.T, providerType string, failover b
 	providers := []*gatewayprovider.ExecutionProvider{{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 12, Name: "session-test", Platform: capability.PlatformAnthropic, Type: providerType,
-			Credentials: map[string]any{"access_token": "test-token"}, Extra: map[string]any{"max_sessions": 1},
+			Credentials: map[string]any{"access_token": "test-token", "model_mapping": map[string]any{"claude-sonnet-4-5": "claude-sonnet-4-5-20250929"}}, Extra: map[string]any{"max_sessions": 1},
 			Concurrency: 2, Status: billing.StatusActive, Schedulable: true,
 			ProviderGroups: []providercore.GroupMembership{{ProviderID: 12, GroupID: groupID}},
 		},

@@ -3,9 +3,10 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
-	"github.com/tidwall/gjson"
 	"net/http"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
@@ -49,7 +50,7 @@ func (p *wsStreamAdapter) ResolvedTier(body []byte) *string {
 }
 
 func (p *wsStreamAdapter) Reasoning(body []byte, mapped, original string) *string {
-	return gatewayprovider.ApplyThinkingEnabledFallback(requeststate.ExtractOpenAIReasoningEffortFromBody(body, mapped, original), body, mapped)
+	return gatewayprovider.ApplyThinkingEnabledFallback(requeststate.ExtractOpenAIReasoningEffortFromBody(body), body, mapped)
 }
 
 func (p *wsStreamAdapter) ImageCounter() gatewayws.ImageCounter {

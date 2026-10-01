@@ -46,8 +46,8 @@ func TestResolve_NoGroupID(t *testing.T) {
 	require.NotNil(t, resolved.BasePricing)
 	require.InDelta(t, 3e-6, resolved.BasePricing.InputPricePerToken, 1e-12)
 	// BillingService.GetModelPricing uses fallback internally, but resolveBasePricing
-	// reports "litellm" when GetModelPricing succeeds (regardless of internal source)
-	require.Equal(t, "litellm", resolved.Source)
+	// reports "catalog" when GetModelPricing succeeds (regardless of internal source)
+	require.Equal(t, "catalog", resolved.Source)
 }
 
 func TestResolve_UnknownModel(t *testing.T) {
@@ -69,8 +69,8 @@ func TestResolve_UnknownModel(t *testing.T) {
 
 	require.NotNil(t, resolved)
 	require.Nil(t, resolved.BasePricing)
-	// Unknown model: GetModelPricing returns error, source is "fallback"
-	require.Equal(t, "fallback", resolved.Source)
+	// 未知型号返回缺价状态，不借用默认型号价格。
+	require.Equal(t, "unpriced", resolved.Source)
 }
 
 func TestGetIntervalPricing_NoIntervals(t *testing.T) {
@@ -279,7 +279,7 @@ func TestResolve_WithPricingConfigOverride_TokenFlatPreservesNativeTierRatio(t *
 }
 
 func TestResolve_WithPricingConfigOverride_TokenPartialOverride(t *testing.T) {
-	// PricingConfig only sets InputPrice; OutputPrice should remain from the base (LiteLLM/fallback).
+	// PricingConfig only sets InputPrice; OutputPrice should remain from the base (模型目录/fallback).
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
@@ -315,7 +315,7 @@ func TestResolve_WithPricingConfigOverride_PriceMultiplierOnlyIsIgnored(t *testi
 
 	// 非法的仅倍率存量数据不能改变默认模型价格。
 	require.NotNil(t, resolved)
-	require.Equal(t, billingpricing.PricingSourceLiteLLM, resolved.Source)
+	require.Equal(t, billingpricing.PricingSourceCatalog, resolved.Source)
 	require.False(t, resolved.HasEffectivePricing())
 	require.NotNil(t, resolved.BasePricing)
 	require.InDelta(t, 3e-6, resolved.BasePricing.InputPricePerToken, 1e-12)
@@ -334,7 +334,7 @@ func TestResolve_BlankConfigPricingIsIgnoredForNonQoder(t *testing.T) {
 	})
 
 	require.NotNil(t, resolved)
-	require.Equal(t, billingpricing.PricingSourceLiteLLM, resolved.Source)
+	require.Equal(t, billingpricing.PricingSourceCatalog, resolved.Source)
 	require.False(t, resolved.HasEffectivePricing())
 	require.NotNil(t, resolved.BasePricing)
 	require.InDelta(t, 3e-6, resolved.BasePricing.InputPricePerToken, 1e-12)
@@ -532,7 +532,7 @@ func TestResolve_QoderBlankRouteKeyPricingIsUnpricedButAliasManualPricingWorks(t
 		GroupID: &groupID,
 	})
 	require.NotNil(t, routeResolved)
-	require.Equal(t, billingpricing.PricingSourceFallback, routeResolved.Source)
+	require.Equal(t, billingpricing.PricingSourceUnpriced, routeResolved.Source)
 	require.Nil(t, routeResolved.BasePricing)
 	require.False(t, routeResolved.HasEffectivePricing())
 
@@ -618,7 +618,7 @@ func TestResolve_QoderPerRequestRouteKeyTokenOnlyIntervalIsUnpriced(t *testing.T
 		GroupID: &groupID,
 	})
 	require.NotNil(t, routeResolved)
-	require.Equal(t, billingpricing.PricingSourceFallback, routeResolved.Source)
+	require.Equal(t, billingpricing.PricingSourceUnpriced, routeResolved.Source)
 	require.Nil(t, routeResolved.BasePricing)
 	require.False(t, routeResolved.HasEffectivePricing())
 

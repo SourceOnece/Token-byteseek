@@ -13,6 +13,20 @@ afterEach(() => {
 })
 
 describe('BaseDialog 移动端视口约束', () => {
+  it('Escape 只关闭顶层，旧弹窗不抢走新弹窗焦点', async () => {
+    const first = mount(BaseDialog, { attachTo: document.body, props: { show: true, title: '第一层' }, slots: { default: '<button>第一层按钮</button>' } })
+    wrappers.push(first)
+    await nextTick()
+    const second = mount(BaseDialog, { attachTo: document.body, props: { show: true, title: '第二层' }, slots: { default: '<button>第二层按钮</button>' } })
+    wrappers.push(second)
+    await nextTick()
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(second.emitted('close')).toHaveLength(1)
+    expect(first.emitted('close')).toBeUndefined()
+    first.unmount()
+    expect(document.body.classList.contains('modal-open')).toBe(true)
+    expect(document.activeElement?.closest('[role="dialog"]')?.textContent).toContain('第二层')
+  })
   it('默认保留关闭按钮，批次执行时可显式隐藏并禁用 Escape', async () => {
     const wrapper = mount(BaseDialog, {
       attachTo: document.body,

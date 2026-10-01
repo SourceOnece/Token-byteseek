@@ -18,12 +18,16 @@ func TestCanonicalRequestedReasoningEffort(t *testing.T) {
 		{name: "flat explicit", body: `{"model":"gpt-5.4","reasoning_effort":"x-high"}`, want: "xhigh"},
 		{name: "anthropic output config", body: `{"model":"claude-sonnet","output_config":{"effort":"high"}}`, want: "high"},
 		{name: "none explicit", body: `{"model":"gpt-5.4","reasoning_effort":"none"}`, want: "none"},
-		{name: "candidate suffix", body: `{"model":"gpt-5.4"}`, candidates: []string{"gpt-5.4-max"}, want: "max"},
-		{name: "body suffix fallback", body: `{"model":"gpt-5.4-high"}`, want: "high"},
+		{name: "candidate suffix", body: `{"model":"gpt-5.4"}`, candidates: []string{"gpt-5.4-max"}, want: ""},
+		{name: "body suffix fallback", body: `{"model":"gpt-5.4-high"}`, want: ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CanonicalRequestedReasoningEffort([]byte(tt.body), tt.candidates...)
+			got := CanonicalRequestedReasoningEffort([]byte(tt.body))
+			if tt.want == "" {
+				require.Nil(t, got)
+				return
+			}
 			require.NotNil(t, got)
 			require.Equal(t, tt.want, *got)
 		})

@@ -46,6 +46,10 @@ var oauthForeignModelPrefixes = []string{
 // 原样透传必然被 Codex 上游以不可重试的 400 拒绝，应在调度阶段跳过该提供商。
 func IsOpenAIOAuthServableModel(requestedModel string) bool {
 	model := strings.ToLower(capability.LastOpenAIModelSegment(requestedModel))
+	// 厂商资格只读取路径尾段识别已知不支持的模型，不改写转发或查价身份。
+	if index := strings.LastIndexByte(model, '/'); index >= 0 {
+		model = model[index+1:]
+	}
 	if model == "" {
 		return true // 空模型交由上层必填校验处理。
 	}

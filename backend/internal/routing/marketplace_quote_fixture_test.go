@@ -21,7 +21,7 @@ func (p marketplaceQuoteFixture) Quote(ctx context.Context, req routing.Marketpl
 	resolver := p.resolver
 	if resolver == nil {
 		resolver = billing.NewPriceResolver(nil, p.calculator, modelidentity.Identity, func(model string, err error) {
-			slog.Debug("failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)
+			slog.Debug("failed to get model pricing from model catalog, using fallback", "model", model, "error", err)
 		})
 	}
 	return resolver.PublicQuote(ctx, billing.PublicQuoteInput{PricingInput: billing.PricingInput{Model: req.Model, GroupID: &req.GroupID}, RateMultiplier: req.RateMultiplier, FreeFastApplicable: req.FreeFastApplicable})

@@ -9,13 +9,6 @@ func ApplyConfigPrice(pricing *ModelPricing, configPricing *ModelPricingEntry) *
 	cloned := *pricing
 	pricing = &cloned
 	ApplyConfigTokenPriceOverrides(pricing, configPricing)
-	if configPricing.ImageOutputPrice != nil {
-		pricing.ImageOutputPricePerToken = *configPricing.ImageOutputPrice
-	} else {
-		pricing.ImageOutputPricePerToken = 0
-	}
-	pricing.ImageOutputPriceExplicit = true
-	ApplyConfigImageInputPrice(configPricing, pricing)
 	multiplier, configured := NormalizedPriceMultiplier(configPricing)
 	if configured {
 		pricing = MultiplyModelPricing(pricing, multiplier)

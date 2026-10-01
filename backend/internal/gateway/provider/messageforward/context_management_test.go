@@ -38,7 +38,7 @@ func TestApplyClaudeCodeOAuthMimicryToBody_HaikuRewritesSystem(t *testing.T) {
 	require.Contains(t, system[0].Get("text").String(), "x-anthropic-billing-header:")
 	require.Equal(t, claude.ClaudeCodeSystemPrompt, system[1].Get("text").String())
 	require.Contains(t, gjson.GetBytes(out, "messages.0.content.0.text").String(), "Pi project instructions")
-	require.Equal(t, "claude-haiku-4-5-20251001", gjson.GetBytes(out, "model").String())
+	require.Equal(t, "claude-haiku-4-5", gjson.GetBytes(out, "model").String())
 }
 
 func TestApplyClaudeCodeOAuthMimicryToBody_FableOmitsRefusedExpansion(t *testing.T) {

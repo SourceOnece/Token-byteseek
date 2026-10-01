@@ -72,7 +72,7 @@ func (p *openAIRawFallbackAdapter) ReasoningContent(id string) string {
 }
 
 func (p *openAIRawFallbackAdapter) EffectiveEffort(b, original []byte, models ...string) *string {
-	return requeststate.ExtractEffectiveOpenAIReasoningEffortFromBody(b, original, models...)
+	return requeststate.ExtractOpenAIReasoningEffortFromBody(b)
 }
 func (p *openAIRawFallbackAdapter) ObserveModel(m string) { SetOpsUpstreamModel(p.c, m) }
 func (p *openAIRawFallbackAdapter) Target(ctx context.Context) (string, string, error) {

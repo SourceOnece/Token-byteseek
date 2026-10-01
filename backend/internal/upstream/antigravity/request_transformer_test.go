@@ -661,3 +661,19 @@ func TestTransformClaudeToGeminiWithOptions_GeminiReasoningKeepsToolConfigWithTo
 	require.Equal(t, "VALIDATED", req.Request.ToolConfig.FunctionCallingConfig.Mode)
 	require.Len(t, req.Request.Tools, 1)
 }
+
+// TestWebSearchPreservesSelectedModel 验证搜索工具不会把请求静默切换为固定型号。
+func TestWebSearchPreservesSelectedModel(t *testing.T) {
+	for _, model := range []string{"claude-sonnet-4-5", "gemini-3.6-flash"} {
+		request := &ClaudeRequest{
+			Model:    model,
+			Messages: []ClaudeMessage{{Role: "user", Content: json.RawMessage(`"hello"`)}},
+			Tools:    []ClaudeTool{{Type: "web_search_20250305", Name: "web_search"}},
+		}
+		body, err := TransformClaudeToGeminiWithOptions(request, "project", model, DefaultTransformOptions())
+		require.NoError(t, err)
+		var wrapped V1InternalRequest
+		require.NoError(t, json.Unmarshal(body, &wrapped))
+		require.Equal(t, model, wrapped.Model)
+	}
+}

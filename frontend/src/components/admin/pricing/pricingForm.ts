@@ -54,12 +54,12 @@ export function pricingEntryToAPI(entry: PricingFormEntry): ModelPricingEntry {
   }
 }
 
-// 校验使用与后端定价缓存相同的 Claude 点号归一化，不影响模型映射的匹配语义。
+// 校验与后端使用相同的完整型号身份，只忽略大小写与首尾空白。
 export function validatePricingForm(entries: PricingFormEntry[], t: TranslateFn): string | null {
   const configured = entries.filter(entry => entry.models.length > 0)
   const models = configured.flatMap(entry => entry.models.map(model => {
     const normalized = model.trim().toLowerCase()
-    return normalized.startsWith('claude-') ? normalized.replace(/\./g, '-') : normalized
+    return normalized
   }))
   const conflict = findModelConflict(models)
   if (conflict) return t('admin.pricing.modelConflict', { model1: conflict[0], model2: conflict[1] })

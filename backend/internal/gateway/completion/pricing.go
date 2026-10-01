@@ -32,6 +32,9 @@ func (s *Recorder) CalculateRecordUsageCost(
 		} else if resolved != nil {
 			return s.CalculateImageCost(ctx, result, apiKey, provider, billingModel, requestedModel, billingModelSource, groupMappedModel, pricingModel, resolved, imageMultiplier, opts.PricingAt)
 		}
+		if s.imageUsesTokenPricing(billingModel, result.ImageSize, result.Usage) {
+			return s.CalculateTokenCost(ctx, result, apiKey, provider, billingModel, requestedModel, billingModelSource, groupMappedModel, multiplier, opts)
+		}
 		return s.CalculateImageCost(ctx, result, apiKey, provider, billingModel, requestedModel, billingModelSource, groupMappedModel, billingModel, nil, imageMultiplier, opts.PricingAt)
 	}
 
@@ -138,7 +141,12 @@ func (s *Recorder) CalculateImageCost(
 		return cost
 	}
 
-	return s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, multiplier)
+	cost, err := s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, multiplier)
+	if err != nil {
+		s.printf("service.gateway", "Calculate image cost failed: %v", err)
+		return &CostBreakdown{BillingMode: string(BillingModeImage)}
+	}
+	return cost
 }
 
 func (s *Recorder) CalculateTokenCost(
@@ -213,7 +221,10 @@ func (s *Recorder) CalculateTokenCost(
 	}
 	if err != nil {
 		s.printf("service.gateway", "Calculate cost failed: %v", err)
-		return &CostBreakdown{ActualCost: 0}
+		return &CostBreakdown{BillingMode: string(BillingModeToken)}
+	}
+	if cost != nil && cost.BillingMode == "" {
+		cost.BillingMode = string(BillingModeToken)
 	}
 	return cost
 }
@@ -241,7 +252,7 @@ func (s *Recorder) CalculateOpenAIRecordUsageCostAt(
 	}
 	if IsGrokVideoUsageResult(result, billingModels) {
 		if resolved := s.ResolveOpenAIConfigPricing(ctx, billingModel, apiKey); resolved == nil || resolved.Mode != BillingModeToken {
-			return s.CalculateOpenAIVideoCost(ctx, billingModel, apiKey, result, videoMultiplier), nil
+			return s.CalculateOpenAIVideoCost(ctx, billingModel, apiKey, result, videoMultiplier)
 		}
 	}
 	if result != nil && result.AudioUsage != nil {
@@ -260,8 +271,12 @@ func (s *Recorder) CalculateOpenAIRecordUsageCostAt(
 
 	if result != nil && result.ImageCount > 0 {
 		// 共享价格配置定价为令牌计费时走令牌路径，否则走图片计费
-		if resolved := s.ResolveOpenAIConfigPricing(ctx, billingModel, apiKey); resolved == nil || resolved.Mode != BillingModeToken {
-			return s.CalculateOpenAIImageCost(ctx, billingModel, apiKey, result, imageMultiplier), nil
+		resolved := s.ResolveOpenAIConfigPricing(ctx, billingModel, apiKey)
+		if resolved != nil && resolved.Mode != BillingModeToken {
+			return s.CalculateOpenAIImageCost(ctx, billingModel, apiKey, result, imageMultiplier)
+		}
+		if resolved == nil && !s.imageUsesTokenPricing(billingModel, result.ImageSize, result.Usage) {
+			return s.CalculateOpenAIImageCost(ctx, billingModel, apiKey, result, imageMultiplier)
 		}
 	}
 
@@ -286,6 +301,9 @@ func (s *Recorder) CalculateOpenAIRecordUsageCostAt(
 			)
 			if err == nil {
 				tokenCost = cost
+				if tokenCost != nil && tokenCost.BillingMode == "" {
+					tokenCost.BillingMode = string(BillingModeToken)
+				}
 				break
 			}
 			lastErr = err
@@ -397,7 +415,20 @@ func ForwardResultReasoningEffort(result *Result) string {
 	return *result.ReasoningEffort
 }
 
-func (s *Recorder) CalculateOpenAIImageCost(ctx context.Context, billingModel string, apiKey *KeySnapshot, result *Result, multiplier float64) *CostBreakdown {
+// imageUsesTokenPricing 仅在上游报告 token 用量且没有按张价时使用该型号的 token 报价。
+// 固定单张预留仍要求按张价，不能把 token 单价当作单张价格。
+func (s *Recorder) imageUsesTokenPricing(model, size string, usage TokenUsage) bool {
+	if usage.InputTokens <= 0 && usage.OutputTokens <= 0 && usage.CacheReadInputTokens <= 0 && usage.CacheCreationInputTokens <= 0 && usage.ImageInputTokens <= 0 && usage.ImageOutputTokens <= 0 {
+		return false
+	}
+	if _, err := s.billingService.DefaultImagePrice(model, NormalizeImageBillingTierOrDefault(size)); err == nil {
+		return false
+	}
+	_, err := s.billingService.GetModelPricing(model)
+	return err == nil
+}
+
+func (s *Recorder) CalculateOpenAIImageCost(ctx context.Context, billingModel string, apiKey *KeySnapshot, result *Result, multiplier float64) (*CostBreakdown, error) {
 	sizeTier := NormalizeImageBillingTierOrDefault(result.ImageSize)
 	resolved := s.ResolveOpenAIConfigPricing(ctx, billingModel, apiKey)
 	if resolved != nil {
@@ -408,14 +439,18 @@ func (s *Recorder) CalculateOpenAIImageCost(ctx context.Context, billingModel st
 		})
 		if err != nil {
 			s.printf("service.openai_gateway", "Calculate image model card cost failed: %v", err)
-			return &CostBreakdown{}
+			return &CostBreakdown{BillingMode: string(resolved.Mode)}, err
 		}
-		return cost
+		return cost, nil
 	}
-	return s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, multiplier)
+	cost, err := s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, multiplier)
+	if err != nil {
+		return &CostBreakdown{BillingMode: string(BillingModeImage)}, err
+	}
+	return cost, nil
 }
 
-func (s *Recorder) CalculateOpenAIVideoCost(ctx context.Context, billingModel string, apiKey *KeySnapshot, result *Result, multiplier float64) *CostBreakdown {
+func (s *Recorder) CalculateOpenAIVideoCost(ctx context.Context, billingModel string, apiKey *KeySnapshot, result *Result, multiplier float64) (*CostBreakdown, error) {
 	videoCount := result.VideoCount
 	if videoCount <= 0 {
 		videoCount = 1
@@ -435,11 +470,15 @@ func (s *Recorder) CalculateOpenAIVideoCost(ctx context.Context, billingModel st
 		})
 		if err != nil {
 			s.printf("service.openai_gateway", "Calculate video model card cost failed: %v", err)
-			return &CostBreakdown{}
+			return &CostBreakdown{BillingMode: string(resolved.Mode)}, err
 		}
-		return cost
+		return cost, nil
 	}
-	return s.billingService.CalculateVideoCost(billingModel, resolution, videoCount, durationSeconds, multiplier)
+	cost, err := s.billingService.CalculateVideoCost(billingModel, resolution, videoCount, durationSeconds, multiplier)
+	if err != nil {
+		return &CostBreakdown{BillingMode: string(BillingModeVideo)}, err
+	}
+	return cost, nil
 }
 
 func (s *Recorder) FilterCNProviderBillingModelCandidates(

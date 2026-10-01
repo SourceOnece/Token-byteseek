@@ -135,7 +135,7 @@ func (p *openAIChatExecutionAdapter) ApplyChatFast(ctx context.Context, model st
 }
 
 func (p *openAIChatExecutionAdapter) EffectiveEffort(body, original []byte, models ...string) *string {
-	return requeststate.ExtractEffectiveOpenAIReasoningEffortFromBody(body, original, models...)
+	return requeststate.ExtractOpenAIReasoningEffortFromBody(body)
 }
 
 func (p *openAIChatExecutionAdapter) ThinkingFallback(effort *string, body []byte, model string) *string {

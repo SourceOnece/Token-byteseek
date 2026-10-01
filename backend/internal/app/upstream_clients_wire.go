@@ -15,7 +15,6 @@ import (
 // upstreamClientProviders 绑定平台客户端与唯一传输适配器。
 var upstreamClientProviders = wire.NewSet(
 	anthropic.NewRequestFingerprint,
-	providePricingRemoteClient,
 	provideClaudeUsageFetcher,
 	provideOpenAIOAuthClient,
 	provideGeminiOAuthClient,

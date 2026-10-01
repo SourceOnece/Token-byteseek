@@ -246,7 +246,7 @@ func (a *grokForwardAdapter) Sink() upstream.OutputSink {
 }
 
 func (a *grokForwardAdapter) Effort(body []byte, model string) *string {
-	return requeststate.ExtractOpenAIReasoningEffortFromBody(body, model)
+	return requeststate.ExtractOpenAIReasoningEffortFromBody(body)
 }
 
 func (a *grokForwardAdapter) ReadBody(resp *http.Response) ([]byte, error) {

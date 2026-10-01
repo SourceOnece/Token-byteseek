@@ -47,6 +47,11 @@ API 密钥页 `UseKeyModal` 的文件配置区复用 `.code-block`：深浅主�
 - 配色：开态默认 `toggle-active`（≡ `bg-primary-600`）；关态由 `off-tone` 选档——`default`（gray-300）/ `soft`（gray-200，手写迁移站点的原色）。个别站点的亮色开态（`bg-primary-500`）或 hover 配色用 `on-class` / `off-class` 整串透传，不新增档位。
 - 异步保存场景用 `:model-value` + `@update:model-value` 受控写法，值由处理器写回（参考 ProvidersView 的可调度开关）。
 
+<a id="loading_feedback"></a>
+## 导航与弹窗生命周期
+
+导航按独立编号完成，旧导航取消或结束不能清除新导航状态；异常路径也完成对应编号。保留包豪斯导航进度呈现。BaseDialog 与凭证 AuthCardDialog 共用弹窗堆栈，只由顶层响应 Escape；滚动锁保持到退出完成，卸载释放自身锁，不能抢回新弹窗焦点。
+
 ## 菜单与浮层
 
 - 下拉容器统一用 `.dropdown` 纯容器配方（定位、圆角、阴影、暗色）；箭头定位与入场动效不进门配方，由调用点自补（目前仅 AppHeader 一处）。

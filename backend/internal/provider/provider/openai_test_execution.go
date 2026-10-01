@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/tidwall/gjson"
 	"io"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 
@@ -876,8 +877,8 @@ type OpenAIProviderTest struct {
 	ApplyRouting func(*TestRun, *providercore.Record, *http.Request, bool)
 	ResolveTLS   func(*TestRun, *providercore.Record) *tlsfingerprint.Profile
 	EnsureTask   func(context.Context, *providercore.Record, string) error
-	ModelRules   openai.CodexModelRules
-	Prepare      func(*TestRun, *providercore.Record) error
+
+	Prepare func(*TestRun, *providercore.Record) error
 }
 
 // OpenAIProviderTestStore 只暴露测试路径原本使用的字段操作。
@@ -901,7 +902,7 @@ func (s *OpenAIProviderTest) agentHeaders(ctx context.Context, value *providerco
 
 func (s *OpenAIProviderTest) normalizeModel(value *providercore.Record, model string) string {
 	if value.UsesOpenAICodexProtocol() {
-		return openai.NormalizeCodexModel(model, s.ModelRules)
+		return openai.NormalizeCodexModel(model)
 	}
 	return strings.TrimSpace(model)
 }

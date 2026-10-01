@@ -60,7 +60,7 @@ OpenAI 文本、Responses、WS、Images 和辅助执行器共用请求构造、�
 
 ### 规则与存储边界
 
-`protocol` 维护协议值、报文与转换状态，`routing/capability` 判断原生协议、准入与单步转换，`routing/modelmap` 提供模型匹配，routing 决定路由与 effort 映射。`billing/pricing` 负责纯查价和费用计算，billing/provider 加载目录并维护热更新；纯协议和定价算法不执行配置读取或 I/O。
+`protocol` 维护协议值、报文与转换状态，`routing/capability` 判断原生协议、准入与单步转换，`routing/modelmap` 提供模型匹配，routing 决定路由与 effort 映射。`billing/pricing` 负责纯查价和费用计算，`modelcatalog/provider.Service` 加载统一目录并维护热更新；纯协议和定价算法不执行配置读取或 I/O。
 
 `gateway/provider.ExecutionProvider` 组合 `provider.Record` 与当次 `AttemptRoute`，不参与数据库或缓存编码。管理 DTO、无凭据候选与执行目标使用不同投影。配置、CAS、outbox、消费累计和快照编码分别由所属存储与规则实现维护，app 只绑定端口和转换投影。
 
@@ -87,7 +87,7 @@ app 在 bootstrap 成功后固定共享 Calendar，显式传入用量、支付�
 
 Wire 构造对象并登记资源后，lifecycle 才启动后台工作。时间轮和设置/定价预热先完成，再启动缓存订阅及消费队列，最后启动周期生产者、任务拉取和 HTTP。原有首次执行、预热降级、功能开关和动态 worker 数量保持各模块语义。构造或部分启动失败时回收已取得及已尝试启动的资源，错误链保留原始原因。
 
-定价 provider 由 `app/pricing.go` 投影独立 Options，按初始化、启动、停止的顺序接入生命周期。远端客户端和运行实例直接使用 billing/provider。Calculator、PriceResolver 和 PricingConfigService 也由 app 直接提供实例，供计算与查价消费者共享。平台模型别名和动态 Grok 默认值由 gateway/provider/modelidentity 投影，每次查价只取得一次快照；纯定价不读取平台运行状态。Key 与分组模型追踪由 gateway/modeltrace 组合。
+统一模型目录由 `app/model_catalog.go` 投影独立 Options，远端客户端和运行实例位于 `modelcatalog/provider`。独立 Wire 装配向计费、默认价格和模型属性消费者提供同一个 `Service`；生命周期以 `ModelCatalogInitialization`、`ModelCatalogService` 登记，保留原初始化、启动和停止顺序。目录日志使用 `service.modelcatalog`。 `app/runtime_model_catalog.go` 登记目录生命周期，`app/runtime_settings.go` 以 `RuntimeSettingsInitialization` 登记转发设置加载和 Grok 默认模型迁移；两者通过各自的就绪标记参与应用装配，运行设置仍先于目录初始化。`billing/provider` 只保留计费回退告警和时区适配。Calculator、PriceResolver 和 PricingConfigService 也由 app 直接提供实例，供计算与查价消费者共享。平台模型别名和动态 Grok 默认值由 gateway/provider/modelidentity 投影，每次查价只取得一次快照；纯定价不读取平台运行状态。Key 与分组模型追踪由 gateway/modeltrace 组合。
 
 billing 的余额/Key 缓存队列和订阅过期提醒由 app 绑定到现有生命周期。提醒保留立即首轮、每分钟扫描和既有 Redis/数据库 leader 策略，停止时取消并等待在途操作。
 

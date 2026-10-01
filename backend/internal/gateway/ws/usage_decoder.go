@@ -9,10 +9,10 @@ func (RequestUsageDecoder) ServiceTier(body []byte) *string {
 	return requeststate.ExtractOpenAIServiceTierFromBody(body)
 }
 
-func (RequestUsageDecoder) ReasoningEffort(body []byte, models ...string) *string {
-	return requeststate.ExtractOpenAIReasoningEffortFromBody(body, models...)
+func (RequestUsageDecoder) ReasoningEffort(body []byte) *string {
+	return requeststate.ExtractOpenAIReasoningEffortFromBody(body)
 }
 
-func (RequestUsageDecoder) RequestedReasoningEffort(body []byte, models ...string) *string {
-	return requeststate.CanonicalRequestedReasoningEffort(body, models...)
+func (RequestUsageDecoder) RequestedReasoningEffort(body []byte) *string {
+	return requeststate.CanonicalRequestedReasoningEffort(body)
 }

@@ -18,7 +18,6 @@ type RawFallbackPorts interface {
 	Profile() MessagesProfile
 	Error(int, string, string)
 	ValidateEffort([]byte, string) error
-	NormalizeModel(*protocolanthropic.AnthropicRequest)
 	BillingModel(string, string) string
 	UpstreamModel(string) string
 	MessagesEffort(*protocolanthropic.AnthropicRequest, string, string) string

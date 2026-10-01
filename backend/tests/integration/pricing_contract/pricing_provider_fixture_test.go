@@ -2,21 +2,17 @@ package pricingcontract
 
 import (
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 )
 
 // catalogFixture 显式构造尚未启动的目录输入，不复制任何生产算法或运行状态。
 type catalogFixture struct {
-	pricingData map[string]*pricing.LiteLLMModelPricing
+	pricingData map[string]*pricing.CatalogModelPricing
 }
 
-func newCatalogFixture(fixture catalogFixture) *billingadapter.PricingService {
-	return billingadapter.NewPricingServiceFromSnapshot(billingadapter.Options{
-		DefaultOpenAIModel:    openai.DefaultTestModel,
-		IsImageModel:          media.IsImageGenerationModel,
+func newCatalogFixture(fixture catalogFixture) *provider.Service {
+	return provider.NewServiceFromSnapshot(provider.Options{
 		ModelLookupCandidates: modelidentity.CandidatesFactory,
-	}, nil, billingadapter.Snapshot{Data: fixture.pricingData})
+	}, nil, provider.Snapshot{Data: fixture.pricingData})
 }

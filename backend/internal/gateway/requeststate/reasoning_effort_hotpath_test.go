@@ -68,11 +68,10 @@ func TestExtractOpenAIReasoningEffortFromBody(t *testing.T) {
 			wantNil: true,
 		},
 		{
-			name:      "缺失字段时从模型后缀推导",
-			body:      []byte(`{"input":"hi"}`),
-			model:     "gpt-5-high",
-			wantNil:   false,
-			wantValue: "high",
+			name:    "缺失字段时不从模型后缀推导",
+			body:    []byte(`{"input":"hi"}`),
+			model:   "gpt-5-high",
+			wantNil: true,
 		},
 		{
 			name:    "不从 GPT-5.6 后缀推导 ultra",
@@ -102,7 +101,7 @@ func TestExtractOpenAIReasoningEffortFromBody(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ExtractOpenAIReasoningEffortFromBody(tt.body, tt.model)
+			got := ExtractOpenAIReasoningEffortFromBody(tt.body)
 			if tt.wantNil {
 				require.Nil(t, got)
 				return
@@ -124,9 +123,9 @@ func TestValidateOpenAIReasoningEffort(t *testing.T) {
 		{name: "拒绝 Responses ultra", body: []byte(`{"reasoning":{"effort":"ultra"}}`), model: "gpt-5.6-sol", wantErr: true},
 		{name: "拒绝 Chat Completions ultra", body: []byte(`{"reasoning_effort":"ULTRA"}`), model: "gpt-5.6-terra", wantErr: true},
 		{name: "拒绝 Anthropic ultra", body: []byte(`{"output_config":{"effort":" ultra "}}`), model: "gpt-5.6-luna", wantErr: true},
-		{name: "拒绝请求模型 ultra 后缀", body: []byte(`{"input":"hi"}`), model: "openai/gpt-5.6-sol-ultra", wantErr: true},
-		{name: "拒绝请求体模型 ultra 后缀", body: []byte(`{"model":"gpt-5.6-terra_ultra"}`), wantErr: true},
-		{name: "拒绝 WS 会话模型 ultra 后缀", body: []byte(`{"type":"session.update","session":{"model":"gpt-5.6-luna-ultra"}}`), wantErr: true},
+		{name: "保留请求模型 ultra 后缀", body: []byte(`{"input":"hi"}`), model: "openai/gpt-5.6-sol-ultra", wantErr: false},
+		{name: "保留请求体模型 ultra 后缀", body: []byte(`{"model":"gpt-5.6-terra_ultra"}`), wantErr: false},
+		{name: "保留 WS 会话模型 ultra 后缀", body: []byte(`{"type":"session.update","session":{"model":"gpt-5.6-luna-ultra"}}`), wantErr: false},
 		{name: "拒绝 WS 会话 ultra 档位", body: []byte(`{"type":"session.update","session":{"reasoning":{"effort":"ultra"}}}`), wantErr: true},
 		{name: "拒绝 Realtime 响应 ultra 档位", body: []byte(`{"type":"response.create","response":{"reasoning":{"effort":"ultra"}}}`), wantErr: true},
 		{name: "不误伤非 OpenAI 模型", body: []byte(`{"model":"spark-ultra"}`)},

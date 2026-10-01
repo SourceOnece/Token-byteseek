@@ -141,10 +141,10 @@ func TestForwardAsAnthropic_NormalizesRoutingAndEffortForGpt54XHigh(t *testing.T
 	require.Equal(t, "gpt-5.4", result.UpstreamModel)
 	require.Equal(t, "gpt-5.4", result.BillingModel)
 	require.NotNil(t, result.ReasoningEffort)
-	require.Equal(t, "xhigh", *result.ReasoningEffort)
+	require.Equal(t, "medium", *result.ReasoningEffort)
 
 	require.Equal(t, "gpt-5.4", gjson.GetBytes(upstream.lastBody, "model").String())
-	require.Equal(t, "xhigh", gjson.GetBytes(upstream.lastBody, "reasoning.effort").String())
+	require.Equal(t, "medium", gjson.GetBytes(upstream.lastBody, "reasoning.effort").String())
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "gpt-5.4-xhigh", gjson.GetBytes(rec.Body.Bytes(), "model").String())
 	require.Equal(t, "ok", gjson.GetBytes(rec.Body.Bytes(), "content.0.text").String())
@@ -164,6 +164,14 @@ func TestForwardAsAnthropic_PreservesMaxForFinalGPT56ResponsesModel(t *testing.T
 		wantModel     string
 		wantEffort    string
 	}{
+		{
+			name:       "供应商限定型号保留显式 max 和完整 ID",
+			provider:   rawGPT56ResponsesAPIKeyProvider("qualified", "openai/gpt-5.6-sol"),
+			model:      "qualified",
+			effort:     "max",
+			wantModel:  "openai/gpt-5.6-sol",
+			wantEffort: "max",
+		},
 		{
 			name:       "API Key mapping keeps Luna max",
 			provider:   rawGPT56ResponsesAPIKeyProvider("luna", "gpt-5.6-luna"),

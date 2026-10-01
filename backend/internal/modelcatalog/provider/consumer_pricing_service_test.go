@@ -2,8 +2,6 @@ package provider
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -13,10 +11,10 @@ import (
 )
 
 func TestPricingSchedulerBlankRemoteURLDoesNotStart(t *testing.T) {
-	svc := NewPricingService(Options{RemoteURL: "  \t  "}, nil)
+	svc := NewService(Options{RemoteURL: "  \t  "}, nil)
 	defer svc.Stop()
 
-	svc.StartUpdateScheduler()
+	svc.startUpdateScheduler()
 	done := make(chan struct{})
 	go func() {
 		svc.Wait()
@@ -31,7 +29,7 @@ func TestPricingSchedulerBlankRemoteURLDoesNotStart(t *testing.T) {
 }
 
 func TestPricingNonEmptyInvalidRemoteURLStillReturnsValidationError(t *testing.T) {
-	svc := NewPricingService(Options{
+	svc := NewService(Options{
 		RemoteURL: "://invalid",
 		DataDir:   t.TempDir(),
 	}, nil)
@@ -43,7 +41,6 @@ func TestPricingNonEmptyInvalidRemoteURLStillReturnsValidationError(t *testing.T
 }
 
 func TestParsePricingData_ParsesPriorityAndServiceTierFields(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{})
 	body := []byte(`{
 		"gpt-5.4": {
 			"input_cost_per_token": 0.0000025,
@@ -59,12 +56,12 @@ func TestParsePricingData_ParsesPriorityAndServiceTierFields(t *testing.T) {
 			"long_context_output_cost_multiplier": 1.5,
 			"supports_service_tier": true,
 			"supports_prompt_caching": true,
-			"litellm_provider": "openai",
+			"provider": "openai",
 			"mode": "chat"
 		}
 	}`)
 
-	data, err := svc.ParsePricingData(body)
+	data, err := parsePricingFixture(body)
 	require.NoError(t, err)
 	pricing := data["gpt-5.4"]
 	require.NotNil(t, pricing)
@@ -79,14 +76,14 @@ func TestParsePricingData_ParsesPriorityAndServiceTierFields(t *testing.T) {
 }
 
 func TestParsePricingData_ParsesImageInputTokenPrice(t *testing.T) {
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{})
-	data, err := pricingSvc.ParsePricingData([]byte(`{
+	pricingSvc := newModelCatalogFixture(modelCatalogFixture{})
+	data, err := parsePricingFixture([]byte(`{
 		"gpt-image-2": {
 			"input_cost_per_token": 0.000005,
 			"input_cost_per_image_token": 0.000008,
 			"output_cost_per_token": 0.00001,
 			"output_cost_per_image_token": 0.00003,
-			"litellm_provider": "openai",
+			"provider": "openai",
 			"mode": "image_generation"
 		}
 	}`))
@@ -118,7 +115,7 @@ func TestBillingService_GPT56CacheWritePricingUsesOfficialMultiplier(t *testing.
 	}
 	for _, tt := range tests {
 		t.Run(tt.model, func(t *testing.T) {
-			pricingSvc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+			pricingSvc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 				tt.model: {
 					InputCostPerToken:               tt.input,
 					InputCostPerTokenPriority:       tt.inputPriority,
@@ -155,21 +152,21 @@ func TestBillingService_GPT56CacheWritePricingUsesOfficialMultiplier(t *testing.
 
 // gpt56LadderCatalogJSON 用于验证目录驱动的 GPT-5.6 阶梯；fallback 不再隐式补阶梯。
 const gpt56LadderCatalogJSON = `{
-	"gpt-5.6-sol": {"litellm_provider": "openai", "mode": "chat",
+	"gpt-5.6-sol": {"provider": "openai", "mode": "chat",
 		"input_cost_per_token": 5e-06, "input_cost_per_token_priority": 1e-05,
 		"output_cost_per_token": 3e-05, "output_cost_per_token_priority": 6e-05,
 		"cache_read_input_token_cost": 5e-07, "cache_read_input_token_cost_priority": 1e-06,
 		"input_cost_per_token_above_272k_tokens": 1e-05,
 		"output_cost_per_token_above_272k_tokens": 4.5e-05,
 		"cache_read_input_token_cost_above_272k_tokens": 1e-06},
-	"gpt-5.6-terra": {"litellm_provider": "openai", "mode": "chat",
+	"gpt-5.6-terra": {"provider": "openai", "mode": "chat",
 		"input_cost_per_token": 2e-06, "input_cost_per_token_priority": 4e-06,
 		"output_cost_per_token": 1.2e-05, "output_cost_per_token_priority": 2.4e-05,
 		"cache_read_input_token_cost": 2e-07, "cache_read_input_token_cost_priority": 4e-07,
 		"input_cost_per_token_above_272k_tokens": 4e-06,
 		"output_cost_per_token_above_272k_tokens": 1.8e-05,
 		"cache_read_input_token_cost_above_272k_tokens": 4e-07},
-	"gpt-5.6-luna": {"litellm_provider": "openai", "mode": "chat",
+	"gpt-5.6-luna": {"provider": "openai", "mode": "chat",
 		"input_cost_per_token": 2e-07, "input_cost_per_token_priority": 4e-07,
 		"output_cost_per_token": 1.2e-06, "output_cost_per_token_priority": 2.4e-06,
 		"cache_read_input_token_cost": 2e-08, "cache_read_input_token_cost_priority": 4e-08,
@@ -206,7 +203,7 @@ func TestBillingService_GPT56UsesLongContextPricingAcrossModelsAndTiers(t *testi
 	for _, model := range models {
 		for _, tier := range tiers {
 			t.Run(model.name+"/"+tier.name, func(t *testing.T) {
-				svc := newBillingFixture(newStubPricingServiceFromJSON(t, gpt56LadderCatalogJSON))
+				svc := newBillingFixture(newStubCatalogFromJSON(t, gpt56LadderCatalogJSON))
 				serviceTier := ""
 				if tier.name != "standard" {
 					serviceTier = tier.name
@@ -223,7 +220,7 @@ func TestBillingService_GPT56UsesLongContextPricingAcrossModelsAndTiers(t *testi
 }
 
 func TestBillingService_GPT56LongContextBoundaryIsExclusive(t *testing.T) {
-	svc := newBillingFixture(newStubPricingServiceFromJSON(t, gpt56LadderCatalogJSON))
+	svc := newBillingFixture(newStubCatalogFromJSON(t, gpt56LadderCatalogJSON))
 	tokens := billingpricing.UsageTokens{InputTokens: 100000, CacheCreationTokens: 100000, CacheReadTokens: 72000, OutputTokens: 10}
 
 	cost, err := svc.CalculateCost("gpt-5.6-sol", tokens, 1)
@@ -234,9 +231,9 @@ func TestBillingService_GPT56LongContextBoundaryIsExclusive(t *testing.T) {
 	require.InDelta(t, 10*30e-6, cost.OutputCost, 1e-12)
 }
 
-// 外部目录中的显式自定义条目不会再被代码重定向，也不会自动附加内置产品规则。
-func TestPricingService_ExplicitCatalogEntryDoesNotRedirectToSol(t *testing.T) {
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+// TestCatalogService_ExplicitCatalogEntryDoesNotRedirectToSol 验证外部目录中的显式自定义条目不会再被代码重定向，也不会自动附加内置产品规则。
+func TestCatalogService_ExplicitCatalogEntryDoesNotRedirectToSol(t *testing.T) {
+	pricingSvc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gpt-5.6":       {InputCostPerToken: 4e-6},
 		"gpt-5.6-sol":   {InputCostPerToken: 5e-6},
 		"gpt-5.6-terra": {InputCostPerToken: 2e-6},
@@ -245,7 +242,7 @@ func TestPricingService_ExplicitCatalogEntryDoesNotRedirectToSol(t *testing.T) {
 	}})
 
 	for i := 0; i < 100; i++ {
-		for _, alias := range []string{"gpt-5.6", "openai/gpt-5.6"} {
+		for _, alias := range []string{"gpt-5.6"} {
 			pricing := pricingSvc.GetModelPricing(alias)
 			require.NotNil(t, pricing)
 			require.InDelta(t, 4e-6, pricing.InputCostPerToken, 1e-12, "iteration=%d alias=%s", i, alias)
@@ -253,7 +250,7 @@ func TestPricingService_ExplicitCatalogEntryDoesNotRedirectToSol(t *testing.T) {
 	}
 
 	billingSvc := newBillingFixture(pricingSvc)
-	for _, alias := range []string{"gpt-5.6", "openai/gpt-5.6"} {
+	for _, alias := range []string{"gpt-5.6"} {
 		pricing, err := billingSvc.GetModelPricing(alias)
 		require.NoError(t, err)
 		require.InDelta(t, 4e-6, pricing.InputPricePerToken, 1e-12)
@@ -261,14 +258,8 @@ func TestPricingService_ExplicitCatalogEntryDoesNotRedirectToSol(t *testing.T) {
 	}
 }
 
-func TestDefaultPricingIncludesOfficialGPT56Rates(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "resources", "model-pricing", "model_prices_and_context_window.json"))
-	require.NoError(t, err)
-
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{})
-	pricingData, err := pricingSvc.ParsePricingData(data)
-	require.NoError(t, err)
-	setPricingFixtureData(pricingSvc, pricingData)
+func TestDefaultPricingIncludesModelsDevGPT56Rates(t *testing.T) {
+	pricingSvc := newOfflinePricingFixture(t)
 	billingSvc := newBillingFixture(pricingSvc)
 
 	tests := []struct {
@@ -276,7 +267,7 @@ func TestDefaultPricingIncludesOfficialGPT56Rates(t *testing.T) {
 		input, cached, cacheWrite, output                                 float64
 		inputPriority, cachedPriority, cacheWritePriority, outputPriority float64
 	}{
-		{model: "gpt-5.6-sol", input: 5e-6, cached: 0.5e-6, cacheWrite: 6.25e-6, output: 30e-6, inputPriority: 10e-6, cachedPriority: 1e-6, cacheWritePriority: 12.5e-6, outputPriority: 60e-6},
+		{model: "gpt-5.6-sol", input: 4e-6, cached: 0.4e-6, cacheWrite: 5e-6, output: 20e-6, inputPriority: 8e-6, cachedPriority: 0.8e-6, cacheWritePriority: 10e-6, outputPriority: 40e-6},
 		{model: "gpt-5.6-terra", input: 2e-6, cached: 0.2e-6, cacheWrite: 2.5e-6, output: 12e-6, inputPriority: 4e-6, cachedPriority: 0.4e-6, cacheWritePriority: 5e-6, outputPriority: 24e-6},
 		{model: "gpt-5.6-luna", input: 0.2e-6, cached: 0.02e-6, cacheWrite: 0.25e-6, output: 1.2e-6, inputPriority: 0.4e-6, cachedPriority: 0.04e-6, cacheWritePriority: 0.5e-6, outputPriority: 2.4e-6},
 	}
@@ -292,21 +283,16 @@ func TestDefaultPricingIncludesOfficialGPT56Rates(t *testing.T) {
 			require.InDelta(t, tt.cachedPriority, pricing.CacheReadPricePerTokenPriority, 1e-12)
 			require.InDelta(t, tt.cacheWritePriority, pricing.CacheCreationPricePerTokenPriority, 1e-12)
 			require.InDelta(t, tt.outputPriority, pricing.OutputPricePerTokenPriority, 1e-12)
-			require.Equal(t, 272000, pricing.LongContextInputThreshold)
-			require.InDelta(t, 2.0, pricing.LongContextInputMultiplier, 1e-12)
-			require.InDelta(t, 1.5, pricing.LongContextOutputMultiplier, 1e-12)
+			require.Len(t, pricing.ContextPrices, 1)
+			require.Equal(t, 272000, pricing.ContextPrices[0].Threshold)
+			require.InDelta(t, tt.input*2, pricing.ContextPrices[0].Pricing.InputPricePerToken, 1e-12)
+			require.InDelta(t, tt.output*1.5, pricing.ContextPrices[0].Pricing.OutputPricePerToken, 1e-12)
 		})
 	}
 }
 
-func TestDefaultPricingIncludesOfficialGPT6AstraRates(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "resources", "model-pricing", "model_prices_and_context_window.json"))
-	require.NoError(t, err)
-
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{})
-	pricingData, err := pricingSvc.ParsePricingData(data)
-	require.NoError(t, err)
-	setPricingFixtureData(pricingSvc, pricingData)
+func TestDefaultPricingIncludesModelsDevGPT6AstraRates(t *testing.T) {
+	pricingSvc := newOfflinePricingFixture(t)
 	billingSvc := newBillingFixture(pricingSvc)
 
 	pricing, err := billingSvc.GetModelPricing("gpt-6-astra")
@@ -315,9 +301,10 @@ func TestDefaultPricingIncludesOfficialGPT6AstraRates(t *testing.T) {
 	require.InDelta(t, 1e-6, pricing.CacheReadPricePerToken, 1e-12)
 	require.InDelta(t, 12.5e-6, pricing.CacheCreationPricePerToken, 1e-12)
 	require.InDelta(t, 50e-6, pricing.OutputPricePerToken, 1e-12)
-	require.Equal(t, 272000, pricing.LongContextInputThreshold)
-	require.InDelta(t, 2.0, pricing.LongContextInputMultiplier, 1e-12)
-	require.InDelta(t, 1.5, pricing.LongContextOutputMultiplier, 1e-12)
+	require.Len(t, pricing.ContextPrices, 1)
+	require.Equal(t, 272000, pricing.ContextPrices[0].Threshold)
+	require.InDelta(t, 20e-6, pricing.ContextPrices[0].Pricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 75e-6, pricing.ContextPrices[0].Pricing.OutputPricePerToken, 1e-12)
 	inputModalities, outputModalities := pricingSvc.GetModelModalities("gpt-6-astra")
 	require.Equal(t, []string{"text", "image"}, inputModalities)
 	require.Equal(t, []string{"text"}, outputModalities)
@@ -335,11 +322,11 @@ func TestGPT56DedicatedFallbacksUseOfficialRates(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.model+"/pricing_service", func(t *testing.T) {
-			pricingSvc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+			pricingSvc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 				"gpt-5.1-codex": {InputCostPerToken: 1.25e-6},
 			}})
 			svc := newBillingFixture(pricingSvc)
-			pricing, err := svc.GetModelPricing(tt.model + "-preview")
+			pricing, err := svc.GetModelPricing(tt.model)
 			require.NoError(t, err)
 			assertGPT56FallbackPricing(t, pricing, tt.input, tt.cached, tt.cacheWrite, tt.output)
 		})
@@ -355,18 +342,18 @@ func TestGPT56DedicatedFallbacksUseOfficialRates(t *testing.T) {
 
 func TestGPT6AstraDedicatedFallbackUsesOfficialRates(t *testing.T) {
 	t.Run("pricing_service", func(t *testing.T) {
-		pricingSvc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+		pricingSvc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"gpt-5.1-codex": {InputCostPerToken: 1.25e-6},
 		}})
 		svc := newBillingFixture(pricingSvc)
-		pricing, err := svc.GetModelPricing("gpt-6-astra-preview")
+		pricing, err := svc.GetModelPricing("gpt-6-astra")
 		require.NoError(t, err)
 		assertGPT6AstraFallbackPricing(t, pricing)
 	})
 
 	t.Run("billing_service", func(t *testing.T) {
 		svc := newBillingFixture(nil)
-		pricing, err := svc.GetModelPricing("gpt-6-astra-preview")
+		pricing, err := svc.GetModelPricing("gpt-6-astra")
 		require.NoError(t, err)
 		assertGPT6AstraFallbackPricing(t, pricing)
 	})
@@ -391,16 +378,15 @@ func assertGPT56FallbackPricing(t *testing.T, pricing *billingpricing.ModelPrici
 }
 
 func TestParsePricingData_KeepsImageOnlyPricing(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{})
 	body := []byte(`{
 		"image-only-model": {
 			"output_cost_per_image": 0.034,
-			"litellm_provider": "vertex_ai-language-models",
+			"provider": "vertex_ai-language-models",
 			"mode": "image_generation"
 		}
 	}`)
 
-	data, err := svc.ParsePricingData(body)
+	data, err := parsePricingFixture(body)
 	require.NoError(t, err)
 	pricing := data["image-only-model"]
 	require.NotNil(t, pricing)
@@ -411,18 +397,18 @@ func TestParsePricingData_KeepsImageOnlyPricing(t *testing.T) {
 }
 
 func TestBillingService_GetModelPricing_FailsClosedForImageOnlyEntries(t *testing.T) {
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{})
-	data, err := pricingSvc.ParsePricingData([]byte(`{
+	pricingSvc := newModelCatalogFixture(modelCatalogFixture{})
+	data, err := parsePricingFixture([]byte(`{
 		"imagen-9.0-generate": {
 			"output_cost_per_image": 0.04,
-			"litellm_provider": "vertex_ai-image-models",
+			"provider": "vertex_ai-image-models",
 			"mode": "image_generation"
 		},
 		"gemini-image-with-token-price": {
 			"input_cost_per_token": 0.0,
 			"output_cost_per_token": 0.0,
 			"output_cost_per_image": 0.034,
-			"litellm_provider": "vertex_ai-language-models",
+			"provider": "vertex_ai-language-models",
 			"mode": "image_generation"
 		}
 	}`))
@@ -448,7 +434,7 @@ func TestBillingService_GetModelPricing_FailsClosedForImageOnlyEntries(t *testin
 
 // TestBillingService_GetDisplayPricing_ChatImageMetadataKeepsTokenMode 验证聊天模型携带按图元数据时仍展示 token 价格。
 func TestBillingService_GetDisplayPricing_ChatImageMetadataKeepsTokenMode(t *testing.T) {
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	pricingSvc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gemini-3.1-pro-high": {
 			InputCostPerToken:  2e-6,
 			OutputCostPerToken: 12e-6,
@@ -476,88 +462,62 @@ func TestBillingService_GetDisplayPricing_ChatImageMetadataKeepsTokenMode(t *tes
 	require.InDelta(t, 0.1344, imagePricing.ImagePrice1K, 1e-12)
 }
 
-func TestPricingService_MergesFallbackOnlyModels(t *testing.T) {
-	dir := t.TempDir()
-	fallbackFile := filepath.Join(dir, "fallback.json")
-	require.NoError(t, os.WriteFile(fallbackFile, []byte(`{
-		"remote-model": {
-			"input_cost_per_token": 0.000001,
-			"litellm_provider": "test",
-			"mode": "chat"
-		},
-		"gemini-3.1-flash-lite-image": {
-			"output_cost_per_image": 0.034,
-			"litellm_provider": "vertex_ai-language-models",
-			"mode": "image_generation"
-		}
-	}`), 0o644))
-
-	svc := newPricingServiceFixture(pricingServiceFixture{options: Options{}})
-	svc.options.FallbackFile = fallbackFile
-	remoteData, err := svc.ParsePricingData([]byte(`{
-		"remote-model": {
-			"input_cost_per_token": 0.000002,
-			"litellm_provider": "test",
-			"mode": "chat"
-		}
-	}`))
-	require.NoError(t, err)
-
-	merged := svc.MergeFallbackPricingData(remoteData)
-	require.InDelta(t, 0.000002, merged["remote-model"].InputCostPerToken, 1e-12)
-	require.NotNil(t, merged["gemini-3.1-flash-lite-image"])
-	require.InDelta(t, 0.034, merged["gemini-3.1-flash-lite-image"].OutputCostPerImage, 1e-12)
+// TestCatalogService_MergesFallbackOnlyModels 验证补充文件新增模型但不替换远程 token 报价。
+func TestCatalogService_MergesFallbackOnlyModels(t *testing.T) {
+	svc := newHotReloadCatalog(t, `{"remote-model":{"input_cost_per_token":9,"output_cost_per_token":9},"local-model":{"input_cost_per_token":0.000004,"output_cost_per_token":0.000008}}`, "")
+	require.InDelta(t, 1e-6, svc.GetModelPricing("remote-model").InputCostPerToken, 1e-12)
+	require.InDelta(t, 4e-6, svc.GetModelPricing("local-model").InputCostPerToken, 1e-12)
 }
 
 func TestGetModelPricing_Gpt53CodexSparkUsesGpt51CodexPricing(t *testing.T) {
-	sparkPricing := &billingpricing.LiteLLMModelPricing{InputCostPerToken: 1}
-	gpt53Pricing := &billingpricing.LiteLLMModelPricing{InputCostPerToken: 9}
+	sparkPricing := &billingpricing.CatalogModelPricing{InputCostPerToken: 1}
+	gpt53Pricing := &billingpricing.CatalogModelPricing{InputCostPerToken: 9}
 
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"gpt-5.1-codex": sparkPricing,
 			"gpt-5.3":       gpt53Pricing,
 		},
 	})
 
 	got := svc.GetModelPricing("gpt-5.3-codex-spark")
-	require.Same(t, sparkPricing, got)
+	require.Nil(t, got)
 }
 
 func TestGetModelPricing_Gpt53CodexFallbackStillUsesGpt52Codex(t *testing.T) {
-	gpt52CodexPricing := &billingpricing.LiteLLMModelPricing{InputCostPerToken: 2}
+	gpt52CodexPricing := &billingpricing.CatalogModelPricing{InputCostPerToken: 2}
 
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"gpt-5.2-codex": gpt52CodexPricing,
 		},
 	})
 
 	got := svc.GetModelPricing("gpt-5.3-codex")
-	require.Same(t, gpt52CodexPricing, got)
+	require.Nil(t, got)
 }
 
 func TestGetModelPricing_OpenAIFallbackMatchedLoggedAsInfo(t *testing.T) {
 	logSink, restore := captureStructuredLog(t)
 	defer restore()
 
-	gpt52CodexPricing := &billingpricing.LiteLLMModelPricing{InputCostPerToken: 2}
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	gpt52CodexPricing := &billingpricing.CatalogModelPricing{InputCostPerToken: 2}
+	svc := newModelCatalogFixture(modelCatalogFixture{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"gpt-5.2-codex": gpt52CodexPricing,
 		},
 	})
 
 	got := svc.GetModelPricing("gpt-5.3-codex")
-	require.Same(t, gpt52CodexPricing, got)
+	require.Nil(t, got)
 
-	require.True(t, logSink.ContainsMessageAtLevel("[Pricing] OpenAI fallback matched gpt-5.3-codex -> gpt-5.2-codex", "info"))
+	require.False(t, logSink.ContainsMessageAtLevel("[Pricing] OpenAI fallback matched gpt-5.3-codex -> gpt-5.2-codex", "info"))
 	require.False(t, logSink.ContainsMessageAtLevel("[Pricing] OpenAI fallback matched gpt-5.3-codex -> gpt-5.2-codex", "warn"))
 }
 
 func TestGetModelPricing_Gpt54UsesStaticFallbackWhenRemoteMissing(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"gpt-5.1-codex": {InputCostPerToken: 1.25e-6},
 		},
 	})
@@ -571,7 +531,7 @@ func TestGetModelPricing_Gpt54UsesStaticFallbackWhenRemoteMissing(t *testing.T) 
 }
 
 func TestGetModelPricing_Gpt56UsesOfficialStaticFallback(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{}})
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{}})
 
 	tests := []struct {
 		model     string
@@ -579,9 +539,9 @@ func TestGetModelPricing_Gpt56UsesOfficialStaticFallback(t *testing.T) {
 		output    float64
 		cacheRead float64
 	}{
-		{model: "gpt-5.6-sol-max", input: 5e-6, output: 3e-5, cacheRead: 5e-7},
-		{model: "gpt-5.6-terra-max", input: 2e-6, output: 1.2e-5, cacheRead: 2e-7},
-		{model: "gpt-5.6-luna-high", input: 0.2e-6, output: 1.2e-6, cacheRead: 0.02e-6},
+		{model: "gpt-5.6-sol", input: 5e-6, output: 3e-5, cacheRead: 5e-7},
+		{model: "gpt-5.6-terra", input: 2e-6, output: 1.2e-5, cacheRead: 2e-7},
+		{model: "gpt-5.6-luna", input: 0.2e-6, output: 1.2e-6, cacheRead: 0.02e-6},
 	}
 
 	for _, tt := range tests {
@@ -596,23 +556,17 @@ func TestGetModelPricing_Gpt56UsesOfficialStaticFallback(t *testing.T) {
 	}
 }
 
-func TestGetModelPricing_OpenAICompactAliasUsesStaticFallback(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
-			"gpt-5.1-codex": {InputCostPerToken: 1.25e-6},
-		},
-	})
-
-	got := svc.GetModelPricing("openai/gpt5.5")
-	require.NotNil(t, got)
-	require.InDelta(t, 5e-6, got.InputCostPerToken, 1e-12)
-	require.InDelta(t, 3e-5, got.OutputCostPerToken, 1e-12)
+func TestGetModelPricing_UnknownCompactAliasIsUnpriced(t *testing.T) {
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{}})
+	for _, model := range []string{"openai/gpt5.5", "gpt-5.5-openai-compact", "gpt-5.5-preview"} {
+		require.Nil(t, svc.GetModelPricing(model))
+	}
 }
 
 func TestGetModelPricing_ClaudeOpus48UsesStaticFallbackWhenRemoteMissing(t *testing.T) {
-	opus4Pricing := &billingpricing.LiteLLMModelPricing{InputCostPerToken: 15e-6, OutputCostPerToken: 75e-6}
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	opus4Pricing := &billingpricing.CatalogModelPricing{InputCostPerToken: 15e-6, OutputCostPerToken: 75e-6}
+	svc := newModelCatalogFixture(modelCatalogFixture{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"claude-opus-4-20250514": opus4Pricing,
 		},
 	})
@@ -629,13 +583,13 @@ func TestGetModelPricing_ClaudeOpus48UsesStaticFallbackWhenRemoteMissing(t *test
 	require.True(t, got.SupportsServiceTier)
 }
 
-func TestPricingService_Gemini36FlashThinkingTiersUseBasePricing(t *testing.T) {
-	basePricing := &billingpricing.LiteLLMModelPricing{
+func TestCatalogService_Gemini36FlashThinkingTiersUseBasePricing(t *testing.T) {
+	basePricing := &billingpricing.CatalogModelPricing{
 		InputCostPerToken:       1.5e-6,
 		OutputCostPerToken:      7.5e-6,
 		CacheReadInputTokenCost: 0.15e-6,
 	}
-	svc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gemini-3.6-flash": basePricing,
 	}})
 
@@ -647,19 +601,23 @@ func TestPricingService_Gemini36FlashThinkingTiersUseBasePricing(t *testing.T) {
 		"gemini-3.6-flash-tiered",
 	} {
 		t.Run(model, func(t *testing.T) {
-			require.Same(t, basePricing, svc.GetModelPricing(model))
+			if model == "gemini-3.6-flash" || model == "gemini-3.5-flash" {
+				require.Same(t, basePricing, svc.GetModelPricing(model))
+			} else {
+				require.Nil(t, svc.GetModelPricing(model))
+			}
 		})
 	}
 }
 
-// TestPricingService_Gemini35FlashThinkingTiersUseBasePricing 验证 3.5 Flash 思考档位复用基础模型价格。
-func TestPricingService_Gemini35FlashThinkingTiersUseBasePricing(t *testing.T) {
-	basePricing := &billingpricing.LiteLLMModelPricing{
+// TestCatalogService_Gemini35FlashThinkingTiersRequireExplicitCatalogEntry 验证后缀型号不会复用基础模型价格。
+func TestCatalogService_Gemini35FlashThinkingTiersUseBasePricing(t *testing.T) {
+	basePricing := &billingpricing.CatalogModelPricing{
 		InputCostPerToken:       1.5e-6,
 		OutputCostPerToken:      9e-6,
 		CacheReadInputTokenCost: 0.15e-6,
 	}
-	svc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gemini-3.5-flash": basePricing,
 	}})
 
@@ -671,15 +629,19 @@ func TestPricingService_Gemini35FlashThinkingTiersUseBasePricing(t *testing.T) {
 		"gemini-3.5-flash-tiered",
 	} {
 		t.Run(model, func(t *testing.T) {
-			require.Same(t, basePricing, svc.GetModelPricing(model))
+			if model == "gemini-3.6-flash" || model == "gemini-3.5-flash" {
+				require.Same(t, basePricing, svc.GetModelPricing(model))
+			} else {
+				require.Nil(t, svc.GetModelPricing(model))
+			}
 		})
 	}
 }
 
-func TestPricingService_Gemini36FlashTierSpecificPricingTakesPrecedence(t *testing.T) {
-	basePricing := &billingpricing.LiteLLMModelPricing{InputCostPerToken: 1.5e-6}
-	tierPricing := &billingpricing.LiteLLMModelPricing{InputCostPerToken: 2e-6}
-	svc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+func TestCatalogService_Gemini36FlashTierSpecificPricingTakesPrecedence(t *testing.T) {
+	basePricing := &billingpricing.CatalogModelPricing{InputCostPerToken: 1.5e-6}
+	tierPricing := &billingpricing.CatalogModelPricing{InputCostPerToken: 2e-6}
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gemini-3.6-flash":     basePricing,
 		"gemini-3.6-flash-low": tierPricing,
 	}})
@@ -687,11 +649,11 @@ func TestPricingService_Gemini36FlashTierSpecificPricingTakesPrecedence(t *testi
 	require.Same(t, tierPricing, svc.GetModelPricing("models/gemini-3.6-flash-low"))
 }
 
-// TestPricingService_Gemini35FlashTierSpecificPricingTakesPrecedence 验证未来出现档位专属价格时优先精确匹配。
-func TestPricingService_Gemini35FlashTierSpecificPricingTakesPrecedence(t *testing.T) {
-	basePricing := &billingpricing.LiteLLMModelPricing{InputCostPerToken: 1.5e-6}
-	tierPricing := &billingpricing.LiteLLMModelPricing{InputCostPerToken: 2e-6}
-	svc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+// TestCatalogService_Gemini35FlashTierSpecificPricingTakesPrecedence 验证未来出现档位专属价格时优先精确匹配。
+func TestCatalogService_Gemini35FlashTierSpecificPricingTakesPrecedence(t *testing.T) {
+	basePricing := &billingpricing.CatalogModelPricing{InputCostPerToken: 1.5e-6}
+	tierPricing := &billingpricing.CatalogModelPricing{InputCostPerToken: 2e-6}
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gemini-3.5-flash":     basePricing,
 		"gemini-3.5-flash-low": tierPricing,
 	}})
@@ -700,57 +662,31 @@ func TestPricingService_Gemini35FlashTierSpecificPricingTakesPrecedence(t *testi
 }
 
 // TestBillingService_Gemini35FlashThinkingTierFallbacksAreBillable 验证远程价格不可用时各档位仍能安全计费。
-func TestBillingService_Gemini35FlashThinkingTierFallbacksAreBillable(t *testing.T) {
+func TestBillingService_Gemini35FlashTiersRequireOwnPricing(t *testing.T) {
 	svc := newBillingFixture(nil)
-	tokens := billingpricing.UsageTokens{InputTokens: 1_000_000, OutputTokens: 1_000_000, CacheReadTokens: 1_000_000}
-
-	for _, model := range []string{
-		"gemini-3.5-flash",
-		"gemini-3.5-flash-high",
-		"gemini-3.5-flash-low",
-		"gemini-3.5-flash-medium",
-		"gemini-3.5-flash-tiered",
-	} {
-		t.Run(model, func(t *testing.T) {
-			cost, err := svc.CalculateCost(model, tokens, 1)
-			require.NoError(t, err)
-			require.InDelta(t, 1.5, cost.InputCost, 1e-12)
-			require.InDelta(t, 9.0, cost.OutputCost, 1e-12)
-			require.InDelta(t, 0.15, cost.CacheReadCost, 1e-12)
-			require.InDelta(t, 10.65, cost.TotalCost, 1e-12)
-		})
+	for _, model := range []string{"gemini-3.5-flash-high", "gemini-3.5-flash-low", "gemini-3.5-flash-medium", "gemini-3.5-flash-tiered"} {
+		price, err := svc.GetModelPricing(model)
+		require.ErrorIs(t, err, billingpricing.ErrModelPricingUnavailable)
+		require.Nil(t, price)
 	}
 }
 
-func TestBillingService_Gemini36FlashThinkingTierFallbacksAreBillable(t *testing.T) {
+func TestBillingService_Gemini36FlashTiersRequireOwnPricing(t *testing.T) {
 	svc := newBillingFixture(nil)
-	tokens := billingpricing.UsageTokens{InputTokens: 1_000_000, OutputTokens: 1_000_000, CacheReadTokens: 1_000_000}
-
-	for _, model := range []string{
-		"gemini-3.6-flash",
-		"gemini-3.6-flash-high",
-		"gemini-3.6-flash-low",
-		"gemini-3.6-flash-medium",
-		"gemini-3.6-flash-tiered",
-	} {
-		t.Run(model, func(t *testing.T) {
-			cost, err := svc.CalculateCost(model, tokens, 1)
-			require.NoError(t, err)
-			require.InDelta(t, 1.5, cost.InputCost, 1e-12)
-			require.InDelta(t, 7.5, cost.OutputCost, 1e-12)
-			require.InDelta(t, 0.15, cost.CacheReadCost, 1e-12)
-			require.InDelta(t, 9.15, cost.TotalCost, 1e-12)
-		})
+	for _, model := range []string{"gemini-3.6-flash-high", "gemini-3.6-flash-low", "gemini-3.6-flash-medium", "gemini-3.6-flash-tiered"} {
+		price, err := svc.GetModelPricing(model)
+		require.ErrorIs(t, err, billingpricing.ErrModelPricingUnavailable)
+		require.Nil(t, price)
 	}
 }
 
-func TestPricingService_Gemini37FlashThinkingTiersUseBasePricing(t *testing.T) {
-	basePricing := &LiteLLMModelPricing{
+func TestPricingService_Gemini37FlashThinkingTiersRequireExplicitCatalogEntry(t *testing.T) {
+	basePricing := &CatalogModelPricing{
 		InputCostPerToken:       0.75e-6,
 		OutputCostPerToken:      3.75e-6,
 		CacheReadInputTokenCost: 0.075e-6,
 	}
-	svc := &PricingService{pricingData: map[string]*LiteLLMModelPricing{
+	svc := &Service{pricingData: map[string]*CatalogModelPricing{
 		"gemini-3.7-flash": basePricing,
 	}}
 
@@ -762,7 +698,13 @@ func TestPricingService_Gemini37FlashThinkingTiersUseBasePricing(t *testing.T) {
 		"gemini-3.7-flash-tiered",
 	} {
 		t.Run(model, func(t *testing.T) {
-			require.Same(t, basePricing, svc.GetModelPricing(model))
+			if model == "gemini-3.7-flash" || model == "gemini-3.8-flash" {
+				require.Same(t, basePricing, svc.GetModelPricing(model))
+			} else {
+				require.Nil(t, svc.GetModelPricing(model), "未登记的完整型号不能借用基名价格")
+				svc.pricingData[model] = basePricing
+				require.Same(t, basePricing, svc.GetModelPricing(model))
+			}
 		})
 	}
 }
@@ -789,13 +731,13 @@ func TestBillingService_Gemini37FlashThinkingTierFallbacksAreBillable(t *testing
 	}
 }
 
-func TestPricingService_Gemini38FlashThinkingTiersUseBasePricing(t *testing.T) {
-	basePricing := &LiteLLMModelPricing{
+func TestPricingService_Gemini38FlashThinkingTiersRequireExplicitCatalogEntry(t *testing.T) {
+	basePricing := &CatalogModelPricing{
 		InputCostPerToken:       0.75e-6,
 		OutputCostPerToken:      3.75e-6,
 		CacheReadInputTokenCost: 0.075e-6,
 	}
-	svc := &PricingService{pricingData: map[string]*LiteLLMModelPricing{
+	svc := &Service{pricingData: map[string]*CatalogModelPricing{
 		"gemini-3.8-flash": basePricing,
 	}}
 
@@ -807,7 +749,13 @@ func TestPricingService_Gemini38FlashThinkingTiersUseBasePricing(t *testing.T) {
 		"gemini-3.8-flash-tiered",
 	} {
 		t.Run(model, func(t *testing.T) {
-			require.Same(t, basePricing, svc.GetModelPricing(model))
+			if model == "gemini-3.7-flash" || model == "gemini-3.8-flash" {
+				require.Same(t, basePricing, svc.GetModelPricing(model))
+			} else {
+				require.Nil(t, svc.GetModelPricing(model), "未登记的完整型号不能借用基名价格")
+				svc.pricingData[model] = basePricing
+				require.Same(t, basePricing, svc.GetModelPricing(model))
+			}
 		})
 	}
 }
@@ -835,76 +783,42 @@ func TestBillingService_Gemini38FlashThinkingTierFallbacksAreBillable(t *testing
 }
 
 func TestDefaultPricingIncludesGemini36FlashRates(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "resources", "model-pricing", "model_prices_and_context_window.json"))
-	require.NoError(t, err)
-
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{})
-	pricingData, err := pricingSvc.ParsePricingData(data)
-	require.NoError(t, err)
-	setPricingFixtureData(pricingSvc, pricingData)
-	billingSvc := newBillingFixture(pricingSvc)
-
-	for _, model := range []string{"gemini-3.6-flash", "gemini-3.6-flash-low", "gemini-3.6-flash-high"} {
-		t.Run(model, func(t *testing.T) {
-			pricing, err := billingSvc.GetModelPricing(model)
-			require.NoError(t, err)
-			require.InDelta(t, 1.5e-6, pricing.InputPricePerToken, 1e-12)
-			require.InDelta(t, 7.5e-6, pricing.OutputPricePerToken, 1e-12)
-			require.InDelta(t, 0.15e-6, pricing.CacheReadPricePerToken, 1e-12)
-		})
+	svc := NewService(Options{DataDir: t.TempDir()}, nil)
+	require.NoError(t, svc.Initialize())
+	require.NotNil(t, svc.GetModelPricing("gemini-3.6-flash"))
+	// 后缀是否有价取决于目录是否存在完整 ID，不从基名生成。
+	for _, suffix := range []string{"high", "low", "medium", "tiered"} {
+		model := "gemini-3.6-flash-" + suffix
+		if _, exists := svc.pricingData[model]; !exists {
+			require.Nil(t, svc.GetModelPricing(model))
+		}
 	}
 }
 
-// TestDefaultPricingIncludesGemini35FlashRates 验证内置价格快照可覆盖 3.5 Flash 的思考档位别名。
+// TestDefaultPricingIncludesGemini35FlashRates 验证内置快照只为已登记的完整型号提供价格。
 func TestDefaultPricingIncludesGemini35FlashRates(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "resources", "model-pricing", "model_prices_and_context_window.json"))
-	require.NoError(t, err)
-
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{})
-	pricingData, err := pricingSvc.ParsePricingData(data)
-	require.NoError(t, err)
-	setPricingFixtureData(pricingSvc, pricingData)
-	billingSvc := newBillingFixture(pricingSvc)
-
-	for _, model := range []string{"gemini-3.5-flash", "gemini-3.5-flash-low", "gemini-3.5-flash-high"} {
-		t.Run(model, func(t *testing.T) {
-			pricing, err := billingSvc.GetModelPricing(model)
-			require.NoError(t, err)
-			require.InDelta(t, 1.5e-6, pricing.InputPricePerToken, 1e-12)
-			require.InDelta(t, 9e-6, pricing.OutputPricePerToken, 1e-12)
-			require.InDelta(t, 0.15e-6, pricing.CacheReadPricePerToken, 1e-12)
-		})
+	svc := NewService(Options{DataDir: t.TempDir()}, nil)
+	require.NoError(t, svc.Initialize())
+	require.NotNil(t, svc.GetModelPricing("gemini-3.5-flash"))
+	// 后缀是否有价取决于目录是否存在完整 ID，不从基名生成。
+	for _, suffix := range []string{"high", "low", "medium", "tiered"} {
+		model := "gemini-3.5-flash-" + suffix
+		if _, exists := svc.pricingData[model]; !exists {
+			require.Nil(t, svc.GetModelPricing(model))
+		}
 	}
 }
 
-func TestDefaultPricingUsesCurrentCodexAutoReviewBaseRates(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "resources", "model-pricing", "model_prices_and_context_window.json"))
-	require.NoError(t, err)
-
-	svc := newPricingServiceFixture(pricingServiceFixture{})
-	pricingData, err := svc.ParsePricingData(data)
-	require.NoError(t, err)
-	setPricingFixtureData(svc, pricingData)
-
-	got := svc.GetModelPricing("codex-auto-review")
-	require.NotNil(t, got)
-	require.InDelta(t, 0.2e-6, got.InputCostPerToken, 1e-12)
-	require.InDelta(t, 1.2e-6, got.OutputCostPerToken, 1e-12)
-	require.InDelta(t, 0.02e-6, got.CacheReadInputTokenCost, 1e-12)
-
-	// Auto-review 是 Codex 内部模型；没有专用上游用量契约时，不推断公开
-	// GPT-5.6 API 的服务层级、缓存写入或长上下文价格。
-	require.Zero(t, got.InputCostPerTokenPriority)
-	require.Zero(t, got.OutputCostPerTokenPriority)
-	require.Zero(t, got.CacheReadInputTokenCostPriority)
-	require.Zero(t, got.CacheCreationInputTokenCost)
-	require.Zero(t, got.CacheCreationInputTokenCostPriority)
-	require.Zero(t, got.LongContextInputTokenThreshold)
+// TestDefaultCatalogDoesNotReintroduceLegacyModels 验证旧资源独有模型不会被隐式并回统一目录。
+func TestDefaultCatalogDoesNotReintroduceLegacyModels(t *testing.T) {
+	service := newOfflinePricingFixture(t)
+	require.NotContains(t, service.Snapshot().Data, "codex-auto-review")
+	require.Nil(t, service.GetModelPricing("codex-auto-review"))
 }
 
 func TestGetModelPricing_Gpt54MiniUsesDedicatedStaticFallbackWhenRemoteMissing(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"gpt-5.1-codex": {InputCostPerToken: 1.25e-6},
 		},
 	})
@@ -918,8 +832,8 @@ func TestGetModelPricing_Gpt54MiniUsesDedicatedStaticFallbackWhenRemoteMissing(t
 }
 
 func TestGetModelPricing_Gpt54NanoUsesDedicatedStaticFallbackWhenRemoteMissing(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"gpt-5.1-codex": {InputCostPerToken: 1.25e-6},
 		},
 	})
@@ -933,18 +847,18 @@ func TestGetModelPricing_Gpt54NanoUsesDedicatedStaticFallbackWhenRemoteMissing(t
 }
 
 func TestGetModelPricing_ImageModelDoesNotFallbackToTextModel(t *testing.T) {
-	imagePricing := &billingpricing.LiteLLMModelPricing{InputCostPerToken: 3}
-	textPricing := &billingpricing.LiteLLMModelPricing{InputCostPerToken: 9}
+	imagePricing := &billingpricing.CatalogModelPricing{InputCostPerToken: 3}
+	textPricing := &billingpricing.CatalogModelPricing{InputCostPerToken: 9}
 
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"gpt-image-2": imagePricing,
 			"gpt-5.4":     textPricing,
 		},
 	})
 
 	got := svc.GetModelPricing("gpt-image-3")
-	require.Same(t, imagePricing, got)
+	require.Nil(t, got)
 }
 
 func TestParsePricingData_PreservesPriorityAndServiceTierFields(t *testing.T) {
@@ -958,15 +872,14 @@ func TestParsePricingData_PreservesPriorityAndServiceTierFields(t *testing.T) {
 			"cache_read_input_token_cost_priority": 0.5e-6,
 			"supports_service_tier":                true,
 			"supports_prompt_caching":              true,
-			"litellm_provider":                     "openai",
+			"provider":                             "openai",
 			"mode":                                 "chat",
 		},
 	}
 	body, err := json.Marshal(raw)
 	require.NoError(t, err)
 
-	svc := newPricingServiceFixture(pricingServiceFixture{})
-	pricingMap, err := svc.ParsePricingData(body)
+	pricingMap, err := parsePricingFixture(body)
 	require.NoError(t, err)
 
 	pricing := pricingMap["gpt-5.4"]
@@ -981,8 +894,7 @@ func TestParsePricingData_PreservesPriorityAndServiceTierFields(t *testing.T) {
 }
 
 func TestParsePricingData_PreservesServiceTierPriorityFields(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{})
-	pricingData, err := svc.ParsePricingData([]byte(`{
+	pricingData, err := parsePricingFixture([]byte(`{
 		"gpt-5.4": {
 			"input_cost_per_token": 0.0000025,
 			"input_cost_per_token_priority": 0.000005,
@@ -991,7 +903,7 @@ func TestParsePricingData_PreservesServiceTierPriorityFields(t *testing.T) {
 			"cache_read_input_token_cost": 0.00000025,
 			"cache_read_input_token_cost_priority": 0.0000005,
 			"supports_service_tier": true,
-			"litellm_provider": "openai",
+			"provider": "openai",
 			"mode": "chat"
 		}
 	}`))
@@ -1013,12 +925,12 @@ func TestParsePricingData_PreservesServiceTierPriorityFields(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestListModelNamesByProvider_ReturnsMatchingModels(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
-			"claude-opus-4-5-20251101": {LiteLLMProvider: "anthropic", InputCostPerToken: 1.5e-5},
-			"claude-sonnet-4-5":        {LiteLLMProvider: "anthropic", InputCostPerToken: 3e-6},
-			"gpt-4o":                   {LiteLLMProvider: "openai", InputCostPerToken: 5e-6},
-			"gemini-2.5-pro":           {LiteLLMProvider: "google", InputCostPerToken: 1.25e-6},
+	svc := newModelCatalogFixture(modelCatalogFixture{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
+			"claude-opus-4-5-20251101": {Provider: "anthropic", InputCostPerToken: 1.5e-5},
+			"claude-sonnet-4-5":        {Provider: "anthropic", InputCostPerToken: 3e-6},
+			"gpt-4o":                   {Provider: "openai", InputCostPerToken: 5e-6},
+			"gemini-2.5-pro":           {Provider: "google", InputCostPerToken: 1.25e-6},
 		},
 	})
 
@@ -1030,9 +942,9 @@ func TestListModelNamesByProvider_ReturnsMatchingModels(t *testing.T) {
 }
 
 func TestListModelNamesByProvider_CaseInsensitive(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
-			"gpt-4o": {LiteLLMProvider: "OpenAI", InputCostPerToken: 5e-6},
+	svc := newModelCatalogFixture(modelCatalogFixture{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
+			"gpt-4o": {Provider: "OpenAI", InputCostPerToken: 5e-6},
 		},
 	})
 
@@ -1044,9 +956,9 @@ func TestListModelNamesByProvider_CaseInsensitive(t *testing.T) {
 }
 
 func TestListModelNamesByProvider_NoMatch(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
-			"gpt-4o": {LiteLLMProvider: "openai", InputCostPerToken: 5e-6},
+	svc := newModelCatalogFixture(modelCatalogFixture{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
+			"gpt-4o": {Provider: "openai", InputCostPerToken: 5e-6},
 		},
 	})
 
@@ -1056,8 +968,8 @@ func TestListModelNamesByProvider_NoMatch(t *testing.T) {
 }
 
 func TestListModelNamesByProvider_EmptyCatalog(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{},
+	svc := newModelCatalogFixture(modelCatalogFixture{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{},
 	})
 
 	got := svc.ListModelNamesByProvider("openai")
@@ -1066,12 +978,11 @@ func TestListModelNamesByProvider_EmptyCatalog(t *testing.T) {
 }
 
 func TestParsePricingData_ParsesModalityFields(t *testing.T) {
-	svc := newPricingServiceFixture(pricingServiceFixture{})
-	data, err := svc.ParsePricingData([]byte(`{
+	data, err := parsePricingFixture([]byte(`{
 		"gemini-2.5-flash": {
 			"input_cost_per_token": 0.0000003,
 			"output_cost_per_token": 0.0000025,
-			"litellm_provider": "google",
+			"provider": "google",
 			"mode": "chat",
 			"supported_modalities": ["text", "image", "audio", "video"],
 			"supported_output_modalities": ["text", "image"],
@@ -1093,14 +1004,14 @@ func TestGetModelModalities(t *testing.T) {
 	tests := []struct {
 		name    string
 		model   string
-		data    map[string]*billingpricing.LiteLLMModelPricing
+		data    map[string]*billingpricing.CatalogModelPricing
 		wantIn  []string
 		wantOut []string
 	}{
 		{
 			name:  "supported_modalities 优先且按固定顺序输出",
 			model: "gemini-2.5-flash",
-			data: map[string]*billingpricing.LiteLLMModelPricing{
+			data: map[string]*billingpricing.CatalogModelPricing{
 				"gemini-2.5-flash": {
 					Mode:                      "chat",
 					SupportedModalities:       []string{"video", "text", "image"},
@@ -1113,7 +1024,7 @@ func TestGetModelModalities(t *testing.T) {
 		{
 			name:  "模态缺失时用 mode 兜底并用 supports_vision 补充图片输入",
 			model: "gpt-5.5",
-			data: map[string]*billingpricing.LiteLLMModelPricing{
+			data: map[string]*billingpricing.CatalogModelPricing{
 				"gpt-5.5": {Mode: "chat", SupportsVision: true},
 			},
 			wantIn:  []string{"text", "image"},
@@ -1122,7 +1033,7 @@ func TestGetModelModalities(t *testing.T) {
 		{
 			name:  "生图模型用图片输入价识别图生图能力",
 			model: "gpt-image-2",
-			data: map[string]*billingpricing.LiteLLMModelPricing{
+			data: map[string]*billingpricing.CatalogModelPricing{
 				"gpt-image-2": {Mode: "image_generation", InputCostPerImageToken: 8e-6},
 			},
 			wantIn:  []string{"text", "image"},
@@ -1131,7 +1042,7 @@ func TestGetModelModalities(t *testing.T) {
 		{
 			name:  "纯生图模型只有文字输入",
 			model: "flux-schnell",
-			data: map[string]*billingpricing.LiteLLMModelPricing{
+			data: map[string]*billingpricing.CatalogModelPricing{
 				"flux-schnell": {Mode: "image_generation"},
 			},
 			wantIn:  []string{"text"},
@@ -1140,7 +1051,7 @@ func TestGetModelModalities(t *testing.T) {
 		{
 			name:  "音频输入输出标记合成音频模态",
 			model: "gpt-realtime",
-			data: map[string]*billingpricing.LiteLLMModelPricing{
+			data: map[string]*billingpricing.CatalogModelPricing{
 				"gpt-realtime": {Mode: "realtime", SupportsAudioInput: true, SupportsAudioOutput: true},
 			},
 			wantIn:  []string{"text", "audio"},
@@ -1149,7 +1060,7 @@ func TestGetModelModalities(t *testing.T) {
 		{
 			name:  "非模态取值被过滤",
 			model: "file-model",
-			data: map[string]*billingpricing.LiteLLMModelPricing{
+			data: map[string]*billingpricing.CatalogModelPricing{
 				"file-model": {
 					Mode:                      "chat",
 					SupportedModalities:       []string{"text", "file"},
@@ -1160,18 +1071,18 @@ func TestGetModelModalities(t *testing.T) {
 			wantOut: []string{"text"},
 		},
 		{
-			name:  "版本写法变体可命中",
+			name:  "版本写法不同不命中",
 			model: "claude-opus-4-5-20251101",
-			data: map[string]*billingpricing.LiteLLMModelPricing{
+			data: map[string]*billingpricing.CatalogModelPricing{
 				"claude-opus-4.5-20251101": {Mode: "chat", SupportsVision: true},
 			},
-			wantIn:  []string{"text", "image"},
-			wantOut: []string{"text"},
+			wantIn:  nil,
+			wantOut: nil,
 		},
 		{
 			name:  "查不到时返回 nil",
 			model: "unknown-model",
-			data: map[string]*billingpricing.LiteLLMModelPricing{
+			data: map[string]*billingpricing.CatalogModelPricing{
 				"claude-opus-4.5": {Mode: "chat"},
 			},
 			wantIn:  nil,
@@ -1180,7 +1091,7 @@ func TestGetModelModalities(t *testing.T) {
 		{
 			name:  "不做系列模糊回退，避免新模型继承旧模型能力",
 			model: "claude-opus-4.6",
-			data: map[string]*billingpricing.LiteLLMModelPricing{
+			data: map[string]*billingpricing.CatalogModelPricing{
 				"claude-opus-4.5": {Mode: "chat", SupportsVision: true},
 			},
 			wantIn:  nil,
@@ -1190,7 +1101,7 @@ func TestGetModelModalities(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := newPricingServiceFixture(pricingServiceFixture{pricingData: tt.data})
+			svc := newModelCatalogFixture(modelCatalogFixture{pricingData: tt.data})
 			in, out := svc.GetModelModalities(tt.model)
 			require.Equal(t, tt.wantIn, in)
 			require.Equal(t, tt.wantOut, out)

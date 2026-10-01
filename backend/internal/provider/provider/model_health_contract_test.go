@@ -12,8 +12,6 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
@@ -358,7 +356,7 @@ func openAICodexPlanGatedOAuthProvider() *providercore.Record {
 // 测试直接组合生产观测入口；此处只提供固定依赖和请求输入投影。
 func newModelHealthObserver(repo *modelNotFoundProviderRepoStub) *UpstreamHealth {
 	core := providercore.NewHealthService(repo, nil, providercore.HealthOptions{})
-	models := &ModelHealth{Health: core, CodexRules: openai.CodexModelRules{ImageOnly: media.IsImageGenerationModel, LastSegment: capability.LastOpenAIModelSegment, CanonicalAlias: capability.CanonicalizeOpenAIModelAliasSpelling, KnownModel: modelidentity.NormalizeOpenAI, SupportsEffort: capability.OpenAIModelSupportsReasoningEffort}, IsImageModel: media.IsGPTImageGenerationModel}
+	models := &ModelHealth{Health: core, IsImageModel: media.IsGPTImageGenerationModel}
 	return &UpstreamHealth{Core: core, Models: models, Limits: &RateLimitObserver{Health: core}}
 }
 

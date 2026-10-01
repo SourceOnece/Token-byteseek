@@ -65,19 +65,20 @@ func TestOpenAIUpstreamRestrictionUsesActuallyForwardedOAuthModel(t *testing.T) 
 		httpPassthrough    bool
 	}{
 		{
-			name:               "OAuth 归一化后的模型命中定价",
+			name:               "OAuth 后缀型号不能借用基名价格",
 			groupID:            4204,
 			pricingConfigModel: "gpt-5.6-sol-high",
 			pricingModel:       "gpt-5.6-sol",
+			restricted:         true,
 			provider:           &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}},
 		},
 		{
-			name:               "OAuth 归一化前的模型不能冒充最终模型",
+			name:               "OAuth 完整后缀型号命中独立价卡",
 			groupID:            4205,
 			pricingConfigModel: "gpt-5.6-sol-high",
 			pricingModel:       "gpt-5.6-sol-high",
 			provider:           &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}},
-			restricted:         true,
+			restricted:         false,
 		},
 		{
 			name:               "裸名称不能隐式使用 Sol 的上游定价",

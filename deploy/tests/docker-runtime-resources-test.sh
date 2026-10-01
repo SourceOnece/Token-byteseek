@@ -26,8 +26,12 @@ assert_count() {
   [ "$actual" -eq "$expected" ] || fail "$file has $actual occurrences of '$line', expected $expected"
 }
 
-test -s backend/resources/model-pricing/model_prices_and_context_window.json || \
-  fail 'fallback pricing data is missing or empty'
+test -s backend/resources/model-pricing/model_pricing_supplements.json || \
+  fail 'pricing supplements are missing or empty'
+test -s backend/internal/modelcatalog/catalog.json.gz || \
+  fail 'embedded models.dev catalog is missing or empty'
+test -s backend/internal/modelcatalog/LICENSE.models.dev || \
+  fail 'models.dev license is missing or empty'
 
 assert_line Dockerfile.goreleaser 'COPY --chown=sub2api:sub2api backend/resources /app/resources'
 assert_line deploy/Dockerfile 'COPY --from=backend-builder --chown=sub2api:sub2api /app/backend/resources /app/resources'

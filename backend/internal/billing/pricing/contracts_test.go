@@ -1,6 +1,7 @@
 package pricing
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -13,13 +14,13 @@ func TestPriceCardsPreserveInputsAndPricePresence(t *testing.T) {
 	base := &ModelPricing{InputPricePerToken: 0.000001, SupportsServiceTier: true}
 	pricingConfigMultiplier := 1.5
 	configPricing := &ModelPricingEntry{BillingMode: BillingModeToken, FastMultiplier: &pricingConfigMultiplier}
-	resolved := ResolvePriceCards(configPricing, base, PricingSourceLiteLLM, true)
+	resolved := ResolvePriceCards(configPricing, base, PricingSourceCatalog, true)
 	cost, err := CalculateCost(resolved, CostInput{Model: "custom", Tokens: UsageTokens{InputTokens: 100}, RateMultiplier: 1, ServiceTier: "priority"})
 	require.NoError(t, err)
 	require.InDelta(t, 0.00015, cost.ActualCost, 1e-12)
 	require.Nil(t, base.FastMultiplier)
 	require.Equal(t, 1.5, *configPricing.FastMultiplier)
-	require.Equal(t, PricingSourceLiteLLM, resolved.Source)
+	require.Equal(t, PricingSourceCatalog, resolved.Source)
 
 	missing := ResolvePriceCards(configPricing, nil, PricingSourceUnpriced, true)
 	_, err = CalculateCost(missing, CostInput{Model: "missing", Tokens: UsageTokens{InputTokens: 100}, RateMultiplier: 1})
@@ -36,7 +37,7 @@ func TestPriceCardsPreserveInputsAndPricePresence(t *testing.T) {
 func TestZeroPricingTimeDoesNotEnablePricingTimeMultiplier(t *testing.T) {
 	at := time.Date(2026, 6, 29, 2, 0, 0, 0, time.UTC)
 	card := &ModelPricingEntry{TimePricing: &TimePricingConfig{Timezone: "UTC", Periods: []TimePricingPeriod{{StartTime: "01:00", EndTime: "04:00", Multiplier: 2}}}}
-	resolved := ResolvePriceCards(card, &ModelPricing{InputPricePerToken: 0.000001}, PricingSourceLiteLLM, true)
+	resolved := ResolvePriceCards(card, &ModelPricing{InputPricePerToken: 0.000001}, PricingSourceCatalog, true)
 	input := CostInput{Model: "custom", Tokens: UsageTokens{InputTokens: 100}, RateMultiplier: 1, ModelPricingAt: at, TimePricingLocation: time.UTC}
 	cost, err := CalculateCost(resolved, input)
 	require.NoError(t, err)
@@ -56,4 +57,26 @@ func TestExplicitTimeLocationPreservesDSTRepeatedHour(t *testing.T) {
 		require.Equal(t, 2.0, config.MultiplierAt(time.Date(2026, 11, 1, hour, 30, 0, 0, time.UTC), location))
 	}
 	require.Equal(t, 1.0, config.MultiplierAt(time.Date(2026, 11, 1, 7, 0, 0, 0, time.UTC), location))
+}
+
+// TestCatalogProviderCompatibility 验证旧字段仅在读取时兼容，序列化只输出新字段。
+func TestCatalogProviderCompatibility(t *testing.T) {
+	for _, tc := range []struct{ fields, want string }{
+		{`"litellm_provider":"openai"`, "openai"},
+		{`"litellm_provider":"old","provider":"new"`, "new"},
+		{`"litellm_provider":"old","provider":""`, ""},
+		{`"litellm_provider":"old","provider":null`, ""},
+	} {
+		raw, err := DecodeCatalogEntries([]byte(`{"model":{"input_cost_per_token":0,` + tc.fields + `}}`))
+		require.NoError(t, err)
+		require.NotContains(t, string(raw["model"]), "litellm_provider")
+		values, diagnostics, err := ParsePricingEntries(raw)
+		require.NoError(t, err)
+		require.NoError(t, diagnostics.ValidationError())
+		require.Equal(t, tc.want, values["model"].Provider)
+		output, err := json.Marshal(values["model"])
+		require.NoError(t, err)
+		require.NotContains(t, string(output), "litellm_provider")
+		require.Contains(t, string(output), `"provider":`)
+	}
 }

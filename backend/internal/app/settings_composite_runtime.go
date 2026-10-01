@@ -24,8 +24,8 @@ func provideCompositeReadOptions(cfg *config.Config, oauth *identity.OAuthSettin
 	return &composite.ReadOptions{OAuth: oauth, Gateway: *gatewayRules, Scheduler: *defaults, DefaultBalance: func() float64 { return cfg.Default.UserBalance }, DefaultConcurrency: func() int { return cfg.Default.UserConcurrency }, Forwarded: func() runtimeconfig.ForwardedInput {
 		value := cfg.ForwardedClientIPSettings()
 		return runtimeconfig.ForwardedInput{APIKeyACLTrustForwardedIP: value.TrustForwardedIP, ForwardedClientIPHeaders: value.Headers}
-	}, PublishModel: func(model string, enabled bool) {
-		grok.SetRuntimeModelMappingOptions(grok.ModelMappingOptions{DefaultText: model, EnableCrossClientMap: enabled})
+	}, PublishModel: func(model string) {
+		grok.SetRuntimeModelMappingOptions(grok.ModelMappingOptions{DefaultText: model})
 	}}
 }
 

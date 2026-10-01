@@ -17,10 +17,7 @@ func TestDefaultModels_ContainsNewAndLegacyImageModels(t *testing.T) {
 		"claude-opus-4-8",
 		"claude-opus-4-6-thinking",
 		"gemini-2.5-flash-image",
-		"gemini-2.5-flash-image-preview",
 		"gemini-3.1-flash-image",
-		"gemini-3.1-flash-image-preview",
-		"gemini-3-pro-image", // 兼容旧模型
 		"gemini-3.6-flash",
 		"gemini-3.6-flash-high",
 		"gemini-3.6-flash-low",

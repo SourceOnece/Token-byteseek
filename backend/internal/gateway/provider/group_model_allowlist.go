@@ -1,9 +1,9 @@
 package provider
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
-	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"strings"
+
+	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 )
 
 // 准入匹配属于网关，保存结构由分组值契约拥有。
@@ -11,8 +11,7 @@ type GroupModelAllowlist accessview.GroupModelAllowlist
 
 // Allows 判断客户端请求的模型是否命中白名单。
 // 准入只看客户端书写的模型名，与账号映射、渠道映射、合成路由改写无关；
-// 候选形式覆盖代码中已有的模型名等价规则（Gemini models/ 前缀、
-// Antigravity/Claude -thinking 宽容规则、OpenAI 推理后缀），不做模糊匹配。
+// 只解析 Gemini 的协议资源前缀，完整型号、日期和思考后缀不互相借用资格。
 func (a GroupModelAllowlist) Allows(model string) bool {
 	if !a.Enabled {
 		return true
@@ -77,8 +76,6 @@ func groupModelAllowlistCandidates(model string) []string {
 
 	add(model)
 	add(strings.TrimPrefix(model, "models/"))
-	add(claude.NormalizeModelID(strings.TrimSuffix(model, "-thinking")))
-	add(NormalizeOpenAICompatRequestedModel(model))
 	return candidates
 }
 
@@ -144,9 +141,7 @@ func (a GroupModelAllowlist) FilterForListing(source []string) []string {
 	return filtered
 }
 
-// allowlistSourcePatternAllowsModel 沿用 filterModelsByCustomList 时代的匹配规则：
-// 精确相等、source 通配模式的前缀匹配，以及 Claude 归一化（-thinking 后缀）
-// 后的精确匹配。比较与 Allows 一律大小写不敏感，保证「准入允许 ⇒ 列表可见」。
+// allowlistSourcePatternAllowsModel 只按完整名称和显式通配符匹配，与准入使用相同身份。
 func allowlistSourcePatternAllowsModel(patterns []string, model string) bool {
 	for _, pattern := range patterns {
 		if strings.EqualFold(pattern, model) {
@@ -154,14 +149,6 @@ func allowlistSourcePatternAllowsModel(patterns []string, model string) bool {
 		}
 		if strings.HasSuffix(pattern, "*") && strings.HasPrefix(strings.ToLower(model), strings.ToLower(strings.TrimSuffix(pattern, "*"))) {
 			return true
-		}
-	}
-	normalizedClaudeModel := claude.NormalizeModelID(strings.TrimSuffix(model, "-thinking"))
-	if !strings.EqualFold(normalizedClaudeModel, model) {
-		for _, pattern := range patterns {
-			if strings.EqualFold(pattern, normalizedClaudeModel) {
-				return true
-			}
 		}
 	}
 	return false

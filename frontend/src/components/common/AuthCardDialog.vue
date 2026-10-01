@@ -1,20 +1,23 @@
 <template>
+  <Transition name="modal" @after-leave="afterLeave">
   <!-- 不 teleport:与四个迁移前组件的渲染位置一致,嵌套在 BaseDialog 内时层级由 zIndex 决胜。 -->
   <div v-if="show" class="fixed inset-0 z-modal overflow-y-auto" :style="zIndexStyle" @click.self="handleOverlay">
     <div class="flex min-h-full items-center justify-center p-4">
       <div class="fixed inset-0 bg-[var(--overlay-bg)] transition-opacity" @click="handleOverlay"></div>
 
-      <div class="relative w-full max-w-md transform rounded-surface bg-white p-6 shadow-xl transition-all dark:bg-dark-800 sm:rounded-dialog">
+      <div ref="dialogRef" tabindex="-1" class="relative w-full max-w-md transform rounded-surface bg-white p-6 shadow-xl transition-all dark:bg-dark-800 sm:rounded-dialog">
         <slot />
       </div>
     </div>
   </div>
+  </Transition>
 </template>
 
 <script setup lang="ts">
 // 安全凭证流程(TOTP 设置/禁用/登录验证/提权)的居中卡片弹窗壳。
 // 与 BaseDialog 的管理台对话框是两个有意的风格族:居中图标头、无右上角 X、整卡 p-6。
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useDialogLifecycle } from '@/composables/useDialogLifecycle'
 import { Z_INDEX } from '@/constants/overlay'
 
 const props = withDefaults(defineProps<{
@@ -29,6 +32,10 @@ const props = withDefaults(defineProps<{
   zIndex: Z_INDEX.MODAL,
   closeOnOverlay: true
 })
+
+// 凭证弹窗与普通弹窗共用堆栈，关闭时不抢走新弹窗的焦点。
+const dialogRef = ref<HTMLElement | null>(null)
+const { afterLeave } = useDialogLifecycle(() => props.show, dialogRef)
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 

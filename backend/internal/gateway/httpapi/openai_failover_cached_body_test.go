@@ -52,7 +52,7 @@ func TestOpenAIGatewayService_Forward_FailoverReparsesCachedBodyForNextProvider(
 			requestModel: "gpt-5.4-high",
 			firstMapping: map[string]any{"gpt-5.4-high": "gpt-5.4"},
 			wantFirst:    "gpt-5.4",
-			wantSecond:   "gpt-5.4",
+			wantSecond:   "gpt-5.4-high",
 		},
 		{
 			name:          "first provider has no mapping second provider has mapping",

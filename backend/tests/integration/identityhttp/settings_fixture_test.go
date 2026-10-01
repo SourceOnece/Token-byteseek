@@ -55,25 +55,29 @@ func newAuthSettingsFixture(repo settings.Repository, cfg *config.Config) *authS
 	read := composite.ReadOptions{OAuth: oauth, Gateway: rules, Scheduler: scheduler.DefaultAdminSettingsDefaults(), DefaultBalance: func() float64 { return cfg.Default.UserBalance }, DefaultConcurrency: func() int { return cfg.Default.UserConcurrency }, Forwarded: func() runtimeconfig.ForwardedInput {
 		v := cfg.ForwardedClientIPSettings()
 		return runtimeconfig.ForwardedInput{APIKeyACLTrustForwardedIP: v.TrustForwardedIP, ForwardedClientIPHeaders: v.Headers}
-	}, PublishModel: func(model string, enabled bool) {
-		grok.SetRuntimeModelMappingOptions(grok.ModelMappingOptions{DefaultText: model, EnableCrossClientMap: enabled})
+	}, PublishModel: func(model string) {
 	}}
 	value.composite = composite.NewRuntime(store, read, composite.PrepareOptions{}, grants, nil, cfg.Totp.EncryptionKeyConfigured, nil)
 	return value
 }
+
 func (s *authSettingsFixture) GetDingTalkConnectOAuthConfig(ctx context.Context) (identity.DingTalkRegistrationPolicy, error) {
 	v, e := s.oauth.GetDingTalkConnectOAuthConfig(ctx)
 	return identity.DingTalkRegistrationPolicy{Enabled: v.Enabled, BypassRegistration: v.BypassRegistration, CorpRestrictionPolicy: v.CorpRestrictionPolicy}, e
 }
+
 func (s *authSettingsFixture) IsInvitationCodeEnabled(ctx context.Context) bool {
 	return s.promotion.IsInvitationCodeEnabled(ctx)
 }
+
 func (s *authSettingsFixture) IsPromoCodeEnabled(ctx context.Context) bool {
 	return s.promotion.IsPromoCodeEnabled(ctx)
 }
+
 func (s *authSettingsFixture) IsBackendModeEnabled(ctx context.Context) bool {
 	return s.backend.Enabled(ctx)
 }
+
 func authContractSettings(s *authSettingsFixture) identity.AuthSettings {
 	if s == nil {
 		return nil

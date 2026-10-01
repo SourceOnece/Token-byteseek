@@ -5,9 +5,8 @@ import (
 	"slices"
 )
 
-// LiteLLMModelPricing LiteLLM价格数据结构
-// 只保留我们需要的字段，使用指针来处理可能缺失的值
-type LiteLLMModelPricing struct {
+// CatalogModelPricing 保存每 token 单价及目录元数据，存在性标记区分缺价和显式零价。
+type CatalogModelPricing struct {
 	CacheCreation1hPricePresent bool                  `json:"-"`
 	PriorityInputPresent        bool                  `json:"-"`
 	PriorityOutputPresent       bool                  `json:"-"`
@@ -16,9 +15,10 @@ type LiteLLMModelPricing struct {
 	Source                      string                `json:"source,omitempty"`
 	PriceSources                map[string]string     `json:"price_sources,omitempty"`
 	ContextPrices               []CatalogContextPrice `json:"context_prices,omitempty"`
-	// 保留缓存桶是否显式存在，供默认价格页区分免费与不适用。
+	// 保留价格桶是否显式存在，供默认价格页区分免费与不适用。
 	CacheCreationPricePresent           bool    `json:"-"`
 	CacheReadPricePresent               bool    `json:"-"`
+	ImagePricePresent                   bool    `json:"-"`
 	ImageInputPricePresent              bool    `json:"-"`
 	ImageOutputPricePresent             bool    `json:"-"`
 	InputCostPerToken                   float64 `json:"input_cost_per_token"`
@@ -34,7 +34,7 @@ type LiteLLMModelPricing struct {
 	LongContextInputCostMultiplier      float64 `json:"long_context_input_cost_multiplier,omitempty"`
 	LongContextOutputCostMultiplier     float64 `json:"long_context_output_cost_multiplier,omitempty"`
 	SupportsServiceTier                 bool    `json:"supports_service_tier"`
-	LiteLLMProvider                     string  `json:"litellm_provider"`
+	Provider                            string  `json:"provider"`
 	Mode                                string  `json:"mode"`
 	SupportsPromptCaching               bool    `json:"supports_prompt_caching"`
 	OutputCostPerImage                  float64 `json:"output_cost_per_image"`       // 图片生成模型每张图片价格
@@ -50,14 +50,14 @@ type LiteLLMModelPricing struct {
 	SupportsAudioOutput       bool     `json:"supports_audio_output"`
 	SupportsVideoInput        bool     `json:"supports_video_input"`
 
-	// TokenPricingAbsent 表示源数据中 input/output token 价格均缺失（仅有图片价）。
-	// 此类条目只可用于图片计费，token 计费必须回退到 fallback 或 fail-closed，
-	// 否则 token 流量会被按 $0 计费。零值（false）表示条目具备 token 价格。
+	// TokenPricingAbsent 表示源数据缺少 token 定价；models.dev 要求输入和输出桶都存在。
+	// models.dev 缺价时直接返回未定价；旧格式的纯图片条目仍允许使用本地 token 回退价。
+	// 独立图片计费可继续读取此类条目的媒体价格。
 	TokenPricingAbsent bool `json:"-"`
 }
 
-// LiteLLMRawEntry 用于解析原始JSON数据
-type LiteLLMRawEntry struct {
+// CatalogRawEntry 使用指针保留原始价格字段的缺失与显式零值。
+type CatalogRawEntry struct {
 	Source                              string                `json:"source,omitempty"`
 	PriceSources                        map[string]string     `json:"price_sources,omitempty"`
 	ContextPrices                       []CatalogContextPrice `json:"context_prices,omitempty"`
@@ -74,7 +74,7 @@ type LiteLLMRawEntry struct {
 	LongContextInputCostMultiplier      *float64              `json:"long_context_input_cost_multiplier"`
 	LongContextOutputCostMultiplier     *float64              `json:"long_context_output_cost_multiplier"`
 	SupportsServiceTier                 bool                  `json:"supports_service_tier"`
-	LiteLLMProvider                     string                `json:"litellm_provider"`
+	Provider                            string                `json:"provider"`
 	Mode                                string                `json:"mode"`
 	SupportsPromptCaching               bool                  `json:"supports_prompt_caching"`
 	OutputCostPerImage                  *float64              `json:"output_cost_per_image"`
@@ -93,11 +93,11 @@ type LiteLLMRawEntry struct {
 // CatalogContextPrice 保存目录给出的绝对阶梯价，适用于超过 Threshold 的整次用量。
 type CatalogContextPrice struct {
 	Threshold int                  `json:"threshold"`
-	Pricing   *LiteLLMModelPricing `json:"pricing"`
+	Pricing   *CatalogModelPricing `json:"pricing"`
 }
 
 // CloneCatalogPrice 递归复制阶梯与来源标签，避免只读快照丢失零价存在性。
-func CloneCatalogPrice(value *LiteLLMModelPricing) *LiteLLMModelPricing {
+func CloneCatalogPrice(value *CatalogModelPricing) *CatalogModelPricing {
 	if value == nil {
 		return nil
 	}
@@ -128,7 +128,10 @@ func (c *CatalogContextPrice) UnmarshalJSON(body []byte) error {
 	if err := json.Unmarshal(body, &raw); err != nil {
 		return err
 	}
-	entries, _, err := ParsePricingEntries(map[string]json.RawMessage{"tier": raw.Pricing})
+	entries, diagnostics, err := ParsePricingEntries(map[string]json.RawMessage{"tier": raw.Pricing})
+	if validationErr := diagnostics.ValidationError(); validationErr != nil {
+		return validationErr
+	}
 	if err != nil {
 		return err
 	}

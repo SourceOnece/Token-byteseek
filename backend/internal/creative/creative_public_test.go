@@ -626,7 +626,7 @@ func newCreativeTestService() *creative.Public {
 		&creativeFakeGroupRepo{byID: map[int64]*routing.Group{12: group}, active: []routing.Group{*group}},
 		&creativeFakeRateRepo{},
 		&creativeFakeQueue{}, nil, newCreativeFakeTransient(),
-		&creativeFakeBillingRepo{}, nil, billingtestkit.Calculator(0, nil, nil), nil, nil, nil, nil, &creativeFakeSettingReader{enabled: true, models: []creative.CreativeModelSetting{
+		&creativeFakeBillingRepo{}, nil, newCreativeMediaCalculator(), nil, nil, nil, nil, &creativeFakeSettingReader{enabled: true, models: []creative.CreativeModelSetting{
 			{GroupID: 12, Model: "gemini-3.1-flash-image", Operations: []string{creative.CreativeOperationGenerate, creative.CreativeOperationEdit}},
 			{GroupID: 12, Model: "grok-imagine", Operations: []string{creative.CreativeOperationGenerate, creative.CreativeOperationEdit}},
 		}},
@@ -1240,4 +1240,16 @@ func (r *creativeFakeRunRepo) CompleteProviderOutcome(ctx context.Context, id st
 		run.Status = creative.CreativeRunStatusResultLost
 	}
 	return nil
+}
+
+// TestCreativeUnpricedModelDoesNotReserve 验证缺价型号不展示，也不会进入资金预留。
+func TestCreativeUnpricedModelDoesNotReserve(t *testing.T) {
+	svc := newCreativeTestService()
+	svc.ImageUnitPrice = creativePriceFixture(billingtestkit.Calculator(0, nil, nil), nil)
+	listed, err := svc.ListModels(context.Background(), 7)
+	require.NoError(t, err)
+	require.Empty(t, listed.Data)
+	_, err = svc.CreateRun(context.Background(), testCreativeScope(7), validCreateParams(), "unpriced-image")
+	require.Error(t, err)
+	require.Zero(t, testassert.MustType[*creativeFakeBillingRepo](creativeFixtureBilling(svc)).reserveN)
 }

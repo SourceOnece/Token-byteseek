@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
-	settingvalues "github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
 // AdminReadSettings 只包含本模块在综合管理页的展示投影。
@@ -21,7 +20,6 @@ type AdminReadSettings struct {
 	EnableFingerprintUnification           bool
 	EnableIdentityPatch                    bool
 	EnableMetadataPassthrough              bool
-	GrokCrossClientModelMapEnabled         bool
 	GrokDefaultBaseURLMode                 string
 	GrokDefaultTextModel                   string
 	IdentityPatchPrompt                    string
@@ -36,7 +34,6 @@ type AdminReadSettings struct {
 
 // ReadAdminSettings 解释同一批已读持久值，不新增查询或改变缺省语义。
 func ReadAdminSettings(settings map[string]string, rules AdminSettingsRules) *AdminReadSettings {
-
 	result := &AdminReadSettings{}
 	result.BackendModeEnabled = settings[SettingKeyBackendModeEnabled] == "true"
 	if v, ok := settings[SettingKeyEnableIdentityPatch]; ok && v != "" {
@@ -49,7 +46,6 @@ func ReadAdminSettings(settings map[string]string, rules AdminSettingsRules) *Ad
 	if result.GrokDefaultTextModel == "" {
 		result.GrokDefaultTextModel = rules.GrokDefaultTextModel
 	}
-	result.GrokCrossClientModelMapEnabled = !settingvalues.IsExplicitFalse(settings[SettingKeyGrokCrossClientModelMapEnabled])
 	result.GrokDefaultBaseURLMode = NormalizeGrokDefaultBaseURLMode(settings[SettingKeyGrokDefaultBaseURLMode])
 	result.MinClaudeCodeVersion = settings[SettingKeyMinClaudeCodeVersion]
 	result.MaxClaudeCodeVersion = settings[SettingKeyMaxClaudeCodeVersion]

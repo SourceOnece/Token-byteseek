@@ -1378,9 +1378,7 @@ func TestOpenAIResponsesWebSocket_PassthroughUsageLogInfersReasoningFromInitialR
 
 	require.Equal(t, "gpt-5.4", gjson.GetBytes(got.upstreamFirstPayload, "model").String(),
 		"上游首帧应使用分组映射后的模型")
-	require.NotNil(t, got.log.ReasoningEffort)
-	require.Equal(t, "xhigh", *got.log.ReasoningEffort,
-		"usage log reasoning effort 必须使用分组映射前首帧模型后缀推导")
+	require.Nil(t, got.log.ReasoningEffort, "模型映射前后的后缀都不生成 effort")
 }
 
 func TestOpenAIResponsesWebSocket_StripsPreviousResponseIDWhenStickyPreviousMisses(t *testing.T) {

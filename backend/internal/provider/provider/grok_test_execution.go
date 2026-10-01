@@ -38,7 +38,7 @@ func (s *GrokProviderTest) Execute(c *TestRun, value *providercore.Record, model
 	if mapped := strings.TrimSpace(mappedTestModel(value, billingModel)); mapped != "" {
 		billingModel = mapped
 	}
-	testModelID := xai.NormalizeModelID(billingModel)
+	testModelID := xai.ResolveDefaultTextModel(billingModel, xai.DefaultResponsesModel)
 
 	var authToken string
 	switch value.Type {

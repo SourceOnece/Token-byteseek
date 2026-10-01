@@ -21,7 +21,7 @@ func TestUsageBillingModelCandidatesPreserveCodexAutoReviewModel(t *testing.T) {
 func TestUsageBillingModelCandidatesPreserveGPT55ProModel(t *testing.T) {
 	candidates := UsageCandidates("openai/gpt-5.5-pro")
 
-	expected := []string{"openai/gpt-5.5-pro", "gpt-5.5-pro"}
+	expected := []string{"openai/gpt-5.5-pro"}
 	if len(candidates) != len(expected) {
 		t.Fatalf("usageBillingModelCandidates(openai/gpt-5.5-pro) = %#v, want %#v", candidates, expected)
 	}

@@ -7,7 +7,7 @@ import (
 // PricingSource 定价来源标识
 const (
 	PricingSourceConfig   = "pricing_config"
-	PricingSourceLiteLLM  = "litellm"
+	PricingSourceCatalog  = "catalog"
 	PricingSourceFallback = "fallback"
 	PricingSourceUnpriced = "unpriced"
 )
@@ -17,7 +17,7 @@ type ResolvedPricing struct {
 	// Mode 计费模式
 	Mode BillingMode
 
-	// Token 模式：基础定价（来自 LiteLLM 或 fallback）
+	// Token 模式：模型目录或回退规则提供的基础定价。
 	BasePricing *ModelPricing
 
 	// Token 模式：区间定价列表（如有，覆盖 BasePricing 中的对应字段）
@@ -30,7 +30,7 @@ type ResolvedPricing struct {
 	DefaultPerRequestPrice float64
 
 	// 来源标识
-	Source string // "configPricing", "litellm", "fallback", "unpriced"
+	Source string // "pricing_config", "catalog", "fallback", "unpriced"
 
 	// 是否支持缓存细分
 	SupportsCacheBreakdown bool
@@ -173,27 +173,20 @@ func ApplyTokenOverrides(chPricing *ModelPricingEntry, resolved *ResolvedPricing
 	if resolved.SupportsCacheBreakdown {
 		resolved.BasePricing.SupportsCacheBreakdown = true
 	}
-	// 图片输出价格与 token 价格不同：nil 表示该价卡未启用图片 token 计费，
-	// 因此显式归零，避免意外回退到模型默认图片价格。
-	if chPricing.ImageOutputPrice != nil {
-		resolved.BasePricing.ImageOutputPricePerToken = *chPricing.ImageOutputPrice
-	} else {
-		resolved.BasePricing.ImageOutputPricePerToken = 0
-	}
-	resolved.BasePricing.ImageOutputPriceExplicit = true
-	ApplyConfigImageInputPrice(chPricing, resolved.BasePricing)
 	if chPricing.MaxReasoningEffortMultiplier != nil {
 		resolved.BasePricing.MaxReasoningEffortMultiplier = chPricing.MaxReasoningEffortMultiplier
 	}
 }
 
-// ApplyConfigImageInputPrice 应用价卡图片输入价：显式配置则用配置值；
-// 未配置时归零，使 ComputeTokenBreakdown 回退到文本输入价（向后兼容，
-// 避免 LiteLLM 图片输入价泄漏进价卡自定义定价）。
-// 与 image_output 不同，此处不设 Explicit 标志——图片输入未配置应回退文本价，
-// 而非硬置 0。
-func ApplyConfigImageInputPrice(chPricing *ModelPricingEntry, pricing *ModelPricing) {
-	if chPricing != nil && chPricing.ImageInputPrice != nil {
+// applyConfigImagePriceOverrides 在基础价和每个阶梯中应用同一份图片价卡语义。
+// 图片输出未配置或显式为零时不计费；图片输入未配置或为零时回退该档文本输入价。
+func applyConfigImagePriceOverrides(pricing *ModelPricing, chPricing *ModelPricingEntry) {
+	pricing.ImageOutputPricePerToken = 0
+	if chPricing.ImageOutputPrice != nil {
+		pricing.ImageOutputPricePerToken = *chPricing.ImageOutputPrice
+	}
+	pricing.ImageOutputPriceExplicit = true
+	if chPricing.ImageInputPrice != nil {
 		pricing.ImageInputPricePerToken = *chPricing.ImageInputPrice
 	} else {
 		pricing.ImageInputPricePerToken = 0
@@ -413,13 +406,7 @@ func IntervalToModelPricingWithBase(iv *PricingInterval, supportsCacheBreakdown 
 	}
 	// 价卡定价存在时显式覆盖图片输出价格；图片输入价格沿用价卡级配置，区间本身不携带该字段。
 	if chPricing != nil {
-		pricing.ImageOutputPriceExplicit = true
-		if chPricing.ImageOutputPrice != nil {
-			pricing.ImageOutputPricePerToken = *chPricing.ImageOutputPrice
-		} else {
-			pricing.ImageOutputPricePerToken = 0
-		}
-		ApplyConfigImageInputPrice(chPricing, pricing)
+		applyConfigImagePriceOverrides(pricing, chPricing)
 		ApplyConfigFastModeMultiplier(pricing, chPricing)
 		ApplyConfigFlexMultiplier(pricing, chPricing)
 	}
@@ -491,11 +478,7 @@ func HasExplicitPricingPrice(p ModelPricingEntry) bool {
 	return false
 }
 
-// NormalizePriceModelName 统一 Anthropic 模型名的点号与连字符写法。
+// NormalizePriceModelName 只处理查询大小写与首尾空白，保留完整型号。
 func NormalizePriceModelName(model string) string {
-	model = strings.ToLower(strings.TrimSpace(model))
-	if strings.HasPrefix(model, "claude-") {
-		model = strings.ReplaceAll(model, ".", "-")
-	}
-	return model
+	return strings.ToLower(strings.TrimSpace(model))
 }

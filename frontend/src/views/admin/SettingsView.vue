@@ -4995,20 +4995,7 @@
                       {{ t("admin.settings.gatewayForwarding.grokDefaultTextModelHint") }}
                     </p>
                   </div>
-                  <div class="flex items-center justify-between gap-5">
-                    <div>
-                      <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ t("admin.settings.gatewayForwarding.grokCrossClientMap") }}
-                      </label>
-                      <p class="mt-0.5 max-w-sm text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.gatewayForwarding.grokCrossClientMapHint") }}
-                      </p>
-                    </div>
-                    <Toggle
-                      v-model="form.grok_cross_client_model_map_enabled"
-                      data-testid="grok-cross-client-model-map-toggle"
-                    />
-                  </div>
+
                 </div>
 
                 <div>
@@ -9689,7 +9676,6 @@ const form = reactive<SettingsForm>({
   fallback_model_gemini: "gemini-2.5-pro",
   fallback_model_antigravity: "gemini-2.5-pro",
   grok_default_text_model: "grok-4.5",
-  grok_cross_client_model_map_enabled: false,
   grok_default_base_url_mode: "cli",
   // Identity patch (Claude -> Gemini)
   enable_identity_patch: true,
@@ -11852,8 +11838,6 @@ async function saveSettings() {
       fallback_model_antigravity: form.fallback_model_antigravity,
       grok_default_text_model:
         form.grok_default_text_model.trim() || "grok-4.5",
-      grok_cross_client_model_map_enabled:
-        form.grok_cross_client_model_map_enabled,
       grok_default_base_url_mode: form.grok_default_base_url_mode,
       enable_identity_patch: form.enable_identity_patch,
       identity_patch_prompt: form.identity_patch_prompt,

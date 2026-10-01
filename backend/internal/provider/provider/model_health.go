@@ -14,8 +14,8 @@ import (
 
 // ModelHealth 只组合本次模型观测，别名规则由 app 投影，不创建另一份目录缓存。
 type ModelHealth struct {
-	Health       *provider.HealthService
-	CodexRules   openai.CodexModelRules
+	Health *provider.HealthService
+
 	IsImageModel func(string) bool
 }
 
@@ -37,7 +37,7 @@ func (s *ModelHealth) LimitKey(value *provider.Record, requested string, thinkin
 		if value.IsGrok() {
 			normalized = grok.NormalizeModelID(key)
 		} else if value.UsesOpenAICodexProtocol() {
-			normalized = openai.NormalizeCodexModel(key, s.CodexRules)
+			normalized = openai.NormalizeCodexModel(key)
 		}
 		if normalized = strings.TrimSpace(normalized); normalized != "" {
 			return normalized
@@ -60,6 +60,6 @@ func (s *ModelHealth) Observe(ctx context.Context, value *provider.Record, model
 
 // ObserveSparkRateLimit 显式接收当次 thinking，不从旧业务 Context 读取模型意图。
 func (s *ModelHealth) ObserveSparkRateLimit(ctx context.Context, value *provider.Record, model string, status int, headers http.Header, body []byte, thinking *bool) bool {
-	key := openai.NormalizeCodexModel(s.LimitKey(value, model, thinking), s.CodexRules)
-	return s.Health.ApplySparkRateLimit(ctx, value, key, status, openai.IsCodexSparkModel(model, s.CodexRules), func() (provider.OpenAI429Disposition, *time.Time) { return ClassifyOpenAI429(headers, body) })
+	key := openai.NormalizeCodexModel(s.LimitKey(value, model, thinking))
+	return s.Health.ApplySparkRateLimit(ctx, value, key, status, openai.IsCodexSparkModel(model), func() (provider.OpenAI429Disposition, *time.Time) { return ClassifyOpenAI429(headers, body) })
 }

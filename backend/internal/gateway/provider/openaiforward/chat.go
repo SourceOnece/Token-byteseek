@@ -131,6 +131,12 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 	billingModel := p.BillingModel(originalModel, defaultMappedModel)
 	upstreamModel := p.UpstreamModel(billingModel)
 
+	// 模型映射后按真实目标验证，避免别名绕过或转换吞掉显式禁用档位。
+	if err := protocolopenai.ValidateGPT61CompatBody(body, upstreamModel, false); err != nil {
+		p.ChatError(http.StatusBadRequest, "invalid_request_error", err.Error())
+		return nil, err
+	}
+
 	promptCacheKey = strings.TrimSpace(promptCacheKey)
 	compatPromptCacheInjected := false
 	if promptCacheKey == "" && !isResponsesShape && (profile.UsesCodex || profile.OpenAIAPIKey) && p.AutoCacheKey(upstreamModel) {

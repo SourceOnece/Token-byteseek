@@ -264,7 +264,7 @@ func (s *GrokExecutor) ChatResponses(
 		if result.RequestID == "" {
 			result.RequestID = requeststate.FirstNonEmpty(nativeResult.UpstreamHeaders.Get("x-request-id"), nativeResult.UpstreamHeaders.Get("xai-request-id"))
 		}
-		result.ReasoningEffort = requeststate.ExtractOpenAIReasoningEffortFromBody(body, upstreamModel, billingModel, originalModel)
+		result.ReasoningEffort = requeststate.ExtractOpenAIReasoningEffortFromBody(body)
 	}
 	return result, true, err
 }

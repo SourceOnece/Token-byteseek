@@ -14,73 +14,20 @@ import (
 const ImagesResponsesMainModel = "gpt-5.4-mini"
 
 var CodexModelMap = map[string]string{
-	"gpt-6.1-sol":                "gpt-6.1-sol",
-	"gpt-5.6-sol":                "gpt-5.6-sol",
-	"gpt-5.6-terra":              "gpt-5.6-terra",
-	"gpt-5.6-luna":               "gpt-5.6-luna",
-	"gpt-5.5-pro":                "gpt-5.5-pro",
-	"gpt-5.5":                    "gpt-5.5",
-	"codex-auto-review":          "codex-auto-review",
-	"gpt-5.4":                    "gpt-5.4",
-	"gpt-5.4-mini":               "gpt-5.4-mini",
-	"gpt-5.4-none":               "gpt-5.4",
-	"gpt-5.4-low":                "gpt-5.4",
-	"gpt-5.4-medium":             "gpt-5.4",
-	"gpt-5.4-high":               "gpt-5.4",
-	"gpt-5.4-xhigh":              "gpt-5.4",
-	"gpt-5.4-chat-latest":        "gpt-5.4",
-	"gpt-5.3":                    "gpt-5.3-codex",
-	"gpt-5.3-none":               "gpt-5.3-codex",
-	"gpt-5.3-low":                "gpt-5.3-codex",
-	"gpt-5.3-medium":             "gpt-5.3-codex",
-	"gpt-5.3-high":               "gpt-5.3-codex",
-	"gpt-5.3-xhigh":              "gpt-5.3-codex",
-	"gpt-5.3-codex":              "gpt-5.3-codex",
-	"gpt-5.3-codex-spark":        "gpt-5.3-codex-spark",
-	"gpt-5.3-codex-spark-low":    "gpt-5.3-codex-spark",
-	"gpt-5.3-codex-spark-medium": "gpt-5.3-codex-spark",
-	"gpt-5.3-codex-spark-high":   "gpt-5.3-codex-spark",
-	"gpt-5.3-codex-spark-xhigh":  "gpt-5.3-codex-spark",
-	"gpt-5.3-codex-low":          "gpt-5.3-codex",
-	"gpt-5.3-codex-medium":       "gpt-5.3-codex",
-	"gpt-5.3-codex-high":         "gpt-5.3-codex",
-	"gpt-5.3-codex-xhigh":        "gpt-5.3-codex",
-	"gpt-5.2":                    "gpt-5.2",
-	"gpt-5.2-none":               "gpt-5.2",
-	"gpt-5.2-low":                "gpt-5.2",
-	"gpt-5.2-medium":             "gpt-5.2",
-	"gpt-5.2-high":               "gpt-5.2",
-	"gpt-5.2-xhigh":              "gpt-5.2",
-	"gpt-5":                      "gpt-5.4",
-	"gpt-5-mini":                 "gpt-5.4",
-	"gpt-5-nano":                 "gpt-5.4",
-	"gpt-5.1":                    "gpt-5.4",
-	"gpt-5.1-codex":              "gpt-5.3-codex",
-	"gpt-5.1-codex-max":          "gpt-5.3-codex",
-	"gpt-5.1-codex-mini":         "gpt-5.3-codex",
-	"gpt-5.2-codex":              "gpt-5.2",
-	"codex-mini-latest":          "gpt-5.3-codex",
-	"gpt-5-codex":                "gpt-5.3-codex",
-}
-
-var CodexVersionModelPrefixes = []struct {
-	prefix string
-	target string
-}{
-	{prefix: "gpt-6-sol", target: "gpt-6-sol"},
-	{prefix: "gpt-6.1-sol", target: "gpt-6.1-sol"},
-	{prefix: "gpt-6-luna", target: "gpt-6-luna"},
-	{prefix: "gpt-5.6-sol", target: "gpt-5.6-sol"},
-	{prefix: "gpt-5.6-terra", target: "gpt-5.6-terra"},
-	{prefix: "gpt-5.6-luna", target: "gpt-5.6-luna"},
-	{prefix: "gpt-5.3-codex-spark", target: "gpt-5.3-codex-spark"},
-	{prefix: "gpt-5.3-codex", target: "gpt-5.3-codex"},
-	{prefix: "gpt-5.4-mini", target: "gpt-5.4-mini"},
-	{prefix: "gpt-5.4-nano", target: "gpt-5.4-nano"},
-	{prefix: "gpt-5.5-pro", target: "gpt-5.5-pro"},
-	{prefix: "gpt-5.5", target: "gpt-5.5"},
-	{prefix: "gpt-5.4", target: "gpt-5.4"},
-	{prefix: "gpt-5.2", target: "gpt-5.2"},
+	"gpt-6.1-sol":         "gpt-6.1-sol",
+	"gpt-6-astra":         "gpt-6-astra",
+	"gpt-5.4-nano":        "gpt-5.4-nano",
+	"gpt-5.6-sol":         "gpt-5.6-sol",
+	"gpt-5.6-terra":       "gpt-5.6-terra",
+	"gpt-5.6-luna":        "gpt-5.6-luna",
+	"gpt-5.5-pro":         "gpt-5.5-pro",
+	"gpt-5.5":             "gpt-5.5",
+	"codex-auto-review":   "codex-auto-review",
+	"gpt-5.4":             "gpt-5.4",
+	"gpt-5.4-mini":        "gpt-5.4-mini",
+	"gpt-5.3-codex":       "gpt-5.3-codex",
+	"gpt-5.3-codex-spark": "gpt-5.3-codex-spark",
+	"gpt-5.2":             "gpt-5.2",
 }
 
 type CodexTransformResult struct {
@@ -92,7 +39,6 @@ type CodexTransformResult struct {
 }
 
 type CodexOAuthTransformOptions struct {
-	ModelRules                          CodexModelRules
 	IsMessagesBridge                    func(map[string]any) bool
 	IsCodexCLI                          bool
 	IsCompact                           bool
@@ -301,11 +247,11 @@ func ApplyCodexOAuthTransformWithOptions(reqBody map[string]any, opts CodexOAuth
 	if !opts.SkipDefaultInstructions && ApplyInstructions(reqBody, opts.IsCodexCLI) {
 		result.Modified = true
 	}
-	if IsCodexSparkModel(normalizedModel, opts.ModelRules) && ApplyCodexSparkImageUnsupportedInstructions(reqBody) {
+	if IsCodexSparkModel(normalizedModel) && ApplyCodexSparkImageUnsupportedInstructions(reqBody) {
 		result.Modified = true
 	}
 	// gpt-5.3-codex-spark 上游会拒绝 image_generation 工具，Codex CLI 默认携带时需要剥离。
-	if IsCodexSparkModel(normalizedModel, opts.ModelRules) && StripCodexSparkImageGenerationTools(reqBody) {
+	if IsCodexSparkModel(normalizedModel) && StripCodexSparkImageGenerationTools(reqBody) {
 		result.Modified = true
 	}
 
@@ -600,135 +546,17 @@ func StringifyCodexContentText(value any) string {
 	}
 }
 
-func NormalizeCodexModel(model string, models CodexModelRules) string {
-	model = strings.TrimSpace(model)
-	if model == "" {
-		return "gpt-5.4"
-	}
-	if mapped, ok := NormalizeKnownCodexModel(model, models); ok {
-		return mapped
-	}
-	return model
-}
-
-func NormalizeKnownCodexModel(model string, models CodexModelRules) (string, bool) {
-	model = strings.TrimSpace(model)
-	if model == "" {
-		return "", false
-	}
-	if models.ImageOnly(model) {
-		return model, true
-	}
-
-	modelID := models.LastSegment(model)
-
-	if normalized := models.CanonicalAlias(modelID); normalized != "" {
-		modelID = normalized
-	}
-	key := CodexModelLookupKey(modelID)
-	if key == "" {
-		return "", false
-	}
-	if mapped := GetNormalizedCodexModel(key); mapped != "" {
-		return mapped, true
-	}
-	if HasUnsupportedOpenAIReasoningSuffix(modelID, models) {
-		return "", false
-	}
-	if mapped := models.KnownModel(modelID); mapped != "" {
-		return mapped, true
-	}
-	for _, item := range CodexVersionModelPrefixes {
-		if key == item.prefix {
-			return item.target, true
-		}
-		suffix, ok := strings.CutPrefix(key, item.prefix+"-")
-		if ok && IsKnownCodexModelSuffixForTarget(item.target, suffix, models) {
-			return item.target, true
-		}
-	}
-	return "", false
+// NormalizeCodexModel 保留显式映射后的完整型号，不补全缺省模型。
+func NormalizeCodexModel(model string) string {
+	return strings.TrimSpace(model)
 }
 
 func CodexModelLookupKey(modelID string) string {
-	modelID = strings.TrimSpace(modelID)
-	if modelID == "" {
-		return ""
-	}
-	if strings.Contains(modelID, "/") {
-		parts := strings.Split(modelID, "/")
-		modelID = parts[len(parts)-1]
-	}
-	return strings.ToLower(strings.Join(strings.Fields(modelID), "-"))
+	return strings.ToLower(strings.TrimSpace(modelID))
 }
 
-func IsKnownCodexModelSuffix(suffix string) bool {
-	switch suffix {
-	case "none", "minimal", "low", "medium", "high", "xhigh":
-		return true
-	}
-	return IsCodexDateSuffix(suffix)
-}
-
-func IsKnownCodexModelSuffixForTarget(target string, suffix string, models CodexModelRules) bool {
-	if IsKnownCodexModelSuffix(suffix) {
-		return true
-	}
-	switch suffix {
-	case "max":
-		return models.SupportsEffort(target, suffix)
-	default:
-		return false
-	}
-}
-
-func HasUnsupportedOpenAIReasoningSuffix(model string, models CodexModelRules) bool {
-	normalized := models.CanonicalAlias(model)
-	if normalized == "" || !strings.HasPrefix(normalized, "gpt-") {
-		return false
-	}
-
-	parts := strings.FieldsFunc(normalized, func(r rune) bool {
-		switch r {
-		case '-', '_', ' ':
-			return true
-		default:
-			return false
-		}
-	})
-	if len(parts) == 0 {
-		return false
-	}
-
-	suffix := parts[len(parts)-1]
-	switch suffix {
-	case "max":
-		return !models.SupportsEffort(normalized, suffix)
-	case "ultra":
-		// Ultra 是 Codex 客户端的多代理模式，不是上游模型 ID 后缀。
-		return true
-	default:
-		return false
-	}
-}
-
-func IsCodexDateSuffix(suffix string) bool {
-	parts := strings.Split(suffix, "-")
-	if len(parts) != 3 || len(parts[0]) != 4 || len(parts[1]) != 2 || len(parts[2]) != 2 {
-		return false
-	}
-	for _, part := range parts {
-		for _, r := range part {
-			if r < '0' || r > '9' {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func IsCodexSparkModel(model string, models CodexModelRules) bool {
-	return NormalizeCodexModel(model, models) == "gpt-5.3-codex-spark"
+func IsCodexSparkModel(model string) bool {
+	return strings.EqualFold(NormalizeCodexModel(model), "gpt-5.3-codex-spark")
 }
 
 func HasOpenAIImageGenerationTool(reqBody map[string]any) bool {
@@ -1877,15 +1705,6 @@ func NormalizeCodexTools(reqBody map[string]any) bool {
 	}
 
 	return modified
-}
-
-// CodexModelRules 在原模型决策时点读取纯规则，不建立别名缓存或引用提供商类型。
-type CodexModelRules struct {
-	ImageOnly      func(string) bool
-	LastSegment    func(string) string
-	CanonicalAlias func(string) string
-	KnownModel     func(string) string
-	SupportsEffort func(string, string) bool
 }
 
 // IsOpenAIImageGenerationType 判断工具类型是否为原生生图工具。

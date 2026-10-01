@@ -123,7 +123,7 @@ func TestIsModelRateLimited(t *testing.T) {
 				},
 			},
 			requestedModel: "gemini-3-pro-preview",
-			expected:       true,
+			expected:       false,
 		},
 		{
 			name: "antigravity platform - gemini family rate limit blocks mapped preview",
@@ -138,7 +138,7 @@ func TestIsModelRateLimited(t *testing.T) {
 				},
 			},
 			requestedModel: "gemini-3-pro-preview",
-			expected:       true,
+			expected:       false,
 		},
 		{
 			name: "antigravity platform - gemini family rate limit does not block claude",
@@ -183,7 +183,7 @@ func TestIsModelRateLimited(t *testing.T) {
 				},
 			},
 			requestedModel: "claude-opus-4-5-thinking",
-			expected:       true,
+			expected:       false,
 		},
 		{
 			name: "no scope fallback - claude_sonnet should not match",
@@ -384,8 +384,8 @@ func TestGetModelRateLimitRemainingTime(t *testing.T) {
 				},
 			},
 			requestedModel: "claude-opus-4-5-thinking",
-			minExpected:    4 * time.Minute,
-			maxExpected:    6 * time.Minute,
+			minExpected:    0,
+			maxExpected:    0,
 		},
 		{
 			name: "antigravity platform - gemini family rate limit remaining",
@@ -399,7 +399,7 @@ func TestGetModelRateLimitRemainingTime(t *testing.T) {
 					},
 				},
 			},
-			requestedModel: "gemini-3-pro-preview",
+			requestedModel: "gemini-3-pro-high",
 			minExpected:    9 * time.Minute,
 			maxExpected:    11 * time.Minute,
 		},

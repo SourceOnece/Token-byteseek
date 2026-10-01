@@ -17,6 +17,16 @@ describe('useNavigationLoading', () => {
     vi.useRealTimers()
   })
 
+  it('旧导航结束不能提前关闭新导航的加载状态', () => {
+    const state = useNavigationLoading()
+    const first = state.startNavigation()
+    const second = state.startNavigation()
+    state.endNavigation(first)
+    expect(state.isNavigating.value).toBe(true)
+    state.endNavigation(second)
+    expect(state.isNavigating.value).toBe(false)
+  })
+
   describe('startNavigation', () => {
     it('导航开始时 isNavigating 应变为 true', () => {
       const { isNavigating, startNavigation } = useNavigationLoading()

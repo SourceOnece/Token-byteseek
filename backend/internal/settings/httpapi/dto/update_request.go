@@ -243,9 +243,8 @@ type UpdateSettingsRequest struct {
 	FallbackModelAntigravity string `json:"fallback_model_antigravity"`
 
 	// Grok 模型映射策略采用指针，省略字段时保持现值。
-	GrokDefaultTextModel           *string `json:"grok_default_text_model"`
-	GrokCrossClientModelMapEnabled *bool   `json:"grok_cross_client_model_map_enabled"`
-	GrokDefaultBaseURLMode         *string `json:"grok_default_base_url_mode"`
+	GrokDefaultTextModel   *string `json:"grok_default_text_model"`
+	GrokDefaultBaseURLMode *string `json:"grok_default_base_url_mode"`
 
 	// Identity patch configuration (Claude -> Gemini)
 	EnableIdentityPatch bool   `json:"enable_identity_patch"`

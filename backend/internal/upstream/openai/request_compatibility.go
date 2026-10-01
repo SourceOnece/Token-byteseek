@@ -365,6 +365,10 @@ func NormalizeOpenAIResponsesReasoningMode(body []byte) ([]byte, bool, error) {
 	if len(body) == 0 {
 		return body, false, nil
 	}
+	// 新 Sol 的 mode 与 effort 是独立字段；只清理不受支持的采样参数。
+	if wire.IsGPT61SolModel(gjson.GetBytes(body, "model").String()) {
+		return normalizeGPT61Sampling(body)
+	}
 	mode := gjson.GetBytes(body, "reasoning.mode")
 	if !mode.Exists() || mode.Type != gjson.String {
 		return body, false, nil
@@ -694,4 +698,31 @@ func ShouldDropEmptyBase64InputImagePart(part any) bool {
 	}
 	imageURL, _ := partMap["image_url"].(string)
 	return wire.IsEmptyBase64DataURI(imageURL)
+}
+
+// normalizeGPT61Sampling 保留推理模式，移除 GPT-6.1 不接受的采样和概率输出。
+func normalizeGPT61Sampling(body []byte) ([]byte, bool, error) {
+	out := body
+	changed := false
+	fields := []string{"temperature", "top_p", "top_logprobs", "logprobs"}
+	if include := gjson.GetBytes(body, "include"); include.IsArray() {
+		items := include.Array()
+		for i := len(items) - 1; i >= 0; i-- {
+			if items[i].String() == "message.output_text.logprobs" {
+				fields = append(fields, fmt.Sprintf("include.%d", i))
+			}
+		}
+	}
+	for _, key := range fields {
+		if !gjson.GetBytes(out, key).Exists() {
+			continue
+		}
+		var err error
+		out, err = sjson.DeleteBytes(out, key)
+		if err != nil {
+			return body, false, fmt.Errorf("normalize GPT-6.1 parameter %s: %w", key, err)
+		}
+		changed = true
+	}
+	return out, changed, nil
 }

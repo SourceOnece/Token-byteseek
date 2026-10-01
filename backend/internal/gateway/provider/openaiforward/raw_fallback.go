@@ -37,7 +37,6 @@ func MessagesViaRawChat(ctx context.Context, body []byte, defaultMappedModel str
 		p.Error(http.StatusBadRequest, "invalid_request_error", err.Error())
 		return nil, err
 	}
-	p.NormalizeModel(&anthropicReq)
 	clientStream := anthropicReq.Stream
 
 	// 2. 将 Anthropic 请求直接转换为 Chat Completions。
@@ -49,6 +48,12 @@ func MessagesViaRawChat(ctx context.Context, body []byte, defaultMappedModel str
 
 	billingModel := p.BillingModel(anthropicReq.Model, defaultMappedModel)
 	upstreamModel := p.UpstreamModel(billingModel)
+
+	// 模型映射后按真实目标验证，避免别名绕过或转换吞掉显式禁用档位。
+	if err := protocolopenai.ValidateGPT61CompatBody(body, upstreamModel, true); err != nil {
+		p.Error(http.StatusBadRequest, "invalid_request_error", err.Error())
+		return nil, err
+	}
 	chatReq.Model = upstreamModel
 	chatReq.ReasoningEffort = p.MessagesEffort(&anthropicReq, upstreamModel, chatReq.ReasoningEffort)
 	chatReq.Stream = clientStream
@@ -175,6 +180,12 @@ func ResponsesViaRawChat(ctx context.Context, body []byte, p RawFallbackPorts) (
 
 	billingModel := p.BillingModel(originalModel, "")
 	upstreamModel := p.UpstreamModel(billingModel)
+
+	// 模型映射后按真实目标验证，避免别名绕过或转换吞掉显式禁用档位。
+	if err := protocolopenai.ValidateGPT61CompatBody(body, upstreamModel, true); err != nil {
+		p.Error(http.StatusBadRequest, "invalid_request_error", err.Error())
+		return nil, err
+	}
 	chatReq.Model = upstreamModel
 	if clientStream {
 		chatReq.StreamOptions = &protocolopenai.ChatStreamOptions{IncludeUsage: true}

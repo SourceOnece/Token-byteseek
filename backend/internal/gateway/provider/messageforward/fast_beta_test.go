@@ -7,27 +7,18 @@ import (
 	"testing"
 	"time"
 
-	billingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
-
-	"github.com/TokenFlux/TokenRouter/internal/routing"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
 	billingpricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-
+	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
 	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 
 	"github.com/stretchr/testify/require"
@@ -56,7 +47,7 @@ func fastModeTestContext(policy, model string) context.Context {
 }
 
 func fastModeTestResolver() *billingcore.PriceResolver {
-	pricing := billingprovider.NewPricingServiceFromSnapshot(billingprovider.Options{DefaultOpenAIModel: openai.DefaultTestModel, IsImageModel: media.IsImageGenerationModel, ModelLookupCandidates: modelidentity.CandidatesFactory}, nil, billingprovider.Snapshot{Data: map[string]*billingpricing.LiteLLMModelPricing{
+	pricing := catalogprovider.NewServiceFromSnapshot(catalogprovider.Options{ModelLookupCandidates: modelidentity.CandidatesFactory}, nil, catalogprovider.Snapshot{Data: map[string]*billingpricing.CatalogModelPricing{
 		"gpt-5.5": {
 			InputCostPerToken:     5e-6,
 			OutputCostPerToken:    30e-6,

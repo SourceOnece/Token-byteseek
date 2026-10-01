@@ -177,9 +177,14 @@ const (
 	DeepseekProOffPeakCacheRead     = 2.2e-8
 )
 
-// IsDeepSeekModel 判断模型名是否属于 DeepSeek 系列，未知后缀也按 Flash 价卡处理。
+// IsDeepSeekModel 仅识别具有专属费率的完整型号，未知型号不套用 Flash 价格。
 func IsDeepSeekModel(model string) bool {
-	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(model)), "deepseek-")
+	switch strings.ToLower(strings.TrimSpace(model)) {
+	case "deepseek-v4-pro", "deepseek-v4-flash", "deepseek-v4-flash-vision-exp":
+		return true
+	default:
+		return false
+	}
 }
 
 // DeepseekPeakMultiplierAt 返回 DeepSeek 官方峰谷倍率。周末按北京时间判断，
@@ -251,7 +256,7 @@ func ConfigTierOverridePrice(baseStandard, baseTier, configStandard float64) flo
 	return 0
 }
 
-// ApplyConfigTokenPriceOverrides 应用价卡 token 价格，同时保留模型内置层级比例。
+// ApplyConfigTokenPriceOverrides 应用普通与图片 token 价格，同时保留模型内置层级比例。
 func ApplyConfigTokenPriceOverrides(pricing *ModelPricing, ConfigPricing *ModelPricingEntry) {
 	if pricing == nil || ConfigPricing == nil {
 		return
@@ -305,6 +310,7 @@ func ApplyConfigTokenPriceOverrides(pricing *ModelPricing, ConfigPricing *ModelP
 		// 显式统一缓存价同时覆盖图片缓存，避免本地配置被原生图片价绕过。
 		pricing.ImageCacheReadPricePerToken = *ConfigPricing.CacheReadPrice
 	}
+	applyConfigImagePriceOverrides(pricing, ConfigPricing)
 }
 
 // CalculateTokenCost 按 token 区间计费
@@ -316,8 +322,8 @@ func CalculateTokenCost(resolved *ResolvedPricing, input CostInput) (*CostBreakd
 		return nil, fmt.Errorf("no pricing available for model: %s: %w", input.Model, ErrModelPricingUnavailable)
 	}
 
-	pricing = ApplyModelSpecificPricingPolicyEx(input.Model, pricing, resolved.Source == PricingSourceLiteLLM || resolved.Source == PricingSourceFallback, input.ModelPolicy)
-	if resolved.Source == PricingSourceLiteLLM || resolved.Source == PricingSourceFallback {
+	pricing = ApplyModelSpecificPricingPolicyEx(input.Model, pricing, resolved.Source == PricingSourceCatalog || resolved.Source == PricingSourceFallback, input.ModelPolicy)
+	if resolved.Source == PricingSourceCatalog || resolved.Source == PricingSourceFallback {
 		pricing = ApplyDeepSeekPeakPricing(input.Model, pricing, input.ModelPricingAt)
 	}
 
@@ -575,7 +581,7 @@ func ApplyModelSpecificPricingPolicyEx(model string, pricing *ModelPricing, forc
 		return ApplyDeepSeekOfficialPricing(model, pricing)
 	}
 	normalized := policy.NormalizedOpenAIModel
-	isGPT56 := policy.IsGPT56
+	isGPT56 := policy.IsGPT56 || normalized == "gpt-6.1-sol"
 	needsCacheCreationPolicy := isGPT56 && !pricing.CacheCreationPriceExplicit && (pricing.CacheCreationPricePerToken <= 0 ||
 		(pricing.InputPricePerTokenPriority > 0 && pricing.CacheCreationPricePerTokenPriority <= 0))
 	fastRatio := OpenAIModelFastPricingRatio(normalized)
@@ -623,7 +629,7 @@ func OpenAIModelFastPricingRatio(normalized string) float64 {
 }
 
 // EnforceOpenAIFastPricingRatio 把 priority 档价格改写为「标准价 × ratio」。
-// 本地/远程 LiteLLM 目录可能只带官方旧口径（如 gpt-5.5 priority 仍标 2x），
+// 本地或远程模型目录可能只带官方旧口径（如 gpt-5.5 priority 仍标 2x），
 // 直接采用会导致 Fast 模式少计费；这里按业务倍率兜底修正，且对已正确的
 // fallback 条目（2x/2.5x）是幂等的。ComputeTokenBreakdown 在 priority 价格
 // 存在时走显式档位价、不再叠加通用 tier 倍率，因此不会重复乘价。
@@ -1032,8 +1038,6 @@ func UnknownDisplayPricing() ModelDisplayPricing {
 }
 
 const (
-	DefaultImageGenerationPrice = 0.134
-
 	DefaultGrokImagineImagePrice1K        = 0.02
 	DefaultGrokImagineImagePrice2K        = 0.02
 	DefaultGrokImagineImageQualityPrice1K = 0.05
@@ -1155,9 +1159,8 @@ func CalculateAudioCost(mode string, durationOrUnits float64, groupConfig *Audio
 
 // HasExplicitImageGenerationPricing 仅把明确标记为图片生成的按图价格视为图片计费。
 // 部分聊天模型也携带 output_cost_per_image 元数据，不能据此覆盖其 token 定价。
-func HasExplicitImageGenerationPricing(pricing *LiteLLMModelPricing) bool {
-	return pricing != nil &&
-		pricing.OutputCostPerImage > 0 &&
+func HasExplicitImageGenerationPricing(pricing *CatalogModelPricing) bool {
+	return HasImageUnitPrice(pricing) &&
 		strings.EqualFold(strings.TrimSpace(pricing.Mode), "image_generation")
 }
 

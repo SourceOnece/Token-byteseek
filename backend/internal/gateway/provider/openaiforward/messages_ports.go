@@ -27,7 +27,6 @@ type MessagesPorts interface {
 	ValidateEffort(body []byte, model string) error
 	Error(status int, kind, message string)
 	CloneDigest(r *protocolanthropic.AnthropicRequest) *protocolanthropic.AnthropicRequest
-	NormalizeModel(r *protocolanthropic.AnthropicRequest)
 	BillingModel(model, fallback string) string
 	UpstreamModel(model string) string
 	APIKeyID() int64

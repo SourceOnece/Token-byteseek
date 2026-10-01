@@ -15,7 +15,7 @@ func TestApplyModelSpecificPricingPolicy_EnforcesOpenAIFastRatios(t *testing.T) 
 	t.Parallel()
 
 	t.Run("gpt-5.5 catalog 2x priority is corrected to 2.5x", func(t *testing.T) {
-		// 模拟本地 LiteLLM 目录仍携带官方旧口径（gpt-5.5 priority = 2x）。
+		// 模拟本地 模型目录 目录仍携带官方旧口径（gpt-5.5 priority = 2x）。
 		catalog := &billingpricing.ModelPricing{
 			InputPricePerToken:             5e-6,
 			InputPricePerTokenPriority:     10e-6,
@@ -93,7 +93,7 @@ func TestOpenAIFastBillingMultiplier_2xAnd25x(t *testing.T) {
 	t.Parallel()
 
 	// 目录数据携带官方旧口径（gpt-5.5 priority=2x）；修正后 fast 必须按 2.5x 计费。
-	catalog := map[string]*billingpricing.LiteLLMModelPricing{
+	catalog := map[string]*billingpricing.CatalogModelPricing{
 		"gpt-5.4": {
 			InputCostPerToken:               2.5e-6,
 			InputCostPerTokenPriority:       5e-6,

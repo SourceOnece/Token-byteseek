@@ -9,17 +9,12 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-
 	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
-
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 	routingadapter "github.com/TokenFlux/TokenRouter/internal/routing/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
 func providePricingConfigService(repo *routingpostgres.PricingConfigStore, groups *routingpostgres.GroupStore, invalidator apikey.APIKeyAuthCacheInvalidator) *routing.PricingConfigService {
@@ -35,8 +30,8 @@ func providePricingConfigService(repo *routingpostgres.PricingConfigStore, group
 	}})
 }
 
-func providePricingCatalog(calculator *billing.Calculator, prices *pricingprovider.PricingService) *routing.PricingCatalog {
-	return &routing.PricingCatalog{Prices: calculator, Update: calculator.ForceUpdatePricing, NamesByProvider: prices.ListModelNamesByProvider, QoderModels: qoder.DefaultRequestModelIDs, Snapshot: func() routing.DefaultPricingSnapshot {
+func providePricingCatalog(calculator *billing.Calculator, prices *catalogprovider.Service) *routing.PricingCatalog {
+	return &routing.PricingCatalog{Prices: calculator, Update: calculator.ForceUpdatePricing, Snapshot: func() routing.DefaultPricingSnapshot {
 		snapshot := prices.ReadOnlySnapshot()
 		data := snapshot.Snapshot()
 		frozen := calculator.WithPriceCatalog(snapshot)
@@ -46,7 +41,7 @@ func providePricingCatalog(calculator *billing.Calculator, prices *pricingprovid
 			if value == nil {
 				continue
 			}
-			platform := value.LiteLLMProvider
+			platform := value.Provider
 			switch platform {
 			case "xai":
 				platform = "grok"

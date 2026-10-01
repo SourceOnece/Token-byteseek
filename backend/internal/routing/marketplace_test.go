@@ -610,7 +610,7 @@ func TestModelMarketplaceDisplayPricing_SharedImageRateUsesGroupMultiplier(t *te
 }
 
 func TestModelMarketplaceModelModalitiesComeFromPricingMetadata(t *testing.T) {
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	pricingSvc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gpt-image-2": {Mode: "image_generation", InputCostPerImageToken: 8e-6},
 		"gpt-5.5":     {Mode: "chat", SupportsVision: true},
 	}})
@@ -631,7 +631,7 @@ func TestModelMarketplaceModelModalitiesComeFromPricingMetadata(t *testing.T) {
 }
 
 func TestModelMarketplacePublicModelsIncludeModalities(t *testing.T) {
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+	pricingSvc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gpt-image-2": {Mode: "image_generation", InputCostPerImageToken: 8e-6},
 	}})
 	billingService := newMarketplaceCalculator(pricingSvc, nil)
@@ -652,7 +652,7 @@ func TestModelMarketplacePublicModelsIncludeModalities(t *testing.T) {
 
 // 市场使用解析后的 PricingModel 查询能力，保留公开 ID 和完整音视频输入标记。
 func TestModelMarketplaceGeminiTierModalitiesPreservePublicIDs(t *testing.T) {
-	pricing := &billingpricing.LiteLLMModelPricing{
+	pricing := &billingpricing.CatalogModelPricing{
 		InputCostPerToken: 2e-6, OutputCostPerToken: 1e-5,
 		CacheCreationInputTokenCost: 2.5e-6, CacheReadInputTokenCost: 2e-7,
 		LongContextInputTokenThreshold: 200000, LongContextInputCostMultiplier: 2,
@@ -660,8 +660,8 @@ func TestModelMarketplaceGeminiTierModalitiesPreservePublicIDs(t *testing.T) {
 		SupportedModalities:       []string{"text", "image", "audio", "video"},
 		SupportedOutputModalities: []string{"text"},
 	}
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
-		"gemini-3.7-flash": pricing, "gemini-3.8-flash": pricing,
+	pricingSvc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
+		"gemini-3.7-flash-tiered": pricing, "gemini-3.8-flash-tiered": pricing,
 	}})
 	svc := newMarketplaceFixture(nil, nil, newMarketplaceCalculator(pricingSvc, nil), nil)
 	defs := []routing.MarketplaceModelDef{

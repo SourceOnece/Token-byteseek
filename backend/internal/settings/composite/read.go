@@ -35,7 +35,7 @@ type ReadOptions struct {
 	DefaultBalance     func() float64
 	DefaultConcurrency func() int
 	Forwarded          func() runtimeconfig.ForwardedInput
-	PublishModel       func(string, bool)
+	PublishModel       func(string)
 }
 
 // Parse 将各领域的只读投影组合为管理快照，不增加存储查询。
@@ -70,7 +70,7 @@ func Parse(settings map[string]string, options ReadOptions) *Snapshot {
 
 	// 保留旧读取时发布动态默认模型的时点，具体平台由装配投影。
 	if options.PublishModel != nil {
-		options.PublishModel(result.GrokDefaultTextModel, result.GrokCrossClientModelMapEnabled)
+		options.PublishModel(result.GrokDefaultTextModel)
 	}
 
 	return result

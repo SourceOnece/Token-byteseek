@@ -10,8 +10,8 @@ import (
 // UsageDecoder 复用协议与网关策略的唯一档位解析，不读取提供商或配置。
 type UsageDecoder interface {
 	ServiceTier([]byte) *string
-	ReasoningEffort([]byte, ...string) *string
-	RequestedReasoningEffort([]byte, ...string) *string
+	ReasoningEffort([]byte) *string
+	RequestedReasoningEffort([]byte) *string
 }
 
 // UsageMeta 保存双向 relay 共享的原子会话缺省值，turn 独立快照仍由 TurnPayload 拥有。
@@ -35,21 +35,20 @@ func NewUsageMeta(initialRequestModel string, firstFrame []byte, decoder UsageDe
 	return meta
 }
 
-func (m *UsageMeta) InitFromFirstFrame(policyOutput []byte, mappedModel string) {
+func (m *UsageMeta) InitFromFirstFrame(policyOutput []byte) {
 	if m == nil {
 		return
 	}
 	m.ServiceTier.Store(m.decoder.ServiceTier(policyOutput))
-	m.ReasoningEffort.Store(m.decoder.ReasoningEffort(policyOutput, mappedModel, m.LoadSessionRequestModel()))
+	m.ReasoningEffort.Store(m.decoder.ReasoningEffort(policyOutput))
 }
 
 // CaptureRequestedReasoningEffort 在策略和模型改写前保存客户端档位。
-func (m *UsageMeta) CaptureRequestedReasoningEffort(originalBody []byte, modelCandidates ...string) {
+func (m *UsageMeta) CaptureRequestedReasoningEffort(originalBody []byte) {
 	if m == nil {
 		return
 	}
-	candidates := append([]string{m.LoadSessionRequestModel()}, modelCandidates...)
-	m.RequestedReasoningEffort.Store(m.decoder.RequestedReasoningEffort(originalBody, candidates...))
+	m.RequestedReasoningEffort.Store(m.decoder.RequestedReasoningEffort(originalBody))
 }
 
 func (m *UsageMeta) UpdateSessionRequestModel(payload []byte) {
@@ -71,12 +70,12 @@ func (m *UsageMeta) RequestModelForFrame(payload []byte) string {
 	return m.LoadSessionRequestModel()
 }
 
-func (m *UsageMeta) UpdateFromResponseCreate(policyOutput []byte, mappedModel string, RequestModelForFrame string) {
+func (m *UsageMeta) UpdateFromResponseCreate(policyOutput []byte) {
 	if m == nil {
 		return
 	}
 	m.ServiceTier.Store(m.decoder.ServiceTier(policyOutput))
-	m.ReasoningEffort.Store(m.decoder.ReasoningEffort(policyOutput, mappedModel, RequestModelForFrame))
+	m.ReasoningEffort.Store(m.decoder.ReasoningEffort(policyOutput))
 }
 
 func RequestModelForFrame(payload []byte) string {

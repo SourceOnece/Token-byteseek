@@ -19,7 +19,6 @@ vi.mock('@/api/admin', () => ({
       create: vi.fn(),
       update: vi.fn(),
       remove: vi.fn(),
-      syncPricingModels: vi.fn(),
       getModelDefaultPricing: vi.fn()
     },
     groups: {
@@ -132,6 +131,8 @@ describe('PricingView model routing copy', () => {
     await flushPromises()
 
     expect(wrapper.text()).not.toContain('admin.pricing.form.applyPricingToProviderStats')
+    // 价格批量填充入口退役；账号实时模型同步属于独立页面，不受影响。
+    expect(wrapper.text()).not.toContain('admin.pricing.form.syncLatestModels')
     expect(wrapper.get('[data-testid="billing-model-source-hint"]').text()).toBe('admin.pricing.form.billingModelSourceHintGroupMapped')
 
     await wrapper.get('[data-option="requested"]').trigger('click')

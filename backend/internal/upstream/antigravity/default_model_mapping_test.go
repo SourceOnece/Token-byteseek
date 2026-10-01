@@ -7,15 +7,18 @@ func TestDefaultAntigravityModelMapping_ImageCompatibilityAliases(t *testing.T) 
 
 	cases := map[string]string{
 		"gemini-2.5-flash-image":         "gemini-2.5-flash-image",
-		"gemini-2.5-flash-image-preview": "gemini-2.5-flash-image",
+		"gemini-2.5-flash-image-preview": "",
 		"gemini-3.1-flash-image":         "gemini-3.1-flash-image",
-		"gemini-3.1-flash-image-preview": "gemini-3.1-flash-image",
-		"gemini-3-pro-image":             "gemini-3.1-flash-image",
-		"gemini-3-pro-image-preview":     "gemini-3.1-flash-image",
+		"gemini-3.1-flash-image-preview": "",
+		"gemini-3-pro-image":             "",
+		"gemini-3-pro-image-preview":     "",
 	}
 
 	for from, want := range cases {
 		got, ok := DefaultAntigravityModelMapping[from]
+		if want == "" && !ok {
+			continue
+		}
 		if !ok {
 			t.Fatalf("expected mapping for %q to exist", from)
 		}
@@ -35,6 +38,9 @@ func TestDefaultAntigravityModelMapping_ContainsNewClaudeModels(t *testing.T) {
 	}
 	for from, want := range cases {
 		got, ok := DefaultAntigravityModelMapping[from]
+		if want == "" && !ok {
+			continue
+		}
 		if !ok {
 			t.Fatalf("expected mapping for %q to exist", from)
 		}
@@ -49,14 +55,17 @@ func TestDefaultAntigravityModelMapping_Gemini31ProAliases(t *testing.T) {
 
 	cases := map[string]string{
 		AntigravityGemini31ProAgentModel: AntigravityGemini31ProAgentModel,
-		"gemini-3.1-pro":                 AntigravityGemini31ProAgentModel,
+		"gemini-3.1-pro":                 "",
 		"gemini-3.1-pro-high":            AntigravityGemini31ProAgentModel,
-		"gemini-3.1-pro-preview":         AntigravityGemini31ProAgentModel,
+		"gemini-3.1-pro-preview":         "",
 		"gemini-3.1-pro-low":             "gemini-3.1-pro-low",
 	}
 
 	for from, want := range cases {
 		got, ok := DefaultAntigravityModelMapping[from]
+		if want == "" && !ok {
+			continue
+		}
 		if !ok {
 			t.Fatalf("expected mapping for %q to exist", from)
 		}

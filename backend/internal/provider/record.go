@@ -661,74 +661,6 @@ func StringMappingFromRaw(raw any) map[string]string {
 	}
 }
 
-func EnsureAntigravityDefaultPassthrough(mapping map[string]string, model string) {
-	if mapping == nil || model == "" {
-		return
-	}
-	if _, exists := mapping[model]; exists {
-		return
-	}
-	for pattern := range mapping {
-		if MatchWildcard(pattern, model) {
-			return
-		}
-	}
-	mapping[model] = model
-}
-
-func EnsureAntigravityDefaultPassthroughs(mapping map[string]string, models []string) {
-	for _, model := range models {
-		EnsureAntigravityDefaultPassthrough(mapping, model)
-	}
-}
-
-// ApplyAntigravityGemini31ProAliases 将旧的 3.1 Pro 目标规范为实际 Pro Agent 路由。
-func ApplyAntigravityGemini31ProAliases(mapping map[string]string, agentModel string) {
-	target := strings.TrimSpace(mapping[agentModel])
-	if target == "" {
-		return
-	}
-
-	aliases := []struct {
-		model         string
-		legacyTargets map[string]struct{}
-	}{
-		{
-			model: "gemini-3.1-pro",
-			legacyTargets: map[string]struct{}{
-				"gemini-3.1-pro": {},
-			},
-		},
-		{
-			model: "gemini-3.1-pro-high",
-			legacyTargets: map[string]struct{}{
-				"gemini-3.1-pro-high": {},
-			},
-		},
-		{
-			model: "gemini-3.1-pro-preview",
-			legacyTargets: map[string]struct{}{
-				"gemini-3.1-pro-preview": {},
-				"gemini-3.1-pro-high":    {},
-			},
-		},
-	}
-
-	for _, alias := range aliases {
-		current, exists := mapping[alias.model]
-		if exists {
-			if _, legacy := alias.legacyTargets[current]; legacy {
-				mapping[alias.model] = target
-			}
-			continue
-		}
-		if MappingHasWildcardForModel(mapping, alias.model) {
-			continue
-		}
-		mapping[alias.model] = target
-	}
-}
-
 // MappingHasWildcardForModel 判断现有映射是否已通过通配符覆盖指定模型。
 func MappingHasWildcardForModel(mapping map[string]string, model string) bool {
 	for pattern := range mapping {
@@ -739,18 +671,9 @@ func MappingHasWildcardForModel(mapping map[string]string, model string) bool {
 	return false
 }
 
+// NormalizeRequestedModelForLookup 保留模型拼写，只清理首尾空白。
 func NormalizeRequestedModelForLookup(platform, requestedModel string) string {
-	trimmed := strings.TrimSpace(requestedModel)
-	if trimmed == "" {
-		return ""
-	}
-	if platform != PlatformGemini && platform != PlatformAntigravity {
-		return trimmed
-	}
-	if trimmed == "gemini-3.1-pro-preview-customtools" {
-		return "gemini-3.1-pro-preview"
-	}
-	return trimmed
+	return strings.TrimSpace(requestedModel)
 }
 
 // ResolveRequestedModelInMapping 复用纯模型匹配，平台归一化由调用方负责。

@@ -93,7 +93,7 @@ func TestGatewayAnthropicProviderSupportMapsBeforePlatformNormalization(t *testi
 					LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
 					Type: tt.providerType,
 					Credentials: map[string]any{
-						"model_mapping":   map[string]any{"group-model": "claude-sonnet-4-5"},
+						"model_mapping":   map[string]any{"group-model": "claude-sonnet-4-5-20250929"},
 						"model_whitelist": []any{tt.whitelistModel},
 					},
 				},

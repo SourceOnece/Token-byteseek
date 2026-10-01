@@ -211,11 +211,11 @@ func TestProcessModes(t *testing.T) {
 			require.NoError(t, p.wait(t, 40*time.Second), p.output.text())
 			logs := p.output.text()
 			// 定价只使用一个运行实例，初始化先于调度，信号退出等待其停止。
-			require.Equal(t, 1, strings.Count(logs, "[Lifecycle] started PricingInitialization"))
-			require.Equal(t, 1, strings.Count(logs, "[Lifecycle] started PricingService"))
-			require.Equal(t, 1, strings.Count(logs, "[Lifecycle] stopped PricingService"))
-			require.Less(t, strings.Index(logs, "started PricingInitialization"), strings.Index(logs, "started PricingService"))
-			require.Less(t, strings.Index(logs, "stopped PricingService"), strings.Index(logs, "stopped Redis"))
+			require.Equal(t, 1, strings.Count(logs, "[Lifecycle] started ModelCatalogInitialization"))
+			require.Equal(t, 1, strings.Count(logs, "[Lifecycle] started ModelCatalogService"))
+			require.Equal(t, 1, strings.Count(logs, "[Lifecycle] stopped ModelCatalogService"))
+			require.Less(t, strings.Index(logs, "started ModelCatalogInitialization"), strings.Index(logs, "started ModelCatalogService"))
+			require.Less(t, strings.Index(logs, "stopped ModelCatalogService"), strings.Index(logs, "stopped Redis"))
 			for _, name := range []string{"HTTPRequests", "DeferredService", "TimingWheelService", "UsageLogBatchers", "Redis", "Ent"} {
 				require.Contains(t, logs, "[Lifecycle] stopped "+name)
 			}

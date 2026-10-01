@@ -12,7 +12,7 @@ func TestWSPassthroughUsageMeta_InitFromFirstFrame_MappedModelCandidate(t *testi
 	body := []byte(`{"type":"response.create","model":"sol","reasoning":{"effort":"max"}}`)
 
 	meta := NewUsageMeta("sol", body, RequestUsageDecoder{})
-	meta.InitFromFirstFrame(body, "gpt-5.6-sol")
+	meta.InitFromFirstFrame(body)
 
 	got := meta.ReasoningEffort.Load()
 	require.NotNil(t, got, "reasoning effort should be set")
@@ -23,8 +23,8 @@ func TestWSPassthroughUsageMeta_InitFromFirstFrame_NonGPT56RecordsExplicitMax(t 
 	body := []byte(`{"type":"response.create","model":"deepseek-v4-flash","reasoning":{"effort":"max"}}`)
 
 	meta := NewUsageMeta("deepseek-v4-flash", body, RequestUsageDecoder{})
-	meta.CaptureRequestedReasoningEffort(body, "deepseek-v4-flash")
-	meta.InitFromFirstFrame(body, "deepseek/deepseek-v4-flash-0731")
+	meta.CaptureRequestedReasoningEffort(body)
+	meta.InitFromFirstFrame(body)
 
 	got := meta.ReasoningEffort.Load()
 	require.NotNil(t, got, "显式 max 应按实际请求记录")
@@ -38,7 +38,7 @@ func TestWSPassthroughUsageMeta_CaptureRequestedReasoningEffortPreservesNone(t *
 	body := []byte(`{"type":"response.create","model":"gpt-6-astra","reasoning":{"effort":"none"}}`)
 
 	meta := NewUsageMeta("gpt-6-astra", body, RequestUsageDecoder{})
-	meta.CaptureRequestedReasoningEffort(body, "gpt-6-astra")
+	meta.CaptureRequestedReasoningEffort(body)
 
 	requested := meta.RequestedReasoningEffort.Load()
 	require.NotNil(t, requested)
@@ -49,7 +49,7 @@ func TestWSPassthroughUsageMeta_UpdateFromResponseCreate_MappedModelCandidate(t 
 	body := []byte(`{"type":"response.create","model":"sol","reasoning":{"effort":"max"}}`)
 
 	meta := NewUsageMeta("sol", body, RequestUsageDecoder{})
-	meta.UpdateFromResponseCreate(body, "gpt-5.6-sol", "sol")
+	meta.UpdateFromResponseCreate(body)
 
 	got := meta.ReasoningEffort.Load()
 	require.NotNil(t, got)

@@ -1,8 +1,6 @@
 package httpapi
 
 import (
-	"strings"
-
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -14,7 +12,7 @@ func BindRequestedReasoningEffort(c *gin.Context, body []byte, model string) {
 	if c == nil || c.Request == nil {
 		return
 	}
-	effort := requeststate.CanonicalRequestedReasoningEffort(body, strings.TrimSpace(model))
+	effort := requeststate.CanonicalRequestedReasoningEffort(body)
 	if effort == nil {
 		return
 	}

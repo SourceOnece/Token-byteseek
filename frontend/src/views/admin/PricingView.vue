@@ -268,14 +268,6 @@
               <div class="mb-1 flex items-center justify-between">
                 <label class="input-label text-xs mb-0">{{ t('admin.pricing.form.modelPricing', 'Model Pricing') }}</label>
                 <div class="flex items-center gap-2">
-                  <button
-                    type="button"
-                    @click="syncLatestModels(sIdx)"
-                    :disabled="syncingModels"
-                    class="text-xs text-gray-500 hover:text-primary-600 disabled:opacity-50"
-                  >
-                    {{ syncingModels ? t('admin.pricing.form.syncingModels') : t('admin.pricing.form.syncLatestModels') }}
-                  </button>
                   <button type="button" @click="addPricingEntry(sIdx)" class="text-xs text-primary-600 hover:text-primary-700">
                     + {{ t('common.add', 'Add') }}
                   </button>
@@ -706,61 +698,6 @@ function addPricingEntry(sectionIdx: number) {
     intervals: [],
     time_pricing: createDefaultTimePricingForm()
   })
-}
-
-const syncingModels = ref(false)
-
-async function syncLatestModels(sectionIdx: number) {
-  if (syncingModels.value) return
-  syncingModels.value = true
-  try {
-    const result = await adminAPI.pricing.syncPricingModels()
-    // 保留已有价格条目，只补充未配置的模型。
-    const existingModels = new Set<string>()
-    for (const entry of form.sections[sectionIdx].model_pricing) {
-      for (const m of entry.models) existingModels.add(m)
-    }
-    const newModels = result.models.filter(m => !existingModels.has(m))
-    if (newModels.length === 0) {
-      appStore.showSuccess(t('admin.pricing.form.syncModelsAlreadyUpToDate'))
-      return
-    }
-    const defaultPricing: Pick<PricingFormEntry, 'input_price' | 'output_price' | 'cache_write_price' | 'cache_write_1h_price' | 'cache_read_price' | 'image_input_price' | 'image_output_price' | 'max_reasoning_effort_multiplier'> = {
-      input_price: null,
-      output_price: null,
-      cache_write_price: null,
-      cache_write_1h_price: null,
-      cache_read_price: null,
-      image_input_price: null,
-      image_output_price: null,
-      max_reasoning_effort_multiplier: null
-    }
-    // 将新增模型合并为一个可继续手动调整价格的定价条目
-    form.sections[sectionIdx].model_pricing.push({
-      models: newModels,
-      billing_mode: 'token',
-      price_multiplier: null,
-      fast_mode_multiplier: null,
-      fast_multiplier: null,
-      flex_multiplier: null,
-      max_reasoning_effort_multiplier: defaultPricing.max_reasoning_effort_multiplier ?? null,
-      input_price: defaultPricing.input_price,
-      output_price: defaultPricing.output_price,
-      cache_write_price: defaultPricing.cache_write_price,
-      cache_write_1h_price: defaultPricing.cache_write_1h_price,
-      cache_read_price: defaultPricing.cache_read_price,
-      image_input_price: defaultPricing.image_input_price,
-      image_output_price: defaultPricing.image_output_price,
-      per_request_price: null,
-      intervals: [],
-      time_pricing: createDefaultTimePricingForm()
-    })
-    appStore.showSuccess(t('admin.pricing.form.syncModelsSuccess', { count: newModels.length }))
-  } catch (error) {
-    appStore.showError(extractApiErrorMessage(error, t('admin.pricing.form.syncModelsError')))
-  } finally {
-    syncingModels.value = false
-  }
 }
 
 function updatePricingEntry(sectionIdx: number, idx: number, updated: PricingFormEntry) {

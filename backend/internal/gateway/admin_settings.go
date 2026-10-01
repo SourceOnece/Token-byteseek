@@ -21,7 +21,6 @@ type AdminSettings struct {
 	EnableFingerprintUnification           bool                                      `json:"enable_fingerprint_unification"`
 	EnableIdentityPatch                    bool                                      `json:"enable_identity_patch"`
 	EnableMetadataPassthrough              bool                                      `json:"enable_metadata_passthrough"`
-	GrokCrossClientModelMapEnabled         bool                                      `json:"grok_cross_client_model_map_enabled"`
 	GrokDefaultBaseURLMode                 string                                    `json:"grok_default_base_url_mode"`
 	GrokDefaultTextModel                   string                                    `json:"grok_default_text_model"`
 	IdentityPatchPrompt                    string                                    `json:"identity_patch_prompt"`
@@ -46,7 +45,6 @@ const (
 	SettingKeyAntigravityUserAgentVersion      = "antigravity_user_agent_version"
 	SettingKeyBackendModeEnabled               = "backend_mode_enabled"
 	SettingKeyEnableIdentityPatch              = "enable_identity_patch"
-	SettingKeyGrokCrossClientModelMapEnabled   = "grok_cross_client_model_map_enabled"
 	SettingKeyGrokDefaultBaseURLMode           = "grok_default_base_url_mode"
 	SettingKeyGrokDefaultTextModel             = "grok_default_text_model"
 	SettingKeyIdentityPatchPrompt              = "identity_patch_prompt"
@@ -63,7 +61,6 @@ func PrepareAdminSettings(settings *AdminSettings, rules AdminSettingsRules) (ma
 	} else {
 		updates[SettingKeyGrokDefaultTextModel] = rules.GrokDefaultTextModel
 	}
-	updates[SettingKeyGrokCrossClientModelMapEnabled] = strconv.FormatBool(settings.GrokCrossClientModelMapEnabled)
 	updates[SettingKeyGrokDefaultBaseURLMode] = NormalizeGrokDefaultBaseURLMode(settings.GrokDefaultBaseURLMode)
 	updates[SettingKeyEnableIdentityPatch] = strconv.FormatBool(settings.EnableIdentityPatch)
 	updates[SettingKeyIdentityPatchPrompt] = settings.IdentityPatchPrompt

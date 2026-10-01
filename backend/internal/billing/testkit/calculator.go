@@ -7,11 +7,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
 // Calculator 组合跨模块计费测试的输入；实例和所有计算仍由 billing 拥有。
-func Calculator(multiplier float64, catalog *billingadapter.PricingService, prices map[string]*pricing.ModelPricing) *billing.Calculator {
+func Calculator(multiplier float64, catalog *catalogprovider.Service, prices map[string]*pricing.ModelPricing) *billing.Calculator {
 	var source billing.PriceCatalog
 	if catalog != nil {
 		source = catalog

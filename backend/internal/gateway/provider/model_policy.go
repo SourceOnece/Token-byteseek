@@ -194,7 +194,7 @@ func (p ModelPolicy) Supports(ctx context.Context, model string) bool {
 		return value.FinalModelWhitelisted(p.AnthropicUpstream(mapped), provideradapter.ModelDefaults(), provideradapter.ModelRules(value))
 	}
 	rules := provideradapter.ModelRules(value)
-	// OAuth 目录资格与实际转发共用已知别名规则，避免推理后缀在选号时被误拒绝。
+	// OAuth 目录资格与实际转发使用相同的完整型号，不生成后缀别名。
 	rules.NormalizeOpenAI = NormalizeCodexModel
 	return value.IsModelSupported(model, provideradapter.ModelDefaults(), rules)
 }

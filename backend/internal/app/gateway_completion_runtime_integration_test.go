@@ -25,8 +25,8 @@ import (
 
 type nativeCompletionCatalog struct{ billing.PriceCatalog }
 
-func (nativeCompletionCatalog) GetModelPricing(string) *pricing.LiteLLMModelPricing {
-	return &pricing.LiteLLMModelPricing{InputCostPerToken: 0.01, OutputCostPerToken: 0.02}
+func (nativeCompletionCatalog) GetModelPricing(string) *pricing.CatalogModelPricing {
+	return &pricing.CatalogModelPricing{InputCostPerToken: 0.01, OutputCostPerToken: 0.02}
 }
 
 // 直接执行同一存储 SQL，避免本装配契约额外启动写入批处理。

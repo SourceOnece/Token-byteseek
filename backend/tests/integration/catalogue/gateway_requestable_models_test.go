@@ -360,7 +360,7 @@ func TestResolveRequestableModels_UpstreamNormalizesAnthropicOAuthMapping(t *tes
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformAnthropic)
 	model, ok := requestableModelByID(result.Models, "client-alias")
 	require.True(t, ok)
-	require.Equal(t, "claude-sonnet-4-5-20250929", model.PricingModel)
+	require.Equal(t, "claude-sonnet-4-5", model.PricingModel)
 	require.False(t, model.PricingAmbiguous)
 }
 
@@ -375,14 +375,15 @@ func TestResolveRequestableModels_OpenAIUsesActualForwardedModel(t *testing.T) {
 		provider           providercore.Record
 	}{
 		{
-			name:               "OAuth 别名归一化",
+			name:               "OAuth 显式后缀映射",
 			groupID:            4118,
 			pricingConfigModel: "gpt-5.6-sol-high",
 			pricingModel:       "gpt-5.6-sol",
 			provider: providercore.Record{
-				ID:       78,
-				Platform: capability.PlatformOpenAI,
-				Type:     capability.ProviderTypeOAuth,
+				ID:          78,
+				Credentials: map[string]any{"model_mapping": map[string]any{"gpt-5.6-sol-high": "gpt-5.6-sol"}},
+				Platform:    capability.PlatformOpenAI,
+				Type:        capability.ProviderTypeOAuth,
 			},
 		},
 		{

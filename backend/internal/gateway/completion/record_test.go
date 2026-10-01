@@ -71,7 +71,7 @@ func recordFixture() (*Recorder, *recordStore, *recordWriter, *Input, *[]string)
 	calculator := billing.NewCalculator(nil, billing.CalculatorOptions{DefaultRateMultiplier: 1})
 	recorder := NewRecorder(Dependencies{Calculator: calculator, Funds: funds, Models: recordModels{}, Logs: logs, Effects: recordEffects{&events}}, RecorderOptions{DefaultMultiplier: 1})
 	input := &Input{
-		Result:    &Result{Model: "claude-sonnet-4-5", Usage: TokenUsage{InputTokens: 10, OutputTokens: 2, CacheReadInputTokens: 3, CacheCreationInputTokens: 1}},
+		Result:    &Result{Model: "claude-sonnet-4", Usage: TokenUsage{InputTokens: 10, OutputTokens: 2, CacheReadInputTokens: 3, CacheCreationInputTokens: 1}},
 		RequestID: "fixed",
 		APIKey:    &KeySnapshot{ID: 2, BillingMode: billing.APIKeyBillingModeBalance, ActorUserID: 8},
 		User:      &PayerSnapshot{ID: 1},

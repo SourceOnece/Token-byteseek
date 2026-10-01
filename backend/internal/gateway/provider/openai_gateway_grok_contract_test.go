@@ -499,8 +499,8 @@ func TestNormalizeGrokMediaModelForEndpoint(t *testing.T) {
 		hasInputImage bool
 		want          string
 	}{
-		{name: "image generation alias", endpoint: grok.GrokMediaEndpointImagesGenerations, model: "grok-imagine", want: "grok-imagine-image-quality"},
-		{name: "image edit alias", endpoint: grok.GrokMediaEndpointImagesEdits, model: "grok-imagine", want: "grok-imagine-image-quality"},
+		{name: "image generation alias", endpoint: grok.GrokMediaEndpointImagesGenerations, model: "grok-imagine", want: "grok-imagine"},
+		{name: "image edit alias", endpoint: grok.GrokMediaEndpointImagesEdits, model: "grok-imagine", want: "grok-imagine"},
 		{name: "image quality passthrough", endpoint: grok.GrokMediaEndpointImagesGenerations, model: "grok-imagine-image-quality", want: "grok-imagine-image-quality"},
 		{name: "image fast passthrough", endpoint: grok.GrokMediaEndpointImagesGenerations, model: "grok-imagine-image", want: "grok-imagine-image"},
 		{name: "video passthrough", endpoint: grok.GrokMediaEndpointVideosGenerations, model: "grok-imagine-video", want: "grok-imagine-video"},

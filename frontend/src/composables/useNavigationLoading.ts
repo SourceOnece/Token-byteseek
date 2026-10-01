@@ -15,6 +15,8 @@ import { ref, readonly, computed } from 'vue'
 export function useNavigationLoading() {
   // 内部加载状态
   const _isLoading = ref(false)
+  // 每次导航独立编号，旧导航结束不能覆盖后续导航的加载状态。
+  const navigationId = ref(0)
 
   // 导航开始时间（用于防闪烁计算）
   let navigationStartTime: number | null = null
@@ -41,7 +43,8 @@ export function useNavigationLoading() {
   /**
    * 导航开始时调用
    */
-  const startNavigation = (): void => {
+  const startNavigation = (): number => {
+    const id = ++navigationId.value
     navigationStartTime = Date.now()
     _isLoading.value = true
 
@@ -52,12 +55,14 @@ export function useNavigationLoading() {
         shouldShowLoading.value = true
       }
     }, ANTI_FLICKER_DELAY)
+    return id
   }
 
   /**
    * 导航结束时调用
    */
-  const endNavigation = (): void => {
+  const endNavigation = (id = navigationId.value): void => {
+    if (id !== navigationId.value) return
     clearTimer()
     _isLoading.value = false
     shouldShowLoading.value = false
@@ -78,6 +83,7 @@ export function useNavigationLoading() {
    * 重置所有状态（用于测试）
    */
   const resetState = (): void => {
+    navigationId.value++
     clearTimer()
     _isLoading.value = false
     shouldShowLoading.value = false

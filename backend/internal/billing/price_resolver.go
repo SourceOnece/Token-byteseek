@@ -2,13 +2,12 @@ package billing
 
 import (
 	"context"
-	"slices"
 	"strings"
 
 	purepricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
-const PricingSourceLiteLLM = purepricing.PricingSourceLiteLLM
+const PricingSourceCatalog = purepricing.PricingSourceCatalog
 
 const PricingSourceFallback = purepricing.PricingSourceFallback
 
@@ -39,18 +38,18 @@ func (r *PriceResolver) Resolve(ctx context.Context, input PricingInput) *Resolv
 	return purepricing.ResolvePriceCards(configPricing, base, source, settings.LongContextPricingEnabled)
 }
 
-// ResolveBasePricing 从 LiteLLM 或 Fallback 获取基础定价
+// ResolveBasePricing 从完整型号的目录与静态价项获取基础定价。
 func (r *PriceResolver) ResolveBasePricing(model string) (*ModelPricing, string) {
 	pricing, err := r.calculator.GetModelPricing(model)
 	if err != nil {
 		r.observe(model, err)
-		return nil, PricingSourceFallback
+		return nil, PricingSourceUnpriced
 	}
-	return pricing, PricingSourceLiteLLM
+	return pricing, PricingSourceCatalog
 }
 
 // LookupConfigPricingNormalized 优先匹配原始请求，再复用目录的明确身份候选。
-// 候选不依赖内置价存在，避免新型号的基础名共享价格配置价被目录回退绕过。
+// 候选只解析同一型号的协议资源路径，不要求目录已经收录该型号。
 // @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup
 func (r *PriceResolver) LookupConfigPricingNormalized(ctx context.Context, groupID int64, model string) *ModelPricingEntry {
 	if r == nil || r.pricingConfigs == nil {
@@ -79,20 +78,14 @@ func LookupPricingForModel(model string, lookup func(string) *ModelPricingEntry,
 			return pricing
 		}
 	}
-	// 同型号候选均未命中后，再兼容既有 OpenAI 日期和路由名称。
-	normalized := projection.NormalizedOpenAI
-	if normalized == "" || slices.Contains(candidates, normalized) {
-		return nil
-	}
-	return lookup(normalized)
+	return nil
 }
 
 type ConfigPrices interface {
 	GetEffectiveConfigModelPricing(context.Context, int64, string) *ModelPricingEntry
 }
 type ModelIdentity struct {
-	Candidates       []string
-	NormalizedOpenAI string
+	Candidates []string
 }
 type ModelCandidates func(string) ModelIdentity
 

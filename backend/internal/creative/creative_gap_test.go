@@ -8,11 +8,9 @@ import (
 	"testing"
 	"time"
 
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -392,7 +390,7 @@ func TestCreativeListModelsFiltersAndContent(t *testing.T) {
 // 2) 分组未显式配置 image_price_* 时应回退平台默认尺寸档位（按默认价计费）。
 func TestCreativeListModelsFallbacks(t *testing.T) {
 	svc := newCreativeTestService()
-	svc.ImageUnitPrice = creativePriceFixture(billingtestkit.Calculator(0, nil, map[string]*pricing.ModelPricing{}), nil)
+	svc.ImageUnitPrice = creativePriceFixture(newCreativeMediaCalculator(), nil)
 	ctx := context.Background()
 	groupRepo := testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source)
 	providerRepo := testassert.MustType[*creativeFakeProviderRepo](testassert.MustType[

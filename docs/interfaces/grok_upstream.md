@@ -49,7 +49,7 @@ Responses WebSocket 是 Grok/OpenAI 的原生传输能力，不由兼容 Respons
 
 `provider/provider` 统一投影文本与媒体端点：保留显式自定义地址，OAuth 的官方 CLI 主机在媒体请求中转为官方媒体 API。实际请求仍执行原 URL 信任检查；该选择不影响官方授权与刷新端点。
 
-提供商未保存显式 base URL 时，数据库运行时设置 `grok_default_base_url_mode` 决定文本请求使用 CLI 代理、公共 API 或三个区域 API；提供商显式端点始终优先。`grok_default_text_model` 作为需要默认文本模型的请求及 Claude Messages 映射的目标；`grok_cross_client_model_map_enabled` 开启后，Grok 分组的 Anthropic Messages 派发会将 Claude 模型 ID 映射到该目标，不影响 Responses 或 Chat Completions 中的其他模型。三项设置热更新运行时映射快照，不能把媒体模型继承为文本价格或文本默认模型。
+提供商未保存显式 base URL 时，`grok_default_base_url_mode` 决定文本请求使用 CLI 代理、公共 API 或区域 API；提供商显式端点优先。`grok_default_text_model` 仅用于允许省略模型的请求。网关不把 `grok`、`grok-latest`、媒体简称或 Claude/GPT 请求自动改成默认型号，需要改写时配置显式模型映射。`grok_cross_client_model_map_enabled` 已移除，提交该字段返回 400，存量设置不再执行。
 
 其它通用提供商类型即使可由兼容导入层保存，也没有 Grok 正式凭据和转发契约；`cosy` 明确只属于 Qoder。完整分类见[上游提供商能力矩阵](upstream_provider_matrix.md)。
 
@@ -120,7 +120,7 @@ Grok Build CLI 的模型配置必须指向 TokenRouter 对外地址（以 `/v1` 
 - `grok-imagine-video`
 - `grok-imagine-video-1.5`
 
-文本 Responses 的 `grok`、`grok-latest` 使用运行时默认文本模型，未配置时为 `grok-4.6`；带明确版本的 `grok-4.5-latest`、`grok-4.6-latest` 分别归一化为对应版本。模型市场目录查询复用这套已知文本别名，不启用 GPT/Claude 跨客户端映射，其它内置别名及历史协议 ID 兼容规则由 `internal/upstream/grok/models.go` 维护。模型列表默认展示当前目录，并结合提供商模型映射/范围和 API Key 别名；未知模型保持透传，以支持管理员配置的 xAI 兼容上游。
+文本和媒体入口保留显式映射后的完整模型 ID。推理能力判断使用独立的只读投影，识别 `xai/`、`x-ai/`、`grok/` 前缀并保留显式 reasoning 字段；该投影不用于改写转发 ID、价格查询或额度键。Grok 4.6 的显式 `xhigh` 保留，其他已知型号仍遵守自身档位范围，缺省字段不从模型后缀推导。默认目录仅列出原生型号；`grok-latest` 等名称不会由网关展开。未知模型能否转发由提供商白名单和协议资格决定，缺少独立价格时按未定价处理。模型健康状态和缓存使用实际完整上游 ID，不合并旧别名。
 
 未知 Grok 文本族在没有显式定价时按现有 `grok-4.6` 静态价回退，该计费回退不代表继承能力；图片、视频、Voice 和搜索等非文本族不会误用该价格。
 

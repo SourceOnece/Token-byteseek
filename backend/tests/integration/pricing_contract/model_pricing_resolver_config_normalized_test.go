@@ -2,17 +2,6 @@
 
 package pricingcontract
 
-// issue #5256 回归测试：使用记录的费用统计没有按照共享价格配置定价的价格进行计算。
-//
-// 场景：管理员在共享价格配置定价把 gpt-5.6-luna 的输入价从官方 $0.2/M 调成 $0.4/M。
-// 当请求模型带 effort 后缀（gpt-5.6-luna-high）而共享价格配置只配了基名时，共享价格配置定价查找
-// 用字面名未命中，官方兜底价却会把后缀名归一化到 gpt-5.6-luna 并命中静态价
-// （pricing_service.go 的 gpt-5.6-luna 前缀分支），计费候选循环首个成功即返回
-// → 落库的是官方 0.2 而不是共享价格配置 0.4。
-//
-// 测试走与生产一致的 populatePricingConfigCache → OpenAIGatewayService.RecordUsage 路径，
-// 断言落库 UsageLog 的 InputCost。
-
 import (
 	"context"
 	"testing"
@@ -38,7 +27,6 @@ import (
 const (
 	// 1M 输入 token 下，共享价格配置价与官方兜底价的期望费用（USD）
 	configPricingExpectedPricingConfigCost = 0.4
-	configPricingExpectedOfficialCost      = 0.2
 	// 用于验证「不相关的共享价格配置配置不会被误命中」的对照价
 	configPricingUnrelatedCost = 0.9
 )
@@ -120,29 +108,23 @@ func TestConfigPricing_ExactModelMatch(t *testing.T) {
 	require.InDelta(t, configPricingExpectedPricingConfigCost, log.InputCost, 1e-9)
 }
 
-// issue #5256 主回归：请求模型带 effort 后缀、共享价格配置只配基名（无通配符）→ 仍应按共享价格配置价计。
-// 修复前此处得到 0.2（官方兜底价）。
+// TestConfigPricing_SuffixedModelUsesNormalizedConfigPricing 验证后缀型号不能借用基础型号的共享价卡。
 func TestConfigPricing_SuffixedModelUsesNormalizedConfigPricing(t *testing.T) {
 	log := recordUsageWithConfigPricing(t, "gpt-5.6-luna-high", []routing.ModelPricingEntry{
 		tokenPricingForModels([]string{"gpt-5.6-luna"}, configPricingExpectedPricingConfigCost),
 	})
-	require.InDelta(t, configPricingExpectedPricingConfigCost, log.InputCost, 1e-9,
-		"suffixed request model should fall back to the normalized channel pricing; got %v (%v = official fallback)",
-		log.InputCost, configPricingExpectedOfficialCost)
+	require.Zero(t, log.InputCost, "缺价不能借用基础型号或无关价卡")
 }
 
-// 同一根因的另一种变体名：上游返回带日期后缀的模型名
-// （isCodexDateSuffix，如 gpt-5.6-luna-2026-08-01），共享价格配置只配基名 → 仍应按共享价格配置价计。
+// TestConfigPricing_DateSuffixedModelUsesNormalizedConfigPricing 验证日期型号必须配置独立价格。
 func TestConfigPricing_DateSuffixedModelUsesNormalizedConfigPricing(t *testing.T) {
 	log := recordUsageWithConfigPricing(t, "gpt-5.6-luna-2026-08-01", []routing.ModelPricingEntry{
 		tokenPricingForModels([]string{"gpt-5.6-luna"}, configPricingExpectedPricingConfigCost),
 	})
-	require.InDelta(t, configPricingExpectedPricingConfigCost, log.InputCost, 1e-9,
-		"date-suffixed request model should fall back to the normalized channel pricing; got %v", log.InputCost)
+	require.Zero(t, log.InputCost, "缺价不能借用基础型号或无关价卡")
 }
 
-// 精确匹配优先：同时配了变体名与基名时，请求变体名必须命中变体的显式配价，
-// 不能被归一化后的基名覆盖。
+// TestConfigPricing_ExactVariantWinsOverNormalizedBaseName 验证完整型号的独立价卡不受基名价格影响。
 func TestConfigPricing_ExactVariantWinsOverNormalizedBaseName(t *testing.T) {
 	log := recordUsageWithConfigPricing(t, "gpt-5.6-luna-high", []routing.ModelPricingEntry{
 		tokenPricingForModels([]string{"gpt-5.6-luna-high"}, configPricingUnrelatedCost),
@@ -152,12 +134,10 @@ func TestConfigPricing_ExactVariantWinsOverNormalizedBaseName(t *testing.T) {
 		"explicit per-variant channel pricing must win over the normalized base name")
 }
 
-// 反向保护：共享价格配置只配了不相关的模型时，归一化查找不得误命中该配置，
-// 应落回官方兜底价。
+// TestConfigPricing_UnrelatedPricingConfigModelNotMatched 验证未匹配的价卡不能替代未知型号的价格。
 func TestConfigPricing_UnrelatedPricingConfigModelNotMatched(t *testing.T) {
 	log := recordUsageWithConfigPricing(t, "gpt-5.6-luna-high", []routing.ModelPricingEntry{
 		tokenPricingForModels([]string{"gpt-5.4"}, configPricingUnrelatedCost),
 	})
-	require.InDelta(t, configPricingExpectedOfficialCost, log.InputCost, 1e-9,
-		"normalized lookup must not match an unrelated channel pricing entry")
+	require.Zero(t, log.InputCost, "缺价不能借用基础型号或无关价卡")
 }

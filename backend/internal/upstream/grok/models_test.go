@@ -6,81 +6,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultModelMappingExcludesCrossClientWildcards(t *testing.T) {
-	original := RuntimeModelMappingOptions()
-	t.Cleanup(func() { SetRuntimeModelMappingOptions(original) })
-	SetRuntimeModelMappingOptions(ModelMappingOptions{})
-	mapping := DefaultModelMapping()
-
-	require.Equal(t, "grok-4.6", mapping["grok"])
-	require.Equal(t, "grok-4.6", mapping["grok-latest"])
-	require.Equal(t, "grok-build-0.1", mapping["grok-build"])
-	require.Equal(t, "grok-build-0.1", mapping["grok-build-latest"])
-	require.Equal(t, DefaultImagineImageQualityModel, mapping["grok-imagine-edit"])
-	require.Equal(t, DefaultImagineVideo15Model, mapping["grok-imagine-video-1.5"])
-	require.Equal(t, DefaultImagineVideo15Model, mapping["grok-imagine-video-1.5-preview"])
-	require.Equal(t, "grok-4.6", mapping["xai/grok"])
-
-	// 跨供应商通配符必须保持显式启用。
-	_, hasGPT := mapping["gpt-*"]
-	_, hasClaude := mapping["claude-*"]
-	require.False(t, hasGPT)
-	require.False(t, hasClaude)
+// TestNativeModelCatalogue 验证默认模型仅自映射，默认文本设置不会增加隐式别名。
+func TestNativeModelCatalogue(t *testing.T) {
+	mapping := ModelMappingWithOptions(ModelMappingOptions{DefaultText: "custom-grok"})
+	require.NotEmpty(t, mapping)
+	for from, to := range mapping {
+		require.Equal(t, from, to)
+	}
+	for _, alias := range []string{"grok", "grok-latest", "grok-build", "gpt-*", "claude-*", "xai/grok", "grok-imagine-edit", "grok-imagine-video-1.5-preview"} {
+		require.NotContains(t, mapping, alias)
+	}
+	require.Contains(t, mapping, "grok-4.6")
+	require.Contains(t, mapping, DefaultImagineVideo15Model)
 }
 
-func TestModelMappingWithOptionsCrossClient(t *testing.T) {
-	t.Parallel()
-	mapping := ModelMappingWithOptions(ModelMappingOptions{
-		DefaultText:          "grok-4.3",
-		EnableCrossClientMap: true,
-	})
-	require.Equal(t, "grok-4.3", mapping["grok"])
-	require.Equal(t, "grok-4.3", mapping["gpt-*"])
-	require.Equal(t, "grok-4.3", mapping["claude-*"])
-	require.Equal(t, "grok-4.3", mapping["codex-*"])
-}
-
-func TestCanonicalImagineVideoModel(t *testing.T) {
-	t.Parallel()
-	require.Equal(t, DefaultImagineVideoModel, CanonicalImagineVideoModel("grok-imagine-video"))
-	require.Equal(t, DefaultImagineVideo15Model, CanonicalImagineVideoModel("grok-imagine-video-1.5"))
-	require.Equal(t, DefaultImagineVideo15Model, CanonicalImagineVideoModel("grok-imagine-video-1.5-preview"))
-	require.Equal(t, DefaultImagineVideo15Model, CanonicalImagineVideoModel("xai/grok-video-1.5"))
-	require.Equal(t, "grok-imagine-video-2", CanonicalImagineVideoModel("grok-imagine-video-2"))
-}
-
-func TestIsGrokModelID(t *testing.T) {
-	t.Parallel()
-	require.True(t, IsGrokModelID("grok-4.5"))
-	require.True(t, IsGrokModelID("grok-4.6"))
-	require.True(t, IsGrokModelID("x-ai/grok-4.3"))
-	require.False(t, IsGrokModelID("gpt-5"))
-	require.False(t, IsGrokModelID("claude-sonnet-4"))
-}
-
-func TestDefaultModelsIncludesGrok46(t *testing.T) {
-	t.Parallel()
-	ids := DefaultModelIDs()
-	require.Contains(t, ids, "grok-4.6")
-	require.Equal(t, "grok-4.6", ResolveGrokTextResponsesModelID("grok-4.6"))
-	require.Equal(t, "grok-4.6", ResolveGrokTextResponsesModelID("grok-4.6-latest"))
-}
-
-func TestResolveGrokTextResponsesModelID(t *testing.T) {
-	t.Parallel()
-	require.Equal(t, "grok-4.6", ResolveGrokTextResponsesModelID(""))
-	require.Equal(t, "grok-4.3", ResolveGrokTextResponsesModelID("grok", "grok-4.3"))
-	require.Equal(t, "grok-4.20-multi-agent-0309", ResolveGrokTextResponsesModelID("grok-4.20-multi-agent"))
-}
-
-func TestExplicitGrok45DoesNotFollowRuntimeDefault(t *testing.T) {
-	require.Equal(t, "grok-4.5", ResolveGrokTextResponsesModelID("grok-4.5", "grok-4.6"))
-	require.Equal(t, "grok-4.5", ResolveGrokTextResponsesModelID("grok-4.5-latest", "grok-4.6"))
-	require.Equal(t, "grok-4.6", ResolveGrokTextResponsesModelID("grok", "grok-4.6"))
-}
-
-func TestBareGrokAliasesFollowGrok46Default(t *testing.T) {
-	require.Equal(t, "grok-4.6", ResolveGrokTextResponsesModelID("grok"))
-	require.Equal(t, "grok-4.6", ResolveGrokTextResponsesModelID("grok-latest"))
-	require.Equal(t, "grok-build-0.1", ResolveGrokTextResponsesModelID("grok-build-latest"))
+// TestExplicitGrokIDsRemainUnchanged 验证文本、媒体和供应商限定名均保留原值。
+func TestExplicitGrokIDsRemainUnchanged(t *testing.T) {
+	for _, model := range []string{"grok", "grok-latest", "grok-4.6-latest", "grok-build-latest", "grok-4.20-multi-agent", "xai/grok-4.6", "grok-imagine-video-1.5-preview"} {
+		require.Equal(t, model, NormalizeModelID(model))
+		require.Equal(t, model, ResolveGrokTextResponsesModelID(model, "custom-default"))
+		require.Equal(t, model, CanonicalImagineVideoModel(model))
+	}
+	require.Equal(t, "custom-default", ResolveGrokTextResponsesModelID("", "custom-default"))
+	require.True(t, IsGrokTextResponsesModelID("grok-4.6"))
+	require.False(t, IsGrokTextResponsesModelID("grok-latest"))
 }

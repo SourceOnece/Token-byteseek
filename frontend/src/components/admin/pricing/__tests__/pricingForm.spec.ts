@@ -55,7 +55,8 @@ describe('共享价格卡', () => {
   })
   it('拒绝归一化后相同的模型以及重叠区间', () => {
     const form = pricingEntryFromAPI(fullPricing())
-    expect(validatePricingForm([{ ...form, models: [' CLAUDE-OPUS-4.6 ', 'claude-opus-4-6'] }], t)).toContain('modelConflict')
+    expect(validatePricingForm([{ ...form, models: [' CLAUDE-OPUS-4.6 ', 'claude-opus-4-6'] }], t)).toBeNull()
+    expect(validatePricingForm([{ ...form, models: [' CLAUDE-OPUS-4.6 ', 'claude-opus-4.6'] }], t)).toContain('modelConflict')
     form.intervals.push({ ...form.intervals[0]!, min_tokens: 50000, max_tokens: null })
     expect(validatePricingForm([form], t)).toContain('overlap')
   })

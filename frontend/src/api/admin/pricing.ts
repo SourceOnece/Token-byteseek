@@ -182,20 +182,7 @@ export async function getModelDefaultPricing(model: string): Promise<ModelDefaul
   return data
 }
 
-export interface SyncPricingModelsResult {
-  models: string[]
-}
-
-/**
- * 从定价目录获取最新模型名
- */
-export async function syncPricingModels(): Promise<SyncPricingModelsResult> {
-  const { data } = await apiClient.get<SyncPricingModelsResult>('/admin/pricing/defaults/models', {
-  })
-  return data
-}
-
-const pricingAPI = { list, getById, create, update, remove, getModelDefaultPricing, syncPricingModels }
+const pricingAPI = { list, getById, create, update, remove, getModelDefaultPricing }
 export default pricingAPI
 
 export interface DefaultPriceValue {

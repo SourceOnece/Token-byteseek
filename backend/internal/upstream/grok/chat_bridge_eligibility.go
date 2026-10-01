@@ -502,7 +502,7 @@ func (m BodyCodec) GrokChatResponsesCacheIntentBody(body []byte) ([]byte, error)
 
 // grokChatResponsesBridgeModel 判断模型是否支持 Chat 到 Responses 的 Grok 桥接。
 func (m BodyCodec) GrokChatResponsesBridgeModel(model string) bool {
-	switch strings.ToLower(StripGrokProviderPrefix(strings.TrimSpace(model))) {
+	switch strings.ToLower(strings.TrimSpace(model)) {
 	case "grok-4.5", "grok-4.6", "grok-4.6-latest":
 		return true
 	default:

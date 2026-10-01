@@ -146,7 +146,7 @@ func isAmbiguousGrokPaidPlan(normalized string) bool {
 
 // IsGrok45ResponsesQuotaModel 判断模型是否为 grok-4.5 Responses 标识或其日期快照变体。
 func IsGrok45ResponsesQuotaModel(model string) bool {
-	m := strings.ToLower(strings.TrimSpace(StripGrokProviderPrefix(model)))
+	m := strings.ToLower(strings.TrimSpace(model))
 	return m == grok45ResponsesModel || strings.HasPrefix(m, grok45ResponsesModel+"-")
 }
 

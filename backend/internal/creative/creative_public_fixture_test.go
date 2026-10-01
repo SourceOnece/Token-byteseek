@@ -101,6 +101,26 @@ func creativeGroupProjection(value *routing.Group) *creative.GroupView {
 	return &creative.GroupView{ID: value.ID, Name: value.Name, ClaudeCodeOnly: value.ClaudeCodeOnly, IsExclusive: value.IsExclusive, AllowImageGeneration: value.AllowImageGeneration, Active: value.IsActive(), RateMultiplier: value.RateMultiplier, RoutingPolicy: value.RoutingPolicy.Clone(), ProtocolFallbacks: value.ProtocolFallbacks, Operations: creative.OperationsForGroup(value.ResponsesImagePolicy != "" || value.ProtocolFallbacks != nil, value.AllowsClientProtocol)}
 }
 
+// creativeMediaCatalog 为目录和任务测试登记完整型号的按张报价，未知型号保持缺价。
+type creativeMediaCatalog struct{}
+
+func (creativeMediaCatalog) GetModelPricing(model string) *billing.CatalogModelPricing {
+	switch model {
+	case "gpt-image-1", "gpt-image-2", "gemini-2.5-flash-image", "gemini-3-pro-image", "gemini-3.1-flash-image", "grok-imagine-image-1.0":
+		return &billing.CatalogModelPricing{OutputCostPerImage: 0.134, ImagePricePresent: true, TokenPricingAbsent: true, Mode: "image_generation"}
+	default:
+		return nil
+	}
+}
+
+func (creativeMediaCatalog) GetStatus() map[string]any { return nil }
+func (creativeMediaCatalog) ForceUpdate() error        { return errors.New("测试目录不支持更新") }
+
+// newCreativeMediaCalculator 使用显式目录报价验证业务流程，禁止通用图片兜底。
+func newCreativeMediaCalculator() *billing.Calculator {
+	return billing.NewCalculator(creativeMediaCatalog{}, billing.CalculatorOptions{ModelPolicy: modelidentity.PricingPolicy})
+}
+
 // creativePriceFixture 只投影可选目录/解析器，价格算法与回退仍调用 billing。
 func creativePriceFixture(calculator *billing.Calculator, resolver *billing.PriceResolver) func(context.Context, *creative.GroupView, string, string) (float64, bool) {
 	return func(ctx context.Context, group *creative.GroupView, model, size string) (float64, bool) {
@@ -110,7 +130,7 @@ func creativePriceFixture(calculator *billing.Calculator, resolver *billing.Pric
 		selected := resolver
 		if selected == nil && calculator != nil {
 			selected = billing.NewPriceResolver(nil, calculator, modelidentity.Identity, func(model string, err error) {
-				slog.Debug("failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)
+				slog.Debug("failed to get model pricing from model catalog, using fallback", "model", model, "error", err)
 			})
 		}
 		value, err := selected.ResolveImageUnitPrice(ctx, billing.PricingInput{Model: model, GroupID: &group.ID}, size)
@@ -206,7 +226,7 @@ func setCreativeConfigPricing(svc *creative.Public, groupID int64, cards []routi
 	previous := svc.ImageUnitPrice
 	config := routing.PricingConfig{ID: groupID, Status: routing.StatusActive, GroupIDs: []int64{groupID}, ModelPricing: cards}
 	source := routing.NewPricingConfigService(&creativeConfigPrices{config: config}, nil)
-	resolver := billingtestkit.PriceResolver(source, billingtestkit.Calculator(0, nil, nil))
+	resolver := billingtestkit.PriceResolver(source, newCreativeMediaCalculator())
 	svc.ImageUnitPrice = func(ctx context.Context, group *creative.GroupView, model, size string) (float64, bool) {
 		if group.ID != groupID {
 			return previous(ctx, group, model, size)

@@ -60,7 +60,7 @@ func (p *wsRequestAdapter) Mutate(current []byte, path, value string) ([]byte, e
 }
 
 func (p *wsRequestAdapter) RequestedEffort(body []byte, model string) *string {
-	return requeststate.CanonicalRequestedReasoningEffort(body, model)
+	return requeststate.CanonicalRequestedReasoningEffort(body)
 }
 
 func (p *wsRequestAdapter) ClassifyPrevious(id string) string {

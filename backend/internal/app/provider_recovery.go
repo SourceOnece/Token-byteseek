@@ -8,12 +8,9 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
 // provideProviderHealthRuntime 直接投影配置、原生设置和技术端口；构造期间不回源或启动工作。
@@ -83,11 +80,7 @@ func provideProviderHealthRuntime(
 	}
 
 	team := provider.NewTeamLinkedHealth(store, provider.TeamLinkedOptions{Now: options.Now, Warn: options.Warn, Block: options.Block})
-	models := &provideradapter.ModelHealth{Health: health, CodexRules: openai.CodexModelRules{
-		ImageOnly: media.IsImageGenerationModel, LastSegment: capability.LastOpenAIModelSegment,
-		CanonicalAlias: capability.CanonicalizeOpenAIModelAliasSpelling, KnownModel: modelidentity.NormalizeOpenAI,
-		SupportsEffort: capability.OpenAIModelSupportsReasoningEffort,
-	}, IsImageModel: media.IsGPTImageGenerationModel}
+	models := &provideradapter.ModelHealth{Health: health, IsImageModel: media.IsGPTImageGenerationModel}
 
 	return &providerHealthRuntime{
 		Health: health, Recovery: recovery, Observer: &provideradapter.UpstreamHealth{Core: health, Team: team, Limits: limits, Models: models},

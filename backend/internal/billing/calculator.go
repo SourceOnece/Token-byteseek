@@ -31,7 +31,7 @@ func maxReasoningEffortBillingMultiplier(model, effort string, pricing *ModelPri
 // GetModelPricing 获取模型价格配置
 func (s *Calculator) GetModelPricing(model string) (*ModelPricing, error) {
 	model = strings.ToLower(model)
-	var raw *LiteLLMModelPricing
+	var raw *CatalogModelPricing
 	if s.catalog != nil {
 		raw = s.catalog.GetModelPricing(model)
 	}
@@ -172,8 +172,8 @@ func (s *Calculator) GetEstimatedCost(model string, estimatedInputTokens, estima
 	return breakdown.ActualCost, nil
 }
 
-// GetPricingServiceStatus 获取价格服务状态
-func (s *Calculator) GetPricingServiceStatus() map[string]any {
+// GetCatalogStatus 获取统一模型目录的加载和更新状态。
+func (s *Calculator) GetCatalogStatus() map[string]any {
 	if s.catalog != nil {
 		return s.catalog.GetStatus()
 	}
@@ -201,13 +201,8 @@ func (s *Calculator) DisplayPricing(model string, rateMultiplier float64) ModelD
 		rateMultiplier = 0
 	}
 
-	rawPricing := s.RawModelPricing(model)
-	if hasExplicitImageGenerationPricing(rawPricing) || looksLikeImageModel(model) {
-		return buildImageDisplayPricing(
-			s.DefaultImagePrice(model, "1K")*rateMultiplier,
-			s.DefaultImagePrice(model, "2K")*rateMultiplier,
-			s.DefaultImagePrice(model, "4K")*rateMultiplier,
-		)
+	if mediaPricing, found := s.imageDisplayPricing(model, rateMultiplier); found {
+		return mediaPricing
 	}
 
 	pricing, err := s.GetModelPricing(model)
@@ -224,12 +219,36 @@ func (s *Calculator) DisplayPricingWithResolvedMultipliers(model string, rateMul
 		rateMultiplier = 0
 	}
 	if resolved.IsUnpriced() {
+		// 未配置价卡时，token 缺价不代表完整型号的独立按张报价也缺失。
+		if resolved.ConfigPricing == nil {
+			if mediaPricing, found := s.imageDisplayPricing(model, rateMultiplier); found {
+				return mediaPricing
+			}
+		}
 		return unknownDisplayPricing()
 	}
 	if pricing, ok := displayPricingFromResolved(model, rateMultiplier, resolved); ok {
 		return pricing
 	}
 	return s.DisplayPricing(model, rateMultiplier)
+}
+
+// imageDisplayPricing 只展示已知按张报价，不把聊天模型的图片元数据改成图片计费。
+func (s *Calculator) imageDisplayPricing(model string, rateMultiplier float64) (ModelDisplayPricing, bool) {
+	raw := s.RawModelPricing(model)
+	_, knownImage := purepricing.GetDefaultGrokImagineImagePrice(model, purepricing.ImageBillingSize1K)
+	if !knownImage && !hasExplicitImageGenerationPricing(raw) && !looksLikeImageModel(model) && (raw == nil || !raw.TokenPricingAbsent) {
+		return ModelDisplayPricing{}, false
+	}
+	prices := make([]float64, 0, 3)
+	for _, size := range []string{"1K", "2K", "4K"} {
+		price, err := s.DefaultImagePrice(model, size)
+		if err != nil {
+			return ModelDisplayPricing{}, false
+		}
+		prices = append(prices, price*rateMultiplier)
+	}
+	return buildImageDisplayPricing(prices[0], prices[1], prices[2]), true
 }
 
 // displayPricingFromResolved 委托纯定价实现，旧查询与配置投影保留在适配层。
@@ -268,38 +287,50 @@ func (s *Calculator) CalculateAudioCost(mode string, durationOrUnits float64, gr
 	return purepricing.CalculateAudioCost(mode, durationOrUnits, groupConfig, rateMultiplier)
 }
 
-// CalculateImageCost 在确定需要计费后才读取单价，金额计算由纯包完成。
-func (s *Calculator) CalculateImageCost(model, imageSize string, imageCount int, rateMultiplier float64) *CostBreakdown {
+// CalculateImageCost 按精确的独立单张价计算费用，缺价时返回错误。
+func (s *Calculator) CalculateImageCost(model, imageSize string, imageCount int, rateMultiplier float64) (*CostBreakdown, error) {
 	if imageCount <= 0 {
-		return purepricing.CalculateImageCost(0, imageCount, rateMultiplier)
+		return purepricing.CalculateImageCost(0, imageCount, rateMultiplier), nil
 	}
 	imageSize = purepricing.NormalizeImageBillingTierOrDefault(imageSize)
-	return purepricing.CalculateImageCost(s.DefaultImagePrice(model, imageSize), imageCount, rateMultiplier)
+	price, err := s.DefaultImagePrice(model, imageSize)
+	if err != nil {
+		return nil, err
+	}
+	return purepricing.CalculateImageCost(price, imageCount, rateMultiplier), nil
 }
 
-// CalculateVideoCost 保留原有按需查价，显式传递每秒单价和用量。
-func (s *Calculator) CalculateVideoCost(model, resolution string, videoCount, durationSeconds int, rateMultiplier float64) *CostBreakdown {
+// CalculateVideoCost 按完整型号的每秒价计算费用，缺价时返回错误。
+func (s *Calculator) CalculateVideoCost(model, resolution string, videoCount, durationSeconds int, rateMultiplier float64) (*CostBreakdown, error) {
 	if videoCount <= 0 {
-		return purepricing.CalculateVideoCost(0, videoCount, durationSeconds, rateMultiplier)
+		return purepricing.CalculateVideoCost(0, videoCount, durationSeconds, rateMultiplier), nil
 	}
 	resolution = purepricing.NormalizeVideoBillingResolutionOrDefault(resolution)
 	durationSeconds = purepricing.NormalizeVideoBillingDurationSecondsOrDefault(durationSeconds)
-	return purepricing.CalculateVideoCost(s.DefaultVideoPrice(model, resolution), videoCount, durationSeconds, rateMultiplier)
+	price, err := s.DefaultVideoPrice(model, resolution)
+	if err != nil {
+		return nil, err
+	}
+	return purepricing.CalculateVideoCost(price, videoCount, durationSeconds, rateMultiplier), nil
 }
 
-// DefaultImagePrice 先执行已有平台价卡回退，再按需读取目录。
-func (s *Calculator) DefaultImagePrice(model, imageSize string) float64 {
+// DefaultImagePrice 只读取完整型号的独立按张价格，显式零价保持有效。
+func (s *Calculator) DefaultImagePrice(model, imageSize string) (float64, error) {
 	if price, ok := purepricing.GetDefaultGrokImagineImagePrice(model, imageSize); ok {
-		return price
+		return purepricing.ValidateImageUnitPrice(price)
 	}
-	var raw *LiteLLMModelPricing
+	var raw *CatalogModelPricing
 	if s.catalog != nil {
 		raw = s.catalog.GetModelPricing(model)
 	}
-	return purepricing.DefaultImagePrice(raw, imageSize)
+	price, found := purepricing.DefaultImagePrice(raw, imageSize)
+	if !found {
+		return 0, fmt.Errorf("image pricing not found for model %s: %w", model, purepricing.ErrModelPricingUnavailable)
+	}
+	return purepricing.ValidateImageUnitPrice(price)
 }
 
-func (s *Calculator) RawModelPricing(model string) *LiteLLMModelPricing {
+func (s *Calculator) RawModelPricing(model string) *CatalogModelPricing {
 	if s == nil || s.catalog == nil {
 		return nil
 	}
@@ -307,7 +338,7 @@ func (s *Calculator) RawModelPricing(model string) *LiteLLMModelPricing {
 }
 
 // hasExplicitImageGenerationPricing 委托纯定价实现，旧查询与配置投影保留在适配层。
-func hasExplicitImageGenerationPricing(pricing *LiteLLMModelPricing) bool {
+func hasExplicitImageGenerationPricing(pricing *CatalogModelPricing) bool {
 	return purepricing.HasExplicitImageGenerationPricing(pricing)
 }
 
@@ -319,14 +350,12 @@ func hasAnyDisplayTokenPricing(pricing *ModelPricing) bool {
 // looksLikeImageModel 委托纯定价实现，旧查询与配置投影保留在适配层。
 func looksLikeImageModel(model string) bool { return purepricing.LooksLikeImageModel(model) }
 
-func (s *Calculator) DefaultVideoPrice(model string, resolution string) float64 {
+// DefaultVideoPrice 只读取已登记的每秒价，不借用图片单价。
+func (s *Calculator) DefaultVideoPrice(model string, resolution string) (float64, error) {
 	if price, ok := getDefaultGrokImagineVideoPrice(model, resolution); ok {
-		return price
+		return purepricing.ValidateImageUnitPrice(price)
 	}
-
-	// 内置 LiteLLM 数据没有视频输出价格，暂用历史模型默认价作为每秒单价兜底；
-	// 分组视频价格仍可独立覆盖图片价格。
-	return s.DefaultImagePrice(model, purepricing.ImageBillingSize2K)
+	return 0, fmt.Errorf("video pricing not found for model %s: %w", model, purepricing.ErrModelPricingUnavailable)
 }
 
 // getDefaultGrokImagineVideoPrice 委托唯一媒体定价规则。
@@ -336,7 +365,7 @@ func getDefaultGrokImagineVideoPrice(model string, resolution string) (float64, 
 
 // PriceCatalog 暴露目录读取及既有维护操作，不向核心暴露文件或网络客户端。
 type PriceCatalog interface {
-	GetModelPricing(string) *purepricing.LiteLLMModelPricing
+	GetModelPricing(string) *purepricing.CatalogModelPricing
 	GetStatus() map[string]any
 	ForceUpdate() error
 }
@@ -391,7 +420,7 @@ func (s *Calculator) ProjectCostInput(input CostInput, resolved *ResolvedPricing
 }
 
 type (
-	LiteLLMModelPricing = purepricing.LiteLLMModelPricing
+	CatalogModelPricing = purepricing.CatalogModelPricing
 	ModelPricingEntry   = purepricing.ModelPricingEntry
 )
 

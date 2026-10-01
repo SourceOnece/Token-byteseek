@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <Transition name="modal">
+    <Transition name="modal" @after-leave="afterLeave">
       <div
         v-if="show"
         class="modal-overlay h-[100dvh] w-[100dvw] min-w-0 overflow-hidden"
@@ -13,6 +13,7 @@
         <!-- 动态视口单位避开移动端浏览器工具栏，vh/vw 规则由公共样式作为旧浏览器兜底。 -->
         <div
           ref="dialogRef"
+          tabindex="-1"
           :class="['modal-content min-h-0 min-w-0 max-h-[95dvh] sm:max-h-[90dvh]', widthClasses]"
           @click.stop
         >
@@ -52,11 +53,11 @@
 
 <script lang="ts">
 let dialogIdCounter = 0
-let openDialogCount = 0
 </script>
 
 <script setup lang="ts">
 import { computed, watch, onMounted, onUnmounted, ref, nextTick } from 'vue'
+import { useDialogLifecycle } from '@/composables/useDialogLifecycle'
 import Icon from '@/components/icons/Icon.vue'
 import { Z_INDEX } from '@/constants/overlay'
 
@@ -66,8 +67,6 @@ const dialogId = `modal-title-${++dialogIdCounter}`
 // 焦点管理
 const dialogRef = ref<HTMLElement | null>(null)
 const modalBodyRef = ref<HTMLElement | null>(null)
-let previousActiveElement: HTMLElement | null = null
-const bodyScrollLocked = ref(false)
 
 type DialogWidth = 'narrow' | 'normal' | 'wide' | 'extra-wide' | 'full'
 
@@ -121,59 +120,18 @@ const handleClose = () => {
 }
 
 const handleEscape = (event: KeyboardEvent) => {
-  if (props.show && props.closeOnEscape && event.key === 'Escape') {
+  if (props.show && isTop() && props.closeOnEscape && event.key === 'Escape') {
     emit('close')
   }
 }
 
-const lockBodyScroll = () => {
-  openDialogCount++
-  document.body.classList.add('modal-open')
-  bodyScrollLocked.value = true
-}
-
-const unlockBodyScroll = () => {
-  if (!bodyScrollLocked.value) {
-    return
-  }
-  openDialogCount = Math.max(0, openDialogCount - 1)
-  if (openDialogCount === 0) {
-    document.body.classList.remove('modal-open')
-  }
-  bodyScrollLocked.value = false
-}
-
-// 弹窗打开时锁定页面滚动并管理焦点。
-watch(
-  () => props.show,
-  async (isOpen) => {
-    if (isOpen) {
-      // 保存当前焦点元素
-      previousActiveElement = document.activeElement as HTMLElement
-      lockBodyScroll()
-
-      // 等待DOM更新后设置焦点到对话框
-      await nextTick()
-      if (modalBodyRef.value) {
-        modalBodyRef.value.scrollTop = 0
-      }
-      if (dialogRef.value) {
-        const firstFocusable = dialogRef.value.querySelector<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        )
-        firstFocusable?.focus()
-      }
-    } else {
-      unlockBodyScroll()
-      // 恢复之前的焦点
-      if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
-        previousActiveElement.focus()
-      }
-      previousActiveElement = null
-    }
-  },
-  { immediate: true }
-)
+// 嵌套弹窗只让顶层响应关闭，滚动锁与焦点在退出完成后释放。
+const { afterLeave, isTop } = useDialogLifecycle(() => props.show, dialogRef)
+watch(() => props.show, async (open) => {
+  if (!open) return
+  await nextTick()
+  if (props.show && modalBodyRef.value) modalBodyRef.value.scrollTop = 0
+})
 
 onMounted(() => {
   document.addEventListener('keydown', handleEscape)
@@ -181,8 +139,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleEscape)
-  // 确保组件卸载时移除滚动锁定
-  unlockBodyScroll()
 })
 </script>
 

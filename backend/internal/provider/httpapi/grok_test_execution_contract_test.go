@@ -79,13 +79,13 @@ func TestProviderTestService_TestProviderConnection_GrokUsesXAIResponses(t *test
 	require.Equal(t, "Bearer grok-access-token", upstream.lastReq.Header.Get("Authorization"))
 	require.Equal(t, grok.CLIClientVersion, upstream.lastReq.Header.Get("X-Grok-Client-Version"))
 	require.Equal(t, "application/json, text/event-stream", upstream.lastReq.Header.Get("Accept"))
-	require.Equal(t, grok.DefaultResponsesModel, gjson.GetBytes(upstream.lastBody, "model").String())
+	require.Equal(t, "grok-latest", gjson.GetBytes(upstream.lastBody, "model").String())
 	require.Equal(t, "hi", gjson.GetBytes(upstream.lastBody, "input").String())
 	require.True(t, gjson.GetBytes(upstream.lastBody, "stream").Bool())
 	require.False(t, gjson.GetBytes(upstream.lastBody, "max_output_tokens").Exists())
 	require.False(t, gjson.GetBytes(upstream.lastBody, "store").Exists())
 	require.NotContains(t, rec.Body.String(), "claude")
-	require.Contains(t, rec.Body.String(), `"model":"grok-4.5"`)
+	require.Contains(t, rec.Body.String(), `"model":"grok-latest"`)
 	require.Contains(t, rec.Body.String(), `"type":"test_complete"`)
 }
 

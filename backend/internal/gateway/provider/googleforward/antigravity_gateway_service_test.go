@@ -554,7 +554,7 @@ func TestAntigravityGatewayService_Forward_PromptTooLong(t *testing.T) {
 	c, _ := gin.CreateTestContext(writer)
 
 	body, err := json.Marshal(map[string]any{
-		"model": "claude-opus-4-6",
+		"model": "claude-opus-4-6-thinking",
 
 		"messages": []map[string]any{
 			{"role": "user", "content": "hi"},
@@ -633,7 +633,7 @@ func TestAntigravityGatewayService_Forward_ModelRateLimitTriggersFailover(t *tes
 	c, _ := gin.CreateTestContext(writer)
 
 	body, err := json.Marshal(map[string]any{
-		"model": "claude-opus-4-6",
+		"model": "claude-opus-4-6-thinking",
 
 		"messages": []map[string]any{
 			{"role": "user", "content": "hi"},
@@ -773,7 +773,7 @@ func TestAntigravityGatewayService_Forward_StickySessionForceCacheBilling(t *tes
 	c, _ := gin.CreateTestContext(writer)
 
 	body, err := json.Marshal(map[string]any{
-		"model":    "claude-opus-4-6",
+		"model":    "claude-opus-4-6-thinking",
 		"messages": []map[string]string{{"role": "user", "content": "hello"}},
 	})
 	require.NoError(t, err)
@@ -908,7 +908,7 @@ func TestAntigravityGatewayService_ForwardGemini_ClearsStickySessionOnGeminiRate
 	})
 	require.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodPost, "/v1beta/models/gemini-3-flash-preview:generateContent", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1beta/models/gemini-3-flash:generateContent", bytes.NewReader(body))
 	c.Request = req
 
 	respBody := []byte(`{
@@ -970,7 +970,7 @@ func TestAntigravityGatewayService_ForwardGemini_ClearsStickySessionOnGeminiRate
 		},
 	}
 
-	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, "gemini-3-flash-preview", "generateContent", false, body, true, forwardcore.WithGeminiSession(77, "gemini:sticky-runtime"))
+	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, "gemini-3-flash", "generateContent", false, body, true, forwardcore.WithGeminiSession(77, "gemini:sticky-runtime"))
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError

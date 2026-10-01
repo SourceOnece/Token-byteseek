@@ -92,7 +92,10 @@ var moduleDependencies = map[string]dependencySet{
 	"internal/codexticket": {Production: `ent/... internal/codexticket/... internal/egress internal/gateway/clientmeta internal/gateway/forward
 internal/provider internal/provider/postgres internal/scheduler internal/settings internal/server/httpx internal/upstream internal/upstream/openai
 internal/infra/httpclient/... internal/infra/telemetry/... internal/pkg/`, Tests: `internal/testutil/assertion`},
-	"internal/modelcatalog": {Production: "internal/modelcatalog", Tests: ""},
+	"internal/modelcatalog": {Production: `internal/modelcatalog internal/modelcatalog/provider internal/billing/pricing
+internal/egress internal/infra/httpclient/... internal/infra/telemetry/...`, Tests: `internal/billing internal/billing/provider
+internal/gateway/media internal/gateway/provider/modelidentity internal/routing/capability
+internal/upstream/grok internal/upstream/openai`},
 	"ent": {Production: `ent/... internal/provider internal/apikey internal/billing internal/egress internal/identity
 internal/promotion internal/protocol internal/routing internal/routing/accessview
 internal/routing/capability internal/scheduler/policy internal/site`, Tests: ""},
@@ -130,7 +133,7 @@ internal/routing/modelmap internal/server/httpx internal/upstream internal/upstr
 internal/upstream/vertex internal/usage`, Tests: `internal/billing/pricing internal/billing/provider internal/billing/testkit internal/config internal/gateway/completion
 internal/gateway/modeltrace internal/gateway/provider/modelidentity internal/testutil/assertion
 internal/testutil/postgrescontainer internal/testutil/rediscontainer`},
-	"internal/billing": {Production: `internal/modelcatalog ent/... internal/billing/... internal/egress internal/gateway/provider
+	"internal/billing": {Production: `internal/modelcatalog internal/modelcatalog/provider ent/... internal/billing/... internal/egress internal/gateway/provider
 internal/gateway/provider/modelidentity internal/idempotency/httpapi internal/identity/contact
 internal/identity/httpapi/authctx internal/infra/httpclient/... internal/infra/postgres/...
 internal/infra/telemetry/... internal/notification/contract internal/pkg/ internal/protocol internal/protocol/anthropic
@@ -170,7 +173,7 @@ internal/upstream/openai/liveattestation internal/upstream/openai/wsrelay intern
 internal/upstream/vertex internal/usage`, Tests: `internal/billing/provider internal/config internal/moderation/provider internal/routing/testkit
 internal/scheduler/rediscache/codec internal/search/provider internal/server/middleware
 internal/settings/testkit internal/team internal/testutil/assertion internal/testutil/rediscontainer
-internal/upstream/grok/testkit`},
+internal/upstream/grok/testkit internal/modelcatalog/provider`},
 	"internal/idempotency": {Production: `internal/idempotency/... internal/identity/httpapi/authctx internal/infra/postgres/...
 internal/infra/telemetry/... internal/pkg/ internal/server/httpx`, Tests: "migrations"},
 	"internal/identity": {Production: `ent/... internal/billing internal/billing/httpapi/dto internal/billing/postgres internal/config
@@ -211,7 +214,7 @@ internal/upstream/deepseek internal/upstream/kimi internal/upstream/zhipu
 internal/upstream/gemini/codeassist internal/upstream/grok internal/upstream/openai
 internal/upstream/qoder`, Tests: `internal/provider/provider internal/apikey internal/billing/testkit internal/gateway/media
 internal/gateway/provider internal/gateway/provider/modelidentity internal/idempotency/testkit
-internal/identity/httpapi/authctx internal/scheduler internal/testutil/postgrescontainer migrations`},
+internal/identity/httpapi/authctx internal/scheduler internal/testutil/postgrescontainer migrations internal/modelcatalog/provider`},
 	"internal/scheduler": {Production: `internal/provider internal/egress internal/infra/postgres/... internal/infra/telemetry/...
 internal/pkg/ internal/routing internal/routing/accessview internal/routing/capability
 internal/scheduler/... internal/server/httpx internal/settings`, Tests: "internal/provider/provider internal/billing internal/protocol internal/testutil/postgrescontainer"},
@@ -402,23 +405,20 @@ admin_shadow_test.go`},
 	{Scope: "internal/batchimage", Imports: "internal/batchimage/provider", Files: `cleanup_test.go download_test.go mvp_test.go pipeline_fixture_test.go
 processor_test.go public_fixture_test.go public_test.go
 result_usecase_fixture_test.go settlement_test.go`},
-	{Scope: "internal/batchimage", Imports: "internal/billing/provider", Files: "public_price_fixture_test.go"},
+	{Scope: "internal/batchimage", Imports: "internal/billing/provider", Files: `public_price_fixture_test.go`},
 	{Scope: "internal/billing", Imports: "internal/billing/postgres", Files: `admin_redeem_mutations_test.go subscription_transaction_test.go
 subscription_fixture_test.go`},
-	{Scope: "internal/billing", Imports: "internal/billing/provider", Files: `calculator_calculator_fixture_test.go calculator_pricing_provider_fixture_test.go
-calculator_pricing_stub_helpers_test.go model_pricing_resolver_catalog_alias_test.go
-model_pricing_resolver_test.go`},
-	{Scope: "internal/billing", Imports: "internal/gateway/provider/modelidentity", Files: `calculator_pricing_provider_fixture_test.go consumer_config_time_pricing_billing_test.go
-billing_service_test.go`},
+	{Scope: "internal/billing", Imports: "internal/billing/provider", Files: `model_pricing_resolver_catalog_alias_test.go model_pricing_resolver_test.go`},
+	{Scope: "internal/billing", Imports: "internal/modelcatalog/provider", Files: `calculator_calculator_fixture_test.go calculator_pricing_provider_fixture_test.go calculator_pricing_stub_helpers_test.go model_pricing_resolver_catalog_alias_test.go`},
+	{Scope: "internal/billing", Imports: "internal/gateway/provider/modelidentity", Files: `calculator_pricing_provider_fixture_test.go consumer_config_time_pricing_billing_test.go`},
 	{Scope: "internal/billing/postgres", Imports: "internal/batchimage/postgres", Files: "repo_unit_test.go"},
 	{Scope: "internal/creative", Imports: "internal/creative/provider", Files: "catalog_test.go creative_public_fixture_test.go"},
 	{Scope: "internal/creative", Imports: "internal/gateway/provider/modelidentity", Files: "creative_public_fixture_test.go support_fixture_test.go"},
-	{Scope: "internal/creative", Imports: "internal/billing/provider", Files: "support_fixture_test.go"},
+	{Scope: "internal/creative", Imports: "internal/billing/provider", Files: `support_fixture_test.go`},
 	{Scope: "internal/gateway/clientmeta", Imports: "net/http/httptest", Files: "claude_detection_test.go claude_validator_contract_test.go"},
 	{Scope: "internal/gateway/clientmeta", Imports: "net/http os", Files: "claude_validator_contract_test.go"},
 	{Scope: "internal/gateway/completion", Imports: "internal/gateway/provider", Files: "gateway_record_usage_test.go openai_gateway_record_usage_test.go"},
-	{Scope: "internal/gateway/completion", Imports: "internal/billing/provider", Files: `recording_calculator_fixture_test.go recording_pricing_provider_fixture_test.go
-recording_pricing_stub_helpers_test.go`},
+	{Scope: "internal/gateway/completion", Imports: "internal/modelcatalog/provider", Files: `recording_calculator_fixture_test.go recording_pricing_provider_fixture_test.go recording_pricing_stub_helpers_test.go`},
 	{Scope: "internal/gateway/completion", Imports: "internal/gateway/provider/modelidentity", Files: "recording_pricing_provider_fixture_test.go"},
 	{Scope: "internal/gateway/media", Imports: "internal/gateway/rediscache", Files: "video_integration_test.go"},
 	{Scope: "internal/gateway/rediscache", Imports: "internal/scheduler/rediscache", Files: "session.go"},
@@ -432,7 +432,7 @@ recording_pricing_stub_helpers_test.go`},
 	{Scope: "internal/payment/postgres", Imports: "internal/billing/postgres", Files: "consumer_order_snapshot_test.go"},
 	{Scope: "internal/routing", Imports: "internal/routing/provider", Files: `group_admin_fixture_test.go
 marketplace_fixture_test.go`},
-	{Scope: "internal/routing", Imports: "internal/billing/provider", Files: `marketplace_catalog_fixture_test.go marketplace_fixture_test.go`},
+	{Scope: "internal/routing", Imports: "internal/modelcatalog/provider", Files: `marketplace_catalog_fixture_test.go marketplace_fixture_test.go`},
 	{Scope: "internal/routing", Imports: "internal/provider/provider", Files: "group_management_ports_test.go"},
 	{Scope: "internal/routing", Imports: "internal/gateway/provider/modelidentity", Files: "marketplace_catalog_fixture_test.go marketplace_fixture_test.go marketplace_quote_fixture_test.go"},
 	{Scope: "internal/scheduler/rediscache", Imports: "internal/provider/provider", Files: "scheduler_cache_integration_test.go scheduler_cache_unit_test.go"},

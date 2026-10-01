@@ -601,19 +601,6 @@ func (h *PricingHandler) GetModelDefaultPricing(c *gin.Context) {
 	})
 }
 
-// SyncPricingModels 返回已加载的统一模型目录，不按分组上游平台分区。
-// GET /api/v1/admin/pricing/defaults/models
-func (h *PricingHandler) SyncPricingModels(c *gin.Context) {
-	platform := strings.ToLower(strings.TrimSpace(c.Query("platform")))
-	models, err := h.catalog.ModelNames(platform)
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-
-	response.Success(c, gin.H{"models": models})
-}
-
 // bindManagementJSON 拒绝未知字段，并沿用 Gin 的字段校验。
 func bindManagementJSON(c *gin.Context, target any) error {
 	decoder := json.NewDecoder(c.Request.Body)

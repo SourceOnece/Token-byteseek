@@ -86,7 +86,7 @@ func BuildAnthropicRequest(ctx context.Context, body []byte, token, modelID stri
 	if err != nil {
 		return nil, err
 	}
-	finalBeta := FilterBetaTokens(clientBeta, drop)
+	finalBeta := wire.FilterSonnet55ToolsetBeta(FilterBetaTokens(clientBeta, drop), vertexBody, modelID)
 
 	// 能力维度 sanitize：基于最终 beta（而非原始 client 值）决定是否保留 body 中的
 	// context_management，与 Anthropic 直连 / Bedrock 路径对称。

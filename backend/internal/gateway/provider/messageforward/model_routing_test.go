@@ -60,8 +60,8 @@ func TestGatewayServiceForwardCountTokensAppliesOAuthProviderMappingBeforeNormal
 
 	err = svc.ForwardCountTokens(context.Background(), c, provider, parsed)
 	require.NoError(t, err)
-	require.Equal(t, "claude-sonnet-4-5-20250929", parsed.Model)
-	require.Equal(t, "claude-sonnet-4-5-20250929", gjson.GetBytes(upstream.lastBody, "model").String())
+	require.Equal(t, "claude-sonnet-4-5", parsed.Model)
+	require.Equal(t, "claude-sonnet-4-5", gjson.GetBytes(upstream.lastBody, "model").String())
 }
 
 func TestGatewayServiceAnthropicCompatibilityForwardersUseFinalOAuthModel(t *testing.T) {
@@ -125,7 +125,7 @@ func TestGatewayServiceAnthropicCompatibilityForwardersUseFinalOAuthModel(t *tes
 
 			err := tt.call(svc, context.Background(), c, provider, tt.body)
 			require.Error(t, err)
-			require.Equal(t, "claude-sonnet-4-5-20250929", gjson.GetBytes(upstream.lastBody, "model").String())
+			require.Equal(t, "claude-sonnet-4-5", gjson.GetBytes(upstream.lastBody, "model").String())
 		})
 	}
 }

@@ -67,3 +67,28 @@ func TestModelsDevZeroCacheWriteDoesNotUseModelFallback(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, ComputeTokenBreakdown(base, UsageTokens{CacheCreationTokens: 10}, 1, "", true).TotalCost)
 }
+
+// TestModelsDevImageOutputScope 限定生图费率解释范围，避免根据图片模态改写研究模型或中继报价。
+func TestModelsDevImageOutputScope(t *testing.T) {
+	catalog, err := modelcatalog.Parse([]byte(`{"providers":{
+		"google":{"models":{
+			"gemini-image-test":{"cost":{"input":2,"output":120},"modalities":{"output":["text","image"]}},
+			"deep-research-test":{"cost":{"input":2,"output":12},"modalities":{"output":["text","image"]}},
+			"gemini-text-test":{"cost":{"input":2,"output":12},"modalities":{"output":["text"]}},
+			"gemini-omni-test":{"cost":{"input":2,"output":12},"modalities":{"output":["text","image","video"]}}
+		}},
+		"openrouter":{"models":{"gemini-image-test":{"cost":{"input":1,"output":9},"modalities":{"output":["text","image"]}}}}
+	}}`))
+	require.NoError(t, err)
+	entries, _, err := ParsePricingEntries(ModelsDevPrices(catalog))
+	require.NoError(t, err)
+	for model, price := range map[string]float64{"deep-research-test": 12e-6, "gemini-text-test": 12e-6, "gemini-omni-test": 12e-6, "openrouter/gemini-image-test": 9e-6} {
+		value, _, err := ResolveModelPricing(model, entries[model], nil, ModelPolicy{})
+		require.NoError(t, err)
+		require.InDelta(t, price, value.OutputPricePerToken, 1e-12)
+	}
+	// 已知缺少文本价时，不借用跨模型或旧媒体兜底价。
+	fallback := map[string]*ModelPricing{"gemini-image-test": {InputPricePerToken: 2e-6, OutputPricePerToken: 99e-6}}
+	_, _, err = ResolveModelPricing("gemini-image-test", entries["gemini-image-test"], fallback, ModelPolicy{})
+	require.ErrorIs(t, err, ErrModelPricingUnavailable)
+}

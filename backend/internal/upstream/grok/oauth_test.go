@@ -373,23 +373,23 @@ func TestNormalizeModelID(t *testing.T) {
 
 		"   ": DefaultResponsesModel,
 
-		"  grok  ": DefaultResponsesModel,
+		"  grok  ": "grok",
 
-		"grok-latest": DefaultResponsesModel,
+		"grok-latest": "grok-latest",
 
-		"grok-4.5-latest": DefaultResponsesModel,
+		"grok-4.5-latest": "grok-4.5-latest",
 
-		"grok-build": "grok-build-0.1",
+		"grok-build": "grok-build",
 
-		"grok-build-latest": "grok-build-0.1",
+		"grok-build-latest": "grok-build-latest",
 
-		"grok-composer": "grok-composer-2.5-fast",
+		"grok-composer": "grok-composer",
 
-		"composer-2.5": "grok-composer-2.5-fast",
+		"composer-2.5": "composer-2.5",
 
-		"grok-4.20-reasoning": "grok-4.20-0309-reasoning",
+		"grok-4.20-reasoning": "grok-4.20-reasoning",
 
-		"grok-4.20-non-reasoning": "grok-4.20-0309-non-reasoning",
+		"grok-4.20-non-reasoning": "grok-4.20-non-reasoning",
 
 		"grok-4.5": "grok-4.5",
 
@@ -415,26 +415,26 @@ func TestDefaultModelMappingIncludesGrokAliases(t *testing.T) {
 	t.Cleanup(func() { SetRuntimeModelMappingOptions(original) })
 	SetRuntimeModelMappingOptions(ModelMappingOptions{})
 	mapping := DefaultModelMapping()
-	require.Equal(t, "grok-4.6", mapping["grok"])
-	require.Equal(t, "grok-4.6", mapping["grok-latest"])
+	require.NotContains(t, mapping, "grok")
+	require.NotContains(t, mapping, "grok-latest")
 	require.Equal(t, "grok-4.6", mapping["grok-4.6"])
-	require.Equal(t, "grok-4.6", mapping["grok-4.6-latest"])
+	require.NotContains(t, mapping, "grok-4.6-latest")
 	require.Equal(t, "grok-4.5", mapping["grok-4.5"])
-	require.Equal(t, "grok-4.5", mapping["grok-4.5-latest"])
-	require.Equal(t, "grok-build-0.1", mapping["grok-build"])
-	require.Equal(t, "grok-build-0.1", mapping["grok-build-latest"])
-	require.Equal(t, "grok-composer-2.5-fast", mapping["grok-composer"])
-	require.Equal(t, "grok-composer-2.5-fast", mapping["composer-2.5"])
-	require.Equal(t, "grok-4.20-0309-reasoning", mapping["grok-4.20-reasoning"])
-	require.Equal(t, "grok-4.20-0309-non-reasoning", mapping["grok-4.20-non-reasoning"])
+	require.NotContains(t, mapping, "grok-4.5-latest")
+	require.NotContains(t, mapping, "grok-build")
+	require.NotContains(t, mapping, "grok-build-latest")
+	require.NotContains(t, mapping, "grok-composer")
+	require.NotContains(t, mapping, "composer-2.5")
+	require.NotContains(t, mapping, "grok-4.20-reasoning")
+	require.NotContains(t, mapping, "grok-4.20-non-reasoning")
 	require.Equal(t, "grok-4.20-multi-agent-0309", mapping["grok-4.20-multi-agent-0309"])
-	require.Equal(t, DefaultImagineImageQualityModel, mapping["grok-imagine"])
+	require.NotContains(t, mapping, "grok-imagine")
 	require.Equal(t, DefaultImagineImageFastModel, mapping["grok-imagine-image"])
 	require.Equal(t, DefaultImagineImageQualityModel, mapping["grok-imagine-image-quality"])
-	require.Equal(t, DefaultImagineImageQualityModel, mapping["grok-imagine-edit"])
+	require.NotContains(t, mapping, "grok-imagine-edit")
 	require.Equal(t, DefaultImagineVideoModel, mapping["grok-imagine-video"])
 	require.Equal(t, DefaultImagineVideo15Model, mapping["grok-imagine-video-1.5"])
-	require.Equal(t, DefaultImagineVideo15Model, mapping["grok-imagine-video-1.5-preview"])
+	require.NotContains(t, mapping, "grok-imagine-video-1.5-preview")
 	_, hasGPT := mapping["gpt-*"]
 	require.False(t, hasGPT, "cross-client wildcards must be opt-in")
 }

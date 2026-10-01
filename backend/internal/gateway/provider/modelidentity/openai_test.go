@@ -33,7 +33,7 @@ func TestUsageBillingModelCandidates_BareGPT56ExcludesSol(t *testing.T) {
 		modelidentity.UsageCandidates("gpt-5.6"),
 	)
 	require.Equal(t,
-		[]string{"openai/gpt-5.6", "gpt-5.6"},
+		[]string{"openai/gpt-5.6"},
 		modelidentity.UsageCandidates("openai/gpt-5.6"),
 	)
 }
@@ -41,9 +41,9 @@ func TestUsageBillingModelCandidates_BareGPT56ExcludesSol(t *testing.T) {
 func TestNormalizeKnownOpenAICodexModel_GPT6Astra(t *testing.T) {
 	tests := map[string]string{
 		"gpt-6-astra":                 "gpt-6-astra",
-		"openai/gpt-6-astra":          "gpt-6-astra",
-		"gpt-6-astra-preview":         "gpt-6-astra",
-		"openai/gpt-6-astra-20260901": "gpt-6-astra",
+		"openai/gpt-6-astra":          "",
+		"gpt-6-astra-preview":         "",
+		"openai/gpt-6-astra-20260901": "",
 		"gpt-6-astral":                "",
 	}
 

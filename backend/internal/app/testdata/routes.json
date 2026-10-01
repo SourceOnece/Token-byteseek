@@ -150,7 +150,6 @@
   "GET /api/v1/admin/pricing/configs/:id",
   "GET /api/v1/admin/pricing/defaults",
   "GET /api/v1/admin/pricing/defaults/model",
-  "GET /api/v1/admin/pricing/defaults/models",
   "GET /api/v1/admin/promo-codes",
   "GET /api/v1/admin/promo-codes/:id",
   "GET /api/v1/admin/promo-codes/:id/usages",

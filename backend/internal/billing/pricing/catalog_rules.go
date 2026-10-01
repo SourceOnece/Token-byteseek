@@ -7,40 +7,28 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 var (
-	OpenAIModelDatePattern = regexp.MustCompile(`-(?:\d{8}|\d{4}-\d{2}-\d{2})$`)
-	OpenAIModelBasePattern = regexp.MustCompile(`^(gpt-\d+(?:\.\d+)?)(?:-|$)`)
-	// 只移除已知档位，保留版本和产品名；Spark 的价格重定向仍由专用回退处理。
-	GeminiThinkingTierPattern = regexp.MustCompile(`^(gemini-\d+(?:\.\d+)?-(?:pro|flash))-(?:high|low|medium|tiered)$`)
-	OpenAIThinkingTierPattern = regexp.MustCompile(`^(gpt-\d+(?:\.\d+)?(?:-(?:mini|nano|pro|sol|terra|luna|astra|codex))?)-(none|minimal|low|medium|high|xhigh|max)$`)
-	// 次版本最多两位，避免把八位日期误认为版本号。
-	ClaudeVersionPatterns = []*regexp.Regexp{
-		regexp.MustCompile(`^(claude-(?:opus|sonnet|haiku|fable)-\d+)([.-])(\d{1,2})(-.*)?$`),
-		regexp.MustCompile(`^(claude-\d+)([.-])(\d{1,2})(-(?:opus|sonnet|haiku|fable)(?:-.*)?)$`),
-	}
 	// AboveTierPricePattern 匹配目录中的长上下文绝对价字段。
 	// 服务档后缀和 cache 侧字段不参与阈值及倍率折算。
 	AboveTierPricePattern = regexp.MustCompile(`^(input|output)_cost_per_token_above_(\d+)k_tokens$`)
 	// CacheTierPricePattern 匹配 cache 侧长上下文绝对价字段，用于数据契约告警。
 	// 组 1 为缓存基础价字段，组 2 为 1 小时缓存时长段，组 3 为服务档后缀。
 	CacheTierPricePattern       = regexp.MustCompile(`^(cache_(?:creation|read)_input_token_cost)(_above_1hr)?_above_\d+k_tokens((?:_[a-z]+)?)$`)
-	ClaudeOpus48FallbackPricing = &LiteLLMModelPricing{
+	ClaudeOpus48FallbackPricing = &CatalogModelPricing{
 		InputCostPerToken:                   5e-06,  // 每百万 token $5
 		OutputCostPerToken:                  25e-06, // 每百万 token $25
 		CacheCreationInputTokenCost:         6.25e-06,
 		CacheCreationInputTokenCostAbove1hr: 10e-06,
 		CacheReadInputTokenCost:             0.5e-06,
-		LiteLLMProvider:                     "anthropic",
+		Provider:                            "anthropic",
 		Mode:                                "chat",
 		SupportsPromptCaching:               true,
 		// Claude Opus 4.8 Fast mode 官方价格是常规定价的 2 倍，复用通用 service_tier 倍率即可。
 		SupportsServiceTier: true,
 	}
-	OpenAIGPT55FallbackPricing = &LiteLLMModelPricing{
+	OpenAIGPT55FallbackPricing = &CatalogModelPricing{
 		InputCostPerToken:               5e-06,    // $5 per MTok
 		InputCostPerTokenPriority:       12.5e-06, // $12.5 per MTok
 		OutputCostPerToken:              3e-05,    // $30 per MTok
@@ -49,31 +37,31 @@ var (
 		CacheReadInputTokenCost:         5e-07,    // $0.5 per MTok
 		CacheReadInputTokenCostPriority: 1.25e-06, // $1.25 per MTok
 		SupportsServiceTier:             true,
-		LiteLLMProvider:                 "openai",
+		Provider:                        "openai",
 		Mode:                            "chat",
 		SupportsPromptCaching:           true,
 	}
 	// GPT-6 Astra 静态回退只固化官方标准价，避免目录缺失时误落到旧型号。
-	OpenAIGPT6AstraPricing = &LiteLLMModelPricing{
+	OpenAIGPT6AstraPricing = &CatalogModelPricing{
 		InputCostPerToken:           10e-6,   // 每百万 token $10
 		OutputCostPerToken:          50e-6,   // 每百万 token $50
 		CacheCreationInputTokenCost: 12.5e-6, // 每百万 token $12.50
 		CacheReadInputTokenCost:     1e-6,    // 每百万 token $1
 		SupportsServiceTier:         true,
-		LiteLLMProvider:             "openai",
+		Provider:                    "openai",
 		Mode:                        "chat",
 		SupportsPromptCaching:       true,
 	}
 	// 与 sub2api 0.2.11 的 Sol 标准、Fast 和长上下文报价一致。
-	OpenAIGPT61SolPricing = &LiteLLMModelPricing{
+	OpenAIGPT61SolPricing = &CatalogModelPricing{
 		InputCostPerToken: 2e-6, InputCostPerTokenPriority: 4e-6,
 		OutputCostPerToken: 10e-6, OutputCostPerTokenPriority: 20e-6,
 		CacheCreationInputTokenCost: 2.5e-6, CacheCreationInputTokenCostPriority: 5e-6,
 		CacheReadInputTokenCost: .1e-6, CacheReadInputTokenCostPriority: .2e-6,
 		LongContextInputTokenThreshold: 272000, LongContextInputCostMultiplier: 2, LongContextOutputCostMultiplier: 1.5,
-		SupportsServiceTier: true, LiteLLMProvider: "openai", Mode: "chat", SupportsPromptCaching: true,
+		SupportsServiceTier: true, Provider: "openai", Mode: "chat", SupportsPromptCaching: true,
 	}
-	OpenAIGPT56SolPricing = &LiteLLMModelPricing{
+	OpenAIGPT56SolPricing = &CatalogModelPricing{
 		InputCostPerToken:                   5e-06,   // $5 per MTok
 		InputCostPerTokenPriority:           1e-05,   // $10 per MTok
 		OutputCostPerToken:                  3e-05,   // $30 per MTok
@@ -83,11 +71,11 @@ var (
 		CacheReadInputTokenCost:             5e-07,   // $0.50 per MTok
 		CacheReadInputTokenCostPriority:     1e-06,   // $1 per MTok
 		SupportsServiceTier:                 true,
-		LiteLLMProvider:                     "openai",
+		Provider:                            "openai",
 		Mode:                                "chat",
 		SupportsPromptCaching:               true,
 	}
-	OpenAIGPT56TerraPricing = &LiteLLMModelPricing{
+	OpenAIGPT56TerraPricing = &CatalogModelPricing{
 		InputCostPerToken:                   2e-06,   // 每百万 token $2
 		InputCostPerTokenPriority:           4e-06,   // 每百万 token $4
 		OutputCostPerToken:                  1.2e-05, // 每百万 token $12
@@ -97,11 +85,11 @@ var (
 		CacheReadInputTokenCost:             2e-07,   // 每百万 token $0.20
 		CacheReadInputTokenCostPriority:     4e-07,   // 每百万 token $0.40
 		SupportsServiceTier:                 true,
-		LiteLLMProvider:                     "openai",
+		Provider:                            "openai",
 		Mode:                                "chat",
 		SupportsPromptCaching:               true,
 	}
-	OpenAIGPT56LunaPricing = &LiteLLMModelPricing{
+	OpenAIGPT56LunaPricing = &CatalogModelPricing{
 		InputCostPerToken:                   2e-07,   // 每百万 token $0.20
 		InputCostPerTokenPriority:           4e-07,   // 每百万 token $0.40
 		OutputCostPerToken:                  1.2e-06, // 每百万 token $1.20
@@ -111,11 +99,11 @@ var (
 		CacheReadInputTokenCost:             2e-08,   // 每百万 token $0.02
 		CacheReadInputTokenCostPriority:     4e-08,   // 每百万 token $0.04
 		SupportsServiceTier:                 true,
-		LiteLLMProvider:                     "openai",
+		Provider:                            "openai",
 		Mode:                                "chat",
 		SupportsPromptCaching:               true,
 	}
-	OpenAIGPT55ProFallbackPricing = &LiteLLMModelPricing{
+	OpenAIGPT55ProFallbackPricing = &CatalogModelPricing{
 		InputCostPerToken:               3e-05,   // $30 per MTok
 		InputCostPerTokenPriority:       7.5e-05, // $75 per MTok
 		OutputCostPerToken:              1.8e-04, // $180 per MTok
@@ -124,31 +112,31 @@ var (
 		CacheReadInputTokenCost:         3e-06,   // $3 per MTok
 		CacheReadInputTokenCostPriority: 7.5e-06, // $7.5 per MTok
 		SupportsServiceTier:             true,
-		LiteLLMProvider:                 "openai",
+		Provider:                        "openai",
 		Mode:                            "responses",
 		SupportsPromptCaching:           true,
 	}
-	OpenAIGPT54FallbackPricing = &LiteLLMModelPricing{
+	OpenAIGPT54FallbackPricing = &CatalogModelPricing{
 		InputCostPerToken:       2.5e-06, // $2.5 per MTok
 		OutputCostPerToken:      1.5e-05, // $15 per MTok
 		CacheReadInputTokenCost: 2.5e-07, // $0.25 per MTok
-		LiteLLMProvider:         "openai",
+		Provider:                "openai",
 		Mode:                    "chat",
 		SupportsPromptCaching:   true,
 	}
-	OpenAIGPT54MiniFallbackPricing = &LiteLLMModelPricing{
+	OpenAIGPT54MiniFallbackPricing = &CatalogModelPricing{
 		InputCostPerToken:       7.5e-07,
 		OutputCostPerToken:      4.5e-06,
 		CacheReadInputTokenCost: 7.5e-08,
-		LiteLLMProvider:         "openai",
+		Provider:                "openai",
 		Mode:                    "chat",
 		SupportsPromptCaching:   true,
 	}
-	OpenAIGPT54NanoFallbackPricing = &LiteLLMModelPricing{
+	OpenAIGPT54NanoFallbackPricing = &CatalogModelPricing{
 		InputCostPerToken:       2e-07,
 		OutputCostPerToken:      1.25e-06,
 		CacheReadInputTokenCost: 2e-08,
-		LiteLLMProvider:         "openai",
+		Provider:                "openai",
 		Mode:                    "chat",
 		SupportsPromptCaching:   true,
 	}
@@ -157,7 +145,7 @@ var (
 // DeriveLongContextFromAboveTierFields 将目录中的 above_XXXk 绝对价折算为本 fork
 // 计费模型使用的阈值和倍率。多个阈值同时存在时取最小阈值；cache 侧 above 价由
 // 计费核心按输入倍率统一处理，不在此处单独写入结构体。
-func DeriveLongContextFromAboveTierFields(rawEntry json.RawMessage, pricing *LiteLLMModelPricing) {
+func DeriveLongContextFromAboveTierFields(rawEntry json.RawMessage, pricing *CatalogModelPricing) {
 	if pricing == nil ||
 		pricing.LongContextInputTokenThreshold > 0 ||
 		pricing.LongContextInputCostMultiplier > 0 ||
@@ -225,7 +213,7 @@ func DeriveLongContextFromAboveTierFields(rawEntry json.RawMessage, pricing *Lit
 }
 
 // IsLopsidedLongContextLadder 判断折算后的阶梯是否只有输入或输出一侧有附加费。
-func IsLopsidedLongContextLadder(pricing *LiteLLMModelPricing) bool {
+func IsLopsidedLongContextLadder(pricing *CatalogModelPricing) bool {
 	if pricing == nil || pricing.LongContextInputTokenThreshold <= 0 {
 		return false
 	}
@@ -310,7 +298,7 @@ func SanitizeModalities(values []string) []string {
 
 // DeriveModalities 从定价条目合成输入/输出模态：supported_modalities 缺失的一侧
 // 用 mode 兜底，再用 supports_* 标记和图片输入价补充（图片编辑体现为图片输入价）。
-func DeriveModalities(p *LiteLLMModelPricing) ([]string, []string) {
+func DeriveModalities(p *CatalogModelPricing) ([]string, []string) {
 	if p == nil {
 		return nil, nil
 	}
@@ -351,7 +339,7 @@ func DeriveModalities(p *LiteLLMModelPricing) ([]string, []string) {
 	return in, out
 }
 
-// ModalitiesFromMode 按 LiteLLM mode 推断基础模态；未知 mode 一律按文字模型处理。
+// ModalitiesFromMode 按 模型目录 mode 推断基础模态；未知 mode 一律按文字模型处理。
 func ModalitiesFromMode(mode string) ([]string, []string) {
 	switch strings.ToLower(strings.TrimSpace(mode)) {
 	case "image_generation":
@@ -368,88 +356,23 @@ func ModalitiesFromMode(mode string) ([]string, []string) {
 	}
 }
 
-func IsClaudeOpus48Model(model string) bool {
-	model = strings.ToLower(strings.TrimSpace(model))
-	if model == "" || !strings.Contains(model, "opus") {
-		return false
-	}
-	return strings.Contains(model, "4.8") || strings.Contains(model, "4-8")
-}
-
-// BuildModelLookupCandidates 为目录与价卡查价提供同一组明确身份候选，不依赖目录是否有价格。
+// BuildModelLookupCandidates 为价格和属性提供相同的完整模型身份。
 // @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup
-func BuildModelLookupCandidates(model string, grokAlias func(string) (string, bool)) []string {
-	candidates := BuildModelIdentityCandidates(model)
-	seen := make(map[string]struct{}, len(candidates))
-	for _, candidate := range candidates {
-		seen[candidate] = struct{}{}
-	}
-	// 别名目标再次走名称规范化；已访问集合同时阻止默认模型形成自引用或循环。
-	for i := 0; i < len(candidates); i++ {
-		model := NormalizeModelNameForPricing(LastSegment(candidates[i]))
-		alias := NormalizeGeminiThinkingTierAlias(model)
-		if alias == model {
-			alias = NormalizeOpenAIThinkingTierAlias(model)
-		}
-		if grokAlias != nil {
-			if target, ok := grokAlias(model); ok {
-				alias = target
-			}
-		}
-		if alias == model {
-			continue
-		}
-		for _, target := range BuildModelIdentityCandidates(alias) {
-			if _, ok := seen[target]; ok {
-				continue
-			}
-			seen[target] = struct{}{}
-			candidates = append(candidates, target)
-		}
-	}
-	return candidates
+func BuildModelLookupCandidates(model string) []string {
+	return BuildModelIdentityCandidates(model)
 }
 
-// BuildModelIdentityCandidates 只生成完整 ID 的资源路径及等价写法，不展开模型别名。
+// BuildModelIdentityCandidates 仅解析已知 Google 资源路径，保留供应商限定名和版本。
 func BuildModelIdentityCandidates(model string) []string {
-	modelLower := strings.ToLower(strings.TrimSpace(model))
-	if modelLower == "" {
+	model = strings.ToLower(strings.TrimSpace(model))
+	if model == "" {
 		return nil
 	}
-	candidates := []string{
-		modelLower,
-		strings.TrimPrefix(modelLower, "models/"),
-		LastSegment(modelLower),
-		LastSegment(strings.TrimPrefix(modelLower, "models/")),
-		NormalizeModelNameForPricing(modelLower),
+	normalized := NormalizeModelNameForPricing(model)
+	if normalized == model {
+		return []string{model}
 	}
-	// 所有完整 ID 优先于等价版本写法，后者只改变版本分隔符。
-	for _, candidate := range candidates {
-		for _, pattern := range ClaudeVersionPatterns {
-			if parts := pattern.FindStringSubmatch(candidate); len(parts) > 0 {
-				separator := "."
-				if parts[2] == "." {
-					separator = "-"
-				}
-				candidates = append(candidates, parts[1]+separator+parts[3]+parts[4])
-			}
-		}
-	}
-
-	seen := make(map[string]struct{}, len(candidates))
-	out := make([]string, 0, len(candidates))
-	for _, c := range candidates {
-		c = strings.TrimSpace(c)
-		if c == "" {
-			continue
-		}
-		if _, ok := seen[c]; ok {
-			continue
-		}
-		seen[c] = struct{}{}
-		out = append(out, c)
-	}
-	return out
+	return []string{model, normalized}
 }
 
 func NormalizeModelNameForPricing(model string) string {
@@ -462,46 +385,7 @@ func NormalizeModelNameForPricing(model string) string {
 	if idx := strings.LastIndex(model, "/publishers/google/models/"); idx != -1 {
 		model = model[idx+len("/publishers/google/models/"):]
 	}
-	if idx := strings.LastIndex(model, "/models/"); idx != -1 {
-		model = model[idx+len("/models/"):]
-	}
 
 	model = strings.TrimLeft(model, "/")
-	if canonical := capability.CanonicalizeOpenAIModelAliasSpelling(model); canonical != "" {
-		return canonical
-	}
 	return model
-}
-
-// NormalizeGeminiThinkingTierAlias 生成同版本 Pro/Flash 基名，不接受重复或未知后缀。
-func NormalizeGeminiThinkingTierAlias(model string) string {
-	if parts := GeminiThinkingTierPattern.FindStringSubmatch(model); len(parts) > 0 {
-		return parts[1]
-	}
-	return model
-}
-
-// NormalizeOpenAIThinkingTierAlias 只剥离已知推理档位，保留产品名且不解析日期快照。
-func NormalizeOpenAIThinkingTierAlias(model string) string {
-	if parts := OpenAIThinkingTierPattern.FindStringSubmatch(model); len(parts) > 0 && parts[1] != "gpt-5.6" && capability.OpenAIModelSupportsReasoningEffort(parts[1], parts[2]) {
-		return parts[1]
-	}
-	return model
-}
-
-func LastSegment(model string) string {
-	if idx := strings.LastIndex(model, "/"); idx != -1 {
-		return model[idx+1:]
-	}
-	return model
-}
-
-// IsNumeric 检查字符串是否为纯数字
-func IsNumeric(s string) bool {
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return false
-		}
-	}
-	return true
 }

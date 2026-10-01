@@ -227,9 +227,8 @@ type Snapshot struct {
 	IdentityPatchPrompt string `json:"identity_patch_prompt"`
 
 	// Grok 模型映射策略；提供商映射为空时使用这里的默认值。
-	GrokDefaultTextModel           string `json:"grok_default_text_model"`
-	GrokCrossClientModelMapEnabled bool   `json:"grok_cross_client_model_map_enabled"`
-	GrokDefaultBaseURLMode         string `json:"grok_default_base_url_mode"`
+	GrokDefaultTextModel   string `json:"grok_default_text_model"`
+	GrokDefaultBaseURLMode string `json:"grok_default_base_url_mode"`
 
 	// Ops monitoring (vNext)
 	OpsMonitoringEnabled         bool

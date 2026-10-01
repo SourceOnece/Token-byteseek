@@ -143,6 +143,11 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
+	// 废弃字段必须明确拒绝，避免旧客户端误以为自动跨型号映射仍会执行。
+	if _, exists := sentFields["grok_cross_client_model_map_enabled"]; exists {
+		response.BadRequest(c, "grok_cross_client_model_map_enabled has been removed; configure explicit model_mapping instead")
+		return
+	}
 	if rejectRemovedUngroupedKeySchedulingField(c, sentFields) || rejectRemovedPlatformQuotaFields(c, sentFields) || rejectDeprecatedAdvancedSchedulerRequestFields(c, sentFields) {
 		return
 	}
@@ -1550,12 +1555,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.GrokDefaultTextModel
 		}(),
-		GrokCrossClientModelMapEnabled: func() bool {
-			if req.GrokCrossClientModelMapEnabled != nil {
-				return *req.GrokCrossClientModelMapEnabled
-			}
-			return previousSettings.GrokCrossClientModelMapEnabled
-		}(),
 		GrokDefaultBaseURLMode: func() string {
 			if req.GrokDefaultBaseURLMode != nil {
 				return strings.TrimSpace(*req.GrokDefaultBaseURLMode)
@@ -2242,7 +2241,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		FallbackModelGemini:                              updatedSettings.FallbackModelGemini,
 		FallbackModelAntigravity:                         updatedSettings.FallbackModelAntigravity,
 		GrokDefaultTextModel:                             updatedSettings.GrokDefaultTextModel,
-		GrokCrossClientModelMapEnabled:                   updatedSettings.GrokCrossClientModelMapEnabled,
 		GrokDefaultBaseURLMode:                           updatedSettings.GrokDefaultBaseURLMode,
 		EnableIdentityPatch:                              updatedSettings.EnableIdentityPatch,
 		IdentityPatchPrompt:                              updatedSettings.IdentityPatchPrompt,

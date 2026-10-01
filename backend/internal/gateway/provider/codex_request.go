@@ -17,13 +17,12 @@ func ApplyCodexOAuthTransform(reqBody map[string]any, isCodexCLI bool, isCompact
 }
 
 func ApplyCodexOAuthTransformWithOptions(reqBody map[string]any, opts openai.CodexOAuthTransformOptions) openai.CodexTransformResult {
-	opts.ModelRules = CodexModelRules()
 	opts.IsMessagesBridge = IsOpenAICompatMessagesBridgeRequestBody
 	return openai.ApplyCodexOAuthTransformWithOptions(reqBody, opts)
 }
 
 func IsCodexSparkModel(model string) bool {
-	return openai.IsCodexSparkModel(model, CodexModelRules())
+	return openai.IsCodexSparkModel(model)
 }
 
 func StripOpenAIImageGenerationToolsFromRawPayload(payload []byte) ([]byte, bool, error) {

@@ -39,6 +39,7 @@ export const claudeModels = [
   'claude-opus-5',
   'claude-sonnet-4-6',
   'claude-sonnet-5',
+  'claude-sonnet-5-5', 'claude-opus-5-5',
   'claude-fable-5-1',
   'claude-fable-5'
 ]
@@ -88,6 +89,9 @@ const antigravityModels = [
   'gemini-3.6-flash-low',
   'gemini-3.6-flash-medium',
   'gemini-3.6-flash-tiered',
+  // 补齐已接入后端的 Gemini 3.7/3.8 精确型号。
+  'gemini-3.7-flash', 'gemini-3.7-flash-low', 'gemini-3.7-flash-medium', 'gemini-3.7-flash-high', 'gemini-3.7-flash-tiered',
+  'gemini-3.8-flash', 'gemini-3.8-flash-low', 'gemini-3.8-flash-medium', 'gemini-3.8-flash-high', 'gemini-3.8-flash-tiered',
   // Gemini 3.1 系列
   'gemini-3.1-pro',
   'gemini-3.1-pro-high',
@@ -200,18 +204,6 @@ const xaiModels = [
   'grok-4.20-0309-reasoning',
   'grok-4.20-0309-non-reasoning',
   'grok-4.20-multi-agent-0309',
-  'grok-4.20-multi-agent',
-  'grok-4.20-multi-agent-latest',
-  'grok-4.3-latest',
-  'grok-latest',
-  'grok-4.6-latest',
-  'grok-4.5-latest',
-  'grok-build-latest',
-  'composer-2.5',
-  'grok-4.20-reasoning',
-  'grok-4.20-non-reasoning',
-  'grok-imagine',
-  'grok-imagine-edit',
   'grok-imagine-image-quality',
   'grok-imagine-image',
   'grok-imagine-image-2.0',
@@ -324,6 +316,7 @@ export const allModels = allModelsList.map(m => ({ value: m, label: m }))
 
 const anthropicPresetMappings = [
   // 新模型沿用现有映射按钮与包豪斯主题。
+  { label: 'Sonnet 5.5', from: 'claude-sonnet-5-5', to: 'claude-sonnet-5-5', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
   { label: 'Opus 5.5', from: 'claude-opus-5-5', to: 'claude-opus-5-5', color: 'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400' },
   { label: 'Fable 5.1', from: 'claude-fable-5-1', to: 'claude-fable-5-1', color: 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400' },
   { label: 'Fable 5', from: 'claude-fable-5', to: 'claude-fable-5', color: 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400' },
@@ -472,6 +465,7 @@ const antigravityPresetMappings = [
 
 // Bedrock 预设映射（与后端 DefaultBedrockModelMapping 保持一致）
 const bedrockPresetMappings = [
+  { label: 'Sonnet 5.5', from: 'claude-sonnet-5-5', to: 'anthropic.claude-sonnet-5-5', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
   { label: 'Fable 5.1', from: 'claude-fable-5-1', to: 'anthropic.claude-fable-5-1', color: 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400' },
   { label: 'Fable 5', from: 'claude-fable-5', to: 'anthropic.claude-fable-5', color: 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400' },
   { label: 'Opus 4.6', from: 'claude-opus-4-6', to: 'us.anthropic.claude-opus-4-6-v1', color: 'bg-pink-100 text-pink-700 hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-400' },

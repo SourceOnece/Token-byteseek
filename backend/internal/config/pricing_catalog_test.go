@@ -1,24 +1,83 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-// 同步展示属性不能让存量部署悄悄换报价来源。
-func TestPricingCatalogSourcePreservesExistingDeployment(t *testing.T) {
+// TestPricingCatalogLegacySourceMigration 验证旧公共源迁移及自定义源隔离。
+func TestPricingCatalogLegacySourceMigration(t *testing.T) {
 	for _, source := range []string{
 		"https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/main/model_prices_and_context_window.json",
-		"https://mirror.example/catalog.json",
+		"https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/refs/heads/main//model_prices_and_context_window.json",
+		"https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
 	} {
-		cfg := Config{Pricing: PricingConfig{RemoteURL: source, HashURL: "old-hash", OverrideFile: "custom.json"}}
+		cfg := Config{Pricing: PricingConfig{RemoteURL: source, OverrideFile: "custom.json"}}
+		cfg.normalizePricingCatalogSource()
+		cfg.normalizePricingCatalogSource()
+		require.Equal(t, "https://models.dev/catalog.json", cfg.Pricing.RemoteURL)
+		require.Equal(t, "custom.json", cfg.Pricing.OverrideFile)
+		require.Equal(t, []string{"models.dev"}, cfg.Security.URLAllowlist.PricingHosts)
+	}
+	for _, source := range []string{
+		"https://mirror.example/catalog.json?source=raw.githubusercontent.com/wei-shaw/model-price-repo/main/model_prices_and_context_window.json",
+		"https://raw.githubusercontent.com.evil.example/BerriAI/litellm/main/model_prices_and_context_window.json",
+		"https://raw.githubusercontent.com/custom/litellm/main/model_prices_and_context_window.json",
+		"https://raw.githubusercontent.com/BerriAI/litellm-other/main/model_prices_and_context_window.json",
+		"",
+	} {
+		cfg := Config{Pricing: PricingConfig{RemoteURL: source}}
 		cfg.normalizePricingCatalogSource()
 		require.Equal(t, source, cfg.Pricing.RemoteURL)
-		require.Equal(t, "old-hash", cfg.Pricing.HashURL)
-		require.Equal(t, "custom.json", cfg.Pricing.OverrideFile)
 	}
-	cfg := Config{Pricing: PricingConfig{CatalogFormat: "models_dev", RemoteURL: "https://models.dev/catalog.json", HashURL: "old"}}
+}
+
+// TestPricingCatalogConfigAliases 通过完整加载入口验证别名、环境优先级及退役键不再校验。
+func TestPricingCatalogConfigAliases(t *testing.T) {
+	for _, tc := range []struct {
+		name, yaml, oldEnv, newEnv string
+		want                       int
+	}{
+		{"default", "", "", "", 10},
+		{"old yaml", "  hash_check_interval_minutes: 17\n", "", "", 17},
+		{"new yaml", "  hash_check_interval_minutes: 17\n  check_interval_minutes: 18\n", "", "", 18},
+		{"old env", "  check_interval_minutes: 18\n", "19", "", 19},
+		{"new env", "  check_interval_minutes: 18\n", "19", "20", 20},
+		{"zero", "  check_interval_minutes: 0\n", "", "", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := "pricing:\n  hash_url: [obsolete]\n  update_interval_hours: obsolete\n" + tc.yaml
+			file := prepareLegacyConfigTest(t, body)
+			t.Setenv("PRICING_HASH_CHECK_INTERVAL_MINUTES", tc.oldEnv)
+			t.Setenv("PRICING_CHECK_INTERVAL_MINUTES", tc.newEnv)
+			t.Setenv("PRICING_HASH_URL", "obsolete")
+			t.Setenv("PRICING_UPDATE_INTERVAL_HOURS", "obsolete")
+			cfg, err := Load()
+			require.NoError(t, err)
+			require.Equal(t, tc.want, cfg.Pricing.CheckIntervalMinutes)
+			saved, err := os.ReadFile(file)
+			require.NoError(t, err)
+			require.Equal(t, body, string(saved))
+		})
+	}
+}
+
+// TestPricingCatalogPackagedFallbackMigration 只迁移缺失的已知打包路径，不替换管理员现有文件。
+func TestPricingCatalogPackagedFallbackMigration(t *testing.T) {
+	t.Chdir(t.TempDir())
+	old := "./resources/model-pricing/model_prices_and_context_window.json"
+	cfg := Config{Pricing: PricingConfig{FallbackFile: old}}
 	cfg.normalizePricingCatalogSource()
-	require.Empty(t, cfg.Pricing.HashURL)
+	require.Equal(t, "resources/model-pricing/model_pricing_supplements.json", cfg.Pricing.FallbackFile)
+	require.NoError(t, os.MkdirAll(filepath.Dir(old), 0o700))
+	require.NoError(t, os.WriteFile(old, []byte(`{}`), 0o600))
+	cfg.Pricing.FallbackFile = old
+	cfg.normalizePricingCatalogSource()
+	require.Equal(t, old, cfg.Pricing.FallbackFile)
+	cfg.Pricing.FallbackFile = "./custom/model_prices_and_context_window.json"
+	cfg.normalizePricingCatalogSource()
+	require.Equal(t, "./custom/model_prices_and_context_window.json", cfg.Pricing.FallbackFile)
 }

@@ -164,7 +164,7 @@ func newOpenAIWSPassthroughUsageMeta(model string, body []byte) *openAIWSPassthr
 
 func (m *openAIWSPassthroughUsageMeta) initFromFirstFrame(body []byte, model string) {
 	if m != nil {
-		m.InitFromFirstFrame(body, model)
+		m.InitFromFirstFrame(body)
 	}
 }
 
@@ -176,7 +176,7 @@ func (m *openAIWSPassthroughUsageMeta) updateSessionRequestModel(body []byte) {
 
 func (m *openAIWSPassthroughUsageMeta) updateFromResponseCreate(body []byte, mapped, requested string) {
 	if m != nil {
-		m.UpdateFromResponseCreate(body, mapped, requested)
+		m.UpdateFromResponseCreate(body)
 	}
 }
 

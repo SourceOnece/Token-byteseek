@@ -2,6 +2,7 @@ package pricing
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
@@ -51,18 +52,34 @@ func modelsDevPriceFields(entry modelcatalog.Entry, cost modelcatalog.Cost) map[
 	case "zai", "zhipuai":
 		provider = "zhipu"
 	}
-	fields := map[string]any{"source": "models.dev", "litellm_provider": provider, "mode": "chat"}
+	fields := map[string]any{"source": "models.dev", "provider": provider, "mode": "chat"}
+	if entry.Attributes.InputModalities != nil {
+		fields["supported_modalities"] = *entry.Attributes.InputModalities
+	}
+	if entry.Attributes.OutputModalities != nil {
+		fields["supported_output_modalities"] = *entry.Attributes.OutputModalities
+	}
+	// 原厂 Gemini Image 系列的 output 是图片 token 费率，文本与思考价由本地补充提供。
+	// Omni、Deep Research 和中继继续使用普通输出价，输出模态本身不决定价格单位。
+	imageOutput := entry.FirstParty && entry.Provider == "google" && strings.HasPrefix(entry.Model, "gemini-") &&
+		strings.Contains(entry.Model, "-image") && entry.Attributes.OutputModalities != nil &&
+		slices.Contains(*entry.Attributes.OutputModalities, "image")
 	put := func(key string, value *float64) {
 		if value != nil {
 			fields[key] = *value / 1e6
 		}
 	}
 	put("input_cost_per_token", cost.Input)
-	put("output_cost_per_token", cost.Output)
+	if imageOutput {
+		put("output_cost_per_image_token", cost.Output)
+	} else {
+		put("output_cost_per_token", cost.Output)
+	}
 	put("cache_read_input_token_cost", cost.CacheRead)
 	put("cache_creation_input_token_cost", cost.CacheWrite)
 	fields["supports_prompt_caching"] = cost.CacheRead != nil || cost.CacheWrite != nil
-	if entry.Fast != nil {
+	// 当前服务层级字段只表达文本 token 价，不把图片 Fast 价写入文本价格桶。
+	if entry.Fast != nil && !imageOutput {
 		fields["supports_service_tier"] = true
 		put("input_cost_per_token_priority", entry.Fast.Input)
 		put("output_cost_per_token_priority", entry.Fast.Output)
@@ -72,20 +89,6 @@ func modelsDevPriceFields(entry modelcatalog.Entry, cost modelcatalog.Cost) map[
 	if entry.FirstParty && entry.Provider == "anthropic" && strings.HasPrefix(entry.Model, "claude-") && cost.Input != nil && cost.CacheWrite != nil {
 		fields["cache_creation_input_token_cost_above_1hr"] = *cost.Input * 2 / 1e6
 		fields["price_sources"] = map[string]string{"cache_write_1h": "rule_supplement"}
-	}
-	if entry.Attributes.InputModalities != nil {
-		fields["supported_modalities"] = *entry.Attributes.InputModalities
-	}
-	if entry.Attributes.OutputModalities != nil {
-		fields["supported_output_modalities"] = *entry.Attributes.OutputModalities
-		for _, modality := range *entry.Attributes.OutputModalities {
-			if modality == "image" {
-				fields["mode"] = "image"
-			}
-			if modality == "video" {
-				fields["mode"] = "video"
-			}
-		}
 	}
 	return fields
 }

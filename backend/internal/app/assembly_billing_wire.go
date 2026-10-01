@@ -4,12 +4,9 @@ package app
 
 import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-
 	billinghttpapi "github.com/TokenFlux/TokenRouter/internal/billing/httpapi"
-
-	billingredis "github.com/TokenFlux/TokenRouter/internal/billing/rediscache"
-
 	billingpostgres "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
+	billingredis "github.com/TokenFlux/TokenRouter/internal/billing/rediscache"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	identity "github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/google/wire"
@@ -35,7 +32,6 @@ var billingAssemblyProviders = wire.NewSet(
 	provideBillingSubscriptions,
 	provideSettlementStore,
 	provideBillingFunds,
-	providePricingService,
 	billingredis.NewBillingCache,
 	wire.Bind(new(billing.BillingCache), new(*billingredis.Cache)),
 )

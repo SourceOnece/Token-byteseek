@@ -7,7 +7,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
-import { useNavigationLoadingState } from '@/composables/useNavigationLoading'
+import { installNavigationLoading } from './navigationLoading'
 import { useRoutePrefetch } from '@/composables/useRoutePrefetch'
 import { getSetupStatus } from '@/api/setup'
 import { resolveCompletedSetupRedirectPath } from './setupRedirect'
@@ -771,7 +771,7 @@ const router = createRouter({
 let authInitialized = false
 
 // 初始化导航加载状态和预加载
-const navigationLoading = useNavigationLoadingState()
+installNavigationLoading(router)
 // 延迟初始化预加载，传入 router 实例
 let routePrefetch: ReturnType<typeof useRoutePrefetch> | null = null
 // 后端模式下这些公开页面仍需直达访问，模型广场属于公开入口。
@@ -806,7 +806,6 @@ function isBackendModePublicRouteAllowed(path: string, hasPendingAuthSession: bo
 
 router.beforeEach(async (to, _from, next) => {
   // 开始导航加载状态
-  navigationLoading.startNavigation()
 
   const authStore = useAuthStore()
 
@@ -977,7 +976,6 @@ router.beforeEach(async (to, _from, next) => {
  */
 router.afterEach((to) => {
   // 结束导航加载状态
-  navigationLoading.endNavigation()
 
   // 懒初始化预加载（首次导航时创建，传入 router 实例）
   if (!routePrefetch) {

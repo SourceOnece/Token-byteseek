@@ -50,7 +50,7 @@ func TestOpenAIMediaPricingUsesModifierOnlyCards(t *testing.T) {
 						factor *= 2
 					}
 					require.NoError(t, (routing.PricingConfigValidation{LoadLocation: pricingprovider.LoadPricingLocation}).PricingEntries([]routing.ModelPricingEntry{card}))
-					billing := newCalculator(nil, newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.LiteLLMModelPricing{
+					billing := newCalculator(nil, newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{
 						model: {Mode: media, InputCostPerToken: 0.001, OutputCostPerToken: 0.002, OutputCostPerImageToken: 0.004},
 					}}))
 					group := &routing.Group{ID: 100}
@@ -62,7 +62,7 @@ func TestOpenAIMediaPricingUsesModifierOnlyCards(t *testing.T) {
 					key := &apikey.APIKey{GroupID: &group.ID, Group: group}
 					resolved := svc.ResolveOpenAIConfigPricing(context.Background(), model, gatewaycapture.ProjectCompletionKey(key))
 					require.NotNil(t, resolved)
-					require.Equal(t, pricing.PricingSourceLiteLLM, resolved.Source)
+					require.Equal(t, pricing.PricingSourceCatalog, resolved.Source)
 					result := &forwardcore.OpenAIResult{Model: model, ReasoningEffort: &effort, ImageCount: 1}
 					if media == "video" {
 						result.ImageCount, result.VideoCount = 0, 1

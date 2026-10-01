@@ -49,7 +49,13 @@
 
 网关的静态体积、等待、切换上限和完成执行器参数由 app/构造适配投影为独立 Options，核心不接收完整 Config。HTTP 请求、原生尝试和完成队列复用同一应用图。用户提示替换及错误规则仍按原设置来源和生效时机读取，分别由 gateway/promptpolicy 与 gateway/errorpolicy 持有唯一运行状态。错误规则的管理写入、回源与发布在单服务进程内协调，不能据此推断新增跨实例一致性保证。
 
-环境变量把点分键转成大写下划线，例如 `database.host` 对应 `DATABASE_HOST`，`gateway.max_body_size` 对应 `GATEWAY_MAX_BODY_SIZE`。`setDefaults` 还负责把所有 struct 键注册进 Viper，使纯环境变量部署能被 `Unmarshal` 看到；新增字段不能只加 `mapstructure` tag 而不注册默认/可达键。模型属性默认从内嵌 models.dev 快照读取，但旧价格仍由 `pricing.catalog_format=legacy`、原 `remote_url` 和 `hash_url` 提供；只有显式设置 `catalog_format=models_dev` 才切换统一目录与 models.dev 价格。`pricing.hash_check_interval_minutes` 默认 10 分钟，统一目录使用条件请求。`pricing.fallback_file` 的默认值保持旧价格文件，媒体补充文件仅在 models.dev 模式下使用。定价进程配置中的 `pricing.override_file` 是可选本地 JSON 补丁，按字段浅合并覆盖远程目录和回退文件，修改后在重启或下一次目录下载时生效；文件缺失/非法只记录告警并保留原目录。
+环境变量把点分键转成大写下划线，例如 `database.host` 对应 `DATABASE_HOST`，`gateway.max_body_size` 对应 `GATEWAY_MAX_BODY_SIZE`。`setDefaults` 还负责把所有 struct 键注册进 Viper，使纯环境变量部署能被 `Unmarshal` 看到；新增字段不能只加 `mapstructure` tag 而不注册默认/可达键。模型目录使用 `pricing.remote_url`（默认 `https://models.dev/catalog.json`）与 `pricing.check_interval_minutes`（默认 10 分钟），自动同步价格和展示属性。旧 `pricing.hash_check_interval_minutes` 及对应环境变量按下述兼容键优先级映射到新键。`pricing.hash_url`、`pricing.update_interval_hours` 已退役，旧输入被忽略，不再参与解析校验或运行时同步；fork 旧 catalog_format 格式选择也已退役。
+
+已知 Wei-Shaw、BerriAI 公共旧价格地址在内存中转换为 models.dev 地址，并补入新的下载域名；自定义地址保持不变，必须返回 models.dev 目录格式。配置文件不会被改写。`pricing.fallback_file` 默认指向 `resources/model-pricing/model_pricing_supplements.json`；旧的相对资源路径及 `/app/resources/` 打包路径仅在原文件不存在时迁移到新补充文件，已存在的自定义内容继续读取。旧目录缓存不再加载，也不会被删除。
+
+本地补充填补缺失模型、媒体单价和生图文本输出价；`pricing.override_file` 按字段浅合并覆盖目录和补充层，`null` 删除字段。两层都必须是 JSON 对象，顶层 `null`、非对象条目及非法价格字段会拒绝更新，保留已发布目录并记录错误；文件不存在表示空层。修改和删除在下一次周期检查或管理员更新时生效，包括远程返回 304 或远程地址为空的场景。首次启动遇到损坏的本地层时，仍可发布不带该层的离线目录并保留错误，等待修复。
+
+本地 JSON 使用 `provider`，读取边界兼容 `litellm_provider`；同一条目同时提供时新字段优先，包括空值和 `null`。内部价格类型和来源分类使用目录中性名称，实际报价出处继续由 `source`、`price_sources` 区分。
 
 少量变量有显式绑定或专用解析：`ENABLE_SERVER_TIMING`，逗号分隔的 `SERVER_TRUSTED_PROXIES` 和 `SECURITY_FORWARDED_CLIENT_IP_HEADERS`，以及受兼容条件约束的旧 WeChat 变量。
 

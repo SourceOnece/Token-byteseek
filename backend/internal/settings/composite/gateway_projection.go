@@ -18,7 +18,6 @@ func (s *Snapshot) GatewayAdminSettings() gateway.AdminSettings {
 		EnableFingerprintUnification:           s.EnableFingerprintUnification,
 		EnableIdentityPatch:                    s.EnableIdentityPatch,
 		EnableMetadataPassthrough:              s.EnableMetadataPassthrough,
-		GrokCrossClientModelMapEnabled:         s.GrokCrossClientModelMapEnabled,
 		GrokDefaultBaseURLMode:                 s.GrokDefaultBaseURLMode,
 		GrokDefaultTextModel:                   s.GrokDefaultTextModel,
 		IdentityPatchPrompt:                    s.IdentityPatchPrompt,

@@ -28,7 +28,7 @@ func creativePriceFixture(calculator *billing.Calculator, resolver *billing.Pric
 		selected := resolver
 		if selected == nil && calculator != nil {
 			selected = billing.NewPriceResolver(nil, calculator, modelidentity.Identity, func(model string, err error) {
-				slog.Debug("failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)
+				slog.Debug("failed to get model pricing from model catalog, using fallback", "model", model, "error", err)
 			})
 		}
 		value, err := selected.ResolveImageUnitPrice(ctx, billing.PricingInput{Model: model, GroupID: &group.ID}, size)

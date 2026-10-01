@@ -82,7 +82,7 @@ func TestResolveProviderUpstreamModel_AnthropicOAuthAppliesMappingBeforeNormaliz
 	}
 
 	got := resolveProviderUpstreamModel(context.Background(), provider, "client-alias")
-	require.Equal(t, "claude-sonnet-4-5-20250929", got)
+	require.Equal(t, "claude-sonnet-4-5", got)
 }
 
 func TestResolveProviderUpstreamModel_BedrockUsesRegionalFinalModel(t *testing.T) {

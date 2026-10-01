@@ -28,33 +28,66 @@ func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.Def
 		result.Source = raw.Source
 		result.PriceSources = maps.Clone(raw.PriceSources)
 	}
-	if mode == "video" {
+	_, knownVideo := pricing.GetDefaultGrokImagineVideoPrice(model, pricing.VideoBillingResolution480P)
+	if knownVideo {
 		if result.PriceSources == nil {
 			result.PriceSources = map[string]string{}
 		}
 		result.BillingMode = "video"
 		for _, size := range []string{"480p", "720p", "1080p"} {
-			add(size, s.DefaultVideoPrice(model, size), "USD/s")
+			price, err := s.DefaultVideoPrice(model, size)
+			if err != nil {
+				result.Prices = nil
+				return result
+			}
+			add(size, price, "USD/s")
 			result.PriceSources[size] = "local_supplement"
 		}
 		result.PriceStatus = "priced"
 		return result
 	}
+	_, knownImage := pricing.GetDefaultGrokImagineImagePrice(model, pricing.ImageBillingSize1K)
 	imageModel := mode == "image" || pricing.HasExplicitImageGenerationPricing(raw) || pricing.LooksLikeImageModel(model)
-	if imageModel {
+	// 聊天模型附带的图片元数据不切换 token 模式；纯按张价和明确的图片模型使用媒体单位。
+	hasImagePrice := knownImage || pricing.HasImageUnitPrice(raw) && (imageModel || raw.TokenPricingAbsent)
+	switch mode {
+	case "video", "image":
+		result.BillingMode = mode
+	case "image_generation":
+		result.BillingMode = "image"
+	}
+	if hasImagePrice {
 		if result.PriceSources == nil {
 			result.PriceSources = map[string]string{}
 		}
 		result.BillingMode = "image"
+		imageSource := result.PriceSources["image"]
+		if imageSource == "" {
+			imageSource = result.Source
+		}
+		if knownImage {
+			imageSource = "local_supplement"
+		}
 		for _, size := range []string{"1K", "2K", "4K"} {
-			add(size, s.DefaultImagePrice(model, size), "USD/image")
-			result.PriceSources[size] = "local_supplement"
+			price, err := s.DefaultImagePrice(model, size)
+			if err != nil {
+				result.Prices = nil
+				return result
+			}
+			add(size, price, "USD/image")
+			if imageSource != "" {
+				result.PriceSources[size] = imageSource
+			}
 		}
 		result.PriceStatus = "priced"
 	}
 	base, err := s.GetModelPricing(model)
 	if err != nil || base == nil {
 		return result
+	}
+	// 媒体维度缺价时仍可展示已有 token 报价，不借用通用按张或按秒兜底。
+	if !hasImagePrice {
+		result.BillingMode = "token"
 	}
 	result.PriceStatus = "priced"
 	base = pricing.ApplyDeepSeekPeakPricing(model, base, s.options.Now())

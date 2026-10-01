@@ -48,7 +48,7 @@ Claude Code 可把 base URL 指向部署地址的 `/antigravity`，认证值仍�
 
 Antigravity 分组支持 Messages、Responses、Chat 和 Gemini GenerateContent，新建时默认启用 Messages 与 Gemini GenerateContent；四项都可关闭，迁移前已有分组启用四项。通用入口和 `/antigravity/*` 别名都按最终分组执行对应协议门禁；Gemini 模型列表 GET 不受生成协议开关影响。
 
-Anthropic Messages 经过 Antigravity request transformer 生成上游 Gemini/内部请求形状，响应和 SSE 再恢复为 Anthropic 协议。工具定义、tool choice、thinking、缓存断点、图片输入、token 用量和停止原因都需要双向转换；schema cleaner 会移除上游不接受的 JSON Schema 表达。
+Anthropic Messages 经过 Antigravity request transformer 生成上游 Gemini/内部请求形状，响应和 SSE 再恢复为 Anthropic 协议。工具定义、tool choice、thinking、缓存断点、图片输入、token 用量和停止原因都需要双向转换；schema cleaner 会移除上游不接受的 JSON Schema 表达。`web_search` 保留已选模型，不强制改为 Gemini 2.5 Flash；不支持的能力由现有检查或上游返回错误。
 
 通用 OpenAI Chat Completions 和 Responses 在选到原生 Antigravity OAuth 提供商时走兼容适配器：
 
@@ -73,7 +73,7 @@ Antigravity 提供商可与其它平台提供商关联到同一分组。选择�
 
 ## 模型与额度
 
-Antigravity 同时提供 Claude 与 Gemini 模型族。Gemini 3.6 Flash 的基础、high、low、medium 与 tiered 五种模型 ID 均进入默认模型目录和身份映射；提供商存在自定义映射时，只要没有覆盖它们的通配符，这些精确直通映射仍会自动保留。可见模型来自默认映射、分组白名单、提供商资格和当前可请求解析；API Key 精确别名可投影到列表，目标不可请求时不展示。模型能力不能只由名称前缀推断，thinking/image 等能力由适配器与提供商详情共同约束。
+Antigravity 默认目录只列出原生型号及同型号必要的内部路由编码。旧型号、简称和跨型号迁移不自动展开。Gemini 的真实档位型号保留完整 ID；提供商保存了显式映射时，读取不会自动补项或改写目标。可见模型仍由分组白名单、提供商资格及可请求解析决定。
 
 提供商模型先完成一次映射，再应用本次请求的 thinking 后缀，最后检查最终模型白名单。只允许 thinking 变体时，基础名称加 thinking 的请求可以通过；白名单只允许基础模型时，thinking 请求会被拒绝。最终模型不再作为新的输入执行第二次提供商映射。
 

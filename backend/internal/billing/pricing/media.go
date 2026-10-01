@@ -19,7 +19,7 @@ func GetDefaultGrokImagineImagePrice(model string, imageSize string) (float64, b
 			DefaultGrokImagineImageQualityPrice1K,
 			DefaultGrokImagineImageQualityPrice2K,
 		), true
-	case "grok-imagine", "grok-imagine-image", "grok-imagine-edit":
+	case "grok-imagine-image":
 		return GetGrokImagineImageTierPrice(
 			imageSize,
 			DefaultGrokImagineImagePrice1K,
@@ -43,8 +43,8 @@ func GetGrokImagineImageTierPrice(imageSize string, price1K float64, price2K flo
 
 func GetDefaultGrokImagineVideoPrice(model string, resolution string) (float64, bool) {
 	model = strings.ToLower(strings.TrimSpace(model))
-	switch {
-	case strings.HasPrefix(model, "grok-imagine-video-1.5"):
+	switch model {
+	case "grok-imagine-video-1.5":
 		switch NormalizeVideoBillingResolutionOrDefault(resolution) {
 		case VideoBillingResolution480P:
 			return DefaultGrokImagineVideo15Price480P, true
@@ -55,7 +55,7 @@ func GetDefaultGrokImagineVideoPrice(model string, resolution string) (float64, 
 		default:
 			return DefaultGrokImagineVideo15Price480P, true
 		}
-	case strings.HasPrefix(model, "grok-imagine-video"):
+	case "grok-imagine-video":
 		switch NormalizeVideoBillingResolutionOrDefault(resolution) {
 		case VideoBillingResolution480P:
 			return DefaultGrokImagineVideoPrice480P, true
@@ -110,30 +110,26 @@ func CalculateVideoCost(perSecondPrice float64, videoCount, durationSeconds int,
 	}
 }
 
-// DefaultImagePrice 保留目录正价与历史尺寸倍率，不执行目录查询。
-func DefaultImagePrice(catalogPrice *LiteLLMModelPricing, imageSize string) float64 {
-	basePrice := 0.0
+// HasImageUnitPrice 识别目录明确提供的按张价格，显式零价也有效。
+func HasImageUnitPrice(catalogPrice *CatalogModelPricing) bool {
+	return catalogPrice != nil && (catalogPrice.OutputCostPerImage > 0 ||
+		catalogPrice.ImagePricePresent && catalogPrice.OutputCostPerImage == 0)
+}
 
-	// 从 PricingService 获取 output_cost_per_image
-	if catalogPrice != nil {
-		pricing := catalogPrice
-		if pricing != nil && pricing.OutputCostPerImage > 0 {
-			basePrice = pricing.OutputCostPerImage
-		}
+// DefaultImagePrice 对明确的目录报价应用尺寸倍率，布尔值区分显式零价与缺价。
+func DefaultImagePrice(catalogPrice *CatalogModelPricing, imageSize string) (float64, bool) {
+	if !HasImageUnitPrice(catalogPrice) {
+		return 0, false
 	}
-
-	// 如果没有找到价格，使用硬编码默认值（$0.134，来自 gemini-3-pro-image-preview）
-	if basePrice <= 0 {
-		basePrice = DefaultImageGenerationPrice
-	}
+	basePrice := catalogPrice.OutputCostPerImage
 
 	// 2K 尺寸 1.5 倍，4K 尺寸翻倍
 	if imageSize == "2K" {
-		return basePrice * 1.5
+		return basePrice * 1.5, true
 	}
 	if imageSize == "4K" {
-		return basePrice * 2
+		return basePrice * 2, true
 	}
 
-	return basePrice
+	return basePrice, true
 }

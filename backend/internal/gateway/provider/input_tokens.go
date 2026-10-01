@@ -33,7 +33,6 @@ func PrepareAnthropicInputTokens(
 	}
 
 	originalModel := anthropicReq.Model
-	ApplyOpenAICompatModelNormalization(&anthropicReq)
 	normalizedModel := anthropicReq.Model
 	billingModel := ExecutionModelPolicy(provider).ForwardModel(normalizedModel, strings.TrimSpace(defaultMappedModel))
 	upstreamModel := ExecutionModelPolicy(provider).NormalizeOpenAI(billingModel)

@@ -40,6 +40,11 @@ describe('useModelWhitelist', () => {
 		])
   })
 
+  it('Claude 5.5 候选和 Bedrock 预设保持后端一致', () => {
+    expect(getModelsByPlatform('anthropic')).toEqual(expect.arrayContaining(['claude-sonnet-5-5', 'claude-opus-5-5']))
+    expect(getPresetMappingsByPlatform('bedrock')).toEqual(expect.arrayContaining([expect.objectContaining({ from: 'claude-sonnet-5-5', to: 'anthropic.claude-sonnet-5-5' })]))
+  })
+
   it('openai 预设映射包含 GPT-6 Astra', () => {
     // 裸 GPT-5.6 不再作为快捷映射项，只提供具体产品。
     expect(getPresetMappingsByPlatform('openai').some((mapping) => mapping.from === 'gpt-5.6' || mapping.to === 'gpt-5.6')).toBe(false)
@@ -73,7 +78,8 @@ describe('useModelWhitelist', () => {
 
     expect(models).toContain('gemini-2.5-flash-image')
     expect(models).toContain('gemini-3.1-flash-image')
-    expect(models).toContain('gemini-3-pro-image')
+    expect(models).toContain('gemini-3.7-flash')
+    expect(models).toContain('gemini-3.8-flash-high')
   })
 
   it('qoder 模型列表提供创建提供商快捷候选且不暴露旧 route key', () => {
@@ -247,15 +253,15 @@ describe('useModelWhitelist', () => {
     }
   })
 
-  it('xAI 模型列表包含 Grok 4.5 官方模型和别名', () => {
+  it('xAI 模型列表仅包含原生完整型号', () => {
     const models = getModelsByPlatform('grok')
 
     expect(models).toContain('grok-4.6')
-    expect(models).toContain('grok-4.6-latest')
+    expect(models).not.toContain('grok-4.6-latest')
     expect(models).toContain('grok-4.5')
-    expect(models).toContain('grok-4.5-latest')
-    expect(models).toContain('grok-build-latest')
-    expect(models).toContain('grok-imagine-edit')
+    expect(models).not.toContain('grok-4.5-latest')
+    expect(models).not.toContain('grok-build-latest')
+    expect(models).not.toContain('grok-imagine-edit')
     expect(models).toContain('grok-imagine-image-2.0')
     expect(models).toContain('grok-imagine-video-1.5')
   })
@@ -278,12 +284,12 @@ describe('useModelWhitelist', () => {
     })
   })
 
-  it('grok 模型列表包含 Composer 默认项和兼容别名', () => {
+  it('grok 模型列表包含 Composer 原生型号', () => {
     const models = getModelsByPlatform('grok')
 
     expect(models).toContain('grok-composer-2.5-fast')
     expect(models).not.toContain('grok-composer')
-    expect(models).toContain('composer-2.5')
+    expect(models).not.toContain('composer-2.5')
   })
 
   it('gemini 模型列表包含原生生图模型', () => {

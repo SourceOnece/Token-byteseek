@@ -306,6 +306,6 @@ func TestNormalizeClaudeOAuthRequestBody_NoThinking_NoInject(t *testing.T) {
 func TestNormalizeClaudeOAuthRequestBody_HaikuShortModelStillNormalizesToDatedID(t *testing.T) {
 	body := []byte(`{"model":"claude-haiku-4-5","messages":[]}`)
 	out, modelID := claude.NormalizeClaudeOAuthRequestBody(body, "claude-haiku-4-5", claude.ClaudeOAuthNormalizeOptions{})
-	require.Equal(t, "claude-haiku-4-5-20251001", modelID)
-	require.Equal(t, "claude-haiku-4-5-20251001", gjson.GetBytes(out, "model").String())
+	require.Equal(t, "claude-haiku-4-5", modelID)
+	require.Equal(t, "claude-haiku-4-5", gjson.GetBytes(out, "model").String())
 }

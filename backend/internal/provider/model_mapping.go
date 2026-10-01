@@ -42,19 +42,6 @@ func ResolveModelMapping(a *Record, defaults ModelMappingDefaults) map[string]st
 		}
 	}
 	if len(result) > 0 {
-		if a.Platform == PlatformAntigravity {
-			EnsureAntigravityDefaultPassthroughs(result, []string{
-				"gemini-3-flash",
-				"gemini-3.1-pro-high",
-				"gemini-3.1-pro-low",
-				"gemini-3.6-flash",
-				"gemini-3.6-flash-high",
-				"gemini-3.6-flash-low",
-				"gemini-3.6-flash-medium",
-				"gemini-3.6-flash-tiered",
-			})
-			ApplyAntigravityGemini31ProAliases(result, defaults.AntigravityAgentModel)
-		}
 		return result
 	}
 

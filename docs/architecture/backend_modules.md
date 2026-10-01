@@ -57,7 +57,7 @@ backend/
 │   │   │   └── dto/                                     HTTP 展示值、请求值及脱敏映射
 │   │   ├── postgres/                                    PostgreSQL 持久化及事务适配
 │   │   ├── pricing/                                     价卡、模型价格解析、时间倍率和纯费用计算
-│   │   ├── provider/                                    外部服务与技术能力适配
+│   │   ├── provider/                                    计费回退告警与时区适配
 │   │   ├── rediscache/                                  Redis 缓存、计数或会话适配
 │   │   └── testkit/                                     该模块测试所需的替身与夹具
 │   ├── config/                                          启动配置加载、默认值、规范化和校验
@@ -189,6 +189,7 @@ backend/
 │   │   ├── openai/                                      Responses、Chat、媒体、WS、Codex 与用量报文
 │   │   └── wirejson/                                    保持报文结构的 JSON 读取与修改
 │   ├── modelcatalog/                                    models.dev 目录、供应商身份索引及展示属性值
+│   │   └── provider/                                   统一目录加载、条件同步、本地补充与覆盖、价格和属性原子快照
 │   ├── routing/                                         分组、价格配置、模型目录和请求路线
 │   │   ├── accessview/                                  分组访问、能力、模型与调度配置的只读投影
 │   │   ├── capability/                                  平台、提供商、协议准入与单步转换纯规则
@@ -304,7 +305,7 @@ backend/
 
 业务根包定义用例、状态和所需端口。`httpapi` 处理请求与响应；`postgres`、`rediscache` 实现持久化和运行状态；`provider` 适配供应商或其他模块提供的能力。模块只创建实际需要的适配包，测试替身放在 `testkit`。
 
-`provider` 的具体用途随模块而异：提供商 provider 负责授权、凭据、健康及导入协作；billing provider 加载价格目录；payment provider 对接支付机构；backup provider 执行归档与存储；gateway provider 组合路由、选号、传输与平台调用。这些适配不接管所属核心的业务规则。
+`provider` 的具体用途随模块而异：提供商 provider 负责授权、凭据、健康及导入协作；modelcatalog provider 加载统一模型目录，billing provider 处理计费回退告警和时区；payment provider 对接支付机构；backup provider 执行归档与存储；gateway provider 组合路由、选号、传输与平台调用。这些适配不接管所属核心的业务规则。
 
 `app` 注入生产实例、配置投影和跨模块端口，登记资源启停。模块通过端口接收能力，不反向导入 app。跨模块资金事务由存储参与者共用连接；HTTP 层不直接访问数据库。`billing/pricing`、`routing/capability`、`scheduler/policy` 等纯规则子包可被多个模块直接使用，避免复制规则。
 

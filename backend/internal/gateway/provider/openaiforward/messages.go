@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
@@ -39,13 +41,18 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 	}
 	anthropicDigestReq := p.CloneDigest(&anthropicReq)
 	originalModel := anthropicReq.Model
-	p.NormalizeModel(&anthropicReq)
 	normalizedModel := anthropicReq.Model
 	clientStream := anthropicReq.Stream // client's original stream preference
 
 	// 2. Model mapping
 	billingModel := p.BillingModel(normalizedModel, defaultMappedModel)
 	upstreamModel := p.UpstreamModel(billingModel)
+
+	// 模型映射后按真实目标验证，避免别名绕过或转换吞掉显式禁用档位。
+	if err := protocolopenai.ValidateGPT61CompatBody(body, upstreamModel, false); err != nil {
+		p.Error(http.StatusBadRequest, "invalid_request_error", err.Error())
+		return nil, err
+	}
 	promptCacheKey = strings.TrimSpace(promptCacheKey)
 	apiKeyID := p.APIKeyID()
 	anthropicDigestChain := ""

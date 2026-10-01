@@ -97,10 +97,6 @@ func (p *openAIMessagesExecutionAdapter) CloneDigest(r *protocolanthropic.Anthro
 	return session.CloneAnthropicDigestRequest(r)
 }
 
-func (p *openAIMessagesExecutionAdapter) NormalizeModel(r *protocolanthropic.AnthropicRequest) {
-	gatewayprovider.ApplyOpenAICompatModelNormalization(r)
-}
-
 func (p *openAIMessagesExecutionAdapter) BillingModel(model, fallback string) string {
 	return gatewayprovider.ExecutionModelPolicy(p.provider).ForwardModel(model, fallback)
 }

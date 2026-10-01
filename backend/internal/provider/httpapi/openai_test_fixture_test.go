@@ -10,13 +10,9 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
 // 夹具只组合真实策略、平台执行与事件用例，不复制测试分支或凭据算法。
@@ -34,7 +30,6 @@ func configureOpenAIProbe(executor *provideradapter.OpenAIProviderTest) {
 	if executor.ResolveTLS == nil {
 		executor.ResolveTLS = policy.ResolveTestTLS
 	}
-	executor.ModelRules = openai.CodexModelRules{ImageOnly: media.IsImageGenerationModel, LastSegment: capability.LastOpenAIModelSegment, CanonicalAlias: capability.CanonicalizeOpenAIModelAliasSpelling, KnownModel: modelidentity.NormalizeOpenAI, SupportsEffort: capability.OpenAIModelSupportsReasoningEffort}
 }
 
 func executeOpenAIProbe(t *testing.T, executor *provideradapter.OpenAIProviderTest, output *openAIProbeOutput, value *provider.Record, model, prompt, mode string, types ...string) error {

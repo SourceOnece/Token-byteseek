@@ -107,34 +107,31 @@ func Parse(body []byte) (*Catalog, error) {
 		return nil, err
 	}
 	if len(source.Providers) == 0 {
-		return nil, fmt.Errorf("models.dev catalog has no providers")
+		return nil, fmt.Errorf("expected models.dev catalog with providers; legacy pricing JSON is only supported as a local supplement or override")
 	}
 	hash := sha256.Sum256(body)
 	catalog := &Catalog{Version: hex.EncodeToString(hash[:]), Entries: map[string]Entry{}, Providers: map[string]bool{}, Ambiguous: map[string]bool{}}
 	bare := map[string][]Entry{}
-	labs := map[string]bool{}
 	for id := range source.Models {
 		lab, model, ok := strings.Cut(id, "/")
 		if !ok || lab == "" || model == "" {
 			return nil, fmt.Errorf("invalid canonical model ID: %s", id)
 		}
-		labs[lab] = true
 	}
-	// 供应商服务名与模型作者名不同的原厂入口在此显式对应。
-	labAliases := map[string]string{"zai": "zhipuai", "zhipuai": "zhipuai", "moonshotai-cn": "moonshotai", "moonshotai": "moonshotai", "google": "google", "xai": "xai"}
 	for provider, models := range source.Providers {
 		catalog.Providers[provider] = true
-		lab := provider
-		if value, ok := labAliases[provider]; ok {
-			lab = value
-		}
+		lab, knownOrigin := firstPartyProviderLab(provider)
 		for id, model := range models.Models {
 			entry, err := model.entry(id, provider)
 			if err != nil {
 				return nil, fmt.Errorf("%s/%s: %w", provider, id, err)
 			}
 			_, canonicalExists := source.Models[lab+"/"+id]
-			entry.FirstParty = labs[lab] && (canonicalExists || model.Canonical != "" && strings.HasPrefix(model.Canonical, lab+"/"))
+			entry.FirstParty = canonicalExists || knownOrigin
+			// 明确的归属优先，不能把原厂端点上的其他作者模型判为自有模型。
+			if model.Canonical != "" {
+				entry.FirstParty = strings.HasPrefix(model.Canonical, lab+"/")
+			}
 			entry.originalEndpoint = entry.FirstParty && provider == lab
 			if entry.Canonical == "" && canonicalExists {
 				entry.Canonical = lab + "/" + id
@@ -188,6 +185,40 @@ func Parse(body []byte) (*Catalog, error) {
 		return nil, fmt.Errorf("empty model catalog")
 	}
 	return catalog, nil
+}
+
+// firstPartyProviderLab 为已知原厂端点补充缺失的 canonical 关联。
+// 聚合供应商不进入此表；其他来源仍须由明确的模型资料确认归属。
+func firstPartyProviderLab(provider string) (string, bool) {
+	switch provider {
+	case "openai", "anthropic", "google", "xai", "deepseek", "moonshotai", "mistral":
+		return provider, true
+	case "moonshotai-cn":
+		return "moonshotai", true
+	case "zai", "zhipuai":
+		return "zhipuai", true
+	default:
+		return provider, false
+	}
+}
+
+// FirstPartyAliases 返回同一原厂记录的查价键，不把日期版本或中继视为同一报价。
+func (c *Catalog) FirstPartyAliases(model string) []string {
+	if c == nil {
+		return []string{model}
+	}
+	entry, found := c.Entries[normalize(model)]
+	if !found || !entry.FirstParty {
+		return []string{model}
+	}
+	var aliases []string
+	for key, candidate := range c.Entries {
+		if candidate.FirstParty && candidate.Provider == entry.Provider && candidate.Model == entry.Model {
+			aliases = append(aliases, key)
+		}
+	}
+	sort.Strings(aliases)
+	return aliases
 }
 
 func (m sourceModel) entry(id, provider string) (Entry, error) {

@@ -212,7 +212,7 @@ func (p openAIForwardPreludeAdapter) MappedModel(model string) string {
 }
 
 func (p openAIForwardPreludeAdapter) PassthroughEffort(body []byte, model string) *string {
-	return gatewayprovider.ApplyThinkingEnabledFallback(requeststate.ExtractOpenAIReasoningEffortFromBody(body, model), body, model)
+	return gatewayprovider.ApplyThinkingEnabledFallback(requeststate.ExtractOpenAIReasoningEffortFromBody(body), body, model)
 }
 
 func (p openAIForwardPreludeAdapter) Log(format string, args ...any) {

@@ -9,6 +9,9 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"path"
+	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -528,22 +531,16 @@ type TokenRefreshConfig struct {
 }
 
 type PricingConfig struct {
-	// CatalogFormat 显式选择目录格式，默认保留原有报价来源，避免升级隐式改价。
-	CatalogFormat string `mapstructure:"catalog_format"`
 	// 模型价格与属性统一目录地址（models.dev 格式）
 	RemoteURL string `mapstructure:"remote_url"`
-	// 哈希校验文件URL
-	HashURL string `mapstructure:"hash_url"`
 	// 本地数据目录
 	DataDir string `mapstructure:"data_dir"`
-	// 回退文件路径
+	// 本地价格补充文件路径
 	FallbackFile string `mapstructure:"fallback_file"`
 	// 覆盖补丁文件路径（可选）：按字段浅合并覆盖目录和回退数据
 	OverrideFile string `mapstructure:"override_file"`
-	// 更新间隔（小时）
-	UpdateIntervalHours int `mapstructure:"update_interval_hours"`
-	// 哈希校验间隔（分钟）
-	HashCheckIntervalMinutes int `mapstructure:"hash_check_interval_minutes"`
+	// 目录与本地文件检查间隔（分钟）
+	CheckIntervalMinutes int `mapstructure:"check_interval_minutes"`
 }
 
 type ServerConfig struct {
@@ -2053,15 +2050,12 @@ func setDefaults() {
 	viper.SetDefault("rate_limit.overload_cooldown_minutes", 10)
 	viper.SetDefault("rate_limit.oauth_401_cooldown_minutes", 10)
 
-	// 原有部署保持价格源；需要统一目录时显式选用 models_dev 格式及地址。
-	viper.SetDefault("pricing.catalog_format", "legacy")
-	viper.SetDefault("pricing.remote_url", "https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/main/model_prices_and_context_window.json")
-	viper.SetDefault("pricing.hash_url", "https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/main/model_prices_and_context_window.sha256")
+	// Pricing 从 models.dev 同步统一目录，本地文件补充专用计费维度。
+	viper.SetDefault("pricing.remote_url", "https://models.dev/catalog.json")
 	viper.SetDefault("pricing.data_dir", "./data")
 	viper.SetDefault("pricing.fallback_file", "./resources/model-pricing/model_prices_and_context_window.json")
 	viper.SetDefault("pricing.override_file", "")
-	viper.SetDefault("pricing.update_interval_hours", 24)
-	viper.SetDefault("pricing.hash_check_interval_minutes", 10)
+	viper.SetDefault("pricing.check_interval_minutes", 10)
 
 	// Timezone (default to Asia/Shanghai for Chinese users)
 	viper.SetDefault("timezone", "Asia/Shanghai")
@@ -2395,9 +2389,6 @@ func setEnvReachableDefaults() {
 }
 
 func (c *Config) Validate() error {
-	if c.Pricing.CatalogFormat != "" && c.Pricing.CatalogFormat != "legacy" && c.Pricing.CatalogFormat != "models_dev" {
-		return fmt.Errorf("pricing.catalog_format must be legacy or models_dev")
-	}
 	if c.APIKeyCreate.MaxPerUserPerHour < 0 {
 		return fmt.Errorf("api_key_create.max_per_user_per_hour must be non-negative")
 	}
@@ -3615,9 +3606,24 @@ func warnIfInsecureURL(field, raw string) {
 	}
 }
 
+// normalizePricingCatalogSource 迁移已知公共旧源及缺失的旧打包资源，不改写部署文件。
 func (c *Config) normalizePricingCatalogSource() {
-	// 只规范显式选择的新格式，不自动改写旧源或管理员镜像地址。
-	if c.Pricing.CatalogFormat == "models_dev" {
-		c.Pricing.HashURL = ""
+	source, err := url.Parse(c.Pricing.RemoteURL)
+	if err == nil && strings.EqualFold(source.Host, "raw.githubusercontent.com") && source.User == nil && (source.Scheme == "https" || source.Scheme == "http") {
+		sourcePath := strings.ToLower(path.Clean(source.Path))
+		knownRepository := strings.HasPrefix(sourcePath, "/wei-shaw/model-price-repo/") || strings.HasPrefix(sourcePath, "/berriai/litellm/")
+		if knownRepository && strings.HasSuffix(sourcePath, "/model_prices_and_context_window.json") {
+			c.Pricing.RemoteURL = "https://models.dev/catalog.json"
+			if !slices.Contains(c.Security.URLAllowlist.PricingHosts, "models.dev") {
+				c.Security.URLAllowlist.PricingHosts = append(c.Security.URLAllowlist.PricingHosts, "models.dev")
+			}
+		}
+	}
+	fallback := filepath.Clean(c.Pricing.FallbackFile)
+	if fallback != "resources/model-pricing/model_prices_and_context_window.json" && fallback != "/app/resources/model-pricing/model_prices_and_context_window.json" {
+		return
+	}
+	if _, err := os.Stat(fallback); os.IsNotExist(err) {
+		c.Pricing.FallbackFile = filepath.Join(filepath.Dir(fallback), "model_pricing_supplements.json")
 	}
 }

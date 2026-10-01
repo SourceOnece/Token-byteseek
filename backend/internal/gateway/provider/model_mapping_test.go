@@ -335,12 +335,12 @@ func TestResolveOpenAIErrorSchedulingModelPrefersActualUpstreamModel(t *testing.
 func TestNormalizeCodexModel(t *testing.T) {
 	cases := map[string]string{
 		"gpt-5.3-codex-spark":       "gpt-5.3-codex-spark",
-		"gpt-5.3-codex-spark-high":  "gpt-5.3-codex-spark",
-		"gpt-5.3-codex-spark-xhigh": "gpt-5.3-codex-spark",
-		"gpt-5.3":                   "gpt-5.3-codex",
+		"gpt-5.3-codex-spark-high":  "gpt-5.3-codex-spark-high",
+		"gpt-5.3-codex-spark-xhigh": "gpt-5.3-codex-spark-xhigh",
+		"gpt-5.3":                   "gpt-5.3",
 		"gpt-image-2":               "gpt-image-2",
 		"gpt-5.4-nano":              "gpt-5.4-nano",
-		"gpt-5.4-nano-high":         "gpt-5.4-nano",
+		"gpt-5.4-nano-high":         "gpt-5.4-nano-high",
 		"gpt6":                      "gpt6",
 		"claude-opus-4-6":           "claude-opus-4-6",
 	}
@@ -393,13 +393,13 @@ func TestNormalizeOpenAIModelForUpstream(t *testing.T) {
 			name:     "oauth normalizes known codex alias",
 			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth},
 			model:    "gpt-5.4-high",
-			want:     "gpt-5.4",
+			want:     "gpt-5.4-high",
 		},
 		{
 			name:     "oauth preserves GPT-5.5 Pro model",
 			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth},
 			model:    "openai/gpt-5.5-pro",
-			want:     "gpt-5.5-pro",
+			want:     "openai/gpt-5.5-pro",
 		},
 		{
 			name:     "oauth preserves codex auto review model",

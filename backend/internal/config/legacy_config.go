@@ -12,6 +12,7 @@ var legacyConfigKeys = []struct {
 	oldKey string
 	newKey string
 }{
+	{"pricing.hash_check_interval_minutes", "pricing.check_interval_minutes"},
 	{"gateway.max_account_switches", "gateway.max_provider_switches"},
 	{"gateway.max_account_switches_gemini", "gateway.max_provider_switches_gemini"},
 	{"gateway.openai_ws.max_conns_per_account", "gateway.openai_ws.max_conns_per_provider"},

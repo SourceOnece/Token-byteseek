@@ -48,7 +48,7 @@ const (
 
 func TestForwardGrokResponsesCodexAdditionalToolsUsesMixedCacheIntent(t *testing.T) {
 	body := []byte(`{
-		"model":"grok",
+		"model":"grok-4.5",
 		"stream":false,
 		"prompt_cache_key":"codex-session",
 		"input":[
@@ -84,7 +84,7 @@ func TestForwardGrokResponsesCodexAdditionalToolsUsesMixedCacheIntent(t *testing
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", false, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok-4.5", false, time.Now())
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -109,7 +109,7 @@ func TestForwardGrokResponsesCodexAdditionalToolsUsesMixedCacheIntent(t *testing
 
 func TestForwardGrokResponsesClaudeDesktopClientToolsUseCacheRoute(t *testing.T) {
 	firstBody := []byte(`{
-		"model":"grok","stream":false,"instructions":"You are Claude Desktop.",
+		"model":"grok-4.5","stream":false,"instructions":"You are Claude Desktop.",
 		"tools":[
 			{"type":"function","name":"Read","parameters":{"type":"object"}},
 			{"type":"function","name":"Edit","parameters":{"type":"object"}},
@@ -119,7 +119,7 @@ func TestForwardGrokResponsesClaudeDesktopClientToolsUseCacheRoute(t *testing.T)
 		"input":[{"role":"user","content":[{"type":"input_text","text":"first turn"}]}]
 	}`)
 	secondBody := []byte(`{
-		"model":"grok","stream":false,"instructions":"You are Claude Desktop.",
+		"model":"grok-4.5","stream":false,"instructions":"You are Claude Desktop.",
 		"tools":[
 			{"type":"function","name":"Read","parameters":{"type":"object"}},
 			{"type":"function","name":"Edit","parameters":{"type":"object"}},
@@ -172,9 +172,9 @@ func TestForwardGrokResponsesClaudeDesktopClientToolsUseCacheRoute(t *testing.T)
 		return c
 	}
 
-	first, err := svc.Grok.ForwardResponses(context.Background(), newContext(firstBody), provider, firstBody, "grok", false, time.Now())
+	first, err := svc.Grok.ForwardResponses(context.Background(), newContext(firstBody), provider, firstBody, "grok-4.5", false, time.Now())
 	require.NoError(t, err)
-	second, err := svc.Grok.ForwardResponses(context.Background(), newContext(secondBody), provider, secondBody, "grok", false, time.Now())
+	second, err := svc.Grok.ForwardResponses(context.Background(), newContext(secondBody), provider, secondBody, "grok-4.5", false, time.Now())
 	require.NoError(t, err)
 
 	require.Equal(t, 0, first.Usage.CacheReadInputTokens)
@@ -205,7 +205,7 @@ func TestForwardGrokResponsesClaudeDesktopClientToolsUseCacheRoute(t *testing.T)
 
 func TestCodexUnsupportedAdditionalToolsDoNotBecomeToolFreeCacheIntent(t *testing.T) {
 	body := []byte(`{
-		"model":"grok","tool_choice":"auto",
+		"model":"grok-4.5","tool_choice":"auto",
 		"input":[
 			{"type":"additional_tools","role":"developer","tools":[
 				{"type":"custom","name":"apply_patch"},
@@ -235,7 +235,7 @@ func TestCodexUnsupportedAdditionalToolsDoNotBecomeToolFreeCacheIntent(t *testin
 func TestForwardGrokResponsesCompactRoundTrip(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"compact this"}]}],"metadata":{"large_id":9007199254740993},"stream":false}`)
+	body := []byte(`{"model":"grok-4.5","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"compact this"}]}],"metadata":{"large_id":9007199254740993},"stream":false}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/compact", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 
@@ -269,14 +269,14 @@ func TestForwardGrokResponsesCompactRoundTrip(t *testing.T) {
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", false, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok-4.5", false, time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.False(t, result.Stream)
 	require.Equal(t, "resp_grok_compact", result.ResponseID)
 	require.Equal(t, 12, result.Usage.InputTokens)
 	require.Equal(t, 5, result.Usage.OutputTokens)
-	require.Equal(t, "grok", result.BillingModel)
+	require.Equal(t, "grok-4.5", result.BillingModel)
 	require.Equal(t, grok.DefaultResponsesModel, result.UpstreamModel)
 	require.Equal(t, grok.DefaultResponsesModel, gjson.GetBytes(upstream.lastBody, "model").String())
 	require.False(t, gjson.GetBytes(upstream.lastBody, "stream").Bool())
@@ -303,7 +303,7 @@ func TestForwardGrokMediaImagesGenerationNormalizesImagineAlias(t *testing.T) {
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 61,
-			Name:        "grok",
+			Name:        "grok-4.5",
 			Platform:    capability.PlatformGrok,
 			Type:        capability.ProviderTypeAPIKey,
 			Concurrency: 1,
@@ -331,12 +331,12 @@ func TestForwardGrokMediaImagesGenerationNormalizesImagineAlias(t *testing.T) {
 	require.Equal(t, "application/json", upstream.lastReq.Header.Get("Content-Type"))
 	require.Empty(t, upstream.lastReq.Header.Get("X-Grok-Client-Version"))
 	require.NotEqual(t, grok.DefaultGrokUpstreamUserAgent(), upstream.lastReq.Header.Get("User-Agent"))
-	require.JSONEq(t, `{"model":"grok-imagine-image-quality","prompt":"draw a cat"}`, string(upstream.lastBody))
+	require.JSONEq(t, `{"model":"grok-imagine","prompt":"draw a cat"}`, string(upstream.lastBody))
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.JSONEq(t, `{"data":[{"url":"https://images.test/cat.png"}]}`, recorder.Body.String())
 	require.Equal(t, "xai-image-req", result.RequestID)
-	require.Equal(t, "grok-imagine-image-quality", result.Model)
-	require.Equal(t, "grok-imagine-image-quality", result.BillingModel)
+	require.Equal(t, "grok-imagine", result.Model)
+	require.Equal(t, "grok-imagine", result.BillingModel)
 	require.Equal(t, 1, result.ImageCount)
 	require.Equal(t, pricing.ImageBillingSize2K, result.ImageSize)
 }
@@ -353,7 +353,7 @@ func TestForwardGrokMediaImagesGenerationRejectsEmptySuccessfulResponse(t *testi
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 66,
-			Name:        "grok",
+			Name:        "grok-4.5",
 			Platform:    capability.PlatformGrok,
 			Type:        capability.ProviderTypeAPIKey,
 			Concurrency: 1,
@@ -399,8 +399,8 @@ func TestForwardGrokMediaAppliesProviderModelMappingAfterEndpointNormalization(t
 			endpoint:         grok.GrokMediaEndpointImagesGenerations,
 			path:             "/v1/images/generations",
 			body:             `{"model":"grok-imagine","prompt":"draw a cat"}`,
-			modelMapping:     map[string]any{"grok-imagine-image-quality": "vendor-image-model"},
-			wantRequestModel: "grok-imagine-image-quality",
+			modelMapping:     map[string]any{"grok-imagine": "vendor-image-model"},
+			wantRequestModel: "grok-imagine",
 			wantBillingModel: "vendor-image-model",
 			wantUpstream:     "vendor-image-model",
 			wantBody:         `{"model":"vendor-image-model","prompt":"draw a cat"}`,
@@ -435,8 +435,8 @@ func TestForwardGrokMediaAppliesProviderModelMappingAfterEndpointNormalization(t
 			endpoint:         grok.GrokMediaEndpointImagesGenerations,
 			path:             "/v1/images/generations",
 			body:             `{"model":"grok-imagine","prompt":"draw","size":"1024x1024"}`,
-			modelMapping:     map[string]any{"grok-imagine-image-quality": "vendor-image-model"},
-			wantRequestModel: "grok-imagine-image-quality",
+			modelMapping:     map[string]any{"grok-imagine": "vendor-image-model"},
+			wantRequestModel: "grok-imagine",
 			wantBillingModel: "vendor-image-model",
 			wantUpstream:     "vendor-image-model",
 			wantBody:         `{"model":"vendor-image-model","prompt":"draw","resolution":"1k","aspect_ratio":"1:1"}`,
@@ -447,23 +447,23 @@ func TestForwardGrokMediaAppliesProviderModelMappingAfterEndpointNormalization(t
 			endpoint:         grok.GrokMediaEndpointImagesGenerations,
 			path:             "/v1/images/generations",
 			body:             `{"model":"grok-imagine","prompt":"draw"}`,
-			modelMapping:     map[string]any{"grok-imagine-image-quality": "   "},
-			wantRequestModel: "grok-imagine-image-quality",
-			wantBillingModel: "grok-imagine-image-quality",
-			wantUpstream:     "grok-imagine-image-quality",
-			wantBody:         `{"model":"grok-imagine-image-quality","prompt":"draw"}`,
+			modelMapping:     map[string]any{"grok-imagine": "   "},
+			wantRequestModel: "grok-imagine",
+			wantBillingModel: "grok-imagine",
+			wantUpstream:     "grok-imagine",
+			wantBody:         `{"model":"grok-imagine","prompt":"draw"}`,
 			responseBody:     `{"data":[{"url":"https://images.test/mapped.png"}]}`,
 		},
 		{
-			name:             "provider mapping target continues through builtin normalization",
+			name:             "provider mapping target stays unchanged",
 			endpoint:         grok.GrokMediaEndpointImagesGenerations,
 			path:             "/v1/images/generations",
 			body:             `{"model":"grok-imagine","prompt":"draw"}`,
-			modelMapping:     map[string]any{"grok-imagine-image-quality": "grok-build"},
-			wantRequestModel: "grok-imagine-image-quality",
+			modelMapping:     map[string]any{"grok-imagine": "grok-build"},
+			wantRequestModel: "grok-imagine",
 			wantBillingModel: "grok-build",
-			wantUpstream:     "grok-build-0.1",
-			wantBody:         `{"model":"grok-build-0.1","prompt":"draw"}`,
+			wantUpstream:     "grok-build",
+			wantBody:         `{"model":"grok-build","prompt":"draw"}`,
 			responseBody:     `{"data":[{"url":"https://images.test/normalized.png"}]}`,
 		},
 	}
@@ -519,7 +519,7 @@ func TestForwardGrokMediaImagesGenerationStripsUnsupportedSize(t *testing.T) {
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 65,
-			Name:        "grok",
+			Name:        "grok-4.5",
 			Platform:    capability.PlatformGrok,
 			Type:        capability.ProviderTypeAPIKey,
 			Concurrency: 1,
@@ -571,7 +571,7 @@ func TestForwardGrokMediaImagesEditMultipartConvertsToJSON(t *testing.T) {
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 62,
-			Name:        "grok",
+			Name:        "grok-4.5",
 			Platform:    capability.PlatformGrok,
 			Type:        capability.ProviderTypeAPIKey,
 			Concurrency: 1,
@@ -616,7 +616,7 @@ func TestForwardGrokMediaVideoGenerationReturnsUsageAndResponseID(t *testing.T) 
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 63,
-			Name:        "grok",
+			Name:        "grok-4.5",
 			Platform:    capability.PlatformGrok,
 			Type:        capability.ProviderTypeAPIKey,
 			Concurrency: 1,
@@ -664,7 +664,7 @@ func TestForwardGrokMediaVideoGenerationReturnsTaskIDAsResponseID(t *testing.T) 
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 63,
-			Name:        "grok",
+			Name:        "grok-4.5",
 			Platform:    capability.PlatformGrok,
 			Type:        capability.ProviderTypeAPIKey,
 			Concurrency: 1,
@@ -698,7 +698,7 @@ func TestForwardGrokMediaVideoGenerationPreservesImageToVideoModel(t *testing.T)
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 63,
-			Name:        "grok",
+			Name:        "grok-4.5",
 			Platform:    capability.PlatformGrok,
 			Type:        capability.ProviderTypeAPIKey,
 			Concurrency: 1,
@@ -780,7 +780,7 @@ func TestForwardGrokMediaVideoStatusUsesGETWithoutBody(t *testing.T) {
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 62,
-			Name:        "grok",
+			Name:        "grok-4.5",
 			Platform:    capability.PlatformGrok,
 			Type:        capability.ProviderTypeAPIKey,
 			Concurrency: 1,
@@ -835,7 +835,7 @@ func TestForwardGrokMediaVideoMutationEndpoints(t *testing.T) {
 
 			provider := &gatewayprovider.ExecutionProvider{
 				Record: providercore.Record{
-					LoadLocation: time.LoadLocation, ID: 71, Name: "grok", Platform: capability.PlatformGrok, Type: capability.ProviderTypeAPIKey, Concurrency: 1,
+					LoadLocation: time.LoadLocation, ID: 71, Name: "grok-4.5", Platform: capability.PlatformGrok, Type: capability.ProviderTypeAPIKey, Concurrency: 1,
 					Credentials: map[string]any{
 						"api_key":       "api-key",
 						"base_url":      "https://xai.test/v1",
@@ -905,7 +905,7 @@ func TestForwardGrokMedia429ReconcilesRateLimitBeforeCustomErrorBypass(t *testin
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 64,
-			Name:        "grok",
+			Name:        "grok-4.5",
 			Platform:    capability.PlatformGrok,
 			Type:        capability.ProviderTypeAPIKey,
 			Concurrency: 1,
@@ -974,7 +974,7 @@ func TestGrokMedia429FailoverPreservesRetryAfter(t *testing.T) {
 func TestForwardAsChatCompletionsForGrokStopFallsBackToXAIChatCompletions(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","messages":[{"role":"user","content":"hi"}],"stream":false,"stop":"done","prompt_cache_key":"raw-client-cache-key"}`)
+	body := []byte(`{"model":"grok-4.5","messages":[{"role":"user","content":"hi"}],"stream":false,"stop":"done","prompt_cache_key":"raw-client-cache-key"}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
 	c.Set("api_key", &apikey.APIKey{ID: 5101})
 
@@ -1006,7 +1006,7 @@ func TestForwardAsChatCompletionsForGrokStopFallsBackToXAIChatCompletions(t *tes
 	require.NotEqual(t, "raw-client-cache-key", upstream.lastReq.Header.Get(GrokConversationIDHeader))
 	require.Equal(t, "grok-4.5", gjson.GetBytes(upstream.lastBody, "model").String())
 	require.False(t, gjson.GetBytes(upstream.lastBody, "prompt_cache_key").Exists())
-	require.Equal(t, "grok", result.Model)
+	require.Equal(t, "grok-4.5", result.Model)
 	require.Equal(t, "grok-4.5", result.UpstreamModel)
 	require.Equal(t, 1, result.Usage.InputTokens)
 	require.Equal(t, 2, result.Usage.OutputTokens)
@@ -1079,7 +1079,7 @@ func TestForwardGrokResponsesStreamingDefaultsEmptyModelTo45AndSnapshots(t *test
 func TestForwardGrokResponsesAPIKeyUsesXAIResponses(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","input":"hi","metadata":{"session_id":"abc"},"stream":true}`)
+	body := []byte(`{"model":"grok-4.5","input":"hi","metadata":{"session_id":"abc"},"stream":true}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 
@@ -1109,7 +1109,7 @@ func TestForwardGrokResponsesAPIKeyUsesXAIResponses(t *testing.T) {
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", true, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok-4.5", true, time.Now())
 	require.NoError(t, err)
 	require.Equal(t, "https://api.x.ai/v1/responses", upstream.lastReq.URL.String())
 	require.Equal(t, "Bearer xai-test-key", upstream.lastReq.Header.Get("Authorization"))
@@ -1123,8 +1123,8 @@ func TestForwardGrokResponsesAPIKeyUsesXAIResponses(t *testing.T) {
 }
 
 func TestForwardGrokResponsesUsesMetadataSessionForCacheIdentityWithoutForwardingMetadata(t *testing.T) {
-	firstBody := []byte(`{"model":"grok","input":"first turn","metadata":{"user_id":"{\"session_id\":\"metadata-session\"}"},"stream":false}`)
-	secondBody := []byte(`{"model":"grok","input":"different second turn","metadata":{"user_id":"{\"session_id\":\"metadata-session\"}"},"stream":false}`)
+	firstBody := []byte(`{"model":"grok-4.5","input":"first turn","metadata":{"user_id":"{\"session_id\":\"metadata-session\"}"},"stream":false}`)
+	secondBody := []byte(`{"model":"grok-4.5","input":"different second turn","metadata":{"user_id":"{\"session_id\":\"metadata-session\"}"},"stream":false}`)
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 5401,
@@ -1159,9 +1159,9 @@ func TestForwardGrokResponsesUsesMetadataSessionForCacheIdentityWithoutForwardin
 		return c
 	}
 
-	_, err := svc.Grok.ForwardResponses(context.Background(), newContext(firstBody), provider, firstBody, "grok", false, time.Now())
+	_, err := svc.Grok.ForwardResponses(context.Background(), newContext(firstBody), provider, firstBody, "grok-4.5", false, time.Now())
 	require.NoError(t, err)
-	_, err = svc.Grok.ForwardResponses(context.Background(), newContext(secondBody), provider, secondBody, "grok", false, time.Now())
+	_, err = svc.Grok.ForwardResponses(context.Background(), newContext(secondBody), provider, secondBody, "grok-4.5", false, time.Now())
 	require.NoError(t, err)
 	require.Len(t, upstream.bodies, 2)
 
@@ -1177,7 +1177,7 @@ func TestForwardGrokResponsesRetriesInvalidEncryptedContentOnce(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	body := []byte(`{
-		"model":"grok",
+		"model":"grok-4.5",
 		"previous_response_id":"resp_valid_history",
 		"input":[
 			{"type":"reasoning","summary":[{"type":"summary_text","text":"keep this summary"}],"encrypted_content":"encrypted-reasoning"},
@@ -1224,7 +1224,7 @@ func TestForwardGrokResponsesRetriesInvalidEncryptedContentOnce(t *testing.T) {
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", false, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok-4.5", false, time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "resp_recovered", result.ResponseID)
@@ -1267,17 +1267,17 @@ func TestForwardGrokResponsesInvalidEncryptedContentRecoveryDoesNotOvermatch(t *
 	}{
 		{
 			name:         "different top-level code",
-			requestBody:  `{"model":"grok","input":[{"type":"reasoning","encrypted_content":"cipher"}],"stream":false}`,
+			requestBody:  `{"model":"grok-4.5","input":[{"type":"reasoning","encrypted_content":"cipher"}],"stream":false}`,
 			responseBody: `{"code":"bad-request","error":"Could not decrypt the provided encrypted_content."}`,
 		},
 		{
 			name:         "message does not mention decryption",
-			requestBody:  `{"model":"grok","input":[{"type":"reasoning","encrypted_content":"cipher"}],"stream":false}`,
+			requestBody:  `{"model":"grok-4.5","input":[{"type":"reasoning","encrypted_content":"cipher"}],"stream":false}`,
 			responseBody: `{"code":"invalid-argument","error":"The provided encrypted_content is invalid."}`,
 		},
 		{
 			name:         "request has no encrypted reasoning",
-			requestBody:  `{"model":"grok","input":[{"type":"message","role":"user","content":"hi"}],"stream":false}`,
+			requestBody:  `{"model":"grok-4.5","input":[{"type":"message","role":"user","content":"hi"}],"stream":false}`,
 			responseBody: matchingError,
 		},
 	}
@@ -1306,7 +1306,7 @@ func TestForwardGrokResponsesInvalidEncryptedContentRecoveryDoesNotOvermatch(t *
 			}}}
 			svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
 
-			result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", false, time.Now())
+			result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok-4.5", false, time.Now())
 			require.Nil(t, result)
 			require.Error(t, err)
 			require.Len(t, upstream.requests, 1)
@@ -1318,7 +1318,7 @@ func TestForwardGrokResponsesInvalidEncryptedContentRecoveryDoesNotOvermatch(t *
 func TestForwardGrokResponsesInvalidEncryptedContentRecoveryNestedErrorShape(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","input":[{"type":"reasoning","encrypted_content":"cipher"},{"type":"message","role":"user","content":"hi"}],"stream":false}`)
+	body := []byte(`{"model":"grok-4.5","input":[{"type":"reasoning","encrypted_content":"cipher"},{"type":"message","role":"user","content":"hi"}],"stream":false}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 
 	provider := &gatewayprovider.ExecutionProvider{
@@ -1345,7 +1345,7 @@ func TestForwardGrokResponsesInvalidEncryptedContentRecoveryNestedErrorShape(t *
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", false, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok-4.5", false, time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Len(t, upstream.requests, 2)
@@ -1356,7 +1356,7 @@ func TestForwardGrokResponsesInvalidEncryptedContentRecoveryNestedErrorShape(t *
 func TestForwardGrokResponsesInvalidEncryptedContentRetryFailureIsTerminal(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","input":[{"type":"reasoning","encrypted_content":"cipher"},{"type":"message","role":"user","content":"hi"}],"stream":false}`)
+	body := []byte(`{"model":"grok-4.5","input":[{"type":"reasoning","encrypted_content":"cipher"},{"type":"message","role":"user","content":"hi"}],"stream":false}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 
 	provider := &gatewayprovider.ExecutionProvider{
@@ -1385,7 +1385,7 @@ func TestForwardGrokResponsesInvalidEncryptedContentRetryFailureIsTerminal(t *te
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", false, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok-4.5", false, time.Now())
 	require.Nil(t, result)
 	require.Error(t, err)
 	require.Len(t, upstream.requests, 2)
@@ -1407,7 +1407,7 @@ func TestForwardGrokResponsesInvalidEncryptedContentRetryFailureIsTerminal(t *te
 func TestForwardAsChatCompletionsForGrokAPIKeyUsesConfiguredRawEndpointWithoutOAuthIdentity(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","messages":[{"role":"user","content":"hi"}],"stream":false}`)
+	body := []byte(`{"model":"grok-4.5","messages":[{"role":"user","content":"hi"}],"stream":false}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 	provider := &gatewayprovider.ExecutionProvider{
@@ -1440,7 +1440,7 @@ func TestForwardAsChatCompletionsForGrokAPIKeyUsesConfiguredRawEndpointWithoutOA
 func TestForwardAsChatCompletionsForGrokAPIKeyRejectsNonStreamingResponseWithoutUsage(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","messages":[{"role":"user","content":"hi"}],"stream":false}`)
+	body := []byte(`{"model":"grok-4.5","messages":[{"role":"user","content":"hi"}],"stream":false}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 	provider := &gatewayprovider.ExecutionProvider{
@@ -1480,7 +1480,7 @@ func TestForwardAsChatCompletionsForGrokAPIKeyRejectsNonStreamingResponseWithout
 func TestForwardAsChatCompletionsForGrokStreamingUsesRawXAIChatCompletions(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","messages":[{"role":"user","content":"hi"}],"stream":true}`)
+	body := []byte(`{"model":"grok-4.5","messages":[{"role":"user","content":"hi"}],"stream":true}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 
@@ -1529,7 +1529,7 @@ func TestForwardAsChatCompletionsForGrokStreamingUsesRawXAIChatCompletions(t *te
 func TestForwardGrokResponsesNonStreamingUsesCacheIdentityAndCachedUsage(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","input":"hi","stream":false,"tools":[{"type":"namespace","name":"client_tools"}],"tool_choice":{"type":"namespace","name":"client_tools"}}`)
+	body := []byte(`{"model":"grok-4.5","input":"hi","stream":false,"tools":[{"type":"namespace","name":"client_tools"}],"tool_choice":{"type":"namespace","name":"client_tools"}}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 	c.Set("api_key", &apikey.APIKey{ID: 5202})
@@ -1555,7 +1555,7 @@ func TestForwardGrokResponsesNonStreamingUsesCacheIdentityAndCachedUsage(t *test
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", false, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok-4.5", false, time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.False(t, result.Stream)
@@ -1581,7 +1581,7 @@ func TestForwardGrokResponsesFreeFunctionToolsUseCacheCapableMixedRoute(t *testi
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	body := []byte(`{
-		"model":"grok","input":"look up alpha","stream":false,
+		"model":"grok-4.5","input":"look up alpha","stream":false,
 		"tools":[
 			{"type":"function","name":"lookup","parameters":{"type":"object"}},
 			{"type":"function","name":"web_search","parameters":{"type":"object"}}
@@ -1607,7 +1607,7 @@ func TestForwardGrokResponsesFreeFunctionToolsUseCacheCapableMixedRoute(t *testi
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", false, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok-4.5", false, time.Now())
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -1624,7 +1624,7 @@ func TestForwardGrokResponsesFreeFunctionToolsUseCacheCapableMixedRoute(t *testi
 func TestForwardGrokResponsesFailoverKeepsCacheIdentityAcrossProviders(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","input":[{"role":"user","content":"stable prefix"}],"stream":false}`)
+	body := []byte(`{"model":"grok-4.5","input":[{"role":"user","content":"stable prefix"}],"stream":false}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 	c.Set("api_key", &apikey.APIKey{ID: 5203})
 
@@ -1654,11 +1654,11 @@ func TestForwardGrokResponsesFailoverKeepsCacheIdentityAcrossProviders(t *testin
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	_, err := svc.Grok.ForwardResponses(context.Background(), c, firstProvider, body, "grok", false, time.Now())
+	_, err := svc.Grok.ForwardResponses(context.Background(), c, firstProvider, body, "grok-4.5", false, time.Now())
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, secondProvider, body, "grok", false, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, secondProvider, body, "grok-4.5", false, time.Now())
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Len(t, upstream.requests, 2)
@@ -1676,7 +1676,7 @@ func TestForwardGrokResponsesFailoverKeepsCacheIdentityAcrossProviders(t *testin
 func TestForwardAsChatCompletionsForGrokStreamingStopFallsBackToRawXAIChatCompletions(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","messages":[{"role":"user","content":"hi"}],"stream":true,"stop":"done"}`)
+	body := []byte(`{"model":"grok-4.5","messages":[{"role":"user","content":"hi"}],"stream":true,"stop":"done"}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 	c.Request.Header.Set(GrokConversationIDHeader, "native-client-conversation")
@@ -1787,7 +1787,7 @@ func TestForwardAsChatCompletionsForGrokComposerBridgesImageInput(t *testing.T) 
 func TestForwardAsAnthropicForGrokUsesXAIResponses(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","max_tokens":32,"stream":false,"messages":[{"role":"user","content":"hi"}]}`)
+	body := []byte(`{"model":"grok-4.5","max_tokens":32,"stream":false,"messages":[{"role":"user","content":"hi"}]}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	c.Request.Header.Set("OpenAI-Beta", "grok-experimental")
 	c.Request.Header.Set("originator", "opencode")
@@ -1820,8 +1820,8 @@ func TestForwardAsAnthropicForGrokUsesXAIResponses(t *testing.T) {
 	require.Empty(t, upstream.lastReq.Header.Get("session_id"))
 	require.True(t, gjson.GetBytes(upstream.lastBody, "stream").Bool())
 	require.NotContains(t, string(upstream.lastBody), "chatgpt.com")
-	require.Equal(t, "grok", result.Model)
-	require.Equal(t, "grok", result.BillingModel)
+	require.Equal(t, "grok-4.5", result.Model)
+	require.Equal(t, "grok-4.5", result.BillingModel)
 	require.Equal(t, "grok-4.5", result.UpstreamModel)
 	require.Equal(t, 5, result.Usage.InputTokens)
 	require.Equal(t, 2, result.Usage.OutputTokens)
@@ -1836,7 +1836,7 @@ func TestForwardAsAnthropicForGrokRetriesInvalidEncryptedContentOnce(t *testing.
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	body := []byte(`{
-		"model":"grok","max_tokens":32,"stream":false,
+		"model":"grok-4.5","max_tokens":32,"stream":false,
 		"messages":[
 			{"role":"user","content":"plan a command"},
 			{"role":"assistant","content":[{"type":"thinking","thinking":"plan","signature":"enc-old-provider"},{"type":"text","text":"run it"}]},
@@ -1876,7 +1876,7 @@ func TestForwardAsAnthropicForGrokFunctionToolUsesCacheCapableMixedRoute(t *test
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	body := []byte(`{
-		"model":"grok","max_tokens":32,"stream":false,
+		"model":"grok-4.5","max_tokens":32,"stream":false,
 		"messages":[{"role":"user","content":"look up alpha"}],
 		"tools":[{"name":"lookup","description":"look up a key","input_schema":{"type":"object","properties":{"key":{"type":"string"}},"required":["key"]}},{"name":"web_search","description":"search the web","input_schema":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}}],
 		"tool_choice":{"type":"auto"}
@@ -1940,7 +1940,7 @@ func TestForwardAsAnthropicForGrokFunctionToolUsesCacheCapableMixedRoute(t *test
 func TestForwardAsAnthropicForGrokStreamingPreservesCacheUsage(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	body := []byte(`{"model":"grok","max_tokens":32,"stream":true,"messages":[{"role":"user","content":"hi"}]}`)
+	body := []byte(`{"model":"grok-4.5","max_tokens":32,"stream":true,"messages":[{"role":"user","content":"hi"}]}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	c.Set("api_key", &apikey.APIKey{ID: 5402})
 

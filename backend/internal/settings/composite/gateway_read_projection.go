@@ -15,7 +15,6 @@ func (s *Snapshot) ApplyGatewayAdminReadSettings(value *gateway.AdminReadSetting
 	s.EnableFingerprintUnification = value.EnableFingerprintUnification
 	s.EnableIdentityPatch = value.EnableIdentityPatch
 	s.EnableMetadataPassthrough = value.EnableMetadataPassthrough
-	s.GrokCrossClientModelMapEnabled = value.GrokCrossClientModelMapEnabled
 	s.GrokDefaultBaseURLMode = value.GrokDefaultBaseURLMode
 	s.GrokDefaultTextModel = value.GrokDefaultTextModel
 	s.IdentityPatchPrompt = value.IdentityPatchPrompt

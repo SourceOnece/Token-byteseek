@@ -52,7 +52,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 	}
 	// usage 元数据必须在改写为 U 前捕获客户端模型 R。
 	usageMeta := NewUsageMeta(initialRequestModel, firstClientMessage, p)
-	usageMeta.CaptureRequestedReasoningEffort(originalFirstClientMessage, initialRequestModel)
+	usageMeta.CaptureRequestedReasoningEffort(originalFirstClientMessage)
 	p.Log(fmt.Sprintf(
 		"relay_start provider_id=%d model=%s previous_response_id=%s first_message_type=%s first_message_bytes=%d",
 		o.ProviderID,
@@ -162,7 +162,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 	// codex-rs/core/src/client.rs build_responses_request 每次重新填值）。
 	// filter 会把每轮值固化到 turn 队列；原子值仅保存最新会话状态，供缺失
 	// turn 快照的异常和最终汇总路径兜底使用。
-	usageMeta.InitFromFirstFrame(firstClientMessage, firstUpstreamModel)
+	usageMeta.InitFromFirstFrame(firstClientMessage)
 	promptCacheKey := strings.TrimSpace(gjson.GetBytes(firstClientMessage, "prompt_cache_key").String())
 	turnPayloads := NewTurnPayloadQueue()
 	turnPayloads.Push(TurnPayload{
@@ -406,7 +406,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 						return payload, nil, err
 					}
 				}
-				usageMeta.UpdateFromResponseCreate(out, model, requestModelForThisFrame)
+				usageMeta.UpdateFromResponseCreate(out)
 				turnPayloads.Push(TurnPayload{
 					StartedAt:                responseCreateAt,
 					RequestBody:              out,

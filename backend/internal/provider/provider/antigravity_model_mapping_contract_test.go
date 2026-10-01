@@ -43,37 +43,37 @@ func TestAntigravityGatewayService_GetMappedModel(t *testing.T) {
 			name:            "默认映射 - claude-opus-4-6 → claude-opus-4-6-thinking",
 			requestedModel:  "claude-opus-4-6",
 			providerMapping: nil,
-			expected:        "claude-opus-4-6-thinking",
+			expected:        "",
 		},
 		{
 			name:            "默认映射 - claude-opus-4-5-20251101 → claude-opus-4-6-thinking",
 			requestedModel:  "claude-opus-4-5-20251101",
 			providerMapping: nil,
-			expected:        "claude-opus-4-6-thinking",
+			expected:        "",
 		},
 		{
 			name:            "默认映射 - claude-opus-4-5-thinking → claude-opus-4-6-thinking",
 			requestedModel:  "claude-opus-4-5-thinking",
 			providerMapping: nil,
-			expected:        "claude-opus-4-6-thinking",
+			expected:        "",
 		},
 		{
 			name:            "默认映射 - claude-haiku-4-5 → claude-sonnet-4-6",
 			requestedModel:  "claude-haiku-4-5",
 			providerMapping: nil,
-			expected:        "claude-sonnet-4-6",
+			expected:        "",
 		},
 		{
 			name:            "默认映射 - claude-haiku-4-5-20251001 → claude-sonnet-4-6",
 			requestedModel:  "claude-haiku-4-5-20251001",
 			providerMapping: nil,
-			expected:        "claude-sonnet-4-6",
+			expected:        "",
 		},
 		{
 			name:            "默认映射 - claude-sonnet-4-5-20250929 → claude-sonnet-4-5",
 			requestedModel:  "claude-sonnet-4-5-20250929",
 			providerMapping: nil,
-			expected:        "claude-sonnet-4-5",
+			expected:        "",
 		},
 
 		// 3. 默认映射中的透传（映射到自己）
@@ -263,7 +263,7 @@ func TestMapAntigravityModel_WildcardTargetEqualsRequest(t *testing.T) {
 			name:           "customtools alias falls back to normalized preview mapping",
 			modelMapping:   map[string]any{"gemini-3.1-pro-preview": "gemini-3.1-pro-high"},
 			requestedModel: "gemini-3.1-pro-preview-customtools",
-			expected:       "gemini-3.1-pro-high",
+			expected:       "",
 		},
 	}
 

@@ -1,7 +1,6 @@
 package app
 
 import (
-	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	providerauth "github.com/TokenFlux/TokenRouter/internal/provider"
@@ -10,11 +9,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
-
-// providePricingRemoteClient 沿用更新代理及显式直连回退配置。
-func providePricingRemoteClient(cfg *config.Config) billingadapter.PricingRemoteClient {
-	return billingadapter.NewPricingRemoteClient(cfg.Update.ProxyURL, cfg.Security.ProxyFallback.AllowDirectOnError)
-}
 
 // provideClaudeUsageFetcher 适配既有共享 HTTP 池，不创建独立传输状态。
 func provideClaudeUsageFetcher(upstream httpclient.UpstreamTransport) provideradapter.ClaudeUsageClient {

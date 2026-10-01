@@ -106,12 +106,12 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	apiKeyAuthCacheInvalidator := provideKeyInvalidator(apiKeyService)
 	pricingConfigService := providePricingConfigService(pricingConfigStore, groupStore, apiKeyAuthCacheInvalidator)
 	requestableCatalogue := provideRequestableCatalogue(modelList, providerStore, pricingConfigService)
-	pricingRemoteClient := providePricingRemoteClient(cfg)
-	pricingService, err := providePricingService(cfg, pricingRemoteClient)
+	remoteClient := provideModelCatalogRemoteClient(cfg)
+	service, err := provideModelCatalogService(cfg, remoteClient)
 	if err != nil {
 		return nil, err
 	}
-	calculator := provideBillingCalculator(cfg, pricingService, calendar)
+	calculator := provideBillingCalculator(cfg, service, calendar)
 	priceResolver := provideBillingPriceResolver(pricingConfigService, calculator)
 	sessionLimitCache := provideSessionCache(redisClient, cfg)
 	rpmCache := rediscache3.NewRPMCache(redisClient)
@@ -119,7 +119,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	capacityService := provideGroupCapacity(providerStore, groupStore, concurrencyService, sessionLimitCache, rpmCache, quotaSettingsCache)
 	groupAvailabilityProbeRepository := postgres.NewGroupAvailabilityProbeRepository(db)
 	modelAttributeStore := postgres.NewModelAttributeStore(db)
-	modelAttributeService := provideModelAttributes(modelAttributeStore, pricingService, apiKeyAuthCacheInvalidator)
+	modelAttributeService := provideModelAttributes(modelAttributeStore, service, apiKeyAuthCacheInvalidator)
 	marketplace := provideMarketplace(groupStore, store, requestableCatalogue, priceResolver, calculator, capacityService, groupAvailabilityProbeRepository, cfg, modelAttributeService)
 	postgresStore := provideUsageStore(client, db, preAggregationSettingsService, calendar)
 	dashboardAggregationRepository := provideUsageAggregationRepository(db, calendar)
@@ -401,8 +401,8 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	redactor := provideAuditRedactor()
 	auditLogService := provideAuditService(auditLogRepository, retentionSettings, redactor)
 	auditLogHandler := provideAuditHTTP(auditLogService, totpService)
-	routingPricingCatalog := providePricingCatalog(calculator, pricingService)
-	pricingHandler := httpapi8.NewPricingHandler(pricingConfigService, routingPricingCatalog)
+	pricingCatalog := providePricingCatalog(calculator, service)
+	pricingHandler := httpapi8.NewPricingHandler(pricingConfigService, pricingCatalog)
 	modelAttributeHandler := httpapi8.NewModelAttributeHandler(modelAttributeService)
 	settingsRegistry, err := provideSettingsParticipants(paymentRuntime, grantSettings, adminDefaults, adminSettingsRules)
 	if err != nil {
@@ -444,8 +444,8 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	opsHandler := httpapi10.NewOpsHandler(opsService)
 	handler2 := provideSearchHTTP(configService)
 	handler3 := httpapi11.New(codexTicketService)
-	service := provideCodexQuality(providerStore, db, snapshotCache, openAIProviderTest, manager)
-	handler4 := httpapi12.New(service)
+	qualityService := provideCodexQuality(providerStore, db, snapshotCache, openAIProviderTest, manager)
+	handler4 := httpapi12.New(qualityService)
 	appAdminRouteMount := provideAdminRouteMount(tlsFingerprintProfileHandler, diagnosticsHandler, tlsFingerprintRouterHandler, codexImportHandler, oAuthUsageHandler, managementHandler, contentModerationHandler, antigravityOAuthHandler, errorPassthroughHandler, codexInviteResetHandler, dataManagementHandler, archiveHandler, userAttributeHandler, upstreamUsageHandler, scheduledTestHandler, ollamaUsageHandler, adminSubscriptionHandler, adminAnnouncementHandler, testHandler, openAIOAuthHandler, geminiOAuthHandler, crsHandler, qoderOAuthHandler, dashboardHandler, affiliateHandler, grokOAuthHandler, auditLogHandler, pricingHandler, modelAttributeHandler, httpapiHandler, preAggregationHandler, settingsHandler, runtimeSettingsHandler, adminKeySettingsHandler, httpapiRuntimeSettingsHandler, panelSettingsHandler, systemHandler, adminRedeemHandler, handler, backupHandler, adminAPIKeyHandler, proxyHandler, groupHandler, claudeOAuthHandler, adminUsageHandler, promoHandler, adminHandler, adminUserHandler, opsHandler, handler2, handler3, handler4)
 	routePlanner := provider5.NewRoutePlanner(pricingConfigService)
 	messageCredentialSource := provideMessageCredentials(claudeTokenSource)
@@ -538,7 +538,8 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	}
 	engine := server.ProvideRouter(options, routerRuntime)
 	httpServer := server.ProvideHTTPServer(options, engine)
-	appBootRuntimeReady := provideBootRuntime(pricingService, manager, gatewayRuntimeSettings, forwardedSettings)
+	appModelCatalogRuntimeReady := provideModelCatalogRuntime(service, manager)
+	appSettingsRuntimeReady := provideSettingsRuntime(manager, gatewayRuntimeSettings, forwardedSettings)
 	appAuthRuntimeReady := provideAuthRuntime(apiKeyService, errorPassthroughService, claudeAuthorization, openAIAuthorization, geminiAuthorization, antigravityAuthorization, qoderAuthorization, qoderTokenProvider, grokAuthorization, tlsFingerprintProfileService, tlsFingerprintRouterService, manager)
 	expiryService := provideProviderExpiry(providerStore)
 	proxyExpiryService := provideProxyExpiry(proxyStore)
@@ -561,7 +562,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	orderExpiry := providePaymentExpiry(paymentRuntime, leaderLock, db)
 	appCoreRuntimeReady := provideCoreRuntime(runtimeBlockState, cfg, authCacheInvalidationWorker, snapshotService, modelList, appSchedulerSharedState, usageCleanupService, idempotencyCleanupService, orderExpiry, tlsFingerprintCollectorService, manager, wheel, digestSessionStore, usageLogRepository, tasks, transportClient, appGatewayRequestActivity, appGatewayBillingRates)
 	appIdempotencyHTTPReady := provideIdempotencyHTTP(idempotencyCoordinator, managementHandler, archiveHandler, codexImportHandler, apiKeyHandler, adminRedeemHandler, adminSubscriptionHandler, proxyHandler, adminUserHandler, groupHandler, systemHandler, adminUsageHandler)
-	appRuntimeReady := provideRuntime(appBootRuntimeReady, appAuthRuntimeReady, appMaintenanceRuntimeReady, appOpsRuntimeReady, appQueuesRuntimeReady, appJobsRuntimeReady, appCoreRuntimeReady, appIdempotencyHTTPReady, promptpolicyService)
+	appRuntimeReady := provideRuntime(appModelCatalogRuntimeReady, appSettingsRuntimeReady, appAuthRuntimeReady, appMaintenanceRuntimeReady, appOpsRuntimeReady, appQueuesRuntimeReady, appJobsRuntimeReady, appCoreRuntimeReady, appIdempotencyHTTPReady, promptpolicyService)
 	application := provideApplication(httpServer, manager, appRuntimeReady, opsService, errorLogQueue)
 	return application, nil
 }

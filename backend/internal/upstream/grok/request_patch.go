@@ -436,12 +436,12 @@ func (m BodyCodec) NormalizeGrokReasoningEffortValue(raw, model string) (string,
 // GrokSupportsXHighReasoningEffort 判断模型是否声明并透传 xhigh 推理档位。
 // 当前仅 Grok 4.6 及其无日期别名支持。
 func (m BodyCodec) GrokSupportsXHighReasoningEffort(model string) bool {
-	model = strings.ToLower(StripGrokProviderPrefix(strings.TrimSpace(model)))
+	model = grokReasoningModelID(model)
 	return model == "grok-4.6" || model == "grok-4.6-latest"
 }
 
 func (m BodyCodec) GrokSupportsReasoningEffort(model string) bool {
-	model = strings.ToLower(StripGrokProviderPrefix(strings.TrimSpace(model)))
+	model = grokReasoningModelID(model)
 	switch model {
 	case "grok-4.5", "grok-4.5-latest", "grok-4.6", "grok-4.6-latest",
 		"grok-4.3", "grok-4.3-latest",

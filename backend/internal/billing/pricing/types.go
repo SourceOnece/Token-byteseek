@@ -1,6 +1,6 @@
 package pricing
 
-// ModelPricing 模型价格配置（per-token价格，与LiteLLM格式一致）
+// ModelPricing 保存用于结算的每 token 单价及模型计费规则。
 type ModelPricing struct {
 	// Astra Ultrafast 使用模型专属倍率，与运营者 Fast 配置分离。
 	UltrafastMultiplier                float64
@@ -36,10 +36,11 @@ type ModelPricing struct {
 	LongContextInputMultiplier    float64 // 长上下文整次会话输入倍率
 	LongContextOutputMultiplier   float64 // 长上下文整次会话输出倍率
 	ImageOutputPricePerToken      float64 // 图片输出 token 价格 (USD)
-	ImageOutputPriceExplicit      bool    // 是否由价卡定价显式设定，显式设定后不再回退
+	ImageOutputPriceExplicit      bool    // 目录或价卡显式设定后不再回退，零价也有效
 }
 
 // ContextModelPrice 保存严格超过阈值时使用的整次绝对单价。
+// 来源使用包含阈值的边界时，由目录转换层先减一，结算和展示共用 (min,max]。
 type ContextModelPrice struct {
 	Threshold int
 	Pricing   *ModelPricing

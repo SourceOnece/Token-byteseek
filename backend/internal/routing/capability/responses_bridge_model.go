@@ -61,31 +61,8 @@ func parseResponsesBridgeModelVersion(model string) (major int, minor int, ok bo
 }
 
 func normalizeResponsesBridgeModel(model string) string {
-	normalized := strings.ToLower(strings.TrimSpace(model))
-	if strings.Contains(normalized, "/") {
-		parts := strings.Split(normalized, "/")
-		normalized = strings.TrimSpace(parts[len(parts)-1])
-	}
-	normalized = strings.ReplaceAll(normalized, "_", "-")
-	normalized = strings.Join(strings.Fields(normalized), "-")
-	for strings.Contains(normalized, "--") {
-		normalized = strings.ReplaceAll(normalized, "--", "-")
-	}
-	if strings.HasPrefix(normalized, "gpt5") {
-		normalized = "gpt-5" + strings.TrimPrefix(normalized, "gpt5")
-	}
-	replacements := []struct {
-		from string
-		to   string
-	}{
-		{"gpt-5.6sol", "gpt-5.6-sol"},
-		{"gpt-5.6terra", "gpt-5.6-terra"},
-		{"gpt-5.6luna", "gpt-5.6-luna"},
-	}
-	for _, replacement := range replacements {
-		normalized = strings.ReplaceAll(normalized, replacement.from, replacement.to)
-	}
-	return normalized
+	// 桥接只判断能力，不把这个投影写回请求模型。
+	return strings.ToLower(LastOpenAIModelSegment(model))
 }
 
 // ResponsesBridgeDropsSampling 判断模型是否为 Responses API 下不支持 temperature/top_p 的推理模型。

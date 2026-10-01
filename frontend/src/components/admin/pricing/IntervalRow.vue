@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-start gap-2 rounded-compact border p-2"
        :class="isEmpty ? 'border-red-400 bg-red-50 dark:border-red-500 dark:bg-red-950/20' : 'border-gray-200 bg-white dark:border-dark-500 dark:bg-dark-700'">
-    <!-- Token 模式：上下文区间、价格和可选倍率。 -->
+    <!-- Token 模式：上下文区间和价格。 -->
     <template v-if="mode === 'token'">
       <div class="pricing-interval-grid grid min-w-0 flex-1 gap-2">
         <div>
@@ -39,28 +39,6 @@
           <input :value="interval.cache_read_price" @input="emitField('cache_read_price', ($event.target as HTMLInputElement).value)"
             type="number" step="any" min="0" class="input mt-0.5 text-xs" />
         </div>
-        <template v-if="props.enableMultipliers">
-          <div>
-            <label class="text-xs text-gray-400">{{ t('admin.pricing.form.inputMultiplier', '输入倍率') }}</label>
-            <input :value="interval.input_multiplier" @input="emitField('input_multiplier', ($event.target as HTMLInputElement).value)"
-              type="number" step="any" min="0.000001" class="input mt-0.5 text-xs" />
-          </div>
-          <div>
-            <label class="text-xs text-gray-400">{{ t('admin.pricing.form.outputMultiplier', '输出倍率') }}</label>
-            <input :value="interval.output_multiplier" @input="emitField('output_multiplier', ($event.target as HTMLInputElement).value)"
-              type="number" step="any" min="0.000001" class="input mt-0.5 text-xs" />
-          </div>
-          <div>
-            <label class="text-xs text-gray-400">{{ t('admin.pricing.form.cacheWriteMultiplier', '缓存写入倍率') }}</label>
-            <input :value="interval.cache_write_multiplier" @input="emitField('cache_write_multiplier', ($event.target as HTMLInputElement).value)"
-              type="number" step="any" min="0.000001" class="input mt-0.5 text-xs" />
-          </div>
-          <div>
-            <label class="text-xs text-gray-400">{{ t('admin.pricing.form.cacheReadMultiplier', '缓存读取倍率') }}</label>
-            <input :value="interval.cache_read_multiplier" @input="emitField('cache_read_multiplier', ($event.target as HTMLInputElement).value)"
-              type="number" step="any" min="0.000001" class="input mt-0.5 text-xs" />
-          </div>
-        </template>
       </div>
     </template>
 
@@ -108,7 +86,6 @@ const { t } = useI18n()
 const props = defineProps<{
   interval: IntervalFormEntry
   mode: BillingMode
-  enableMultipliers?: boolean
 }>()
 
 const emit = defineEmits<{

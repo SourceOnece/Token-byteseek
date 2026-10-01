@@ -33,6 +33,12 @@ func RunRawChat(ctx context.Context, body []byte, defaultMappedModel string, p R
 	// 2. 按原 Chat 入口规则解析模型。
 	billingModel := p.BillingModel(originalModel, defaultMappedModel)
 	upstreamModel := p.UpstreamModel(billingModel)
+
+	// 模型映射后按真实目标验证，避免别名绕过或转换吞掉显式禁用档位。
+	if err := protocolopenai.ValidateGPT61CompatBody(body, upstreamModel, true); err != nil {
+		p.Error(http.StatusBadRequest, "invalid_request_error", err.Error())
+		return nil, err
+	}
 	p.ObserveModel(upstreamModel)
 	grokCacheIdentity := ""
 	if profile.Grok {

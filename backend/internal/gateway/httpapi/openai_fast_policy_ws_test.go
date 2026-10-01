@@ -77,7 +77,7 @@ func TestWSResponseCreate_RejectsUltraBeforeUpstream(t *testing.T) {
 
 	frames := [][]byte{
 		[]byte(`{"type":"response.create","model":"gpt-5.6-sol","reasoning":{"effort":"ultra"}}`),
-		[]byte(`{"type":"session.update","session":{"model":"gpt-5.6-sol-ultra"}}`),
+		[]byte(`{"type":"session.update","session":{"model":"gpt-5.6-sol","reasoning":{"effort":"ultra"}}}`),
 	}
 	for _, frame := range frames {
 		updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.6-sol", svc.Input(context.Background(), provider, "gpt-5.6-sol"))

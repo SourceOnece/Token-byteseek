@@ -550,21 +550,9 @@ func (r GrokMediaRequestInfo) HasInputImage() bool {
 	return len(r.InputImageURLs) > 0 || len(r.Uploads) > 0
 }
 
-// NormalizeGrokMediaModelForEndpoint 在提供商级模型映射和调度前，
-// 根据媒体端点解析内置的上游模型别名。
+// NormalizeGrokMediaModelForEndpoint 保留请求的完整媒体型号。
 func (m MediaCodec) NormalizeGrokMediaModelForEndpoint(endpoint GrokMediaEndpoint, model string, hasInputImage bool) string {
-	model = strings.TrimSpace(model)
-	switch endpoint {
-	case GrokMediaEndpointImagesGenerations, GrokMediaEndpointImagesEdits:
-		if model == "grok-imagine" {
-			return "grok-imagine-image-quality"
-		}
-	case GrokMediaEndpointVideosGenerations:
-		// xAI 1.5 模型仅支持图生视频。缺少图片时保留请求模型不变，
-		// 让上游返回文档约定的参数错误，避免静默切换模型和计费价格。
-		_ = hasInputImage
-	}
-	return model
+	return strings.TrimSpace(model)
 }
 
 func (m MediaCodec) ExtractGrokMediaVideoRequestID(body []byte) string {

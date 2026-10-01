@@ -37,6 +37,8 @@ Anthropic 原生入口是 `POST /v1/messages` 和 `POST /v1/messages/count_token
 
 Anthropic 分组支持 Messages、Responses 和 Chat，新建时默认只启用 Messages；三项都可关闭，迁移前已有分组按旧行为启用三项。被关闭的协议会在读取正文和提供商调度前返回对应客户端形状的 `403`，不会产生上游 attempt 或结算。
 
+OAuth/Setup Token 不自动补全 Claude 日期，提供商测试与正式转发均保留显式映射后的型号。Vertex 仅把调用方已指定的日期转换成 `@日期` 格式，Bedrock 保留同型号的区域资源编码。
+
 API Key 和 OAuth/Setup Token 使用 Anthropic HTTP 路径；Bedrock 走独立签名与响应适配；Service Account 走 Vertex Claude 路径。协议转换不能抹平这些传输差异，尤其是 beta header、模型名称、错误结构和 token usage 的来源。
 
 流式请求只在首个客户端分块写出前允许重试或换提供商。每次 attempt 都从原始请求重建转换状态，工具名、停止原因、thinking block、usage 和错误事件必须与客户端协议一致。

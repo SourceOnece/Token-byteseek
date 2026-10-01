@@ -17,16 +17,16 @@ func TestExtractOpenAIReasoningEffortFromBodyModelCandidates(t *testing.T) {
 		want       string // "" 表示期望 nil
 	}{
 		{
-			name:       "后缀推导回退到原始模型（OAuth 上游模型已剥后缀）",
+			name:       "原始模型后缀不生成档位",
 			body:       bodyWithoutEffort,
 			candidates: []string{"gpt-5.4", "gpt-5.4", "gpt-5.4-xhigh"},
-			want:       "xhigh",
+			want:       "",
 		},
 		{
-			name:       "GPT-5.6 后缀 max 经原始模型推导保留",
+			name:       "GPT 后缀 max 不生成档位",
 			body:       bodyWithoutEffort,
 			candidates: []string{"gpt-5.6-sol", "gpt-5.6-sol", "gpt-5.6-sol-max"},
-			want:       "max",
+			want:       "",
 		},
 		{
 			name:       "显式 max 不受映射后模型能力门槛影响",
@@ -56,7 +56,7 @@ func TestExtractOpenAIReasoningEffortFromBodyModelCandidates(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ExtractOpenAIReasoningEffortFromBody(tt.body, tt.candidates...)
+			got := ExtractOpenAIReasoningEffortFromBody(tt.body)
 			if tt.want == "" {
 				require.Nil(t, got)
 				return
@@ -70,10 +70,9 @@ func TestExtractOpenAIReasoningEffortFromBodyModelCandidates(t *testing.T) {
 func TestExtractOpenAIReasoningEffortModelCandidates(t *testing.T) {
 	reqBody := map[string]any{"model": "gpt-5.3-codex-high", "input": "hello"}
 
-	got := ExtractOpenAIReasoningEffort(reqBody, "gpt-5.3-codex", "gpt-5.3-codex-high")
+	got := ExtractOpenAIReasoningEffort(reqBody)
 
-	require.NotNil(t, got)
-	require.Equal(t, "high", *got)
+	require.Nil(t, got)
 }
 
 func TestExtractOpenAIReasoningEffortMapPreservesExplicitThirdPartyMax(t *testing.T) {
@@ -84,7 +83,7 @@ func TestExtractOpenAIReasoningEffortMapPreservesExplicitThirdPartyMax(t *testin
 		},
 	}
 
-	got := ExtractOpenAIReasoningEffort(reqBody, "deepseek/deepseek-v4-flash-0731", "deepseek-v4-flash")
+	got := ExtractOpenAIReasoningEffort(reqBody)
 
 	require.NotNil(t, got)
 	require.Equal(t, "max", *got)
@@ -92,38 +91,28 @@ func TestExtractOpenAIReasoningEffortMapPreservesExplicitThirdPartyMax(t *testin
 
 func TestExtractEffectiveOpenAIReasoningEffortFromBody(t *testing.T) {
 	t.Run("记录最终上游改写值", func(t *testing.T) {
-		got := ExtractEffectiveOpenAIReasoningEffortFromBody(
-			[]byte(`{"model":"glm-5.2","reasoning_effort":"max"}`),
-			[]byte(`{"model":"glm-5.2","reasoning_effort":"xhigh"}`),
-			"glm-5.2",
-		)
+		got := ExtractOpenAIReasoningEffortFromBody(
+			[]byte(`{"model":"glm-5.2","reasoning_effort":"max"}`))
 
 		require.NotNil(t, got)
 		require.Equal(t, "max", *got)
 	})
 
 	t.Run("显式字段被转换丢弃后不从模型后缀补值", func(t *testing.T) {
-		got := ExtractEffectiveOpenAIReasoningEffortFromBody(
-			[]byte(`{"model":"gpt-5.6"}`),
-			[]byte(`{"model":"gpt-5.6-max","reasoning":{"effort":"high"}}`),
-			"gpt-5.6-max",
-		)
+		got := ExtractOpenAIReasoningEffortFromBody(
+			[]byte(`{"model":"gpt-5.6"}`))
 
 		require.Nil(t, got)
 	})
 
-	t.Run("原请求省略字段时保留模型后缀推导", func(t *testing.T) {
-		got := ExtractEffectiveOpenAIReasoningEffortFromBody(
-			[]byte(`{"model":"gpt-5.6"}`),
-			[]byte(`{"model":"gpt-5.6-max"}`),
-			"gpt-5.6-max",
-		)
+	t.Run("原请求省略字段时保持未指定", func(t *testing.T) {
+		got := ExtractOpenAIReasoningEffortFromBody(
+			[]byte(`{"model":"gpt-5.6"}`))
 
-		require.NotNil(t, got)
-		require.Equal(t, "max", *got)
+		require.Nil(t, got)
 	})
 
-	t.Run("空值按未提供处理并保留模型后缀推导", func(t *testing.T) {
+	t.Run("空值按未提供处理", func(t *testing.T) {
 		tests := []struct {
 			name string
 			body []byte
@@ -135,14 +124,10 @@ func TestExtractEffectiveOpenAIReasoningEffortFromBody(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				got := ExtractEffectiveOpenAIReasoningEffortFromBody(
-					[]byte(`{"model":"gpt-5.6"}`),
-					tt.body,
-					"gpt-5.6-max",
-				)
+				got := ExtractOpenAIReasoningEffortFromBody(
+					[]byte(`{"model":"gpt-5.6"}`))
 
-				require.NotNil(t, got)
-				require.Equal(t, "max", *got)
+				require.Nil(t, got)
 			})
 		}
 	})

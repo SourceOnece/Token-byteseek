@@ -35,7 +35,7 @@ func TestShouldAutoInjectPromptCacheKeyForCompat_GPT6AstraForms(t *testing.T) {
 		"OPENAI/GPT-6_ASTRA",
 		"provider/gpt-6-astra",
 	} {
-		require.True(t, ShouldAutoInjectPromptCacheKeyForCompat(model), model)
+		require.Equal(t, model == "gpt-6-astra", ShouldAutoInjectPromptCacheKeyForCompat(model), model)
 	}
 
 	for _, model := range []string{
@@ -108,7 +108,7 @@ func TestDeriveCompatPromptCacheKey_UsesResolvedSparkFamily(t *testing.T) {
 	k1 := DeriveCompatPromptCacheKey(req, "gpt-5.3-codex-spark")
 	k2 := DeriveCompatPromptCacheKey(req, " openai/gpt-5.3-codex-spark ")
 	require.NotEmpty(t, k1)
-	require.Equal(t, k1, k2, "resolved spark family should derive a stable compat cache key")
+	require.NotEqual(t, k1, k2, "不同完整型号不能共享模型缓存身份")
 }
 
 func TestDeriveAnthropicCompatPromptCacheKey_StableAcrossLaterTurns(t *testing.T) {

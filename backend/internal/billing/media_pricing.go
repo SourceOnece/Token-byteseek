@@ -15,8 +15,8 @@ func (r *PriceResolver) ResolveImageUnitPrice(ctx context.Context, input Pricing
 	resolved := r.Resolve(ctx, input)
 	price, found := pricing.ConfiguredImageUnitPrice(resolved, size)
 	if !found {
-		// 缺少图片价时沿用内置回退，显式零价已在前面命中。
-		price = r.calculator.DefaultImagePrice(input.Model, pricing.NormalizeImageBillingTierOrDefault(size))
+		// 只接受完整型号的目录报价或静态价项，缺价不能生成通用单价。
+		return r.calculator.DefaultImagePrice(input.Model, pricing.NormalizeImageBillingTierOrDefault(size))
 	}
 	return pricing.ValidateImageUnitPrice(price)
 }

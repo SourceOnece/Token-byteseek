@@ -321,7 +321,12 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 			return err
 		}
 		s.observeEvent(BillingEvent{Kind: "pricing_missing", Component: "service.openai_gateway", Models: billingModels, RequestedModel: input.OriginalModel, MappedModel: input.GroupMappedModel, UpstreamModel: result.UpstreamModel, KeyID: apiKey.ID, ProviderID: provider.ID, Err: err})
-		cost = &CostBreakdown{BillingMode: string(BillingModeToken)}
+		// 缺价时保留媒体计费单位，金额清零但图片数、尺寸和视频时长仍须记录。
+		mode := string(BillingModeToken)
+		if cost != nil && cost.BillingMode != "" {
+			mode = cost.BillingMode
+		}
+		cost = &CostBreakdown{BillingMode: mode}
 	}
 
 	// 免费 Fast 只减免用户侧费用。保留 Fast 的 TotalCost 供提供商统计和审计，

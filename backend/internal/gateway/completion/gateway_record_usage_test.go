@@ -303,7 +303,7 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedBasisDoesNotUseRequestedStand
 	require.Zero(t, billingRepo.LastCmd.BillableAmountUSD)
 }
 
-func TestGatewayServiceRecordUsage_QoderGroupMappedImageBasisUsesGlobalFallback(t *testing.T) {
+func TestGatewayServiceRecordUsage_QoderGroupMappedImageBasisDoesNotUseGlobalFallback(t *testing.T) {
 	usageRepo := &completiontestkit.UsageLogStore{Inserted: true}
 	billingRepo := &completiontestkit.SettlementStore{Result: &billing.UsageBillingApplyResult{Applied: true}}
 	svc := newGatewayRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &completiontestkit.UserStore{}, &completiontestkit.SubscriptionStore{})
@@ -337,17 +337,17 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedImageBasisUsesGlobalFallback(
 	require.Equal(t, 1, usageRepo.Calls)
 	require.NotNil(t, usageRepo.LastLog)
 	require.Equal(t, 2, usageRepo.LastLog.ImageCount)
-	// 与其他平台一样按所选计费模型使用通用图片回退价。
-	expected := svc.Dependencies.Calculator.CalculateImageCost("ultimate", pricing.ImageBillingSize1K, 2, 1)
-	require.Positive(t, expected.TotalCost)
-	require.InDelta(t, expected.TotalCost, usageRepo.LastLog.TotalCost, 1e-12)
-	require.InDelta(t, expected.ActualCost, usageRepo.LastLog.ActualCost, 1e-12)
+	// 未提供所选型号的按张价时保留用量记录，不生成通用收费。
+
+	require.Zero(t, usageRepo.LastLog.TotalCost)
+	require.Zero(t, usageRepo.LastLog.TotalCost)
+	require.Zero(t, usageRepo.LastLog.ActualCost)
 	require.Equal(t, 1, billingRepo.Calls)
 	require.NotNil(t, billingRepo.LastCmd)
-	require.InDelta(t, expected.ActualCost, billingRepo.LastCmd.BillableAmountUSD, 1e-12)
+	require.Zero(t, billingRepo.LastCmd.BillableAmountUSD)
 }
 
-func TestGatewayServiceRecordUsage_QoderGroupMappedImageUsesGlobalFallback(t *testing.T) {
+func TestGatewayServiceRecordUsage_QoderGroupMappedImageDoesNotUseGlobalFallback(t *testing.T) {
 	usageRepo := &completiontestkit.UsageLogStore{Inserted: true}
 	billingRepo := &completiontestkit.SettlementStore{Result: &billing.UsageBillingApplyResult{Applied: true}}
 	svc := newGatewayRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &completiontestkit.UserStore{}, &completiontestkit.SubscriptionStore{})
@@ -381,14 +381,14 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedImageUsesGlobalFallback(t *te
 	require.Equal(t, 1, usageRepo.Calls)
 	require.NotNil(t, usageRepo.LastLog)
 	require.Equal(t, 1, usageRepo.LastLog.ImageCount)
-	// 与其他平台一样按所选计费模型使用通用图片回退价。
-	expected := svc.Dependencies.Calculator.CalculateImageCost("qmodel", pricing.ImageBillingSize1K, 1, 1)
-	require.Positive(t, expected.TotalCost)
-	require.InDelta(t, expected.TotalCost, usageRepo.LastLog.TotalCost, 1e-12)
-	require.InDelta(t, expected.ActualCost, usageRepo.LastLog.ActualCost, 1e-12)
+	// 未提供所选型号的按张价时保留用量记录，不生成通用收费。
+
+	require.Zero(t, usageRepo.LastLog.TotalCost)
+	require.Zero(t, usageRepo.LastLog.TotalCost)
+	require.Zero(t, usageRepo.LastLog.ActualCost)
 	require.Equal(t, 1, billingRepo.Calls)
 	require.NotNil(t, billingRepo.LastCmd)
-	require.InDelta(t, expected.ActualCost, billingRepo.LastCmd.BillableAmountUSD, 1e-12)
+	require.Zero(t, billingRepo.LastCmd.BillableAmountUSD)
 }
 
 func TestGatewayServiceRecordUsage_QoderRequestedBasisDoesNotFallBackToGroupMappedPricing(t *testing.T) {
@@ -446,7 +446,7 @@ func TestGatewayServiceRecordUsage_QoderRequestedBasisDoesNotFallBackToGroupMapp
 	require.Zero(t, billingRepo.LastCmd.BillableAmountUSD)
 }
 
-func TestGatewayServiceRecordUsage_QoderRequestedImageUsesGlobalFallback(t *testing.T) {
+func TestGatewayServiceRecordUsage_QoderRequestedImageDoesNotUseGlobalFallback(t *testing.T) {
 	usageRepo := &completiontestkit.UsageLogStore{Inserted: true}
 	billingRepo := &completiontestkit.SettlementStore{Result: &billing.UsageBillingApplyResult{Applied: true}}
 	svc := newGatewayRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &completiontestkit.UserStore{}, &completiontestkit.SubscriptionStore{})
@@ -482,14 +482,14 @@ func TestGatewayServiceRecordUsage_QoderRequestedImageUsesGlobalFallback(t *test
 	require.Equal(t, 1, usageRepo.LastLog.ImageCount)
 	require.NotNil(t, usageRepo.LastLog.BillingMode)
 	require.Equal(t, string(routing.BillingModeImage), *usageRepo.LastLog.BillingMode)
-	// 与其他平台一样按所选计费模型使用通用图片回退价。
-	expected := svc.Dependencies.Calculator.CalculateImageCost("custom-image-alias", pricing.ImageBillingSize1K, 1, 1)
-	require.Positive(t, expected.TotalCost)
-	require.InDelta(t, expected.TotalCost, usageRepo.LastLog.TotalCost, 1e-12)
-	require.InDelta(t, expected.ActualCost, usageRepo.LastLog.ActualCost, 1e-12)
+	// 未提供所选型号的按张价时保留用量记录，不生成通用收费。
+
+	require.Zero(t, usageRepo.LastLog.TotalCost)
+	require.Zero(t, usageRepo.LastLog.TotalCost)
+	require.Zero(t, usageRepo.LastLog.ActualCost)
 	require.Equal(t, 1, billingRepo.Calls)
 	require.NotNil(t, billingRepo.LastCmd)
-	require.InDelta(t, expected.ActualCost, billingRepo.LastCmd.BillableAmountUSD, 1e-12)
+	require.Zero(t, billingRepo.LastCmd.BillableAmountUSD)
 }
 
 func TestGatewayServiceRecordUsage_QoderAliasesInheritAvailableBuiltinPrices(t *testing.T) {
@@ -1006,7 +1006,7 @@ func TestGatewayServiceRecordUsage_QoderCustomMappedRouteKeyWithoutManualPricing
 	require.Zero(t, billingRepo.LastCmd.BillableAmountUSD)
 }
 
-func TestGatewayServiceRecordUsage_QoderProviderMappedImageUsesGlobalFallback(t *testing.T) {
+func TestGatewayServiceRecordUsage_QoderProviderMappedImageDoesNotUseGlobalFallback(t *testing.T) {
 	usageRepo := &completiontestkit.UsageLogStore{Inserted: true}
 	billingRepo := &completiontestkit.SettlementStore{}
 	svc := newGatewayRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &completiontestkit.UserStore{}, &completiontestkit.SubscriptionStore{})
@@ -1040,14 +1040,14 @@ func TestGatewayServiceRecordUsage_QoderProviderMappedImageUsesGlobalFallback(t 
 	require.NotNil(t, usageRepo.LastLog)
 	require.NotNil(t, usageRepo.LastLog.BillingMode)
 	require.Equal(t, string(routing.BillingModeImage), *usageRepo.LastLog.BillingMode)
-	// 与其他平台一样按所选计费模型使用通用图片回退价。
-	expected := svc.Dependencies.Calculator.CalculateImageCost("custom-qoder-image", pricing.ImageBillingSize1K, 2, usageRepo.LastLog.RateMultiplier)
-	require.Positive(t, expected.TotalCost)
-	require.InDelta(t, expected.TotalCost, usageRepo.LastLog.TotalCost, 1e-12)
-	require.InDelta(t, expected.ActualCost, usageRepo.LastLog.ActualCost, 1e-12)
+	// 未提供所选型号的按张价时保留用量记录，不生成通用收费。
+
+	require.Zero(t, usageRepo.LastLog.TotalCost)
+	require.Zero(t, usageRepo.LastLog.TotalCost)
+	require.Zero(t, usageRepo.LastLog.ActualCost)
 	require.Equal(t, 1, billingRepo.Calls)
 	require.NotNil(t, billingRepo.LastCmd)
-	require.InDelta(t, expected.ActualCost, billingRepo.LastCmd.BillableAmountUSD, 1e-12)
+	require.Zero(t, billingRepo.LastCmd.BillableAmountUSD)
 }
 
 func TestGatewayServiceRecordUsage_QoderUpstreamBasisDoesNotUseRequestedStandardPricing(t *testing.T) {

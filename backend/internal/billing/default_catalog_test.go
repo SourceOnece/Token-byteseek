@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
@@ -8,10 +9,10 @@ import (
 )
 
 type defaultCatalogStub struct {
-	entries map[string]*pricing.LiteLLMModelPricing
+	entries map[string]*pricing.CatalogModelPricing
 }
 
-func (s defaultCatalogStub) GetModelPricing(model string) *pricing.LiteLLMModelPricing {
+func (s defaultCatalogStub) GetModelPricing(model string) *pricing.CatalogModelPricing {
 	return s.entries[model]
 }
 func (s defaultCatalogStub) GetStatus() map[string]any { return nil }
@@ -20,7 +21,7 @@ func (s defaultCatalogStub) ForceUpdate() error {
 }
 
 func TestDefaultPriceUsesCatalogAndPreservesZero(t *testing.T) {
-	catalog := defaultCatalogStub{entries: map[string]*pricing.LiteLLMModelPricing{
+	catalog := defaultCatalogStub{entries: map[string]*pricing.CatalogModelPricing{
 		"custom": {InputCostPerToken: 0, OutputCostPerToken: 0.000004, SupportsServiceTier: true, InputCostPerTokenPriority: 0, OutputCostPerTokenPriority: 0.000008, LongContextInputTokenThreshold: 100000, LongContextInputCostMultiplier: 2, LongContextOutputCostMultiplier: 1.5},
 	}}
 	calculator := NewCalculator(catalog, CalculatorOptions{})
@@ -47,4 +48,64 @@ func TestDefaultPriceUsesCatalogAndPreservesZero(t *testing.T) {
 	require.NotContains(t, values, "long_context_output")
 	require.Equal(t, "unpriced", calculator.DefaultModelPrice("unknown-model", "openai", "token").PriceStatus)
 	require.Equal(t, "priced", calculator.DefaultModelPrice("claude-sonnet-4", "anthropic", "token").PriceStatus)
+}
+
+func TestDefaultPriceContextIntervalsUseInclusiveBoundary(t *testing.T) {
+	catalog := defaultCatalogStub{entries: map[string]*pricing.CatalogModelPricing{
+		"grok-test": {
+			Source:             "models.dev",
+			Provider:           "xai",
+			InputCostPerToken:  2e-6,
+			OutputCostPerToken: 6e-6,
+			ContextPrices: []pricing.CatalogContextPrice{
+				{Threshold: 200000, Pricing: &pricing.CatalogModelPricing{InputCostPerToken: 4e-6, OutputCostPerToken: 12e-6}},
+			},
+		},
+	}}
+	calculator := NewCalculator(catalog, CalculatorOptions{})
+	row := calculator.DefaultModelPrice("grok-test", "xai", "token")
+	require.Len(t, row.ContextIntervals, 2)
+	require.Equal(t, 199999, *row.ContextIntervals[0].MaxTokens)
+	require.Equal(t, 199999, row.ContextIntervals[1].MinTokens)
+	// 转换不修改目录原有阈值，后续查询不能再次减一。
+	require.Equal(t, 200000, catalog.entries["grok-test"].ContextPrices[0].Threshold)
+	require.Equal(t, row, calculator.DefaultModelPrice("grok-test", "xai", "token"))
+}
+
+func TestDefaultMediaPriceRequiresKnownUnits(t *testing.T) {
+	entries, _, err := pricing.ParsePricingEntries(map[string]json.RawMessage{
+		"free-image":   json.RawMessage(`{"source":"local_override","mode":"image_generation","output_cost_per_image":0}`),
+		"custom-image": json.RawMessage(`{"source":"models.dev","mode":"chat","output_cost_per_image":0.1,"price_sources":{"image":"local_override"}}`),
+		"vision-chat":  json.RawMessage(`{"source":"models.dev","mode":"chat","input_cost_per_token":0.000001,"output_cost_per_token":0.000002,"output_cost_per_image":0.1}`),
+	})
+	require.NoError(t, err)
+	calculator := NewCalculator(defaultCatalogStub{entries: entries}, CalculatorOptions{})
+	for _, model := range []string{"free-image", "custom-image"} {
+		row := calculator.DefaultModelPrice(model, "other", entries[model].Mode)
+		require.Equal(t, "image", row.BillingMode)
+		require.Equal(t, "priced", row.PriceStatus)
+		require.Len(t, row.Prices, 3)
+		for _, price := range row.Prices {
+			require.NotNil(t, price.Value)
+			require.Equal(t, "USD/image", price.Unit)
+			require.Equal(t, "local_override", row.PriceSources[price.Key])
+			unit, err := calculator.DefaultImagePrice(model, price.Key)
+			require.NoError(t, err)
+			require.Equal(t, unit, *price.Value)
+			if model == "free-image" {
+				require.Zero(t, *price.Value)
+			}
+		}
+	}
+	for _, mode := range []string{"video", "image"} {
+		row := calculator.DefaultModelPrice("unknown-media", "other", mode)
+		require.Equal(t, mode, row.BillingMode)
+		require.Equal(t, "unpriced", row.PriceStatus)
+		require.Empty(t, row.Prices)
+	}
+	row := calculator.DefaultModelPrice("vision-chat", "other", "chat")
+	require.Equal(t, "token", row.BillingMode)
+	for _, price := range row.Prices {
+		require.NotEqual(t, "USD/image", price.Unit)
+	}
 }

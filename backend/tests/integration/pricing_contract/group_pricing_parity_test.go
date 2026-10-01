@@ -313,7 +313,7 @@ func TestModifierCardsPreserveBuiltinPricingPolicy(t *testing.T) {
 			for _, hour := range []int{0, 1, 3, 4} {
 				at := time.Date(2026, 9, 9, hour, 0, 0, 0, time.UTC)
 				resolved := r.Resolve(context.Background(), billing.PricingInput{Model: model, GroupID: &group.ID})
-				require.Equal(t, purepricing.PricingSourceLiteLLM, resolved.Source)
+				require.Equal(t, purepricing.PricingSourceCatalog, resolved.Source)
 				cost, err := bs.CalculateCostUnified(billing.CostInput{
 					Model: model, GroupID: &group.ID, Resolver: r,
 					Tokens: purepricing.UsageTokens{InputTokens: 100}, RateMultiplier: 1, PricingAt: at, ServiceTier: "priority",

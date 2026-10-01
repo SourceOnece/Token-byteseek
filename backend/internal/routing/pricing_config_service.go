@@ -828,7 +828,7 @@ func conflictsBetween(a, b modelEntry) bool {
 }
 
 // toModelEntry 将模型名转换为 modelEntry（用于模型映射的冲突检测）。
-// 来源按小写前缀检测冲突；模型映射不使用定价中的点号归一化。
+// 来源按小写前缀检测冲突，模型标点保持原样。
 func toModelEntry(pattern string) modelEntry {
 	lower := strings.ToLower(pattern)
 	isWild := strings.HasSuffix(lower, "*")
@@ -842,7 +842,7 @@ func toModelEntry(pattern string) modelEntry {
 // toPricingModelEntry 将模型名转换为 modelEntry（用于模型定价的冲突检测）。
 //
 // 与 toModelEntry 的区别：定价缓存的键走 normalizePriceModelName
-// （额外做 TrimSpace，并把 claude-* 的 "." 换成 "-"），冲突检测必须用同一套归一化，
+// （额外做 TrimSpace），冲突检测必须使用同一套完整身份规则，
 // 否则两个校验时看着不同、写进缓存后键相同的定价会互相静默覆盖。
 func toPricingModelEntry(pattern string) modelEntry {
 	// 先剥通配符再归一化，与 expandPricingToCache 的处理顺序保持一致

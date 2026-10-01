@@ -24,8 +24,7 @@ func TestGrokProviderModelMappingRemainsIndependentFromRuntimeSettings(t *testin
 	requireMappedModel(t, provider, "claude-sonnet-4-5", "claude-sonnet-4-5")
 
 	xai.SetRuntimeModelMappingOptions(xai.ModelMappingOptions{
-		DefaultText:          "grok-build-0.1",
-		EnableCrossClientMap: true,
+		DefaultText: "grok-build-0.1",
 	})
 	requireMappedModel(t, provider, "claude-sonnet-4-5", "claude-sonnet-4-5")
 }
@@ -101,7 +100,7 @@ func TestProviderIsModelSupported(t *testing.T) {
 				},
 			},
 			requestedModel: "gemini-3.1-pro-preview-customtools",
-			expected:       true,
+			expected:       false,
 		},
 		{
 			name: "wildcard mapping miss is allowed as passthrough without whitelist",
@@ -443,7 +442,7 @@ func TestProviderGetMappedModel(t *testing.T) {
 				},
 			},
 			requestedModel: "gemini-3.1-pro-preview-customtools",
-			expected:       "gemini-3.1-pro-preview",
+			expected:       "gemini-3.1-pro-preview-customtools",
 		},
 		{
 			name:     "gemini customtools exact mapping wins over normalized fallback",
@@ -483,57 +482,33 @@ func TestProviderGetMappedModel(t *testing.T) {
 	}
 }
 
+// TestProviderGetModelMapping_AntigravityNormalizesGemini31ProAliases 验证显式提供商配置读取后保持原样。
 func TestProviderGetModelMapping_AntigravityNormalizesGemini31ProAliases(t *testing.T) {
-	t.Parallel()
-
-	provider := &acct.Record{
-		Platform: capability.PlatformAntigravity,
-		Credentials: map[string]any{
-			"model_mapping": map[string]any{
-				antigravity.AntigravityGemini31ProAgentModel: antigravity.AntigravityGemini31ProAgentModel,
-				"gemini-3.1-pro-high":                        "gemini-3.1-pro-high",
-				"gemini-3.1-pro-preview":                     "gemini-3.1-pro-high",
-			},
-		},
-	}
-
+	raw := map[string]any{"gemini-pro-agent": "gemini-pro-agent", "gemini-3.1-pro-high": "gemini-3.1-pro-high", "gemini-3.1-pro-preview": "gemini-3.1-pro-high"}
+	provider := &acct.Record{Platform: capability.PlatformAntigravity, Credentials: map[string]any{"model_mapping": raw}}
 	mapping := acct.ResolveModelMapping(provider, ModelDefaults())
-
-	if got := mapping["gemini-3.1-pro"]; got != antigravity.AntigravityGemini31ProAgentModel {
-		t.Fatalf("expected gemini-3.1-pro to map to %q, got %q", antigravity.AntigravityGemini31ProAgentModel, got)
+	if len(mapping) != len(raw) {
+		t.Fatalf("读取映射时不应补项: %v", mapping)
 	}
-	if got := mapping["gemini-3.1-pro-high"]; got != antigravity.AntigravityGemini31ProAgentModel {
-		t.Fatalf("expected gemini-3.1-pro-high to map to %q, got %q", antigravity.AntigravityGemini31ProAgentModel, got)
-	}
-	if got := mapping["gemini-3.1-pro-preview"]; got != antigravity.AntigravityGemini31ProAgentModel {
-		t.Fatalf("expected gemini-3.1-pro-preview to map to %q, got %q", antigravity.AntigravityGemini31ProAgentModel, got)
+	for source, target := range raw {
+		if mapping[source] != target {
+			t.Fatalf("显式映射被改写: %s", source)
+		}
 	}
 }
 
+// TestProviderGetModelMapping_AntigravityPreservesGemini31ProOverrides 验证显式提供商配置读取后保持原样。
 func TestProviderGetModelMapping_AntigravityPreservesGemini31ProOverrides(t *testing.T) {
-	t.Parallel()
-
-	provider := &acct.Record{
-		Platform: capability.PlatformAntigravity,
-		Credentials: map[string]any{
-			"model_mapping": map[string]any{
-				antigravity.AntigravityGemini31ProAgentModel: antigravity.AntigravityGemini31ProAgentModel,
-				"gemini-3.1-pro-high":                        "custom-high",
-				"gemini-3.1-pro-preview":                     "custom-preview",
-			},
-		},
-	}
-
+	raw := map[string]any{"gemini-pro-agent": "custom-model", "gemini-3.1-pro-high": "another-model"}
+	provider := &acct.Record{Platform: capability.PlatformAntigravity, Credentials: map[string]any{"model_mapping": raw}}
 	mapping := acct.ResolveModelMapping(provider, ModelDefaults())
-
-	if got := mapping["gemini-3.1-pro-high"]; got != "custom-high" {
-		t.Fatalf("expected gemini-3.1-pro-high override to be preserved, got %q", got)
+	if len(mapping) != len(raw) {
+		t.Fatalf("读取映射时不应补项: %v", mapping)
 	}
-	if got := mapping["gemini-3.1-pro-preview"]; got != "custom-preview" {
-		t.Fatalf("expected gemini-3.1-pro-preview override to be preserved, got %q", got)
-	}
-	if got := mapping["gemini-3.1-pro"]; got != antigravity.AntigravityGemini31ProAgentModel {
-		t.Fatalf("expected gemini-3.1-pro alias to default to %q, got %q", antigravity.AntigravityGemini31ProAgentModel, got)
+	for source, target := range raw {
+		if mapping[source] != target {
+			t.Fatalf("显式映射被改写: %s", source)
+		}
 	}
 }
 
@@ -610,8 +585,8 @@ func TestProviderResolveMappedModel(t *testing.T) {
 				},
 			},
 			requestedModel: "gemini-3.1-pro-preview-customtools",
-			expectedModel:  "gemini-3.1-pro-preview",
-			expectedMatch:  true,
+			expectedModel:  "gemini-3.1-pro-preview-customtools",
+			expectedMatch:  false,
 		},
 		{
 			name:     "gemini customtools exact mapping reports exact match",
@@ -653,30 +628,17 @@ func TestProviderResolveMappedModel(t *testing.T) {
 	}
 }
 
+// TestProviderGetModelMapping_AntigravityEnsuresGeminiDefaultPassthroughs 验证显式提供商配置读取后保持原样。
 func TestProviderGetModelMapping_AntigravityEnsuresGeminiDefaultPassthroughs(t *testing.T) {
-	provider := &acct.Record{
-		Platform: capability.PlatformAntigravity,
-		Credentials: map[string]any{
-			"model_mapping": map[string]any{
-				"gemini-3-pro-high": "gemini-3.1-pro-high",
-			},
-		},
-	}
-
+	raw := map[string]any{"gemini-3-pro-high": "gemini-3.1-pro-high"}
+	provider := &acct.Record{Platform: capability.PlatformAntigravity, Credentials: map[string]any{"model_mapping": raw}}
 	mapping := acct.ResolveModelMapping(provider, ModelDefaults())
-	if mapping["gemini-3-flash"] != "gemini-3-flash" {
-		t.Fatalf("expected gemini-3-flash passthrough to be auto-filled, got: %q", mapping["gemini-3-flash"])
+	if len(mapping) != len(raw) {
+		t.Fatalf("读取映射时不应补项: %v", mapping)
 	}
-	if mapping["gemini-3.1-pro-high"] != "gemini-3.1-pro-high" {
-		t.Fatalf("expected gemini-3.1-pro-high passthrough to be auto-filled, got: %q", mapping["gemini-3.1-pro-high"])
-	}
-	if mapping["gemini-3.1-pro-low"] != "gemini-3.1-pro-low" {
-		t.Fatalf("expected gemini-3.1-pro-low passthrough to be auto-filled, got: %q", mapping["gemini-3.1-pro-low"])
-	}
-	// 自定义映射不能屏蔽新发布的 Gemini 3.6 Flash 直通模型。
-	for _, model := range []string{"gemini-3.6-flash", "gemini-3.6-flash-high", "gemini-3.6-flash-low", "gemini-3.6-flash-medium", "gemini-3.6-flash-tiered"} {
-		if mapping[model] != model {
-			t.Fatalf("expected %s passthrough to be auto-filled, got: %q", model, mapping[model])
+	for source, target := range raw {
+		if mapping[source] != target {
+			t.Fatalf("显式映射被改写: %s", source)
 		}
 	}
 }

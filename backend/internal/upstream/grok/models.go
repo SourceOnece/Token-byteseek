@@ -15,7 +15,7 @@ func init() {
 	runtimeMappingVersion.Store(1)
 }
 
-// SetRuntimeModelMappingOptions 更新 Grok 默认模型和跨客户端映射的进程级快照。
+// SetRuntimeModelMappingOptions 更新 Grok 缺省文本型号的进程级快照。
 func SetRuntimeModelMappingOptions(opts ModelMappingOptions) {
 	runtimeMappingOpts.Store(opts)
 	runtimeMappingVersion.Add(1)
@@ -33,27 +33,6 @@ func RuntimeModelMappingOptions() ModelMappingOptions {
 
 // DefaultResponsesModel 是 Grok Responses 请求未指定模型时使用的默认模型。
 const DefaultResponsesModel = "grok-4.5"
-
-// modelIDAliases 只描述平台内置的上游 ID 标准化规则，不参与提供商映射或模型发现。
-var modelIDAliases = map[string]string{
-	"grok": DefaultResponsesModel,
-
-	"grok-latest": DefaultResponsesModel,
-
-	"grok-4.5-latest": DefaultResponsesModel,
-
-	"grok-build": "grok-build-0.1",
-
-	"grok-build-latest": "grok-build-0.1",
-
-	"grok-composer": "grok-composer-2.5-fast",
-
-	"composer-2.5": "grok-composer-2.5-fast",
-
-	"grok-4.20-reasoning": "grok-4.20-0309-reasoning",
-
-	"grok-4.20-non-reasoning": "grok-4.20-0309-non-reasoning",
-}
 
 // Model 描述 xAI OpenAI 兼容 /models 响应里的模型。
 type Model struct {
@@ -78,21 +57,10 @@ const (
 	DefaultImagineVideo15Model      = "grok-imagine-video-1.5"
 )
 
-// ModelMappingOptions 控制默认映射的可选扩展。
-// 跨客户端通配符由 grok_cross_client_model_map_enabled 控制，启用后把
-// GPT、Codex、o 系列和 Claude 模型映射到 DefaultText，运维可关闭该行为。
+// ModelMappingOptions 保存允许省略模型的请求所用的默认文本型号。
 type ModelMappingOptions struct {
-	// DefaultText 是空模型和可选跨客户端映射的目标，空值回退到 DefaultTextModel。
+	// DefaultText 仅用于空模型，空值使用 DefaultTextModel。
 	DefaultText string
-	// EnableCrossClientMap 启用 GPT、Codex、o 系列和 Claude 通配映射。
-	EnableCrossClientMap bool
-}
-
-func (o ModelMappingOptions) defaultText() string {
-	if t := strings.TrimSpace(o.DefaultText); t != "" {
-		return t
-	}
-	return DefaultTextModel
 }
 
 var defaultModels = []Model{
@@ -114,52 +82,25 @@ var defaultModels = []Model{
 	{ID: DefaultImagineVideo15Model, Object: "model", Type: "model", OwnedBy: "xai", DisplayName: "Grok Imagine Video 1.5"},
 }
 
-// grokTextResponsesModelAliases 是 Responses 路径接受的 Grok 文本模型权威映射，
-// 把客户端别名和无日期别名归一为上游规范 ID。
+// grokTextResponsesModelAliases 登记 Responses 原生文本型号的精确身份。
 var grokTextResponsesModelAliases = map[string]string{
-	"grok": DefaultTextModel,
-
-	"grok-latest": DefaultTextModel,
-
 	"grok-4.6": "grok-4.6",
-
-	"grok-4.6-latest": "grok-4.6",
 
 	"grok-4.5": "grok-4.5",
 
-	"grok-4.5-latest": "grok-4.5",
-
 	"grok-4.3": "grok-4.3",
-
-	"grok-4.3-latest": "grok-4.3",
 
 	"grok-3-mini": "grok-3-mini",
 
 	"grok-3-mini-fast": "grok-3-mini-fast",
 
-	"grok-build": "grok-build-0.1",
-
-	"grok-build-latest": "grok-build-0.1",
-
 	"grok-build-0.1": "grok-build-0.1",
 
 	"grok-composer-2.5-fast": "grok-composer-2.5-fast",
 
-	"grok-composer": "grok-composer-2.5-fast",
-
-	"composer-2.5": "grok-composer-2.5-fast",
-
-	"grok-4.20-reasoning": "grok-4.20-0309-reasoning",
-
 	"grok-4.20-0309-reasoning": "grok-4.20-0309-reasoning",
 
-	"grok-4.20-non-reasoning": "grok-4.20-0309-non-reasoning",
-
 	"grok-4.20-0309-non-reasoning": "grok-4.20-0309-non-reasoning",
-
-	"grok-4.20-multi-agent": "grok-4.20-multi-agent-0309",
-
-	"grok-4.20-multi-agent-latest": "grok-4.20-multi-agent-0309",
 
 	"grok-4.20-multi-agent-0309": "grok-4.20-multi-agent-0309",
 }
@@ -184,96 +125,38 @@ func DefaultModelMapping() map[string]string {
 	return ModelMappingWithOptions(RuntimeModelMappingOptions())
 }
 
-// ModelMappingWithOptions 构造 Grok 原生模型、别名和可选跨客户端通配映射。
+// ModelMappingWithOptions 仅提供原生完整型号的自映射。
 func ModelMappingWithOptions(opts ModelMappingOptions) map[string]string {
-	defaultText := opts.defaultText()
-	mapping := make(map[string]string, len(defaultModels)+len(grokTextResponsesModelAliases)+48)
+	mapping := make(map[string]string, len(defaultModels))
 	for _, model := range defaultModels {
 		mapping[model.ID] = model.ID
 	}
-	for alias, canonical := range grokTextResponsesModelAliases {
-		if canonical == DefaultTextModel {
-			mapping[alias] = defaultText
-		} else {
-			mapping[alias] = canonical
-		}
-	}
-
-	mapping["grok-imagine"] = DefaultImagineImageQualityModel
-	mapping["grok-imagine-1"] = DefaultImagineImageQualityModel
-	mapping["grok-imagine-edit"] = DefaultImagineImageQualityModel
-	mapping["grok-imagine-image"] = DefaultImagineImageFastModel
-	mapping["grok-imagine-image-quality"] = DefaultImagineImageQualityModel
-	mapping["grok-imagine-video"] = DefaultImagineVideoModel
-	mapping["grok-imagine-video-1.5"] = DefaultImagineVideo15Model
-	mapping["grok-imagine-video-1.5-preview"] = DefaultImagineVideo15Model
-	mapping["grok-video-1.5"] = DefaultImagineVideo15Model
-
-	if opts.EnableCrossClientMap {
-		mapping["gpt-*"] = defaultText
-		mapping["codex-*"] = defaultText
-		mapping["o1*"] = defaultText
-		mapping["o3*"] = defaultText
-		mapping["o4*"] = defaultText
-		mapping["claude-*"] = defaultText
-	}
-	addGrokProviderPrefixedMappings(mapping)
 	return mapping
 }
 
-// NormalizeModelID 在提供商映射和白名单校验后，将 Grok 精确别名转换为上游模型 ID。
-// 未知模型保持透传，避免限制自定义 xAI 兼容上游。
+// NormalizeModelID 保留完整模型 ID，允许省略模型的入口使用协议默认值。
 func NormalizeModelID(model string) string {
 	model = strings.TrimSpace(model)
 	if model == "" {
 		return DefaultResponsesModel
 	}
-	if mapped, ok := modelIDAliases[model]; ok {
-		return mapped
+	return model
+}
+
+// grokReasoningModelID 只读识别推理能力，结果不得用于转发、查价或额度键。
+func grokReasoningModelID(model string) string {
+	model = strings.ToLower(strings.TrimSpace(model))
+	for _, prefix := range []string{"xai/", "x-ai/", "grok/"} {
+		if native, found := strings.CutPrefix(model, prefix); found {
+			return strings.TrimSpace(native)
+		}
 	}
 	return model
 }
 
-func addGrokProviderPrefixedMappings(mapping map[string]string) {
-	snapshot := make(map[string]string, len(mapping))
-	for key, value := range mapping {
-		snapshot[key] = value
-	}
-	for key, value := range snapshot {
-		if !isGrokNativeOrAlias(key) {
-			continue
-		}
-		for _, prefix := range []string{"xai/", "x-ai/", "grok/"} {
-			mapping[prefix+key] = value
-		}
-	}
-}
-
-func isGrokNativeOrAlias(model string) bool {
-	model = strings.ToLower(strings.TrimSpace(model))
-	if model == "" || strings.Contains(model, "*") {
-		return false
-	}
-	return strings.HasPrefix(model, "grok") ||
-		strings.HasPrefix(model, "imagine") ||
-		strings.HasPrefix(model, "composer")
-}
-
-// StripGrokProviderPrefix 移除 xAI/Grok 模型允许的常见供应商前缀并返回原生模型 ID。
-func StripGrokProviderPrefix(model string) string {
-	trimmed := strings.TrimSpace(model)
-	lower := strings.ToLower(trimmed)
-	for _, prefix := range []string{"xai/", "x-ai/", "grok/"} {
-		if strings.HasPrefix(lower, prefix) {
-			return strings.TrimSpace(trimmed[len(prefix):])
-		}
-	}
-	return trimmed
-}
-
 // IsGrokModelID 判断模型是否为 Grok/xAI 原生 ID 或别名；Claude/OpenAI 模型返回 false。
 func IsGrokModelID(model string) bool {
-	normalized := strings.ToLower(StripGrokProviderPrefix(model))
+	normalized := strings.ToLower(strings.TrimSpace(model))
 	if normalized == "" {
 		return false
 	}
@@ -289,30 +172,14 @@ func IsGrokModelID(model string) bool {
 // IsGrokTextResponsesModelID 判断模型是否为 Responses API 已知的 Grok 文本模型；
 // Imagine 媒体模型和未知自定义 ID 返回 false。
 func IsGrokTextResponsesModelID(model string) bool {
-	normalized := strings.ToLower(StripGrokProviderPrefix(model))
+	normalized := strings.ToLower(strings.TrimSpace(model))
 	_, ok := grokTextResponsesModelAliases[normalized]
 	return ok
 }
 
-// ResolveGrokTextResponsesModelID 在转发前规范化 Grok 文本别名；
-// 空模型或落到 DefaultTextModel 的裸别名优先使用传入的 defaultText。
+// ResolveGrokTextResponsesModelID 仅为空模型选用默认值，非空 ID 原样保留。
 func ResolveGrokTextResponsesModelID(model string, defaultText ...string) string {
-	fallback := DefaultTextModel
-	if len(defaultText) > 0 && strings.TrimSpace(defaultText[0]) != "" {
-		fallback = strings.TrimSpace(defaultText[0])
-	}
-	trimmed := strings.TrimSpace(model)
-	if trimmed == "" {
-		return fallback
-	}
-	normalized := strings.ToLower(StripGrokProviderPrefix(trimmed))
-	if canonical, ok := grokTextResponsesModelAliases[normalized]; ok {
-		if (normalized == "grok" || normalized == "grok-latest") && canonical == DefaultTextModel {
-			return fallback
-		}
-		return canonical
-	}
-	return StripGrokProviderPrefix(trimmed)
+	return ResolveDefaultTextModel(model, defaultText...)
 }
 
 // ResolveDefaultTextModel 在模型为空时返回 defaultText，未提供则返回 DefaultTextModel。
@@ -326,16 +193,11 @@ func ResolveDefaultTextModel(model string, defaultText ...string) string {
 	return DefaultTextModel
 }
 
-// CanonicalImagineVideoModel 规范化视频计价表使用的模型 ID；
-// 旧 grok-imagine-video-1.5 与 preview 共享 1.5 价格族。
+// CanonicalImagineVideoModel 使用完整视频型号查询价格，缺省请求使用默认型号。
 func CanonicalImagineVideoModel(model string) string {
-	m := strings.ToLower(StripGrokProviderPrefix(model))
-	switch {
-	case m == "" || m == DefaultImagineVideoModel || m == "grok-imagine-video-preview":
+	model = strings.ToLower(strings.TrimSpace(model))
+	if model == "" {
 		return DefaultImagineVideoModel
-	case strings.HasPrefix(m, "grok-imagine-video-1.5") || m == "grok-video-1.5":
-		return DefaultImagineVideo15Model
-	default:
-		return m
 	}
+	return model
 }

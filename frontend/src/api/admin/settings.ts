@@ -628,7 +628,6 @@ export interface SystemSettings {
   fallback_model_gemini: string;
   fallback_model_antigravity: string;
   grok_default_text_model: string;
-  grok_cross_client_model_map_enabled: boolean;
   grok_default_base_url_mode: string;
 
   // 各平台提供商自动暂停阈值，100 表示禁用。
@@ -956,7 +955,6 @@ export interface UpdateSettingsRequest {
   fallback_model_gemini?: string;
   fallback_model_antigravity?: string;
   grok_default_text_model?: string;
-  grok_cross_client_model_map_enabled?: boolean;
   grok_default_base_url_mode?: string;
   provider_scheduling_thresholds?: ProviderSchedulingThresholdsMap;
   enable_identity_patch?: boolean;

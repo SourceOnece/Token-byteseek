@@ -1045,36 +1045,30 @@ rate_limit:
 # 定价数据源（可选）
 # =============================================================================
 pricing:
-  # 保留旧价格源；需要切换时同时设置 models_dev 和相应 remote_url，切换前核对报价。
-  # models_dev 地址为 https://models.dev/catalog.json，并使用空 hash_url。
-  catalog_format: "legacy"
-  remote_url: "https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/main/model_prices_and_context_window.json"
-  hash_url: "https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/main/model_prices_and_context_window.sha256"
+  # URL for the unified models.dev catalog
+  # 模型价格与展示属性共用的 models.dev 目录地址
+  remote_url: "https://models.dev/catalog.json"
   # Local data directory for caching
   # 本地数据缓存目录
   data_dir: "./data"
-  # Fallback pricing file: fills in models missing from the catalog. Edits are
-  # detected by content hash at the next hash check and reloaded without restart.
-  # 备用定价文件：只补目录缺失的模型。修改后在下一次哈希检查时按内容哈希自动重载，无需重启。
-  fallback_file: "./resources/model-pricing/model_prices_and_context_window.json"
+  # 本地价格补充：填补缺失模型、媒体单价和生图文本输出价，目录已有单价优先。
+  # 文件修改和删除会在下一次目录检查时生效，无需重启。
+  fallback_file: "./resources/model-pricing/model_pricing_supplements.json"
   # Override patch file (optional, highest priority): entries are shallow-merged
   # field-by-field over catalog/fallback data; a null field value removes that field.
   # Model names must match catalog keys exactly. Edits are detected by content hash
-  # at the next hash check and reloaded without restart.
+  # at the next catalog check and reloaded without restart.
   # 覆盖补丁文件（可选，优先级最高）：条目按字段浅合并覆盖目录/回退数据，
   # 字段值为 null 表示删除该字段。模型名须与目录键完全一致。
-  # 修改后在下一次哈希检查时按内容哈希自动重载，无需重启。
+  # 修改后在下一次目录检查时按内容哈希自动重载，无需重启。
   # override_file: "./data/model_pricing_overrides.json"
-  # Update interval in hours
-  # 兼容旧定价源的更新间隔；models.dev 使用下方分钟间隔
-  update_interval_hours: 24
   # Catalog check interval in minutes. Each check uses a conditional request and
   # the local fallback/override file contents. Deleting a local file drops its
   # entries at the next check; a present but non-JSON file keeps the previous data
   # and is retried next check.
   # 目录检查间隔（分钟）。每次使用条件请求同步远程目录，同时检查本地补充文件内容；
   # 删除本地文件会在下次检查时移除其条目，文件存在但不是 JSON 时保留旧数据、下次检查再试。
-  hash_check_interval_minutes: 10
+  check_interval_minutes: 10
 
 # =============================================================================
 # Billing Configuration

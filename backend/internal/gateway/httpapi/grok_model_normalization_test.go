@@ -51,13 +51,13 @@ func TestGrokFinalUpstreamModelNormalization(t *testing.T) {
 			name:     "oauth normalizes builtin alias",
 			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}},
 			model:    "grok",
-			want:     xai.DefaultResponsesModel,
+			want:     "grok",
 		},
 		{
 			name:     "api key normalizes builtin alias",
 			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.ProviderTypeAPIKey}},
 			model:    " grok-latest ",
-			want:     xai.DefaultResponsesModel,
+			want:     "grok-latest",
 		},
 		{
 			name:     "grok oauth does not use codex normalization",
@@ -102,8 +102,8 @@ func TestGrokExplicitMappingPrecedesBuiltinNormalization(t *testing.T) {
 			},
 		},
 	}
-	require.Equal(t, xai.DefaultResponsesModel, gatewayprovider.ExecutionModelPolicy(aliasTarget).OpenAIUpstream("client-alias", false, true))
-	require.Equal(t, xai.DefaultResponsesModel, gatewayprovider.ExecutionModelPolicy(aliasTarget).UpstreamModel(context.Background(), "client-alias"))
+	require.Equal(t, "grok-latest", gatewayprovider.ExecutionModelPolicy(aliasTarget).OpenAIUpstream("client-alias", false, true))
+	require.Equal(t, "grok-latest", gatewayprovider.ExecutionModelPolicy(aliasTarget).UpstreamModel(context.Background(), "client-alias"))
 }
 
 // TestGrokRuntimeModelKeysUseFinalUpstreamID 验证封禁与限流状态不会按别名重复建键。
@@ -121,12 +121,12 @@ func TestGrokRuntimeModelKeysUseFinalUpstreamID(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, xai.DefaultResponsesModel, gatewayprovider.ExecutionModelPolicy(provider).CanonicalSchedulingModel("grok"))
-	require.Equal(t, xai.DefaultResponsesModel, gatewayprovider.ExecutionModelPolicy(provider).CanonicalSchedulingModel("client-alias"))
-	require.Equal(t, []string{xai.DefaultResponsesModel}, gatewayprovider.ExecutionModelPolicy(provider).LimitKeys(context.Background(), "grok"))
-	require.Equal(t, xai.DefaultResponsesModel, (&provideradapter.ModelHealth{CodexRules: gatewayprovider.CodexModelRules()}).LimitKey(gatewayprovider.ExecutionRecord(provider), "grok", nil))
+	require.Equal(t, "grok", gatewayprovider.ExecutionModelPolicy(provider).CanonicalSchedulingModel("grok"))
+	require.Equal(t, "grok-latest", gatewayprovider.ExecutionModelPolicy(provider).CanonicalSchedulingModel("client-alias"))
+	require.Equal(t, []string{"grok"}, gatewayprovider.ExecutionModelPolicy(provider).LimitKeys(context.Background(), "grok"))
+	require.Equal(t, "grok", (&provideradapter.ModelHealth{}).LimitKey(gatewayprovider.ExecutionRecord(provider), "grok", nil))
 	// 状态处理接收最终上游模型后不得再次命中 grok-4.5 -> grok-4.3。
-	require.Equal(t, xai.DefaultResponsesModel, (&provideradapter.ModelHealth{CodexRules: gatewayprovider.CodexModelRules()}).LimitKey(gatewayprovider.ExecutionRecord(provider), xai.DefaultResponsesModel, nil))
+	require.Equal(t, xai.DefaultResponsesModel, (&provideradapter.ModelHealth{}).LimitKey(gatewayprovider.ExecutionRecord(provider), xai.DefaultResponsesModel, nil))
 }
 
 // TestGrokModelNotFoundWritesFinalUpstreamID 验证 Grok 默认错误链路会写入最终上游模型键。
@@ -153,7 +153,7 @@ func TestGrokModelNotFoundWritesFinalUpstreamID(t *testing.T) {
 
 	require.True(t, decision.StopScheduling)
 	require.Len(t, repo.modelRateLimitCalls, 1)
-	require.Equal(t, xai.DefaultResponsesModel, repo.modelRateLimitCalls[0].scope)
+	require.Equal(t, "grok-latest", repo.modelRateLimitCalls[0].scope)
 	require.Equal(t, providercore.ModelNotFoundReason, repo.modelRateLimitCalls[0].reason)
 	require.False(t, wsFixtureProviderBlocked(svc, provider))
 }
@@ -209,19 +209,19 @@ func TestGrokCountTokensUsesCanonicalModel(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, "grok-latest", prepared.BillingModel)
-	require.Equal(t, xai.DefaultResponsesModel, prepared.UpstreamModel)
-	require.Equal(t, xai.DefaultResponsesModel, prepared.Request.Model)
+	require.Equal(t, "grok-latest", prepared.UpstreamModel)
+	require.Equal(t, "grok-latest", prepared.Request.Model)
 }
 
 // TestGrokWSModelUsesCanonicalID 验证 WebSocket HTTP bridge 使用相同的最终标准化入口。
 func TestGrokWSModelUsesCanonicalID(t *testing.T) {
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth, Credentials: map[string]any{}}}
-	require.Equal(t, xai.DefaultResponsesModel, resolveGrokWSUpstreamModel(provider, []byte(`{"model":"grok"}`), "grok"))
-	require.Equal(t, xai.DefaultResponsesModel, resolveGrokWSUpstreamModel(provider, []byte(`{"model":"grok"}`), ""))
+	require.Equal(t, "grok", resolveGrokWSUpstreamModel(provider, []byte(`{"model":"grok"}`), "grok"))
+	require.Equal(t, "grok", resolveGrokWSUpstreamModel(provider, []byte(`{"model":"grok"}`), ""))
 
 	billingModel, upstreamModel := resolveGrokWSModels(provider, []byte(`{"model":"grok"}`), "")
 	require.Equal(t, "grok", billingModel)
-	require.Equal(t, xai.DefaultResponsesModel, upstreamModel)
+	require.Equal(t, "grok", upstreamModel)
 
 	billingModel, upstreamModel = resolveGrokWSModels(provider, []byte(`{"input":"hello"}`), "")
 	require.Empty(t, billingModel)
