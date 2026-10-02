@@ -318,7 +318,7 @@ describe('CreateProviderModal Qoder model restriction', () => {
     expect(globalButton.attributes('disabled')).toBeDefined()
     expect(cnButton.attributes('disabled')).toBeDefined()
     await cnButton.trigger('click')
-    expect(globalButton.attributes('aria-pressed')).toBe('true')
+    expect(globalButton.attributes('aria-checked')).toBe('true')
     expect(createProviderMock).toHaveBeenCalledTimes(1)
 
     deferred.resolve({})

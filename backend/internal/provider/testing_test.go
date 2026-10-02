@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
@@ -114,4 +115,40 @@ func TestTestingBackgroundPreservesWireTextAndClock(t *testing.T) {
 	require.Equal(t, start, result.StartedAt)
 	require.True(t, loader.request.Automatic)
 	require.Equal(t, "probe/1.0", loader.request.UserAgent)
+}
+
+// TestTestingRejectsProtocolOutsideProviderCapability 验证显式测试协议只能落在提供商可直连的端点上，图片测试忽略该字段。
+func TestTestingRejectsProtocolOutsideProviderCapability(t *testing.T) {
+	cases := []struct {
+		name     string
+		snapshot ProviderSnapshot
+		protocol string
+		allowed  bool
+	}{
+		{"OpenAI API Key 可选 Chat", ProviderSnapshot{Platform: PlatformOpenAI, Type: ProviderTypeAPIKey}, APIProtocolChatCompletions, true},
+		{"OpenAI API Key 不支持 Messages", ProviderSnapshot{Platform: PlatformOpenAI, Type: ProviderTypeAPIKey}, APIProtocolAnthropic, false},
+		{"OpenAI OAuth 只有 Responses", ProviderSnapshot{Platform: PlatformOpenAI, Type: ProviderTypeOAuth}, APIProtocolChatCompletions, false},
+		{"国产平台已启用 Messages", ProviderSnapshot{Platform: PlatformZhipu, Type: ProviderTypeAPIKey, EnabledProtocols: []capability.ProtocolID{capability.ProtocolAnthropicMessages}}, APIProtocolAnthropic, true},
+		{"国产平台未启用 Responses", ProviderSnapshot{Platform: PlatformKimi, Type: ProviderTypeAPIKey, EnabledProtocols: []capability.ProtocolID{capability.ProtocolAnthropicMessages}}, APIProtocolResponses, false},
+		{"MiniMax 已启用 Messages", ProviderSnapshot{Platform: PlatformMiniMax, Type: ProviderTypeAPIKey, EnabledProtocols: []capability.ProtocolID{capability.ProtocolAnthropicMessages}}, APIProtocolAnthropic, true},
+		{"OpenCode 已启用 Responses", ProviderSnapshot{Platform: PlatformOpenCodeGo, Type: ProviderTypeAPIKey, EnabledProtocols: []capability.ProtocolID{capability.ProtocolOpenAIResponses}}, APIProtocolResponses, true},
+		{"OpenCode 未启用 Chat", ProviderSnapshot{Platform: PlatformOpenCodeGo, Type: ProviderTypeAPIKey, EnabledProtocols: []capability.ProtocolID{capability.ProtocolOpenAIResponses}}, APIProtocolChatCompletions, false},
+		{"其他平台不接受显式协议", ProviderSnapshot{Platform: PlatformAnthropic, Type: ProviderTypeAPIKey}, APIProtocolAnthropic, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			executed := false
+			loader := &testLoaderStub{target: testTargetStub{info: TestTargetInfo{ProviderSnapshot: tc.snapshot}, run: func(context.Context, PreparedTestRequest, TestEventSink) error {
+				executed = true
+				return nil
+			}}}
+			err := NewTestService(loader, TestOptions{}).Test(context.Background(), TestRequest{ProviderID: 1, Protocol: tc.protocol}, &testSinkStub{})
+			require.Equal(t, tc.allowed, err == nil)
+			require.Equal(t, tc.allowed, executed)
+		})
+	}
+
+	kind := ProviderTestTypeImage
+	loader := &testLoaderStub{target: testTargetStub{info: TestTargetInfo{ProviderSnapshot: ProviderSnapshot{Platform: PlatformGemini, Type: ProviderTypeAPIKey}}, run: func(context.Context, PreparedTestRequest, TestEventSink) error { return nil }}}
+	require.NoError(t, NewTestService(loader, TestOptions{}).Test(context.Background(), TestRequest{ProviderID: 1, Type: &kind, Protocol: APIProtocolResponses}, &testSinkStub{}))
 }

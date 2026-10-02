@@ -522,6 +522,9 @@ func (w *CreativeRunWorker) handleExecuteError(ctx context.Context, runID string
 func creativeExecuteErrorParts(err error) (string, string) {
 	var upstreamErr *CreativeUpstreamError
 	if errors.As(err, &upstreamErr) {
+		if upstreamErr.Code != "" {
+			return upstreamErr.Code, upstreamErr.Message
+		}
 		code := "PROVIDER_FAILED"
 		if upstreamErr.StatusCode > 0 {
 			code = "UPSTREAM_STATUS_" + itoaPositive(upstreamErr.StatusCode)

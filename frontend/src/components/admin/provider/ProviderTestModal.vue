@@ -1,298 +1,215 @@
 <template>
   <BaseDialog
     :show="show"
-    :title="t('admin.providers.testProviderConnection')"
-    width="normal"
+    :title="t('admin.providers.testDialog.title', { name: provider?.name ?? '' })"
+    :subtitle="t('admin.providers.testDialog.subtitle')"
+    width="wide"
+    :body-scroll="false"
+    flush
     @close="handleClose"
   >
-    <div class="space-y-4">
-      <!-- Provider Info Card -->
-      <div
+    <template #header-icon>
+      <span
         v-if="provider"
-        class="flex items-center justify-between rounded-surface border border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 p-3 dark:border-dark-500 dark:from-dark-700 dark:to-dark-600"
+        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-950"
       >
-        <div class="flex items-center gap-3">
-          <div
-            class="flex h-10 w-10 items-center justify-center rounded-control bg-gradient-to-br from-primary-500 to-primary-600"
-          >
-            <Icon name="play" size="md" class="text-white" :stroke-width="2" />
-          </div>
-          <div>
-            <div class="font-semibold text-gray-900 dark:text-gray-100">{{ provider.name }}</div>
-            <div class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-              <span
-                class="rounded-compact bg-gray-200 px-1.5 py-0.5 text-xs font-medium uppercase dark:bg-dark-500"
-              >
-                {{ provider.type }}
-              </span>
-              <span>{{ t('admin.providers.provider') }}</span>
-            </div>
-          </div>
+        <PlatformIcon :platform="provider.platform" size="lg" :class="platformIconClass(provider.platform)" />
+      </span>
+    </template>
+
+    <template #header-actions>
+      <SettingsSegmented
+        v-model="testScope"
+        :options="scopeOptions"
+        :aria-label="t('admin.providers.testDialog.scope')"
+        :disabled="busy"
+        class="hidden shrink-0 sm:inline-flex"
+      />
+    </template>
+
+    <div class="flex min-h-0 flex-1 flex-col overflow-y-auto md:h-[38rem] md:flex-initial md:flex-row md:overflow-hidden">
+      <!-- 左侧：本次测试的参数，不写回提供商配置 -->
+      <aside
+        :aria-label="t('admin.providers.testDialog.settings')"
+        class="flex shrink-0 flex-col gap-5 border-b border-gray-200 bg-gray-50/70 px-4 py-5 dark:border-dark-600 dark:bg-dark-950 sm:px-6 md:w-72 md:overflow-y-auto md:border-b-0 md:border-r"
+      >
+        <SettingsSegmented
+          v-model="testScope"
+          :options="scopeOptions"
+          :aria-label="t('admin.providers.testDialog.scope')"
+          :disabled="busy"
+          block
+          class="sm:hidden"
+        />
+
+        <div class="text-sm font-semibold text-gray-900 dark:text-dark-50">
+          {{ t('admin.providers.testDialog.settings') }}
         </div>
-        <span
-          :class="[
-            'rounded-full px-2.5 py-1 text-xs font-semibold',
-            provider.status === 'active'
-              ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-          ]"
-        >
-          {{ provider.status }}
-        </span>
-      </div>
 
-      <div class="space-y-1.5">
-        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {{ t('admin.providers.selectTestModel') }}
-        </label>
-        <Select
-          v-model="selectedModelId"
-          :options="availableModels"
-          :disabled="loadingModels || status === 'connecting'"
-          value-key="id"
-          label-key="display_name"
-          :placeholder="loadingModels ? t('common.loading') + '...' : t('admin.providers.selectTestModel')"
-        />
-      </div>
+        <div v-if="imageTestAvailable" class="space-y-1.5">
+          <div class="input-label">{{ t('admin.providers.testDialog.type') }}</div>
+          <SettingsSegmented
+            v-model="testType"
+            :options="testTypeOptions"
+            :aria-label="t('admin.providers.testDialog.type')"
+            :disabled="busy"
+            block
+          />
+        </div>
 
-      <div class="space-y-1.5">
-        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {{ t('admin.providers.testType') }}
-        </label>
-        <Select
-          v-model="testType"
-          :options="testTypeOptions"
-          :disabled="status === 'connecting'"
-          data-testid="provider-test-type"
-        />
-      </div>
+        <div v-if="testScope === 'single'" class="space-y-1.5">
+          <label class="input-label" :for="modelFieldId">{{ t('admin.providers.testDialog.model') }}</label>
+          <Select
+            :id="modelFieldId"
+            v-model="selectedModelId"
+            :options="availableModels"
+            :disabled="loadingModels || busy"
+            value-key="id"
+            label-key="display_name"
+            creatable
+            :placeholder="loadingModels ? t('common.loading') : t('admin.providers.testDialog.modelPlaceholder')"
+          />
+        </div>
 
-      <div v-if="isOpenAIAPIKeyProvider && testType === 'text'" class="space-y-1.5">
-        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.providers.openai.testProtocol') }}</label>
-        <Select v-model="testProtocol" :options="testProtocolOptions" :disabled="status === 'connecting' || isCompactTestMode" data-testid="provider-test-protocol" />
-      </div>
+        <div v-if="testType === 'text'" class="space-y-1.5">
+          <label class="input-label" :for="protocolFieldId">{{ t('admin.providers.testDialog.protocol') }}</label>
+          <Select
+            :id="protocolFieldId"
+            v-model="testProtocol"
+            :options="protocolOptions"
+            :disabled="busy || !protocolPlan.selectable || isCompactTestMode"
+            :placeholder="t('admin.providers.testDialog.protocolNone')"
+            data-testid="provider-test-protocol"
+          />
+          <p v-if="protocolHint" class="input-hint">{{ protocolHint }}</p>
+        </div>
 
-      <div v-if="isOpenAIProvider" class="space-y-1.5">
-        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {{ t('admin.providers.openai.testMode') }}
-        </label>
-        <Select
-          v-model="testMode"
-          :options="openAITestModeOptions"
-          :disabled="status === 'connecting' || testType === 'image'"
-        />
-      </div>
+        <div v-if="isOpenAIProvider && testType === 'text'" class="space-y-1.5">
+          <label class="input-label" :for="modeFieldId">{{ t('admin.providers.openai.testMode') }}</label>
+          <Select
+            :id="modeFieldId"
+            v-model="testMode"
+            :options="openAITestModeOptions"
+            :disabled="busy"
+          />
+        </div>
 
-      <div v-if="!isCompactTestMode" class="space-y-1.5">
+        <div v-if="testScope === 'batch'" class="space-y-1.5">
+          <label class="input-label" :for="concurrencyFieldId">{{ t('admin.providers.testDialog.batch.concurrency') }}</label>
+          <Select
+            :id="concurrencyFieldId"
+            v-model="batch.concurrency"
+            :options="concurrencyOptions"
+            :disabled="busy"
+            data-testid="provider-batch-concurrency"
+          />
+        </div>
+
         <TextArea
+          v-if="!isCompactTestMode"
           v-model="testPrompt"
           :label="promptInputLabel"
           :placeholder="promptInputPlaceholder"
-          :hint="promptInputHint"
-          :disabled="status === 'connecting'"
+          :disabled="busy"
           data-testid="provider-test-prompt"
-          rows="3"
+          rows="4"
         />
-      </div>
+      </aside>
 
-      <!-- Terminal Output -->
-      <div class="group relative">
-        <div
-          ref="terminalRef"
-          class="max-h-menu-sm min-h-[120px] overflow-y-auto rounded-surface border border-gray-700 bg-gray-900 p-4 font-mono text-sm dark:border-dark-700 dark:bg-black"
-        >
-          <!-- Status Line -->
-          <div v-if="status === 'idle'" class="flex items-center gap-2 text-gray-500">
-            <Icon name="play" size="sm" :stroke-width="2" />
-            <span>{{ t('admin.providers.readyToTest') }}</span>
-          </div>
-          <div v-else-if="status === 'connecting'" class="flex items-center gap-2 text-yellow-400">
-            <Icon
-              name="refresh"
-              size="sm"
-              class="animate-spin"
-              :stroke-width="2"
-              :animate-on-hover="false"
-            />
-            <span>{{ t('admin.providers.connectingToApi') }}</span>
-          </div>
-
-          <!-- Output Lines -->
-          <div v-for="(line, index) in outputLines" :key="index" :class="line.class">
-            {{ line.text }}
-          </div>
-
-          <!-- Streaming Content -->
-          <div v-if="streamingContent" class="text-green-400">
-            {{ streamingContent }}<span class="animate-pulse">_</span>
-          </div>
-
-          <!-- Result Status -->
-          <div
-            v-if="status === 'success'"
-            class="mt-3 flex items-center gap-2 border-t border-gray-700 pt-3 text-green-400"
-          >
-            <Icon name="check" size="sm" :stroke-width="2" :animate-on-hover="false" />
-            <span>{{ t('admin.providers.testCompleted') }}</span>
-          </div>
-          <div
-            v-else-if="status === 'error'"
-            class="mt-3 flex items-center gap-2 border-t border-gray-700 pt-3 text-red-400"
-          >
-            <Icon name="x" size="sm" :stroke-width="2" />
-            <span>{{ errorMessage }}</span>
-          </div>
-        </div>
-
-        <!-- Copy Button -->
-        <button
-          v-if="outputLines.length > 0"
-          @click="copyOutput"
-          class="absolute right-2 top-2 rounded-control bg-gray-800/80 p-1.5 text-gray-400 opacity-0 transition hover:bg-gray-700 hover:text-white group-hover:opacity-100"
-          :title="t('admin.providers.copyOutput')"
-        >
-          <Icon name="link" size="sm" :stroke-width="2" />
-        </button>
-      </div>
-
-      <div v-if="generatedImages.length > 0" class="space-y-2">
-        <div class="text-xs font-medium text-gray-600 dark:text-gray-300">
-          {{ t('admin.providers.imagePreview') }}
-        </div>
-        <div class="flex flex-wrap justify-center gap-3">
-          <div data-icon-trigger
-            v-for="(image, index) in generatedImages"
-            :key="`${image.url}-${index}`"
-            class="group/img relative cursor-pointer overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm transition hover:border-black/20 hover:shadow-md dark:border-dark-500 dark:bg-dark-700 dark:hover:border-primary-300"
-            @click="previewImageUrl = image.url"
-          >
-            <img :src="image.url" :alt="`test-image-${index + 1}`" class="max-h-[360px] w-full object-contain" /> <!-- check-ui-allow: 图片预览局部约束 -->
-            <div class="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover/img:bg-black/20">
-              <Icon
-                name="eye"
-                size="lg"
-                class="text-white opacity-0 drop-shadow-lg transition-opacity group-hover/img:opacity-100"
-                :stroke-width="2"
-              />
-            </div>
-            <div class="border-t border-gray-100 px-3 py-1.5 text-xs text-gray-500 dark:border-dark-500 dark:text-gray-300">
-              {{ image.mimeType || 'image/*' }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Image Lightbox -->
-      <Teleport to="body">
-        <MotionTransition name="fade">
-          <div
-            v-if="previewImageUrl"
-            class="fixed inset-0 z-tooltip flex items-center justify-center bg-[var(--overlay-bg-strong)] p-4"
-            @click.self="previewImageUrl = ''"
-          >
-            <button
-              class="absolute right-4 top-4 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
-              @click="previewImageUrl = ''"
-            >
-              <Icon name="x" size="lg" :stroke-width="2" />
-            </button>
-            <img
-              :src="previewImageUrl"
-              alt="preview"
-              class="max-h-[90vh] max-w-[90vw] rounded-control object-contain shadow-2xl"
-            />
-          </div>
-        </MotionTransition>
-      </Teleport>
-
-      <!-- Test Info -->
-      <div class="flex items-center justify-between px-1 text-xs text-gray-500 dark:text-gray-400">
-        <div class="flex items-center gap-3">
-          <span class="flex items-center gap-1">
-            <Icon name="grid" size="sm" :stroke-width="2" />
-            {{ t('admin.providers.testModel') }}
-          </span>
-        </div>
-        <span class="flex items-center gap-1">
-          <Icon name="chat" size="sm" :stroke-width="2" />
-          {{ testTypeSummary }}
-        </span>
-      </div>
+      <!-- 右侧：单模型结果或批量模型列表 -->
+      <section
+        :aria-label="t('admin.providers.testDialog.results')"
+        class="flex min-h-0 min-w-0 flex-1 flex-col px-4 py-5 sm:px-6"
+      >
+        <ProviderTestResultView v-if="testScope === 'single'" :run="singleRun" />
+        <ProviderTestBatchPanel v-else :batch="batch" />
+      </section>
     </div>
 
-    <template #footer>
-      <div class="flex justify-end gap-3">
+    <footer
+      class="flex shrink-0 items-center justify-end gap-3 rounded-b-surface border-t border-gray-200 bg-gray-50/70 px-4 py-3 dark:border-dark-600 dark:bg-dark-950 sm:rounded-b-dialog sm:px-6"
+    >
+      <button type="button" class="btn btn-secondary" @click="handleClose">
+        {{ t('common.close') }}
+      </button>
+
+      <button
+        v-if="testScope === 'single'"
+        type="button"
+        class="btn btn-primary"
+        data-testid="provider-test-start"
+        :disabled="!canTestSingle"
+        @click="startTest"
+      >
+        <Icon v-if="singleRunning" name="loader" size="sm" class="animate-spin" :animate-on-hover="false" />
+        <Icon v-else-if="singleRun.status === 'idle'" name="play" size="sm" />
+        <Icon v-else name="refresh" size="sm" />
+        {{ singleButtonLabel }}
+      </button>
+
+      <template v-else-if="batch.running">
         <button
-          @click="handleClose"
-          class="rounded-control bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-300 dark:hover:bg-dark-500"
+          type="button"
+          class="btn btn-secondary"
+          data-testid="provider-batch-stop"
+          :disabled="batch.stopping"
+          @click="batch.stop()"
         >
-          {{ t('common.close') }}
+          {{ batch.stopping ? t('admin.providers.testDialog.batch.stoppingShort') : t('admin.providers.testDialog.batch.stop') }}
+        </button>
+      </template>
+
+      <template v-else>
+        <button
+          v-if="batch.failedModels.length > 0"
+          type="button"
+          class="btn btn-secondary"
+          data-testid="provider-batch-retry"
+          @click="startBatch(batch.failedModels, true)"
+        >
+          {{ t('admin.providers.testDialog.batch.retry', { count: batch.failedModels.length }) }}
         </button>
         <button
-          @click="startTest"
-          :disabled="status === 'connecting' || !selectedModelId"
-          :class="[
-            'flex items-center gap-2 rounded-control px-4 py-2 text-sm font-medium transition',
-            status === 'connecting' || !selectedModelId
-              ? 'cursor-not-allowed bg-primary-400 text-white'
-              : status === 'success'
-                ? 'bg-green-500 text-white hover:bg-green-600'
-                : status === 'error'
-                  ? 'bg-orange-500 text-white hover:bg-orange-600'
-                  : 'bg-primary-500 text-white hover:bg-primary-600'
-          ]"
+          type="button"
+          class="btn btn-primary"
+          data-testid="provider-batch-start"
+          :disabled="batch.selected.size === 0"
+          @click="startBatch(selectedBatchModels, false)"
         >
-          <Icon
-            v-if="status === 'connecting'"
-            name="refresh"
-            size="sm"
-            class="animate-spin"
-            :stroke-width="2"
-            :animate-on-hover="false"
-          />
-          <Icon v-else-if="status === 'idle'" name="play" size="sm" :stroke-width="2" />
-          <Icon v-else name="refresh" size="sm" :stroke-width="2" />
-          <span>
-            {{
-              status === 'connecting'
-                ? t('admin.providers.testing')
-                : status === 'idle'
-                  ? t('admin.providers.startTest')
-                  : t('admin.providers.retry')
-            }}
-          </span>
+          <Icon name="play" size="sm" />
+          {{ t('admin.providers.testDialog.batch.start', { count: batch.selected.size }) }}
         </button>
-      </div>
-    </template>
+      </template>
+    </footer>
   </BaseDialog>
 </template>
 
 <script setup lang="ts">
-import MotionTransition from '@/components/common/MotionTransition.vue'
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import PlatformIcon from '@/components/common/PlatformIcon.vue'
 import Select from '@/components/common/Select.vue'
 import TextArea from '@/components/common/TextArea.vue'
+import SettingsSegmented from '@/components/common/settings/SettingsSegmented.vue'
 import { Icon } from '@/components/icons'
-import { useClipboard } from '@/composables/useClipboard'
-import { buildApiUrl } from '@/api/client'
-import { ADMIN_UI_REQUEST_HEADER } from '@/api/adminUIRequest'
 import { adminAPI } from '@/api/admin'
+import { platformIconClass } from '@/utils/platformColors'
 import type { Provider, ClaudeModel } from '@/types'
-
-const { t } = useI18n()
-const { copyToClipboard } = useClipboard()
-
-interface OutputLine {
-  text: string
-  class: string
-}
-
-interface PreviewImage {
-  url: string
-  mimeType?: string
-}
+import ProviderTestBatchPanel from './ProviderTestBatchPanel.vue'
+import ProviderTestResultView from './ProviderTestResultView.vue'
+import {
+  defaultProviderTestProtocol,
+  providerTestProtocolPlan,
+  type ProviderTestProtocol
+} from './providerTestProtocols'
+import {
+  createProviderTestRun,
+  executeProviderTest,
+  resetProviderTestRun,
+  type ProviderTestRequestBody
+} from './providerTestRun'
+import { BATCH_CONCURRENCY_OPTIONS, useProviderBatchTest } from './useProviderBatchTest'
 
 const props = defineProps<{
   show: boolean
@@ -303,37 +220,88 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const terminalRef = ref<HTMLElement | null>(null)
-const status = ref<'idle' | 'connecting' | 'success' | 'error'>('idle')
-const outputLines = ref<OutputLine[]>([])
-const streamingContent = ref('')
-const errorMessage = ref('')
+const { t } = useI18n()
+
+const modelFieldId = 'provider-test-model'
+const protocolFieldId = 'provider-test-protocol'
+const modeFieldId = 'provider-test-mode'
+const concurrencyFieldId = 'provider-test-concurrency'
+
+const testScope = ref<'single' | 'batch'>('single')
+const scopeOptions = computed(() => [
+  { value: 'single' as const, label: t('admin.providers.testDialog.scopeSingle') },
+  { value: 'batch' as const, label: t('admin.providers.testDialog.scopeBatch') }
+])
+
+const singleRun = createProviderTestRun()
+const singleRunning = computed(() => singleRun.status === 'connecting')
+let singleController: AbortController | null = null
+
+const batch = reactive(useProviderBatchTest(t))
+const busy = computed(() => singleRunning.value || batch.running)
+
 const availableModels = ref<ClaudeModel[]>([])
 const selectedModelId = ref('')
+const loadingModels = ref(false)
 const testPrompt = ref('')
 let lastDefaultPrompt = ''
-const loadingModels = ref(false)
-let abortController: AbortController | null = null
-const generatedImages = ref<PreviewImage[]>([])
-const previewImageUrl = ref('')
-// 仅对本次 API Key 文字测试指定协议，不改变提供商配置。
-const testProtocol = ref<'responses' | 'chat_completions'>('responses')
-const testProtocolOptions = [{ value: 'responses', label: '/v1/responses' }, { value: 'chat_completions', label: '/v1/chat/completions' }]
-const isOpenAIAPIKeyProvider = computed(() => props.provider?.platform === 'openai' && props.provider?.type === 'apikey')
+
+const isOpenAIProvider = computed(() => props.provider?.platform === 'openai')
+const isCNProvider = computed(() => ['kimi', 'zhipu', 'deepseek'].includes(props.provider?.platform ?? ''))
+
+// 测试协议只作用于本次请求，不改写提供商配置。
+const protocolPlan = computed(() => providerTestProtocolPlan(props.provider))
+const testProtocol = ref<ProviderTestProtocol | 'native' | 'all'>('native')
+const protocolOptions = computed(() => {
+  const options: Array<{ value: typeof testProtocol.value; label: string }> = protocolPlan.value.options.map((item) => ({
+    value: item.value,
+    label: `${item.label} · ${item.path}`
+  }))
+  // 国产平台启用了多个协议时，保留按顺序全部验证的选项。
+  if (isCNProvider.value && protocolPlan.value.selectable) {
+    options.push({ value: 'all', label: t('admin.providers.testDialog.protocolAll') })
+  }
+  return options
+})
+// 弹窗打开期间切换提供商时，原协议不在新列表里就回到默认值。
+watch(protocolPlan, (plan) => {
+  if (!protocolOptions.value.some((item) => item.value === testProtocol.value)) {
+    testProtocol.value = defaultProviderTestProtocol(props.provider, plan)
+  }
+})
+
 const testMode = ref<'default' | 'compact' | 'legacy_compact'>('default')
 const testType = ref<'text' | 'image'>('text')
-const isOpenAIProvider = computed(() => props.provider?.platform === 'openai')
-// Compact 连接测试使用固定载荷，不显示可编辑提示词输入框。
-watch(testMode, mode => { if (mode !== 'default') testProtocol.value = 'responses' })
+// Compact 连接测试使用固定载荷和 Responses 端点，不显示可编辑提示词。
 const isCompactTestMode = computed(() => isOpenAIProvider.value && testMode.value !== 'default')
+watch(testMode, (mode) => {
+  if (mode !== 'default' && protocolPlan.value.selectable) testProtocol.value = 'responses'
+})
 const openAITestModeOptions = computed(() => [
   { value: 'default', label: t('admin.providers.openai.testModeDefault') },
   { value: 'compact', label: t('admin.providers.openai.testModeCompact') },
   { value: 'legacy_compact', label: t('admin.providers.openai.testModeLegacyCompact') }
 ])
+const protocolHint = computed(() => {
+  if (isCompactTestMode.value) return t('admin.providers.testDialog.protocolCompact')
+  if (protocolPlan.value.options.length === 0) return ''
+  if (!protocolPlan.value.selectable) return t('admin.providers.testDialog.protocolFixed')
+  return ''
+})
+
+const concurrencyOptions = BATCH_CONCURRENCY_OPTIONS.map((value) => ({ value, label: String(value) }))
+
+// 实际发给后端的协议：固定端点、全部协议和图片测试都不携带该字段。
+const requestProtocol = computed<ProviderTestProtocol | undefined>(() => {
+  if (testType.value !== 'text' || !protocolPlan.value.selectable) return undefined
+  if (isCompactTestMode.value) return 'responses'
+  if (testProtocol.value === 'native' || testProtocol.value === 'all') return undefined
+  return testProtocol.value
+})
+
 const prioritizedGeminiModels = ['gemini-3.1-flash-image', 'gemini-2.5-flash-image', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-3-flash-preview', 'gemini-3-pro-preview', 'gemini-2.0-flash']
+
 // 图片/文字请求类型完全由管理员选择，不再从模型名称推断。
-const supportsImageTest = computed(() => testType.value === 'image')
 const imageTestAvailable = computed(() => {
   const platform = props.provider?.platform
   return platform === 'openai' || platform === 'gemini' || platform === 'grok' ||
@@ -341,8 +309,8 @@ const imageTestAvailable = computed(() => {
 })
 
 const testTypeOptions = computed(() => [
-  { value: 'text', label: t('admin.providers.testTypeText') },
-  { value: 'image', label: t('admin.providers.testTypeImage'), disabled: !imageTestAvailable.value }
+  { value: 'text' as const, label: t('admin.providers.testDialog.typeText'), icon: 'modalityText' as const },
+  { value: 'image' as const, label: t('admin.providers.testDialog.typeImage'), icon: 'modalityImage' as const }
 ])
 
 const promptInputLabel = computed(() =>
@@ -355,16 +323,17 @@ const promptInputPlaceholder = computed(() =>
     ? t('admin.providers.imagePromptPlaceholder')
     : t('admin.providers.textPromptPlaceholder')
 )
-const promptInputHint = computed(() =>
-  testType.value === 'image'
-    ? t('admin.providers.imageTestHint')
-    : t('admin.providers.textTestHint')
-)
-const testTypeSummary = computed(() =>
-  testType.value === 'image'
-    ? t('admin.providers.imageTestMode')
-    : t('admin.providers.textTestMode')
-)
+
+const canTestSingle = computed(() => !busy.value && !!selectedModelId.value)
+
+const singleButtonLabel = computed(() => {
+  if (singleRunning.value) return t('admin.providers.testDialog.running')
+  if (singleRun.status === 'idle') return t('admin.providers.startTest')
+  return t('admin.providers.testDialog.rerun')
+})
+
+// 批量测试按模型列表的顺序执行已选模型。
+const selectedBatchModels = computed(() => batch.models.filter((model) => batch.selected.has(model)))
 
 const sortTestModels = (models: ClaudeModel[]) => {
   const priorityMap = new Map(prioritizedGeminiModels.map((id, index) => [id, index]))
@@ -372,29 +341,34 @@ const sortTestModels = (models: ClaudeModel[]) => {
   return [...models].sort((a, b) => {
     const aPriority = priorityMap.get(a.id) ?? Number.MAX_SAFE_INTEGER
     const bPriority = priorityMap.get(b.id) ?? Number.MAX_SAFE_INTEGER
-    if (aPriority !== bPriority) return aPriority - bPriority
-    return 0
+    return aPriority - bPriority
   })
 }
 
-// Load available models when modal opens
+let modelLoadGeneration = 0
+
+// 打开或切换账号时重新读取，旧账号的迟到模型列表不能覆盖新账号。
 watch(
-  () => props.show,
-  async (newVal) => {
-    if (newVal && props.provider) {
+  [() => props.show, () => props.provider?.id],
+  async ([open]) => {
+    if (open && props.provider) {
+      abortAll()
+      testScope.value = 'single'
       testPrompt.value = ''
       lastDefaultPrompt = ''
       testMode.value = 'default'
-      testProtocol.value = Array.isArray(props.provider?.credentials?.upstream_protocols) && !props.provider.credentials.upstream_protocols.includes('openai_responses') && props.provider.credentials.upstream_protocols.includes('openai_chat_completions') ? 'chat_completions' : 'responses'
       testType.value = 'text'
-      resetState()
+      testProtocol.value = defaultProviderTestProtocol(props.provider, protocolPlan.value)
+      resetProviderTestRun(singleRun)
+      batch.reset([])
       await loadAvailableModels()
     } else {
-      abortStream()
+      abortAll()
     }
   }
 )
 
+// 提示词未被手动修改时，跟随测试类型切换默认值。
 watch([selectedModelId, testType], () => {
   const nextDefaultPrompt = testType.value === 'image'
     ? t('admin.providers.imagePromptDefault')
@@ -413,235 +387,91 @@ watch(testType, (nextType) => {
 
 const loadAvailableModels = async () => {
   if (!props.provider) return
-
+  const provider = props.provider
+  const generation = ++modelLoadGeneration
+  const current = () => generation === modelLoadGeneration && props.show && props.provider?.id === provider.id
   loadingModels.value = true
-  selectedModelId.value = '' // Reset selection before loading
+  selectedModelId.value = ''
   try {
-    const models = await adminAPI.providers.getAvailableModels(props.provider.id)
-    availableModels.value = props.provider.platform === 'gemini' || props.provider.platform === 'antigravity'
+    const models = await adminAPI.providers.getAvailableModels(provider.id)
+    if (!current()) return
+    availableModels.value = provider.platform === 'gemini' || provider.platform === 'antigravity'
       ? sortTestModels(models)
       : models
-    // Default selection by platform
     if (availableModels.value.length > 0) {
       if (props.provider.platform === 'gemini') {
         selectedModelId.value = availableModels.value[0].id
       } else {
-        // Try to select Sonnet as default, otherwise use first model
+        // 优先选中 Sonnet，没有时取第一个模型。
         const sonnetModel = availableModels.value.find((m) => m.id.includes('sonnet'))
         selectedModelId.value = sonnetModel?.id || availableModels.value[0].id
       }
     }
   } catch (error) {
+    if (!current()) return
     console.error('Failed to load available models:', error)
-    // Fallback to empty list
     availableModels.value = []
     selectedModelId.value = ''
   } finally {
-    loadingModels.value = false
+    if (current()) {
+      loadingModels.value = false
+      batch.reset(availableModels.value.map((model) => model.id))
+    }
   }
 }
 
-const resetState = () => {
-  status.value = 'idle'
-  outputLines.value = []
-  streamingContent.value = ''
-  errorMessage.value = ''
-  generatedImages.value = []
-  previewImageUrl.value = ''
+// buildRequestBody 按当前左侧参数生成单次测试请求，批量测试每个模型共用同一套参数。
+const buildRequestBody = (model: string): ProviderTestRequestBody => {
+  const body: ProviderTestRequestBody = {
+    model_id: model,
+    prompt: isCompactTestMode.value ? '' : testPrompt.value.trim(),
+    test_type: testType.value
+  }
+  if (isOpenAIProvider.value) {
+    body.mode = testMode.value
+  }
+  if (requestProtocol.value) {
+    body.protocol = requestProtocol.value
+  }
+  return body
 }
 
+const abortAll = () => {
+  modelLoadGeneration++
+  singleController?.abort()
+  singleController = null
+  batch.abort()
+}
+
+onBeforeUnmount(abortAll)
+
 const handleClose = () => {
-  abortStream()
+  abortAll()
   emit('close')
 }
 
-const abortStream = () => {
-  if (abortController) {
-    abortController.abort()
-    abortController = null
-  }
-}
-
-const addLine = (text: string, className: string = 'text-gray-300') => {
-  outputLines.value.push({ text, class: className })
-  scrollToBottom()
-}
-
-const scrollToBottom = async () => {
-  await nextTick()
-  if (terminalRef.value) {
-    terminalRef.value.scrollTop = terminalRef.value.scrollHeight
-  }
-}
-
 const startTest = async () => {
-  if (!props.provider || !selectedModelId.value) return
-
-  resetState()
-  status.value = 'connecting'
-  addLine(t('admin.providers.startingTestForProvider', { name: props.provider.name }), 'text-blue-400')
-  addLine(t('admin.providers.testProviderTypeLabel', { type: props.provider.type }), 'text-gray-400')
-  addLine('', 'text-gray-300')
-
-  abortStream()
-
-  abortController = new AbortController()
-
-  try {
-    const requestBody: {
-      model_id: string
-      prompt: string
-      test_type: 'text' | 'image'
-      mode?: 'default' | 'compact' | 'legacy_compact'
-      protocol?: 'responses' | 'chat_completions'
-    } = {
-      model_id: selectedModelId.value,
-      prompt: isCompactTestMode.value ? '' : testPrompt.value.trim(),
-      test_type: testType.value
-    }
-    if (isOpenAIProvider.value) {
-      requestBody.mode = testMode.value
-    }
-    if (isOpenAIAPIKeyProvider.value && testType.value === 'text') {
-      requestBody.protocol = isCompactTestMode.value ? 'responses' : testProtocol.value
-    }
-
-    // SSE 测试接口用 POST，只能走 fetch，必须显式套用配置的 API base。
-    const url = buildApiUrl(`/admin/providers/${props.provider.id}/test`)
-
-    // Use fetch with streaming for SSE since EventSource doesn't support POST
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-        'Content-Type': 'application/json',
-        [ADMIN_UI_REQUEST_HEADER]: '1'
-      },
-      body: JSON.stringify(requestBody),
-      signal: abortController.signal
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) {
-      throw new Error('No response body')
-    }
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const jsonStr = line.slice(6).trim()
-          if (jsonStr) {
-            try {
-              const event = JSON.parse(jsonStr)
-              handleEvent(event)
-            } catch (e) {
-              console.error('Failed to parse SSE event:', e)
-            }
-          }
-        }
-      }
-    }
-  } catch (error: unknown) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      status.value = 'idle'
-      return
-    }
-    status.value = 'error'
-    const msg = error instanceof Error ? error.message : 'Unknown error'
-    errorMessage.value = msg
-    addLine(`Error: ${msg}`, 'text-red-400')
-  }
+  if (!props.provider || !canTestSingle.value) return
+  singleController?.abort()
+  singleController = new AbortController()
+  await executeProviderTest({
+    providerId: props.provider.id,
+    providerName: props.provider.name,
+    body: buildRequestBody(selectedModelId.value),
+    run: singleRun,
+    signal: singleController.signal,
+    t
+  })
 }
 
-const handleEvent = (event: {
-  type: string
-  text?: string
-  model?: string
-  success?: boolean
-  error?: string
-  image_url?: string
-  mime_type?: string
-}) => {
-  switch (event.type) {
-    case 'test_start':
-      addLine(t('admin.providers.connectedToApi'), 'text-green-400')
-      if (event.model) {
-        addLine(t('admin.providers.usingModel', { model: event.model }), 'text-cyan-400')
-      }
-      addLine(
-        supportsImageTest.value
-            ? t('admin.providers.sendingImageRequest')
-            : t('admin.providers.sendingTestMessage'),
-        'text-gray-400'
-      )
-      addLine('', 'text-gray-300')
-      addLine(t('admin.providers.response'), 'text-yellow-400')
-      break
-
-    case 'content':
-      if (event.text) {
-        streamingContent.value += event.text
-        scrollToBottom()
-      }
-      break
-
-    case 'image':
-      if (event.image_url) {
-        generatedImages.value.push({
-          url: event.image_url,
-          mimeType: event.mime_type
-        })
-        addLine(t('admin.providers.imageReceived', { count: generatedImages.value.length }), 'text-purple-300')
-      }
-      break
-
-    case 'status':
-      if (event.text) {
-        addLine(event.text, 'text-cyan-300')
-      }
-      break
-
-    case 'test_complete':
-      // Move streaming content to output lines
-      if (streamingContent.value) {
-        addLine(streamingContent.value, 'text-green-300')
-        streamingContent.value = ''
-      }
-      if (event.success) {
-        status.value = 'success'
-      } else {
-        status.value = 'error'
-        errorMessage.value = event.error || 'Test failed'
-      }
-      break
-
-    case 'error':
-      status.value = 'error'
-      errorMessage.value = event.error || 'Unknown error'
-      if (streamingContent.value) {
-        addLine(streamingContent.value, 'text-green-300')
-        streamingContent.value = ''
-      }
-      break
-  }
-}
-
-const copyOutput = () => {
-  const text = outputLines.value.map((l) => l.text).join('\n')
-  copyToClipboard(text, t('admin.providers.outputCopied'))
+const startBatch = (targets: string[], retry: boolean) => {
+  if (!props.provider || busy.value) return
+  void batch.start({
+    targets: [...targets],
+    retry,
+    providerId: props.provider.id,
+    providerName: props.provider.name,
+    buildBody: buildRequestBody
+  })
 }
 </script>

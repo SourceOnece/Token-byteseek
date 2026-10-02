@@ -75,7 +75,7 @@ async function open(mode: 'create' | 'edit', _providerType: string, overrides: P
 }
 
 async function tab(wrapper: VueWrapper, name: string) {
-  await wrapper.get(`[data-group-tab-button="${name}"]`).trigger('click')
+  await wrapper.get(`[data-settings-tab-button="${name}"]`).trigger('click')
   await flushPromises()
 }
 
@@ -118,12 +118,12 @@ it('编辑历史停用策略后保存即应用，打开表单时不提前更新�
 describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
   it('创建与编辑均按五类职责排列页签', async () => {
     const wrapper = await open(mode, 'mixed')
-    const keys = wrapper.findAll('[data-group-tab-button]').map(button => button.attributes('data-group-tab-button'))
-    expect(wrapper.find('[data-group-tab-button="pricing"]').exists()).toBe(false)
+    const keys = wrapper.findAll('[data-settings-tab-button]').map(button => button.attributes('data-settings-tab-button'))
+    expect(wrapper.find('[data-settings-tab-button="pricing"]').exists()).toBe(false)
     expect(keys).toEqual(['general', 'models', 'scheduling', 'protocol', 'request'])
-    expect(wrapper.get('[data-group-tab="general"]').isVisible()).toBe(true)
-    expect(wrapper.get('[data-tour="group-form-multiplier"]').element.closest('[data-group-tab]')?.getAttribute('data-group-tab')).toBe('general')
-    expect(wrapper.getComponent(GroupClientProtocolSelector).element.closest('[data-group-tab]')?.getAttribute('data-group-tab')).toBe('protocol')
+    expect(wrapper.get('[data-settings-tab="general"]').isVisible()).toBe(true)
+    expect(wrapper.get('[data-tour="group-form-multiplier"]').element.closest('[data-settings-tab]')?.getAttribute('data-settings-tab')).toBe('general')
+    expect(wrapper.getComponent(GroupClientProtocolSelector).element.closest('[data-settings-tab]')?.getAttribute('data-settings-tab')).toBe('protocol')
     expect(wrapper.find('[data-group-field="reasoning"]').exists()).toBe(true)
     expect(wrapper.find('[data-group-field="image-capabilities"]').exists()).toBe(false)
   })
@@ -138,9 +138,9 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
       web_search_emulation: 'request', bedrock_cc_compat: 'request',
     }
     for (const [field, page] of Object.entries(positions)) {
-      const matches = wrapper.findAll(`[data-group-setting="${field}"]`)
+      const matches = wrapper.findAll(`[data-setting="${field}"]`)
       expect(matches).toHaveLength(1)
-      expect(matches[0].element.closest('[data-group-tab]')?.getAttribute('data-group-tab')).toBe(page)
+      expect(matches[0].element.closest('[data-settings-tab]')?.getAttribute('data-settings-tab')).toBe(page)
     }
   })
 
@@ -154,13 +154,13 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     await targets[0].setValue('first-target')
     await targets[1].setValue('second-target')
     await tab(wrapper, 'request')
-    await wrapper.get('[data-group-setting="web_search_emulation"]').trigger('click')
+    await wrapper.get('[data-setting="web_search_emulation"]').trigger('click')
     await tab(wrapper, 'models')
     expect(wrapper.findAll('input[aria-label="admin.groups.routingPolicy.target"]').map(input => (input.element as HTMLInputElement).value)).toEqual(['first-target', 'second-target'])
     await tab(wrapper, 'general')
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
-    expect(wrapper.get('[data-group-tab="models"]').isVisible()).toBe(true)
+    expect(wrapper.get('[data-settings-tab="models"]').isVisible()).toBe(true)
     expect(groups[mode === 'create' ? 'create' : 'update']).not.toHaveBeenCalled()
     const sources = wrapper.findAll('input[aria-label="admin.groups.routingPolicy.source"]')
     await sources[0].setValue('first-alias')
@@ -189,7 +189,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     expect(groups[mode === 'create' ? 'create' : 'update']).not.toHaveBeenCalled()
     expect(settings.props('modelValue').advanced_scheduler_overrides).toEqual({ lb_top_k: 7, sticky_weighted_enabled: false })
     await tab(wrapper, 'models')
-    await wrapper.get('[data-group-setting="model_routing_enabled"]').trigger('click')
+    await wrapper.get('[data-setting="model_routing_enabled"]').trigger('click')
     wrapper.getComponent(GroupModelRoutingFields).vm.$emit('add')
     await flushPromises()
     const routing = wrapper.getComponent(GroupModelRoutingFields)
@@ -210,7 +210,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
   it('删除规则后丢弃迟到搜索结果，其他规则仍保留自己的提供商', async () => {
     const wrapper = await open(mode, 'mixed')
     await tab(wrapper, 'models')
-    await wrapper.get('[data-group-setting="model_routing_enabled"]').trigger('click')
+    await wrapper.get('[data-setting="model_routing_enabled"]').trigger('click')
     const routing = wrapper.getComponent(GroupModelRoutingFields)
     routing.vm.$emit('add')
     routing.vm.$emit('add')
@@ -253,7 +253,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     await flushPromises()
     expect(wrapper.text()).not.toContain('admin.groups.openaiMessages.exactMappingTitle')
     await tab(wrapper, 'models')
-    await wrapper.get('[data-group-tab="models"]').findAll('button').find(button => button.text() === 'admin.groups.routingPolicy.addMapping')!.trigger('click')
+    await wrapper.get('[data-settings-tab="models"]').findAll('button').find(button => button.text() === 'admin.groups.routingPolicy.addMapping')!.trigger('click')
     await wrapper.get('input[aria-label="admin.groups.routingPolicy.source"]').setValue('claude-sonnet-4-6')
     await wrapper.get('input[aria-label="admin.groups.routingPolicy.target"]').setValue('gpt-test')
     await tab(wrapper, 'models')
@@ -265,7 +265,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     expect(payload.messages_dispatch_model_config).toBeUndefined()
     expect(wrapper.find(`#${mode}-group-form`).exists()).toBe(false)
     await wrapper.get('[data-tour="groups-create-btn"]').trigger('click')
-    expect(wrapper.get('[data-group-tab="general"]').isVisible()).toBe(true)
+    expect(wrapper.get('[data-settings-tab="general"]').isVisible()).toBe(true)
   })
 
   it('隐藏页签的名称、倍率和推理错误均可定位且阻止提交', async () => {
@@ -274,19 +274,19 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     await tab(wrapper, 'models')
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
-    expect(wrapper.get('[data-group-tab="general"]').isVisible()).toBe(true)
+    expect(wrapper.get('[data-settings-tab="general"]').isVisible()).toBe(true)
     await wrapper.get('[data-group-field="name"] input').setValue('Valid')
     await wrapper.get('[data-tour="group-form-multiplier"]').setValue('-1')
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
-    expect(wrapper.get('[data-group-tab="general"]').isVisible()).toBe(true)
+    expect(wrapper.get('[data-settings-tab="general"]').isVisible()).toBe(true)
     await wrapper.get('[data-tour="group-form-multiplier"]').setValue('1')
     await tab(wrapper, 'request')
     await wrapper.get('[data-group-field="reasoning"] button').trigger('click')
     await tab(wrapper, 'general')
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
-    expect(wrapper.get('[data-group-tab="request"]').isVisible()).toBe(true)
+    expect(wrapper.get('[data-settings-tab="request"]').isVisible()).toBe(true)
     expect(wrapper.find('[data-group-field="reasoning"] [role="alert"]').exists()).toBe(true)
     expect(groups[mode === 'create' ? 'create' : 'update']).not.toHaveBeenCalled()
   })
@@ -298,7 +298,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     await tab(wrapper, 'models')
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
-    expect(wrapper.get('[data-group-tab="scheduling"]').isVisible()).toBe(true)
+    expect(wrapper.get('[data-settings-tab="scheduling"]').isVisible()).toBe(true)
     expect(showError).toHaveBeenLastCalledWith('admin.groups.availabilityProbe.modelRequired')
     wrapper.findAllComponents(Select).find(select => select.attributes('data-group-field') === 'probe-model')!
       .vm.$emit('update:modelValue', 'gpt-test')
@@ -306,7 +306,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     await tab(wrapper, 'protocol')
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
-    expect(wrapper.get('[data-group-tab="scheduling"]').isVisible()).toBe(true)
+    expect(wrapper.get('[data-settings-tab="scheduling"]').isVisible()).toBe(true)
     expect(document.activeElement).toBe(wrapper.get('[data-group-field="probe-prompt"]').element)
     expect(showError).toHaveBeenLastCalledWith('admin.groups.availabilityProbe.promptRequired')
     expect(groups[mode === 'create' ? 'create' : 'update']).not.toHaveBeenCalled()
@@ -316,10 +316,10 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     const wrapper = await open(mode, 'antigravity')
     await tab(wrapper, 'request')
     for (const setting of ['claude', 'gemini_text', 'gemini_image', 'mcp_xml_inject']) {
-      expect(wrapper.find(`[data-group-setting="${setting}"]`).exists()).toBe(false)
+      expect(wrapper.find(`[data-setting="${setting}"]`).exists()).toBe(false)
     }
     await tab(wrapper, 'models')
-    await wrapper.get('[data-group-setting="enabled"]').trigger('click')
+    await wrapper.get('[data-setting="enabled"]').trigger('click')
     const model = wrapper.get('[data-model-visibility="gpt-test"]')
     expect(model.attributes('aria-checked')).toBe('true')
     await model.trigger('click')

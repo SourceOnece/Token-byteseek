@@ -24,7 +24,7 @@ type TestProviderRequest struct {
 	ModelID string `json:"model_id"`
 	Prompt  string `json:"prompt"`
 	Mode    string `json:"mode"`
-	// 仅对本次 OpenAI API Key 文本测试生效。
+	// Protocol 只作用于本次文字测试：OpenAI 选择 Responses 或 Chat，国产平台选择已启用的原生协议。
 	Protocol string `json:"protocol"`
 	// TestType 由管理端明确指定测试文字或图片，避免服务端猜测模型能力。
 	TestType string `json:"test_type"`

@@ -104,9 +104,9 @@ app 直接构造唯一 TestService 和 TestTargets。计划测试及分组探测
 
 测试本身应使用受控超时、代理/TLS 路由和脱敏日志。一个模型测试成功只证明该路径当时可用，不证明所有 endpoint capability 或媒体资格。失败结果需区分认证、模型、配额、代理、TLS 和上游容量，以免自动恢复形成启停抖动。
 
-Kimi、Zhipu、DeepSeek 的连接测试仅测试提供商 `upstream_protocols` 中启用的原生端点；空集合直接报告未启用协议，不发起上游请求。测试复用提供商自定义 Base URL、代理、TLS 指纹和受保护 Header Override；Anthropic 协议的自定义中继在模型同步等 OpenAI 格式请求中只移除末尾 `/anthropic`，不能改回官方 host 或丢弃此前的路径前缀。
+Kimi、Zhipu、DeepSeek 的连接测试仅测试提供商 `upstream_protocols` 中启用的原生端点；空集合直接报告未启用协议，不发起上游请求。管理端可用 `protocol=chat_completions|anthropic|responses` 只测其中一个已启用协议，选择未启用的协议会在请求上游前失败；省略时按 Chat、Messages、Responses 的顺序依次验证全部已启用协议。测试复用提供商自定义 Base URL、代理、TLS 指纹和受保护 Header Override；Anthropic 协议的自定义中继在模型同步等 OpenAI 格式请求中只移除末尾 `/anthropic`，不能改回官方 host 或丢弃此前的路径前缀。
 
-管理端连接测试请求必须显式选择 `test_type=text|image` 并传入同一字段的自定义 `prompt`。文字测试不再因为模型名称包含图片标记而切换端点；图片测试也不再依赖模型名称命中规则，而是由 OpenAI、Gemini 或 Grok 提供商的平台图片端点执行。OpenAI 的 `compact` 与 `legacy_compact` 仅执行固定载荷的连接测试，不显示或使用自定义提示词。未携带 `test_type` 的历史调用才允许回退到旧模型名判断。图片和文字的结果分别通过 SSE 图片事件和内容事件返回；不支持图片端点的平台应直接返回可诊断的错误，不得静默改成文字测试。
+管理端连接测试请求必须显式选择 `test_type=text|image` 并传入同一字段的自定义 `prompt`。文字测试不再因为模型名称包含图片标记而切换端点；图片测试也不再依赖模型名称命中规则，而是由 OpenAI、Gemini 或 Grok 提供商的平台图片端点执行。OpenAI 的 `compact` 与 `legacy_compact` 仅执行固定载荷的连接测试，不显示或使用自定义提示词。未携带 `test_type` 的历史调用才允许回退到旧模型名判断。图片和文字的结果分别通过 SSE 图片事件和内容事件返回；不支持图片端点的平台应直接返回可诊断的错误，不得静默改成文字测试。OpenAI API Key 与 Grok 的图片测试同时接受 `b64_json` 和图片链接（OpenAI 只接受 `https` 或 `data:image/` 链接）；上游返回了结果但没有可展示的图片时测试判为失败，并附上截断后的响应正文，不能当作成功。
 
 ## 额度与能力探测
 

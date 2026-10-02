@@ -21,9 +21,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// ExecuteAdaptive 验证自适应国产平台提供商实际使用的全部原生端点。
-// 智谱验证 Chat Completions 与 Anthropic，DeepSeek 和 Kimi 还验证 Responses。
-func (s *CNProviderTest) ExecuteAdaptive(c *TestRun, value *providercore.Record, modelID string, prompt string) error {
+// ExecuteAdaptive 验证自适应国产平台提供商实际使用的原生端点。
+// selected 为空时依次验证全部已启用协议：智谱验证 Chat Completions 与 Anthropic，
+// DeepSeek 和 Kimi 还验证 Responses；selected 非空时只验证该协议。
+func (s *CNProviderTest) ExecuteAdaptive(c *TestRun, value *providercore.Record, modelID string, prompt string, selected protocol.ProtocolID) error {
 	testModelID := strings.TrimSpace(modelID)
 	if testModelID == "" {
 		testModelID = openai.DefaultTestModel
@@ -42,7 +43,18 @@ func (s *CNProviderTest) ExecuteAdaptive(c *TestRun, value *providercore.Record,
 	if len(enabled) == 0 {
 		return (TestStreamOutput{}).Error(c, "No upstream protocols enabled")
 	}
+	if selected != "" {
+		if !slices.Contains(enabled, selected) {
+			return (TestStreamOutput{}).Error(c, fmt.Sprintf("Upstream protocol %s is not enabled", selected))
+		}
+		enabled = []protocol.ProtocolID{selected}
+	}
 	c.Begin(false)
+	// Chat 探测自带开始事件；不测 Chat 时在这里补发，管理端据此记录连接建立。
+	if !slices.Contains(enabled, protocol.ProtocolOpenAIChatCompletions) {
+		c.Begin(true)
+		(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "test_start", Model: testModelID})
+	}
 	if slices.Contains(enabled, protocol.ProtocolOpenAIChatCompletions) {
 		if err := s.executeChat(c, value, modelID, prompt); err != nil {
 			return err

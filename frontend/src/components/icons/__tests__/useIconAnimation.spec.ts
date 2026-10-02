@@ -189,11 +189,37 @@ describe('图标交互', () => {
     expect(document.activeElement).toBe(wrapper.find('input').element)
   })
 
-  it('独立 SVG 没有外层控件时保留自身焦点', () => {
-    wrapper = host({ standalone: true })
-    wrapper.element.setAttribute('tabindex', '-1')
-    wrapper.element.focus()
-    expect(document.activeElement).toBe(wrapper.element)
+  it.each([{ standalone: true }, { marked: true }, { label: true, disabled: true }])(
+    '外层无法接收焦点时清除 SVG 焦点 %o',
+    (options) => {
+      wrapper = host(options)
+      const svg = wrapper.find('svg').element
+      svg.setAttribute('tabindex', '-1')
+      svg.focus()
+      expect(document.activeElement).toBe(document.body)
+      expect(controls.start).not.toHaveBeenCalled()
+    }
+  )
+
+  it('清除内部图形的点击焦点后，仍能悬停、点击和正常复位', async () => {
+    wrapper = host({ marked: true })
+    const svg = wrapper.find('svg').element
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    circle.setAttribute('tabindex', '-1')
+    svg.append(circle)
+    const click = vi.fn()
+    wrapper.element.addEventListener('click', click)
+
+    await wrapper.trigger('pointerenter')
+    await nextTick()
+    circle.focus()
+    expect(document.activeElement).toBe(document.body)
+    expect(controls.start).not.toHaveBeenCalledWith('normal')
+
+    circle.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(click).toHaveBeenCalledOnce()
+    await wrapper.trigger('pointerleave')
+    expect(controls.start).toHaveBeenLastCalledWith('normal')
   })
 
   it.each([{ standalone: true }, { marked: true }])(

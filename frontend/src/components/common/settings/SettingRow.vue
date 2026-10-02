@@ -1,13 +1,20 @@
 <template>
   <div
-    class="flex items-start justify-between gap-4"
-    :data-group-setting-row="setting"
+    class="flex justify-between gap-4"
+    :class="field ? 'flex-col gap-y-2 sm:flex-row sm:items-start' : 'items-start'"
+    :data-setting-row="setting"
   >
     <div class="min-w-0">
       <div class="flex items-center gap-2">
-        <span class="text-sm font-medium text-primary-900 dark:text-dark-50">{{
-          label
-        }}</span>
+        <label
+          v-if="labelFor"
+          :for="labelFor"
+          class="text-sm font-medium text-primary-900 dark:text-dark-50"
+        >{{ label }}</label>
+        <span
+          v-else
+          class="text-sm font-medium text-primary-900 dark:text-dark-50"
+        >{{ label }}</span>
         <HelpTooltip
           v-if="help"
           :content="help"
@@ -28,33 +35,27 @@
         </HelpTooltip>
       </div>
       <p v-if="hint" :id="`${id}-hint`" class="input-hint">{{ hint }}</p>
+      <slot name="hint" />
     </div>
-    <Toggle
-      :id="id"
-      :model-value="modelValue"
-      :aria-label="label"
-      :aria-describedby="hint ? `${id}-hint` : undefined"
-      :data-group-setting="setting"
-      size="md"
-      class="shrink-0"
-      @update:model-value="emit('update:modelValue', $event)"
-    />
+    <div class="shrink-0" :class="field && 'w-full sm:w-56'">
+      <slot />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
-import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
 
-// 所有布尔设置共用标签、说明和开关的位置，展开内容由调用方紧随其后放置。
+// 设置行统一左侧标题说明、右侧控件的布局；field 用于右侧放选择框或输入框的行，窄屏改为上下排列。
 defineProps<{
   id: string
   label: string
-  modelValue: boolean
   hint?: string
   help?: string
   setting?: string
+  /** 标题关联的控件 id，选择框和输入框行传入以便点击标题聚焦。 */
+  labelFor?: string
+  field?: boolean
 }>()
-const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 </script>

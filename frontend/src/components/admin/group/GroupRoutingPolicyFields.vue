@@ -1,9 +1,9 @@
 <template>
   <div
-    class="group-settings-section space-y-6"
+    class="settings-section space-y-6"
     data-group-field="routing-policy"
   >
-    <GroupFormSection>
+    <SettingsSection>
       <ModelMappingEditor
         :model-value="mappingRows"
         :title="t('admin.groups.routingPolicy.mapping')"
@@ -28,9 +28,9 @@
           />
         </template>
       </ModelMappingEditor>
-    </GroupFormSection>
-    <GroupFormSection>
-      <GroupSettingRow
+    </SettingsSection>
+    <SettingsSection>
+      <SettingToggleRow
         :id="`${idPrefix}-restrict-models`"
         :model-value="value.restrict_models"
         :label="t('admin.groups.routingPolicy.restrict')"
@@ -61,7 +61,7 @@
           @update:models="update({ allowed_models: $event })"
         />
       </template>
-    </GroupFormSection>
+    </SettingsSection>
   </div>
 </template>
 <script setup lang="ts">
@@ -69,8 +69,8 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { GroupRoutingPolicy } from '@/types'
 import Select from '@/components/common/Select.vue'
-import GroupSettingRow from './GroupSettingRow.vue'
-import GroupFormSection from './GroupFormSection.vue'
+import SettingToggleRow from '@/components/common/settings/SettingToggleRow.vue'
+import SettingsSection from '@/components/common/settings/SettingsSection.vue'
 import ModelMappingEditor from '@/components/common/ModelMappingEditor.vue'
 import ModelTagInput from '@/components/admin/pricing/ModelTagInput.vue'
 import { findModelConflict } from '@/components/admin/pricing/types'

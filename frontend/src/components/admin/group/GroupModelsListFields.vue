@@ -1,6 +1,6 @@
 <template>
-  <GroupFormSection>
-    <GroupSettingRow
+  <SettingsSection>
+    <SettingToggleRow
       :id="`${idPrefix}-models-list`"
       :model-value="state.enabled"
       :label="t('admin.groups.modelsList.title', { endpoint: '/v1/models' })"
@@ -90,7 +90,7 @@
         </div>
       </div>
     </div>
-  </GroupFormSection>
+  </SettingsSection>
 </template>
 
 <script setup lang="ts">
@@ -98,8 +98,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
-import GroupSettingRow from './GroupSettingRow.vue'
-import GroupFormSection from './GroupFormSection.vue'
+import SettingToggleRow from '@/components/common/settings/SettingToggleRow.vue'
+import SettingsSection from '@/components/common/settings/SettingsSection.vue'
 import type { ModelsListState } from '@/views/admin/groupsModelsList'
 
 const props = defineProps<{

@@ -192,6 +192,38 @@ const GRADIENT_SUBTEXT: Record<Platform, string> = {
 }
 const GRADIENT_SUBTEXT_DEFAULT = 'text-primary-200'
 
+// ── Choice card (selected border + soft bg + ring) ──────────────────
+const CHOICE_SELECTED: Record<Platform, string> = {
+  anthropic: 'border-orange-500 bg-orange-50 ring-1 ring-orange-500 dark:border-orange-500/60 dark:bg-orange-500/10 dark:ring-orange-500/60',
+  openai: 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500 dark:border-emerald-500/60 dark:bg-emerald-500/10 dark:ring-emerald-500/60',
+  antigravity: 'border-purple-500 bg-purple-50 ring-1 ring-purple-500 dark:border-purple-500/60 dark:bg-purple-500/10 dark:ring-purple-500/60',
+  gemini: 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:border-blue-500/60 dark:bg-blue-500/10 dark:ring-blue-500/60',
+  qoder: 'border-cyan-500 bg-cyan-50 ring-1 ring-cyan-500 dark:border-cyan-500/60 dark:bg-cyan-500/10 dark:ring-cyan-500/60',
+  grok: 'border-zinc-800 bg-zinc-50 ring-1 ring-zinc-800 dark:border-zinc-400/60 dark:bg-zinc-500/10 dark:ring-zinc-400/60',
+  kimi: 'border-pink-500 bg-pink-50 ring-1 ring-pink-500 dark:border-pink-500/60 dark:bg-pink-500/10 dark:ring-pink-500/60',
+  zhipu: 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500 dark:border-indigo-500/60 dark:bg-indigo-500/10 dark:ring-indigo-500/60',
+  deepseek: 'border-teal-500 bg-teal-50 ring-1 ring-teal-500 dark:border-teal-500/60 dark:bg-teal-500/10 dark:ring-teal-500/60',
+  minimax: 'border-red-500 bg-red-50 ring-1 ring-red-500 dark:border-red-500/60 dark:bg-red-500/10 dark:ring-red-500/60',
+  opencode_go: 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:border-blue-500/60 dark:bg-blue-500/10 dark:ring-blue-500/60',
+}
+const CHOICE_SELECTED_DEFAULT = 'border-primary-500 bg-primary-50 ring-1 ring-primary-500 dark:border-primary-500/60 dark:bg-primary-500/8 dark:ring-primary-500/60'
+
+// ── Solid icon tile (no hover, for selected choice icons) ───────────
+const SOLID: Record<Platform, string> = {
+  anthropic: 'bg-orange-500 text-white',
+  openai: 'bg-emerald-600 text-white',
+  antigravity: 'bg-purple-500 text-white',
+  gemini: 'bg-blue-500 text-white',
+  qoder: 'bg-cyan-600 text-white',
+  grok: 'bg-zinc-800 text-white dark:bg-zinc-600',
+  kimi: 'bg-pink-500 text-white',
+  zhipu: 'bg-indigo-500 text-white',
+  deepseek: 'bg-teal-500 text-white',
+  minimax: 'bg-red-500 text-white',
+  opencode_go: 'bg-blue-500 text-white',
+}
+const SOLID_DEFAULT = 'bg-primary-600 text-white'
+
 // ── Public API ──────────────────────────────────────────────────────
 
 function isPlatform(p: string): p is Platform {
@@ -272,4 +304,12 @@ export function platformLabel(p: string): string {
 // 用户用量页面沿用 Claude 产品名，其余平台统一使用品牌规定的大小写。
 export function usagePlatformLabel(p: string): string {
   return p === 'anthropic' ? 'Claude' : platformLabel(p)
+}
+
+export function platformChoiceSelectedClass(p: string): string {
+  return isPlatform(p) ? CHOICE_SELECTED[p] : CHOICE_SELECTED_DEFAULT
+}
+
+export function platformSolidClass(p: string): string {
+  return isPlatform(p) ? SOLID[p] : SOLID_DEFAULT
 }

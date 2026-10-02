@@ -164,7 +164,7 @@ POST /api/v1/creative/runs/{id}/outputs/{index}/ack
 
 提供商批量删除使用 `POST /api/v1/admin/providers/batch-delete`，请求体为 `provider_ids`。服务端先去除非正数和重复 ID，再以最多 5 路并发执行删除；同批选择父提供商及其影子提供商时只删除根提供商一次，并将级联影响映射回逐提供商结果。响应返回稳定排序的 `success_ids`、`failed_ids` 和错误明细，单项失败不会取消其它提供商。管理端“全选筛选结果”先以同一筛选快照分页读取轻量 ID，任何分页缺失或重复都保留原选择，不得提交部分集合。
 
-管理员对提供商的连接测试使用 `POST /api/v1/admin/providers/:id/test`，响应为 SSE。请求体可包含 `model_id`、`prompt`、OpenAI 专用的 `mode`、API Key 文字测试的 `protocol=responses|chat_completions`，以及 `test_type`（`text` 或 `image`）；历史客户端也可用 `test_mode` 作为类型字段别名。管理端必须显式发送 `test_type`：普通 `text` 始终走文字测试路径并使用自定义提示词，`image` 始终走图片测试路径并使用自定义提示词；OpenAI 的 `compact` 与 `legacy_compact` 是固定载荷的连接测试，不使用自定义提示词且不会改写提供商能力开关。
+管理员对提供商的连接测试使用 `POST /api/v1/admin/providers/:id/test`，响应为 SSE。请求体可包含 `model_id`、`prompt`、OpenAI 专用的 `mode`、文字测试的 `protocol`（OpenAI API Key 可选 `responses|chat_completions`，OAuth 只接受 `responses`；Kimi、Zhipu、DeepSeek 可选已启用的 `chat_completions|anthropic|responses`；其他平台只有一个测试端点，携带该字段会被拒绝），以及 `test_type`（`text` 或 `image`）；历史客户端也可用 `test_mode` 作为类型字段别名。管理端必须显式发送 `test_type`：普通 `text` 始终走文字测试路径并使用自定义提示词，`image` 始终走图片测试路径并使用自定义提示词；OpenAI 的 `compact` 与 `legacy_compact` 是固定载荷的连接测试，不使用自定义提示词且不会改写提供商能力开关。
 
 成功与失败均不返回或持久化能力探测状态，但测试仍按现有流程记录认证错误、限流和额度观测。服务端只对未携带该字段的旧调用保留按模型名兼容判断。图片测试结果以 SSE `image` 事件返回，文字结果以 `content` 事件返回；不具备对应平台图片端点的提供商返回流式错误事件。
 

@@ -211,7 +211,7 @@ OpenAI OAuth 任务已接通 Codex：Image 1.5、Image 2、Image 2.5 走原生�
 
 执行器按本次实际提供商的平台直接构造上游 HTTP 请求，不经过本地 HTTP 回环；执行超时为 `creative.execute_timeout_seconds`（默认 300 秒）。单张输出不超过 32 MiB，同一任务内按 sha256 去重重复输出：
 
-- `openai` API Key：`generate` 走 `/v1/images/generations`（JSON）；`edit`/`inpaint` 走 `/v1/images/edits`（multipart，多源图 + mask）。内部固定 `output_format: "png"`、单张 `n=1`；仅 DALL-E 路径发送 `response_format: "b64_json"`，GPT Image 路径省略该字段。
+- `openai` API Key：`generate` 走 `/v1/images/generations`（JSON）；`edit`/`inpaint` 走 `/v1/images/edits`（multipart，多源图 + mask）。内部固定 `output_format: "png"`、单张 `n=1`；仅 DALL-E 路径发送 `response_format: "b64_json"`，GPT Image 路径省略该字段。响应优先取可解码的 Base64，否则下载上游返回的 URL 图片，三种操作共用此交付逻辑。URL 下载最多尝试三次，失败返回 `IMAGE_DOWNLOAD_FAILED`；无可解析图片返回 `INVALID_IMAGE_RESPONSE`。两类错误均结束任务、释放预占，不重新请求生图；得到可交付图片后继续沿用既有存储与结算流程。下载限制及凭据隔离见 [OpenAI 上游](../interfaces/openai_upstream.md#images_url_backfill)。
 - `grok`：`generate` 走 `/v1/images/generations`；`edit` 走 `/v1/images/edits` 的 JSON 契约，单张源图放入 `image: {type: "image_url", url: "data:image/...;base64,..."}`，多张放入 `images` 数组，最多 3 张；两条路径都透传分辨率、比例和 `grok-imagine-image-2.0` 的质量，并固定请求单张 `n=1` 与 `response_format: "b64_json"`；`inpaint` 直接拒绝。
 - `gemini`：`generate` 与普通参考图 `edit` 统一使用原生 `generateContent`，prompt 与源图以 inlineData 放入 parts，不发送独立 mask；图片尺寸与比例位于 `generationConfig.imageConfig`，支持的 3.1 图片模型可附加 `generationConfig.thinkingConfig`，`includeThoughts` 固定为 false；执行器取最后一个图片 part 作为最终输出。凭据按提供商类型选择：API Key 提供商用 `x-goog-api-key`，Vertex 服务账号与 OAuth 用 Bearer token。
 

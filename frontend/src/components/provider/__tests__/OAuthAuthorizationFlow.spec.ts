@@ -43,10 +43,10 @@ describe('OAuthAuthorizationFlow', () => {
       }
     })
 
-    const patRadio = wrapper.find('input[value="codex_pat"]')
-    expect(patRadio.exists()).toBe(true)
+    const patOption = wrapper.find('[data-testid="oauth-method-codex_pat"]')
+    expect(patOption.exists()).toBe(true)
 
-    await patRadio.setValue(true)
+    await patOption.trigger('click')
     const tokenInput = wrapper.find('input[type="password"]')
     await tokenInput.setValue(' at-test-token ')
     await wrapper.find('button.btn-primary').trigger('click')
@@ -69,14 +69,33 @@ describe('OAuthAuthorizationFlow', () => {
       }
     })
 
-    const ssoRadio = wrapper.find('input[value="sso_cookie"]')
-    expect(ssoRadio.exists()).toBe(true)
+    const ssoOption = wrapper.find('[data-testid="oauth-method-sso_cookie"]')
+    expect(ssoOption.exists()).toBe(true)
 
-    await ssoRadio.setValue(true)
+    await ssoOption.trigger('click')
     await wrapper.find('textarea').setValue('  sso-one\nsso-two  ')
     await wrapper.find('button.btn-primary').trigger('click')
 
     expect(wrapper.emitted('update:inputMethod')?.at(-1)).toEqual(['sso_cookie'])
     expect(wrapper.emitted('import-sso')).toEqual([['sso-one\nsso-two']])
+  })
+
+  it('授权方式超过四种时改用下拉框', () => {
+    const wrapper = mount(OAuthAuthorizationFlow, {
+      props: {
+        addMethod: 'oauth',
+        platform: 'openai',
+        showCookieOption: false,
+        showRefreshTokenOption: true,
+        showMobileRefreshTokenOption: true,
+        showCodexSessionImportOption: true,
+        showAgentIdentityOption: true,
+        showCodexPatOption: true
+      },
+      global: { stubs: { Icon: true } }
+    })
+
+    expect(wrapper.find('[data-testid="oauth-method-select"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="oauth-method-manual"]').exists()).toBe(false)
   })
 })

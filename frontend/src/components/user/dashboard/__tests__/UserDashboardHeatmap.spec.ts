@@ -85,6 +85,26 @@ const todayTrendPoint = (date: string) => ({
 })
 
 describe('UserDashboardHeatmap', () => {
+  it('跨夏令时的凌晨刷新仍包含今天的用量和点击入口', async () => {
+    // Europe/Berlin 的三年日期遍历会经过凌晨 02:30 不存在的日子。
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 2, 2, 30, 0))
+    let wrapper: Awaited<ReturnType<typeof mountHeatmap>> | undefined
+    try {
+      const today = formatDateLocalInput(new Date())
+      vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue({ ...emptyTrend, trend: [todayTrendPoint(today)] })
+      wrapper = await mountHeatmap()
+      const cell = wrapper.get(`[data-date="${today}"]`)
+      expect(cell.classes()).toContain('bg-green-700')
+      expect(cell.classes()).not.toContain('invisible')
+      await cell.trigger('click')
+      expect(selectedDays).toContain(today)
+    } finally {
+      wrapper?.unmount()
+      vi.useRealTimers()
+    }
+  })
+
   beforeEach(() => {
     vi.mocked(usageAPI.getDashboardTrend).mockReset()
     selectedDays.length = 0

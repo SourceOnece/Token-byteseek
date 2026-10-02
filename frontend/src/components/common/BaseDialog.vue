@@ -19,10 +19,19 @@
           @click.stop
         >
           <!-- 头部 -->
-          <div class="modal-header min-w-0 max-w-full">
-            <h3 :id="dialogId" class="modal-title min-w-0 break-words">
-              {{ title }}
-            </h3>
+          <div class="modal-header min-w-0 max-w-full gap-3">
+            <div class="flex min-w-0 flex-1 items-center gap-3">
+              <slot name="header-icon"></slot>
+              <div class="min-w-0">
+                <h3 :id="dialogId" class="modal-title min-w-0 break-words">
+                  {{ title }}
+                </h3>
+                <p v-if="subtitle" class="mt-0.5 truncate text-xs text-gray-500 dark:text-dark-400">
+                  {{ subtitle }}
+                </p>
+              </div>
+            </div>
+            <slot name="header-actions"></slot>
             <button
               v-if="showCloseButton"
               @click="emit('close')"
@@ -37,7 +46,7 @@
           <div
             ref="modalBodyRef"
             class="modal-body min-h-0 min-w-0 max-w-full"
-            :class="{ 'modal-body-contained': !bodyScroll }"
+            :class="{ 'modal-body-contained': !bodyScroll, 'modal-body-flush': flush }"
           >
             <slot></slot>
           </div>
@@ -75,8 +84,12 @@ type DialogWidth = 'narrow' | 'normal' | 'wide' | 'extra-wide' | 'full'
 interface Props {
   show: boolean
   title: string
+  /** 标题下方的一行说明，超出时截断。 */
+  subtitle?: string
   width?: DialogWidth
   bodyScroll?: boolean
+  /** 去掉内容区内边距，供需要贴边分栏的工作区弹窗使用。 */
+  flush?: boolean
   closeOnEscape?: boolean
   closeOnClickOutside?: boolean
   showCloseButton?: boolean
@@ -91,6 +104,7 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
   width: 'normal',
   bodyScroll: true,
+  flush: false,
   closeOnEscape: true,
   closeOnClickOutside: false,
   showCloseButton: true,
@@ -157,5 +171,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* 贴边分栏由内容自行留白，外壳不再加内边距。 */
+.modal-body-flush {
+  padding: 0;
 }
 </style>

@@ -59,6 +59,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Icon from '@/components/icons/Icon.vue'
+import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import type { ProviderPlatform } from '@/types'
 
 interface Props {

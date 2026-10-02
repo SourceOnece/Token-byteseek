@@ -257,6 +257,30 @@ func TestCreativeWorkerRetryableError(t *testing.T) {
 	require.Equal(t, 1, f.billing.releaseN)
 }
 
+// TestCreativeWorkerImageResultFailure 验证结果读取失败结束任务，重复处理不会再次生成。
+func TestCreativeWorkerImageResultFailure(t *testing.T) {
+	for _, code := range []string{"IMAGE_DOWNLOAD_FAILED", "INVALID_IMAGE_RESPONSE"} {
+		t.Run(code, func(t *testing.T) {
+			f := newCreativeWorkerFixture()
+			runID := "crun_image_result_failure"
+			seedCreativeRun(f, runID, true)
+			f.exec.err = creative.CreativeImageResultError(code, "creative image result failed")
+			for i := 0; i < 2; i++ {
+				result, err := f.worker.Process(context.Background(), runID)
+				require.NoError(t, err)
+				require.True(t, result.Terminal)
+				require.Zero(t, result.RequeueAfter)
+			}
+			run := f.repo.runs[runID]
+			require.Equal(t, creative.CreativeRunStatusFailed, run.Status)
+			require.Equal(t, code, *run.ErrorCode)
+			require.Equal(t, 1, f.exec.calls)
+			require.Zero(t, run.AttemptCount)
+			require.Equal(t, 1, f.billing.releaseN)
+		})
+	}
+}
+
 func TestCreativeWorkerNonRetryableError(t *testing.T) {
 	f := newCreativeWorkerFixture()
 	runID := "crun_workernonretry01"

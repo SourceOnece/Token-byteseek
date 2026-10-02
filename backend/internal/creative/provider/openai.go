@@ -10,14 +10,14 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/creative"
-	"github.com/TokenFlux/TokenRouter/internal/upstream" // ExecuteOpenAI 执行 OpenAI 平台任务：generate 走 /v1/images/generations（JSON），
-
-	// edit/inpaint 走 /v1/images/edits（multipart，多源图 + mask）。
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/tidwall/gjson"
 )
 
+// ExecuteOpenAI 按操作调用 Images 生成或编辑接口，并读取 Base64 或 URL 图片结果。
 func (e *Target) ExecuteOpenAI(ctx context.Context, run creative.CreativeRun, payload creative.CreativeRunPayload, upstreamModel string) ([]creative.CreativeOutput, error) {
 	if e.OpenAI == nil {
 		return nil, errors.New("creative openai gateway is not configured")
@@ -62,15 +62,54 @@ func (e *Target) ExecuteOpenAI(ctx context.Context, run creative.CreativeRun, pa
 	if err != nil {
 		return nil, creative.CreativeHTTPStatusError(0, err.Error())
 	}
-	defer func() { _ = resp.Body.Close() }()
 	respBody, err := ReadCreativeUpstreamBody(resp.Body, 64<<20)
+	// 先释放生图连接的在途占用，避免图片下载等待同一提供商的连接槽位。
+	_ = resp.Body.Close()
 	if err != nil {
 		return nil, creative.CreativeHTTPStatusError(0, err.Error())
 	}
 	if resp.StatusCode >= 400 {
 		return nil, creative.CreativeHTTPStatusError(resp.StatusCode, upstream.ExtractErrorMessage(respBody))
 	}
-	return ParseCreativeOpenAIImageOutputs(respBody)
+	return e.parseOpenAIImageOutputs(ctx, respBody)
+}
+
+// parseOpenAIImageOutputs 优先使用可解码的 Base64，再下载 URL；结果失败不重放生图请求。
+func (e *Target) parseOpenAIImageOutputs(ctx context.Context, body []byte) ([]creative.CreativeOutput, error) {
+	if !gjson.ValidBytes(body) {
+		return nil, creative.CreativeImageResultError("INVALID_IMAGE_RESPONSE", "creative platform returned invalid image response")
+	}
+	if outputs, err := ParseCreativeOpenAIImageOutputs(body); err == nil {
+		return outputs, nil
+	}
+	for _, item := range gjson.GetBytes(body, "data").Array() {
+		rawURL := strings.TrimSpace(item.Get("url").String())
+		if rawURL == "" {
+			continue
+		}
+		if e.OpenAI.FetchImage != nil {
+			for attempt := 0; attempt < 3 && ctx.Err() == nil; attempt++ {
+				encoded, err := e.OpenAI.FetchImage(ctx, rawURL)
+				if err == nil {
+					decoded, decodeErr := DecodeBase64Image(encoded)
+					if decodeErr == nil && len(decoded.Bytes) > 0 {
+						return []creative.CreativeOutput{{Index: 0, Bytes: decoded.Bytes, Mime: decoded.Mime}}, nil
+					}
+				}
+				if attempt < 2 {
+					timer := time.NewTimer(time.Second)
+					select {
+					case <-ctx.Done():
+						timer.Stop()
+					case <-timer.C:
+					}
+				}
+			}
+		}
+		// 下载错误可能包含签名 URL 或内部地址，对外只返回固定消息。
+		return nil, creative.CreativeImageResultError("IMAGE_DOWNLOAD_FAILED", "creative image download failed")
+	}
+	return nil, creative.CreativeImageResultError("INVALID_IMAGE_RESPONSE", "creative platform returned no decodable image output")
 }
 
 func (e *Target) CreativeOpenAIURL(endpoint string) (string, error) { return e.OpenAI.URL(endpoint) }
@@ -159,7 +198,7 @@ func BuildCreativeOpenAIRequestBody(run creative.CreativeRun, payload creative.C
 	return buffer.Bytes(), writer.FormDataContentType(), nil
 }
 
-// CreativeOpenAIUsesResponseFormat 仅对 DALL-E 保留旧版 response_format 参数；GPT Image 固定返回 base64。
+// CreativeOpenAIUsesResponseFormat 仅对 DALL-E 保留旧版 response_format 参数；GPT Image 请求省略该字段。
 func CreativeOpenAIUsesResponseFormat(model string) bool {
 	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(model)), "dall-e")
 }

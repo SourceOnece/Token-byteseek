@@ -3,1820 +3,857 @@
     :show="show"
     :title="t('admin.providers.editProvider')"
     width="wide"
+    :body-scroll="false"
     @close="handleClose"
   >
     <form
       v-if="provider"
       id="edit-provider-form"
+      novalidate
+      class="flex min-h-0 flex-1 flex-col"
       @submit.prevent="handleSubmit"
-      class="space-y-5"
     >
-      <fieldset :disabled="submitting" class="min-w-0 space-y-5">
-      <div>
-        <label class="input-label">{{ t('common.name') }}</label>
-        <input v-model="form.name" type="text" required class="input" data-tour="edit-provider-form-name" />
-      </div>
-      <div>
-        <label class="input-label">{{ t('admin.providers.notes') }}</label>
-        <textarea
-          v-model="form.notes"
-          rows="3"
-          class="input"
-          :placeholder="t('admin.providers.notesPlaceholder')"
-        ></textarea>
-        <p class="input-hint">{{ t('admin.providers.notesHint') }}</p>
-      </div>
-
-      <!-- 编辑站点只改路由上下文，不擅自改写令牌来源。 -->
-      <div v-if="isQoderCosyProvider" class="space-y-2">
-        <label class="input-label">{{ t('admin.providers.qoder.site.label') }}</label>
-        <div class="grid grid-cols-2 gap-2" role="group" :aria-label="t('admin.providers.qoder.site.label')">
-          <button
-            type="button"
-            data-testid="edit-qoder-site-global"
-            :aria-pressed="qoderSite === 'global'"
-            @click="qoderSite = 'global'"
-            :class="[
-              'rounded-control border px-4 py-2 text-sm font-medium transition-colors',
-              qoderSite === 'global'
-                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
-                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-dark-500 dark:bg-dark-700 dark:text-gray-300'
-            ]"
-          >
-            {{ t('admin.providers.qoder.site.global') }}
-          </button>
-          <button
-            type="button"
-            data-testid="edit-qoder-site-cn"
-            :aria-pressed="qoderSite === 'cn'"
-            @click="qoderSite = 'cn'"
-            :class="[
-              'rounded-control border px-4 py-2 text-sm font-medium transition-colors',
-              qoderSite === 'cn'
-                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
-                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-dark-500 dark:bg-dark-700 dark:text-gray-300'
-            ]"
-          >
-            {{ t('admin.providers.qoder.site.cn') }}
-          </button>
-        </div>
-        <p v-if="qoderSiteChanged" class="text-xs text-amber-600 dark:text-amber-400">
-          {{ t('admin.providers.qoder.site.changeWarning') }}
-        </p>
-      </div>
-
-      <!-- API Key fields (only for apikey type) -->
-      <div v-if="provider.type === 'apikey'" class="space-y-4">
-        <div v-if="!isCNApiKeyProvider || editApiProtocol !== 'adaptive'">
-          <label class="input-label">{{ t('admin.providers.baseUrl') }}</label>
-          <input
-            v-model="editBaseUrl"
-            type="text"
-            class="input"
-            data-testid="edit-provider-base-url"
-            :placeholder="
-              provider.platform === 'openai'
-                ? 'https://api.openai.com'
-                : provider.platform === 'gemini'
-                  ? 'https://generativelanguage.googleapis.com'
-                  : provider.platform === 'antigravity'
-                    ? 'https://cloudcode-pa.googleapis.com'
-                    : provider.platform === 'grok'
-                      ? 'https://api.x.ai/v1'
-                      : 'https://api.anthropic.com'
-            "
-          />
-          <p v-if="baseUrlHint" class="input-hint">{{ baseUrlHint }}</p>
-          <GrokBaseUrlPresets
-            v-if="provider.platform === 'grok'"
-            class="mt-2"
-            @select="editBaseUrl = $event"
-          />
-          <CnBaseUrlPresets
-            v-if="isCNApiKeyProvider"
-            class="mt-2"
-            :platform="cnPresetPlatform"
-            :mode="editProviderMode"
-            :protocol="editApiProtocol"
-            :current-url="editBaseUrl"
-            @select="onCnPresetSelect"
-          />
-        </div>
-        <div v-else>
-          <label class="input-label">{{ t('admin.providers.cnProviders.apiProtocol.endpoints') }}</label>
-          <div class="mt-2 space-y-3">
-            <div v-for="item in editAdaptiveProtocolOptions" :key="item.value">
-              <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                {{ t(`admin.providers.cnProviders.apiProtocol.${item.labelKey}`) }}
-              </label>
-              <input v-model="editAdaptiveBaseUrls[item.value]" type="text" class="input" />
+      <!-- 统一保存期间冻结字段，避免普通配置与票据提交读取到不同草稿。 -->
+      <fieldset :disabled="submitting" class="flex min-h-0 min-w-0 flex-1 flex-col">
+      <SettingsTabs
+        ref="tabsRef"
+        id-prefix="edit-provider"
+        :tabs="formTabs"
+        :label="t('admin.providers.tabs.label')"
+      >
+        <template #basic>
+          <SettingsSection :title="t('admin.providers.sections.identity')">
+            <div class="grid gap-4 md:grid-cols-2">
+              <div class="md:col-span-2">
+                <label for="edit-provider-name" class="input-label">{{ t('common.name') }}</label>
+                <input
+                  id="edit-provider-name"
+                  v-model="form.name"
+                  type="text"
+                  required
+                  class="input"
+                  data-tour="edit-provider-form-name"
+                />
+              </div>
+              <div class="md:col-span-2">
+                <label for="edit-provider-notes" class="input-label">{{ t('admin.providers.notes') }}</label>
+                <textarea
+                  id="edit-provider-notes"
+                  v-model="form.notes"
+                  rows="3"
+                  class="input"
+                  :placeholder="t('admin.providers.notesPlaceholder')"
+                ></textarea>
+                <p class="input-hint">{{ t('admin.providers.notesHint') }}</p>
+              </div>
+              <div data-provider-field="status">
+                <label for="edit-provider-status" class="input-label">{{ t('common.status') }}</label>
+                <Select id="edit-provider-status" v-model="form.status" :options="statusOptions" />
+              </div>
+              <div>
+                <label for="edit-provider-expires-at" class="input-label">{{ t('admin.providers.expiresAt') }}</label>
+                <input id="edit-provider-expires-at" v-model="expiresAtInput" type="datetime-local" class="input" />
+                <p class="input-hint">{{ t('admin.providers.expiresAtHint') }}</p>
+              </div>
             </div>
-          </div>
-          <p v-if="!cnSupportsNativeResponses(provider.platform)" class="input-hint">
-            {{ t('admin.providers.cnProviders.apiProtocol.responsesFallbackDesc') }}
-          </p>
-        </div>
-        <!-- 国产供应商提供商模式选择 -->
-        <div v-if="isCNApiKeyProvider">
-          <label class="input-label">{{ t('admin.providers.cnProviders.providerMode.title') }}</label>
-          <div class="mt-2 flex flex-wrap gap-2">
-            <button
-              v-for="opt in cnProviderModeOptions"
-              :key="opt.value"
-              type="button"
-              :class="[
-                'rounded-control border-2 px-3 py-1.5 text-xs transition',
-                editProviderMode === opt.value
-                  ? 'border-primary-500 bg-primary-50 font-medium text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
-                  : 'border-gray-200 text-gray-700 hover:border-gray-400 dark:border-dark-600 dark:text-gray-300 dark:hover:border-dark-500'
-              ]"
-              @click="editProviderMode = opt.value"
-            >
-              {{ t(`admin.accounts.cnProviders.accountMode.${opt.labelKey}`) }}
-            </button>
-          </div>
-          <p class="input-hint">{{ t(`admin.accounts.cnProviders.accountMode.${editProviderMode}Desc`) }}</p>
-          <OpenCodeGoProtocolRulesEditor v-if="provider.platform === 'opencode_go' && editApiProtocol === 'adaptive'" v-model:rows="editOpenCodeRules" :plan="editProviderMode === 'zen' ? 'zen' : 'go'" class="mt-4" />
-        </div>
-        <!-- 智谱团队版 Coding Plan：组织/项目 ID 可选，清空组织 ID 即回到个人额度端点。 -->
-        <div v-if="provider.platform === 'zhipu' && editProviderMode === 'coding'">
-          <div class="flex items-center gap-1">
-            <label class="input-label">{{ t('admin.providers.cnProviders.zhipuTeam.title') }}</label>
-            <HelpTooltip trigger="click" width-class="w-80">
-              <p class="mb-1 font-medium">{{ t('admin.providers.cnProviders.zhipuTeam.help.title') }}</p>
-              <ol class="list-decimal space-y-1 pl-4">
-                <li>{{ t('admin.providers.cnProviders.zhipuTeam.help.step1') }}</li>
-                <li>{{ t('admin.providers.cnProviders.zhipuTeam.help.step2') }}</li>
-                <li>{{ t('admin.providers.cnProviders.zhipuTeam.help.step3') }}</li>
-                <li>{{ t('admin.providers.cnProviders.zhipuTeam.help.step4') }}</li>
-              </ol>
-              <p class="mt-2 break-all rounded-compact bg-black/20 p-1.5 font-mono text-xs leading-relaxed">
-                {{ t('admin.providers.cnProviders.zhipuTeam.help.example') }}
-              </p>
-            </HelpTooltip>
-          </div>
-          <div class="mt-2 grid gap-4 sm:grid-cols-2">
-            <div>
-              <label class="input-label">{{ t('admin.providers.cnProviders.zhipuTeam.organization') }}</label>
-              <input
-                v-model="editZhipuOrganization"
-                type="text"
-                class="input"
-                :placeholder="t('admin.providers.cnProviders.zhipuTeam.organizationPlaceholder')"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.cnProviders.zhipuTeam.project') }}</label>
-              <input
-                v-model="editZhipuProject"
-                type="text"
-                class="input"
-                :placeholder="t('admin.providers.cnProviders.zhipuTeam.projectPlaceholder')"
-              />
-            </div>
-          </div>
-          <p class="input-hint mt-2">{{ t('admin.providers.cnProviders.zhipuTeam.hint') }}</p>
-        </div>
-        <div v-if="provider.platform === 'gemini'">
-          <label class="input-label">{{ t('admin.providers.gemini.connectionSource.label') }}</label>
-          <Select
-            v-model="geminiProviderType"
-            :options="geminiProviderTypeOptions"
-            data-testid="edit-gemini-provider-type"
-          />
-          <p class="input-hint">{{ geminiProviderTypeHint }}</p>
-        </div>
-        <div>
-          <label class="input-label">{{ t('admin.providers.apiKey') }}</label>
-          <input
-            v-model="editApiKey"
-            type="password"
-            class="input font-mono"
-            autocomplete="new-password"
-            data-1p-ignore
-            data-lpignore="true"
-            data-bwignore="true"
-            :placeholder="
-              provider.platform === 'openai'
-                ? 'sk-proj-...'
-                : provider.platform === 'gemini'
-                  ? geminiProviderType === 'third_party'
-                    ? 'api-key-...'
-                    : 'AIza...'
-                  : provider.platform === 'antigravity'
-                    ? 'sk-...'
-                    : provider.platform === 'grok'
-                      ? 'xai-...'
-                      : 'sk-ant-...'
-            "
-          />
-          <p class="input-hint">{{ t('admin.providers.leaveEmptyToKeep') }}</p>
-        </div>
+          </SettingsSection>
 
-        <div v-if="provider.platform === 'gemini' && geminiProviderType === 'official'" data-testid="edit-gemini-tier">
-          <label class="input-label">{{ t('admin.providers.gemini.tier.label') }}</label>
-          <Select
-            v-model="geminiAIStudioTier"
-            :options="geminiAIStudioTierOptions"
-            data-testid="edit-gemini-tier-select"
-          />
-          <p class="input-hint">{{ t('admin.providers.gemini.tier.aiStudioHint') }}</p>
-        </div>
-
-        <!-- Model Restriction Section (不适用于 Antigravity) -->
-        <div v-if="provider.platform !== 'antigravity'" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-          <label class="input-label">{{ t('admin.providers.modelRestriction') }}</label>
-
-            <!-- Mode Toggle -->
-            <div class="mb-4 flex gap-2">
-              <button
-                type="button"
-                @click="modelRestrictionMode = 'whitelist'"
-                :class="[
-                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
-                  modelRestrictionMode === 'whitelist'
-                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                ]"
-              >
-                <Icon name="checkCircle" size="sm" :animate-on-hover="false" class="mr-1.5 inline h-4 w-4" />
-                {{ t('admin.providers.modelWhitelist') }}
-              </button>
-              <button
-                type="button"
-                @click="modelRestrictionMode = 'mapping'"
-                :class="[
-                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
-                  modelRestrictionMode === 'mapping'
-                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                ]"
-              >
-                <Icon name="swap" size="sm" class="mr-1.5 inline h-4 w-4" />
-                {{ t('admin.providers.modelMapping') }}
-              </button>
-            </div>
-            <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.modelRestrictionCombinedHint') }}
-            </p>
-
-            <!-- Whitelist Mode -->
-            <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
-              <ModelWhitelistSelector :model-value="allowedModels" :platform="provider?.platform || 'anthropic'" :provider-id="provider?.id" @update:model-value="setAllowedModels" />
-              <p class="text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.selectedModels', { count: allowedModels.length }) }}
-                <span v-if="allowedModels.length === 0">{{
-                  t('admin.providers.supportsAllModels')
-                }}</span>
-              </p>
-            </div>
-
-            <!-- Mapping Mode -->
-            <ProviderModelMappingEditor
-              v-else
-              v-model="modelMappings"
-              :presets="presetMappings"
-              @add="touchQoderModelRestriction"
-              @remove="touchQoderModelRestriction"
-              @preset="addPresetMapping"
+          <!-- 编辑站点只改路由上下文，不擅自改写令牌来源。 -->
+          <SettingsSection v-if="isQoderCosyProvider" :title="t('admin.providers.qoder.site.label')">
+            <SettingsSegmented
+              v-model="qoderSite"
+              block
+              :aria-label="t('admin.providers.qoder.site.label')"
+              :options="qoderSiteOptions"
             />
-        </div>
+            <SettingsNotice v-if="qoderSiteChanged" tone="warning">
+              {{ t('admin.providers.qoder.site.changeWarning') }}
+            </SettingsNotice>
+          </SettingsSection>
 
-        <!-- Pool Mode Section -->
-        <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-          <div class="mb-3 flex items-center justify-between">
-            <div>
-              <label class="input-label mb-0">{{ t('admin.providers.poolMode') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.poolModeHint') }}
-              </p>
-            </div>
-            <Toggle v-model="poolModeEnabled" variant="flush" off-tone="soft" />
-          </div>
-          <Collapse :open="poolModeEnabled" unmount-on-hide>
-            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-              <p class="text-xs text-blue-700 dark:text-blue-400">
-                <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
-                {{ t('admin.providers.poolModeInfo') }}
-              </p>
-            </div>
-          </Collapse>
-          <Collapse :open="poolModeEnabled" unmount-on-hide>
-            <div class="mt-3">
-              <label class="input-label">{{ t('admin.providers.poolModeRetryCount') }}</label>
-              <input
-                v-model.number="poolModeRetryCount"
-                type="number"
-                min="0"
-                :max="MAX_POOL_MODE_RETRY_COUNT"
-                step="1"
-                class="input"
-              />
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{
-                  t('admin.providers.poolModeRetryCountHint', {
-                    default: DEFAULT_POOL_MODE_RETRY_COUNT,
-                    max: MAX_POOL_MODE_RETRY_COUNT
-                  })
-                }}
-              </p>
-            </div>
-          </Collapse>
-          <Collapse :open="poolModeEnabled" unmount-on-hide>
-            <div class="mt-3">
-              <label class="input-label">{{ t('admin.providers.poolModeRetryStatusCodes') }}</label>
-              <input
-                v-model="poolModeRetryStatusCodesInput"
-                type="text"
-                class="input"
-                :placeholder="DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ')"
-              />
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.poolModeRetryStatusCodesHint', { default: DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ') }) }}
-              </p>
-            </div>
-          </Collapse>
-        </div>
-
-        <!-- 自定义错误码区域 -->
-        <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-          <div class="mb-3 flex items-center justify-between">
-            <div>
-              <label class="input-label mb-0">{{ t('admin.providers.customErrorCodes') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.customErrorCodesHint') }}
-              </p>
-            </div>
-            <Toggle v-model="customErrorCodesEnabled" variant="flush" off-tone="soft" />
-          </div>
-
-          <Collapse :open="customErrorCodesEnabled" unmount-on-hide>
-            <div class="space-y-3">
-              <div class="rounded-control bg-amber-50 p-3 dark:bg-amber-900/20">
-                <p class="text-xs text-amber-700 dark:text-amber-400">
-                  <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
-                  {{ t('admin.providers.customErrorCodesWarning') }}
+          <SettingsSection v-if="showCredentialsSection" :title="t('admin.providers.sections.credentials')">
+            <!-- API Key 账号 -->
+            <template v-if="provider.type === 'apikey'">
+              <!-- 国产供应商提供商模式 -->
+              <div v-if="isCNApiKeyProvider">
+                <span class="input-label">{{ t('admin.providers.cnProviders.providerMode.title') }}</span>
+                <SettingsSegmented
+                  v-model="editProviderMode"
+                  :aria-label="t('admin.providers.cnProviders.providerMode.title')"
+                  :options="cnProviderModeSegmentOptions"
+                />
+                <p class="input-hint">{{ t(`admin.providers.cnProviders.providerMode.${editProviderMode}Desc`) }}</p>
+                <OpenCodeGoProtocolRulesEditor
+                  v-if="provider.platform === 'opencode_go' && editApiProtocol === 'adaptive'"
+                  v-model:rows="editOpenCodeRules"
+                  :plan="editProviderMode === 'zen' ? 'zen' : 'go'"
+                />
+              </div>
+              <div v-if="provider.platform === 'gemini'">
+                <label for="edit-gemini-provider-type" class="input-label">{{ t('admin.providers.gemini.connectionSource.label') }}</label>
+                <Select
+                  id="edit-gemini-provider-type"
+                  v-model="geminiProviderType"
+                  :options="geminiProviderTypeOptions"
+                  data-testid="edit-gemini-provider-type"
+                />
+                <p class="input-hint">{{ geminiProviderTypeHint }}</p>
+              </div>
+              <div v-if="!isCNApiKeyProvider || editApiProtocol !== 'adaptive'" data-provider-field="base-url">
+                <label for="edit-provider-base-url" class="input-label">{{ t('admin.providers.baseUrl') }}</label>
+                <input
+                  id="edit-provider-base-url"
+                  v-model="editBaseUrl"
+                  type="text"
+                  class="input"
+                  data-testid="edit-provider-base-url"
+                  :placeholder="apiKeyBaseUrlPlaceholder"
+                />
+                <p v-if="baseUrlHint" class="input-hint">{{ baseUrlHint }}</p>
+                <GrokBaseUrlPresets
+                  v-if="provider.platform === 'grok'"
+                  class="mt-2"
+                  @select="editBaseUrl = $event"
+                />
+                <CnBaseUrlPresets
+                  v-if="isCNApiKeyProvider"
+                  class="mt-2"
+                  :platform="cnPresetPlatform"
+                  :mode="editProviderMode"
+                  :protocol="editApiProtocol"
+                  :current-url="editBaseUrl"
+                  @select="onCnPresetSelect"
+                />
+              </div>
+              <div v-else class="space-y-4">
+                <p class="input-label mb-0">{{ t('admin.providers.cnProviders.apiProtocol.endpoints') }}</p>
+                <div v-for="item in editAdaptiveProtocolOptions" :key="item.value">
+                  <label :for="`edit-provider-endpoint-${item.value}`" class="input-label">
+                    {{ t(`admin.providers.cnProviders.apiProtocol.${item.labelKey}`) }}
+                  </label>
+                  <input
+                    :id="`edit-provider-endpoint-${item.value}`"
+                    v-model="editAdaptiveBaseUrls[item.value]"
+                    type="text"
+                    class="input"
+                  />
+                </div>
+                <p v-if="!cnSupportsNativeResponses(provider.platform)" class="input-hint">
+                  {{ t('admin.providers.cnProviders.apiProtocol.responsesFallbackDesc') }}
                 </p>
               </div>
-
-              <!-- 错误码快捷按钮 -->
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="code in commonErrorCodes"
-                  :key="code.value"
-                  type="button"
-                  @click="toggleErrorCode(code.value)"
-                  :class="[
-                    'rounded-control px-3 py-1.5 text-sm font-medium transition-colors',
-                    selectedErrorCodes.includes(code.value)
-                      ? 'bg-red-100 text-red-700 ring-1 ring-red-500 dark:bg-red-900/30 dark:text-red-400'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                  ]"
-                >
-                  {{ code.value }} {{ code.label }}
-                </button>
+              <!-- 智谱团队版 Coding Plan：组织/项目 ID 可选，清空组织 ID 即回到个人额度端点。 -->
+              <div v-if="provider.platform === 'zhipu' && editProviderMode === 'coding'" class="space-y-2">
+                <div class="flex items-center gap-1">
+                  <span class="text-sm font-medium text-primary-900 dark:text-dark-50">{{ t('admin.providers.cnProviders.zhipuTeam.title') }}</span>
+                  <HelpTooltip trigger="click" width-class="w-80">
+                    <p class="mb-1 font-medium">{{ t('admin.providers.cnProviders.zhipuTeam.help.title') }}</p>
+                    <ol class="list-decimal space-y-1 pl-4">
+                      <li>{{ t('admin.providers.cnProviders.zhipuTeam.help.step1') }}</li>
+                      <li>{{ t('admin.providers.cnProviders.zhipuTeam.help.step2') }}</li>
+                      <li>{{ t('admin.providers.cnProviders.zhipuTeam.help.step3') }}</li>
+                      <li>{{ t('admin.providers.cnProviders.zhipuTeam.help.step4') }}</li>
+                    </ol>
+                    <p class="mt-2 break-all rounded-compact bg-black/20 p-1.5 font-mono text-xs leading-relaxed">
+                      {{ t('admin.providers.cnProviders.zhipuTeam.help.example') }}
+                    </p>
+                  </HelpTooltip>
+                </div>
+                <div class="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label for="edit-zhipu-organization" class="input-label">{{ t('admin.providers.cnProviders.zhipuTeam.organization') }}</label>
+                    <input
+                      id="edit-zhipu-organization"
+                      v-model="editZhipuOrganization"
+                      type="text"
+                      class="input"
+                      :placeholder="t('admin.providers.cnProviders.zhipuTeam.organizationPlaceholder')"
+                    />
+                  </div>
+                  <div>
+                    <label for="edit-zhipu-project" class="input-label">{{ t('admin.providers.cnProviders.zhipuTeam.project') }}</label>
+                    <input
+                      id="edit-zhipu-project"
+                      v-model="editZhipuProject"
+                      type="text"
+                      class="input"
+                      :placeholder="t('admin.providers.cnProviders.zhipuTeam.projectPlaceholder')"
+                    />
+                  </div>
+                </div>
+                <p class="input-hint">{{ t('admin.providers.cnProviders.zhipuTeam.hint') }}</p>
               </div>
+              <div class="grid gap-4 md:grid-cols-2">
+                <div data-provider-field="api-key" :class="{ 'md:col-span-2': !showGeminiTier }">
+                  <label for="edit-provider-api-key" class="input-label">{{ t('admin.providers.apiKey') }}</label>
+                  <input
+                    id="edit-provider-api-key"
+                    v-model="editApiKey"
+                    type="password"
+                    class="input font-mono"
+                    autocomplete="new-password"
+                    data-1p-ignore
+                    data-lpignore="true"
+                    data-bwignore="true"
+                    :placeholder="apiKeyPlaceholder"
+                  />
+                  <p class="input-hint">{{ t('admin.providers.leaveEmptyToKeep') }}</p>
+                </div>
+                <div v-if="showGeminiTier" data-testid="edit-gemini-tier">
+                  <label for="edit-gemini-tier" class="input-label">{{ t('admin.providers.gemini.tier.label') }}</label>
+                  <Select
+                    id="edit-gemini-tier"
+                    v-model="geminiAIStudioTier"
+                    :options="geminiAIStudioTierOptions"
+                    data-testid="edit-gemini-tier-select"
+                  />
+                  <p class="input-hint">{{ t('admin.providers.gemini.tier.aiStudioHint') }}</p>
+                </div>
+              </div>
+            </template>
 
-              <!-- 手动输入 -->
-              <div class="flex items-center gap-2">
+            <!-- 上游中转账号 -->
+            <div v-if="provider.type === 'upstream'" class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label for="edit-upstream-base-url" class="input-label">{{ t('admin.providers.upstream.baseUrl') }}</label>
                 <input
-                  v-model.number="customErrorCodeInput"
-                  type="number"
-                  min="100"
-                  max="599"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.enterErrorCode')"
-                  @keyup.enter="addCustomErrorCode"
+                  id="edit-upstream-base-url"
+                  v-model="editBaseUrl"
+                  type="text"
+                  class="input"
+                  placeholder="https://cloudcode-pa.googleapis.com"
                 />
-                <button type="button" @click="addCustomErrorCode" class="btn btn-secondary px-3">
-                  <Icon name="plus" size="sm" class="h-4 w-4" />
-                </button>
+                <p class="input-hint">{{ t('admin.providers.upstream.baseUrlHint') }}</p>
               </div>
-
-              <!-- 已选错误码汇总 -->
-              <div class="flex flex-wrap gap-1.5">
-                <span
-                  v-for="code in selectedErrorCodes.sort((a, b) => a - b)"
-                  :key="code"
-                  class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                >
-                  {{ code }}
-                  <button
-                    type="button"
-                    @click="removeErrorCode(code)"
-                    class="hover:text-red-900 dark:hover:text-red-300"
-                  >
-                    <Icon name="x" size="sm" :stroke-width="2" />
-                  </button>
-                </span>
-                <span v-if="selectedErrorCodes.length === 0" class="text-xs text-gray-400">
-                  {{ t('admin.providers.noneSelectedUsesDefault') }}
-                </span>
+              <div>
+                <label for="edit-upstream-api-key" class="input-label">{{ t('admin.providers.upstream.apiKey') }}</label>
+                <input
+                  id="edit-upstream-api-key"
+                  v-model="editApiKey"
+                  type="password"
+                  class="input font-mono"
+                  placeholder="sk-..."
+                />
+                <p class="input-hint">{{ t('admin.providers.leaveEmptyToKeep') }}</p>
               </div>
             </div>
-          </Collapse>
-        </div>
 
-      </div>
-
-      <!-- Grok OAuth 客户端工具提示缓存开关。 -->
-      <div
-        v-if="provider.platform === 'grok' && provider.type === 'oauth'"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between gap-4">
-          <div class="min-w-0">
-            <label class="input-label mb-0">{{ t('admin.providers.grokClientToolCache.title') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.grokClientToolCache.hint') }}
-            </p>
-          </div>
-          <Toggle
-            v-model="grokClientToolCacheEnabled"
-            data-testid="grok-client-tool-cache-toggle"
-            :aria-label="t('admin.providers.grokClientToolCache.title')"
-          />
-        </div>
-      </div>
-
-      <!-- Grok OAuth 自定义上游地址（仅改写转发端点，OAuth 授权与刷新不受影响）。 -->
-      <div
-        v-if="provider.platform === 'grok' && provider.type === 'oauth'"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="mb-3 flex items-center justify-between">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.providers.grokCustomBaseUrl.title') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.grokCustomBaseUrl.hint') }}
-            </p>
-          </div>
-          <Toggle v-model="grokOAuthCustomBaseUrlEnabled" variant="flush" off-tone="soft" data-testid="grok-custom-base-url-toggle" />
-        </div>
-        <Collapse :open="grokOAuthCustomBaseUrlEnabled" unmount-on-hide>
-          <div class="space-y-2">
-            <input
-              v-model="grokOAuthBaseUrl"
-              type="text"
-              class="input"
-              data-testid="grok-custom-base-url-input"
-              :placeholder="t('admin.providers.grokCustomBaseUrl.placeholder')"
-            />
-            <GrokBaseUrlPresets @select="grokOAuthBaseUrl = $event" />
-          </div>
-        </Collapse>
-      </div>
-
-      <!-- 请求头覆写区域（支持的平台 API Key 与 Grok OAuth） -->
-      <div v-if="headerOverrideCapable" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.providers.headerOverride.title') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.headerOverride.hint') }}
-            </p>
-          </div>
-          <Toggle v-model="headerOverrideEnabled" variant="flush" off-tone="soft" />
-        </div>
-
-        <Collapse :open="headerOverrideEnabled" unmount-on-hide>
-          <div class="space-y-3">
-            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-              <p class="text-xs text-blue-700 dark:text-blue-400">
-                <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
-                {{ t('admin.providers.headerOverride.info') }}
-              </p>
+            <!-- Vertex Service Account -->
+            <div v-if="isServiceAccountProvider" class="grid gap-4 md:grid-cols-2">
+              <div data-provider-field="vertex-project-id">
+                <label for="edit-vertex-project-id" class="input-label">{{ t('admin.providers.vertexProjectId') }}</label>
+                <input
+                  id="edit-vertex-project-id"
+                  v-model="editVertexProjectId"
+                  type="text"
+                  class="input font-mono"
+                  readonly
+                  :placeholder="t('admin.providers.vertexProjectIdPlaceholder')"
+                />
+                <p class="input-hint">{{ t('admin.providers.vertexSaJsonEditHint') }}</p>
+              </div>
+              <div data-provider-field="vertex-location">
+                <label for="edit-vertex-location" class="input-label">{{ t('admin.providers.vertexLocation') }}</label>
+                <Select
+                  id="edit-vertex-location"
+                  v-model="editVertexLocation"
+                  :options="vertexLocationOptions"
+                  class="font-mono"
+                  searchable
+                />
+                <p class="input-hint">{{ t('admin.providers.vertexLocationHint') }}</p>
+              </div>
             </div>
 
-            <HeaderOverrideEditor
-              :rows="headerOverrideRows"
-              @update:rows="headerOverrideRows = $event"
+            <!-- Bedrock：SigV4 与 API Key 两种鉴权 -->
+            <template v-if="provider.type === 'bedrock'">
+              <div v-if="!isBedrockAPIKeyMode" class="grid gap-4 md:grid-cols-2">
+                <div class="md:col-span-2">
+                  <label for="edit-bedrock-access-key-id" class="input-label">{{ t('admin.providers.bedrockAccessKeyId') }}</label>
+                  <input
+                    id="edit-bedrock-access-key-id"
+                    v-model="editBedrockAccessKeyId"
+                    type="text"
+                    class="input font-mono"
+                    placeholder="AKIA..."
+                  />
+                </div>
+                <div>
+                  <label for="edit-bedrock-secret" class="input-label">{{ t('admin.providers.bedrockSecretAccessKey') }}</label>
+                  <input
+                    id="edit-bedrock-secret"
+                    v-model="editBedrockSecretAccessKey"
+                    type="password"
+                    class="input font-mono"
+                    :placeholder="t('admin.providers.bedrockSecretKeyLeaveEmpty')"
+                  />
+                  <p class="input-hint">{{ t('admin.providers.bedrockSecretKeyLeaveEmpty') }}</p>
+                </div>
+                <div>
+                  <label for="edit-bedrock-session-token" class="input-label">{{ t('admin.providers.bedrockSessionToken') }}</label>
+                  <input
+                    id="edit-bedrock-session-token"
+                    v-model="editBedrockSessionToken"
+                    type="password"
+                    class="input font-mono"
+                    :placeholder="t('admin.providers.bedrockSecretKeyLeaveEmpty')"
+                  />
+                  <p class="input-hint">{{ t('admin.providers.bedrockSessionTokenHint') }}</p>
+                </div>
+              </div>
+              <div v-else>
+                <label for="edit-bedrock-api-key" class="input-label">{{ t('admin.providers.bedrockApiKeyInput') }}</label>
+                <input
+                  id="edit-bedrock-api-key"
+                  v-model="editBedrockApiKeyValue"
+                  type="password"
+                  class="input font-mono"
+                  :placeholder="t('admin.providers.bedrockApiKeyLeaveEmpty')"
+                />
+                <p class="input-hint">{{ t('admin.providers.bedrockApiKeyLeaveEmpty') }}</p>
+              </div>
+              <div>
+                <label for="edit-bedrock-region" class="input-label">{{ t('admin.providers.bedrockRegion') }}</label>
+                <input
+                  id="edit-bedrock-region"
+                  v-model="editBedrockRegion"
+                  type="text"
+                  class="input"
+                  placeholder="us-east-1"
+                />
+                <p class="input-hint">{{ t('admin.providers.bedrockRegionHint') }}</p>
+              </div>
+              <SettingToggleRow
+                id="edit-bedrock-force-global"
+                v-model="editBedrockForceGlobal"
+                :label="t('admin.providers.bedrockForceGlobal')"
+                :hint="t('admin.providers.bedrockForceGlobalHint')"
+              />
+            </template>
+
+            <div v-if="provider.platform === 'antigravity' && provider.type === 'oauth'">
+              <label for="edit-antigravity-project-id" class="input-label">{{ t('admin.providers.antigravityProjectIdLabel') }}</label>
+              <input
+                id="edit-antigravity-project-id"
+                v-model="antigravityProjectId"
+                data-testid="antigravity-project-id-input"
+                type="text"
+                class="input font-mono"
+                :placeholder="t('admin.providers.antigravityProjectIdPlaceholder')"
+              />
+              <p class="input-hint">{{ t('admin.providers.antigravityProjectIdHint') }}</p>
+            </div>
+          </SettingsSection>
+
+          <SettingsSection :title="t('admin.providers.sections.groupsAndNetwork')">
+            <GroupSelector
+              v-model="form.group_ids"
+              :groups="selectableGroups"
+              data-tour="provider-form-groups"
             />
-          </div>
-        </Collapse>
-      </div>
-
-      <!-- OAuth/COSY 模型映射：这类提供商没有 apikey 容器，需要独立的模型映射区域 -->
-      <div
-        v-if="supportsOAuthLikeModelRestriction"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <label class="input-label">{{ t('admin.providers.modelRestriction') }}</label>
-
-          <!-- Mode Toggle -->
-          <div class="mb-4 flex gap-2">
-            <button
-              type="button"
-              @click="modelRestrictionMode = 'whitelist'"
-              :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
-                modelRestrictionMode === 'whitelist'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-              ]"
-            >
-              {{ t('admin.providers.modelWhitelist') }}
-            </button>
-            <button
-              type="button"
-              @click="modelRestrictionMode = 'mapping'"
-              :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
-                modelRestrictionMode === 'mapping'
-                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-              ]"
-            >
-              {{ t('admin.providers.modelMapping') }}
-            </button>
-          </div>
-          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.modelRestrictionCombinedHint') }}
-          </p>
-
-          <!-- Whitelist Mode -->
-          <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
-            <ModelWhitelistSelector
-              :model-value="allowedModels"
-              :platform="provider?.platform || 'anthropic'"
-              :provider-id="provider?.id"
-              :models="isQoderCosyProvider ? qoderAvailableModels : undefined"
-              @update:modelValue="setAllowedModels"
+            <SettingToggleRow
+              v-if="provider.platform === 'antigravity'"
+              id="edit-provider-allow-overages"
+              v-model="allowOverages"
+              :label="t('admin.providers.allowOverages')"
+              :help="t('admin.providers.allowOveragesTooltip')"
             />
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.selectedModels', { count: allowedModels.length }) }}
-              <span v-if="allowedModels.length === 0">{{
-                t('admin.providers.supportsAllModels')
-              }}</span>
-            </p>
-          </div>
-
-          <!-- Mapping Mode -->
-          <ProviderModelMappingEditor
-            v-else
-            v-model="modelMappings"
-            :presets="presetMappings"
-            @add="touchQoderModelRestriction"
-            @remove="touchQoderModelRestriction"
-            @preset="addPresetMapping"
-          />
-      </div>
-
-      <!-- Upstream fields (only for upstream type) -->
-      <div v-if="provider.type === 'upstream'" class="space-y-4">
-        <div>
-          <label class="input-label">{{ t('admin.providers.upstream.baseUrl') }}</label>
-          <input
-            v-model="editBaseUrl"
-            type="text"
-            class="input"
-            placeholder="https://cloudcode-pa.googleapis.com"
-          />
-          <p class="input-hint">{{ t('admin.providers.upstream.baseUrlHint') }}</p>
-        </div>
-        <div>
-          <label class="input-label">{{ t('admin.providers.upstream.apiKey') }}</label>
-          <input
-            v-model="editApiKey"
-            type="password"
-            class="input font-mono"
-            placeholder="sk-..."
-          />
-          <p class="input-hint">{{ t('admin.providers.leaveEmptyToKeep') }}</p>
-        </div>
-      </div>
-
-      <!-- Vertex Service Account -->
-      <div v-if="(provider.platform === 'gemini' || provider.platform === 'anthropic') && provider.type === 'service_account'" class="space-y-4">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label class="input-label">Project ID</label>
-            <input
-              v-model="editVertexProjectId"
-              type="text"
-              class="input font-mono"
-              readonly
-              :placeholder="t('admin.providers.vertexProjectIdPlaceholder')"
-            />
-            <p class="input-hint">{{ t('admin.providers.vertexSaJsonEditHint') }}</p>
-          </div>
-          <div>
-            <label class="input-label">Location</label>
-            <Select
-              v-model="editVertexLocation"
-              :options="vertexLocationOptions"
-              class="font-mono"
-              searchable
-            />
-            <p class="input-hint">{{ t('admin.providers.vertexLocationHint') }}</p>
-          </div>
-        </div>
-
-        <!-- Model Restriction Section for Service Account -->
-        <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-          <label class="input-label">{{ t('admin.providers.modelRestriction') }}</label>
-
-          <!-- Mode Toggle -->
-          <div class="mb-4 flex gap-2">
-            <button
-              type="button"
-              @click="modelRestrictionMode = 'whitelist'"
-              :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
-                modelRestrictionMode === 'whitelist'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-              ]"
-            >
-              <Icon name="checkCircle" size="sm" :animate-on-hover="false" class="mr-1.5 inline h-4 w-4" />
-              {{ t('admin.providers.modelWhitelist') }}
-            </button>
-            <button
-              type="button"
-              @click="modelRestrictionMode = 'mapping'"
-              :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
-                modelRestrictionMode === 'mapping'
-                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-              ]"
-            >
-              <Icon name="swap" size="sm" class="mr-1.5 inline h-4 w-4" />
-              {{ t('admin.providers.modelMapping') }}
-            </button>
-          </div>
-
-          <!-- Whitelist Mode -->
-          <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
-            <ModelWhitelistSelector :model-value="allowedModels" :platform="provider?.platform || 'anthropic'" :provider-id="provider?.id" @update:model-value="setAllowedModels" />
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.selectedModels', { count: allowedModels.length }) }}
-              <span v-if="allowedModels.length === 0">{{
-                t('admin.providers.supportsAllModels')
-              }}</span>
-            </p>
-          </div>
-
-          <!-- Mapping Mode -->
-          <ProviderModelMappingEditor
-            v-else
-            v-model="modelMappings"
-            :presets="presetMappings"
-            @add="touchQoderModelRestriction"
-            @remove="touchQoderModelRestriction"
-            @preset="addPresetMapping"
-          />
-        </div>
-      </div>
-
-      <!-- Bedrock fields (for bedrock type, both SigV4 and API Key modes) -->
-      <div v-if="provider.type === 'bedrock'" class="space-y-4">
-        <!-- SigV4 fields -->
-        <template v-if="!isBedrockAPIKeyMode">
-          <div>
-            <label class="input-label">{{ t('admin.providers.bedrockAccessKeyId') }}</label>
-            <input
-              v-model="editBedrockAccessKeyId"
-              type="text"
-              class="input font-mono"
-              placeholder="AKIA..."
-            />
-          </div>
-          <div>
-            <label class="input-label">{{ t('admin.providers.bedrockSecretAccessKey') }}</label>
-            <input
-              v-model="editBedrockSecretAccessKey"
-              type="password"
-              class="input font-mono"
-              :placeholder="t('admin.providers.bedrockSecretKeyLeaveEmpty')"
-            />
-            <p class="input-hint">{{ t('admin.providers.bedrockSecretKeyLeaveEmpty') }}</p>
-          </div>
-          <div>
-            <label class="input-label">{{ t('admin.providers.bedrockSessionToken') }}</label>
-            <input
-              v-model="editBedrockSessionToken"
-              type="password"
-              class="input font-mono"
-              :placeholder="t('admin.providers.bedrockSecretKeyLeaveEmpty')"
-            />
-            <p class="input-hint">{{ t('admin.providers.bedrockSessionTokenHint') }}</p>
-          </div>
+            <div v-if="!isSparkShadow">
+              <span class="input-label">{{ t('admin.providers.proxy') }}</span>
+              <ProxySelector v-model="form.proxy_id" :proxies="proxies" />
+            </div>
+          </SettingsSection>
         </template>
 
-        <!-- API Key field -->
-        <div v-if="isBedrockAPIKeyMode">
-          <label class="input-label">{{ t('admin.providers.bedrockApiKeyInput') }}</label>
-          <input
-            v-model="editBedrockApiKeyValue"
-            type="password"
-            class="input font-mono"
-            :placeholder="t('admin.providers.bedrockApiKeyLeaveEmpty')"
+        <template #models>
+          <ModelRestrictionFields
+            v-if="showModelRestriction"
+            v-model:mode="modelRestrictionMode"
+            :allowed-models="allowedModels"
+            v-model:mappings="modelMappings"
+            :platform="provider.type === 'bedrock' ? 'anthropic' : provider.platform"
+            :provider-id="provider.type === 'bedrock' ? undefined : provider.id"
+            :models="isQoderCosyProvider ? qoderAvailableModels : undefined"
+            :presets="provider.type === 'bedrock' ? bedrockPresets : presetMappings"
+            :source-placeholder="provider.type === 'bedrock' ? t('admin.providers.fromModel') : undefined"
+            :target-placeholder="provider.type === 'bedrock' ? t('admin.providers.toModel') : undefined"
+            @update:allowed-models="setAllowedModels"
+            @add="touchQoderModelRestriction"
+            @remove="touchQoderModelRestriction"
+            @preset="addPresetMapping"
           />
-          <p class="input-hint">{{ t('admin.providers.bedrockApiKeyLeaveEmpty') }}</p>
-        </div>
 
-        <!-- Shared: Region -->
-        <div>
-          <label class="input-label">{{ t('admin.providers.bedrockRegion') }}</label>
-          <input
-            v-model="editBedrockRegion"
-            type="text"
-            class="input"
-            placeholder="us-east-1"
+          <!-- Antigravity 白名单与映射分别控制最终范围和请求改写。 -->
+          <SettingsSection
+            v-if="provider.platform === 'antigravity'"
+            :title="t('admin.providers.modelRestriction')"
+            :hint="t('admin.providers.selectAllowedModels')"
+          >
+            <ModelWhitelistSelector v-model="antigravityWhitelistModels" platform="antigravity" />
+            <ProviderModelMappingEditor
+              v-model="antigravityModelMappings"
+              :presets="antigravityPresetMappings"
+              wildcard-validation
+              @preset="addAntigravityPresetMapping"
+            >
+              <template #header-actions>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  :disabled="isSyncingAntigravityUpstream || !provider?.id"
+                  @click="syncAntigravityUpstreamModels"
+                >
+                  {{ isSyncingAntigravityUpstream ? t('admin.providers.syncUpstreamModelsLoading') : t('admin.providers.syncUpstreamModels') }}
+                </button>
+              </template>
+            </ProviderModelMappingEditor>
+          </SettingsSection>
+        </template>
+
+        <template #scheduling>
+          <SettingsSection :title="t('admin.providers.sections.scheduling')">
+            <div class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label for="edit-provider-concurrency" class="input-label">{{ t('admin.providers.concurrency') }}</label>
+                <!-- 输入过程中允许先清空再录入新值，提交时由后端继续校验。 -->
+                <input
+                  id="edit-provider-concurrency"
+                  v-model.number="form.concurrency"
+                  type="number"
+                  min="1"
+                  class="input"
+                  data-testid="edit-provider-concurrency"
+                />
+              </div>
+              <div>
+                <label for="edit-provider-load-factor" class="input-label">{{ t('admin.providers.loadFactor') }}</label>
+                <input
+                  id="edit-provider-load-factor"
+                  v-model.number="form.load_factor"
+                  type="number"
+                  min="1"
+                  class="input"
+                  :placeholder="String(form.concurrency || 1)"
+                  data-testid="edit-provider-load-factor"
+                />
+                <p class="input-hint">{{ t('admin.providers.loadFactorHint') }}</p>
+              </div>
+              <div>
+                <label for="edit-provider-priority" class="input-label">{{ t('admin.providers.priority') }}</label>
+                <input
+                  id="edit-provider-priority"
+                  v-model.number="form.priority"
+                  type="number"
+                  min="1"
+                  class="input"
+                  data-tour="provider-form-priority"
+                />
+                <p class="input-hint">{{ t('admin.providers.priorityHint') }}</p>
+              </div>
+              <div>
+                <label for="edit-provider-rate-multiplier" class="input-label">{{ t('admin.providers.billingRateMultiplier') }}</label>
+                <input
+                  id="edit-provider-rate-multiplier"
+                  v-model.number="form.rate_multiplier"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  class="input"
+                />
+                <p class="input-hint">{{ t('admin.providers.billingRateMultiplierHint') }}</p>
+              </div>
+            </div>
+            <template v-if="supportsProviderSchedulingThresholdOverride">
+              <SettingToggleRow
+                id="edit-provider-scheduling-threshold"
+                v-model="providerSchedulingThresholdOverrideEnabled"
+                :label="t('admin.providers.providerSchedulingThresholdOverride')"
+                :hint="t('admin.providers.providerSchedulingThresholdOverrideHint')"
+                testid="provider-scheduling-threshold-override-enabled"
+                data-testid="provider-scheduling-threshold-section"
+              />
+              <Collapse :open="providerSchedulingThresholdOverrideEnabled" unmount-on-hide>
+                <SettingsSubpanel>
+                  <div>
+                    <label for="edit-provider-scheduling-threshold-value" class="input-label">{{ t('admin.providers.providerSchedulingThresholdOverrideValue') }}</label>
+                    <input
+                      id="edit-provider-scheduling-threshold-value"
+                      v-model.number="providerSchedulingThresholdOverrideValue"
+                      data-testid="provider-scheduling-threshold-override-value"
+                      type="number"
+                      min="1"
+                      max="100"
+                      class="input"
+                    />
+                    <p class="input-hint">{{ t('admin.providers.providerSchedulingThresholdOverrideDisabledHint') }}</p>
+                  </div>
+                </SettingsSubpanel>
+              </Collapse>
+            </template>
+          </SettingsSection>
+
+          <TempUnschedFields v-model:enabled="tempUnschedEnabled" v-model:rules="tempUnschedRules" />
+
+          <PoolModeFields
+            v-if="provider.type === 'apikey' || provider.type === 'bedrock'"
+            v-model:enabled="poolModeEnabled"
+            v-model:retry-count="poolModeRetryCount"
+            v-model:retry-status-codes="poolModeRetryStatusCodesInput"
           />
-          <p class="input-hint">{{ t('admin.providers.bedrockRegionHint') }}</p>
-        </div>
 
-        <!-- Shared: Force Global -->
-        <div>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              v-model="editBedrockForceGlobal"
-              type="checkbox"
-              class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-500"
+          <CustomErrorCodesFields
+            v-if="provider.type === 'apikey'"
+            v-model:enabled="customErrorCodesEnabled"
+            v-model:codes="selectedErrorCodes"
+          />
+
+          <SettingsSection :title="t('admin.providers.sections.autoPause')">
+            <SettingToggleRow
+              v-if="provider.platform === 'anthropic' || provider.platform === 'antigravity'"
+              id="edit-provider-intercept-warmup"
+              v-model="interceptWarmupRequests"
+              :label="t('admin.providers.interceptWarmupRequests')"
+              :hint="t('admin.providers.interceptWarmupRequestsDesc')"
             />
-            <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('admin.providers.bedrockForceGlobal') }}</span>
-          </label>
-          <p class="input-hint mt-1">{{ t('admin.providers.bedrockForceGlobalHint') }}</p>
-        </div>
+            <SettingToggleRow
+              id="edit-provider-auto-pause-expired"
+              v-model="autoPauseOnExpired"
+              :label="t('admin.providers.autoPauseOnExpired')"
+              :hint="t('admin.providers.autoPauseOnExpiredDesc')"
+            />
+            <template v-if="provider.platform === 'openai'">
+              <SettingToggleRow
+                id="edit-provider-auto-pause-5h-disabled"
+                v-model="autoPause5hDisabled"
+                :label="t('admin.providers.autoPause5hDisabled')"
+                :hint="t('admin.providers.autoPauseDisabledHint')"
+                testid="auto-pause-5h-disabled"
+              />
+              <SettingToggleRow
+                id="edit-provider-auto-pause-7d-disabled"
+                v-model="autoPause7dDisabled"
+                :label="t('admin.providers.autoPause7dDisabled')"
+                :hint="t('admin.providers.autoPauseDisabledHint')"
+                testid="auto-pause-7d-disabled"
+              />
+              <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label for="edit-provider-auto-pause-5h" class="input-label">{{ t('admin.providers.autoPause5hThreshold') }}</label>
+                  <input
+                    id="edit-provider-auto-pause-5h"
+                    v-model.number="autoPause5hThreshold"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    class="input"
+                    :disabled="autoPause5hDisabled"
+                    data-testid="auto-pause-5h-threshold"
+                  />
+                  <p class="input-hint">{{ t('admin.providers.autoPauseThresholdHint') }}</p>
+                </div>
+                <div>
+                  <label for="edit-provider-auto-pause-7d" class="input-label">{{ t('admin.providers.autoPause7dThreshold') }}</label>
+                  <input
+                    id="edit-provider-auto-pause-7d"
+                    v-model.number="autoPause7dThreshold"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    class="input"
+                    :disabled="autoPause7dDisabled"
+                    data-testid="auto-pause-7d-threshold"
+                  />
+                  <p class="input-hint">{{ t('admin.providers.autoPauseThresholdHint') }}</p>
+                </div>
+              </div>
+            </template>
+          </SettingsSection>
+        </template>
 
-        <!-- Model Restriction for Bedrock -->
-        <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-          <label class="input-label">{{ t('admin.providers.modelRestriction') }}</label>
-
-          <!-- Mode Toggle -->
-          <div class="mb-4 flex gap-2">
-            <button
-              type="button"
-              @click="modelRestrictionMode = 'whitelist'"
-              :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
-                modelRestrictionMode === 'whitelist'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-              ]"
-            >
-              {{ t('admin.providers.modelWhitelist') }}
-            </button>
-            <button
-              type="button"
-              @click="modelRestrictionMode = 'mapping'"
-              :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
-                modelRestrictionMode === 'mapping'
-                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-              ]"
-            >
-              {{ t('admin.providers.modelMapping') }}
-            </button>
-          </div>
-          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.modelRestrictionCombinedHint') }}
-          </p>
-
-          <!-- Whitelist Mode -->
-          <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
-            <ModelWhitelistSelector :model-value="allowedModels" platform="anthropic" @update:model-value="setAllowedModels" />
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.selectedModels', { count: allowedModels.length }) }}
-              <span v-if="allowedModels.length === 0">{{ t('admin.providers.supportsAllModels') }}</span>
-            </p>
-          </div>
-
-          <!-- Mapping Mode -->
-          <ProviderModelMappingEditor
-            v-else
-            v-model="modelMappings"
-            :presets="bedrockPresets"
-            :source-placeholder="t('admin.providers.fromModel')"
-            :target-placeholder="t('admin.providers.toModel')"
-            @preset="(from, to) => modelMappings.push({ from, to })"
+        <template #quota>
+          <QuotaLimitFields
+            v-if="provider.type === 'apikey' || provider.type === 'bedrock'"
+            :limits="quotaLimits"
+            :notify="quotaNotifyState"
+            :notify-global-enabled="quotaNotifyGlobalEnabled"
+            :hint="provider.platform === 'anthropic' ? t('admin.providers.quotaControl.hint') : t('admin.providers.quotaLimitHint')"
+            @update:limit="setQuotaLimit"
+            @update:notify="setQuotaNotifyField"
           />
-        </div>
 
-        <!-- Pool Mode Section for Bedrock -->
-        <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-          <div class="mb-3 flex items-center justify-between">
-            <div>
-              <label class="input-label mb-0">{{ t('admin.providers.poolMode') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.poolModeHint') }}
-              </p>
-            </div>
-            <Toggle v-model="poolModeEnabled" variant="flush" off-tone="soft" />
-          </div>
-          <Collapse :open="poolModeEnabled" unmount-on-hide>
-            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-              <p class="text-xs text-blue-700 dark:text-blue-400">
-                <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
-                {{ t('admin.providers.poolModeInfo') }}
-              </p>
-            </div>
-          </Collapse>
-          <Collapse :open="poolModeEnabled" unmount-on-hide>
-            <div class="mt-3">
-              <label class="input-label">{{ t('admin.providers.poolModeRetryCount') }}</label>
-              <input
-                v-model.number="poolModeRetryCount"
-                type="number"
-                min="0"
-                :max="MAX_POOL_MODE_RETRY_COUNT"
-                step="1"
-                class="input"
+          <AnthropicOAuthLimitFields
+            v-if="isAnthropicOAuthLikeProvider"
+            v-model:window-cost-enabled="windowCostEnabled"
+            v-model:window-cost-limit="windowCostLimit"
+            v-model:window-cost-sticky-reserve="windowCostStickyReserve"
+            v-model:session-limit-enabled="sessionLimitEnabled"
+            v-model:max-sessions="maxSessions"
+            v-model:session-idle-timeout="sessionIdleTimeout"
+            v-model:rpm-limit-enabled="rpmLimitEnabled"
+            v-model:base-rpm="baseRpm"
+            v-model:rpm-strategy="rpmStrategy"
+            v-model:rpm-sticky-buffer="rpmStickyBuffer"
+            v-model:user-msg-queue-mode="userMsgQueueMode"
+          />
+
+          <UpstreamUsageConfigEditor
+            v-if="provider.type === 'apikey'"
+            :enabled="upstreamUsageEnabled"
+            :adapter="upstreamUsageAdapter"
+            :base-url="upstreamUsageBaseUrl"
+            :wallet-access-token="upstreamUsageWalletAccessToken"
+            :wallet-user-id="upstreamUsageWalletUserId"
+            :automatic-adapter="isCNApiKeyProvider"
+            @update:enabled="upstreamUsageEnabled = $event"
+            @update:adapter="upstreamUsageAdapter = $event"
+            @update:base-url="upstreamUsageBaseUrl = $event"
+            @update:wallet-access-token="upstreamUsageWalletAccessToken = $event"
+            @update:wallet-user-id="upstreamUsageWalletUserId = $event"
+          />
+
+          <OllamaCloudUsageSettings
+            v-if="provider.ollama_cloud_usage?.eligible"
+            :provider="provider"
+            @updated="handleOllamaCloudUsageUpdated"
+          />
+        </template>
+
+        <template #request>
+          <ProviderProtocolSelector
+            v-if="!provider.parent_provider_id"
+            v-model="upstreamProtocols"
+            :platform="provider.platform"
+            :type="provider.type"
+            :auth-mode="String(provider.credentials?.auth_mode ?? provider.credentials?.openai_auth_mode ?? '')"
+          />
+
+          <SettingsSection :title="t('admin.providers.sections.requestHeaders')">
+            <UpstreamRequestIdHeaderField
+              v-model="upstreamRequestIdHeader"
+              :platform="provider.platform"
+              :type="provider.type"
+            />
+          </SettingsSection>
+
+          <HeaderOverrideFields
+            v-if="headerOverrideCapable"
+            v-model:enabled="headerOverrideEnabled"
+            v-model:rows="headerOverrideRows"
+            data-provider-field="header-override"
+          />
+
+          <!-- Grok OAuth：自定义上游地址只改写转发端点，OAuth 授权与刷新不受影响。 -->
+          <SettingsSection v-if="provider.platform === 'grok' && provider.type === 'oauth'" :title="t('admin.providers.sections.grok')">
+            <SettingToggleRow
+              id="edit-grok-custom-base-url"
+              v-model="grokOAuthCustomBaseUrlEnabled"
+              :label="t('admin.providers.grokCustomBaseUrl.title')"
+              :hint="t('admin.providers.grokCustomBaseUrl.hint')"
+              testid="grok-custom-base-url-toggle"
+            />
+            <Collapse :open="grokOAuthCustomBaseUrlEnabled" unmount-on-hide>
+              <SettingsSubpanel data-provider-field="grok-base-url">
+                <input
+                  v-model="grokOAuthBaseUrl"
+                  type="text"
+                  class="input"
+                  data-testid="grok-custom-base-url-input"
+                  :aria-label="t('admin.providers.grokCustomBaseUrl.title')"
+                  :placeholder="t('admin.providers.grokCustomBaseUrl.placeholder')"
+                />
+                <GrokBaseUrlPresets @select="grokOAuthBaseUrl = $event" />
+              </SettingsSubpanel>
+            </Collapse>
+            <SettingToggleRow
+              id="edit-grok-client-tool-cache"
+              v-model="grokClientToolCacheEnabled"
+              :label="t('admin.providers.grokClientToolCache.title')"
+              :hint="t('admin.providers.grokClientToolCache.hint')"
+              testid="grok-client-tool-cache-toggle"
+            />
+          </SettingsSection>
+
+          <template v-if="isOpenAIOAuthOrAPIKey">
+            <SettingsSection :title="t('admin.providers.sections.openaiCompatibility')">
+              <SettingToggleRow
+                id="edit-openai-passthrough"
+                v-model="openaiPassthroughEnabled"
+                :label="t('admin.providers.openai.oauthPassthrough')"
+                :hint="t('admin.providers.openai.oauthPassthroughDesc')"
               />
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{
-                  t('admin.providers.poolModeRetryCountHint', {
-                    default: DEFAULT_POOL_MODE_RETRY_COUNT,
-                    max: MAX_POOL_MODE_RETRY_COUNT
-                  })
-                }}
-              </p>
-            </div>
-          </Collapse>
-          <Collapse :open="poolModeEnabled" unmount-on-hide>
-            <div class="mt-3">
-              <label class="input-label">{{ t('admin.providers.poolModeRetryStatusCodes') }}</label>
-              <input
-                v-model="poolModeRetryStatusCodesInput"
-                type="text"
-                class="input"
-                :placeholder="DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ')"
+              <SettingToggleRow
+                v-if="provider.type === 'oauth' && !isSparkShadow"
+                id="edit-openai-flatten-namespaces"
+                v-model="openaiFlattenNamespacesEnabled"
+                :label="t('admin.providers.openai.flattenNamespaces')"
+                :hint="t('admin.providers.openai.flattenNamespacesDesc')"
+                testid="edit-openai-flatten-namespaces-toggle"
               />
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.poolModeRetryStatusCodesHint', { default: DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ') }) }}
-              </p>
-            </div>
-          </Collapse>
-        </div>
-      </div>
+              <template v-if="provider.type === 'apikey'">
+                <SettingToggleRow
+                  id="edit-openai-continuation-supported"
+                  v-model="openAIResponsesContinuationSupported"
+                  :label="t('admin.providers.openai.responsesContinuationSupported')"
+                  :hint="t('admin.providers.openai.responsesContinuationSupportedDesc')"
+                  testid="edit-openai-continuation-supported"
+                />
+                <SettingToggleRow
+                  id="edit-openai-images-url-to-b64-json"
+                  v-model="openAIImagesURLToB64JSON"
+                  :label="t('admin.providers.openai.imagesURLToB64JSON')"
+                  :hint="t('admin.providers.openai.imagesURLToB64JSONDesc')"
+                  testid="edit-openai-images-url-to-b64-json"
+                />
+              </template>
+              <SettingRow
+                id="edit-openai-ws-mode"
+                label-for="edit-openai-ws-mode-select"
+                :label="t('admin.providers.openai.wsMode')"
+                :hint="t('admin.providers.openai.wsModeDesc')"
+                field
+              >
+                <Select id="edit-openai-ws-mode-select" v-model="openaiResponsesWebSocketV2Mode" :options="openAIWSModeOptions" />
+                <template #hint>
+                  <p class="input-hint">{{ t(openAIWSModeConcurrencyHintKey) }}</p>
+                </template>
+              </SettingRow>
+            </SettingsSection>
 
-      <div
-        v-if="provider.platform === 'antigravity' && provider.type === 'oauth'"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <label class="input-label">{{ t('admin.providers.antigravityProjectIdLabel') }}</label>
-        <input
-          v-model="antigravityProjectId"
-          data-testid="antigravity-project-id-input"
-          type="text"
-          class="input font-mono"
-          :placeholder="t('admin.providers.antigravityProjectIdPlaceholder')"
-        />
-        <p class="input-hint">{{ t('admin.providers.antigravityProjectIdHint') }}</p>
-      </div>
+            <SettingsSection v-if="provider.type === 'oauth'" :title="t('admin.providers.sections.openaiClient')">
+              <SettingRow
+                id="edit-openai-client-policy"
+                label-for="edit-openai-client-policy-select"
+                :label="t('admin.providers.openai.clientPolicy')"
+                :hint="t('admin.providers.openai.clientPolicyDesc')"
+                field
+              >
+                <Select id="edit-openai-client-policy-select" v-model="openAIOAuthClientPolicy" :options="openAIOAuthClientPolicyOptions" />
+              </SettingRow>
+              <Collapse :open="openAIOAuthClientPolicy === 'codex_only'" unmount-on-hide>
+                <SettingsSubpanel>
+                  <SettingToggleRow
+                    id="edit-openai-codex-allow-claude-code"
+                    v-model="codexCLIOnlyAllowClaudeCodeEnabled"
+                    :label="t('admin.providers.openai.codexCLIOnlyAllowClaudeCode')"
+                    :hint="t('admin.providers.openai.codexCLIOnlyAllowClaudeCodeDesc')"
+                  />
+                </SettingsSubpanel>
+              </Collapse>
+              <template v-if="!isSparkShadow">
+                <SettingRow
+                  id="edit-codex-fingerprint-mode"
+                  label-for="edit-codex-fingerprint-mode-select"
+                  :label="t('admin.providers.openai.codexFingerprintMode')"
+                  :hint="t('admin.providers.openai.codexFingerprintModeDesc')"
+                  field
+                >
+                  <Select
+                    id="edit-codex-fingerprint-mode-select"
+                    v-model="codexFingerprintMode"
+                    data-testid="edit-codex-fingerprint-mode-select"
+                    :options="codexFingerprintModeOptions"
+                  />
+                </SettingRow>
+                <SettingRow
+                  id="edit-openai-plan-type"
+                  label-for="edit-openai-plan-type-select"
+                  :label="t('admin.providers.openai.planType')"
+                  :hint="t('admin.providers.openai.planTypeDesc')"
+                  field
+                >
+                  <Select
+                    id="edit-openai-plan-type-select"
+                    v-model="editPlanType"
+                    data-testid="openai-plan-type-select"
+                    :options="planTypeOptions"
+                  />
+                </SettingRow>
+              </template>
+            </SettingsSection>
 
-      <!-- Antigravity model restriction (applies to all antigravity types) -->
-      <!-- 白名单与映射分别控制最终范围和请求改写。 -->
-      <div v-if="provider.platform === 'antigravity'" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <label class="input-label">{{ t('admin.providers.modelRestriction') }}</label>
-        <p class="input-hint">{{ t('admin.providers.selectAllowedModels') }}</p>
-        <ModelWhitelistSelector v-model="antigravityWhitelistModels" platform="antigravity" />
+            <CodexImageToolModeSelector v-model="codexImageToolMode" />
 
-        <!-- Mapping Mode Only (no toggle for Antigravity) -->
-        <ProviderModelMappingEditor
-          v-model="antigravityModelMappings"
-          :presets="antigravityPresetMappings"
-          wildcard-validation
-          @preset="addAntigravityPresetMapping"
-        >
-          <template #header-actions>
-            <button
-              type="button"
-              @click="syncAntigravityUpstreamModels"
-              :disabled="isSyncingAntigravityUpstream || !provider?.id"
-              class="rounded-control border border-emerald-200 px-3 py-1.5 text-sm text-emerald-600 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
-            >
-              {{ isSyncingAntigravityUpstream ? t('admin.providers.syncUpstreamModelsLoading') : t('admin.providers.syncUpstreamModels') }}
-            </button>
+            <SettingsSection :title="t('admin.providers.sections.compaction')">
+              <OpenAICompactionToggle
+                v-model="openAINativeCompactionV2Mode"
+                test-id="edit-openai-native-compaction-v2-mode"
+                :label="t('admin.providers.openai.nativeCompactV2Mode')"
+                :hint="t('admin.providers.openai.nativeCompactV2ModeDesc')"
+              />
+              <OpenAICompactionToggle
+                v-model="openAICompactMode"
+                test-id="edit-openai-compact-mode"
+                :label="t('admin.providers.openai.compactMode')"
+                :hint="t('admin.providers.openai.compactModeDesc')"
+              />
+              <ProviderModelMappingEditor
+                v-if="openAICompactMode !== 'force_off'"
+                v-model="openAICompactModelMappings"
+                :title="t('admin.providers.openai.compactModelMapping')"
+                :hint="t('admin.providers.openai.compactModelMappingDesc')"
+                :source-placeholder="t('admin.providers.fromModel')"
+                :target-placeholder="t('admin.providers.toModel')"
+              />
+            </SettingsSection>
           </template>
-        </ProviderModelMappingEditor>
-      </div>
 
-      <!-- Temp Unschedulable Rules -->
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4">
-        <div class="mb-3 flex items-center justify-between">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.providers.tempUnschedulable.title') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.tempUnschedulable.hint') }}
-            </p>
-          </div>
-          <Toggle v-model="tempUnschedEnabled" variant="flush" off-tone="soft" />
-        </div>
-
-        <Collapse :open="tempUnschedEnabled" unmount-on-hide>
-          <TempUnschedRulesEditor v-model="tempUnschedRules" />
-        </Collapse>
-      </div>
-
-      <div
-        v-if="supportsProviderSchedulingThresholdOverride"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-        data-testid="provider-scheduling-threshold-section"
-      >
-        <div class="mb-3 flex items-center justify-between">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.providers.providerSchedulingThresholdOverride') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.providerSchedulingThresholdOverrideHint') }}
-            </p>
-          </div>
-          <Toggle
-            v-model="providerSchedulingThresholdOverrideEnabled"
-            data-testid="provider-scheduling-threshold-override-enabled"
-            :aria-label="t('admin.providers.providerSchedulingThresholdOverride')"
-          />
-        </div>
-        <Collapse :open="providerSchedulingThresholdOverrideEnabled" unmount-on-hide>
-          <div >
-            <label class="input-label">{{ t('admin.providers.providerSchedulingThresholdOverrideValue') }}</label>
-            <input
-              v-model.number="providerSchedulingThresholdOverrideValue"
-              data-testid="provider-scheduling-threshold-override-value"
-              type="number"
-              min="1"
-              max="100"
-              class="input"
+          <SettingsSection
+            v-if="provider.platform === 'anthropic' && provider.type === 'apikey'"
+            :title="t('admin.providers.sections.anthropicCompatibility')"
+          >
+            <SettingToggleRow
+              id="edit-anthropic-passthrough"
+              v-model="anthropicPassthroughEnabled"
+              :label="t('admin.providers.anthropic.apiKeyPassthrough')"
+              :hint="t('admin.providers.anthropic.apiKeyPassthroughDesc')"
             />
-            <p class="input-hint">{{ t('admin.providers.providerSchedulingThresholdOverrideDisabledHint') }}</p>
-          </div>
-        </Collapse>
-      </div>
-
-      <!-- Intercept Warmup Requests (Anthropic/Antigravity) -->
-      <div
-        v-if="provider?.platform === 'anthropic' || provider?.platform === 'antigravity'"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between">
-          <div>
-            <label class="input-label mb-0">{{
-              t('admin.providers.interceptWarmupRequests')
-            }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.interceptWarmupRequestsDesc') }}
-            </p>
-          </div>
-          <Toggle v-model="interceptWarmupRequests" variant="flush" off-tone="soft" />
-        </div>
-      </div>
-
-      <div v-if="!isSparkShadow">
-        <div class="mb-1 flex items-center gap-2">
-          <label class="input-label mb-0">{{ t('admin.providers.proxy') }}</label>
-        </div>
-        <ProxySelector v-model="form.proxy_id" :proxies="proxies" />
-      </div>
-
-      <ProviderProtocolSelector v-if="provider && !provider.parent_provider_id" v-model="upstreamProtocols" :platform="provider.platform" :type="provider.type" :auth-mode="String(provider.credentials?.auth_mode ?? provider.credentials?.openai_auth_mode ?? '')" />
-
-      <UpstreamRequestIdHeaderField
-        v-model="upstreamRequestIdHeader"
-        :platform="provider.platform"
-        :type="provider.type"
-      />
-
-      <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div>
-          <label class="input-label">{{ t('admin.providers.concurrency') }}</label>
-          <!-- 输入过程中允许先清空再录入新值，提交时由后端继续校验。 -->
-          <input
-            v-model.number="form.concurrency"
-            type="number"
-            min="1"
-            class="input"
-            data-testid="edit-provider-concurrency"
-          />
-        </div>
-        <div>
-          <label class="input-label">{{ t('admin.providers.loadFactor') }}</label>
-          <input
-            v-model.number="form.load_factor"
-            type="number"
-            min="1"
-            class="input"
-            :placeholder="String(form.concurrency || 1)"
-            data-testid="edit-provider-load-factor"
-          />
-          <p class="input-hint">{{ t('admin.providers.loadFactorHint') }}</p>
-        </div>
-        <div>
-          <label class="input-label">{{ t('admin.providers.priority') }}</label>
-          <input
-            v-model.number="form.priority"
-            type="number"
-            min="1"
-            class="input"
-            data-tour="provider-form-priority"
-          />
-          <p class="input-hint">{{ t('admin.providers.priorityHint') }}</p>
-        </div>
-        <div>
-          <label class="input-label">{{ t('admin.providers.billingRateMultiplier') }}</label>
-          <input v-model.number="form.rate_multiplier" type="number" min="0" step="0.001" class="input" />
-          <p class="input-hint">{{ t('admin.providers.billingRateMultiplierHint') }}</p>
-        </div>
-      </div>
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <label class="input-label">{{ t('admin.providers.expiresAt') }}</label>
-        <input v-model="expiresAtInput" type="datetime-local" class="input" />
-        <p class="input-hint">{{ t('admin.providers.expiresAtHint') }}</p>
-      </div>
-
-      <!-- OpenAI 自动透传开关（OAuth/API Key） -->
-      <div
-        v-if="provider?.platform === 'openai' && (provider?.type === 'oauth' || provider?.type === 'apikey')"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.providers.openai.oauthPassthrough') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.oauthPassthroughDesc') }}
-            </p>
-          </div>
-          <Toggle v-model="openaiPassthroughEnabled" variant="flush" off-tone="soft" />
-        </div>
-      </div>
-
-      <!-- OpenAI Codex namespace 工具摊平兼容开关，仅 OAuth 可用 -->
-      <div
-        v-if="provider?.platform === 'openai' && provider?.type === 'oauth' && !isSparkShadow"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between gap-4">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.providers.openai.flattenNamespaces') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.flattenNamespacesDesc') }}
-            </p>
-          </div>
-          <Toggle v-model="openaiFlattenNamespacesEnabled" variant="flush" off-tone="soft" data-testid="edit-openai-flatten-namespaces-toggle" />
-        </div>
-      </div>
-
-      <!-- OpenAI Codex hosted image_generation 桥接策略 -->
-      <div
-        v-if="provider?.platform === 'openai' && (provider?.type === 'oauth' || provider?.type === 'apikey')"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <CodexImageToolModeSelector v-model="codexImageToolMode" />
-      </div>
-
-      <!-- OpenAI WS Mode 三态（off/ctx_pool/passthrough） -->
-      <div
-        v-if="provider?.platform === 'openai' && (provider?.type === 'oauth' || provider?.type === 'apikey')"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div class="min-w-0">
-            <label class="input-label mb-0">{{ t('admin.providers.openai.wsMode') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.wsModeDesc') }}
-            </p>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t(openAIWSModeConcurrencyHintKey) }}
-            </p>
-          </div>
-          <div class="w-full sm:w-52 sm:flex-shrink-0">
-            <Select v-model="openaiResponsesWebSocketV2Mode" :options="openAIWSModeOptions" />
-          </div>
-        </div>
-      </div>
-
-      <!-- OpenAI APIKey 文本工作负载与管理员协议路由 -->
-      <div
-        v-if="provider?.platform === 'openai' && provider?.type === 'apikey'"
-        class="space-y-5 border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex flex-col gap-3 border-t border-gray-200 pt-4 dark:border-dark-600 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <label class="input-label mb-0" for="edit-openai-continuation-supported">
-              {{ t('admin.providers.openai.responsesContinuationSupported') }}
-            </label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.responsesContinuationSupportedDesc') }}
-            </p>
-          </div>
-          <Toggle
-            id="edit-openai-continuation-supported"
-            v-model="openAIResponsesContinuationSupported"
-            data-testid="edit-openai-continuation-supported"
-            :aria-label="t('admin.providers.openai.responsesContinuationSupported')"
-          />
-        </div>
-        <div class="flex flex-col gap-3 border-t border-gray-200 pt-4 dark:border-dark-600 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <label class="input-label mb-0" for="edit-openai-images-url-to-b64-json">
-              {{ t('admin.providers.openai.imagesURLToB64JSON') }}
-            </label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.imagesURLToB64JSONDesc') }}
-            </p>
-          </div>
-          <Toggle
-            id="edit-openai-images-url-to-b64-json"
-            v-model="openAIImagesURLToB64JSON"
-            data-testid="edit-openai-images-url-to-b64-json"
-            :aria-label="t('admin.providers.openai.imagesURLToB64JSON')"
-          />
-        </div>
-
-      </div>
-
-      <OllamaCloudUsageSettings
-        v-if="provider?.ollama_cloud_usage?.eligible"
-        :provider="provider"
-        @updated="handleOllamaCloudUsageUpdated"
-      />
-
-      <!-- Anthropic API Key 自动透传开关 -->
-      <div
-        v-if="provider?.platform === 'anthropic' && provider?.type === 'apikey'"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.providers.anthropic.apiKeyPassthrough') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.anthropic.apiKeyPassthroughDesc') }}
-            </p>
-          </div>
-          <Toggle v-model="anthropicPassthroughEnabled" variant="flush" off-tone="soft" />
-        </div>
-      </div>
-
-      <!-- Anthropic API Key 上游认证方式 -->
-      <div
-        v-if="provider?.platform === 'anthropic' && provider?.type === 'apikey'"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between gap-4">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.providers.anthropic.apiKeyAuthScheme') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.anthropic.apiKeyAuthSchemeDesc') }}
-            </p>
-          </div>
-          <div class="w-56">
-            <Select v-model="anthropicAPIKeyAuthScheme" :options="anthropicAPIKeyAuthSchemeOptions" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Anthropic API Key: Web Search Emulation (hidden when global disabled) -->
-      <div
-        v-if="provider?.platform === 'anthropic' && provider?.type === 'apikey' && webSearchGlobalEnabled"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.providers.anthropic.webSearchEmulation') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.anthropic.webSearchEmulationDesc') }}
-            </p>
-          </div>
-          <Select v-model="webSearchEmulationMode" :options="webSearchEmulationOptions" class="w-32 text-sm" />
-        </div>
-      </div>
-
-      <UpstreamUsageConfigEditor
-        v-if="provider?.type === 'apikey'"
-        :enabled="upstreamUsageEnabled"
-        :adapter="upstreamUsageAdapter"
-        :base-url="upstreamUsageBaseUrl"
-        :wallet-access-token="upstreamUsageWalletAccessToken"
-        :wallet-user-id="upstreamUsageWalletUserId"
-        :automatic-adapter="isCNApiKeyProvider"
-        @update:enabled="upstreamUsageEnabled = $event"
-        @update:adapter="upstreamUsageAdapter = $event"
-        @update:base-url="upstreamUsageBaseUrl = $event"
-        @update:wallet-access-token="upstreamUsageWalletAccessToken = $event"
-        @update:wallet-user-id="upstreamUsageWalletUserId = $event"
-      />
-
-      <!-- 配额控制 (Anthropic apikey/bedrock: 配额限制 + 亲和) -->
-      <div
-        v-if="provider?.platform === 'anthropic' && (provider?.type === 'apikey' || provider?.type === 'bedrock')"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
-      >
-        <div class="mb-3">
-          <h3 class="input-label mb-0 text-base font-semibold">{{ t('admin.providers.quotaControl.title') }}</h3>
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.quotaControl.hint') }}
-          </p>
-        </div>
-        <QuotaLimitCard
-          :totalLimit="editQuotaLimit"
-          :dailyLimit="editQuotaDailyLimit"
-          :weeklyLimit="editQuotaWeeklyLimit"
-          :dailyResetMode="editDailyResetMode"
-          :dailyResetHour="editDailyResetHour"
-          :weeklyResetMode="editWeeklyResetMode"
-          :weeklyResetDay="editWeeklyResetDay"
-          :weeklyResetHour="editWeeklyResetHour"
-          :resetTimezone="editResetTimezone"
-          :quotaNotifyGlobalEnabled="quotaNotifyGlobalEnabled"
-          :quotaNotifyDailyEnabled="quotaNotifyState.daily.enabled"
-          :quotaNotifyDailyThreshold="quotaNotifyState.daily.threshold"
-          :quotaNotifyDailyThresholdType="quotaNotifyState.daily.thresholdType"
-          :quotaNotifyWeeklyEnabled="quotaNotifyState.weekly.enabled"
-          :quotaNotifyWeeklyThreshold="quotaNotifyState.weekly.threshold"
-          :quotaNotifyWeeklyThresholdType="quotaNotifyState.weekly.thresholdType"
-          :quotaNotifyTotalEnabled="quotaNotifyState.total.enabled"
-          :quotaNotifyTotalThreshold="quotaNotifyState.total.threshold"
-          :quotaNotifyTotalThresholdType="quotaNotifyState.total.thresholdType"
-          @update:totalLimit="editQuotaLimit = $event"
-          @update:dailyLimit="editQuotaDailyLimit = $event"
-          @update:weeklyLimit="editQuotaWeeklyLimit = $event"
-          @update:dailyResetMode="editDailyResetMode = $event"
-          @update:dailyResetHour="editDailyResetHour = $event"
-          @update:weeklyResetMode="editWeeklyResetMode = $event"
-          @update:weeklyResetDay="editWeeklyResetDay = $event"
-          @update:weeklyResetHour="editWeeklyResetHour = $event"
-          @update:resetTimezone="editResetTimezone = $event"
-          @update:quotaNotifyDailyEnabled="quotaNotifyState.daily.enabled = $event"
-          @update:quotaNotifyDailyThreshold="quotaNotifyState.daily.threshold = $event"
-          @update:quotaNotifyDailyThresholdType="quotaNotifyState.daily.thresholdType = $event"
-          @update:quotaNotifyWeeklyEnabled="quotaNotifyState.weekly.enabled = $event"
-          @update:quotaNotifyWeeklyThreshold="quotaNotifyState.weekly.threshold = $event"
-          @update:quotaNotifyWeeklyThresholdType="quotaNotifyState.weekly.thresholdType = $event"
-          @update:quotaNotifyTotalEnabled="quotaNotifyState.total.enabled = $event"
-          @update:quotaNotifyTotalThreshold="quotaNotifyState.total.threshold = $event"
-          @update:quotaNotifyTotalThresholdType="quotaNotifyState.total.thresholdType = $event"
-        />
-      </div>
-      <!-- 配额控制 (非 Anthropic apikey/bedrock) -->
-      <div
-        v-else-if="provider?.type === 'apikey' || provider?.type === 'bedrock'"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
-      >
-        <div class="mb-3">
-          <h3 class="input-label mb-0 text-base font-semibold">{{ t('admin.providers.quotaControl.title') }}</h3>
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.quotaLimitHint') }}
-          </p>
-        </div>
-        <QuotaLimitCard
-          :totalLimit="editQuotaLimit"
-          :dailyLimit="editQuotaDailyLimit"
-          :weeklyLimit="editQuotaWeeklyLimit"
-          :dailyResetMode="editDailyResetMode"
-          :dailyResetHour="editDailyResetHour"
-          :weeklyResetMode="editWeeklyResetMode"
-          :weeklyResetDay="editWeeklyResetDay"
-          :weeklyResetHour="editWeeklyResetHour"
-          :resetTimezone="editResetTimezone"
-          :quotaNotifyGlobalEnabled="quotaNotifyGlobalEnabled"
-          :quotaNotifyDailyEnabled="quotaNotifyState.daily.enabled"
-          :quotaNotifyDailyThreshold="quotaNotifyState.daily.threshold"
-          :quotaNotifyDailyThresholdType="quotaNotifyState.daily.thresholdType"
-          :quotaNotifyWeeklyEnabled="quotaNotifyState.weekly.enabled"
-          :quotaNotifyWeeklyThreshold="quotaNotifyState.weekly.threshold"
-          :quotaNotifyWeeklyThresholdType="quotaNotifyState.weekly.thresholdType"
-          :quotaNotifyTotalEnabled="quotaNotifyState.total.enabled"
-          :quotaNotifyTotalThreshold="quotaNotifyState.total.threshold"
-          :quotaNotifyTotalThresholdType="quotaNotifyState.total.thresholdType"
-          @update:totalLimit="editQuotaLimit = $event"
-          @update:dailyLimit="editQuotaDailyLimit = $event"
-          @update:weeklyLimit="editQuotaWeeklyLimit = $event"
-          @update:dailyResetMode="editDailyResetMode = $event"
-          @update:dailyResetHour="editDailyResetHour = $event"
-          @update:weeklyResetMode="editWeeklyResetMode = $event"
-          @update:weeklyResetDay="editWeeklyResetDay = $event"
-          @update:weeklyResetHour="editWeeklyResetHour = $event"
-          @update:resetTimezone="editResetTimezone = $event"
-          @update:quotaNotifyDailyEnabled="quotaNotifyState.daily.enabled = $event"
-          @update:quotaNotifyDailyThreshold="quotaNotifyState.daily.threshold = $event"
-          @update:quotaNotifyDailyThresholdType="quotaNotifyState.daily.thresholdType = $event"
-          @update:quotaNotifyWeeklyEnabled="quotaNotifyState.weekly.enabled = $event"
-          @update:quotaNotifyWeeklyThreshold="quotaNotifyState.weekly.threshold = $event"
-          @update:quotaNotifyWeeklyThresholdType="quotaNotifyState.weekly.thresholdType = $event"
-          @update:quotaNotifyTotalEnabled="quotaNotifyState.total.enabled = $event"
-          @update:quotaNotifyTotalThreshold="quotaNotifyState.total.threshold = $event"
-          @update:quotaNotifyTotalThresholdType="quotaNotifyState.total.thresholdType = $event"
-        />
-      </div>
-
-      <!-- OpenAI OAuth 客户端访问策略 -->
-      <div
-        v-if="provider?.platform === 'openai' && provider?.type === 'oauth'"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between gap-4">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.providers.openai.clientPolicy') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.clientPolicyDesc') }}
-            </p>
-          </div>
-          <div class="w-64">
-            <Select v-model="openAIOAuthClientPolicy" :options="openAIOAuthClientPolicyOptions" />
-          </div>
-        </div>
-        <div
-          v-if="openAIOAuthClientPolicy === 'codex_only'"
-          class="mt-4 flex items-center justify-between border-l-2 border-gray-200 pl-4 dark:border-dark-600"
-        >
-          <div>
-            <label class="input-label mb-0">{{ t('admin.providers.openai.codexCLIOnlyAllowClaudeCode') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.codexCLIOnlyAllowClaudeCodeDesc') }}
-            </p>
-          </div>
-          <Toggle v-model="codexCLIOnlyAllowClaudeCodeEnabled" variant="flush" off-tone="soft" />
-        </div>
-      </div>
-
-      <!-- Codex 指纹收敛模式（仅 OpenAI OAuth） -->
-      <div
-        v-if="provider?.platform === 'openai' && provider?.type === 'oauth' && !isSparkShadow"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between gap-4">
-          <div class="min-w-0">
-            <label class="input-label mb-0">{{ t('admin.providers.openai.codexFingerprintMode') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.codexFingerprintModeDesc') }}
-            </p>
-          </div>
-          <div class="w-52 flex-shrink-0">
-            <Select
-              v-model="codexFingerprintMode"
-              data-testid="edit-codex-fingerprint-mode-select"
-              :options="codexFingerprintModeOptions"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- OpenAI 订阅档位手动覆盖（Plus/Pro/Free），仅 OAuth 非影子提供商 -->
-      <div
-        v-if="provider?.platform === 'openai' && provider?.type === 'oauth' && !isSparkShadow"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between gap-4">
-          <div class="min-w-0">
-            <label class="input-label mb-0">{{ t('admin.providers.openai.planType') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.planTypeDesc') }}
-            </p>
-          </div>
-          <div class="w-44 flex-shrink-0">
-            <Select
-              v-model="editPlanType"
-              data-testid="openai-plan-type-select"
-              :options="planTypeOptions"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- OAuth/COSY TLS 指纹伪装 -->
-      <div
-        v-if="showStandaloneTLSFingerprint"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="flex items-center justify-between">
-          <div>
-            <label class="input-label mb-0">{{ t('admin.providers.quotaControl.tlsFingerprint.label') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.quotaControl.tlsFingerprint.hint') }}
-            </p>
-          </div>
-          <Toggle v-model="tlsFingerprintEnabled" variant="flush" off-tone="soft" data-testid="edit-openai-tls-fingerprint-toggle" />
-        </div>
-        <Collapse :open="tlsFingerprintEnabled" unmount-on-hide>
-          <div class="mt-3 space-y-3">
-            <Select
-              v-model="tlsFingerprintProfileId"
-              data-testid="edit-openai-tls-fingerprint-profile"
-              :options="tlsFingerprintProfileOptions"
-            />
-            <div v-if="supportsTLSFingerprintRouter">
-              <Select
-                v-model="tlsFingerprintRouterId"
-                data-testid="edit-openai-tls-fingerprint-router"
-                :options="tlsFingerprintRouterOptions"
-              />
-              <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
-            </div>
-          </div>
-        </Collapse>
-      </div>
-
-      <div
-        v-if="provider?.platform === 'openai' && (provider?.type === 'oauth' || provider?.type === 'apikey')"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
-      >
-        <OpenAICompactionCheckbox v-model="openAINativeCompactionV2Mode" test-id="edit-openai-native-compaction-v2-mode"
-          :label="t('admin.providers.openai.nativeCompactV2Mode')" :hint="t('admin.providers.openai.nativeCompactV2ModeDesc')" />
-        <OpenAICompactionCheckbox v-model="openAICompactMode" test-id="edit-openai-compact-mode"
-          :label="t('admin.providers.openai.compactMode')" :hint="t('admin.providers.openai.compactModeDesc')" />
-        <ProviderModelMappingEditor
-          v-if="openAICompactMode !== 'force_off'"
-          v-model="openAICompactModelMappings"
-          :title="t('admin.providers.openai.compactModelMapping')"
-          :hint="t('admin.providers.openai.compactModelMappingDesc')"
-          :source-placeholder="t('admin.providers.fromModel')"
-          :target-placeholder="t('admin.providers.toModel')"
-        />
-      </div>
-
-      <div>
-        <div class="flex items-center justify-between">
-          <div>
-            <label class="input-label mb-0">{{
-              t('admin.providers.autoPauseOnExpired')
-            }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.autoPauseOnExpiredDesc') }}
-            </p>
-          </div>
-          <Toggle v-model="autoPauseOnExpired" variant="flush" off-tone="soft" />
-        </div>
-      </div>
-
-      <div
-        v-if="provider?.platform === 'openai'"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
-      >
-        <div class="space-y-2">
-          <div class="flex items-center justify-between">
-            <label class="input-label mb-0">{{ t('admin.providers.autoPause5hDisabled') }}</label>
-            <Toggle v-model="autoPause5hDisabled" variant="flush" off-tone="soft" data-testid="auto-pause-5h-disabled" />
-          </div>
-          <p class="input-hint">{{ t('admin.providers.autoPauseDisabledHint') }}</p>
-        </div>
-        <div>
-          <label class="input-label">{{ t('admin.providers.autoPause5hThreshold') }}</label>
-          <input
-            v-model.number="autoPause5hThreshold"
-            type="number"
-            min="0"
-            max="100"
-            step="0.1"
-            class="input"
-            :disabled="autoPause5hDisabled"
-            data-testid="auto-pause-5h-threshold"
-          />
-          <p class="input-hint">{{ t('admin.providers.autoPauseThresholdHint') }}</p>
-        </div>
-        <div class="space-y-2">
-          <div class="flex items-center justify-between">
-            <label class="input-label mb-0">{{ t('admin.providers.autoPause7dDisabled') }}</label>
-            <Toggle v-model="autoPause7dDisabled" variant="flush" off-tone="soft" data-testid="auto-pause-7d-disabled" />
-          </div>
-          <p class="input-hint">{{ t('admin.providers.autoPauseDisabledHint') }}</p>
-        </div>
-        <div>
-          <label class="input-label">{{ t('admin.providers.autoPause7dThreshold') }}</label>
-          <input
-            v-model.number="autoPause7dThreshold"
-            type="number"
-            min="0"
-            max="100"
-            step="0.1"
-            class="input"
-            :disabled="autoPause7dDisabled"
-            data-testid="auto-pause-7d-threshold"
-          />
-          <p class="input-hint">{{ t('admin.providers.autoPauseThresholdHint') }}</p>
-        </div>
-      </div>
-
-      <!-- 配额控制 (Anthropic OAuth/SetupToken: 亲和 + 窗口费用 + 会话 + RPM 等) -->
-      <div
-        v-if="provider?.platform === 'anthropic' && (provider?.type === 'oauth' || provider?.type === 'setup-token')"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
-      >
-        <div class="mb-3">
-          <h3 class="input-label mb-0 text-base font-semibold">{{ t('admin.providers.quotaControl.title') }}</h3>
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.quotaControl.hint') }}
-          </p>
-        </div>
-
-        <!-- Window Cost Limit -->
-        <div class="rounded-control border border-gray-200 p-4 dark:border-dark-600">
-          <div class="mb-3 flex items-center justify-between">
-            <div>
-              <label class="input-label mb-0">{{ t('admin.providers.quotaControl.windowCost.label') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.quotaControl.windowCost.hint') }}
-              </p>
-            </div>
-            <Toggle v-model="windowCostEnabled" variant="flush" off-tone="soft" />
-          </div>
-
-          <Collapse :open="windowCostEnabled" unmount-on-hide>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="input-label">{{ t('admin.providers.quotaControl.windowCost.limit') }}</label>
-                <div class="relative">
-                  <span class="input-icon text-gray-500 dark:text-gray-400">$</span>
-                  <input
-                    v-model.number="windowCostLimit"
-                    type="number"
-                    min="0"
-                    step="1"
-                    class="input input-has-icon input-icon-text"
-                    :placeholder="t('admin.providers.quotaControl.windowCost.limitPlaceholder')"
-                  />
-                </div>
-                <p class="input-hint">{{ t('admin.providers.quotaControl.windowCost.limitHint') }}</p>
-              </div>
-              <div>
-                <label class="input-label">{{ t('admin.providers.quotaControl.windowCost.stickyReserve') }}</label>
-                <div class="relative">
-                  <span class="input-icon text-gray-500 dark:text-gray-400">$</span>
-                  <input
-                    v-model.number="windowCostStickyReserve"
-                    type="number"
-                    min="0"
-                    step="1"
-                    class="input input-has-icon input-icon-text"
-                    :placeholder="t('admin.providers.quotaControl.windowCost.stickyReservePlaceholder')"
-                  />
-                </div>
-                <p class="input-hint">{{ t('admin.providers.quotaControl.windowCost.stickyReserveHint') }}</p>
-              </div>
-            </div>
-          </Collapse>
-        </div>
-
-        <!-- Session Limit -->
-        <div class="rounded-control border border-gray-200 p-4 dark:border-dark-600">
-          <div class="mb-3 flex items-center justify-between">
-            <div>
-              <label class="input-label mb-0">{{ t('admin.providers.quotaControl.sessionLimit.label') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.quotaControl.sessionLimit.hint') }}
-              </p>
-            </div>
-            <Toggle v-model="sessionLimitEnabled" variant="flush" off-tone="soft" />
-          </div>
-
-          <Collapse :open="sessionLimitEnabled" unmount-on-hide>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="input-label">{{ t('admin.providers.quotaControl.sessionLimit.maxSessions') }}</label>
-                <input
-                  v-model.number="maxSessions"
-                  type="number"
-                  min="1"
-                  step="1"
-                  class="input"
-                  :placeholder="t('admin.providers.quotaControl.sessionLimit.maxSessionsPlaceholder')"
-                />
-                <p class="input-hint">{{ t('admin.providers.quotaControl.sessionLimit.maxSessionsHint') }}</p>
-              </div>
-              <div>
-                <label class="input-label">{{ t('admin.providers.quotaControl.sessionLimit.idleTimeout') }}</label>
-                <div class="relative">
-                  <input
-                    v-model.number="sessionIdleTimeout"
-                    type="number"
-                    min="1"
-                    step="1"
-                    class="input pr-12"
-                    :placeholder="t('admin.providers.quotaControl.sessionLimit.idleTimeoutPlaceholder')"
-                  />
-                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">{{ t('common.minutes') }}</span>
-                </div>
-                <p class="input-hint">{{ t('admin.providers.quotaControl.sessionLimit.idleTimeoutHint') }}</p>
-              </div>
-            </div>
-          </Collapse>
-        </div>
-
-        <!-- RPM Limit -->
-        <div class="rounded-control border border-gray-200 p-4 dark:border-dark-600">
-          <div class="mb-3 flex items-center justify-between">
-            <div>
-              <label class="input-label mb-0">{{ t('admin.providers.quotaControl.rpmLimit.label') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.quotaControl.rpmLimit.hint') }}
-              </p>
-            </div>
-            <Toggle v-model="rpmLimitEnabled" variant="flush" off-tone="soft" />
-          </div>
-
-          <Collapse :open="rpmLimitEnabled" unmount-on-hide>
-            <div class="space-y-4">
-              <div>
-                <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.baseRpm') }}</label>
-                <input
-                  v-model.number="baseRpm"
-                  type="number"
-                  min="1"
-                  max="1000"
-                  step="1"
-                  class="input"
-                  :placeholder="t('admin.providers.quotaControl.rpmLimit.baseRpmPlaceholder')"
-                />
-                <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.baseRpmHint') }}</p>
-              </div>
-
-              <div>
-                <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.strategy') }}</label>
-                <div class="flex gap-2">
-                  <button
-                    type="button"
-                    @click="rpmStrategy = 'tiered'"
-                    :class="[
-                      'flex-1 rounded-control px-3 py-2 text-sm font-medium transition',
-                      rpmStrategy === 'tiered'
-                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                    ]"
-                  >
-                    <div class="text-center">
-                      <div>{{ t('admin.providers.quotaControl.rpmLimit.strategyTiered') }}</div>
-                      <div class="mt-0.5 text-xs opacity-70">{{ t('admin.providers.quotaControl.rpmLimit.strategyTieredHint') }}</div>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    @click="rpmStrategy = 'sticky_exempt'"
-                    :class="[
-                      'flex-1 rounded-control px-3 py-2 text-sm font-medium transition',
-                      rpmStrategy === 'sticky_exempt'
-                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                    ]"
-                  >
-                    <div class="text-center">
-                      <div>{{ t('admin.providers.quotaControl.rpmLimit.strategyStickyExempt') }}</div>
-                      <div class="mt-0.5 text-xs opacity-70">{{ t('admin.providers.quotaControl.rpmLimit.strategyStickyExemptHint') }}</div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              <div v-if="rpmStrategy === 'tiered'" v-content-reveal>
-                <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.stickyBuffer') }}</label>
-                <input
-                  v-model.number="rpmStickyBuffer"
-                  type="number"
-                  min="1"
-                  step="1"
-                  class="input"
-                  :placeholder="t('admin.providers.quotaControl.rpmLimit.stickyBufferPlaceholder')"
-                />
-                <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.stickyBufferHint') }}</p>
-              </div>
-
-            </div>
-          </Collapse>
-
-          <!-- 用户消息限速模式（独立于 RPM 开关，始终可见） -->
-          <div class="mt-4">
-            <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.userMsgQueue') }}</label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
-              {{ t('admin.providers.quotaControl.rpmLimit.userMsgQueueHint') }}
-            </p>
-            <div class="flex space-x-2">
-              <button type="button" v-for="opt in umqModeOptions" :key="opt.value"
-                @click="userMsgQueueMode = opt.value"
-                :class="[
-                  'px-3 py-1.5 text-sm rounded-control border transition-colors',
-                  userMsgQueueMode === opt.value
-                    ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-white dark:bg-dark-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-dark-500 hover:bg-gray-50 dark:hover:bg-dark-600'
-                ]">
-                {{ opt.label }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- TLS Fingerprint -->
-        <div class="rounded-control border border-gray-200 p-4 dark:border-dark-600">
-          <div class="flex items-center justify-between">
-            <div>
-              <label class="input-label mb-0">{{ t('admin.providers.quotaControl.tlsFingerprint.label') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.quotaControl.tlsFingerprint.hint') }}
-              </p>
-            </div>
-            <Toggle v-model="tlsFingerprintEnabled" variant="flush" off-tone="soft" />
-          </div>
-          <!-- Profile selector -->
-          <div v-if="tlsFingerprintEnabled" class="mt-3 space-y-3">
-            <Select v-model="tlsFingerprintProfileId" :options="tlsFingerprintProfileOptions" />
-          </div>
-        </div>
-
-        <!-- Session ID Masking -->
-        <div class="rounded-control border border-gray-200 p-4 dark:border-dark-600">
-          <div class="flex items-center justify-between">
-            <div>
-              <label class="input-label mb-0">{{ t('admin.providers.quotaControl.sessionIdMasking.label') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.quotaControl.sessionIdMasking.hint') }}
-              </p>
-            </div>
-            <Toggle v-model="sessionIdMaskingEnabled" variant="flush" off-tone="soft" />
-          </div>
-        </div>
-
-        <!-- Cache TTL Override -->
-        <div class="rounded-control border border-gray-200 p-4 dark:border-dark-600">
-          <div class="flex items-center justify-between">
-            <div>
-              <label class="input-label mb-0">{{ t('admin.providers.quotaControl.cacheTTLOverride.label') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.quotaControl.cacheTTLOverride.hint') }}
-              </p>
-            </div>
-            <Toggle v-model="cacheTTLOverrideEnabled" variant="flush" off-tone="soft" />
-          </div>
-          <Collapse :open="cacheTTLOverrideEnabled" unmount-on-hide>
-            <div class="mt-3">
-              <label class="input-label text-xs">{{ t('admin.providers.quotaControl.cacheTTLOverride.target') }}</label>
-              <Select
-                v-model="cacheTTLOverrideTarget"
-                :options="cacheTTLOverrideTargetOptions"
-                class="mt-1"
-              />
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.quotaControl.cacheTTLOverride.targetHint') }}
-              </p>
-            </div>
-          </Collapse>
-        </div>
-
-        <!-- Custom Base URL Relay -->
-        <div class="rounded-control border border-gray-200 p-4 dark:border-dark-600">
-          <div class="flex items-center justify-between">
-            <div>
-              <label class="input-label mb-0">{{ t('admin.providers.quotaControl.customBaseUrl.label') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.quotaControl.customBaseUrl.hint') }}
-              </p>
-            </div>
-            <Toggle v-model="customBaseUrlEnabled" variant="flush" off-tone="soft" />
-          </div>
-          <Collapse :open="customBaseUrlEnabled" unmount-on-hide>
-            <div class="mt-3">
-              <input
-                v-model="customBaseUrl"
-                type="text"
-                class="input"
-                :placeholder="t('admin.providers.quotaControl.customBaseUrl.urlHint')"
-              />
-            </div>
-          </Collapse>
-        </div>
-      </div>
-
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div>
-          <label class="input-label">{{ t('common.status') }}</label>
-          <Select v-model="form.status" :options="statusOptions" />
-        </div>
-
-        <div v-if="provider?.platform === 'antigravity'" class="mt-3 flex items-center gap-2">
-          <label class="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              v-model="allowOverages"
-              class="h-4 w-4 rounded-compact border-gray-300 text-primary-500 focus:ring-primary-500 dark:border-dark-500"
-            />
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ t('admin.providers.allowOverages') }}
-            </span>
-          </label>
-          <div class="group relative">
-            <span
-              class="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-200 text-xs text-gray-500 hover:bg-gray-300 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500"
+            <SettingRow
+              id="edit-anthropic-auth-scheme"
+              label-for="edit-anthropic-auth-scheme-select"
+              :label="t('admin.providers.anthropic.apiKeyAuthScheme')"
+              :hint="t('admin.providers.anthropic.apiKeyAuthSchemeDesc')"
+              field
             >
-              ?
-            </span>
-            <div
-              class="pointer-events-none absolute left-0 top-full z-tooltip mt-1.5 w-72 tooltip-panel rounded-compact px-3 py-2 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+              <Select id="edit-anthropic-auth-scheme-select" v-model="anthropicAPIKeyAuthScheme" :options="anthropicAPIKeyAuthSchemeOptions" />
+            </SettingRow>
+            <!-- 全局关闭网页搜索模拟时隐藏提供商级覆盖。 -->
+            <SettingRow
+              v-if="webSearchGlobalEnabled"
+              id="edit-anthropic-web-search"
+              label-for="edit-anthropic-web-search-select"
+              :label="t('admin.providers.anthropic.webSearchEmulation')"
+              :hint="t('admin.providers.anthropic.webSearchEmulationDesc')"
+              field
             >
-              {{ t('admin.providers.allowOveragesTooltip') }}
-              <div
-                class="tooltip-caret -top-1 left-3 border-l border-t"
-              ></div>
-            </div>
-          </div>
-        </div>
-      </div>
+              <Select id="edit-anthropic-web-search-select" v-model="webSearchEmulationMode" :options="webSearchEmulationOptions" />
+            </SettingRow>
+          </SettingsSection>
 
-      <!-- 分组选择 -->
-      <GroupSelector
-        v-model="form.group_ids"
-        :groups="selectableGroups"
-        data-tour="provider-form-groups"
-      />
+          <TLSFingerprintFields
+            v-if="supportsTLSFingerprint(provider)"
+            v-model:enabled="tlsFingerprintEnabled"
+            v-model:profile-id="tlsFingerprintProfileId"
+            v-model:router-id="tlsFingerprintRouterId"
+            :profile-options="tlsFingerprintProfileOptions"
+            :router-options="supportsTLSFingerprintRouter ? tlsFingerprintRouterOptions : undefined"
+            test-id-prefix="edit-openai-tls-fingerprint"
+          />
 
-      <CodexTicketAccountSettings v-if="show && provider?.platform === 'openai' && provider?.type === 'oauth' && !isSparkShadow && provider.credentials?.auth_mode !== 'agentIdentity'" ref="ticketSettings" :ids="[provider.id]" :busy="submitting" />
+          <AnthropicOAuthRequestFields
+            v-if="isAnthropicOAuthLikeProvider"
+            v-model:session-id-masking-enabled="sessionIdMaskingEnabled"
+            v-model:cache-ttl-enabled="cacheTTLOverrideEnabled"
+            v-model:cache-ttl-target="cacheTTLOverrideTarget"
+            v-model:custom-base-url-enabled="customBaseUrlEnabled"
+            v-model:custom-base-url="customBaseUrl"
+          />
+        </template>
+        <template #ticket>
+          <CodexTicketAccountSettings v-if="show && ticketEligible && provider" ref="ticketSettings" :ids="[provider.id]" :busy="submitting" />
+        </template>
+      </SettingsTabs>
       </fieldset>
     </form>
 
@@ -1844,16 +881,12 @@
       </div>
     </template>
   </BaseDialog>
-
-  <!-- Mixed Channel Warning Dialog -->
-
 </template>
 
 <script setup lang="ts">
 import OpenCodeGoProtocolRulesEditor from "./OpenCodeGoProtocolRulesEditor.vue"
 import CodexTicketAccountSettings from '@/components/admin/provider/CodexTicketAccountSettings.vue'
 import { applyOpenCodeGoProtocolRules, cloneOpenCodeGoProtocolRules, parseOpenCodeGoProtocolRules, defaultOpenCodeProtocolRules } from './credentialsBuilder'
-import { vContentReveal } from '@/directives/contentReveal'
 import Collapse from '@/components/common/Collapse.vue'
 
 // 统一协议选择只保存原生集合，不在提供商侧配置转换。
@@ -1863,7 +896,7 @@ import { normalizeLegacyOpenAIExtra, normalizeOpenAICompactMode } from '@/utils/
 import ProviderProtocolSelector from './ProviderProtocolSelector.vue'
 import { loadProtocolCatalog, nativeProtocolOptions } from '@/api/admin/protocolCapabilities'
 import type { ProtocolID } from '@/types'
-import OpenAICompactionCheckbox from './OpenAICompactionCheckbox.vue'
+import OpenAICompactionToggle from './OpenAICompactionToggle.vue'
 import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -1883,21 +916,51 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import UpstreamRequestIdHeaderField from '@/components/provider/UpstreamRequestIdHeaderField.vue'
-import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ProviderModelMappingEditor from '@/components/provider/ProviderModelMappingEditor.vue'
-import TempUnschedRulesEditor, { type TempUnschedRuleForm } from '@/components/provider/TempUnschedRulesEditor.vue'
+import type { TempUnschedRuleForm } from '@/components/provider/TempUnschedRulesEditor.vue'
 import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import ProxySelector from '@/components/common/ProxySelector.vue'
 import GroupSelector from '@/components/common/GroupSelector.vue'
 import CodexImageToolModeSelector from '@/components/provider/CodexImageToolModeSelector.vue'
 import ModelWhitelistSelector from '@/components/provider/ModelWhitelistSelector.vue'
-import QuotaLimitCard from '@/components/provider/QuotaLimitCard.vue'
 import GrokBaseUrlPresets from '@/components/provider/GrokBaseUrlPresets.vue'
 import CnBaseUrlPresets from '@/components/provider/CnBaseUrlPresets.vue'
-import HeaderOverrideEditor from '@/components/provider/HeaderOverrideEditor.vue'
 import OllamaCloudUsageSettings from '@/components/provider/OllamaCloudUsageSettings.vue'
 import UpstreamUsageConfigEditor from '@/components/provider/UpstreamUsageConfigEditor.vue'
+import SettingRow from '@/components/common/settings/SettingRow.vue'
+import SettingsNotice from '@/components/common/settings/SettingsNotice.vue'
+import SettingsSection from '@/components/common/settings/SettingsSection.vue'
+import SettingsSegmented from '@/components/common/settings/SettingsSegmented.vue'
+import SettingsSubpanel from '@/components/common/settings/SettingsSubpanel.vue'
+import SettingsTabs from '@/components/common/settings/SettingsTabs.vue'
+import SettingToggleRow from '@/components/common/settings/SettingToggleRow.vue'
+import AnthropicOAuthLimitFields from '@/components/provider/form/AnthropicOAuthLimitFields.vue'
+import AnthropicOAuthRequestFields from '@/components/provider/form/AnthropicOAuthRequestFields.vue'
+import CustomErrorCodesFields from '@/components/provider/form/CustomErrorCodesFields.vue'
+import HeaderOverrideFields from '@/components/provider/form/HeaderOverrideFields.vue'
+import ModelRestrictionFields from '@/components/provider/form/ModelRestrictionFields.vue'
+import PoolModeFields from '@/components/provider/form/PoolModeFields.vue'
+import QuotaLimitFields from '@/components/provider/form/QuotaLimitFields.vue'
+import TempUnschedFields from '@/components/provider/form/TempUnschedFields.vue'
+import TLSFingerprintFields from '@/components/provider/form/TLSFingerprintFields.vue'
+import { bindQuotaLimits } from '@/components/provider/form/quotaLimit'
+import {
+  DEFAULT_POOL_MODE_RETRY_COUNT,
+  formatPoolModeRetryStatusCodes,
+  normalizePoolModeRetryCount,
+  parsePoolModeRetryStatusCodes
+} from '@/components/provider/form/poolMode'
+import {
+  useAnthropicAPIKeyAuthSchemeOptions,
+  useCodexFingerprintModeOptions,
+  useOpenAIOAuthClientPolicyOptions,
+  useOpenAIWSModeOptions,
+  useWebSearchEmulationOptions,
+  type AnthropicAPIKeyAuthScheme,
+  type CodexFingerprintMode,
+  type RpmStrategy
+} from '@/components/provider/form/providerFormOptions'
 import {
   ANTIGRAVITY_PROJECT_ID_CREDENTIAL_KEY,
   applyAntigravityProjectID,
@@ -1931,10 +994,7 @@ import {
   groupedProviderSelectOptions
 } from '@/constants/provider'
 import {
-  OPENAI_WS_MODE_CTX_POOL,
-  OPENAI_WS_MODE_HTTP_BRIDGE,
   OPENAI_WS_MODE_OFF,
-  OPENAI_WS_MODE_PASSTHROUGH,
   isOpenAIWSModeEnabled,
   resolveOpenAIWSModeConcurrencyHintKey,
   type OpenAIWSMode,
@@ -1943,7 +1003,6 @@ import {
 import {
   getPresetMappingsByPlatform,
   getModelsByPlatform,
-  commonErrorCodes,
   buildModelMappingObject,
   buildPersistedModelRestriction,
   splitQoderPersistedModelRestriction,
@@ -2060,18 +1119,10 @@ const editAdaptiveBaseUrls = ref<Record<CnNativeApiProtocol, string>>({
 // 存储版 base_url（可能是用户自定义/中转地址）覆盖为官方预设并在下次保存时持久化。
 // nextTick 后解除，此后用户主动切换模式/协议仍正常联动重置。
 const syncingForm = ref(false)
-const cnProviderModeOptions = computed<Array<{ value: CnProviderMode; labelKey: CnProviderMode }>>(
-  () => {
-    if (props.provider?.platform === 'opencode_go') return [{ value: 'zen', labelKey: 'zen' }, { value: 'go', labelKey: 'go' }]
-    if (props.provider?.platform === 'deepseek') {
-      return [{ value: 'payg', labelKey: 'payg' }]
-    }
-    return [
-      { value: 'payg', labelKey: 'payg' },
-      { value: 'coding', labelKey: 'coding' }
-    ]
-  }
-)
+const cnProviderModeSegmentOptions = computed(() => {
+  const modes: CnProviderMode[] = props.provider?.platform === 'opencode_go' ? ['zen', 'go'] : props.provider?.platform === 'deepseek' ? ['payg'] : ['payg', 'coding']
+  return modes.map(value => ({ value, label: t(`admin.providers.cnProviders.providerMode.${value}`) }))
+})
 const editAdaptiveProtocolOptions = computed<Array<{ value: CnNativeApiProtocol; labelKey: string }>>(() => {
   const opts: Array<{ value: CnNativeApiProtocol; labelKey: string }> = [
     { value: 'chat_completions', labelKey: 'chatCompletions' },
@@ -2161,48 +1212,13 @@ const qoderModelRestrictionTouched = ref(false)
 const qoderModelWhitelistConfigured = ref(false)
 const qoderModelWhitelistTouched = ref(false)
 const qoderSite = ref<QoderSite>('global')
-const DEFAULT_POOL_MODE_RETRY_COUNT = 3
-const MAX_POOL_MODE_RETRY_COUNT = 10
-const DEFAULT_POOL_MODE_RETRY_STATUS_CODES = [401, 403, 429]
 const GROK_CLIENT_TOOL_CACHE_EXTRA_KEY = 'grok_client_tool_cache_enabled'
 const poolModeEnabled = ref(false)
 const poolModeRetryCount = ref(DEFAULT_POOL_MODE_RETRY_COUNT)
 const poolModeRetryStatusCodesInput = ref('')
 
-function parsePoolModeRetryStatusCodes(input: string): number[] {
-  if (!input || !input.trim()) return []
-  const seen = new Set<number>()
-  const out: number[] = []
-  for (const token of input.split(/[,\s]+/)) {
-    const trimmed = token.trim()
-    if (!trimmed) continue
-    const n = Number(trimmed)
-    if (!Number.isFinite(n) || !Number.isInteger(n)) continue
-    if (n < 100 || n > 599) continue
-    if (seen.has(n)) continue
-    seen.add(n)
-    out.push(n)
-  }
-  return out.sort((a, b) => a - b)
-}
-
-function formatPoolModeRetryStatusCodes(value: unknown): string {
-  if (!Array.isArray(value)) return ''
-  const out: number[] = []
-  const seen = new Set<number>()
-  for (const v of value) {
-    const n = typeof v === 'string' ? Number(v.trim()) : Number(v)
-    if (!Number.isFinite(n) || !Number.isInteger(n)) continue
-    if (n < 100 || n > 599) continue
-    if (seen.has(n)) continue
-    seen.add(n)
-    out.push(n)
-  }
-  return out.sort((a, b) => a - b).join(', ')
-}
 const customErrorCodesEnabled = ref(false)
 const selectedErrorCodes = ref<number[]>([])
-const customErrorCodeInput = ref<number | null>(null)
 const headerOverrideEnabled = ref(false)
 const headerOverrideRows = ref<HeaderOverrideRow[]>([])
 
@@ -2252,14 +1268,9 @@ const maxSessions = ref<number | null>(null)
 const sessionIdleTimeout = ref<number | null>(null)
 const rpmLimitEnabled = ref(false)
 const baseRpm = ref<number | null>(null)
-const rpmStrategy = ref<'tiered' | 'sticky_exempt'>('tiered')
+const rpmStrategy = ref<RpmStrategy>('tiered')
 const rpmStickyBuffer = ref<number | null>(null)
 const userMsgQueueMode = ref('')
-const umqModeOptions = computed(() => [
-  { value: '', label: t('admin.providers.quotaControl.rpmLimit.umqModeOff') },
-  { value: 'throttle', label: t('admin.providers.quotaControl.rpmLimit.umqModeThrottle') },
-  { value: 'serialize', label: t('admin.providers.quotaControl.rpmLimit.umqModeSerialize') },
-])
 const tlsFingerprintEnabled = ref(false)
 const tlsFingerprintProfileId = ref<number | null>(null)
 const tlsFingerprintProfiles = ref<{ id: number; name: string }[]>([])
@@ -2279,10 +1290,6 @@ const tlsFingerprintRouterOptions = computed(() => [
 const sessionIdMaskingEnabled = ref(false)
 const cacheTTLOverrideEnabled = ref(false)
 const cacheTTLOverrideTarget = ref<string>('5m')
-const cacheTTLOverrideTargetOptions = [
-  { value: '5m', label: '5m' },
-  { value: '1h', label: '1h' }
-]
 const customBaseUrlEnabled = ref(false)
 const customBaseUrl = ref('')
 
@@ -2302,22 +1309,13 @@ const openaiOAuthResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF
 const openaiAPIKeyResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
 const codexCLIOnlyAllowClaudeCodeEnabled = ref(false)
 const openAIOAuthClientPolicy = ref<OpenAIOAuthClientPolicy>('any')
-type CodexFingerprintMode = 'off' | 'device' | 'session' | 'full'
 const codexFingerprintMode = ref<CodexFingerprintMode>('off')
 const codexImageToolMode = ref<CodexImageToolMode>('inherit')
-type AnthropicAPIKeyAuthScheme = 'x_api_key' | 'authorization_bearer'
 const anthropicPassthroughEnabled = ref(false)
 const anthropicAPIKeyAuthScheme = ref<AnthropicAPIKeyAuthScheme>('x_api_key')
 const webSearchEmulationMode = ref('default')
-const webSearchEmulationOptions = computed(() => [
-  { value: 'default', label: t('admin.providers.anthropic.webSearchDefault') },
-  { value: 'enabled', label: t('admin.providers.anthropic.webSearchEnabled') },
-  { value: 'disabled', label: t('admin.providers.anthropic.webSearchDisabled') }
-])
-const anthropicAPIKeyAuthSchemeOptions = computed(() => [
-  { value: 'x_api_key', label: t('admin.providers.anthropic.apiKeyAuthSchemeXApiKey') },
-  { value: 'authorization_bearer', label: t('admin.providers.anthropic.apiKeyAuthSchemeBearer') }
-])
+const webSearchEmulationOptions = useWebSearchEmulationOptions()
+const anthropicAPIKeyAuthSchemeOptions = useAnthropicAPIKeyAuthSchemeOptions()
 const webSearchGlobalEnabled = ref(false)
 const {
   globalEnabled: quotaNotifyGlobalEnabled,
@@ -2325,6 +1323,7 @@ const {
   loadGlobalState: loadQuotaNotifyGlobal,
   loadFromExtra: loadQuotaNotifyFromExtra,
   writeToExtra: writeQuotaNotifyToExtra,
+  setField: setQuotaNotifyField,
   reset: resetQuotaNotify,
 } = useQuotaNotifyState()
 
@@ -2359,9 +1358,83 @@ const isAnthropicOAuthLikeProvider = computed(() =>
 const supportsTLSFingerprintRouter = computed(() =>
   props.provider?.platform === 'openai' && props.provider?.type === 'oauth'
 )
-const showStandaloneTLSFingerprint = computed(() =>
-  supportsTLSFingerprint(props.provider) && !isAnthropicOAuthLikeProvider.value
+const isServiceAccountProvider = computed(() =>
+  (props.provider?.platform === 'gemini' || props.provider?.platform === 'anthropic') &&
+  props.provider?.type === 'service_account'
 )
+const isOpenAIOAuthOrAPIKey = computed(() =>
+  props.provider?.platform === 'openai' &&
+  (props.provider?.type === 'oauth' || props.provider?.type === 'apikey')
+)
+// 白名单/映射在 API Key（Antigravity 除外）、OAuth 类、Vertex 和 Bedrock 账号中互斥出现，共用一个区域。
+const showModelRestriction = computed(() => {
+  const provider = props.provider
+  if (!provider) return false
+  return (provider.type === 'apikey' && provider.platform !== 'antigravity') ||
+    supportsOAuthLikeModelRestriction.value ||
+    isServiceAccountProvider.value ||
+    provider.type === 'bedrock'
+})
+const showCredentialsSection = computed(() => {
+  const provider = props.provider
+  if (!provider) return false
+  return ['apikey', 'upstream', 'bedrock'].includes(provider.type) ||
+    isServiceAccountProvider.value ||
+    (provider.platform === 'antigravity' && provider.type === 'oauth')
+})
+const showGeminiTier = computed(() =>
+  props.provider?.platform === 'gemini' && geminiProviderType.value === 'official'
+)
+const apiKeyBaseUrlPlaceholder = computed(() => {
+  switch (props.provider?.platform) {
+    case 'openai': return 'https://api.openai.com'
+    case 'gemini': return 'https://generativelanguage.googleapis.com'
+    case 'antigravity': return 'https://cloudcode-pa.googleapis.com'
+    case 'grok': return 'https://api.x.ai/v1'
+    default: return 'https://api.anthropic.com'
+  }
+})
+const apiKeyPlaceholder = computed(() => {
+  switch (props.provider?.platform) {
+    case 'openai': return 'sk-proj-...'
+    case 'gemini': return geminiProviderType.value === 'third_party' ? 'api-key-...' : 'AIza...'
+    case 'antigravity': return 'sk-...'
+    case 'grok': return 'xai-...'
+    default: return 'sk-ant-...'
+  }
+})
+const qoderSiteOptions = computed(() => [
+  { value: 'global' as QoderSite, label: t('admin.providers.qoder.site.global'), testid: 'edit-qoder-site-global' },
+  { value: 'cn' as QoderSite, label: t('admin.providers.qoder.site.cn'), testid: 'edit-qoder-site-cn' }
+])
+
+// 页签按账号类型隐藏没有内容的分类，基本信息、调度与请求协议始终存在。
+const tabsRef = ref<InstanceType<typeof SettingsTabs> | null>(null)
+const ticketEligible = computed(() => props.provider?.platform === 'openai' && props.provider.type === 'oauth' && !isSparkShadow.value && String(props.provider.credentials?.auth_mode || '').toLowerCase() !== 'agentidentity')
+const formTabs = computed(() => {
+  const provider = props.provider
+  const hasQuota = !!provider && (
+    provider.type === 'apikey' ||
+    provider.type === 'bedrock' ||
+    isAnthropicOAuthLikeProvider.value ||
+    !!provider.ollama_cloud_usage?.eligible
+  )
+  const hasModels = showModelRestriction.value || provider?.platform === 'antigravity'
+  return [
+    { key: 'basic', label: t('admin.providers.tabs.basic') },
+    { key: 'models', label: t('admin.providers.tabs.models'), hidden: !hasModels },
+    { key: 'scheduling', label: t('admin.providers.tabs.scheduling') },
+    { key: 'quota', label: t('admin.providers.tabs.quota'), hidden: !hasQuota },
+    { key: 'request', label: t('admin.providers.tabs.request') },
+    { key: 'ticket', label: t('admin.accounts.ticketPolicy.title'), hidden: !ticketEligible.value }
+  ]
+})
+
+// 业务校验仍用 toast 提示，同时切到字段所在页签并聚焦。
+function failAt(message: string, field: string) {
+  appStore.showError(message)
+  void tabsRef.value?.revealField(`[data-provider-field="${field}"]`)
+}
 
 // Load global feature states once
 adminAPI.settings.getWebSearchEmulationConfig().then(cfg => {
@@ -2378,19 +1451,19 @@ const editWeeklyResetMode = ref<'rolling' | 'fixed' | null>(null)
 const editWeeklyResetDay = ref<number | null>(null)
 const editWeeklyResetHour = ref<number | null>(null)
 const editResetTimezone = ref<string | null>(null)
-const codexFingerprintModeOptions = computed(() => [
-  { value: 'off' as CodexFingerprintMode, label: t('admin.providers.openai.codexFingerprintOff') },
-  { value: 'device' as CodexFingerprintMode, label: t('admin.providers.openai.codexFingerprintDevice') },
-  { value: 'session' as CodexFingerprintMode, label: t('admin.providers.openai.codexFingerprintSession') },
-  { value: 'full' as CodexFingerprintMode, label: t('admin.providers.openai.codexFingerprintFull') },
-])
-
-const openAIWSModeOptions = computed(() => [
-  { value: OPENAI_WS_MODE_OFF, label: t('admin.providers.openai.wsModeOff') },
-  { value: OPENAI_WS_MODE_CTX_POOL, label: t('admin.providers.openai.wsModeCtxPool') },
-  { value: OPENAI_WS_MODE_PASSTHROUGH, label: t('admin.providers.openai.wsModePassthrough') },
-  { value: OPENAI_WS_MODE_HTTP_BRIDGE, label: t('admin.providers.openai.wsModeHttpBridge') }
-])
+const { limits: quotaLimits, setLimit: setQuotaLimit } = bindQuotaLimits({
+  totalLimit: editQuotaLimit,
+  dailyLimit: editQuotaDailyLimit,
+  weeklyLimit: editQuotaWeeklyLimit,
+  dailyResetMode: editDailyResetMode,
+  dailyResetHour: editDailyResetHour,
+  weeklyResetMode: editWeeklyResetMode,
+  weeklyResetDay: editWeeklyResetDay,
+  weeklyResetHour: editWeeklyResetHour,
+  resetTimezone: editResetTimezone
+})
+const codexFingerprintModeOptions = useCodexFingerprintModeOptions()
+const openAIWSModeOptions = useOpenAIWSModeOptions()
 const openaiResponsesWebSocketV2Mode = computed({
   get: () => {
     if (props.provider?.type === 'apikey') {
@@ -2414,11 +1487,7 @@ const openAIWSModeConcurrencyHintKey = computed(() =>
 const planTypeOptions = computed(() =>
   buildPlanTypeOptions(editPlanType.value, t('admin.providers.openai.planTypeClear'))
 )
-const openAIOAuthClientPolicyOptions = computed(() => [
-  { value: 'any', label: t('admin.providers.openai.clientPolicyAny') },
-  { value: 'codex_only', label: t('admin.providers.openai.clientPolicyCodexOnly') },
-  { value: 'tls_router_matched_only', label: t('admin.providers.openai.clientPolicyTLSRouterMatchedOnly') }
-])
+const openAIOAuthClientPolicyOptions = useOpenAIOAuthClientPolicyOptions()
 
 // Computed: current preset mappings based on platform
 const presetMappings = computed(() =>
@@ -2486,19 +1555,6 @@ const expiresAtInput = computed({
 })
 
 // Watchers
-const normalizePoolModeRetryCount = (value: number) => {
-  if (!Number.isFinite(value)) {
-    return DEFAULT_POOL_MODE_RETRY_COUNT
-  }
-  const normalized = Math.trunc(value)
-  if (normalized < 0) {
-    return 0
-  }
-  if (normalized > MAX_POOL_MODE_RETRY_COUNT) {
-    return MAX_POOL_MODE_RETRY_COUNT
-  }
-  return normalized
-}
 
 const hydrateModelRestrictionFromMapping = (
   existingMappings?: Record<string, string>,
@@ -3132,59 +2188,6 @@ const syncAntigravityUpstreamModels = async () => {
   }
 }
 
-// Error code toggle helper
-const toggleErrorCode = (code: number) => {
-  const index = selectedErrorCodes.value.indexOf(code)
-  if (index === -1) {
-    // Adding code - check for 429/529 warning
-    if (code === 429) {
-      if (!confirm(t('admin.providers.customErrorCodes429Warning'))) {
-        return
-      }
-    } else if (code === 529) {
-      if (!confirm(t('admin.providers.customErrorCodes529Warning'))) {
-        return
-      }
-    }
-    selectedErrorCodes.value.push(code)
-  } else {
-    selectedErrorCodes.value.splice(index, 1)
-  }
-}
-
-// Add custom error code from input
-const addCustomErrorCode = () => {
-  const code = customErrorCodeInput.value
-  if (code === null || code < 100 || code > 599) {
-    appStore.showError(t('admin.providers.invalidErrorCode'))
-    return
-  }
-  if (selectedErrorCodes.value.includes(code)) {
-    appStore.showInfo(t('admin.providers.errorCodeExists'))
-    return
-  }
-  // Check for 429/529 warning
-  if (code === 429) {
-    if (!confirm(t('admin.providers.customErrorCodes429Warning'))) {
-      return
-    }
-  } else if (code === 529) {
-    if (!confirm(t('admin.providers.customErrorCodes529Warning'))) {
-      return
-    }
-  }
-  selectedErrorCodes.value.push(code)
-  customErrorCodeInput.value = null
-}
-
-// Remove error code
-const removeErrorCode = (code: number) => {
-  const index = selectedErrorCodes.value.indexOf(code)
-  if (index !== -1) {
-    selectedErrorCodes.value.splice(index, 1)
-  }
-}
-
 const buildTempUnschedRules = (rules: TempUnschedRuleForm[]) => {
   const out: Array<{
     error_code: number
@@ -3226,7 +2229,7 @@ const applyTempUnschedConfig = (credentials: Record<string, unknown>) => {
 
   const rules = buildTempUnschedRules(tempUnschedRules.value)
   if (rules.length === 0) {
-    appStore.showError(t('admin.providers.tempUnschedulable.rulesInvalid'))
+    failAt(t('admin.providers.tempUnschedulable.rulesInvalid'), 'temp-unsched')
     return false
   }
 
@@ -3501,9 +2504,11 @@ const submitUpdateProvider = async (providerID: number, updatePayload: Record<st
 const handleSubmit = async () => {
   if (!props.provider) return
   const providerID = props.provider.id
+  // 表单关闭了浏览器自带校验，隐藏页签中的必填项由页签组件定位后报告。
+  if (tabsRef.value && !(await tabsRef.value.validate())) return
 
   if (form.status !== 'active' && form.status !== 'inactive' && form.status !== 'error') {
-    appStore.showError(t('admin.providers.pleaseSelectStatus'))
+    failAt(t('admin.providers.pleaseSelectStatus'), 'status')
     return
   }
 
@@ -3532,7 +2537,7 @@ const handleSubmit = async () => {
         geminiProviderType.value === 'third_party' &&
         !isGeminiThirdPartyBaseUrl(enteredBaseUrl)
       ) {
-        appStore.showError(t('admin.providers.gemini.connectionSource.thirdPartyBaseUrlRequired'))
+        failAt(t('admin.providers.gemini.connectionSource.thirdPartyBaseUrlRequired'), 'base-url')
         return
       }
       const newBaseUrl = enteredBaseUrl || defaultBaseUrl.value
@@ -3584,7 +2589,7 @@ const handleSubmit = async () => {
       if (editApiKey.value.trim()) {
         newCredentials.api_key = editApiKey.value.trim()
       } else if (!hasExistingApiKey) {
-        appStore.showError(t('admin.providers.apiKeyIsRequired'))
+        failAt(t('admin.providers.apiKeyIsRequired'), 'api-key')
         return
       }
 
@@ -3662,7 +2667,7 @@ const handleSubmit = async () => {
         if (headerOverrideEnabled.value) {
           const headerError = validateHeaderOverrideRows(headerOverrideRows.value)
           if (headerError) {
-            appStore.showError(t(`admin.providers.headerOverride.${headerError}`))
+            failAt(t(`admin.providers.headerOverride.${headerError}`), 'header-override')
             return
           }
         }
@@ -3701,15 +2706,15 @@ const handleSubmit = async () => {
       const newCredentials: Record<string, unknown> = { ...currentCredentials }
 
       if (!editVertexProjectId.value.trim()) {
-        appStore.showError(t('admin.providers.vertexSaJsonMissingProjectId'))
+        failAt(t('admin.providers.vertexSaJsonMissingProjectId'), 'vertex-project-id')
         return
       }
       if (!editVertexClientEmail.value.trim()) {
-        appStore.showError(t('admin.providers.vertexSaJsonMissingClientEmail'))
+        failAt(t('admin.providers.vertexSaJsonMissingClientEmail'), 'vertex-project-id')
         return
       }
       if (!editVertexLocation.value.trim()) {
-        appStore.showError(t('admin.providers.vertexLocationRequired'))
+        failAt(t('admin.providers.vertexLocationRequired'), 'vertex-location')
         return
       }
 
@@ -3722,7 +2727,7 @@ const handleSubmit = async () => {
           )
         : Boolean(currentCredentials.service_account_json || currentCredentials.service_account)
       if (!hasExistingServiceAccountJson) {
-        appStore.showError(t('admin.providers.vertexSaJsonRequired'))
+        failAt(t('admin.providers.vertexSaJsonRequired'), 'vertex-project-id')
         return
       }
       newCredentials.project_id = editVertexProjectId.value.trim()
@@ -3837,11 +2842,11 @@ const handleSubmit = async () => {
       if (grokOAuthCustomBaseUrlEnabled.value) {
         const trimmedBaseUrl = grokOAuthBaseUrl.value.trim()
         if (!trimmedBaseUrl) {
-          appStore.showError(t('admin.providers.grokCustomBaseUrl.required'))
+          failAt(t('admin.providers.grokCustomBaseUrl.required'), 'grok-base-url')
           return
         }
         if (!/^https?:\/\//i.test(trimmedBaseUrl)) {
-          appStore.showError(t('admin.providers.grokCustomBaseUrl.invalid'))
+          failAt(t('admin.providers.grokCustomBaseUrl.invalid'), 'grok-base-url')
           return
         }
         newCredentials.base_url = trimmedBaseUrl
@@ -3852,7 +2857,7 @@ const handleSubmit = async () => {
       if (headerOverrideEnabled.value) {
         const headerError = validateHeaderOverrideRows(headerOverrideRows.value)
         if (headerError) {
-          appStore.showError(t(`admin.providers.headerOverride.${headerError}`))
+          failAt(t(`admin.providers.headerOverride.${headerError}`), 'header-override')
           return
         }
       }

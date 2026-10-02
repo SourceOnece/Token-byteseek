@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 // TestEvent represents a SSE event for provider testing
@@ -164,7 +167,7 @@ func (s *TestService) Test(ctx context.Context, request TestRequest, sink TestEv
 }
 
 func (s *TestService) execute(ctx context.Context, request TestRequest, sink TestEventSink) error {
-	if request.Protocol != "" && request.Protocol != "responses" && request.Protocol != "chat_completions" {
+	if request.Protocol != "" && TestProtocolID(request.Protocol) == "" {
 		return s.fail(ctx, sink, "Invalid test protocol")
 	}
 	var types []string
@@ -182,6 +185,9 @@ func (s *TestService) execute(ctx context.Context, request TestRequest, sink Tes
 	info := target.Information()
 	if explicit && kind == ProviderTestTypeImage && info.Platform != PlatformOpenAI && info.Platform != PlatformGemini && info.Platform != PlatformGrok && (info.Platform != PlatformAntigravity || info.Type != ProviderTypeAPIKey) {
 		return s.fail(ctx, sink, fmt.Sprintf("Image tests are not supported for platform %s", info.Platform))
+	}
+	if request.Protocol != "" && kind != ProviderTestTypeImage && !testProtocolAllowed(info, request.Protocol) {
+		return s.fail(ctx, sink, fmt.Sprintf("Test protocol %s is not supported for this provider", request.Protocol))
 	}
 	prepared := PreparedTestRequest{TestRequest: request, TestType: kind, ExplicitType: explicit}
 	prepared.Mode = mode
@@ -211,6 +217,37 @@ func (s *TestService) execute(ctx context.Context, request TestRequest, sink Tes
 		prepared.Route = TestRouteClaude
 	}
 	return target.Execute(ctx, prepared, sink)
+}
+
+// TestProtocolID 把管理端传入的测试协议转换为原生协议 ID，未知值返回空字符串。
+func TestProtocolID(protocol string) capability.ProtocolID {
+	switch protocol {
+	case APIProtocolAnthropic:
+		return capability.ProtocolAnthropicMessages
+	case APIProtocolResponses:
+		return capability.ProtocolOpenAIResponses
+	case APIProtocolChatCompletions:
+		return capability.ProtocolOpenAIChatCompletions
+	default:
+		return ""
+	}
+}
+
+// testProtocolAllowed 判断本次文字测试能否直连所选协议。
+// OpenAI API Key 可在 Responses 与 Chat 之间任选，OAuth 只有 Responses；
+// 国产平台只能测试提供商已启用的原生协议。其他平台只有一个测试端点，不接受显式协议。
+func testProtocolAllowed(info TestTargetInfo, protocol string) bool {
+	switch info.Platform {
+	case PlatformOpenAI:
+		if info.Type == ProviderTypeAPIKey {
+			return protocol != APIProtocolAnthropic
+		}
+		return protocol == APIProtocolResponses
+	case PlatformKimi, PlatformZhipu, PlatformDeepseek, PlatformMiniMax, PlatformOpenCodeGo:
+		return slices.Contains(info.EnabledProtocols, TestProtocolID(protocol))
+	default:
+		return false
+	}
 }
 
 func (s *TestService) fail(ctx context.Context, sink TestEventSink, message string) error {

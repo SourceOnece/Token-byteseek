@@ -99,11 +99,18 @@ export function useIconAnimation(
     }
     const focus = (event: Event) => {
       // tabindex=-1 仍允许鼠标聚焦 SVG；将装饰图形的焦点交回外层控件。
-      // 独立图标保留自身事件，label 内的图标则聚焦其关联的表单控件。
+      // label 内的图标聚焦关联控件，独立图标或不可聚焦容器则清除装饰焦点。
       if (event.target instanceof SVGElement && svg.contains(event.target)) {
         const control = labelledControl ?? trigger
         if (control instanceof HTMLElement) {
           control.focus({ preventScroll: true })
+        }
+        const activeElement = svg.ownerDocument.activeElement
+        if (activeElement instanceof SVGElement && svg.contains(activeElement)) {
+          activeElement.blur()
+          focused = false
+          update()
+          return
         }
       }
       focused = true

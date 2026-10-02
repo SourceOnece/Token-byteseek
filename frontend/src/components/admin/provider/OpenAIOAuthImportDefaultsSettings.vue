@@ -153,9 +153,9 @@
                 <p class="input-hint">{{ t('admin.providers.autoPauseThresholdHint') }}</p>
               </div>
             </div>
-            <OpenAICompactionCheckbox v-model="nativeCompactV2Mode" test-id="openai-oauth-default-native-compaction-v2-mode"
+            <OpenAICompactionToggle v-model="nativeCompactV2Mode" test-id="openai-oauth-default-native-compaction-v2-mode"
               :label="t('admin.providers.openai.nativeCompactV2Mode')" :hint="t('admin.providers.openai.nativeCompactV2ModeDesc')" />
-            <OpenAICompactionCheckbox v-model="compactMode" test-id="openai-oauth-default-compact-mode"
+            <OpenAICompactionToggle v-model="compactMode" test-id="openai-oauth-default-compact-mode"
               :label="t('admin.providers.openai.compactMode')" :hint="t('admin.providers.openai.compactModeDesc')" />
             <div class="space-y-3 border-t border-gray-100 pt-4 dark:border-dark-700">
               <div class="flex items-center justify-between gap-4">
@@ -245,7 +245,7 @@ import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import ProviderModelMappingEditor from '@/components/provider/ProviderModelMappingEditor.vue'
 import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import { normalizeLegacyOpenAIExtra, normalizeOpenAICompactMode } from '@/utils/openaiLegacyConfiguration'
-import OpenAICompactionCheckbox from '@/components/provider/OpenAICompactionCheckbox.vue'
+import OpenAICompactionToggle from '@/components/provider/OpenAICompactionToggle.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api'

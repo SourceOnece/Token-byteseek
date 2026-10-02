@@ -3,1248 +3,584 @@
     :show="show"
     :title="t('admin.providers.bulkEdit.title')"
     width="wide"
+    :body-scroll="false"
     @close="handleClose"
   >
-    <form id="bulk-edit-provider-form" class="space-y-5" @submit.prevent="() => handleSubmit()">
-	  <!-- 保存时冻结整张表单，票据设置与其他字段共用一个提交入口。 -->
-      <fieldset :disabled="submitting" class="min-w-0 space-y-5">
-      <!-- Info -->
-      <div class="rounded-control bg-blue-50 p-4 dark:bg-blue-900/20">
-        <p class="text-sm text-blue-700 dark:text-blue-400">
-          <Icon name="infoCircle" size="md" class="mr-1.5 inline h-5 w-5" />
+    <form
+      id="bulk-edit-provider-form"
+      novalidate
+      class="flex min-h-0 flex-1 flex-col"
+      @submit.prevent="() => handleSubmit()"
+    >
+      <div class="shrink-0 space-y-2 pb-2">
+        <SettingsNotice>
           {{ t('admin.providers.bulkEdit.selectionInfo', { count: targetMode === 'filtered' ? targetPreviewCount : providerIds.length }) }}
-        </p>
-      </div>
-
-      <!-- Mixed platform warning -->
-      <div v-if="isMixedPlatform" class="rounded-control bg-amber-50 p-4 dark:bg-amber-900/20">
-        <p class="text-sm text-amber-700 dark:text-amber-400">
-          <Icon name="exclamationTriangle" size="md" class="mr-1.5 inline h-5 w-5" />
+        </SettingsNotice>
+        <SettingsNotice v-if="isMixedPlatform" tone="warning">
           {{ t('admin.providers.bulkEdit.mixedPlatformWarning', { platforms: targetSelectedPlatforms.join(', ') }) }}
-        </p>
+        </SettingsNotice>
       </div>
 
-      <!-- OpenAI passthrough -->
-      <div
-        v-if="allOpenAIPassthroughCapable"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+      <!-- 工作台与普通字段共用提交入口，保存期间冻结两类草稿。 -->
+      <fieldset :disabled="submitting" class="flex min-h-0 min-w-0 flex-1 flex-col">
+      <SettingsTabs
+        id-prefix="bulk-edit-provider"
+        :tabs="formTabs"
+        :label="t('admin.providers.tabs.label')"
       >
-        <div class="mb-3 flex items-center justify-between">
-          <div class="flex-1 pr-4">
-            <label
-              id="bulk-edit-openai-passthrough-label"
-              class="input-label mb-0"
-              for="bulk-edit-openai-passthrough-enabled"
-            >
-              {{ t('admin.providers.openai.oauthPassthrough') }}
-            </label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.oauthPassthroughDesc') }}
-            </p>
-          </div>
-          <input
-            v-model="enableOpenAIPassthrough"
-            id="bulk-edit-openai-passthrough-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-openai-passthrough-body"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div
-          id="bulk-edit-openai-passthrough-body"
-          :class="!enableOpenAIPassthrough && 'pointer-events-none opacity-50'"
-          role="group"
-          aria-labelledby="bulk-edit-openai-passthrough-label"
-        >
-          <Toggle v-model="openaiPassthroughEnabled" variant="flush" off-tone="soft" id="bulk-edit-openai-passthrough-toggle" />
-        </div>
-      </div>
+        <template #basic>
+          <BulkApplyField id="bulk-edit-status" v-model="enableStatus" :label="t('common.status')">
+            <Select
+              v-model="status"
+              :options="statusOptions"
+              aria-labelledby="bulk-edit-status-label"
+            />
+          </BulkApplyField>
 
-      <!-- OpenAI Codex namespace 工具摊平兼容开关，仅 OAuth 可用 -->
-      <div
-        v-if="allOpenAIOAuth"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="mb-3 flex items-center justify-between">
-          <div class="flex-1 pr-4">
-            <label
-              id="bulk-edit-openai-flatten-namespaces-label"
-              class="input-label mb-0"
-              for="bulk-edit-openai-flatten-namespaces-enabled"
-            >
-              {{ t('admin.providers.openai.flattenNamespaces') }}
-            </label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.flattenNamespacesDesc') }}
-            </p>
-          </div>
-          <input
-            v-model="enableOpenAIFlattenNamespaces"
-            id="bulk-edit-openai-flatten-namespaces-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-openai-flatten-namespaces-body"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div
-          id="bulk-edit-openai-flatten-namespaces-body"
-          :class="!enableOpenAIFlattenNamespaces && 'pointer-events-none opacity-50'"
-          role="group"
-          aria-labelledby="bulk-edit-openai-flatten-namespaces-label"
-        >
-          <Toggle v-model="openaiFlattenNamespacesEnabled" variant="flush" off-tone="soft" id="bulk-edit-openai-flatten-namespaces-toggle" />
-        </div>
-      </div>
+          <BulkApplyField id="bulk-edit-groups" v-model="enableGroups" :label="t('nav.groups')">
+            <GroupSelector
+              v-model="groupIds"
+              :groups="groups"
+              aria-labelledby="bulk-edit-groups-label"
+            />
+          </BulkApplyField>
 
-      <!-- OpenAI Codex 图片工具策略 -->
-      <div
-        v-if="allOpenAIPassthroughCapable"
-        class="border-t border-gray-200 pt-4 dark:border-dark-600"
-      >
-        <div class="mb-3 flex items-center justify-end gap-2">
-          <input
-            v-model="enableCodexImageToolMode"
-            id="bulk-edit-codex-image-tool-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-codex-image-tool"
-            :aria-label="t('admin.providers.openai.codexImageTool')"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div
-          id="bulk-edit-codex-image-tool"
-          :class="!enableCodexImageToolMode && 'pointer-events-none opacity-50'"
-        >
-          <CodexImageToolModeSelector
-            v-model="codexImageToolMode"
-            test-id-prefix="bulk-edit-codex-image-tool"
-          />
-        </div>
-      </div>
+          <BulkApplyField id="bulk-edit-proxy" v-model="enableProxy" :label="t('admin.providers.proxy')">
+            <ProxySelector
+              v-model="proxyId"
+              :proxies="proxies"
+              aria-labelledby="bulk-edit-proxy-label"
+            />
+          </BulkApplyField>
 
-      <div v-if="targetSelectedPlatforms.length === 1 && targetSelectedTypes.length === 1">
-        <label class="flex items-center gap-2 text-sm"><input id="bulk-native-protocols-enabled" v-model="enableUpstreamProtocols" type="checkbox" />{{ t('admin.protocols.nativeTitle') }}</label>
-        <ProviderProtocolSelector v-if="enableUpstreamProtocols" v-model="upstreamProtocols" :platform="targetSelectedPlatforms[0] ?? ''" :type="targetSelectedTypes[0] ?? ''" auth-mode="*" />
-      </div>
-
-      <!-- OpenAI API Key HTTP continuation 能力 -->
-      <div v-if="allOpenAIAPIKey" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between gap-4">
-          <div class="flex-1">
-            <label
-              id="bulk-edit-openai-continuation-supported-label"
-              class="input-label mb-0"
-              for="bulk-edit-openai-continuation-supported-enabled"
-            >
-              {{ t('admin.providers.openai.responsesContinuationSupported') }}
-            </label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.responsesContinuationSupportedDesc') }}
-            </p>
-          </div>
-          <input
-            id="bulk-edit-openai-continuation-supported-enabled"
-            v-model="enableOpenAIResponsesContinuationSupported"
-            type="checkbox"
-            aria-controls="bulk-edit-openai-continuation-supported-body"
-            data-testid="bulk-edit-openai-continuation-supported-apply"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div
-          id="bulk-edit-openai-continuation-supported-body"
-          class="flex items-center justify-end"
-          role="group"
-          aria-labelledby="bulk-edit-openai-continuation-supported-label"
-        >
-          <Select v-if="isBlank(openAIResponsesContinuationSupported)" v-model="openAIResponsesContinuationSupported" :options="[{value:true,label:t('common.enabled')},{value:false,label:t('common.disabled')}]" :placeholder="' '" :disabled="!enableOpenAIResponsesContinuationSupported" />
-          <Toggle v-else
-            v-model="openAIResponsesContinuationSupported"
-            :disabled="!enableOpenAIResponsesContinuationSupported"
-            data-testid="bulk-edit-openai-continuation-supported"
-            :aria-label="t('admin.providers.openai.responsesContinuationSupportedEnabled')"
-          />
-        </div>
-      </div>
-
-      <!-- Base URL (API Key only) -->
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <label
-            id="bulk-edit-base-url-label"
-            class="input-label mb-0"
-            for="bulk-edit-base-url-enabled"
-          >
-            {{ t('admin.providers.baseUrl') }}
-          </label>
-          <input
+          <!-- Base URL 只对 API Key、上游中转和 Grok OAuth 账号生效。 -->
+          <BulkApplyField
+            v-if="allBaseUrlCapable"
+            id="bulk-edit-base-url"
             v-model="enableBaseUrl"
-            id="bulk-edit-base-url-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-base-url"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <input
-          v-model="baseUrl"
-          id="bulk-edit-base-url"
-          type="text"
-          :disabled="!enableBaseUrl"
-          class="input"
-          :class="!enableBaseUrl && 'cursor-not-allowed opacity-50'"
-          :placeholder="t('admin.providers.bulkEdit.baseUrlPlaceholder')"
-          aria-labelledby="bulk-edit-base-url-label"
-        />
-        <GrokBaseUrlPresets
-          v-if="allTargetsGrok"
-          class="mt-2"
-          @select="baseUrl = $event; enableBaseUrl = true"
-        />
-        <p class="input-hint">
-          {{ t('admin.providers.bulkEdit.baseUrlNotice') }}
-        </p>
-      </div>
-
-      <!-- Model restriction -->
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <label
-            id="bulk-edit-model-restriction-label"
-            class="input-label mb-0"
-            for="bulk-edit-model-restriction-enabled"
+            :label="t('admin.providers.baseUrl')"
+            :hint="t('admin.providers.bulkEdit.baseUrlNotice')"
           >
-            {{ t('admin.providers.modelRestriction') }}
-          </label>
-          <input
+            <input
+              id="bulk-edit-base-url"
+              v-model="baseUrl"
+              type="text"
+              class="input"
+              :placeholder="t('admin.providers.bulkEdit.baseUrlPlaceholder')"
+              aria-labelledby="bulk-edit-base-url-label"
+            />
+            <GrokBaseUrlPresets
+              v-if="allTargetsGrok"
+              @select="baseUrl = $event; enableBaseUrl = true"
+            />
+          </BulkApplyField>
+        </template>
+
+        <template #models>
+          <BulkApplyField
+            id="bulk-edit-model-restriction"
             v-model="enableModelRestriction"
-            id="bulk-edit-model-restriction-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-model-restriction-body"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-
-        <div
-          id="bulk-edit-model-restriction-body"
-          :class="!enableModelRestriction && 'pointer-events-none opacity-50'"
-          role="group"
-          aria-labelledby="bulk-edit-model-restriction-label"
-        >
-
-            <!-- Mode Toggle -->
-            <div class="mb-4 flex gap-2">
-              <button
-                type="button"
-                :class="[
-                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
-                  modelRestrictionMode === 'whitelist'
-                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                ]"
-                @click="modelRestrictionMode = 'whitelist'"
-              >
-                <Icon name="checkCircle" size="sm" :animate-on-hover="false" class="mr-1.5 inline h-4 w-4" />
-                {{ t('admin.providers.modelWhitelist') }}
-              </button>
-              <button
-                type="button"
-                :class="[
-                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
-                  modelRestrictionMode === 'mapping'
-                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                ]"
-                @click="modelRestrictionMode = 'mapping'"
-              >
-                <Icon name="swap" size="sm" class="mr-1.5 inline h-4 w-4" />
-                {{ t('admin.providers.modelMapping') }}
-              </button>
-            </div>
-            <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.modelRestrictionCombinedHint') }}
-            </p>
-
-            <!-- Whitelist Mode -->
-            <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
-              <div class="mb-3 rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-                <p class="text-xs text-blue-700 dark:text-blue-400">
-                  <Icon name="infoCircle" size="sm" class="mr-1 inline h-4 w-4" />
-                  {{ t('admin.providers.selectAllowedModels') }}
-                </p>
-              </div>
-
+            :label="t('admin.providers.modelRestriction')"
+            :hint="t('admin.providers.modelRestrictionCombinedHint')"
+          >
+            <SettingsSegmented
+              v-model="modelRestrictionMode"
+              block
+              :aria-label="t('admin.providers.modelRestriction')"
+              :options="modelRestrictionModeOptions"
+            />
+            <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal class="space-y-2">
+              <SettingsNotice>{{ t('admin.providers.selectAllowedModels') }}</SettingsNotice>
               <ModelWhitelistSelector
                 v-model="allowedModels"
                 :platforms="targetSelectedPlatforms"
               />
-
-              <p class="text-xs text-gray-500 dark:text-gray-400">
+              <p class="input-hint">
                 {{ t('admin.providers.selectedModels', { count: allowedModels.length }) }}
-                <span v-if="allowedModels.length === 0">{{
-                  t('admin.providers.supportsAllModels')
-                }}</span>
+                <span v-if="allowedModels.length === 0">{{ t('admin.providers.supportsAllModels') }}</span>
               </p>
             </div>
-
-            <!-- Mapping Mode -->
             <ProviderModelMappingEditor
               v-else
               v-model="modelMappings"
               :presets="filteredPresets"
               @preset="addPresetMapping"
             />
-        </div>
-      </div>
+          </BulkApplyField>
+        </template>
 
-      <!-- Custom error codes -->
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <div>
-            <label
-              id="bulk-edit-custom-error-codes-label"
-              class="input-label mb-0"
-              for="bulk-edit-custom-error-codes-enabled"
-            >
-              {{ t('admin.providers.customErrorCodes') }}
-            </label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.customErrorCodesHint') }}
-            </p>
-          </div>
-          <input
+        <template #scheduling>
+          <SettingsSection :title="t('admin.providers.sections.scheduling')">
+            <div class="grid gap-4 md:grid-cols-2">
+              <BulkApplyField id="bulk-edit-concurrency" v-model="enableConcurrency" :label="t('admin.providers.concurrency')" plain>
+                <input
+                  id="bulk-edit-concurrency"
+                  v-model.number="concurrency"
+                  type="number"
+                  min="1"
+                  class="input"
+                  aria-labelledby="bulk-edit-concurrency-label"
+                  @input="concurrency = Math.max(1, concurrency || 1)"
+                />
+              </BulkApplyField>
+              <BulkApplyField id="bulk-edit-load-factor" v-model="enableLoadFactor" :label="t('admin.providers.loadFactor')" plain>
+                <input
+                  id="bulk-edit-load-factor"
+                  v-model.number="loadFactor"
+                  type="number"
+                  min="1"
+                  class="input"
+                  aria-labelledby="bulk-edit-load-factor-label"
+                  @input="loadFactor = (loadFactor && loadFactor >= 1) ? loadFactor : null"
+                />
+                <p class="input-hint">{{ t('admin.providers.loadFactorHint') }}</p>
+              </BulkApplyField>
+              <BulkApplyField id="bulk-edit-priority" v-model="enablePriority" :label="t('admin.providers.priority')" plain>
+                <input
+                  id="bulk-edit-priority"
+                  v-model.number="priority"
+                  type="number"
+                  min="1"
+                  class="input"
+                  aria-labelledby="bulk-edit-priority-label"
+                />
+                <p class="input-hint">{{ t('admin.providers.priorityHint') }}</p>
+              </BulkApplyField>
+              <BulkApplyField id="bulk-edit-rate-multiplier" v-model="enableRateMultiplier" :label="t('admin.providers.billingRateMultiplier')" plain>
+                <input
+                  id="bulk-edit-rate-multiplier"
+                  v-model.number="rateMultiplier"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  class="input"
+                  aria-labelledby="bulk-edit-rate-multiplier-label"
+                />
+                <p class="input-hint">{{ t('admin.providers.billingRateMultiplierHint') }}</p>
+              </BulkApplyField>
+            </div>
+          </SettingsSection>
+
+          <BulkApplyField
+            id="bulk-edit-custom-error-codes"
             v-model="enableCustomErrorCodes"
-            id="bulk-edit-custom-error-codes-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-custom-error-codes-body"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
+            :label="t('admin.providers.customErrorCodes')"
+            :hint="t('admin.providers.customErrorCodesHint')"
+          >
+            <CustomErrorCodesFields v-model:codes="selectedErrorCodes" hide-toggle />
+          </BulkApplyField>
 
-        <div v-if="enableCustomErrorCodes" id="bulk-edit-custom-error-codes-body" class="space-y-3">
-          <div class="rounded-control bg-amber-50 p-3 dark:bg-amber-900/20">
-            <p class="text-xs text-amber-700 dark:text-amber-400">
-              <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
-              {{ t('admin.providers.customErrorCodesWarning') }}
-            </p>
-          </div>
-
-          <!-- Error Code Buttons -->
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="code in commonErrorCodes"
-              :key="code.value"
-              type="button"
-              :class="[
-                'rounded-control px-3 py-1.5 text-sm font-medium transition-colors',
-                selectedErrorCodes.includes(code.value)
-                  ? 'bg-red-100 text-red-700 ring-1 ring-red-500 dark:bg-red-900/30 dark:text-red-400'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-              ]"
-              @click="toggleErrorCode(code.value)"
-            >
-              {{ code.value }} {{ code.label }}
-            </button>
-          </div>
-
-          <!-- Manual input -->
-          <div class="flex items-center gap-2">
-            <input
-              v-model="customErrorCodeInput"
-              id="bulk-edit-custom-error-code-input"
-              type="number"
-              min="100"
-              max="599"
-              class="input flex-1"
-              :placeholder="t('admin.providers.enterErrorCode')"
-              aria-labelledby="bulk-edit-custom-error-codes-label"
-              @keyup.enter="addCustomErrorCode"
-            />
-            <button type="button" class="btn btn-secondary px-3" @click="addCustomErrorCode">
-              <Icon name="plus" size="sm" class="h-4 w-4" />
-            </button>
-          </div>
-
-          <!-- Selected codes summary -->
-          <div class="flex flex-wrap gap-1.5">
-            <span
-              v-for="code in selectedErrorCodes.sort((a, b) => a - b)"
-              :key="code"
-              class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
-            >
-              {{ code }}
-              <button
-                type="button"
-                class="hover:text-red-900 dark:hover:text-red-300"
-                @click="removeErrorCode(code)"
-              >
-                <Icon name="x" size="xs" class="h-3.5 w-3.5" :stroke-width="2" />
-              </button>
-            </span>
-            <span v-if="selectedErrorCodes.length === 0" class="text-xs text-gray-400">
-              {{ t('admin.providers.noneSelectedUsesDefault') }}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Intercept warmup requests (Anthropic only) -->
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="flex items-center justify-between">
-          <div class="flex-1 pr-4">
-            <label
-              id="bulk-edit-intercept-warmup-label"
-              class="input-label mb-0"
-              for="bulk-edit-intercept-warmup-enabled"
-            >
-              {{ t('admin.providers.interceptWarmupRequests') }}
-            </label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.interceptWarmupRequestsDesc') }}
-            </p>
-          </div>
-          <input
+          <!-- 预热请求拦截只对 Anthropic 与 Antigravity 生效。 -->
+          <BulkApplyField
+            v-if="allInterceptWarmupCapable"
+            id="bulk-edit-intercept-warmup"
             v-model="enableInterceptWarmup"
-            id="bulk-edit-intercept-warmup-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-intercept-warmup-body"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div v-if="enableInterceptWarmup" id="bulk-edit-intercept-warmup-body" class="mt-3">
-          <Toggle v-model="interceptWarmupRequests" variant="flush" off-tone="soft" />
-        </div>
-      </div>
-
-      <!-- 请求头覆写（支持的平台 API Key 与 Grok OAuth） -->
-      <div v-if="allHeaderOverrideCapable" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="flex items-center justify-between">
-          <div class="flex-1 pr-4">
-            <label
-              id="bulk-edit-header-override-label"
-              class="input-label mb-0"
-              for="bulk-edit-header-override-enabled"
-            >
-              {{ t('admin.providers.headerOverride.title') }}
-            </label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.headerOverride.hint') }}
-            </p>
-          </div>
-          <input
-            v-model="enableHeaderOverride"
-            id="bulk-edit-header-override-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-header-override-body"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div v-if="enableHeaderOverride" id="bulk-edit-header-override-body" class="mt-3 space-y-3">
-          <Toggle v-model="headerOverrideEnabled" variant="flush" off-tone="soft" />
-
-          <div v-if="headerOverrideEnabled" class="space-y-3">
-            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-              <p class="text-xs text-blue-700 dark:text-blue-400">
-                <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
-                {{ t('admin.providers.headerOverride.info') }}
-              </p>
-            </div>
-
-            <p class="text-xs text-amber-600 dark:text-amber-400">
-              {{ t('admin.providers.headerOverride.bulkReplaceHint') }}
-            </p>
-
-            <HeaderOverrideEditor
-              :rows="headerOverrideRows"
-              @update:rows="headerOverrideRows = $event"
-            />
-          </div>
-          <p v-else class="text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.headerOverride.bulkDisableHint') }}
-          </p>
-        </div>
-      </div>
-
-      <!-- Proxy -->
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <label
-            id="bulk-edit-proxy-label"
-            class="input-label mb-0"
-            for="bulk-edit-proxy-enabled"
+            :label="t('admin.providers.interceptWarmupRequests')"
+            :hint="t('admin.providers.interceptWarmupRequestsDesc')"
           >
-            {{ t('admin.providers.proxy') }}
-          </label>
-          <input
-            v-model="enableProxy"
-            id="bulk-edit-proxy-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-proxy-body"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div id="bulk-edit-proxy-body" :class="!enableProxy && 'pointer-events-none opacity-50'">
-          <ProxySelector
-            v-model="proxyId"
-            :proxies="proxies"
-            aria-labelledby="bulk-edit-proxy-label"
-          />
-        </div>
-      </div>
+            <template #control>
+              <Toggle
+                id="bulk-edit-intercept-warmup-toggle"
+                v-model="interceptWarmupRequests"
+                :aria-label="t('admin.providers.interceptWarmupRequests')"
+              />
+            </template>
+          </BulkApplyField>
 
-      <!-- Concurrency & Priority -->
-      <div class="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4 dark:border-dark-600 lg:grid-cols-4">
-        <div>
-          <div class="mb-3 flex items-center justify-between">
-            <label
-              id="bulk-edit-concurrency-label"
-              class="input-label mb-0"
-              for="bulk-edit-concurrency-enabled"
-            >
-              {{ t('admin.providers.concurrency') }}
-            </label>
-            <input
-              v-model="enableConcurrency"
-              id="bulk-edit-concurrency-enabled"
-              type="checkbox"
-              aria-controls="bulk-edit-concurrency"
-              class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-          </div>
-          <input
-            v-model.number="concurrency"
-            id="bulk-edit-concurrency"
-            type="number"
-            min="1"
-            :disabled="!enableConcurrency"
-            class="input"
-            :class="!enableConcurrency && 'cursor-not-allowed opacity-50'"
-            aria-labelledby="bulk-edit-concurrency-label"
-            @input="concurrency = Math.max(1, concurrency || 1)"
-          />
-        </div>
-        <div>
-          <div class="mb-3 flex items-center justify-between">
-            <label
-              id="bulk-edit-load-factor-label"
-              class="input-label mb-0"
-              for="bulk-edit-load-factor-enabled"
-            >
-              {{ t('admin.providers.loadFactor') }}
-            </label>
-            <input
-              v-model="enableLoadFactor"
-              id="bulk-edit-load-factor-enabled"
-              type="checkbox"
-              aria-controls="bulk-edit-load-factor"
-              class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-          </div>
-          <input
-            v-model.number="loadFactor"
-            id="bulk-edit-load-factor"
-            type="number"
-            min="1"
-            :disabled="!enableLoadFactor"
-            class="input"
-            :class="!enableLoadFactor && 'cursor-not-allowed opacity-50'"
-            aria-labelledby="bulk-edit-load-factor-label"
-            @input="loadFactor = (loadFactor &amp;&amp; loadFactor >= 1) ? loadFactor : null"
-          />
-          <p class="input-hint">{{ t('admin.providers.loadFactorHint') }}</p>
-        </div>
-        <div>
-          <div class="mb-3 flex items-center justify-between">
-            <label
-              id="bulk-edit-priority-label"
-              class="input-label mb-0"
-              for="bulk-edit-priority-enabled"
-            >
-              {{ t('admin.providers.priority') }}
-            </label>
-            <input
-              v-model="enablePriority"
-              id="bulk-edit-priority-enabled"
-              type="checkbox"
-              aria-controls="bulk-edit-priority"
-              class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-          </div>
-          <input
-            v-model.number="priority"
-            id="bulk-edit-priority"
-            type="number"
-            min="1"
-            :disabled="!enablePriority"
-            class="input"
-            :class="!enablePriority && 'cursor-not-allowed opacity-50'"
-            aria-labelledby="bulk-edit-priority-label"
-          />
-        </div>
-        <div>
-          <div class="mb-3 flex items-center justify-between">
-            <label
-              id="bulk-edit-rate-multiplier-label"
-              class="input-label mb-0"
-              for="bulk-edit-rate-multiplier-enabled"
-            >
-              {{ t('admin.providers.billingRateMultiplier') }}
-            </label>
-            <input
-              v-model="enableRateMultiplier"
-              id="bulk-edit-rate-multiplier-enabled"
-              type="checkbox"
-              aria-controls="bulk-edit-rate-multiplier"
-              class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-          </div>
-          <input
-            v-model.number="rateMultiplier"
-            id="bulk-edit-rate-multiplier"
-            type="number"
-            min="0"
-            step="0.01"
-            :disabled="!enableRateMultiplier"
-            class="input"
-            :class="!enableRateMultiplier && 'cursor-not-allowed opacity-50'"
-            aria-labelledby="bulk-edit-rate-multiplier-label"
-          />
-          <p class="input-hint">{{ t('admin.providers.billingRateMultiplierHint') }}</p>
-        </div>
-      </div>
-
-      <!-- Status -->
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <label
-            id="bulk-edit-status-label"
-            class="input-label mb-0"
-            for="bulk-edit-status-enabled"
+          <SettingsSection
+            v-if="allOpenAIOAuth"
+            :title="t('admin.providers.sections.autoPause')"
+            :hint="t('admin.providers.autoPauseThresholdHint')"
           >
-            {{ t('common.status') }}
-          </label>
-          <input
-            v-model="enableStatus"
-            id="bulk-edit-status-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-status"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div id="bulk-edit-status" :class="!enableStatus && 'pointer-events-none opacity-50'">
-          <Select
-            v-model="status"
-            :options="statusOptions"
-            aria-labelledby="bulk-edit-status-label"
-          />
-        </div>
-      </div>
-
-      <!-- OpenAI OAuth WS mode -->
-      <div v-if="allOpenAIOAuth" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <label
-            id="bulk-edit-openai-ws-mode-label"
-            class="input-label mb-0"
-            for="bulk-edit-openai-ws-mode-enabled"
-          >
-            {{ t('admin.providers.openai.wsMode') }}
-          </label>
-          <input
-            v-model="enableOpenAIWSMode"
-            id="bulk-edit-openai-ws-mode-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-openai-ws-mode"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div
-          id="bulk-edit-openai-ws-mode"
-          :class="!enableOpenAIWSMode && 'pointer-events-none opacity-50'"
-        >
-          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.openai.wsModeDesc') }}
-          </p>
-          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            {{ t(openAIWSModeConcurrencyHintKey) }}
-          </p>
-          <Select
-            v-model="openaiOAuthResponsesWebSocketV2Mode"
-            data-testid="bulk-edit-openai-ws-mode-select"
-            :options="openAIWSModeOptions"
-            aria-labelledby="bulk-edit-openai-ws-mode-label"
-          />
-        </div>
-      </div>
-
-      <!-- OpenAI OAuth 客户端访问策略 -->
-      <div v-if="allOpenAIOAuth" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <label
-            id="bulk-edit-openai-codex-cli-only-label"
-            class="input-label mb-0"
-            for="bulk-edit-openai-codex-cli-only-enabled"
-          >
-            {{ t('admin.providers.openai.clientPolicy') }}
-          </label>
-          <input
-            v-model="enableCodexCLIOnly"
-            id="bulk-edit-openai-codex-cli-only-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-openai-codex-cli-only"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div
-          id="bulk-edit-openai-codex-cli-only"
-          :class="!enableCodexCLIOnly && 'pointer-events-none opacity-50'"
-        >
-          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.openai.clientPolicyDesc') }}
-          </p>
-          <Select
-            v-model="openAIOAuthClientPolicy"
-            data-testid="bulk-edit-openai-client-policy-select"
-            :options="openAIOAuthClientPolicyOptions"
-            aria-labelledby="bulk-edit-openai-codex-cli-only-label"
-          />
-        </div>
-      </div>
-
-      <!-- OpenAI OAuth: 额外放行 Claude Code 的 Codex 插件 -->
-      <div v-if="allOpenAIOAuth" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <label
-            id="bulk-edit-openai-codex-allow-claude-code-label"
-            class="input-label mb-0"
-            for="bulk-edit-openai-codex-allow-claude-code-enabled"
-          >
-            {{ t('admin.providers.openai.codexCLIOnlyAllowClaudeCode') }}
-          </label>
-          <input
-            v-model="enableCodexCLIOnlyAllowClaudeCode"
-            id="bulk-edit-openai-codex-allow-claude-code-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-openai-codex-allow-claude-code"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div
-          id="bulk-edit-openai-codex-allow-claude-code"
-          :class="[
-            (!enableCodexCLIOnlyAllowClaudeCode ||
-              (enableCodexCLIOnly && openAIOAuthClientPolicy !== 'codex_only')) &&
-              'pointer-events-none opacity-50'
-          ]"
-        >
-          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.openai.codexCLIOnlyAllowClaudeCodeDesc') }}
-          </p>
-          <Toggle v-model="codexCLIOnlyAllowClaudeCodeEnabled" variant="flush" off-tone="soft" id="bulk-edit-openai-codex-allow-claude-code-toggle" />
-        </div>
-        <p
-          v-if="enableCodexCLIOnly && openAIOAuthClientPolicy !== 'codex_only'"
-          class="mt-2 text-xs text-gray-500 dark:text-gray-400"
-        >
-          {{ t('admin.providers.openai.clientPolicyClaudeCodeHint') }}
-        </p>
-      </div>
-
-      <!-- Codex 指纹收敛模式（仅 OpenAI OAuth） -->
-      <div v-if="allOpenAIOAuth" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-            <label class="input-label mb-0">{{ t('admin.providers.openai.codexFingerprintMode') }}</label>
-            <input
-              v-model="enableCodexFingerprintMode"
-              id="bulk-edit-codex-fingerprint-mode-enabled"
-            type="checkbox"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div :class="!enableCodexFingerprintMode && 'pointer-events-none opacity-50'">
-          <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.openai.codexFingerprintModeDesc') }}
-          </p>
-          <Select
-            v-model="codexFingerprintMode"
-            data-testid="bulk-codex-fingerprint-mode-select"
-            :options="codexFingerprintModeOptions"
-          />
-        </div>
-      </div>
-
-      <!-- OpenAI OAuth: 5h/7d 配额自动暂停 -->
-      <div v-if="allOpenAIOAuth" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3">
-          <div class="text-sm font-medium text-gray-900 dark:text-white">
-            {{ t('admin.providers.quotaControl.title') }}
-          </div>
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.autoPauseThresholdHint') }}
-          </p>
-        </div>
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <div class="mb-3 flex items-center justify-between gap-3">
-              <label
-                id="bulk-edit-openai-auto-pause-5h-disabled-label"
-                class="input-label mb-0"
-                for="bulk-edit-openai-auto-pause-5h-disabled-enabled"
-              >
-                {{ t('admin.providers.autoPause5hDisabled') }}
-              </label>
-              <input
+            <div class="grid gap-4 md:grid-cols-2">
+              <BulkApplyField
+                id="bulk-edit-openai-auto-pause-5h-disabled"
                 v-model="enableAutoPause5hDisabled"
-                id="bulk-edit-openai-auto-pause-5h-disabled-enabled"
-                type="checkbox"
-                aria-controls="bulk-edit-openai-auto-pause-5h-disabled"
-                class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-            </div>
-            <div
-              id="bulk-edit-openai-auto-pause-5h-disabled"
-              :class="!enableAutoPause5hDisabled && 'pointer-events-none opacity-50'"
-            >
-              <Toggle v-model="autoPause5hDisabled" variant="flush" off-tone="soft" id="bulk-edit-openai-auto-pause-5h-disabled-toggle" />
-              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.autoPauseDisabledHint') }}
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <div class="mb-3 flex items-center justify-between gap-3">
-              <label
-                id="bulk-edit-openai-auto-pause-5h-threshold-label"
-                class="input-label mb-0"
-                for="bulk-edit-openai-auto-pause-5h-threshold-enabled"
+                :label="t('admin.providers.autoPause5hDisabled')"
+                :hint="t('admin.providers.autoPauseDisabledHint')"
+                plain
               >
-                {{ t('admin.providers.autoPause5hThreshold') }}
-              </label>
-              <input
-                v-model="enableAutoPause5hThreshold"
-                id="bulk-edit-openai-auto-pause-5h-threshold-enabled"
-                type="checkbox"
-                aria-controls="bulk-edit-openai-auto-pause-5h-threshold"
-                class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-            </div>
-            <input
-              v-model.number="autoPause5hThreshold"
-              id="bulk-edit-openai-auto-pause-5h-threshold"
-              type="number"
-              min="0"
-              max="100"
-              step="0.1"
-              :disabled="!enableAutoPause5hThreshold"
-              class="input"
-              :class="!enableAutoPause5hThreshold && 'cursor-not-allowed opacity-50'"
-              aria-labelledby="bulk-edit-openai-auto-pause-5h-threshold-label"
-              @input="autoPause5hThreshold = normalizeAutoPauseThresholdInput(autoPause5hThreshold)"
-            />
-          </div>
-
-          <div>
-            <div class="mb-3 flex items-center justify-between gap-3">
-              <label
-                id="bulk-edit-openai-auto-pause-7d-disabled-label"
-                class="input-label mb-0"
-                for="bulk-edit-openai-auto-pause-7d-disabled-enabled"
-              >
-                {{ t('admin.providers.autoPause7dDisabled') }}
-              </label>
-              <input
+                <template #control>
+                  <Toggle
+                    id="bulk-edit-openai-auto-pause-5h-disabled-toggle"
+                    v-model="autoPause5hDisabled"
+                    :aria-label="t('admin.providers.autoPause5hDisabled')"
+                  />
+                </template>
+              </BulkApplyField>
+              <BulkApplyField
+                id="bulk-edit-openai-auto-pause-7d-disabled"
                 v-model="enableAutoPause7dDisabled"
-                id="bulk-edit-openai-auto-pause-7d-disabled-enabled"
-                type="checkbox"
-                aria-controls="bulk-edit-openai-auto-pause-7d-disabled"
-                class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-            </div>
-            <div
-              id="bulk-edit-openai-auto-pause-7d-disabled"
-              :class="!enableAutoPause7dDisabled && 'pointer-events-none opacity-50'"
-            >
-              <Toggle v-model="autoPause7dDisabled" variant="flush" off-tone="soft" id="bulk-edit-openai-auto-pause-7d-disabled-toggle" />
-              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                {{ t('admin.providers.autoPauseDisabledHint') }}
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <div class="mb-3 flex items-center justify-between gap-3">
-              <label
-                id="bulk-edit-openai-auto-pause-7d-threshold-label"
-                class="input-label mb-0"
-                for="bulk-edit-openai-auto-pause-7d-threshold-enabled"
+                :label="t('admin.providers.autoPause7dDisabled')"
+                :hint="t('admin.providers.autoPauseDisabledHint')"
+                plain
               >
-                {{ t('admin.providers.autoPause7dThreshold') }}
-              </label>
-              <input
+                <template #control>
+                  <Toggle
+                    id="bulk-edit-openai-auto-pause-7d-disabled-toggle"
+                    v-model="autoPause7dDisabled"
+                    :aria-label="t('admin.providers.autoPause7dDisabled')"
+                  />
+                </template>
+              </BulkApplyField>
+              <BulkApplyField
+                id="bulk-edit-openai-auto-pause-5h-threshold"
+                v-model="enableAutoPause5hThreshold"
+                :label="t('admin.providers.autoPause5hThreshold')"
+                plain
+              >
+                <input
+                  id="bulk-edit-openai-auto-pause-5h-threshold"
+                  v-model.number="autoPause5hThreshold"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  class="input"
+                  aria-labelledby="bulk-edit-openai-auto-pause-5h-threshold-label"
+                  @input="autoPause5hThreshold = normalizeAutoPauseThresholdInput(autoPause5hThreshold)"
+                />
+              </BulkApplyField>
+              <BulkApplyField
+                id="bulk-edit-openai-auto-pause-7d-threshold"
                 v-model="enableAutoPause7dThreshold"
-                id="bulk-edit-openai-auto-pause-7d-threshold-enabled"
-                type="checkbox"
-                aria-controls="bulk-edit-openai-auto-pause-7d-threshold"
-                class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
+                :label="t('admin.providers.autoPause7dThreshold')"
+                plain
+              >
+                <input
+                  id="bulk-edit-openai-auto-pause-7d-threshold"
+                  v-model.number="autoPause7dThreshold"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  class="input"
+                  aria-labelledby="bulk-edit-openai-auto-pause-7d-threshold-label"
+                  @input="autoPause7dThreshold = normalizeAutoPauseThresholdInput(autoPause7dThreshold)"
+                />
+              </BulkApplyField>
             </div>
-            <input
-              v-model.number="autoPause7dThreshold"
-              id="bulk-edit-openai-auto-pause-7d-threshold"
-              type="number"
-              min="0"
-              max="100"
-              step="0.1"
-              :disabled="!enableAutoPause7dThreshold"
-              class="input"
-              :class="!enableAutoPause7dThreshold && 'cursor-not-allowed opacity-50'"
-              aria-labelledby="bulk-edit-openai-auto-pause-7d-threshold-label"
-              @input="autoPause7dThreshold = normalizeAutoPauseThresholdInput(autoPause7dThreshold)"
-            />
-          </div>
-        </div>
-      </div>
+          </SettingsSection>
+        </template>
 
-      <!-- OpenAI API Key WS mode -->
-      <div v-if="allOpenAIAPIKey" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <label
-            id="bulk-edit-openai-apikey-ws-mode-label"
-            class="input-label mb-0"
-            for="bulk-edit-openai-apikey-ws-mode-enabled"
-          >
-            {{ t('admin.providers.openai.wsMode') }}
-          </label>
-          <input
-            v-model="enableOpenAIAPIKeyWSMode"
-            id="bulk-edit-openai-apikey-ws-mode-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-openai-apikey-ws-mode"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div
-          id="bulk-edit-openai-apikey-ws-mode"
-          :class="!enableOpenAIAPIKeyWSMode && 'pointer-events-none opacity-50'"
-        >
-          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.openai.wsModeDesc') }}
-          </p>
-          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            {{ t(openAIAPIKeyWSModeConcurrencyHintKey) }}
-          </p>
-          <Select
-            v-model="openaiAPIKeyResponsesWebSocketV2Mode"
-            data-testid="bulk-edit-openai-apikey-ws-mode-select"
-            :options="openAIWSModeOptions"
-            aria-labelledby="bulk-edit-openai-apikey-ws-mode-label"
-          />
-        </div>
-      </div>
-
-      <!-- OpenAI 原生 V2 压缩模式 -->
-      <div v-if="allOpenAIPassthroughCapable" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <div class="flex-1 pr-4">
-            <label
-              id="bulk-edit-openai-native-compaction-v2-mode-label"
-              class="input-label mb-0"
-              for="bulk-edit-openai-native-compaction-v2-mode-enabled"
-            >
-              {{ t('admin.providers.openai.nativeCompactV2Mode') }}
-            </label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.nativeCompactV2ModeDesc') }}
-            </p>
-          </div>
-          <input
-            v-model="enableOpenAINativeCompactionV2Mode"
-            id="bulk-edit-openai-native-compaction-v2-mode-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-openai-native-compaction-v2-mode"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div
-          id="bulk-edit-openai-native-compaction-v2-mode"
-          :class="!enableOpenAINativeCompactionV2Mode && 'pointer-events-none opacity-50'"
-        >
-          <OpenAICompactionCheckbox
-            v-model="openAINativeCompactionV2Mode"
-            data-testid="bulk-edit-openai-native-compaction-v2-mode-select"
-            :label="t('admin.providers.openai.nativeCompactV2Mode')" :disabled="!enableOpenAINativeCompactionV2Mode"
-            aria-labelledby="bulk-edit-openai-native-compaction-v2-mode-label"
-          />
-        </div>
-      </div>
-
-      <!-- OpenAI 旧版 Compact 端点模式 -->
-      <div v-if="allOpenAIPassthroughCapable" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <div class="flex-1 pr-4">
-            <label
-              id="bulk-edit-openai-compact-mode-label"
-              class="input-label mb-0"
-              for="bulk-edit-openai-compact-mode-enabled"
-            >
-              {{ t('admin.providers.openai.compactMode') }}
-            </label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.compactModeDesc') }}
-            </p>
-          </div>
-          <input
-            v-model="enableOpenAICompactMode"
-            id="bulk-edit-openai-compact-mode-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-openai-compact-mode"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div
-          id="bulk-edit-openai-compact-mode"
-          :class="!enableOpenAICompactMode && 'pointer-events-none opacity-50'"
-        >
-          <OpenAICompactionCheckbox
-            v-model="openAICompactMode"
-            data-testid="bulk-edit-openai-compact-mode-select"
-            :label="t('admin.providers.openai.compactMode')" :disabled="!enableOpenAICompactMode"
-            aria-labelledby="bulk-edit-openai-compact-mode-label"
-          />
-        </div>
-      </div>
-
-      <!-- OpenAI 旧版 Compact 专属模型映射 -->
-      <div v-if="allOpenAIPassthroughCapable && enableOpenAICompactMode && openAICompactMode !== 'force_off'" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <div class="flex-1 pr-4">
-            <label
-              id="bulk-edit-openai-compact-model-mapping-label"
-              class="input-label mb-0"
-              for="bulk-edit-openai-compact-model-mapping-enabled"
-            >
-              {{ t('admin.providers.openai.compactModelMapping') }}
-            </label>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.openai.compactModelMappingDesc') }}
-            </p>
-          </div>
-          <input
-            v-model="enableOpenAICompactModelMapping"
-            id="bulk-edit-openai-compact-model-mapping-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-openai-compact-model-mapping"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div
-          id="bulk-edit-openai-compact-model-mapping"
-          :class="!enableOpenAICompactModelMapping && 'pointer-events-none opacity-50'"
-        >
-          <ProviderModelMappingEditor
-            v-model="openAICompactModelMappings"
-            :hint="''"
-            :source-placeholder="t('admin.providers.fromModel')"
-            :target-placeholder="t('admin.providers.toModel')"
-            test-id="bulk-edit-openai-compact-model-mapping"
-          />
-        </div>
-      </div>
-
-      <!-- RPM Limit (仅全部为 Anthropic OAuth/SetupToken 时显示) -->
-      <div v-if="allAnthropicOAuthOrSetupToken" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <label
-            id="bulk-edit-rpm-limit-label"
-            class="input-label mb-0"
-            for="bulk-edit-rpm-limit-enabled"
-          >
-            {{ t('admin.providers.quotaControl.rpmLimit.label') }}
-          </label>
-          <input
+        <template #quota>
+          <!-- 用户消息限速随 RPM 限制一起应用，未勾选时不提交。 -->
+          <BulkApplyField
+            v-if="allAnthropicOAuthOrSetupToken"
+            id="bulk-edit-rpm-limit"
             v-model="enableRpmLimit"
-            id="bulk-edit-rpm-limit-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-rpm-limit-body"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-
-        <div
-          id="bulk-edit-rpm-limit-body"
-          :class="!enableRpmLimit && 'pointer-events-none opacity-50'"
-          role="group"
-          aria-labelledby="bulk-edit-rpm-limit-label"
-        >
-          <div class="mb-3 flex items-center justify-between">
-            <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('admin.providers.quotaControl.rpmLimit.hint') }}</span>
-            <Toggle v-model="rpmLimitEnabled" variant="flush" off-tone="soft" />
-          </div>
-
-          <Collapse :open="rpmLimitEnabled" unmount-on-hide>
-            <div class="space-y-3">
-            <div>
-              <label class="input-label text-xs">{{ t('admin.providers.quotaControl.rpmLimit.baseRpm') }}</label>
-              <input
-                v-model.number="bulkBaseRpm"
-                type="number"
-                min="1"
-                max="1000"
-                step="1"
-                class="input"
-                :placeholder="t('admin.providers.quotaControl.rpmLimit.baseRpmPlaceholder')"
+            :label="t('admin.providers.quotaControl.rpmLimit.label')"
+            :hint="t('admin.providers.quotaControl.rpmLimit.hint')"
+          >
+            <template #control>
+              <Toggle
+                id="bulk-edit-rpm-limit-toggle"
+                v-model="rpmLimitEnabled"
+                :aria-label="t('admin.providers.quotaControl.rpmLimit.label')"
               />
-              <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.baseRpmHint') }}</p>
-            </div>
-
-            <div>
-              <label class="input-label text-xs">{{ t('admin.providers.quotaControl.rpmLimit.strategy') }}</label>
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  @click="bulkRpmStrategy = 'tiered'"
-                  :class="[
-                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition',
-                    bulkRpmStrategy === 'tiered'
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                  ]"
-                >
-                  {{ t('admin.providers.quotaControl.rpmLimit.strategyTiered') }}
-                </button>
-                <button
-                  type="button"
-                  @click="bulkRpmStrategy = 'sticky_exempt'"
-                  :class="[
-                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition',
-                    bulkRpmStrategy === 'sticky_exempt'
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                  ]"
-                >
-                  {{ t('admin.providers.quotaControl.rpmLimit.strategyStickyExempt') }}
-                </button>
+            </template>
+            <Collapse :open="rpmLimitEnabled" unmount-on-hide>
+              <RpmLimitPanel
+                v-model:base-rpm="bulkBaseRpm"
+                v-model:strategy="bulkRpmStrategy"
+                v-model:sticky-buffer="bulkRpmStickyBuffer"
+              />
+            </Collapse>
+            <div class="space-y-2">
+              <div>
+                <span class="text-sm font-medium text-primary-900 dark:text-dark-50">{{ t('admin.providers.quotaControl.rpmLimit.userMsgQueue') }}</span>
+                <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.userMsgQueueHint') }}</p>
               </div>
-            </div>
-
-            <div v-if="bulkRpmStrategy === 'tiered'">
-              <label class="input-label text-xs">{{ t('admin.providers.quotaControl.rpmLimit.stickyBuffer') }}</label>
-              <input
-                v-model.number="bulkRpmStickyBuffer"
-                type="number"
-                min="1"
-                step="1"
-                class="input"
-                :placeholder="t('admin.providers.quotaControl.rpmLimit.stickyBufferPlaceholder')"
+              <SettingsSegmented
+                v-model="userMsgQueueMode"
+                deselectable
+                :aria-label="t('admin.providers.quotaControl.rpmLimit.userMsgQueue')"
+                :options="umqModeOptions"
               />
-              <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.stickyBufferHint') }}</p>
             </div>
+          </BulkApplyField>
+        </template>
 
-            </div>
-          </Collapse>
-          </div>
-
-        <!-- 用户消息限速模式（独立于 RPM 开关，始终可见） -->
-        <div class="mt-4">
-          <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.userMsgQueue') }}</label>
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
-            {{ t('admin.providers.quotaControl.rpmLimit.userMsgQueueHint') }}
-          </p>
-          <div class="flex space-x-2">
-            <button type="button" v-for="opt in umqModeOptions" :key="opt.value"
-              :disabled="!enableUserMsgQueue" @click="userMsgQueueMode = opt.value"
-              :class="[
-                'px-3 py-1.5 text-sm rounded-control border transition-colors',
-                userMsgQueueMode === opt.value
-                  ? 'bg-primary-600 text-white border-primary-600'
-                  : 'bg-white dark:bg-dark-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-dark-500 hover:bg-gray-50 dark:hover:bg-dark-600'
-              ]">
-              {{ opt.label }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- TLS 指纹伪装 -->
-      <div v-if="allTLSFingerprintCapable" class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <label
-            id="bulk-edit-tls-fingerprint-label"
-            class="input-label mb-0"
-            for="bulk-edit-tls-fingerprint-enabled"
+        <template #request>
+          <!-- 协议选择器挂载时按目录初始化原生集合，因此勾选应用后再创建。 -->
+          <BulkApplyField
+            v-if="targetSelectedPlatforms.length === 1 && targetSelectedTypes.length === 1"
+            id="bulk-native-protocols"
+            v-model="enableUpstreamProtocols"
+            :label="t('admin.protocols.nativeTitle')"
           >
-            {{ t('admin.providers.quotaControl.tlsFingerprint.label') }}
-          </label>
-          <input
-            v-model="enableTLSFingerprint"
-            id="bulk-edit-tls-fingerprint-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-tls-fingerprint-body"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div
-          id="bulk-edit-tls-fingerprint-body"
-          :class="!enableTLSFingerprint && 'pointer-events-none opacity-50'"
-          role="group"
-          aria-labelledby="bulk-edit-tls-fingerprint-label"
-        >
-          <div class="mb-3 flex items-center justify-between">
-            <span class="text-sm text-gray-700 dark:text-gray-300">
-              {{ t('admin.providers.quotaControl.tlsFingerprint.hint') }}
-            </span>
-            <Toggle v-model="tlsFingerprintEnabled" variant="flush" off-tone="soft" id="bulk-edit-tls-fingerprint-toggle" />
-          </div>
+            <ProviderProtocolSelector
+              v-if="enableUpstreamProtocols"
+              v-model="upstreamProtocols"
+              :platform="targetSelectedPlatforms[0] ?? ''"
+              :type="targetSelectedTypes[0] ?? ''"
+              auth-mode="*"
+              hide-title
+            />
+          </BulkApplyField>
 
-          <Select
-            v-if="tlsFingerprintEnabled"
-            v-model="tlsFingerprintProfileId"
-            id="bulk-edit-tls-fingerprint-profile"
-            data-testid="bulk-edit-tls-fingerprint-profile"
-            :options="tlsFingerprintProfileOptions"
-          />
-          <Collapse :open="tlsFingerprintEnabled && allOpenAIOAuth" unmount-on-hide>
-            <div class="mt-3">
+          <BulkApplyField
+            v-if="allHeaderOverrideCapable"
+            id="bulk-edit-header-override"
+            v-model="enableHeaderOverride"
+            :label="t('admin.providers.headerOverride.title')"
+            :hint="t('admin.providers.headerOverride.hint')"
+          >
+            <template #control>
+              <Toggle
+                id="bulk-edit-header-override-toggle"
+                v-model="headerOverrideEnabled"
+                :aria-label="t('admin.providers.headerOverride.title')"
+              />
+            </template>
+            <template v-if="headerOverrideEnabled">
+              <SettingsNotice>
+                <p>{{ t('admin.providers.headerOverride.info') }}</p>
+              </SettingsNotice>
+              <SettingsNotice tone="warning">{{ t('admin.providers.headerOverride.bulkReplaceHint') }}</SettingsNotice>
+              <HeaderOverrideEditor
+                :rows="headerOverrideRows"
+                @update:rows="headerOverrideRows = $event"
+              />
+            </template>
+            <p v-else class="input-hint">{{ t('admin.providers.headerOverride.bulkDisableHint') }}</p>
+          </BulkApplyField>
+
+          <template v-if="allOpenAIPassthroughCapable">
+            <BulkApplyField
+              id="bulk-edit-openai-passthrough"
+              v-model="enableOpenAIPassthrough"
+              :label="t('admin.providers.openai.oauthPassthrough')"
+              :hint="t('admin.providers.openai.oauthPassthroughDesc')"
+            >
+              <template #control>
+                <Toggle
+                  id="bulk-edit-openai-passthrough-toggle"
+                  v-model="openaiPassthroughEnabled"
+                  :aria-label="t('admin.providers.openai.oauthPassthrough')"
+                />
+              </template>
+            </BulkApplyField>
+          </template>
+
+          <BulkApplyField
+            v-if="allOpenAIOAuth"
+            id="bulk-edit-openai-flatten-namespaces"
+            v-model="enableOpenAIFlattenNamespaces"
+            :label="t('admin.providers.openai.flattenNamespaces')"
+            :hint="t('admin.providers.openai.flattenNamespacesDesc')"
+          >
+            <template #control>
+              <Toggle
+                id="bulk-edit-openai-flatten-namespaces-toggle"
+                v-model="openaiFlattenNamespacesEnabled"
+                :aria-label="t('admin.providers.openai.flattenNamespaces')"
+              />
+            </template>
+          </BulkApplyField>
+
+          <BulkApplyField
+            v-if="allOpenAIAPIKey"
+            id="bulk-edit-openai-continuation-supported"
+            v-model="enableOpenAIResponsesContinuationSupported"
+            :label="t('admin.providers.openai.responsesContinuationSupported')"
+            :hint="t('admin.providers.openai.responsesContinuationSupportedDesc')"
+            apply-testid="bulk-edit-openai-continuation-supported-apply"
+          >
+            <template #control>
+              <Toggle
+                v-model="openAIResponsesContinuationSupported"
+                data-testid="bulk-edit-openai-continuation-supported"
+                :aria-label="t('admin.providers.openai.responsesContinuationSupportedEnabled')"
+              />
+            </template>
+          </BulkApplyField>
+
+          <BulkApplyField
+            v-if="allOpenAIOAuth"
+            id="bulk-edit-openai-ws-mode"
+            v-model="enableOpenAIWSMode"
+            :label="t('admin.providers.openai.wsMode')"
+            :hint="`${t('admin.providers.openai.wsModeDesc')} ${t(openAIWSModeConcurrencyHintKey)}`"
+          >
+            <Select
+              v-model="openaiOAuthResponsesWebSocketV2Mode"
+              data-testid="bulk-edit-openai-ws-mode-select"
+              :options="openAIWSModeOptions"
+              aria-labelledby="bulk-edit-openai-ws-mode-label"
+            />
+          </BulkApplyField>
+
+          <BulkApplyField
+            v-if="allOpenAIAPIKey"
+            id="bulk-edit-openai-apikey-ws-mode"
+            v-model="enableOpenAIAPIKeyWSMode"
+            :label="t('admin.providers.openai.wsMode')"
+            :hint="`${t('admin.providers.openai.wsModeDesc')} ${t(openAIAPIKeyWSModeConcurrencyHintKey)}`"
+          >
+            <Select
+              v-model="openaiAPIKeyResponsesWebSocketV2Mode"
+              data-testid="bulk-edit-openai-apikey-ws-mode-select"
+              :options="openAIWSModeOptions"
+              aria-labelledby="bulk-edit-openai-apikey-ws-mode-label"
+            />
+          </BulkApplyField>
+
+          <template v-if="allOpenAIOAuth">
+            <BulkApplyField
+              id="bulk-edit-openai-codex-cli-only"
+              v-model="enableCodexCLIOnly"
+              :label="t('admin.providers.openai.clientPolicy')"
+              :hint="t('admin.providers.openai.clientPolicyDesc')"
+            >
               <Select
-                v-model="tlsFingerprintRouterId"
-                id="bulk-edit-tls-fingerprint-router"
-                data-testid="bulk-edit-tls-fingerprint-router"
-                :options="tlsFingerprintRouterOptions"
+                v-model="openAIOAuthClientPolicy"
+                data-testid="bulk-edit-openai-client-policy-select"
+                :options="openAIOAuthClientPolicyOptions"
+                aria-labelledby="bulk-edit-openai-codex-cli-only-label"
               />
-              <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
-            </div>
-          </Collapse>
-        </div>
-      </div>
+            </BulkApplyField>
 
-      <!-- Groups -->
-      <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <div class="mb-3 flex items-center justify-between">
-          <label
-            id="bulk-edit-groups-label"
-            class="input-label mb-0"
-            for="bulk-edit-groups-enabled"
+            <!-- 同时修改客户端策略且不是“仅 Codex”时，放行 Claude Code 没有意义，保持锁定。 -->
+            <BulkApplyField
+              id="bulk-edit-openai-codex-allow-claude-code"
+              v-model="enableCodexCLIOnlyAllowClaudeCode"
+              :label="t('admin.providers.openai.codexCLIOnlyAllowClaudeCode')"
+              :hint="codexAllowClaudeCodeLocked
+                ? `${t('admin.providers.openai.codexCLIOnlyAllowClaudeCodeDesc')} ${t('admin.providers.openai.clientPolicyClaudeCodeHint')}`
+                : t('admin.providers.openai.codexCLIOnlyAllowClaudeCodeDesc')"
+              :locked="codexAllowClaudeCodeLocked"
+            >
+              <template #control>
+                <Toggle
+                  id="bulk-edit-openai-codex-allow-claude-code-toggle"
+                  v-model="codexCLIOnlyAllowClaudeCodeEnabled"
+                  :aria-label="t('admin.providers.openai.codexCLIOnlyAllowClaudeCode')"
+                />
+              </template>
+            </BulkApplyField>
+
+            <BulkApplyField
+              id="bulk-edit-codex-fingerprint-mode"
+              v-model="enableCodexFingerprintMode"
+              :label="t('admin.providers.openai.codexFingerprintMode')"
+              :hint="t('admin.providers.openai.codexFingerprintModeDesc')"
+            >
+              <Select
+                v-model="codexFingerprintMode"
+                data-testid="bulk-codex-fingerprint-mode-select"
+                :options="codexFingerprintModeOptions"
+                aria-labelledby="bulk-edit-codex-fingerprint-mode-label"
+              />
+            </BulkApplyField>
+          </template>
+
+          <template v-if="allOpenAIPassthroughCapable">
+            <BulkApplyField
+              id="bulk-edit-codex-image-tool"
+              v-model="enableCodexImageToolMode"
+              :label="t('admin.protocols.imagePolicy')"
+              :hint="t('admin.providers.openai.codexImageToolDesc')"
+            >
+              <CodexImageToolModeSelector
+                v-model="codexImageToolMode"
+                test-id-prefix="bulk-edit-codex-image-tool"
+                hide-title
+              />
+            </BulkApplyField>
+
+            <BulkApplyField
+              id="bulk-edit-openai-native-compaction-v2-mode"
+              v-model="enableOpenAINativeCompactionV2Mode"
+              :label="t('admin.providers.openai.nativeCompactV2Mode')"
+              :hint="t('admin.providers.openai.nativeCompactV2ModeDesc')"
+            >
+              <template #control>
+                <Toggle
+                  :model-value="openAINativeCompactionV2Mode === 'force_on'"
+                  data-testid="bulk-edit-openai-native-compaction-v2-mode-select"
+                  :aria-label="t('admin.providers.openai.nativeCompactV2Mode')"
+                  @update:model-value="openAINativeCompactionV2Mode = $event ? 'force_on' : 'force_off'"
+                />
+              </template>
+            </BulkApplyField>
+
+            <BulkApplyField
+              id="bulk-edit-openai-compact-mode"
+              v-model="enableOpenAICompactMode"
+              :label="t('admin.providers.openai.compactMode')"
+              :hint="t('admin.providers.openai.compactModeDesc')"
+            >
+              <template #control>
+                <Toggle
+                  :model-value="openAICompactMode === 'force_on'"
+                  data-testid="bulk-edit-openai-compact-mode-select"
+                  :aria-label="t('admin.providers.openai.compactMode')"
+                  @update:model-value="openAICompactMode = $event ? 'force_on' : 'force_off'"
+                />
+              </template>
+            </BulkApplyField>
+
+            <BulkApplyField
+              v-if="enableOpenAICompactMode && openAICompactMode !== 'force_off'"
+              id="bulk-edit-openai-compact-model-mapping"
+              v-model="enableOpenAICompactModelMapping"
+              :label="t('admin.providers.openai.compactModelMapping')"
+              :hint="t('admin.providers.openai.compactModelMappingDesc')"
+            >
+              <ProviderModelMappingEditor
+                v-model="openAICompactModelMappings"
+                :hint="''"
+                :source-placeholder="t('admin.providers.fromModel')"
+                :target-placeholder="t('admin.providers.toModel')"
+                test-id="bulk-edit-openai-compact-model-mapping"
+              />
+            </BulkApplyField>
+          </template>
+
+          <BulkApplyField
+            v-if="allTLSFingerprintCapable"
+            id="bulk-edit-tls-fingerprint"
+            v-model="enableTLSFingerprint"
+            :label="t('admin.providers.quotaControl.tlsFingerprint.label')"
+            :hint="t('admin.providers.quotaControl.tlsFingerprint.hint')"
           >
-            {{ t('nav.groups') }}
-          </label>
-          <input
-            v-model="enableGroups"
-            id="bulk-edit-groups-enabled"
-            type="checkbox"
-            aria-controls="bulk-edit-groups"
-            class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-        </div>
-        <div id="bulk-edit-groups" :class="!enableGroups && 'pointer-events-none opacity-50'">
-          <GroupSelector
-            v-model="groupIds"
-            :groups="groups"
-            aria-labelledby="bulk-edit-groups-label"
-          />
-        </div>
-      </div>
-      <!-- 工作台随原批量按钮统一保存，下层字段仍逐项勾选。 -->
-      <CodexTicketAccountSettings v-if="show && targetMode === 'selected' && ticketTargetsEligible" ref="ticketSettings" :ids="providerIds" :busy="submitting" bulk />
+            <template #control>
+              <Toggle
+                id="bulk-edit-tls-fingerprint-toggle"
+                v-model="tlsFingerprintEnabled"
+                :aria-label="t('admin.providers.quotaControl.tlsFingerprint.label')"
+              />
+            </template>
+            <Collapse :open="tlsFingerprintEnabled" unmount-on-hide>
+              <SettingsSubpanel>
+                <div>
+                  <label for="bulk-edit-tls-fingerprint-profile" class="input-label">{{ t('admin.providers.quotaControl.tlsFingerprint.profile') }}</label>
+                  <Select
+                    id="bulk-edit-tls-fingerprint-profile"
+                    v-model="tlsFingerprintProfileId"
+                    data-testid="bulk-edit-tls-fingerprint-profile"
+                    :options="tlsFingerprintProfileOptions"
+                  />
+                </div>
+                <div v-if="allOpenAIOAuth">
+                  <label for="bulk-edit-tls-fingerprint-router" class="input-label">{{ t('admin.providers.quotaControl.tlsFingerprint.router') }}</label>
+                  <Select
+                    id="bulk-edit-tls-fingerprint-router"
+                    v-model="tlsFingerprintRouterId"
+                    data-testid="bulk-edit-tls-fingerprint-router"
+                    :options="tlsFingerprintRouterOptions"
+                  />
+                  <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
+                </div>
+              </SettingsSubpanel>
+            </Collapse>
+          </BulkApplyField>
+        </template>
+        <template #ticket>
+          <CodexTicketAccountSettings v-if="show && targetMode === 'selected' && ticketTargetsEligible" ref="ticketSettings" :ids="providerIds" :busy="submitting" bulk />
+        </template>
+      </SettingsTabs>
       </fieldset>
     </form>
 
@@ -1273,8 +609,6 @@
       </div>
     </template>
   </BaseDialog>
-
-
 </template>
 
 <script setup lang="ts">
@@ -1284,7 +618,6 @@ import Collapse from '@/components/common/Collapse.vue'
 
 import ProviderProtocolSelector from './ProviderProtocolSelector.vue'
 import type { ProtocolID } from '@/types'
-import OpenAICompactionCheckbox from './OpenAICompactionCheckbox.vue'
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -1306,6 +639,22 @@ import GroupSelector from '@/components/common/GroupSelector.vue'
 import CodexImageToolModeSelector from '@/components/provider/CodexImageToolModeSelector.vue'
 import ModelWhitelistSelector from '@/components/provider/ModelWhitelistSelector.vue'
 import Icon from '@/components/icons/Icon.vue'
+import SettingsNotice from '@/components/common/settings/SettingsNotice.vue'
+import SettingsSection from '@/components/common/settings/SettingsSection.vue'
+import SettingsSegmented from '@/components/common/settings/SettingsSegmented.vue'
+import SettingsSubpanel from '@/components/common/settings/SettingsSubpanel.vue'
+import SettingsTabs from '@/components/common/settings/SettingsTabs.vue'
+import BulkApplyField from '@/components/provider/form/BulkApplyField.vue'
+import CustomErrorCodesFields from '@/components/provider/form/CustomErrorCodesFields.vue'
+import RpmLimitPanel from '@/components/provider/form/RpmLimitPanel.vue'
+import {
+  useCodexFingerprintModeOptions,
+  useOpenAIOAuthClientPolicyOptions,
+  useOpenAIWSModeOptions,
+  useUserMsgQueueModeOptions,
+  type CodexFingerprintMode,
+  type RpmStrategy
+} from '@/components/provider/form/providerFormOptions'
 import ProviderModelMappingEditor from '@/components/provider/ProviderModelMappingEditor.vue'
 import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import {
@@ -1328,10 +677,7 @@ import {
 } from '@/components/provider/credentialsBuilder'
 import GrokBaseUrlPresets from '@/components/provider/GrokBaseUrlPresets.vue'
 import {
-  OPENAI_WS_MODE_CTX_POOL,
-  OPENAI_WS_MODE_HTTP_BRIDGE,
   OPENAI_WS_MODE_OFF,
-  OPENAI_WS_MODE_PASSTHROUGH,
   isOpenAIWSModeEnabled,
   resolveOpenAIWSModeConcurrencyHintKey
 } from '@/utils/openaiWsMode'
@@ -1367,7 +713,6 @@ const appStore = useAppStore()
 const ticketSettings = ref<InstanceType<typeof CodexTicketAccountSettings>>()
 const ticketTargetsEligible = ref(false)
 const isBlank=(v:unknown)=>v===''||v===null||v===undefined
-const prefillLoading=ref(false),prefillFailed=ref(false)
 
 // Platform awareness
 const targetMode = computed(() => props.target?.mode ?? 'selected')
@@ -1455,6 +800,47 @@ const allTLSFingerprintCapable = computed(() => {
     types.every(type => type === 'oauth' || type === 'setup-token')
 })
 
+// Base URL 对 API Key 与上游中转账号生效；Grok OAuth 订阅账号也用它改写转发端点。
+const allBaseUrlCapable = computed(() => {
+  const types = targetSelectedTypes.value
+  return types.length > 0 && types.every(type =>
+    type === 'apikey' || type === 'upstream' || (type === 'oauth' && allTargetsGrok.value)
+  )
+})
+
+// 预热请求拦截只在 Anthropic 与 Antigravity 网关中实现。
+const allInterceptWarmupCapable = computed(() => {
+  const platforms = targetSelectedPlatforms.value
+  return platforms.length > 0 && platforms.every(platform => platform === 'anthropic' || platform === 'antigravity')
+})
+
+const modelRestrictionModeOptions = computed(() => [
+  { value: 'whitelist' as const, label: t('admin.providers.modelWhitelist'), icon: 'checkCircle' as const },
+  { value: 'mapping' as const, label: t('admin.providers.modelMapping'), icon: 'swap' as const }
+])
+
+// 同时修改客户端策略且新策略不是“仅 Codex”时，Claude Code 放行项不会生效。
+const codexAllowClaudeCodeLocked = computed(() =>
+  enableCodexCLIOnly.value && openAIOAuthClientPolicy.value !== 'codex_only'
+)
+
+// 只展示有可编辑项的页签；模型限制、调度和基本信息对所有目标可用。
+const formTabs = computed(() => {
+  const hasRequest =
+    (targetSelectedPlatforms.value.length === 1 && targetSelectedTypes.value.length === 1) ||
+    allHeaderOverrideCapable.value ||
+    allOpenAIPassthroughCapable.value ||
+    allTLSFingerprintCapable.value
+  return [
+    { key: 'basic', label: t('admin.providers.tabs.basic') },
+    { key: 'models', label: t('admin.providers.tabs.models') },
+    { key: 'scheduling', label: t('admin.providers.tabs.scheduling') },
+    { key: 'quota', label: t('admin.providers.tabs.quota'), hidden: !allAnthropicOAuthOrSetupToken.value },
+    { key: 'request', label: t('admin.providers.tabs.request'), hidden: !hasRequest },
+    { key: 'ticket', label: t('admin.accounts.ticketPolicy.title'), hidden: targetMode.value !== 'selected' || !ticketTargetsEligible.value }
+  ]
+})
+
 const filteredPresets = computed(() => {
   if (targetSelectedPlatforms.value.length === 0) return []
 
@@ -1521,7 +907,6 @@ const modelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const allowedModels = ref<string[]>([])
 const modelMappings = ref<ModelMappingRow[]>([])
 const selectedErrorCodes = ref<number[]>([])
-const customErrorCodeInput = ref<number | null>(null)
 const interceptWarmupRequests = ref(false)
 const headerOverrideEnabled = ref(false)
 const headerOverrideRows = ref<HeaderOverrideRow[]>([])
@@ -1546,24 +931,17 @@ const autoPause5hThreshold = ref<OptionalNumberInputValue>(null)
 const autoPause7dThreshold = ref<OptionalNumberInputValue>(null)
 const autoPause5hDisabled = ref(false)
 const autoPause7dDisabled = ref(false)
-type CodexFingerprintMode = 'off' | 'device' | 'session' | 'full'
 const enableCodexFingerprintMode = ref(false)
 const codexFingerprintMode = ref<CodexFingerprintMode>('off')
-const codexFingerprintModeOptions = computed(() => [
-  { value: 'off' as CodexFingerprintMode, label: t('admin.providers.openai.codexFingerprintOff') },
-  { value: 'device' as CodexFingerprintMode, label: t('admin.providers.openai.codexFingerprintDevice') },
-  { value: 'session' as CodexFingerprintMode, label: t('admin.providers.openai.codexFingerprintSession') },
-  { value: 'full' as CodexFingerprintMode, label: t('admin.providers.openai.codexFingerprintFull') },
-])
+const codexFingerprintModeOptions = useCodexFingerprintModeOptions()
 const openAICompactMode = ref<OpenAICompactMode>('force_on')
 const openAINativeCompactionV2Mode = ref<OpenAICompactMode>('force_on')
 const openAICompactModelMappings = ref<ModelMappingRow[]>([])
 const rpmLimitEnabled = ref(false)
 const bulkBaseRpm = ref<number | null>(null)
-const bulkRpmStrategy = ref<'tiered' | 'sticky_exempt'>('tiered')
+const bulkRpmStrategy = ref<RpmStrategy>('tiered')
 const bulkRpmStickyBuffer = ref<number | null>(null)
 const userMsgQueueMode = ref<string | null>(null)
-const enableUserMsgQueue=ref(false)
 const tlsFingerprintEnabled = ref(false)
 const tlsFingerprintProfileId = ref(0)
 const tlsFingerprintProfiles = ref<{ id: number; name: string }[]>([])
@@ -1581,39 +959,15 @@ const tlsFingerprintRouterOptions = computed(() => [
   ...tlsFingerprintRouters.value.map((router) => ({ value: router.id, label: router.name }))
 ])
 const modelRestrictionPrefillSeq = ref(0)
-const umqModeOptions = computed(() => [
-  { value: '', label: t('admin.providers.quotaControl.rpmLimit.umqModeOff') },
-  { value: 'throttle', label: t('admin.providers.quotaControl.rpmLimit.umqModeThrottle') },
-  { value: 'serialize', label: t('admin.providers.quotaControl.rpmLimit.umqModeSerialize') },
-])
-
-// Common HTTP error codes
-const commonErrorCodes = [
-  { value: 401, label: 'Unauthorized' },
-  { value: 403, label: 'Forbidden' },
-  { value: 429, label: 'Rate Limit' },
-  { value: 500, label: 'Server Error' },
-  { value: 502, label: 'Bad Gateway' },
-  { value: 503, label: 'Unavailable' },
-  { value: 529, label: 'Overloaded' }
-]
+const umqModeOptions = useUserMsgQueueModeOptions()
 
 const statusOptions = computed(() => [
   { value: 'active', label: t('common.active') },
   { value: 'inactive', label: t('common.inactive') }
 ])
 
-const openAIWSModeOptions = computed(() => [
-  { value: OPENAI_WS_MODE_OFF, label: t('admin.providers.openai.wsModeOff') },
-  { value: OPENAI_WS_MODE_CTX_POOL, label: t('admin.providers.openai.wsModeCtxPool') },
-  { value: OPENAI_WS_MODE_PASSTHROUGH, label: t('admin.providers.openai.wsModePassthrough') },
-  { value: OPENAI_WS_MODE_HTTP_BRIDGE, label: t('admin.providers.openai.wsModeHttpBridge') }
-])
-const openAIOAuthClientPolicyOptions = computed(() => [
-  { value: 'any', label: t('admin.providers.openai.clientPolicyAny') },
-  { value: 'codex_only', label: t('admin.providers.openai.clientPolicyCodexOnly') },
-  { value: 'tls_router_matched_only', label: t('admin.providers.openai.clientPolicyTLSRouterMatchedOnly') }
-])
+const openAIWSModeOptions = useOpenAIWSModeOptions()
+const openAIOAuthClientPolicyOptions = useOpenAIOAuthClientPolicyOptions()
 const openAIWSModeConcurrencyHintKey = computed(() =>
   resolveOpenAIWSModeConcurrencyHintKey(openaiOAuthResponsesWebSocketV2Mode.value)
 )
@@ -1746,10 +1100,11 @@ const loadTLSFingerprintRouters = async () => {
 
 const loadSelectedProviderDefaults = async () => {
   const requestSeq = ++modelRestrictionPrefillSeq.value
+  // 新选择完成资格读取前，不能沿用上一组账号的票据工作台。
+  ticketTargetsEligible.value = false
   if (!props.show || props.providerIds.length === 0) {
     return
   }
-  prefillLoading.value=true;prefillFailed.value=false
   try {
     const providers = await Promise.all(props.providerIds.map((id) => adminAPI.providers.getById(id)))
     if (requestSeq !== modelRestrictionPrefillSeq.value || !props.show) {
@@ -1782,56 +1137,6 @@ const addPresetMapping = (from: string, to: string) => {
   modelMappings.value.push({ from, to })
 }
 
-// Error code helpers
-const toggleErrorCode = (code: number) => {
-  const index = selectedErrorCodes.value.indexOf(code)
-  if (index === -1) {
-    // Adding code - check for 429/529 warning
-    if (code === 429) {
-      if (!confirm(t('admin.providers.customErrorCodes429Warning'))) {
-        return
-      }
-    } else if (code === 529) {
-      if (!confirm(t('admin.providers.customErrorCodes529Warning'))) {
-        return
-      }
-    }
-    selectedErrorCodes.value.push(code)
-  } else {
-    selectedErrorCodes.value.splice(index, 1)
-  }
-}
-
-const addCustomErrorCode = () => {
-  const code = customErrorCodeInput.value
-  if (code === null || code < 100 || code > 599) {
-    appStore.showError(t('admin.providers.invalidErrorCode'))
-    return
-  }
-  if (selectedErrorCodes.value.includes(code)) {
-    appStore.showInfo(t('admin.providers.errorCodeExists'))
-    return
-  }
-  // Check for 429/529 warning
-  if (code === 429) {
-    if (!confirm(t('admin.providers.customErrorCodes429Warning'))) {
-      return
-    }
-  } else if (code === 529) {
-    if (!confirm(t('admin.providers.customErrorCodes529Warning'))) {
-      return
-    }
-  }
-  selectedErrorCodes.value.push(code)
-  customErrorCodeInput.value = null
-}
-
-const removeErrorCode = (code: number) => {
-  const index = selectedErrorCodes.value.indexOf(code)
-  if (index !== -1) {
-    selectedErrorCodes.value.splice(index, 1)
-  }
-}
 
 const buildOpenAICompactModelMapping = (): Record<string, string> | null => {
   return buildModelMappingObject('mapping', [], openAICompactModelMappings.value)
@@ -1901,7 +1206,7 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     updates.group_ids = groupIds.value
   }
 
-  if (enableBaseUrl.value) {
+  if (enableBaseUrl.value && allBaseUrlCapable.value) {
     const baseUrlValue = baseUrl.value.trim()
     if (baseUrlValue) {
       credentials.base_url = baseUrlValue
@@ -1947,7 +1252,7 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     credentialsChanged = true
   }
 
-  if (enableInterceptWarmup.value) {
+  if (enableInterceptWarmup.value && allInterceptWarmupCapable.value) {
     credentials.intercept_warmup_requests = interceptWarmupRequests.value
     credentialsChanged = true
   }
@@ -2067,8 +1372,8 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     updates.extra = extra
   }
 
-  // UMQ mode（独立于 RPM 保存）
-  if (enableUserMsgQueue.value && userMsgQueueMode.value !== null) {
+  // 用户消息限速随 RPM 限制的应用勾选一起提交，null 表示不修改。
+  if (enableRpmLimit.value && userMsgQueueMode.value !== null) {
     const umqExtra = ensureExtra()
     umqExtra.user_msg_queue_mode = userMsgQueueMode.value  // '' = 清除提供商级覆盖
     umqExtra.user_msg_queue_enabled = false  // 清理旧字段（JSONB merge）
@@ -2098,14 +1403,14 @@ const handleSubmit = async () => {
 
   const hasAnyFieldEnabled =
     enableUpstreamProtocols.value ||
-    enableBaseUrl.value ||
+    (enableBaseUrl.value && allBaseUrlCapable.value) ||
     enableOpenAIPassthrough.value ||
     enableOpenAIFlattenNamespaces.value ||
     enableCodexImageToolMode.value ||
     enableOpenAIResponsesContinuationSupported.value ||
     enableModelRestriction.value ||
     enableCustomErrorCodes.value ||
-    enableInterceptWarmup.value ||
+    (enableInterceptWarmup.value && allInterceptWarmupCapable.value) ||
     enableHeaderOverride.value ||
     enableProxy.value ||
     enableConcurrency.value ||
@@ -2127,8 +1432,7 @@ const handleSubmit = async () => {
     enableOpenAICompactMode.value ||
     enableOpenAINativeCompactionV2Mode.value ||
     enableOpenAICompactModelMapping.value ||
-    enableRpmLimit.value ||
-    enableUserMsgQueue.value
+    enableRpmLimit.value
 
   if (!hasAnyFieldEnabled && !ticketSettings.value?.hasChanges) {
     appStore.showError(t('admin.providers.bulkEdit.noFieldsSelected'))
@@ -2138,7 +1442,7 @@ const handleSubmit = async () => {
 
   // base_url 现在也会作用于 Grok OAuth 订阅提供商的转发端点；坏值会让请求期
   // 校验失败、提供商请求全挂，因此保存前强制格式校验（与单提供商编辑一致）。
-  if (enableBaseUrl.value) {
+  if (enableBaseUrl.value && allBaseUrlCapable.value) {
     const trimmedBaseUrl = baseUrl.value.trim()
     if (trimmedBaseUrl && !/^https?:\/\//i.test(trimmedBaseUrl)) {
       appStore.showError(t('admin.providers.grokCustomBaseUrl.invalid'))
@@ -2160,7 +1464,14 @@ const handleSubmit = async () => {
     }
   }
 
-  const built = buildUpdatePayload()
+  let built: Record<string, unknown> | null
+  try {
+    built = buildUpdatePayload()
+  } catch (error) {
+    // 数值或空值校验失败只提示，不启动普通配置或票据的保存。
+    appStore.showError(error instanceof Error ? error.message : t('admin.providers.bulkEdit.failed'))
+    return
+  }
   if (!built && !ticketSettings.value?.hasChanges) {
     appStore.showError(t('admin.providers.bulkEdit.noFieldsSelected'))
     return
@@ -2230,8 +1541,7 @@ const submitBulkUpdate = async (baseUpdates: Record<string, unknown>) => {
 }
 
 const resetBulkEditFormState = () => {
-  enableUserMsgQueue.value=false
-  prefillFailed.value=false;prefillLoading.value=false
+  ticketTargetsEligible.value = false
   enableBaseUrl.value = false
   enableModelRestriction.value = false
   enableCustomErrorCodes.value = false
@@ -2272,7 +1582,6 @@ const resetBulkEditFormState = () => {
   openAIResponsesContinuationSupported.value = false
   resetModelRestrictionDraft()
   selectedErrorCodes.value = []
-  customErrorCodeInput.value = null
   interceptWarmupRequests.value = false
   headerOverrideEnabled.value = false
   headerOverrideRows.value = []

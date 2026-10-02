@@ -12,13 +12,13 @@ describe('CreateProviderModal Grok provider types', () => {
     expect(source).toContain('data-testid="grok-provider-type-api-key"')
     expect(source).toContain("@click=\"providerCategory = 'apikey'\"")
     expect(source).toContain("newPlatform === 'grok'")
-    expect(source).toContain("? 'https://api.x.ai/v1'")
+    expect(source).toContain("case 'grok': return 'https://api.x.ai/v1'")
     expect(source).toContain("form.platform === 'grok'")
-    expect(source).toContain("? 'xai-...'")
+    expect(source).toContain("case 'grok': return 'xai-...'")
   })
 
   it('exposes custom upstream URL and header override for the OAuth create flow', () => {
-    expect(source).toContain('data-testid="grok-custom-base-url-toggle"')
+    expect(source).toContain('testid="grok-custom-base-url-toggle"')
     expect(source).toContain('data-testid="grok-custom-base-url-input"')
     expect(source).toContain('form.platform === \'grok\' && isOAuthFlow')
   })

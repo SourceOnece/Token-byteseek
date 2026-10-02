@@ -24,7 +24,7 @@ describe('formatTokens', () => {
   })
 
   it('与 formatTokensK 的精度差异是有意的,不要互相替换', () => {
-    // formatTokensK:一位小数、无 B 档、直出 toString(无千分位)
+    // formatTokensK 小于 1000 显示整数，K/M 保留一位小数，不使用 B 档和千分位。
     expect(formatTokensK(1500)).toBe('1.5K')
     expect(formatTokensK(1_500_000)).toBe('1.5M')
     expect(formatTokensK(1_500_000_000)).toBe('1500.0M')

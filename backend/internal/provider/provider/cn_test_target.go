@@ -29,7 +29,8 @@ func (t cnTestTarget) Execute(ctx context.Context, request provider.PreparedTest
 	var err error
 	switch request.Route {
 	case provider.TestRouteCNAdaptive:
-		err = t.executor.ExecuteAdaptive(run, t.record, request.Model, request.Prompt)
+		// 管理员选定协议时只验证该端点，未选定时依次验证全部已启用协议。
+		err = t.executor.ExecuteAdaptive(run, t.record, request.Model, request.Prompt, provider.TestProtocolID(request.Protocol))
 	case provider.TestRouteCNResponses:
 		err = t.executor.Responses.Execute(run, t.record, request.Model, request.Prompt, request.Mode, request.TestType)
 	default:

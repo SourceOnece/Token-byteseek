@@ -5,7 +5,7 @@ import { QUOTA_THRESHOLD_TYPE_FIXED, type QuotaThresholdType } from '@/constants
 export const QUOTA_NOTIFY_DIMS = ['daily', 'weekly', 'total'] as const
 export type QuotaNotifyDim = (typeof QUOTA_NOTIFY_DIMS)[number]
 
-interface DimState {
+export interface QuotaNotifyDimState {
   enabled: boolean | null
   threshold: number | null
   thresholdType: QuotaThresholdType | null
@@ -13,7 +13,7 @@ interface DimState {
 
 export function useQuotaNotifyState() {
   const globalEnabled = ref(false)
-  const state = reactive<Record<QuotaNotifyDim, DimState>>({
+  const state = reactive<Record<QuotaNotifyDim, QuotaNotifyDimState>>({
     daily: { enabled: null, threshold: null, thresholdType: null },
     weekly: { enabled: null, threshold: null, thresholdType: null },
     total: { enabled: null, threshold: null, thresholdType: null },
@@ -57,6 +57,15 @@ export function useQuotaNotifyState() {
     }
   }
 
+  // setField 供表单组件逐项回写通知阈值，避免子组件直接修改共享状态。
+  function setField(
+    dim: QuotaNotifyDim,
+    field: keyof QuotaNotifyDimState,
+    value: QuotaNotifyDimState[keyof QuotaNotifyDimState],
+  ) {
+    (state[dim] as Record<keyof QuotaNotifyDimState, unknown>)[field] = value
+  }
+
   function reset() {
     for (const d of QUOTA_NOTIFY_DIMS) {
       state[d].enabled = null
@@ -65,5 +74,5 @@ export function useQuotaNotifyState() {
     }
   }
 
-  return { globalEnabled, state, loadGlobalState, loadFromExtra, writeToExtra, reset }
+  return { globalEnabled, state, loadGlobalState, loadFromExtra, writeToExtra, setField, reset }
 }

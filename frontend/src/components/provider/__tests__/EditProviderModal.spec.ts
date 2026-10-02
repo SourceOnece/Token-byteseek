@@ -1,4 +1,5 @@
 import { useProtocolCatalogFixture } from '@/__tests__/helpers/protocolCatalog'
+import { isSwitchOn, setSwitch } from '@/__tests__/helpers/switches'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -611,7 +612,7 @@ describe('EditProviderModal', () => {
     checkMixedChannelRiskMock.mockReset().mockResolvedValue({ has_risk: false })
 
     const wrapper = mountModal(provider)
-    for (const checkbox of wrapper.findAll('[data-native-protocol]')) await checkbox.setValue(true)
+    for (const toggle of wrapper.findAll('[data-native-protocol]')) await setSwitch(toggle, true)
     await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 
@@ -656,17 +657,17 @@ describe('EditProviderModal', () => {
 
   it('压缩开关独立控制，旧版关闭时隐藏映射，协议至少保留一项', async () => {
     const wrapper = mountModal(buildProvider())
-    const responses = wrapper.get<HTMLInputElement>('[data-native-protocol="openai_responses"]')
-    const chat = wrapper.get<HTMLInputElement>('[data-native-protocol="openai_chat_completions"]')
-    await chat.setValue(false)
-    expect(responses.element.checked).toBe(true)
-    expect(responses.element.disabled).toBe(false)
-    await chat.setValue(true)
-    expect(responses.element.disabled).toBe(false)
-    await wrapper.get('[data-testid="edit-openai-compact-mode"]').setValue(false)
+    const responses = wrapper.get('[data-native-protocol="openai_responses"]')
+    const chat = wrapper.get('[data-native-protocol="openai_chat_completions"]')
+    await setSwitch(chat, false)
+    expect(isSwitchOn(responses)).toBe(true)
+    expect(responses.attributes('disabled')).toBeUndefined()
+    await setSwitch(chat, true)
+    expect(responses.attributes('disabled')).toBeUndefined()
+    await setSwitch(wrapper.get('[data-testid="edit-openai-compact-mode"]'), false)
     expect(wrapper.text()).not.toContain('admin.providers.openai.compactModelMapping')
-    expect(wrapper.get<HTMLInputElement>('[data-testid="edit-openai-native-compaction-v2-mode"]').element.checked).toBe(true)
-    await wrapper.get('[data-testid="edit-openai-compact-mode"]').setValue(true)
+    expect(isSwitchOn(wrapper.get('[data-testid="edit-openai-native-compaction-v2-mode"]'))).toBe(true)
+    await setSwitch(wrapper.get('[data-testid="edit-openai-compact-mode"]'), true)
     expect(wrapper.find('[data-testid="openai-responses-probe-status"]').exists()).toBe(false)
     wrapper.unmount()
   })
@@ -1044,8 +1045,8 @@ describe('EditProviderModal', () => {
     const wrapper = mountModal(provider)
 
     expect(wrapper.get('[data-testid="edit-openai-continuation-supported"]').attributes('role')).toBe('switch')
-    await wrapper.get('[data-native-protocol="openai_responses"]').setValue(true)
-    await wrapper.get('[data-native-protocol="openai_chat_completions"]').setValue(false)
+    await setSwitch(wrapper.get('[data-native-protocol="openai_responses"]'), true)
+    await setSwitch(wrapper.get('[data-native-protocol="openai_chat_completions"]'), false)
     await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 
@@ -1078,10 +1079,10 @@ describe('EditProviderModal', () => {
 
     const wrapper = mountModal(provider)
 
-    const responses = wrapper.get<HTMLInputElement>('[data-native-protocol="openai_responses"]')
-    expect(responses.element.checked).toBe(false)
+    const responses = wrapper.get('[data-native-protocol="openai_responses"]')
+    expect(isSwitchOn(responses)).toBe(false)
     expect(wrapper.find('[data-testid="openai-responses-probe-status"]').exists()).toBe(false)
-    await responses.setValue(true)
+    await setSwitch(responses, true)
     await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 
@@ -1103,7 +1104,7 @@ describe('EditProviderModal', () => {
 
     const wrapper = mountModal(provider)
 
-    expect(wrapper.findAll('input[type="checkbox"]').some((input) => (input.element as HTMLInputElement).checked)).toBe(true)
+    expect(wrapper.findAll('[data-native-protocol]').some(isSwitchOn)).toBe(true)
 
     await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
     await flushPromises()
@@ -1162,7 +1163,7 @@ describe('EditProviderModal', () => {
     provider.credentials = { ...provider.credentials, upstream_protocols: [] }
     const wrapper = mountModal(provider)
     await flushPromises()
-    expect(wrapper.findAll('[data-native-protocol]').every(input => !(input.element as HTMLInputElement).checked)).toBe(true)
+    expect(wrapper.findAll('[data-native-protocol]').every(toggle => !isSwitchOn(toggle))).toBe(true)
     await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
     await flushPromises()
     await flushPromises()
@@ -1182,11 +1183,10 @@ describe('EditProviderModal', () => {
 
     const wrapper = mountModal(provider)
 
-    expect(wrapper.text()).toContain('admin.providers.openai.codexImageTool')
+    expect(wrapper.text()).toContain('admin.protocols.imagePolicy')
     expect(wrapper.text()).toContain('admin.providers.openai.codexImageToolDesc')
-    expect(wrapper.text()).toContain('admin.providers.openai.codexImageToolEnabledDesc')
 
-    await wrapper.get('button[data-testid="codex-image-tool-enabled"]').trigger('click')
+    await wrapper.get('[data-testid="codex-image-tool-select"]').setValue('enabled')
     await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 
@@ -1205,7 +1205,7 @@ describe('EditProviderModal', () => {
 
     const wrapper = mountModal(provider)
 
-    await wrapper.get('button[data-testid="codex-image-tool-disabled"]').trigger('click')
+    await wrapper.get('[data-testid="codex-image-tool-select"]').setValue('disabled')
     await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 
@@ -1226,10 +1226,9 @@ describe('EditProviderModal', () => {
 
     const wrapper = mountModal(provider)
 
-    expect(wrapper.text()).toContain('admin.providers.openai.codexImageToolBlock')
-    expect(wrapper.text()).toContain('admin.providers.openai.codexImageToolBlockDesc')
+    expect(wrapper.text()).toContain('admin.protocols.imagePolicyOptions.block.label')
 
-    await wrapper.get('button[data-testid="codex-image-tool-block"]').trigger('click')
+    await wrapper.get('[data-testid="codex-image-tool-select"]').setValue('block')
     await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 
@@ -1250,7 +1249,7 @@ describe('EditProviderModal', () => {
 
     const wrapper = mountModal(provider)
 
-    await wrapper.get('button[data-testid="codex-image-tool-inherit"]').trigger('click')
+    await wrapper.get('[data-testid="codex-image-tool-select"]').setValue('inherit')
     await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 
@@ -1614,6 +1613,39 @@ describe('EditProviderModal', () => {
     await flushPromises()
 
     expect(updateProviderMock).not.toHaveBeenCalled()
+  })
+
+  it('按账号类型隐藏没有内容的页签', async () => {
+    const tabKeys = (wrapper: ReturnType<typeof mountModal>) =>
+      wrapper.findAll('[data-settings-tab-button]').map(tab => tab.attributes('data-settings-tab-button'))
+    const apiKeyWrapper = mountModal(buildProvider())
+    await flushPromises()
+    expect(tabKeys(apiKeyWrapper)).toEqual(['basic', 'models', 'scheduling', 'quota', 'request'])
+    apiKeyWrapper.unmount()
+
+    const oauthWrapper = mountModal({ ...buildProvider(), type: 'oauth', credentials: {} })
+    await flushPromises()
+    expect(tabKeys(oauthWrapper)).toEqual(['basic', 'models', 'scheduling', 'request', 'ticket'])
+    oauthWrapper.unmount()
+  })
+
+  it('业务校验失败时切回字段所在页签', async () => {
+    const provider = buildProvider()
+    provider.credentials = { base_url: 'https://api.openai.com' }
+    provider.credentials_status = { has_api_key: false }
+    updateProviderMock.mockReset()
+    const wrapper = mountModal(provider)
+    await flushPromises()
+
+    await wrapper.get('[data-settings-tab-button="request"]').trigger('click')
+    expect(wrapper.get('[data-settings-tab-button="basic"]').attributes('aria-selected')).toBe('false')
+    await wrapper.get('form#edit-provider-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(updateProviderMock).not.toHaveBeenCalled()
+    expect(wrapper.get('[data-settings-tab-button="basic"]').attributes('aria-selected')).toBe('true')
+    expect(wrapper.get('[data-provider-field="api-key"]').element.closest('[data-settings-tab]')?.getAttribute('data-settings-tab')).toBe('basic')
+    wrapper.unmount()
   })
 })
 

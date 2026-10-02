@@ -193,9 +193,10 @@ const focusOverride = ref<string | null>(null)
 const levelClass = (level: number) => LEVEL_CLASSES[level] ?? LEVEL_CLASSES[0]
 
 // 拉取范围：近三年，向前对齐到周日，保证整周列
-// start 从 end 克隆，保证两者时分秒一致，最后一天比较不会出现毫秒级漂移
+// 用本地正午遍历日历日，避免跨夏令时后凌晨游标偏移一小时，把今天误当未来。
 const buildDateRange = () => {
   const end = new Date()
+  end.setHours(12, 0, 0, 0)
   const start = new Date(end)
   start.setDate(start.getDate() - FETCH_DAYS)
   start.setDate(start.getDate() - start.getDay())

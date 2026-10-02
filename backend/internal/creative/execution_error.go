@@ -7,9 +7,15 @@ import (
 
 // CreativeUpstreamError 是执行器向上抛出的上游调用错误，携带可重试判定。
 type CreativeUpstreamError struct {
+	Code       string
 	StatusCode int
 	Message    string
 	Retryable  bool
+}
+
+// CreativeImageResultError 标记结果读取失败，禁止 worker 重新请求生图。
+func CreativeImageResultError(code, message string) *CreativeUpstreamError {
+	return &CreativeUpstreamError{Code: code, Message: message, Retryable: false}
 }
 
 func (e *CreativeUpstreamError) Error() string {

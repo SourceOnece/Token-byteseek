@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import Collapse from '@/components/common/Collapse.vue'
 
-import Icon from '@/components/icons/Icon.vue'
-import Toggle from '@/components/common/Toggle.vue'
-import { ref, watch, computed } from 'vue'
+import SettingsSubpanel from '@/components/common/settings/SettingsSubpanel.vue'
+import SettingToggleRow from '@/components/common/settings/SettingToggleRow.vue'
+import { ref, watch, computed, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import QuotaDimensionRow from './QuotaDimensionRow.vue'
 import type { QuotaThresholdType, QuotaResetMode } from '@/constants/provider'
 
 const { t } = useI18n()
+const uid = useId()
 
 const props = withDefaults(defineProps<{
   totalLimit: number | null
@@ -71,17 +72,15 @@ const enabled = computed(() =>
 )
 
 const localEnabled = ref(enabled.value)
-const collapsed = ref(false)
 
 // Sync when props change externally
 watch(enabled, (val) => {
   localEnabled.value = val
 })
 
-// When toggle is turned off, clear all values and expand
+// 关闭额度限制时清空全部取值。
 watch(localEnabled, (val) => {
   if (!val) {
-    collapsed.value = false
     emit('update:totalLimit', null)
     emit('update:dailyLimit', null)
     emit('update:weeklyLimit', null)
@@ -135,31 +134,18 @@ const dailyFixedHint = computed(() =>
 </script>
 
 <template>
-  <div class="rounded-control border border-gray-200 dark:border-dark-600">
-      <!-- Header: toggle + collapse -->
-      <div class="flex items-center justify-between p-4" :class="{ 'pb-0': localEnabled && !collapsed }">
-        <div data-icon-trigger class="flex items-center gap-2 flex-1 cursor-pointer" @click="localEnabled && (collapsed = !collapsed)">
-          <Icon
-            name="chevronDown"
-            size="sm"
-            :animate-on-hover="false"
-            v-if="localEnabled"
-            class="h-4 w-4 text-gray-400 transition-transform"
-            :class="{ '-rotate-90': collapsed }"
-          />
-          <div>
-            <label class="input-label mb-0 cursor-pointer">{{ t('admin.providers.quotaLimitToggle') }}</label>
-            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.quotaLimitToggleHint') }}
-            </p>
-          </div>
-        </div>
-        <Toggle v-model="localEnabled" variant="flush" off-tone="soft" />
-      </div>
+  <div class="space-y-4">
+      <SettingToggleRow
+        :id="`${uid}-enabled`"
+        v-model="localEnabled"
+        :label="t('admin.providers.quotaLimitToggle')"
+        :hint="t('admin.providers.quotaLimitToggleHint')"
+        testid="quota-limit-toggle"
+      />
 
       <!-- Collapsible content -->
-      <Collapse :open="localEnabled && !collapsed" unmount-on-hide>
-        <div class="space-y-2 p-4 pt-3">
+      <Collapse :open="localEnabled" unmount-on-hide>
+        <SettingsSubpanel>
           <!-- Daily quota -->
           <QuotaDimensionRow
             dim="daily"
@@ -237,7 +223,7 @@ const dailyFixedHint = computed(() =>
             @update:notify-threshold="emit('update:quotaNotifyTotalThreshold', $event)"
             @update:notify-threshold-type="emit('update:quotaNotifyTotalThresholdType', $event)"
           />
-        </div>
+        </SettingsSubpanel>
       </Collapse>
   </div>
 </template>

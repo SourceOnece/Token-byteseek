@@ -1,7 +1,12 @@
 <template>
-  <GroupFormTabs ref="tabsRef" :id-prefix="idPrefix">
+  <SettingsTabs
+    ref="tabsRef"
+    :id-prefix="idPrefix"
+    :tabs="tabs"
+    :label="t('admin.groups.tabs.label')"
+  >
     <template #general>
-      <GroupFormSection :title="t('admin.groups.tabs.identity')">
+      <SettingsSection :title="t('admin.groups.tabs.identity')">
         <div class="grid gap-4 md:grid-cols-2">
           <div data-group-field="name">
             <label :for="`${idPrefix}-name`" class="input-label">{{
@@ -48,8 +53,8 @@
             />
           </div>
         </div>
-      </GroupFormSection>
-      <GroupFormSection :title="t('admin.groups.settings.billingAndStatus')">
+      </SettingsSection>
+      <SettingsSection :title="t('admin.groups.settings.billingAndStatus')">
         <div class="grid gap-4 md:grid-cols-2">
           <div>
             <label :for="`${idPrefix}-rate-multiplier`" class="input-label">{{
@@ -79,7 +84,7 @@
             />
           </div>
         </div>
-        <GroupSettingRow
+        <SettingToggleRow
           :id="`${idPrefix}-exclusive`"
           v-model="form.is_exclusive"
           :label="t('admin.groups.form.exclusive')"
@@ -94,7 +99,7 @@
           setting="is_exclusive"
           data-tour="group-form-exclusive"
         />
-      </GroupFormSection>
+      </SettingsSection>
     </template>
 
     <template #models>
@@ -132,7 +137,7 @@
     </template>
 
     <template #scheduling>
-      <GroupFormSection :title="t('admin.groups.settings.providerSelection')">
+      <SettingsSection :title="t('admin.groups.settings.providerSelection')">
         <div v-if="options.copyProviders.length">
           <div class="mb-2 flex items-center gap-2">
             <label
@@ -199,22 +204,22 @@
           />
           <p class="input-hint">{{ t('admin.groups.copyProviders.hint') }}</p>
         </div>
-        <GroupSettingRow
+        <SettingToggleRow
           :id="`${idPrefix}-oauth`"
           v-model="form.require_oauth_only"
           :label="t('admin.groups.providerFilters.oauthOnly')"
           :hint="t('admin.groups.settings.oauthHint')"
           setting="require_oauth_only"
         />
-        <GroupSettingRow
+        <SettingToggleRow
           :id="`${idPrefix}-privacy`"
           v-model="form.require_privacy_set"
           :label="t('admin.groups.providerFilters.privacyRequired')"
           :hint="t('admin.groups.settings.privacyHint')"
           setting="require_privacy_set"
         />
-      </GroupFormSection>
-      <GroupFormSection :title="t('admin.groups.settings.scheduling')">
+      </SettingsSection>
+      <SettingsSection :title="t('admin.groups.settings.scheduling')">
         <div>
           <label :for="`${idPrefix}-scheduler`" class="input-label">{{
             t('admin.groups.form.schedulerType')
@@ -248,15 +253,15 @@
             </button>
           </div>
         </div>
-        <GroupSettingRow
+        <SettingToggleRow
           :id="`${idPrefix}-session-isolation`"
           v-model="form.session_isolation_enabled"
           :label="t('admin.groups.sessionIsolation.title')"
           :hint="t('admin.groups.sessionIsolation.hint')"
           setting="session_isolation_enabled"
         />
-      </GroupFormSection>
-      <GroupFormSection :title="t('admin.groups.settings.fallbacks')">
+      </SettingsSection>
+      <SettingsSection :title="t('admin.groups.settings.fallbacks')">
         <div class="grid gap-4 md:grid-cols-2">
           <div>
             <label
@@ -291,9 +296,9 @@
             </p>
           </div>
         </div>
-      </GroupFormSection>
-      <GroupFormSection data-group-field="probe">
-        <GroupSettingRow
+      </SettingsSection>
+      <SettingsSection data-group-field="probe">
+        <SettingToggleRow
           :id="`${idPrefix}-probe`"
           v-model="form.availability_probe_enabled"
           :label="t('admin.groups.availabilityProbe.title')"
@@ -388,7 +393,7 @@
             />
           </div>
         </div>
-      </GroupFormSection>
+      </SettingsSection>
     </template>
 
     <template #protocol>
@@ -398,8 +403,8 @@
         v-model:fallbacks="form.protocol_fallbacks"
         v-model:image-policy="form.responses_image_policy"
       />
-      <GroupFormSection>
-        <GroupSettingRow
+      <SettingsSection>
+        <SettingToggleRow
           :id="`${idPrefix}-claude-code`"
           v-model="form.claude_code_only"
           :label="t('admin.groups.claudeCode.title')"
@@ -428,23 +433,23 @@
             {{ t('admin.groups.claudeCode.fallbackHint') }}
           </p>
         </div>
-      </GroupFormSection>
+      </SettingsSection>
     </template>
 
     <template #request>
-      <GroupFormSection
+      <SettingsSection
         :title="t('admin.groups.openaiFast.title')"
         :data-testid="`${mode}-openai-fast`"
       >
         <Select
           v-model="form.openai_fast_policy"
-          data-group-setting="openai_fast_policy"
+          data-setting="openai_fast_policy"
           :aria-label="t('admin.groups.openaiFast.policy')"
           :options="fastOptions"
         />
         <p class="input-hint">{{ t('admin.groups.openaiFast.hint') }}</p>
-      </GroupFormSection>
-      <GroupFormSection :title="t('admin.groups.settings.reasoning')">
+      </SettingsSection>
+      <SettingsSection :title="t('admin.groups.settings.reasoning')">
         <ReasoningEffortPolicyFields
           ref="reasoningRef"
           data-group-field="reasoning"
@@ -453,13 +458,13 @@
           v-model:over-limit="form.max_reasoning_effort_over_limit"
           v-model:mappings="form.reasoning_effort_mappings"
         />
-      </GroupFormSection>
+      </SettingsSection>
       <GroupRequestCompatibilityFields
         :id-prefix="idPrefix"
         v-model="form.routing_policy"
       />
     </template>
-  </GroupFormTabs>
+  </SettingsTabs>
 </template>
 
 <script setup lang="ts">
@@ -469,9 +474,9 @@ import Select from '@/components/common/Select.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { defaultProviderBrandOptions } from '@/utils/providerBrand'
-import GroupFormTabs from './GroupFormTabs.vue'
-import GroupFormSection from './GroupFormSection.vue'
-import GroupSettingRow from './GroupSettingRow.vue'
+import SettingsTabs from '@/components/common/settings/SettingsTabs.vue'
+import SettingsSection from '@/components/common/settings/SettingsSection.vue'
+import SettingToggleRow from '@/components/common/settings/SettingToggleRow.vue'
 import GroupRoutingPolicyFields from './GroupRoutingPolicyFields.vue'
 import GroupModelRoutingFields from './GroupModelRoutingFields.vue'
 import GroupModelsListFields from './GroupModelsListFields.vue'
@@ -515,7 +520,13 @@ const emit = defineEmits<{
 }>()
 const { t } = useI18n()
 const idPrefix = computed(() => `${props.mode}-group`)
-const tabsRef = ref<InstanceType<typeof GroupFormTabs> | null>(null)
+// 所有平台共用同一组页签，平台差异体现在页内字段。
+const tabs = computed(() =>
+  (['general', 'models', 'scheduling', 'protocol', 'request'] as const).map(
+    (key) => ({ key, label: t(`admin.groups.tabs.${key}`) }),
+  ),
+)
+const tabsRef = ref<InstanceType<typeof SettingsTabs> | null>(null)
 const reasoningRef = ref<InstanceType<
   typeof ReasoningEffortPolicyFields
 > | null>(null)

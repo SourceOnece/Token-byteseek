@@ -1,6 +1,6 @@
 <template>
-  <GroupFormSection :title="t('admin.groups.settings.compatibility')">
-    <GroupSettingRow
+  <SettingsSection :title="t('admin.groups.settings.compatibility')">
+    <SettingToggleRow
       v-for="feature in features"
       :id="`${idPrefix}-${feature.key}`"
       :key="feature.key"
@@ -10,15 +10,15 @@
       :setting="feature.key"
       @update:model-value="setFeature(feature.key, $event)"
     />
-  </GroupFormSection>
+  </SettingsSection>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import type { GroupRoutingPolicy } from '@/types'
 import { cloneRoutingPolicy } from './routingPolicy'
-import GroupFormSection from './GroupFormSection.vue'
-import GroupSettingRow from './GroupSettingRow.vue'
+import SettingsSection from '@/components/common/settings/SettingsSection.vue'
+import SettingToggleRow from '@/components/common/settings/SettingToggleRow.vue'
 
 const props = defineProps<{
   idPrefix: string

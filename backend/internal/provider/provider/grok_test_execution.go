@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
@@ -227,6 +228,7 @@ func (s *GrokProviderTest) executeImage(c *TestRun, ctx context.Context, value *
 	if len(result.Data) == 0 {
 		return (TestStreamOutput{}).Error(c, "No images returned from Grok API")
 	}
+	images := 0
 	for _, item := range result.Data {
 		if item.RevisedPrompt != "" {
 			(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "content", Text: item.RevisedPrompt})
@@ -237,10 +239,16 @@ func (s *GrokProviderTest) executeImage(c *TestRun, ctx context.Context, value *
 		}
 		switch {
 		case strings.TrimSpace(item.B64JSON) != "":
+			images++
 			(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "image", ImageURL: "data:" + mimeType + ";base64," + item.B64JSON, MimeType: mimeType})
 		case strings.TrimSpace(item.URL) != "":
+			images++
 			(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "image", ImageURL: item.URL, MimeType: mimeType})
 		}
+	}
+	// 上游返回了 data 但没有可展示的图片时视为失败，避免空结果被当作测试成功。
+	if images == 0 {
+		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Grok returned no image data: %s", logredact.TruncateLine(body, 512)))
 	}
 	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "test_complete", Success: true})
 	return nil

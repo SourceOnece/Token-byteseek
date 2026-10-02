@@ -72,6 +72,13 @@ html[data-visual-theme='bauhaus'] :is(.segmented, .segmented-item) { border-radi
 html[data-visual-theme='bauhaus'] .segmented { border: 2px solid var(--bh-ink); }
 html[data-visual-theme='bauhaus'] .segmented::before { background: var(--bh-yellow); border-radius: 0; }
 
+/* 上游分页表单沿公共皮肤换色；平台卡片统一配方，不只给扩展平台加阴影。 */
+html[data-visual-theme='bauhaus'] .settings-tab-list { border-bottom: 2px solid var(--bh-ink); }
+html[data-visual-theme='bauhaus'] .settings-tab-active { background: var(--bh-yellow); color: #141414; border-bottom-color: var(--bh-ink); font-weight: 800; }
+html[data-visual-theme='bauhaus'] .provider-choice-card { border: 2px solid var(--bh-ink); border-radius: 0; box-shadow: var(--bh-shadow-sm); }
+html[data-visual-theme='bauhaus'] .provider-choice-card:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--bh-shadow-ink); }
+html[data-visual-theme='bauhaus'] .provider-choice-card:disabled { box-shadow: none; }
+
 html[data-visual-theme='bauhaus'] .site-header { background: var(--bh-surface); border-bottom: 3px solid var(--bh-ink); }
 html[data-visual-theme='bauhaus'] .site-header::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; background: linear-gradient(90deg, #e1251b 0 33.33%, #ffcc00 33.33% 66.66%, #1450a3 66.66%); pointer-events: none; }
 html[data-visual-theme='bauhaus'] :is(.sidebar, .app-sidebar) { border-right: 2px solid var(--bh-ink); background: var(--bh-surface); }

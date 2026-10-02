@@ -2307,14 +2307,12 @@ describe("admin SettingsView payment visible method controls", () => {
     const wrapper = mountView();
     await flushPromises();
 
-    const blockButton = wrapper.get(
-      '[data-testid="openai-oauth-default-codex-image-tool-block"]',
+    const imagePolicy = wrapper.get<HTMLSelectElement>(
+      '[data-testid="openai-oauth-default-codex-image-tool-select"]',
     );
-    expect(blockButton.attributes("aria-checked")).toBe("true");
+    expect(imagePolicy.element.value).toBe("block");
 
-    await wrapper
-      .get('[data-testid="openai-oauth-default-codex-image-tool-enabled"]')
-      .trigger("click");
+    await imagePolicy.setValue("enabled");
 
     const defaultsCard = wrapper.get("#openai-oauth-import-defaults");
     const saveButton = defaultsCard

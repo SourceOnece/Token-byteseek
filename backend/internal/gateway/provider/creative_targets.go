@@ -20,6 +20,7 @@ import (
 	gemininative "github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 	geminicli "github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
@@ -48,8 +49,18 @@ func (gateway *CreativeTargets) ForProvider(provider *ExecutionProvider) *creati
 		value, _, err := gateway.Credentials.Resolve(ctx, ExecutionRecord(provider))
 		return value, err
 	}
+	// 创作台必须取得图片字节，URL 下载不受普通 API 的可选回填开关控制。
+	imageDownload := openai.ImageBackfillOptions{
+		ValidateURL: func(raw string) (string, error) {
+			return gateway.Requests.ValidateBaseURL(raw)
+		},
+		Do: func(req *http.Request) (*http.Response, error) {
+			return gateway.Transport.Do(req, creativeTargetProxyURL(provider), provider.Record.ID, provider.Record.Concurrency)
+		},
+	}
 	target.OpenAI = &creativeprovider.OpenAIOptions{
-		Token: token,
+		FetchImage: imageDownload.FetchBase64,
+		Token:      token,
 		URL: func(endpoint string) (string, error) {
 			targetURL, err := gateway.Requests.ImagesURL(provider, endpoint)
 			if err != nil {

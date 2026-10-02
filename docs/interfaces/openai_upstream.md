@@ -105,7 +105,11 @@ OAuth 的 Image 1.5、Image 2、Image 2.5 Flare/Sunburst（含 2026-09-08 快照
 
 WS 执行域使用 API Key、原始线程或显式会话以及请求类型共同隔离；主 turn、prewarm、compaction 同道，memory/子代理独立，避免互相抢占。驻留读循环处理上游 ping/关闭，池容量变化唤醒排队者重新选连接；TLS profile 与 beta 握手兼容键继续硬隔离。已成功过的 passthrough 会话后续轮次遇到前输出故障时通知重连，不重放第一轮。
 
-创作台 API Key 异步执行器的 `generate` 使用 `/v1/images/generations` JSON，`edit`/`inpaint` 使用 `/v1/images/edits` multipart；固定发送 PNG、单张 `n=1`，并按最终模型能力透传尺寸、质量和背景。GPT Image 模型不发送 `response_format`（其响应固定包含 base64），只有 DALL-E 模型保留 `response_format=b64_json`。inpaint 的 mask 必须是与源图同尺寸、4 MiB 以内的 PNG，透明像素表示需要重绘区域。
+创作台 API Key 异步执行器的 `generate` 使用 `/v1/images/generations` JSON，`edit`/`inpaint` 使用 `/v1/images/edits` multipart；固定发送 PNG、单张 `n=1`，并按最终模型能力透传尺寸、质量和背景。GPT Image 模型不发送 `response_format`，只有 DALL-E 模型保留 `response_format=b64_json`。inpaint 的 mask 必须是与源图同尺寸、4 MiB 以内的 PNG，透明像素表示需要重绘区域。
+
+兼容上游可能只返回 `data[].url`。创作台优先解析可用的 `b64_json`，没有可用 Base64 时下载 URL 图片；该路径必须取得图片字节，不依赖普通 API 的 `images_url_to_b64_json` 开关。下载复用上述回填下载器和提供商代理，保留签名 URL，不携带生图认证或自定义请求头，并应用相同的公网、重定向、格式、20 MiB 大小和单次 60 秒限制。生图响应在下载前关闭，释放连接占用。
+
+下载最多尝试三次，间隔一秒，受任务执行 context 限制；最终失败返回 `IMAGE_DOWNLOAD_FAILED`。成功 HTTP 响应缺少可解析图片时返回 `INVALID_IMAGE_RESPONSE`。这两类错误结束任务并按失败路径释放预占，不重排生图请求；上游 HTTP 错误继续使用既有重试规则。下载错误正文和签名地址不进入任务错误消息。
 
 分组可按协议配置开放 Messages、Responses 和 Chat，新建时默认开放这三个文本入口；三项都可关闭。已有分组迁移时仅在旧 `allow_messages_dispatch` 开启时加入 Messages。该旧字段只作为 Messages 的弃用兼容镜像。Messages 的模型改写统一使用分组 `routing_policy.model_mapping` 与提供商模型规则。Responses WebSocket 是 OpenAI/Grok 的原生传输能力，不因其它平台启用兼容 Responses 而开放。
 

@@ -11,12 +11,7 @@
     @move="moveRule"
   >
     <template #header-extra>
-      <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-        <p class="text-xs text-blue-700 dark:text-blue-400">
-          <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
-          {{ t('admin.providers.tempUnschedulable.notice') }}
-        </p>
-      </div>
+      <SettingsNotice>{{ t('admin.providers.tempUnschedulable.notice') }}</SettingsNotice>
       <div class="flex flex-wrap gap-2">
         <button
           v-for="preset in presets"
@@ -79,7 +74,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import Icon from '@/components/icons/Icon.vue'
+import SettingsNotice from '@/components/common/settings/SettingsNotice.vue'
 import RuleListEditor from '@/components/common/RuleListEditor.vue'
 
 /** TempUnschedRuleForm 是临时不可调度规则的表单行，关键词以逗号分隔的文本编辑。 */

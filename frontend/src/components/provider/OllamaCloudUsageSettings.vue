@@ -1,11 +1,11 @@
 <template>
-  <section v-if="state?.eligible" class="space-y-4 border-t border-gray-200 pt-4 dark:border-dark-600" data-testid="ollama-cloud-usage-settings">
+  <section v-if="state?.eligible" class="settings-section space-y-4" data-testid="ollama-cloud-usage-settings">
     <div class="flex items-start justify-between gap-4">
-      <div>
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+      <div class="min-w-0">
+        <h4 class="text-sm font-semibold text-primary-900 dark:text-dark-50">
           {{ t('admin.providers.ollamaCloud.title') }}
-        </h3>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        </h4>
+        <p class="input-hint">
           {{ t('admin.providers.ollamaCloud.sessionSecurityHint') }}
         </p>
       </div>
@@ -21,9 +21,9 @@
 
     <ContentSkeleton v-if="loading" variant="form" :rows="3" class="py-4" />
     <template v-else>
-      <div v-if="!state.encryption_key_configured" class="rounded-compact border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/20 dark:text-amber-200">
+      <SettingsNotice v-if="!state.encryption_key_configured" tone="warning">
         {{ t('admin.providers.ollamaCloud.encryptionKeyRequired') }}
-      </div>
+      </SettingsNotice>
 
       <div
         v-if="snapshot"
@@ -102,22 +102,16 @@
         </button>
       </div>
 
-      <div v-if="state.configured" class="flex items-center justify-between gap-4 border-t border-gray-100 pt-4 dark:border-dark-700">
-        <div>
-          <label class="text-sm font-medium text-gray-900 dark:text-white">
-            {{ t('admin.providers.ollamaCloud.autoRefresh') }}
-          </label>
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.ollamaCloud.autoRefreshHint') }}
-          </p>
-        </div>
-        <Toggle
-          :model-value="state.auto_refresh_enabled"
-          :disabled="saving"
-          data-testid="ollama-cloud-auto-refresh"
-          @update:model-value="setAutoRefresh"
-        />
-      </div>
+      <SettingToggleRow
+        v-if="state.configured"
+        id="ollama-cloud-auto-refresh"
+        :model-value="state.auto_refresh_enabled"
+        :disabled="saving"
+        :label="t('admin.providers.ollamaCloud.autoRefresh')"
+        :hint="t('admin.providers.ollamaCloud.autoRefreshHint')"
+        testid="ollama-cloud-auto-refresh"
+        @update:model-value="setAutoRefresh"
+      />
     </template>
 
     <ConfirmDialog
@@ -135,6 +129,7 @@
 
 <script setup lang="ts">
 import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import SettingsNotice from '@/components/common/settings/SettingsNotice.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
@@ -142,7 +137,7 @@ import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage, extractI18nErrorMessage } from '@/utils/apiError'
 import type { Provider, OllamaCloudUsageState, OllamaCloudUsageWindow } from '@/types'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
-import Toggle from '@/components/common/Toggle.vue'
+import SettingToggleRow from '@/components/common/settings/SettingToggleRow.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const props = defineProps<{ provider: Provider }>()

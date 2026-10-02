@@ -208,3 +208,43 @@ func TestProviderTestService_OpenAIExplicitTextTypeDoesNotInspectModelName(t *te
 	require.Equal(t, "gpt-image-2", gjson.GetBytes(body, "model").String())
 	require.Equal(t, "reply briefly", gjson.GetBytes(body, "input.0.content.0.text").String())
 }
+
+func TestProviderTestService_OpenAIImageAPIKeyHandlesURLAndEmptyImages(t *testing.T) {
+	cases := []struct {
+		name    string
+		body    string
+		wantErr bool
+		want    string
+	}{
+		{"url 返回", `{"data":[{"url":"https://cdn.example/cat.png"}]}`, false, `"image_url":"https://cdn.example/cat.png"`},
+		{"没有图片数据", `{"data":[{"revised_prompt":"draw a cat"}]}`, true, "Upstream returned no image data"},
+		{"拒绝非 https 链接", `{"data":[{"url":"javascript:alert(1)"}]}`, true, "Upstream returned no image data"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			c := &openAIProbeOutput{recorder: rec}
+			c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/admin/providers/1/test", nil)
+			upstream := &openAIProbeTransport{
+				resp: &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     http.Header{"Content-Type": []string{"application/json"}},
+					Body:       io.NopCloser(strings.NewReader(tc.body)),
+				},
+			}
+			svc := &provideradapter.OpenAIProviderTest{Transport: upstream, ValidateURL: (egress.OperatorURLPolicy{}).Validate}
+			provider := &providercore.Record{
+				ID:          55,
+				Name:        "openai-apikey",
+				Platform:    capability.PlatformOpenAI,
+				Type:        capability.ProviderTypeAPIKey,
+				Credentials: map[string]any{"api_key": "test-api-key", "base_url": "https://image-upstream.example/v1"},
+			}
+
+			err := executeOpenAIImageAPIKeyProbe(t, svc, c, context.Background(), provider, "gpt-image-2", "draw a cat")
+			require.Equal(t, tc.wantErr, err != nil)
+			require.Contains(t, rec.Body.String(), tc.want)
+			require.Equal(t, !tc.wantErr, strings.Contains(rec.Body.String(), `"success":true`))
+		})
+	}
+}

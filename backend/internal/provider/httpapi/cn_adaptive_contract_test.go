@@ -12,6 +12,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
@@ -271,4 +272,31 @@ func TestProviderTestService_FixedCNAnthropicRejectsOpenAIBaseURLAndMarksAuthErr
 		repo := testassert.MustType[*openAIProbeStore](svc.Store)
 		require.Equal(t, provider.ID, repo.setErrorID)
 	})
+}
+
+func TestProviderTestService_AdaptiveSelectedProtocolTestsOnlyThatEndpoint(t *testing.T) {
+	provider := adaptiveCNProviderTestProvider(310, capability.PlatformDeepseek)
+	svc, upstream := adaptiveCNProviderTestService(provider, adaptiveCNAnthropicTestResponse())
+	c, recorder := newTestContext()
+
+	err := executeOpenAIProbeRequestType(t, svc, c, provider.ID, "deepseek-chat", "", providercore.ProviderTestTypeText, providercore.ProviderTestModeDefault, providercore.APIProtocolAnthropic)
+
+	require.NoError(t, err)
+	require.Len(t, upstream.requests, 1)
+	require.Equal(t, "http://anthropic.example/v1/messages", upstream.requests[0].URL.String())
+	require.Equal(t, 1, strings.Count(recorder.Body.String(), `"type":"test_start"`))
+	require.Equal(t, 1, strings.Count(recorder.Body.String(), `"type":"test_complete"`))
+}
+
+func TestProviderTestService_SelectedProtocolMustBeEnabled(t *testing.T) {
+	provider := adaptiveCNProviderTestProvider(311, capability.PlatformZhipu)
+	provider.Credentials[providercore.UpstreamProtocolsKey] = []any{string(protocol.ProtocolOpenAIChatCompletions)}
+	svc, upstream := adaptiveCNProviderTestService(provider)
+	c, recorder := newTestContext()
+
+	err := executeOpenAIProbeRequestType(t, svc, c, provider.ID, "glm-4.7", "", providercore.ProviderTestTypeText, providercore.ProviderTestModeDefault, providercore.APIProtocolAnthropic)
+
+	require.Error(t, err)
+	require.Empty(t, upstream.requests)
+	require.Contains(t, recorder.Body.String(), "Test protocol anthropic is not supported for this provider")
 }

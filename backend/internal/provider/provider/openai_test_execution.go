@@ -16,6 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 
@@ -707,10 +708,11 @@ func (s *OpenAIProviderTest) ExecuteImageAPIKey(c *TestRun, ctx context.Context,
 		return (TestStreamOutput{}).Error(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
 	}
 
-	// 保留图片结果及修订提示词的原解析形状。
+	// 兼容 b64_json 与 url 两种图片返回形式，部分中转站会忽略 response_format 直接返回链接。
 	var result struct {
 		Data []struct {
 			B64JSON       string `json:"b64_json"`
+			URL           string `json:"url"`
 			RevisedPrompt string `json:"revised_prompt"`
 		} `json:"data"`
 	}
@@ -722,17 +724,27 @@ func (s *OpenAIProviderTest) ExecuteImageAPIKey(c *TestRun, ctx context.Context,
 		return (TestStreamOutput{}).Error(c, "No images returned from API")
 	}
 
+	images := 0
 	for _, item := range result.Data {
 		if item.RevisedPrompt != "" {
 			(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "content", Text: item.RevisedPrompt})
 		}
-		if item.B64JSON != "" {
+		switch {
+		case item.B64JSON != "":
+			images++
 			(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{
 				Type:     "image",
 				ImageURL: "data:image/png;base64," + item.B64JSON,
 				MimeType: "image/png",
 			})
+		case strings.HasPrefix(item.URL, "https://") || strings.HasPrefix(item.URL, "data:image/"):
+			images++
+			(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "image", ImageURL: item.URL})
 		}
+	}
+	// 上游返回了 data 但没有可展示的图片时视为失败，避免空结果被当作测试成功。
+	if images == 0 {
+		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Upstream returned no image data: %s", logredact.TruncateLine(body, 512)))
 	}
 
 	(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "test_complete", Success: true})

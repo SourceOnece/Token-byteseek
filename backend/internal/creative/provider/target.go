@@ -18,6 +18,8 @@ type OpenAIOptions struct {
 	AuthHeaders  func(context.Context, string) (http.Header, error)
 	ApplyHeaders func(http.Header)
 	Do           func(*http.Request) (*http.Response, error)
+	// FetchImage 下载结果图片，不应用生图请求的认证或自定义请求头。
+	FetchImage func(context.Context, string) (string, error)
 }
 type GrokOptions struct {
 	OAuth        bool

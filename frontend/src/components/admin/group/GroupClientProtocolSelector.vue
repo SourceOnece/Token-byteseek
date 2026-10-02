@@ -1,5 +1,5 @@
 <template>
-  <GroupFormSection
+  <SettingsSection
     :title="t('admin.protocols.groupTitle')"
     :hint="t('admin.protocols.groupHint')"
   >
@@ -125,14 +125,14 @@
         {{ t(`admin.protocols.imagePolicyOptions.${imagePolicy ?? 'inherit'}.description`) }}
       </p>
     </div>
-  </GroupFormSection>
+  </SettingsSection>
 </template>
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Toggle from '@/components/common/Toggle.vue'
 import Select from '@/components/common/Select.vue'
-import GroupFormSection from './GroupFormSection.vue'
+import SettingsSection from '@/components/common/settings/SettingsSection.vue'
 import RuleListEditor from '@/components/common/RuleListEditor.vue'
 import {
   loadProtocolCatalog,

@@ -1,823 +1,368 @@
 <template>
-  <div v-if="platform === 'openai' && detectedEmails.length" class="mb-4 border-2 border-bh-blue bg-white p-3 shadow-[var(--bh-shadow-sm)] dark:bg-dark-800">
-    <p class="text-xs font-bold">{{ t('admin.accounts.quality.detectedEmail') }}</p>
-    <p v-for="email in detectedEmails" :key="email" class="break-all text-lg font-extrabold text-bh-blue dark:text-blue-300">{{ email }}</p>
-    <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.accounts.quality.emailClaimHint') }}</p>
-  </div>
-  <div
-    class="rounded-control border border-blue-200 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-900/30"
-  >
-      <div class="flex items-start gap-4">
-      <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-control bg-blue-500">
-        <Icon name="link" size="md" class="text-white" />
+  <div class="space-y-6">
+    <!-- 邮箱仍来自授权结果或本地令牌解析，不额外发起凭据请求。 -->
+    <SettingsNotice v-if="platform === 'openai' && detectedEmails.length">
+      <p class="text-sm font-semibold">{{ t('admin.accounts.quality.detectedEmail') }}</p>
+      <p v-for="email in detectedEmails" :key="email" class="break-all text-lg font-bold text-primary-700 dark:text-primary-400">{{ email }}</p>
+      <p class="input-hint">{{ t('admin.accounts.quality.emailClaimHint') }}</p>
+    </SettingsNotice>
+    <!-- 标题行：左侧平台标识与说明，右侧授权方式；两侧按垂直中线对齐，窄屏改为上下排列。 -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex min-w-0 items-center gap-3">
+        <span
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-control"
+          :class="platformBadgeLightClass(platform)"
+        >
+          <PlatformIcon :platform="platform" size="md" />
+        </span>
+        <div class="min-w-0">
+          <h4 class="text-sm font-semibold text-primary-900 dark:text-dark-50">{{ oauthTitle }}</h4>
+          <p v-if="inputMethod === 'manual'" class="input-hint">{{ oauthFollowSteps }}</p>
+        </div>
       </div>
-      <!-- 手机允许内容列收缩并换行，长授权地址不能把输入框撑出弹窗。 -->
-      <div class="min-w-0 flex-1 break-words">
-        <h4 class="mb-3 font-semibold text-blue-900 dark:text-blue-200">{{ oauthTitle }}</h4>
 
-        <!-- Auth Method Selection -->
-        <div v-if="showMethodSelection" class="mb-4">
-          <label class="mb-2 block text-sm font-medium text-blue-800 dark:text-blue-300">
-            {{ methodLabel }}
-          </label>
-          <div class="flex flex-wrap gap-4">
-            <label v-if="showManualOption" class="flex cursor-pointer items-center gap-2">
-              <input
-                v-model="inputMethod"
-                type="radio"
-                value="manual"
-                class="text-primary-600 focus:ring-primary-500"
-              />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
-                t('admin.providers.oauth.manualAuth')
-              }}</span>
-            </label>
-            <label v-if="showCookieOption" class="flex cursor-pointer items-center gap-2">
-              <input
-                v-model="inputMethod"
-                type="radio"
-                value="cookie"
-                class="text-primary-600 focus:ring-primary-500"
-              />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
-                t('admin.providers.oauth.cookieAutoAuth')
-              }}</span>
-            </label>
-            <label v-if="showRefreshTokenOption" class="flex cursor-pointer items-center gap-2">
-              <input
-                v-model="inputMethod"
-                type="radio"
-                value="refresh_token"
-                class="text-primary-600 focus:ring-primary-500"
-              />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
-                t(getOAuthKey('refreshTokenAuth'))
-              }}</span>
-            </label>
-            <label v-if="showSsoOption" class="flex cursor-pointer items-center gap-2">
-              <input
-                v-model="inputMethod"
-                type="radio"
-                value="sso_cookie"
-                class="text-primary-600 focus:ring-primary-500"
-              />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
-                t(getOAuthKey('ssoCookieAuth'))
-              }}</span>
-            </label>
-            <label v-if="showMobileRefreshTokenOption" class="flex cursor-pointer items-center gap-2">
-              <input
-                v-model="inputMethod"
-                type="radio"
-                value="mobile_refresh_token"
-                class="text-primary-600 focus:ring-primary-500"
-              />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
-                t('admin.providers.oauth.openai.mobileRefreshTokenAuth', '手动输入 Mobile RT')
-              }}</span>
-            </label>
-            <label v-if="showSessionTokenOption" class="flex cursor-pointer items-center gap-2">
-              <input
-                v-model="inputMethod"
-                type="radio"
-                value="session_token"
-                class="text-primary-600 focus:ring-primary-500"
-              />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
-                t(getOAuthKey('sessionTokenAuth'))
-              }}</span>
-            </label>
-            <label v-if="showAccessTokenOption" class="flex cursor-pointer items-center gap-2">
-              <input
-                v-model="inputMethod"
-                type="radio"
-                value="access_token"
-                class="text-primary-600 focus:ring-primary-500"
-              />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
-                t('admin.providers.oauth.openai.accessTokenAuth', '手动输入 AT')
-              }}</span>
-            </label>
-            <label v-if="showCodexSessionImportOption" class="flex cursor-pointer items-center gap-2">
-              <input
-                v-model="inputMethod"
-                type="radio"
-                value="codex_session"
-                class="text-primary-600 focus:ring-primary-500"
-              />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
-                t('admin.providers.oauth.openai.codexSessionAuth')
-              }}</span>
-            </label>
-            <label v-if="showAgentIdentityOption" class="flex cursor-pointer items-center gap-2">
-              <input
-                v-model="inputMethod"
-                type="radio"
-                value="agent_identity"
-                class="text-primary-600 focus:ring-primary-500"
-              />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
-                t('admin.providers.oauth.openai.agentIdentityAuth')
-              }}</span>
-            </label>
-            <label v-if="showCodexPatOption" class="flex cursor-pointer items-center gap-2">
-              <input
-                v-model="inputMethod"
-                type="radio"
-                value="codex_pat"
-                class="text-primary-600 focus:ring-primary-500"
-              />
-              <span class="text-sm text-blue-900 dark:text-blue-200">{{
-                t('admin.providers.oauth.openai.codexPatAuth')
-              }}</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Refresh Token Input (OpenAI / Antigravity / Mobile RT) -->
-        <div v-if="inputMethod === 'refresh_token' || inputMethod === 'mobile_refresh_token'" class="space-y-4">
-          <div
-            class="rounded-surface border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
-            <p class="mb-3 text-sm text-blue-700 dark:text-blue-300">
-              {{ t(getOAuthKey('refreshTokenDesc')) }}
-            </p>
-
-            <!-- Refresh Token Input -->
-            <div class="mb-4">
-              <label
-                class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
-              >
-                <Icon name="key" size="sm" class="text-blue-500" />
-                Refresh Token
-                <span
-                  v-if="parsedRefreshTokenCount > 1"
-                  class="rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white"
-                >
-                  {{ t('admin.providers.oauth.keysCount', { count: parsedRefreshTokenCount }) }}
-                </span>
-              </label>
-              <textarea
-                v-model="refreshTokenInput"
-                rows="3"
-                class="input w-full resize-y font-mono text-sm"
-                :placeholder="t(getOAuthKey('refreshTokenPlaceholder'))"
-              ></textarea>
-              <p
-                v-if="parsedRefreshTokenCount > 1"
-                class="mt-1 text-xs text-blue-600 dark:text-blue-400"
-              >
-                {{ t('admin.providers.oauth.batchCreateProviders', { count: parsedRefreshTokenCount }) }}
-              </p>
-            </div>
-
-            <!-- Error Message -->
-            <div
-              v-if="error"
-              class="mb-4 rounded-control border border-red-200 bg-red-50 p-3 dark:border-red-700 dark:bg-red-900/30"
-            >
-              <p class="whitespace-pre-line text-sm text-red-600 dark:text-red-400">
-                {{ error }}
-              </p>
-            </div>
-
-            <!-- Validate Button -->
-            <button
-              type="button"
-              class="btn btn-primary w-full"
-              :disabled="loading || !refreshTokenInput.trim()"
-              @click="handleValidateRefreshToken"
-            >
-              <Icon
-                name="loader"
-                size="sm"
-                :animate-on-hover="false"
-                v-if="loading"
-                class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              />
-              <Icon v-else name="sparkles" size="sm" class="mr-2" />
-              {{
-                loading
-                  ? t(getOAuthKey('validating'))
-                  : t(getOAuthKey('validateAndCreate'))
-              }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Grok Web SSO 转换为 Grok Build -->
-        <div v-if="inputMethod === 'sso_cookie'" class="space-y-4">
-          <div
-            class="rounded-surface border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
-            <p class="mb-3 text-sm text-blue-700 dark:text-blue-300">
-              {{ t(getOAuthKey('ssoCookieDesc')) }}
-            </p>
-
-            <div class="mb-4">
-              <label
-                class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
-              >
-                <Icon name="key" size="sm" class="text-blue-500" />
-                {{ t(getOAuthKey('ssoCookieLabel')) }}
-                <span
-                  v-if="parsedSSOCount > 1"
-                  class="rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white"
-                >
-                  {{ t('admin.providers.oauth.keysCount', { count: parsedSSOCount }) }}
-                </span>
-              </label>
-              <textarea
-                v-model="ssoCookieInput"
-                rows="5"
-                class="input w-full resize-y font-mono text-sm"
-                :placeholder="t(getOAuthKey('ssoCookiePlaceholder'))"
-                spellcheck="false"
-              ></textarea>
-              <p class="mt-1 text-xs text-blue-600 dark:text-blue-400">
-                {{ t(getOAuthKey('ssoCookieHint')) }}
-              </p>
-            </div>
-
-            <div
-              v-if="error"
-              class="mb-4 rounded-control border border-red-200 bg-red-50 p-3 dark:border-red-700 dark:bg-red-900/30"
-            >
-              <p class="whitespace-pre-line text-sm text-red-600 dark:text-red-400">
-                {{ error }}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              class="btn btn-primary w-full"
-              :disabled="loading || !ssoCookieInput.trim()"
-              @click="handleImportSSO"
-            >
-              <Icon
-                name="loader"
-                size="sm"
-                :animate-on-hover="false"
-                v-if="loading"
-                class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              />
-              <Icon v-else name="sparkles" size="sm" class="mr-2" />
-              {{ loading ? t(getOAuthKey('convertingSSO')) : t(getOAuthKey('convertSSOAndCreate')) }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Codex auth.json、Agent Identity 与会话凭据共用批量导入表单。 -->
-        <div v-if="inputMethod === 'codex_session' || inputMethod === 'agent_identity'" class="space-y-4">
-          <div
-            class="rounded-surface border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
-            <p class="mb-3 text-sm text-blue-700 dark:text-blue-300">
-              {{ t(isAgentIdentityInput ? 'admin.providers.oauth.openai.agentIdentityDesc' : 'admin.providers.oauth.openai.codexSessionDesc') }}
-            </p>
-
-            <div class="mb-4">
-              <label
-                class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
-              >
-                <Icon name="key" size="sm" class="text-blue-500" />
-                {{ t(isAgentIdentityInput ? 'admin.providers.oauth.openai.agentIdentityInputLabel' : 'admin.providers.oauth.openai.codexSessionInputLabel') }}
-                <span
-                  v-if="parsedCodexSessionCount > 1"
-                  class="rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white"
-                >
-                  {{ t('admin.providers.oauth.keysCount', { count: parsedCodexSessionCount }) }}
-                </span>
-              </label>
-              <textarea
-                v-model="codexSessionInput"
-                rows="8"
-                class="input w-full resize-y font-mono text-sm"
-                :placeholder="t(isAgentIdentityInput ? 'admin.providers.oauth.openai.agentIdentityPlaceholder' : 'admin.providers.oauth.openai.codexSessionPlaceholder')"
-                spellcheck="false"
-              ></textarea>
-              <p class="mt-1 text-xs text-blue-600 dark:text-blue-400">
-                {{ t(isAgentIdentityInput ? 'admin.providers.oauth.openai.agentIdentityHint' : 'admin.providers.oauth.openai.codexSessionHint') }}
-              </p>
-            </div>
-
-            <div
-              v-if="error"
-              class="mb-4 rounded-control border border-red-200 bg-red-50 p-3 dark:border-red-700 dark:bg-red-900/30"
-            >
-              <p class="whitespace-pre-line text-sm text-red-600 dark:text-red-400">
-                {{ error }}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              class="btn btn-primary w-full"
-              :disabled="loading || !codexSessionInput.trim()"
-              @click="handleImportCodexSession"
-            >
-              <Icon
-                name="loader"
-                size="sm"
-                :animate-on-hover="false"
-                v-if="loading"
-                class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              />
-              <Icon v-else name="sparkles" size="sm" class="mr-2" />
-              {{
-                loading
-                  ? t('admin.providers.oauth.openai.validating')
-                  : t('admin.providers.oauth.openai.codexSessionImportAndCreate')
-              }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Codex PAT 输入 -->
-        <div v-if="inputMethod === 'codex_pat'" class="space-y-4">
-          <div
-            class="rounded-surface border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
-            <p class="mb-3 text-sm text-blue-700 dark:text-blue-300">
-              {{ t('admin.providers.oauth.openai.codexPatDesc') }}
-            </p>
-
-            <div class="mb-4">
-              <label
-                class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
-              >
-                <Icon name="key" size="sm" class="text-blue-500" />
-                {{ t('admin.providers.oauth.openai.codexPatInputLabel') }}
-              </label>
-              <input
-                v-model="codexPATInput"
-                type="password"
-                class="input w-full font-mono text-sm"
-                :placeholder="t('admin.providers.oauth.openai.codexPatPlaceholder')"
-                autocomplete="off"
-                spellcheck="false"
-              />
-              <p class="mt-1 text-xs text-blue-600 dark:text-blue-400">
-                {{ t('admin.providers.oauth.openai.codexPatHint') }}
-              </p>
-            </div>
-
-            <div
-              v-if="error"
-              class="mb-4 rounded-control border border-red-200 bg-red-50 p-3 dark:border-red-700 dark:bg-red-900/30"
-            >
-              <p class="whitespace-pre-line text-sm text-red-600 dark:text-red-400">
-                {{ error }}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              class="btn btn-primary w-full"
-              :disabled="loading || !codexPATInput.trim()"
-              @click="handleImportCodexPAT"
-            >
-              <Icon
-                name="loader"
-                size="sm"
-                :animate-on-hover="false"
-                v-if="loading"
-                class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              />
-              <Icon v-else name="sparkles" size="sm" class="mr-2" />
-              {{
-                loading
-                  ? t('admin.providers.oauth.openai.validating')
-                  : t('admin.providers.oauth.openai.codexPatImportAndCreate')
-              }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Cookie Auto-Auth Form -->
-        <div v-if="inputMethod === 'cookie'" class="space-y-4">
-          <div
-            class="rounded-surface border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
-            <p class="mb-3 text-sm text-blue-700 dark:text-blue-300">
-              {{ t('admin.providers.oauth.cookieAutoAuthDesc') }}
-            </p>
-
-            <!-- sessionKey Input -->
-            <div class="mb-4">
-              <label
-                class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
-              >
-                <Icon name="key" size="sm" class="text-blue-500" />
-                {{ t('admin.providers.oauth.sessionKey') }}
-                <span
-                  v-if="parsedKeyCount > 1 && allowMultiple"
-                  class="rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white"
-                >
-                  {{ t('admin.providers.oauth.keysCount', { count: parsedKeyCount }) }}
-                </span>
-                <button
-                  v-if="showHelp"
-                  type="button"
-                  class="text-primary-500 hover:text-primary-600"
-                  @click="showHelpDialog = !showHelpDialog"
-                >
-                  <Icon name="questionCircle" size="sm" class="h-4 w-4" />
-                </button>
-              </label>
-              <textarea
-                v-model="sessionKeyInput"
-                rows="3"
-                class="input w-full resize-y font-mono text-sm"
-                :placeholder="
-                  allowMultiple
-                    ? t('admin.providers.oauth.sessionKeyPlaceholder')
-                    : t('admin.providers.oauth.sessionKeyPlaceholderSingle')
-                "
-              ></textarea>
-              <p
-                v-if="parsedKeyCount > 1 && allowMultiple"
-                class="mt-1 text-xs text-blue-600 dark:text-blue-400"
-              >
-                {{ t('admin.providers.oauth.batchCreateProviders', { count: parsedKeyCount }) }}
-              </p>
-            </div>
-
-            <!-- Help Section -->
-            <div
-              v-if="showHelpDialog && showHelp"
-              class="mb-4 rounded-control border border-amber-200 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-900/30"
-            >
-              <h5 class="mb-2 font-semibold text-amber-800 dark:text-amber-200">
-                {{ t('admin.providers.oauth.howToGetSessionKey') }}
-              </h5>
-              <ol
-                class="list-inside list-decimal space-y-1 text-xs text-amber-700 dark:text-amber-300"
-              >
-                <li>{{ t('admin.providers.oauth.step1') }}</li>
-                <li>{{ t('admin.providers.oauth.step2') }}</li>
-                <li>{{ t('admin.providers.oauth.step3') }}</li>
-                <li>{{ t('admin.providers.oauth.step4') }}</li>
-                <li>{{ t('admin.providers.oauth.step5') }}</li>
-                <li>{{ t('admin.providers.oauth.step6') }}</li>
-              </ol>
-              <p
-                class="mt-2 text-xs text-amber-600 dark:text-amber-400"
-                v-text="t('admin.providers.oauth.sessionKeyFormat')"
-              ></p>
-            </div>
-
-            <!-- Error Message -->
-            <div
-              v-if="error"
-              class="mb-4 rounded-control border border-red-200 bg-red-50 p-3 dark:border-red-700 dark:bg-red-900/30"
-            >
-              <p class="whitespace-pre-line text-sm text-red-600 dark:text-red-400">
-                {{ error }}
-              </p>
-            </div>
-
-            <!-- Auth Button -->
-            <button
-              type="button"
-              class="btn btn-primary w-full"
-              :disabled="loading || !sessionKeyInput.trim()"
-              @click="handleCookieAuth"
-            >
-              <Icon
-                name="loader"
-                size="sm"
-                :animate-on-hover="false"
-                v-if="loading"
-                class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              />
-              <Icon v-else name="sparkles" size="sm" class="mr-2" />
-              {{
-                loading
-                  ? t('admin.providers.oauth.authorizing')
-                  : t('admin.providers.oauth.startAutoAuth')
-              }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Manual Authorization Flow -->
-        <div v-if="inputMethod === 'manual'" class="space-y-4">
-          <p class="mb-4 text-sm text-blue-800 dark:text-blue-300">
-            {{ oauthFollowSteps }}
-          </p>
-
-          <!-- Step 1: Generate Auth URL -->
-          <div
-            class="rounded-surface border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
-            <div class="flex items-start gap-3">
-              <div
-                class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white"
-              >
-                1
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="mb-2 font-medium text-blue-900 dark:text-blue-200">
-                  {{ oauthStep1GenerateUrl }}
-                </p>
-                <div v-if="showProjectId && platform === 'gemini'" class="mb-3">
-                  <label class="input-label flex items-center gap-2">
-                    {{ t('admin.providers.oauth.gemini.projectIdLabel') }}
-                    <a
-                      href="https://console.cloud.google.com/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="inline-flex items-center gap-1 text-xs font-normal text-primary-500 hover:text-primary-600 dark:text-primary-500"
-                    >
-                      <Icon name="questionCircle" size="xs" class="h-3 w-3" />
-                      {{ t('admin.providers.oauth.gemini.howToGetProjectId') }}
-                    </a>
-                  </label>
-                  <input
-                    v-model="projectId"
-                    type="text"
-                    class="input w-full font-mono text-sm"
-                    :placeholder="t('admin.providers.oauth.gemini.projectIdPlaceholder')"
-                  />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t('admin.providers.oauth.gemini.projectIdHint') }}
-                  </p>
-                </div>
-                <div v-if="isOpenAI" class="space-y-3">
-                  <button
-                    type="button"
-                    :disabled="loading"
-                    class="btn btn-primary text-sm"
-                    @click="handleGenerateUrl"
-                  >
-                    <Icon
-                      name="loader"
-                      size="sm"
-                      :animate-on-hover="false"
-                      v-if="loading"
-                      class="-ml-1 mr-2 h-4 w-4 animate-spin"
-                    />
-                    <Icon v-else name="plus" size="sm" class="mr-2" />
-                    {{
-                      loading
-                        ? t('admin.providers.oauth.generating')
-                        : isOpenAIBatchAuth
-                          ? t('admin.providers.oauth.openai.appendAuthUrl')
-                          : oauthGenerateAuthUrl
-                    }}
-                  </button>
-                  <div v-if="openAIAuthSessions.length > 0" class="space-y-2">
-                    <div
-                      v-for="(session, index) in openAIAuthSessions"
-                      :key="session.sessionId"
-                      class="flex items-center gap-2 rounded-control border border-blue-100 bg-gray-50 p-2 dark:border-blue-900/50 dark:bg-gray-700"
-                    >
-                      <span class="w-10 shrink-0 text-center text-xs font-semibold text-blue-700 dark:text-blue-300">
-                        #{{ index + 1 }}
-                      </span>
-                      <input
-                        :value="session.authUrl"
-                        readonly
-                        type="text"
-                        class="input min-w-0 flex-1 bg-white font-mono text-xs dark:bg-gray-800"
-                      />
-                      <button
-                        type="button"
-                        class="btn btn-secondary p-2"
-                        :title="t('admin.providers.oauth.copyAuthUrl')"
-                        :aria-label="t('admin.providers.oauth.copyAuthUrl')"
-                        @click="handleCopySessionUrl(session.authUrl)"
-                      >
-                        <Icon name="copy" size="sm" />
-                      </button>
-                      <a
-                        :href="session.authUrl"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="btn btn-primary p-2"
-                        :title="t('admin.providers.oauth.openAuthUrl')"
-                        :aria-label="t('admin.providers.oauth.openAuthUrl')"
-                      >
-                        <Icon name="externalLink" size="sm" />
-                      </a>
-                      <button
-                        v-if="isOpenAIBatchAuth"
-                        type="button"
-                        class="btn btn-secondary p-2 text-red-600 hover:text-red-700 dark:text-red-400"
-                        :title="t('common.delete')"
-                        :aria-label="t('common.delete')"
-                        @click="handleRemoveAuthSession(session.sessionId)"
-                      >
-                        <Icon name="trash" size="sm" />
-                      </button>
-                    </div>
-                    <p v-if="isOpenAIBatchAuth" class="text-xs text-blue-700 dark:text-blue-300">
-                      {{ t('admin.providers.oauth.openai.multiAuthUrlHint', { count: openAIAuthSessions.length }) }}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  v-else-if="!authUrl"
-                  type="button"
-                  :disabled="loading"
-                  class="btn btn-primary text-sm"
-                  @click="handleGenerateUrl"
-                >
-                  <Icon
-                    name="loader"
-                    size="sm"
-                    :animate-on-hover="false"
-                    v-if="loading"
-                    class="-ml-1 mr-2 h-4 w-4 animate-spin"
-                  />
-                  <Icon v-else name="link" size="sm" class="mr-2" />
-                  {{ loading ? t('admin.providers.oauth.generating') : oauthGenerateAuthUrl }}
-                </button>
-                <div v-else class="space-y-3">
-                  <div class="flex items-center gap-2">
-                    <input
-                      :value="authUrl"
-                      readonly
-                      type="text"
-                      class="input flex-1 bg-gray-50 font-mono text-xs dark:bg-gray-700"
-                    />
-                    <button
-                      type="button"
-                      class="btn btn-secondary p-2"
-                      :title="t('admin.providers.oauth.copyAuthUrl')"
-                      :aria-label="t('admin.providers.oauth.copyAuthUrl')"
-                      @click="handleCopyUrl"
-                    >
-                      <Icon name="clipboard" size="sm" v-if="!copied" class="h-4 w-4" />
-                      <Icon
-                        v-else
-                        name="check"
-                        size="sm"
-                        class="text-green-500"
-                        :stroke-width="2"
-                        :animate-on-hover="false"
-                      />
-                    </button>
-                    <a
-                      :href="authUrl"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="btn btn-primary p-2"
-                      :title="t('admin.providers.oauth.openAuthUrl')"
-                      :aria-label="t('admin.providers.oauth.openAuthUrl')"
-                    >
-                      <Icon name="externalLink" size="sm" />
-                    </a>
-                  </div>
-                  <button
-                    type="button"
-                    :disabled="loading"
-                    class="text-xs text-primary-600 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-500"
-                    @click="handleRegenerate"
-                  >
-                    <Icon name="refresh" size="xs" class="mr-1 inline" />
-                    {{ t('admin.providers.oauth.regenerate') }}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 步骤 2：打开授权地址 -->
-          <div
-            class="rounded-surface border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
-            <div class="flex items-start gap-3">
-              <div
-                class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white"
-              >
-                2
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="mb-2 font-medium text-blue-900 dark:text-blue-200">
-                  {{ oauthStep2OpenUrl }}
-                </p>
-                <p class="text-sm text-blue-700 dark:text-blue-300">
-                  {{ oauthOpenUrlDesc }}
-                </p>
-                <!-- 平台特定的重要提示和本地回调提示 -->
-                <div
-                  v-if="showLocalCallbackNotice || oauthImportantNotice"
-                  class="mt-2 rounded-compact border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-900/30"
-                >
-                  <p
-                    class="text-xs text-amber-800 dark:text-amber-300"
-                    v-text="oauthImportantNotice"
-                  ></p>
-                </div>
-                <!-- 非 OpenAI 平台代理提示 -->
-                <div
-                  v-if="showProxyWarning"
-                  class="mt-2 rounded-compact border border-yellow-300 bg-yellow-50 p-3 dark:border-yellow-700 dark:bg-yellow-900/30"
-                >
-                  <p
-                    class="text-xs text-yellow-800 dark:text-yellow-300"
-                    v-text="t('admin.providers.oauth.proxyWarning')"
-                  ></p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 步骤 3：输入授权码 -->
-          <div
-            class="rounded-surface border border-blue-300 bg-white/80 p-4 dark:border-blue-600 dark:bg-gray-800/80"
-          >
-            <div class="flex items-start gap-3">
-              <div
-                class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white"
-              >
-                3
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="mb-2 font-medium text-blue-900 dark:text-blue-200">
-                  {{ oauthStep3EnterCode }}
-                </p>
-                <p
-                  class="mb-3 text-sm text-blue-700 dark:text-blue-300"
-                  v-text="oauthAuthCodeDesc"
-                ></p>
-                <div>
-                  <label class="input-label">
-                    <Icon name="key" size="sm" class="mr-1 inline text-blue-500" />
-                    {{ oauthAuthCode }}
-                    <span
-                      v-if="isOpenAI && parsedAuthCodeLineCount > 1"
-                      class="ml-2 rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white"
-                    >
-                      {{ t('admin.providers.oauth.keysCount', { count: parsedAuthCodeLineCount }) }}
-                    </span>
-                  </label>
-                  <textarea
-                    v-model="authCodeInput"
-                    :rows="isOpenAI ? 5 : 3"
-                    :class="[
-                      'input w-full font-mono text-sm',
-                      isOpenAI ? 'resize-y' : 'resize-none'
-                    ]"
-                    :placeholder="oauthAuthCodePlaceholder"
-                  ></textarea>
-                  <p
-                    v-if="isOpenAI && parsedAuthCodeLineCount > 1"
-                    class="mt-2 text-xs text-blue-600 dark:text-blue-400"
-                  >
-                    {{ t('admin.providers.oauth.batchCreateProviders', { count: parsedAuthCodeLineCount }) }}
-                  </p>
-                  <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    <Icon name="infoCircle" size="xs" class="mr-1 inline" />
-                    {{ oauthAuthCodeHint }}
-                  </p>
-
-                  <!-- Gemini-specific state parameter warning -->
-                  <div
-                    v-if="platform === 'gemini'"
-                    class="mt-3 rounded-control border-2 border-amber-400 bg-amber-50 p-3 dark:border-amber-600 dark:bg-amber-900/30"
-                  >
-                    <div class="flex items-start gap-2">
-                      <Icon
-                        name="exclamationTriangle"
-                        size="md"
-                        class="flex-shrink-0 text-amber-600 dark:text-amber-400"
-                        :stroke-width="2"
-                      />
-                      <div class="text-sm text-amber-800 dark:text-amber-300">
-                        <p class="font-semibold">{{ $t('admin.providers.oauth.gemini.stateWarningTitle') }}</p>
-                        <p class="mt-1">{{ $t('admin.providers.oauth.gemini.stateWarningDesc') }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Error Message -->
-                <div
-                  v-if="error"
-                  class="mt-3 rounded-control border border-red-200 bg-red-50 p-3 dark:border-red-700 dark:bg-red-900/30"
-                >
-                  <p class="whitespace-pre-line text-sm text-red-600 dark:text-red-400">
-                    {{ error }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- 标签与控件同一行；选项较少时用分段控件，OpenAI 等选项多的平台改用下拉框，避免换行。 -->
+      <div v-if="showMethodSelection" class="flex shrink-0 items-center gap-3">
+        <label :for="`${uid}-method`" class="shrink-0 text-sm text-gray-500 dark:text-gray-400">
+          {{ methodLabel || t('admin.providers.oauth.authMethod') }}
+        </label>
+        <SettingsSegmented
+          v-if="methodOptions.length <= 4"
+          v-model="inputMethod"
+          :aria-label="methodLabel || t('admin.providers.oauth.authMethod')"
+          :options="methodOptions"
+        />
+        <Select
+          v-else
+          :id="`${uid}-method`"
+          v-model="inputMethod"
+          class="min-w-0 flex-1 sm:w-56 sm:flex-none"
+          data-testid="oauth-method-select"
+          :options="methodOptions"
+        />
       </div>
     </div>
+
+    <!-- Refresh Token（OpenAI / Antigravity / Grok / Mobile RT） -->
+    <OAuthCredentialImport
+      v-if="inputMethod === 'refresh_token' || inputMethod === 'mobile_refresh_token'"
+      v-model="refreshTokenInput"
+      :description="t(getOAuthKey('refreshTokenDesc'))"
+      label="Refresh Token"
+      :placeholder="t(getOAuthKey('refreshTokenPlaceholder'))"
+      :count="parsedRefreshTokenCount"
+      :count-hint="t('admin.providers.oauth.batchCreateProviders', { count: parsedRefreshTokenCount })"
+      :loading="loading"
+      :error="error"
+      :submit-label="t(getOAuthKey('validateAndCreate'))"
+      :loading-label="t(getOAuthKey('validating'))"
+      @submit="handleValidateRefreshToken"
+    />
+
+    <!-- Grok Web SSO 转换为 Grok Build -->
+    <OAuthCredentialImport
+      v-if="inputMethod === 'sso_cookie'"
+      v-model="ssoCookieInput"
+      :description="t(getOAuthKey('ssoCookieDesc'))"
+      :label="t(getOAuthKey('ssoCookieLabel'))"
+      :placeholder="t(getOAuthKey('ssoCookiePlaceholder'))"
+      :hint="t(getOAuthKey('ssoCookieHint'))"
+      :count="parsedSSOCount"
+      :rows="5"
+      :loading="loading"
+      :error="error"
+      :submit-label="t(getOAuthKey('convertSSOAndCreate'))"
+      :loading-label="t(getOAuthKey('convertingSSO'))"
+      @submit="handleImportSSO"
+    />
+
+    <!-- Codex auth.json、Agent Identity 与会话凭据共用批量导入表单。 -->
+    <OAuthCredentialImport
+      v-if="inputMethod === 'codex_session' || inputMethod === 'agent_identity'"
+      v-model="codexSessionInput"
+      :description="t(isAgentIdentityInput ? 'admin.providers.oauth.openai.agentIdentityDesc' : 'admin.providers.oauth.openai.codexSessionDesc')"
+      :label="t(isAgentIdentityInput ? 'admin.providers.oauth.openai.agentIdentityInputLabel' : 'admin.providers.oauth.openai.codexSessionInputLabel')"
+      :placeholder="t(isAgentIdentityInput ? 'admin.providers.oauth.openai.agentIdentityPlaceholder' : 'admin.providers.oauth.openai.codexSessionPlaceholder')"
+      :hint="t(isAgentIdentityInput ? 'admin.providers.oauth.openai.agentIdentityHint' : 'admin.providers.oauth.openai.codexSessionHint')"
+      :count="parsedCodexSessionCount"
+      :rows="8"
+      :loading="loading"
+      :error="error"
+      :submit-label="t('admin.providers.oauth.openai.codexSessionImportAndCreate')"
+      :loading-label="t('admin.providers.oauth.openai.validating')"
+      @submit="handleImportCodexSession"
+    />
+
+    <!-- Codex PAT -->
+    <OAuthCredentialImport
+      v-if="inputMethod === 'codex_pat'"
+      v-model="codexPATInput"
+      password
+      :description="t('admin.providers.oauth.openai.codexPatDesc')"
+      :label="t('admin.providers.oauth.openai.codexPatInputLabel')"
+      :placeholder="t('admin.providers.oauth.openai.codexPatPlaceholder')"
+      :hint="t('admin.providers.oauth.openai.codexPatHint')"
+      :loading="loading"
+      :error="error"
+      :submit-label="t('admin.providers.oauth.openai.codexPatImportAndCreate')"
+      :loading-label="t('admin.providers.oauth.openai.validating')"
+      @submit="handleImportCodexPAT"
+    />
+
+    <!-- Cookie 自动授权 -->
+    <OAuthCredentialImport
+      v-if="inputMethod === 'cookie'"
+      v-model="sessionKeyInput"
+      :description="t('admin.providers.oauth.cookieAutoAuthDesc')"
+      :label="t('admin.providers.oauth.sessionKey')"
+      :placeholder="allowMultiple ? t('admin.providers.oauth.sessionKeyPlaceholder') : t('admin.providers.oauth.sessionKeyPlaceholderSingle')"
+      :count="allowMultiple ? parsedKeyCount : 0"
+      :count-hint="t('admin.providers.oauth.batchCreateProviders', { count: parsedKeyCount })"
+      :loading="loading"
+      :error="error"
+      :submit-label="t('admin.providers.oauth.startAutoAuth')"
+      :loading-label="t('admin.providers.oauth.authorizing')"
+      @submit="handleCookieAuth"
+    >
+      <template v-if="showHelp" #label-extra>
+        <button
+          type="button"
+          class="inline-flex rounded-compact text-gray-400 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          :aria-label="t('admin.providers.oauth.howToGetSessionKey')"
+          :aria-expanded="showHelpDialog"
+          @click="showHelpDialog = !showHelpDialog"
+        >
+          <Icon name="questionCircle" size="sm" />
+        </button>
+      </template>
+      <Collapse :open="showHelpDialog && showHelp" unmount-on-hide>
+        <SettingsNotice>
+          <p class="font-medium">{{ t('admin.providers.oauth.howToGetSessionKey') }}</p>
+          <ol class="list-inside list-decimal space-y-1">
+            <li>{{ t('admin.providers.oauth.step1') }}</li>
+            <li>{{ t('admin.providers.oauth.step2') }}</li>
+            <li>{{ t('admin.providers.oauth.step3') }}</li>
+            <li>{{ t('admin.providers.oauth.step4') }}</li>
+            <li>{{ t('admin.providers.oauth.step5') }}</li>
+            <li>{{ t('admin.providers.oauth.step6') }}</li>
+          </ol>
+          <p v-text="t('admin.providers.oauth.sessionKeyFormat')"></p>
+        </SettingsNotice>
+      </Collapse>
+    </OAuthCredentialImport>
+
+    <!-- 手动授权：生成链接、浏览器授权、粘贴授权码 -->
+    <ol v-if="inputMethod === 'manual'">
+      <OAuthStep :index="1" :title="oauthStep1GenerateUrl" :done="hasGeneratedUrl">
+        <div v-if="showProjectId && platform === 'gemini'">
+          <div class="mb-1.5 flex items-center gap-2">
+            <label :for="`${uid}-project-id`" class="input-label mb-0">{{ t('admin.providers.oauth.gemini.projectIdLabel') }}</label>
+            <a
+              href="https://console.cloud.google.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1 text-xs text-primary-600 hover:underline dark:text-primary-500"
+            >
+              <Icon name="questionCircle" size="xs" />
+              {{ t('admin.providers.oauth.gemini.howToGetProjectId') }}
+            </a>
+          </div>
+          <input
+            :id="`${uid}-project-id`"
+            v-model="projectId"
+            type="text"
+            class="input font-mono text-sm"
+            :placeholder="t('admin.providers.oauth.gemini.projectIdPlaceholder')"
+          />
+          <p class="input-hint">{{ t('admin.providers.oauth.gemini.projectIdHint') }}</p>
+        </div>
+
+        <!-- OpenAI 支持追加多个授权链接，批量创建 -->
+        <template v-if="isOpenAI">
+          <div v-if="openAIAuthSessions.length > 0" class="space-y-2">
+            <div
+              v-for="(session, index) in openAIAuthSessions"
+              :key="session.sessionId"
+              class="flex items-center gap-2"
+            >
+              <span class="w-8 shrink-0 text-center text-xs font-medium tabular-nums text-gray-500 dark:text-gray-400">
+                #{{ index + 1 }}
+              </span>
+              <input
+                :value="session.authUrl"
+                readonly
+                type="text"
+                class="input min-w-0 flex-1 font-mono text-xs"
+                :aria-label="t('admin.providers.oauth.openAuthUrl')"
+              />
+              <button
+                type="button"
+                class="btn btn-secondary btn-icon shrink-0 px-0"
+                :title="t('admin.providers.oauth.copyAuthUrl')"
+                :aria-label="t('admin.providers.oauth.copyAuthUrl')"
+                @click="handleCopySessionUrl(session.authUrl)"
+              >
+                <Icon name="copy" size="sm" />
+              </button>
+              <a
+                :href="session.authUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-primary btn-icon shrink-0 px-0"
+                :title="t('admin.providers.oauth.openAuthUrl')"
+                :aria-label="t('admin.providers.oauth.openAuthUrl')"
+              >
+                <Icon name="externalLink" size="sm" />
+              </a>
+              <button
+                v-if="isOpenAIBatchAuth"
+                type="button"
+                class="btn btn-secondary btn-icon shrink-0 px-0 text-red-600 hover:text-red-700 dark:text-red-400"
+                :title="t('common.delete')"
+                :aria-label="t('common.delete')"
+                @click="handleRemoveAuthSession(session.sessionId)"
+              >
+                <Icon name="trash" size="sm" />
+              </button>
+            </div>
+            <p v-if="isOpenAIBatchAuth" class="input-hint">
+              {{ t('admin.providers.oauth.openai.multiAuthUrlHint', { count: openAIAuthSessions.length }) }}
+            </p>
+          </div>
+          <button
+            type="button"
+            :disabled="loading"
+            :class="openAIAuthSessions.length > 0 ? 'btn btn-secondary' : 'btn btn-primary'"
+            @click="handleGenerateUrl"
+          >
+            <Icon v-if="loading" name="loader" size="sm" :animate-on-hover="false" class="animate-spin" />
+            <Icon v-else name="plus" size="sm" />
+            {{
+              loading
+                ? t('admin.providers.oauth.generating')
+                : isOpenAIBatchAuth
+                  ? t('admin.providers.oauth.openai.appendAuthUrl')
+                  : oauthGenerateAuthUrl
+            }}
+          </button>
+        </template>
+
+        <button
+          v-else-if="!authUrl"
+          type="button"
+          :disabled="loading"
+          class="btn btn-primary"
+          @click="handleGenerateUrl"
+        >
+          <Icon v-if="loading" name="loader" size="sm" :animate-on-hover="false" class="animate-spin" />
+          <Icon v-else name="link" size="sm" />
+          {{ loading ? t('admin.providers.oauth.generating') : oauthGenerateAuthUrl }}
+        </button>
+
+        <div v-else class="space-y-2">
+          <div class="flex items-center gap-2">
+            <input
+              :value="authUrl"
+              readonly
+              type="text"
+              class="input min-w-0 flex-1 font-mono text-xs"
+              :aria-label="t('admin.providers.oauth.openAuthUrl')"
+            />
+            <button
+              type="button"
+              class="btn btn-secondary btn-icon shrink-0 px-0"
+              :title="t('admin.providers.oauth.copyAuthUrl')"
+              :aria-label="t('admin.providers.oauth.copyAuthUrl')"
+              @click="handleCopyUrl"
+            >
+              <Icon v-if="!copied" name="clipboard" size="sm" />
+              <Icon v-else name="check" size="sm" class="text-green-500" :stroke-width="2" :animate-on-hover="false" />
+            </button>
+            <a
+              :href="authUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn btn-primary btn-icon shrink-0 px-0"
+              :title="t('admin.providers.oauth.openAuthUrl')"
+              :aria-label="t('admin.providers.oauth.openAuthUrl')"
+            >
+              <Icon name="externalLink" size="sm" />
+            </a>
+          </div>
+          <button
+            type="button"
+            :disabled="loading"
+            class="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-500"
+            @click="handleRegenerate"
+          >
+            <Icon name="refresh" size="xs" />
+            {{ t('admin.providers.oauth.regenerate') }}
+          </button>
+        </div>
+      </OAuthStep>
+
+      <OAuthStep :index="2" :title="oauthStep2OpenUrl" :description="oauthOpenUrlDesc" :done="hasAuthCode">
+        <!-- 平台相关的回调说明与代理提示 -->
+        <SettingsNotice v-if="showLocalCallbackNotice || oauthImportantNotice" tone="warning">
+          <p v-text="oauthImportantNotice"></p>
+        </SettingsNotice>
+        <SettingsNotice v-if="showProxyWarning" tone="warning">
+          <p v-text="t('admin.providers.oauth.proxyWarning')"></p>
+        </SettingsNotice>
+      </OAuthStep>
+
+      <OAuthStep :index="3" :title="oauthStep3EnterCode" :description="oauthAuthCodeDesc" :done="hasAuthCode" last>
+        <div>
+          <div class="mb-1.5 flex items-center gap-2">
+            <label :for="`${uid}-auth-code`" class="input-label mb-0">{{ oauthAuthCode }}</label>
+            <span
+              v-if="isOpenAI && parsedAuthCodeLineCount > 1"
+              class="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-300"
+            >
+              {{ t('admin.providers.oauth.keysCount', { count: parsedAuthCodeLineCount }) }}
+            </span>
+          </div>
+          <textarea
+            :id="`${uid}-auth-code`"
+            v-model="authCodeInput"
+            :rows="isOpenAI ? 5 : 3"
+            :class="['input font-mono text-sm', isOpenAI ? 'resize-y' : 'resize-none']"
+            :placeholder="oauthAuthCodePlaceholder"
+          ></textarea>
+          <p v-if="isOpenAI && parsedAuthCodeLineCount > 1" class="input-hint">
+            {{ t('admin.providers.oauth.batchCreateProviders', { count: parsedAuthCodeLineCount }) }}
+          </p>
+          <p class="input-hint">{{ oauthAuthCodeHint }}</p>
+        </div>
+
+        <!-- Gemini 回调必须保留 state 参数 -->
+        <SettingsNotice v-if="platform === 'gemini'" tone="warning">
+          <p class="font-medium">{{ t('admin.providers.oauth.gemini.stateWarningTitle') }}</p>
+          <p>{{ t('admin.providers.oauth.gemini.stateWarningDesc') }}</p>
+        </SettingsNotice>
+
+        <SettingsNotice v-if="error" tone="error">
+          <p class="whitespace-pre-line">{{ error }}</p>
+        </SettingsNotice>
+      </OAuthStep>
+    </ol>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useClipboard } from '@/composables/useClipboard'
 import { openaiImportEmails } from '@/utils/openaiTokenEmail'
 import Icon from '@/components/icons/Icon.vue'
+import Collapse from '@/components/common/Collapse.vue'
+import Select from '@/components/common/Select.vue'
+import PlatformIcon from '@/components/common/PlatformIcon.vue'
+import SettingsNotice from '@/components/common/settings/SettingsNotice.vue'
+import SettingsSegmented from '@/components/common/settings/SettingsSegmented.vue'
+import OAuthCredentialImport from '@/components/provider/form/OAuthCredentialImport.vue'
+import OAuthStep from '@/components/provider/form/OAuthStep.vue'
+import { platformBadgeLightClass } from '@/utils/platformColors'
 import type { AddMethod, AuthInputMethod } from '@/composables/useProviderOAuth'
 import type { OpenAIOAuthSession } from '@/composables/useOpenAIOAuth'
 import type { ProviderPlatform } from '@/types'
@@ -857,7 +402,7 @@ const props = withDefaults(defineProps<Props>(), {
   showHelp: true,
   showProxyWarning: true,
   allowMultiple: false,
-  methodLabel: 'Authorization Method',
+  methodLabel: '',
   showCookieOption: true,
   showRefreshTokenOption: false,
   showMobileRefreshTokenOption: false,
@@ -967,6 +512,30 @@ const methodOptionCount = computed(() => [
   props.showSsoOption
 ].filter(Boolean).length)
 const showMethodSelection = computed(() => methodOptionCount.value > 1)
+
+// 授权方式按调用方开放的选项生成，顺序与旧版单选框一致。
+const methodOptions = computed(() => {
+  const options: Array<{ value: AuthInputMethod; label: string; show: boolean }> = [
+    { value: 'manual', label: t('admin.providers.oauth.manualAuth'), show: props.showManualOption },
+    { value: 'cookie', label: t('admin.providers.oauth.cookieAutoAuth'), show: props.showCookieOption },
+    { value: 'refresh_token', label: t(getOAuthKey('refreshTokenAuth')), show: props.showRefreshTokenOption },
+    { value: 'sso_cookie', label: t(getOAuthKey('ssoCookieAuth')), show: props.showSsoOption },
+    { value: 'mobile_refresh_token', label: t('admin.providers.oauth.openai.mobileRefreshTokenAuth', '手动输入 Mobile RT'), show: props.showMobileRefreshTokenOption },
+    { value: 'session_token', label: t(getOAuthKey('sessionTokenAuth')), show: props.showSessionTokenOption },
+    { value: 'access_token', label: t('admin.providers.oauth.openai.accessTokenAuth', '手动输入 AT'), show: props.showAccessTokenOption },
+    { value: 'codex_session', label: t('admin.providers.oauth.openai.codexSessionAuth'), show: props.showCodexSessionImportOption },
+    { value: 'agent_identity', label: t('admin.providers.oauth.openai.agentIdentityAuth'), show: props.showAgentIdentityOption },
+    { value: 'codex_pat', label: t('admin.providers.oauth.openai.codexPatAuth'), show: props.showCodexPatOption },
+  ]
+  return options
+    .filter(option => option.show)
+    .map(option => ({ value: option.value, label: option.label, testid: `oauth-method-${option.value}` }))
+})
+
+const uid = useId()
+// 步骤完成状态只用于视觉提示，不参与提交判断。
+const hasGeneratedUrl = computed(() => !!props.authUrl || props.authSessions.length > 0)
+const hasAuthCode = computed(() => authCodeInput.value.trim() !== '')
 
 // Clipboard
 const { copied, copyToClipboard } = useClipboard()

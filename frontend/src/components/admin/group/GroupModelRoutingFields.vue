@@ -1,6 +1,6 @@
 <template>
-  <GroupFormSection>
-    <GroupSettingRow
+  <SettingsSection>
+    <SettingToggleRow
       :id="`${idPrefix}-model-routing`"
       :model-value="enabled"
       :label="t('admin.groups.modelRouting.title')"
@@ -122,7 +122,7 @@
         </div>
       </template>
     </RuleListEditor>
-  </GroupFormSection>
+  </SettingsSection>
 </template>
 
 <script setup lang="ts">
@@ -131,8 +131,8 @@ import MotionTransition from '@/components/common/MotionTransition.vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import RuleListEditor from '@/components/common/RuleListEditor.vue'
-import GroupFormSection from './GroupFormSection.vue'
-import GroupSettingRow from './GroupSettingRow.vue'
+import SettingsSection from '@/components/common/settings/SettingsSection.vue'
+import SettingToggleRow from '@/components/common/settings/SettingToggleRow.vue'
 import type {
   GroupProviderSearchState,
   GroupModelRoutingRule,
