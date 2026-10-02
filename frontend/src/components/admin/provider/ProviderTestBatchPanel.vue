@@ -87,7 +87,8 @@
 
       <div class="flex min-h-64 flex-1 flex-col overflow-hidden rounded-surface border border-gray-200 dark:border-dark-600">
         <div v-if="visibleModels.length > 0" class="min-h-0 flex-1 overflow-auto overscroll-contain">
-          <table class="w-full text-left" :aria-label="t('admin.providers.testDialog.batch.models')">
+          <!-- 窄屏保持状态和耗时单行，超出部分在结果容器内横向滚动。 -->
+          <table class="w-full whitespace-nowrap text-left" :aria-label="t('admin.providers.testDialog.batch.models')">
             <thead class="sticky top-0 z-[1] bg-white dark:bg-dark-900"> <!-- check-ui-allow: 弹窗内 sticky 表头 -->
               <tr class="border-b border-gray-200 text-xs font-medium tracking-wider text-gray-500 dark:border-dark-600 dark:text-dark-400">
                 <th class="w-11 min-w-11 px-3 py-2 text-center">
