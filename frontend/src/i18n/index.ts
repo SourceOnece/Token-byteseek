@@ -1,4 +1,5 @@
 import { createI18n } from 'vue-i18n'
+import { readStorageWithLegacyKey } from '@/utils/storage'
 
 type LocaleCode = 'en' | 'zh'
 
@@ -26,7 +27,8 @@ function getLocaleStorage(): Storage | null {
 }
 
 function getDefaultLocale(): LocaleCode {
-  const saved = getLocaleStorage()?.getItem(LOCALE_KEY)
+  // 本站键优先于同域 TokenFlux 偏好，读取受限时使用浏览器语言。
+  const saved = readStorageWithLegacyKey(getLocaleStorage(), LOCALE_KEY, 'tokenrouter_locale')
   if (saved && isLocaleCode(saved)) {
     return saved
   }
@@ -75,7 +77,11 @@ export async function setLocale(locale: string): Promise<void> {
 
   await loadLocaleMessages(locale)
   i18n.global.locale.value = locale
-  getLocaleStorage()?.setItem(LOCALE_KEY, locale)
+  try {
+    getLocaleStorage()?.setItem(LOCALE_KEY, locale)
+  } catch {
+    // 存储受限时，语言切换仍更新当前页面及标题。
+  }
   document.documentElement.setAttribute('lang', locale)
 
   // 同步更新浏览器页签标题，使其跟随语言切换

@@ -423,3 +423,42 @@ jobs:
           git add backend/cmd/server/VERSION
           git commit -m "chore: sync VERSION to ${VERSION} [skip ci]"
           git push origin HEAD:${{ github.event.repository.default_branch }}
+
+  # 发布产物和版本回写成功后，再通知 Discord。
+  notify-discord:
+    needs: [update-version, release, sync-version-file]
+    # 通知服务故障通过警告报告，发布产物仍可使用。
+    continue-on-error: true
+    if: >-
+      ${{
+        !cancelled() &&
+        needs.update-version.result == 'success' &&
+        needs.release.result == 'success' &&
+        needs.sync-version-file.result == 'success'
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout notification script
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Announce release on Discord
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+          RELEASE_TAG: v${{ needs.update-version.outputs.version }}
+          RELEASE_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$DISCORD_RELEASE_WEBHOOK_URL" ]; then
+            echo "::warning::DISCORD_RELEASE_WEBHOOK_URL is not configured; release notification skipped."
+            exit 0
+          fi
+
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json name,tagName,url,body,isDraft,isPrerelease \
+            > "$RUNNER_TEMP/discord-release.json"
+          python3 tools/notify_discord_release.py "$RUNNER_TEMP/discord-release.json"

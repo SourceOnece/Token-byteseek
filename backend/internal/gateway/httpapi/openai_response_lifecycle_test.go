@@ -169,7 +169,8 @@ func TestResponsesLifecycleDelayedTerminalUsage(t *testing.T) {
 		defer close(done)
 		defer func() { _ = writer.Close() }()
 		_, _ = io.WriteString(writer, "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"late\",\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":7,\"output_tokens\":3}}}\n\n")
-		time.Sleep(75 * time.Millisecond)
+		// 补充用量晚于一秒，结算取最新值，客户端收到一次完成事件。
+		time.Sleep(1200 * time.Millisecond)
 		_, _ = io.WriteString(writer, "data: {\"type\":\"response.done\",\"response\":{\"id\":\"late\",\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":7,\"output_tokens\":9}}}\n\n")
 	}()
 	recorder := newOpenAIResponseFlushRecorder()

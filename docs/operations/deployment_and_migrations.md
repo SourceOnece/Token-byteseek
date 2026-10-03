@@ -41,6 +41,12 @@ ByteSeek `0.1.279-bh.001` 将本批 TokenFlux 269–282 顺延为本地 277–29
 ## ByteSeek 二进制价格资源
 
 官方价格补充与离线目录内嵌到二进制，升级镜像或二进制无需额外资源文件；ByteSeek 继续原容器用户、目录、镜像命名和现有数据卷，不跟随上游品牌重命名。自定义补充文件由管理员维护，不被升级覆盖。
+
+### 安装器兼容与下载源
+
+安装器默认从 `SourceOnece/Token-byteseek` 获取 Release，`BYTESEEK_RELEASE_REPO=owner/repo` 可指定其他发布源。下载按 byteseek、tokenrouter、sub2api 的顺序查找归档和可执行文件。全部候选缺失时返回错误。GitHub 二进制 Release 与 GHCR 镜像分别发布，Docker 部署使用镜像流程。
+
+新安装使用 `/opt/sub2api`、`/etc/sub2api` 和 sub2api 服务名。已有 tokenrouter 安装使用其现有目录、服务用户和组。两种安装同时存在时，管理员需要先选择并整理要维护的实例。已有二进制且未指定版本时执行升级。安装和回退前需要检查数据库兼容性并保存备份。
 ## 初始化与启动
 
 进程入口先判断是否需要 setup。未安装时可使用 Web setup、`--setup` CLI 或容器的 `AUTO_SETUP`；setup 测试 PostgreSQL/Redis，执行迁移，创建首个管理员，写入配置，最后创建只读安装锁。安装锁用于阻止重新初始化攻击，不能用删除它的方式修复普通配置问题。

@@ -859,22 +859,13 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 		}
 	}
 
-	// 完成后留一秒读取补充用量，兼容旧 done 重复终态；上游不 EOF 时仍能有界收尾。
-	// 定时回调只关闭本次 Body，不读取流状态；正常 EOF 时立即取消，不增加正常请求延迟。
-	var terminalDrainTimer *time.Timer
-	defer func() {
-		if terminalDrainTimer != nil {
-			terminalDrainTimer.Stop()
-		}
-	}()
-	armTerminalDrain := func(line string) {
-		if terminalDrainTimer == nil && line == "" && sawTerminalEvent && !sawFailedEvent && !sawBareError && !eventInProgress {
-			// 已向客户端交付完成，不再发送心跳或将末尾等待误记成上游空闲超时。
+	// 成功终态后的补充用量继续参与结算，读取期限由流空闲配置决定。
+	// 成功后停止客户端心跳，等待上游 EOF 或空闲期限。
+	markTerminalDrain := func(line string) {
+		if line == "" && sawTerminalEvent && !sawFailedEvent && !sawBareError && !eventInProgress {
+			// 客户端已经收到完成事件，尾部读取只收集用量。
 			keepaliveCh = nil
-			intervalCh = nil
 			stopFirstOutputTimer()
-			body := resp.Body
-			terminalDrainTimer = time.AfterFunc(time.Second, func() { _ = body.Close() })
 		}
 	}
 
@@ -883,7 +874,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 		defer httpclient.PutSSEScannerBuf64K(scanBuf)
 		for documentScanner.Scan() {
 			processSSELine(documentScanner.Text(), true)
-			armTerminalDrain(documentScanner.Text())
+			markTerminalDrain(documentScanner.Text())
 			if streamEarlyErr != nil {
 				return resultWithUsage(), streamEarlyErr
 			}
@@ -961,7 +952,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 				return result, err
 			}
 			processSSELine(ev.line, len(events) == 0)
-			armTerminalDrain(ev.line)
+			markTerminalDrain(ev.line)
 			markEventProcessed(ev)
 			if streamEarlyErr != nil {
 				return resultWithUsage(), streamEarlyErr
@@ -974,6 +965,11 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			lastRead := time.Unix(0, atomic.LoadInt64(&lastReadAt))
 			if time.Since(lastRead) < streamInterval {
 				continue
+			}
+			if sawTerminalEvent && !sawFailedEvent && !sawBareError && !eventInProgress {
+				// 已成功请求按当前用量结算，空闲收尾保持提供商调度状态。
+				_ = resp.Body.Close()
+				return finalizeStream()
 			}
 			if codexFailureTerminal && sawBareError && !sawResponseFailed {
 				_ = resp.Body.Close()
