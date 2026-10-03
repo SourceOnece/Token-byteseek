@@ -80,7 +80,8 @@ func (s *UsageLogRepoSuite) TestResponseModelMigrationPreservesHistory() {
 	log := s.createUsageLog(user, key, upstream, 1, 1, 0, time.Now())
 	_, err := s.tx.ExecContext(s.ctx, "ALTER TABLE usage_logs DROP COLUMN upstream_response_model, DROP COLUMN upstream_model_mismatch")
 	s.Require().NoError(err)
-	migration, err := migrations.FS.ReadFile("285_usage_upstream_response_model.sql")
+	// fork 已有迁移占用旧 ID，回放应读取本地递增后的 292。
+	migration, err := migrations.FS.ReadFile("292_usage_upstream_response_model.sql")
 	s.Require().NoError(err)
 	for range 2 {
 		_, err = s.tx.ExecContext(s.ctx, string(migration))
