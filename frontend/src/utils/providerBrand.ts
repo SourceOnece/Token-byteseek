@@ -82,7 +82,8 @@ const providerBrands: Record<ProviderBrandKey, ProviderBrand> = {
     key: 'openai',
     label: 'OpenAI',
     iconKey: 'openai',
-    iconColor: '#10A37F',
+    // OpenAI 使用随主题切换的黑白单色标识。
+    iconColor: 'currentColor',
     badgeClass: 'bg-emerald-100 text-emerald-900 ring-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-50 dark:ring-emerald-400/30',
     iconWrapClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/30',
   },

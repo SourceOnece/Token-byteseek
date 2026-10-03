@@ -66,6 +66,14 @@ func (s *APIKeyService) Authenticate(ctx context.Context, credential string, inp
 	if err != nil {
 		return nil, &AuthenticationFailure{Kind: AuthenticationLookup, Cause: err}
 	}
+	return s.authenticateKey(key, input)
+}
+
+// authenticateKey 统一校验已加载身份，供普通认证与长连接逐轮复核共用。
+func (s *APIKeyService) authenticateKey(key *APIKey, input AuthenticationInput) (*AccessSnapshot, error) {
+	if key == nil {
+		return nil, &AuthenticationFailure{Kind: AuthenticationLookup, Cause: ErrAPIKeyNotFound}
+	}
 	access := &AccessSnapshot{KeyID: key.ID, OwnerUserID: key.UserID, ActorUserID: key.UserID, TeamID: clonePointer(key.TeamID), key: key, fastModePolicy: key.FastModePolicy}
 	if key.User != nil {
 		access.PayerUserID = key.User.ID

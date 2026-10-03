@@ -1145,6 +1145,7 @@ func (s *emailBindUserRepoStub) UpdateConcurrency(context.Context, int64, int) e
 func (s *emailBindUserRepoStub) BatchSetConcurrency(context.Context, []int64, int) (int, error) {
 	return 0, nil
 }
+
 func (s *emailBindUserRepoStub) BatchAddConcurrency(context.Context, []int64, int) (int, error) {
 	return 0, nil
 }
@@ -1178,6 +1179,7 @@ func (s *emailBindUserRepoStub) SetBalance(ctx context.Context, id int64, value 
 func (s *emailBindUserRepoStub) LockRegistrationEmail(context.Context, string) error {
 	return nil
 }
+
 func (s *emailBindUserRepoStub) BatchUpdateLimits(context.Context, []int64, *int, *int) (int, error) {
 	return 0, nil
 }
@@ -1203,8 +1205,11 @@ func (s *emailBindUserRepoStub) UnbindUserAuthProvider(context.Context, int64, s
 }
 
 func (s *emailBindUserRepoStub) UpdateTotpSecret(context.Context, int64, *string) error { return nil }
-func (s *emailBindUserRepoStub) EnableTotp(context.Context, int64) error                { return nil }
-func (s *emailBindUserRepoStub) DisableTotp(context.Context, int64) error               { return nil }
+
+func (s *emailBindUserRepoStub) EnableTotp(context.Context, int64) error { return nil }
+
+func (s *emailBindUserRepoStub) DisableTotp(context.Context, int64) error { return nil }
+
 func (s *emailBindUserRepoStub) GetByIDIncludeDeleted(ctx context.Context, id int64) (*identity.User, error) {
 	return s.GetByID(ctx, id)
 }
@@ -1232,4 +1237,27 @@ func (s *emailBindRefreshTokenCacheStub) ConsumeRefreshToken(_ context.Context, 
 		delete(set, key)
 	}
 	return true, nil
+}
+
+// 测试替身按已有挑战数据计数；真实并发原子性由 Redis 合同测试覆盖。
+func (s *emailBindCacheStub) IncrVerificationCodeAttempts(ctx context.Context, email string) (int, error) {
+	data, err := s.GetVerificationCode(ctx, email)
+	if err != nil || data == nil {
+		return 0, identity.ErrInvalidVerifyCode
+	}
+	data.Attempts++
+	return data.Attempts, nil
+}
+
+func (s *emailBindCacheStub) IncrNotifyVerifyCodeAttempts(ctx context.Context, email string) (int, error) {
+	data, err := s.GetNotifyVerifyCode(ctx, email)
+	if err != nil || data == nil {
+		return 0, identity.ErrInvalidVerifyCode
+	}
+	data.Attempts++
+	return data.Attempts, nil
+}
+
+func (s *emailBindCacheStub) ConsumePasswordResetToken(context.Context, string, string) (bool, error) {
+	return false, nil
 }

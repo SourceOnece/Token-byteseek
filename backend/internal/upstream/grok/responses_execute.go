@@ -84,6 +84,7 @@ func (ResponsesExecutor) Execute(ctx context.Context, input upstream.AttemptInpu
 		result.HasUsage = observed.HasUsage
 	}
 	result.FirstTokenMs = observed.FirstTokenMs
+	result.UpstreamResponseModel = observed.UpstreamResponseModel
 	result.ResponseID = strings.TrimSpace(observed.ResponseID)
 	result.SearchCount = observed.SearchCount
 	result.ObservedImages = observed.ImageCount

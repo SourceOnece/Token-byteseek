@@ -219,5 +219,19 @@ func Gemini(ctx context.Context, p GeminiPorts, in GeminiInput) (*Result, error)
 	if p.IsImageModel(mappedModel) {
 		imageCount = 1
 	}
-	return &Result{RequestID: result.RequestID, UpstreamHeaders: result.UpstreamHeaders, Usage: result.Usage, Model: originalModel, UpstreamModel: billingModel, Stream: stream, Duration: result.Duration, FirstTokenMs: result.FirstTokenMs, ClientDisconnect: result.ClientDisconnect, ImageCount: imageCount, ImageSize: imageSize, ImageInputSize: imageInputSize}, nil
+	return &Result{
+		RequestID:             result.RequestID,
+		UpstreamHeaders:       result.UpstreamHeaders,
+		UpstreamResponseModel: result.UpstreamResponseModel,
+		Usage:                 result.Usage,
+		Model:                 originalModel,
+		UpstreamModel:         billingModel,
+		Stream:                stream,
+		Duration:              result.Duration,
+		FirstTokenMs:          result.FirstTokenMs,
+		ClientDisconnect:      result.ClientDisconnect,
+		ImageCount:            imageCount,
+		ImageSize:             imageSize,
+		ImageInputSize:        imageInputSize,
+	}, nil
 }

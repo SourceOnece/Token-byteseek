@@ -23,7 +23,8 @@ import (
 )
 
 // Forward 保持单次 Responses 的准备、协议分派和执行顺序。
-func (s *OpenAIResponsesExecutor) Forward(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, body []byte) (*forwardcore.OpenAIResult, error) {
+func (s *OpenAIResponsesExecutor) Forward(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, body []byte) (out *forwardcore.OpenAIResult, failure error) {
+	defer func() { captureResponseModel(c, out) }()
 	var routeErr error
 	provider, routeErr = gatewayprovider.ProviderForProtocolAttempt(ctx, provider)
 	if routeErr != nil {
@@ -178,6 +179,7 @@ func (s *OpenAIResponsesExecutor) Forward(ctx context.Context, c *gin.Context, p
 		},
 		ApplyHeaders: func(headers http.Header) { openai.ApplyCodexFingerprintHeaders(headers, fingerprintIDs) },
 		Do: func(request *http.Request) (*http.Response, error) {
+			resetResponseModel(c)
 			proxyURL := ""
 			if provider.Record.ProxyID != nil && provider.Record.Proxy != nil {
 				proxyURL = provider.Record.Proxy.URL()

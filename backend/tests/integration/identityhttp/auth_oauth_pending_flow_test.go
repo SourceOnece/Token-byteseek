@@ -123,10 +123,11 @@ func TestExchangePendingOAuthCompletionPreviewThenFinalizeAppliesAdoptionDecisio
 			"suggested_display_name": "Alice Example",
 			"suggested_avatar_url":   "https://cdn.example/alice.png",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"access_token": "access-token",
-			"redirect":     "/dashboard",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"access_token": "access-token",
+				"redirect":     "/dashboard",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -234,10 +235,11 @@ func TestExchangePendingOAuthCompletionSkipsInvalidAvatarAdoptionWithoutBlocking
 			"suggested_display_name": "Alice Example",
 			"suggested_avatar_url":   "/avatars/alice.png",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"access_token": "access-token",
-			"redirect":     "/dashboard",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"access_token": "access-token",
+				"redirect":     "/dashboard",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -305,10 +307,11 @@ func TestExchangePendingOAuthCompletionBindCurrentUserPreviewThenFinalizeBindsId
 			"suggested_display_name": "Bound Example",
 			"suggested_avatar_url":   "https://cdn.example/bound.png",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"access_token": "access-token",
-			"redirect":     "/settings/profile",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"access_token": "access-token",
+				"redirect":     "/settings/profile",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -438,9 +441,10 @@ func TestExchangePendingOAuthCompletionBindCurrentUserOwnershipConflict(t *testi
 			"suggested_display_name": "Conflict Example",
 			"suggested_avatar_url":   "https://cdn.example/conflict.png",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"access_token": "access-token",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"access_token": "access-token",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -506,9 +510,10 @@ func TestExchangePendingOAuthCompletionLoginFalseFalseBindsIdentityWithoutAdopti
 			"suggested_display_name": "Login Example",
 			"suggested_avatar_url":   "https://cdn.example/login.png",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"access_token": "access-token",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"access_token": "access-token",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -584,9 +589,10 @@ func TestExchangePendingOAuthCompletionLoginReassignsExistingDecisionIdentityRef
 		SetTargetUserID(userEntity.ID).
 		SetResolvedEmail(userEntity.Email).
 		SetBrowserSessionKey("login-reassign-previous-browser-session-key").
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"access_token": "previous-access-token",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"access_token": "previous-access-token",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -613,9 +619,10 @@ func TestExchangePendingOAuthCompletionLoginReassignsExistingDecisionIdentityRef
 			"suggested_display_name": "Login Reassign",
 			"suggested_avatar_url":   "https://cdn.example/login-reassign.png",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"access_token": "access-token",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"access_token": "access-token",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -684,9 +691,10 @@ func TestExchangePendingOAuthCompletionLoginWithoutDecisionStillBindsIdentity(t 
 		SetUpstreamIdentityClaims(map[string]any{
 			"username": "login-nodecision-user",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"access_token": "access-token",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"access_token": "access-token",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -757,13 +765,14 @@ func TestExchangePendingOAuthCompletionExistingLoginWithSuggestedProfileSkipsAdo
 			"suggested_display_name": "Existing Login Example",
 			"suggested_avatar_url":   "https://cdn.example/existing-login.png",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"access_token":  "legacy-access-token",
-			"refresh_token": "legacy-refresh-token",
-			"expires_in":    float64(3600),
-			"token_type":    "Bearer",
-			"redirect":      "/dashboard",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"access_token":  "legacy-access-token",
+				"refresh_token": "legacy-refresh-token",
+				"expires_in":    float64(3600),
+				"token_type":    "Bearer",
+				"redirect":      "/dashboard",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -843,12 +852,13 @@ func TestExchangePendingOAuthCompletionBlocksBackendModeBeforeReturningTokenPayl
 		SetTargetUserID(userEntity.ID).
 		SetResolvedEmail(userEntity.Email).
 		SetBrowserSessionKey("blocked-backend-mode-browser-session-key").
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"access_token":  "access-token",
-			"refresh_token": "refresh-token",
-			"expires_in":    float64(3600),
-			"token_type":    "Bearer",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"access_token":  "access-token",
+				"refresh_token": "refresh-token",
+				"expires_in":    float64(3600),
+				"token_type":    "Bearer",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -895,9 +905,10 @@ func TestExchangePendingOAuthCompletionRejectsDisabledTargetUser(t *testing.T) {
 		SetUpstreamIdentityClaims(map[string]any{
 			"suggested_display_name": "Disabled Linked User",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"redirect": "/dashboard",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"redirect": "/dashboard",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -951,16 +962,17 @@ func TestExchangePendingOAuthCompletionChoiceStateDoesNotBindIdentity(t *testing
 			"suggested_display_name": "Attacker Display Name",
 			"suggested_avatar_url":   "https://cdn.example/attacker.png",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"step":                      identityhttp.OauthPendingChoiceStep,
-			"adoption_required":         true,
-			"force_email_on_signup":     true,
-			"email_binding_required":    true,
-			"existing_account_bindable": true,
-			"email":                     victim.Email,
-			"resolved_email":            victim.Email,
-			"redirect":                  "/dashboard",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"step":                      identityhttp.OauthPendingChoiceStep,
+				"adoption_required":         true,
+				"force_email_on_signup":     true,
+				"email_binding_required":    true,
+				"existing_account_bindable": true,
+				"email":                     victim.Email,
+				"resolved_email":            victim.Email,
+				"redirect":                  "/dashboard",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -1035,9 +1047,10 @@ func TestExchangePendingOAuthCompletionInvitationRequiredFalseFalsePersistsDecis
 			"suggested_display_name": "Invite Example",
 			"suggested_avatar_url":   "https://cdn.example/invite.png",
 		}).
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"error": "invitation_required",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"error": "invitation_required",
+			},
 		}).
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
 		Save(ctx)
@@ -1344,9 +1357,10 @@ func TestSendPendingOAuthVerifyCodeExistingEmailReturnsBindLoginState(t *testing
 		SetProviderKey("https://issuer.example").
 		SetProviderSubject("oidc-existing-send-code-123").
 		SetBrowserSessionKey("existing-email-send-code-browser-session-key").
-		SetLocalFlowState(map[string]any{identityhttp.OauthCompletionResponseKey: map[string]any{
-			"step": "email_required",
-		},
+		SetLocalFlowState(map[string]any{
+			identityhttp.OauthCompletionResponseKey: map[string]any{
+				"step": "email_required",
+			},
 		}).
 		SetRedirectTo("/dashboard").
 		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
@@ -3057,6 +3071,7 @@ func (r *oauthPendingFlowUserRepo) BatchSetConcurrency(context.Context, []int64,
 func (r *oauthPendingFlowUserRepo) BatchAddConcurrency(context.Context, []int64, int) (int, error) {
 	panic("unexpected BatchAddConcurrency call")
 }
+
 func (r *oauthPendingFlowUserRepo) BatchUpdateLimits(context.Context, []int64, *int, *int) (int, error) {
 	panic("unexpected BatchUpdateLimits call")
 }
@@ -3438,4 +3453,27 @@ func (s *oauthPendingFlowRefreshTokenCacheStub) ConsumeRefreshToken(context.Cont
 // 替身同步执行事务回调；真实行锁行为由 PostgreSQL 集成验证。
 func (r *oauthPendingFlowAffiliateRepo) WithLockedInviter(ctx context.Context, _ int64, fn func(context.Context) error) error {
 	return fn(ctx)
+}
+
+// 测试替身按已有挑战数据计数；真实并发原子性由 Redis 合同测试覆盖。
+func (s *oauthPendingFlowEmailCacheStub) IncrVerificationCodeAttempts(ctx context.Context, email string) (int, error) {
+	data, err := s.GetVerificationCode(ctx, email)
+	if err != nil || data == nil {
+		return 0, identitycore.ErrInvalidVerifyCode
+	}
+	data.Attempts++
+	return data.Attempts, nil
+}
+
+func (s *oauthPendingFlowEmailCacheStub) IncrNotifyVerifyCodeAttempts(ctx context.Context, email string) (int, error) {
+	data, err := s.GetNotifyVerifyCode(ctx, email)
+	if err != nil || data == nil {
+		return 0, identitycore.ErrInvalidVerifyCode
+	}
+	data.Attempts++
+	return data.Attempts, nil
+}
+
+func (s *oauthPendingFlowEmailCacheStub) ConsumePasswordResetToken(context.Context, string, string) (bool, error) {
+	return false, nil
 }

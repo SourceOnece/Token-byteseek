@@ -27,6 +27,28 @@ export default {
       operation: '操作',
       selectModel: '选择模型',
       selectModelFirst: '请先选择模型。',
+      // 画面比例为 auto 时，参数按钮和比例选项显示的文字
+      autoRatio: '自动比例',
+    },
+    // 空画布引导：画布上没有图片时显示，示例提示词点击后填入输入框
+    empty: {
+      title: '从一句描述开始',
+      description: '在下方输入提示词生成图片，或上传图片后做图生图和局部重绘。',
+      upload: '上传图片',
+      examples: {
+        poster: {
+          label: '复古旅行海报',
+          prompt: '一张 1970 年代风格的复古旅行海报，海边小镇，暖橙色夕阳，颗粒纸张质感，大号无衬线标题字',
+        },
+        product: {
+          label: '产品棚拍图',
+          prompt: '磨砂玻璃香水瓶的产品棚拍图，浅灰背景，柔和侧光，瓶身有细腻反光，构图简洁',
+        },
+        illustration: {
+          label: '扁平插画',
+          prompt: '一只在窗边看书的橘猫，扁平插画风格，低饱和配色，室内绿植，午后阳光',
+        },
+      },
     },
     operations: {
       generate: '文生图',
@@ -83,7 +105,7 @@ export default {
       // 图生图未选择参考图时的引导（点击单选，或直接拖拽框选多张）
       editPickHint: '点击图片选择参考图，或直接拖拽框选多张',
       // 涂抹开始前的引导：紫色笔迹即重绘区域
-      maskPaintHint: '在图片上涂抹紫色区域，即要重绘的部分（导出时自动转为 mask）',
+      maskPaintHint: '在图片上涂抹要重绘的区域，紫色部分会作为 mask 提交',
     },
     result: {
       actualCost: '实际费用：{cost}',

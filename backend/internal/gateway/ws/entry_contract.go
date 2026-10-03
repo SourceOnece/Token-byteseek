@@ -145,6 +145,7 @@ type EntryPorts interface {
 	AcquireProvider(context.Context, int64, int) (func(), bool, error)
 	WrapRelease(context.Context, func()) func()
 	Eligibility(context.Context) error
+	AuthorizeTurn(context.Context) error
 	LoadSubscription()
 	SessionHash([]byte, string) string
 	ExplicitHash([]byte) string

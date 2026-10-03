@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -1040,29 +1039,9 @@ func (s *UserService) VerifyAndAddNotifyEmail(ctx context.Context, userID int64,
 }
 
 // ProfileVerifyNotifyCode validates the verification code against the cached data.
-func ProfileVerifyNotifyCodeWithClock(ctx context.Context, cache EmailCache, email, code string, now func() time.Time) error {
-	data, err := cache.GetNotifyVerifyCode(ctx, email)
-	if err != nil || data == nil {
-		return ErrInvalidVerifyCode
-	}
-	if data.Attempts >= MaxVerifyCodeAttempts {
-		return ErrVerifyCodeMaxAttempts
-	}
-	if subtle.ConstantTimeCompare([]byte(data.Code), []byte(code)) != 1 {
-		data.Attempts++
-		remaining := data.ExpiresAt.Sub(now())
-		if remaining <= 0 {
-			return ErrInvalidVerifyCode
-		}
-		if err := cache.SetNotifyVerifyCode(ctx, email, data, remaining); err != nil {
-			slog.Error("failed to update notify verify code attempts", "email", email, "error", err)
-		}
-		if data.Attempts >= MaxVerifyCodeAttempts {
-			return ErrVerifyCodeMaxAttempts
-		}
-		return ErrInvalidVerifyCode
-	}
-	return nil
+func ProfileVerifyNotifyCodeWithClock(ctx context.Context, cache EmailCache, email, code string, _ func() time.Time) error {
+	// 时效和尝试次数由缓存原子操作约束；成功删除仍由原调用方执行。
+	return verifyCodeWithAttempts(ctx, email, code, cache.GetNotifyVerifyCode, cache.IncrNotifyVerifyCodeAttempts, nil)
 }
 
 // ProfileAddOrVerifyNotifyEmail adds the email to user's extra notification emails or marks it as verified.

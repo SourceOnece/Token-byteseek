@@ -189,8 +189,10 @@ func nativeTextResult(value *forward.MessagesResult, endpoint string) *forward.O
 		Usage:       openaiwire.ForwardUsage{InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens, CacheCreationInputTokens: usage.CacheCreationInputTokens, CacheReadInputTokens: usage.CacheReadInputTokens, ImageOutputTokens: usage.ImageOutputTokens},
 		Stream:      value.Stream, Duration: value.Duration, FirstTokenMs: value.FirstTokenMs, ClientDisconnect: value.ClientDisconnect,
 		ReasoningEffort: value.ReasoningEffort, RequestedReasoningEffort: value.RequestedReasoningEffort,
-		ServiceTier: value.ServiceTier, UpstreamResponseServiceTier: value.UpstreamResponseServiceTier,
-		ImageCount: value.ImageCount, ImageSize: value.ImageSize, ImageInputSize: value.ImageInputSize, ImageOutputSize: value.ImageOutputSize,
+		ServiceTier:                 value.ServiceTier,
+		UpstreamResponseServiceTier: value.UpstreamResponseServiceTier,
+		UpstreamResponseModel:       value.UpstreamResponseModel,
+		ImageCount:                  value.ImageCount, ImageSize: value.ImageSize, ImageInputSize: value.ImageInputSize, ImageOutputSize: value.ImageOutputSize,
 		ImageOutputSizes: value.ImageOutputSizes, ImageSizeSource: value.ImageSizeSource, ImageSizeBreakdown: value.ImageSizeBreakdown,
 		SearchCount: value.SearchCount, AudioUsage: value.AudioUsage,
 	}

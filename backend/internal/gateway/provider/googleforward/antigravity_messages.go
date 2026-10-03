@@ -319,14 +319,15 @@ func (s *Antigravity) Forward(ctx context.Context, output Output, provider *gate
 		return nil, err
 	}
 	return &forwardcore.MessagesResult{
-		RequestID:        result.RequestID,
-		UpstreamHeaders:  result.UpstreamHeaders,
-		Usage:            result.Usage,
-		Model:            originalModel,
-		UpstreamModel:    billingModel,
-		Stream:           claudeReq.Stream,
-		Duration:         result.Duration,
-		FirstTokenMs:     result.FirstTokenMs,
-		ClientDisconnect: result.ClientDisconnect,
+		RequestID:             result.RequestID,
+		UpstreamHeaders:       result.UpstreamHeaders,
+		UpstreamResponseModel: result.UpstreamResponseModel,
+		Usage:                 result.Usage,
+		Model:                 originalModel,
+		UpstreamModel:         billingModel,
+		Stream:                claudeReq.Stream,
+		Duration:              result.Duration,
+		FirstTokenMs:          result.FirstTokenMs,
+		ClientDisconnect:      result.ClientDisconnect,
 	}, nil
 }

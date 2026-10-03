@@ -4,13 +4,14 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
-
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 // MessagesResult 保存通用 Messages 执行的原始用量与完成元数据，不携带旧业务实体。
 type MessagesResult struct {
-	RequestID string
+	// UpstreamResponseModel 是协议转换前的上游模型声明；空值表示未声明。
+	UpstreamResponseModel string
+	RequestID             string
 	// UpstreamHeaders 是直接上游的响应头，用于按提供商配置解析上游请求标识。
 	UpstreamHeaders map[string][]string
 	Usage           upstream.TokenUsage
@@ -44,5 +45,15 @@ type MessagesResult struct {
 
 // MessagesFromAttempt 按既有完成入口投影基础观测；Header 与媒体扩展仍由调用方按原时点附加。
 func MessagesFromAttempt(result upstream.AttemptResult) *MessagesResult {
-	return &MessagesResult{RequestID: result.RequestID, Model: result.Model, UpstreamModel: result.UpstreamModel, Usage: result.Usage, Stream: result.Stream, Duration: result.Duration, ClientDisconnect: result.ClientDisconnect, FirstTokenMs: result.FirstTokenMs}
+	return &MessagesResult{
+		RequestID:             result.RequestID,
+		Model:                 result.Model,
+		UpstreamModel:         result.UpstreamModel,
+		UpstreamResponseModel: result.UpstreamResponseModel,
+		Usage:                 result.Usage,
+		Stream:                result.Stream,
+		Duration:              result.Duration,
+		ClientDisconnect:      result.ClientDisconnect,
+		FirstTokenMs:          result.FirstTokenMs,
+	}
 }

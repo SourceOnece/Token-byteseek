@@ -491,6 +491,8 @@ moreMappings: '+{count}'
     model: '模型',
     requestedModel: '请求',
     upstreamModel: '上游',
+    upstreamResponseModel: '上游响应模型',
+    upstreamModelMismatch: '响应模型不同',
     reasoningEffort: '推理强度',
     requestedReasoningEffort: '请求推理强度',
     endpoint: '端点',

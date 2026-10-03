@@ -22,6 +22,8 @@ type AttemptInput struct {
 
 // AttemptResult 与 error 独立返回；失败也可以携带已发生服务及上游已观测的用量。
 type AttemptResult struct {
+	// UpstreamResponseModel 是协议转换前的上游模型声明；空值表示未声明。
+	UpstreamResponseModel string
 	// HTTP 提交与关闭重试窗口分别投影，不能从 TTFT 或响应 ID 推断。
 	HTTPCommitted, RetryCommitted bool
 	RequestID                     string

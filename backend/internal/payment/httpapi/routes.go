@@ -16,6 +16,8 @@ type PlanEndpoints interface {
 // RouteMiddleware 由 app 提供现有鉴权与限流，不在注册时构造业务服务。
 type RouteMiddleware struct {
 	JWT, BackendMode, Panel, Admin, Audit gin.HandlerFunc
+	// PublicOrderVerify 只限制匿名订单号查询，不拦截支付回调或签名恢复。
+	PublicOrderVerify gin.HandlerFunc
 }
 
 // RegisterRoutes registers all payment-related routes:
@@ -59,7 +61,11 @@ func RegisterRoutes(
 	// persisted-state compatibility path for staggered upgrades.
 	public := v1.Group("/payment/public")
 	{
-		public.POST("/orders/verify", paymentHandler.VerifyOrderPublic)
+		verifyHandlers := gin.HandlersChain{paymentHandler.VerifyOrderPublic}
+		if guards.PublicOrderVerify != nil {
+			verifyHandlers = append(gin.HandlersChain{guards.PublicOrderVerify}, verifyHandlers...)
+		}
+		public.POST("/orders/verify", verifyHandlers...)
 		public.POST("/orders/resolve", paymentHandler.ResolveOrderPublicByResumeToken)
 	}
 

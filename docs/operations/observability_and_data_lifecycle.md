@@ -42,6 +42,8 @@
 
 ## 关联与脱敏
 
+管理员日志从 0.2.3-bh.001 增加 `upstream_response_model` 和 `upstream_model_mismatch`。原始模型在协议改写前观察、按尝试/WS turn 隔离并在入队前冻结；新字段优先，ByteSeek 原 `response_model` 保持兼容写入和历史读取。没有上游声明时差异标记为空，不从请求模型猜测。表格只在不一致时显示响应模型，CSV 增加响应模型与差异列；普通用户 DTO 不暴露新旧内部模型字段，计费仍按现有计费模型。
+
 网关为每次请求生成内部 client request ID，并把归一化 endpoint、platform、requested/upstream model、用户、API Key、提供商和团队等维度带入允许的用量/Ops 记录。入站 `X-Client-Request-ID` 仅作为受限的 `parent_client_request_id` 保存，用于跨 TokenRouter/Sub2API 链路排障，不参与权限、路由或结算幂等；服务生成的内部 ID 通过 `X-Sub2API-Request-ID` 暴露给下游诊断。客户端提供的 session ID 只作为显式关联字段，不从 prompt 或缓存键推导。
 
 网关入口只接受字符受限的 `X-Client-Request-ID` 作为父级关联值；缺失或不安全时，响应回退使用服务生成的内部 ID，服务不会把生成的关联 ID 加入上游请求。内部 ID 通过 `X-Sub2API-Request-ID` 响应头标识，调用方 ID 与内部 ID 均会进入访问日志，但只有内部 ID 能作为结算幂等来源。流式网关的 `http.access` 记录还会尽力写入 `request_content_length`、`provider_slot_acquired_ms`、`upstream_get_conn_ms`、`upstream_got_conn_ms`、`upstream_wrote_request_ms`、`upstream_first_response_byte_ms`、`upstream_first_sse_data_ms`、`first_visible_output_ms` 和 `first_downstream_flush_ms`；`upstream_attempt_count`、各阶段计数、连接复用和写入错误字段用于识别连接池等待、重试与传输异常。阶段字段只包含时间、计数和连接复用状态，不包含请求体或凭据。

@@ -5,13 +5,14 @@ package httpapi
 import (
 	"bytes"
 	"context"
-	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
 
 	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
 
@@ -61,6 +62,7 @@ func TestForwardResponses_ForceChatCompletionsRoutesNonStreamingToChatCompletion
 	require.NotNil(t, result.ServiceTier)
 	require.Equal(t, "priority", *result.ServiceTier)
 	require.Equal(t, "default", result.UpstreamResponseServiceTier)
+	require.Equal(t, "gpt-5.4", result.UpstreamResponseModel)
 	require.False(t, result.Stream)
 }
 

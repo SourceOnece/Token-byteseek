@@ -83,7 +83,7 @@ func nativeInput(target *Target, stream bool) upstream.AttemptInput {
 func TestExecuteGeminiNonStreamObservedZero(t *testing.T) {
 	for _, kind := range []string{"messages", "native", "chat", "responses"} {
 		t.Run(kind, func(t *testing.T) {
-			payload := `{"candidates":[{"content":{"parts":[{"text":"visible"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":0,"candidatesTokenCount":0},"future":{"preserve":true}}`
+			payload := `{"modelVersion":"gemini-runtime","candidates":[{"content":{"parts":[{"text":"visible"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":0,"candidatesTokenCount":0},"future":{"preserve":true}}`
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("x-request-id", "gemini-request")
 				_, _ = io.WriteString(w, payload)
@@ -111,6 +111,7 @@ func TestExecuteGeminiNonStreamObservedZero(t *testing.T) {
 			require.Nil(t, result.FirstTokenMs)
 			require.Zero(t, result.Usage.InputTokens)
 			require.Equal(t, "gemini-request", result.RequestID)
+			require.Equal(t, "gemini-runtime", result.UpstreamResponseModel)
 			require.Contains(t, sink.body.String(), "visible")
 			require.EqualValues(t, 1, closes.Load())
 			require.EqualValues(t, 1, releases.Load())
@@ -137,9 +138,9 @@ func TestExecuteGeminiStreamingProgressAndPartial(t *testing.T) {
 					}
 					_, _ = io.WriteString(w, "data: {\"usageMetadata\":{\"promptTokenCount\":0}}\n\n")
 					_ = http.NewResponseController(w).Flush()
-					_, _ = io.WriteString(w, "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"visible\"}]}}],\"usageMetadata\":{\"promptTokenCount\":2,\"candidatesTokenCount\":1}}\n\n")
+					_, _ = io.WriteString(w, "data: {\"modelVersion\":\"gemini-runtime\",\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"visible\"}]}}],\"usageMetadata\":{\"promptTokenCount\":2,\"candidatesTokenCount\":1}}\n\n")
 					if !partial {
-						_, _ = io.WriteString(w, "data: {\"candidates\":[{\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":2,\"candidatesTokenCount\":3}}\n\ndata: [DONE]\n\n")
+						_, _ = io.WriteString(w, "data: {\"modelVersion\":\"gemini-runtime\",\"candidates\":[{\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":2,\"candidatesTokenCount\":3}}\n\ndata: [DONE]\n\n")
 					}
 				}))
 				defer server.Close()
@@ -174,9 +175,11 @@ func TestExecuteGeminiStreamingProgressAndPartial(t *testing.T) {
 				}
 				if partial {
 					require.Error(t, runErr)
+					require.Equal(t, "gemini-runtime", result.UpstreamResponseModel)
 					require.Equal(t, 1, result.Usage.OutputTokens)
 				} else {
 					require.NoError(t, runErr)
+					require.Equal(t, "gemini-runtime", result.UpstreamResponseModel)
 					require.Equal(t, 3, result.Usage.OutputTokens)
 				}
 				require.True(t, result.HasUsage)

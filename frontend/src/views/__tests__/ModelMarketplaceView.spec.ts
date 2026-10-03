@@ -192,7 +192,6 @@ async function mountMarketplace() {
         Icon: { template: '<span />' },
         LoadingSpinner: { template: '<span />' },
         LocaleSwitcher: { template: '<span />' },
-        ProviderIcon: { template: '<span />' },
         GroupCapacityBadge: { template: '<span data-testid="group-capacity" />' },
         SearchInput: SearchInputStub,
         Select: SelectStub,
@@ -358,7 +357,7 @@ describe('ModelMarketplaceView', () => {
     }
   })
 
-  it('xAI 品牌在分组模式下展示 Grok 图标而不是字母占位', async () => {
+  it('xAI 分组展示品牌图形', async () => {
     const fixture = marketplaceFixture()
     fixture[0] = {
       ...fixture[0],
@@ -372,8 +371,8 @@ describe('ModelMarketplaceView', () => {
     // 品牌名 xAI 应映射到现有 Grok SVG，不能退回紫色字母 X。
     const grokGroup = wrapper.findAll('[data-testid="marketplace-group-section"]')
       .find((section) => section.get('h2').text() === 'Grok')
-    expect(grokGroup?.find('.model-icon').exists()).toBe(true)
-    expect(grokGroup?.find('.model-icon-fallback').exists()).toBe(false)
+    expect(grokGroup?.find('.provider-icon[width="28px"]').exists()).toBe(true)
+    expect(grokGroup?.find('.provider-icon-fallback').exists()).toBe(false)
   })
 
   it('只展示统一分组倍率', async () => {

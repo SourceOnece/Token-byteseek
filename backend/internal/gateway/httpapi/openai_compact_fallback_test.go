@@ -275,7 +275,7 @@ func TestOpenAIGatewayForwardRetriesStreamingCompactFailureBeforeOutput(t *testi
 	MarkOpenAINativeCompactionV2(c)
 
 	failed := "event: response.failed\n" +
-		`data: {"type":"response.failed","response":{"status":"failed","error":{"code":"context_length_exceeded","message":"context window exceeded"}}}` + "\n\n"
+		`data: {"type":"response.failed","response":{"status":"failed","model":"failed-runtime","error":{"code":"context_length_exceeded","message":"context window exceeded"}}}` + "\n\n"
 	completed := "event: response.completed\n" +
 		`data: {"type":"response.completed","response":{"id":"resp_compact","status":"completed","model":"gpt-5.4","output":[],"usage":{"input_tokens":1,"output_tokens":1}}}` + "\n\n"
 	upstream := &auxiliaryHTTPRecorder{responses: []*http.Response{
@@ -295,6 +295,7 @@ func TestOpenAIGatewayForwardRetriesStreamingCompactFailureBeforeOutput(t *testi
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
+	require.Equal(t, "gpt-5.4", result.UpstreamResponseModel)
 	require.Len(t, upstream.bodies, 2)
 	require.Equal(t, "gpt-5.4", gjson.GetBytes(upstream.bodies[1], "model").String())
 	require.NotContains(t, recorder.Body.String(), "context_length_exceeded")
@@ -392,4 +393,42 @@ func TestOpenAIPassthroughCompactFallbackSecondStreamFailureUsesStandardErrorPat
 	require.Equal(t, "compact_model_fallback", events[0].Reason)
 	require.Equal(t, "http_error", events[1].Kind)
 	require.True(t, events[1].Passthrough)
+}
+
+// TestResponseModelMissingAfterCompactRetryDoesNotInheritFailure 验证成功恢复但没有模型声明时保持未知。
+func TestResponseModelMissingAfterCompactRetryDoesNotInheritFailure(t *testing.T) {
+	body := []byte(`{"model":"gpt-5.5","stream":true,"instructions":"compact-test","input":[{"type":"message","role":"user","content":"hello"},{"type":"compaction_trigger"}]}`)
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	c.Request.Body = io.NopCloser(bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+	MarkOpenAINativeCompactionV2(c)
+
+	failed := "event: response.failed\n" +
+		`data: {"type":"response.failed","response":{"status":"failed","model":"failed-runtime","error":{"code":"context_length_exceeded","message":"context window exceeded"}}}` + "\n\n"
+	completed := "event: response.completed\n" +
+		`data: {"type":"response.completed","response":{"id":"resp_compact","status":"completed","output":[],"usage":{"input_tokens":1,"output_tokens":1}}}` + "\n\n"
+	upstream := &auxiliaryHTTPRecorder{responses: []*http.Response{
+		{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader(failed))},
+		{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader(completed))},
+	}}
+	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "gpt-5.4", transport: upstream})
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1,
+			Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-provider"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
+	}
+
+	result, err := svc.Forward(context.Background(), c, provider, body)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Empty(t, result.UpstreamResponseModel)
+	require.Len(t, upstream.bodies, 2)
+	require.Equal(t, "gpt-5.4", gjson.GetBytes(upstream.bodies[1], "model").String())
+	require.NotContains(t, recorder.Body.String(), "context_length_exceeded")
+	require.Contains(t, recorder.Body.String(), "response.completed")
 }

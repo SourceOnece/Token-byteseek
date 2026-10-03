@@ -305,7 +305,8 @@ func (s *Gemini) forwardClaudeBodyAsOpenAICompat(
 	return &protocolforward.MessagesResult{
 		RequestID: requestID,
 
-		UpstreamHeaders: result.UpstreamHeaders,
+		UpstreamHeaders:       result.UpstreamHeaders,
+		UpstreamResponseModel: result.UpstreamResponseModel,
 
 		Usage: *usage,
 

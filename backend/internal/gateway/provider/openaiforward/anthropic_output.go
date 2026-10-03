@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
@@ -37,7 +39,14 @@ func AnthropicUsageToOpenAI(u *upstream.TokenUsage) protocolopenai.ForwardUsage 
 	}
 	return protocolopenai.ForwardUsage{InputTokens: u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens, OutputTokens: u.OutputTokens, CacheCreationInputTokens: u.CacheCreationInputTokens, CacheReadInputTokens: u.CacheReadInputTokens}
 }
-func ResponsesFromAnthropicBuffered(resp *http.Response, c *upstream.OutputContext, o AnthropicOutputOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time, clientToolMapping bridge.ResponsesClientToolMapping) (*Result, error) {
+
+func ResponsesFromAnthropicBuffered(resp *http.Response, c *upstream.OutputContext, o AnthropicOutputOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time, clientToolMapping bridge.ResponsesClientToolMapping) (out *Result, failure error) {
+	var modelObserver protocol.ResponseModelObserver
+	defer func() {
+		if out != nil {
+			out.UpstreamResponseModel = modelObserver.Model()
+		}
+	}()
 	requestID := resp.Header.Get("x-request-id")
 
 	scanner := bufio.NewScanner(resp.Body)
@@ -97,6 +106,7 @@ func ResponsesFromAnthropicBuffered(resp *http.Response, c *upstream.OutputConte
 			continue
 		}
 
+		modelObserver.ObserveAnthropic([]byte(payload))
 		var event protocolanthropic.AnthropicStreamEvent
 		if err := json.Unmarshal([]byte(payload), &event); err != nil {
 			continue
@@ -177,7 +187,13 @@ func ResponsesFromAnthropicBuffered(resp *http.Response, c *upstream.OutputConte
 	}, nil
 }
 
-func ResponsesFromAnthropicStreaming(resp *http.Response, c *upstream.OutputContext, o AnthropicOutputOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time, clientToolMapping bridge.ResponsesClientToolMapping) (*Result, error) {
+func ResponsesFromAnthropicStreaming(resp *http.Response, c *upstream.OutputContext, o AnthropicOutputOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time, clientToolMapping bridge.ResponsesClientToolMapping) (out *Result, failure error) {
+	var modelObserver protocol.ResponseModelObserver
+	defer func() {
+		if out != nil {
+			out.UpstreamResponseModel = modelObserver.Model()
+		}
+	}()
 	requestID := resp.Header.Get("x-request-id")
 
 	o.CopyHeaders(c.Writer.Header(), resp.Header)
@@ -310,6 +326,7 @@ func ResponsesFromAnthropicStreaming(resp *http.Response, c *upstream.OutputCont
 			continue
 		}
 
+		modelObserver.ObserveAnthropic([]byte(payload))
 		var event protocolanthropic.AnthropicStreamEvent
 		if err := json.Unmarshal([]byte(payload), &event); err != nil {
 			continue
@@ -351,7 +368,13 @@ func ResponsesFromAnthropicStreaming(resp *http.Response, c *upstream.OutputCont
 	return resultWithUsage(), nil
 }
 
-func ChatFromAnthropicBuffered(resp *http.Response, c *upstream.OutputContext, o AnthropicOutputOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time) (*Result, error) {
+func ChatFromAnthropicBuffered(resp *http.Response, c *upstream.OutputContext, o AnthropicOutputOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time) (out *Result, failure error) {
+	var modelObserver protocol.ResponseModelObserver
+	defer func() {
+		if out != nil {
+			out.UpstreamResponseModel = modelObserver.Model()
+		}
+	}()
 	requestID := resp.Header.Get("x-request-id")
 
 	scanner := bufio.NewScanner(resp.Body)
@@ -412,6 +435,7 @@ func ChatFromAnthropicBuffered(resp *http.Response, c *upstream.OutputContext, o
 			continue
 		}
 
+		modelObserver.ObserveAnthropic([]byte(payload))
 		var event protocolanthropic.AnthropicStreamEvent
 		if err := json.Unmarshal([]byte(payload), &event); err != nil {
 			continue
@@ -488,7 +512,13 @@ func ChatFromAnthropicBuffered(resp *http.Response, c *upstream.OutputContext, o
 	}, nil
 }
 
-func ChatFromAnthropicStreaming(resp *http.Response, c *upstream.OutputContext, o AnthropicOutputOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time, includeUsage bool) (*Result, error) {
+func ChatFromAnthropicStreaming(resp *http.Response, c *upstream.OutputContext, o AnthropicOutputOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time, includeUsage bool) (out *Result, failure error) {
+	var modelObserver protocol.ResponseModelObserver
+	defer func() {
+		if out != nil {
+			out.UpstreamResponseModel = modelObserver.Model()
+		}
+	}()
 	requestID := resp.Header.Get("x-request-id")
 
 	o.CopyHeaders(c.Writer.Header(), resp.Header)
@@ -635,6 +665,7 @@ func ChatFromAnthropicStreaming(resp *http.Response, c *upstream.OutputContext, 
 			continue
 		}
 
+		modelObserver.ObserveAnthropic([]byte(payload))
 		var event protocolanthropic.AnthropicStreamEvent
 		if err := json.Unmarshal([]byte(payload), &event); err != nil {
 			continue

@@ -161,14 +161,17 @@ func TestUsageLogFromService_PreservesEquivalentRequestedEffort(t *testing.T) {
 func TestUsageLogFromService_UsesRequestedModelAndKeepsUpstreamAdminOnly(t *testing.T) {
 	t.Parallel()
 
+	mismatch := true
 	upstreamModel := "claude-sonnet-4-20250514"
 	responseModel := "claude-other-synthetic"
 	log := &usage.UsageLog{
-		RequestID:      "req_4",
-		Model:          upstreamModel,
-		RequestedModel: "claude-sonnet-4",
-		UpstreamModel:  &upstreamModel,
-		ResponseModel:  &responseModel,
+		RequestID:             "req_4",
+		Model:                 upstreamModel,
+		RequestedModel:        "claude-sonnet-4",
+		UpstreamModel:         &upstreamModel,
+		UpstreamResponseModel: &responseModel,
+		UpstreamModelMismatch: &mismatch,
+		ResponseModel:         &responseModel,
 	}
 
 	userDTO := dto.FromUsage(log)
@@ -182,7 +185,11 @@ func TestUsageLogFromService_UsesRequestedModelAndKeepsUpstreamAdminOnly(t *test
 	require.NotContains(t, string(userJSON), "upstream_model")
 	require.NotContains(t, string(userJSON), "response_model")
 	require.NotContains(t, string(userJSON), responseModel)
+	require.NotContains(t, string(userJSON), "upstream_response_model")
+	require.NotContains(t, string(userJSON), "upstream_model_mismatch")
 
+	require.Equal(t, &responseModel, adminDTO.UpstreamResponseModel)
+	require.Equal(t, &mismatch, adminDTO.UpstreamModelMismatch)
 	adminJSON, err := json.Marshal(adminDTO)
 	require.NoError(t, err)
 	require.Contains(t, string(adminJSON), `"upstream_model":"claude-sonnet-4-20250514"`)

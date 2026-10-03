@@ -57,6 +57,8 @@ docker compose -f deploy/docker-compose.dev.yml up --build
 <a id="backend_dependency_rules"></a>
 ## 代码边界
 
+0.2.3-bh.001 的票据校验直接复用 `protocol/openai` 的纯终态规范化；架构依赖表登记这条核心→纯协议关系，不通过平台包装再造解析副本。匿名订单限流的 app 测试使用计数端口替身，Redis 原子语义在所属存储测试验证，避免给组合根整体放开新的测试存储依赖。
+
 HTTP、用例、存储和后台资源由 app 装配各模块实现。业务测试位于实际所有者，跨模块契约位于 tests/integration。包职责与依赖方向见[后端模块地图](../architecture/backend_modules.md)。billing 的核心、HTTP、PostgreSQL 和 Redis 已按角色分离；通用技术实现已分布在 `internal/infra`，HTTP 工具在 `server/httpx`、`server/clientip`，纯工具在明确列出的 pkg 包中。
 
 综合设置的新增字段必须在 app 静态参与者中声明唯一字段/键所有权，并保持一次原子保存、提交后应用失败明确标记已持久化。HTTP/DTO 使用所属模块的能力，测试夹具只提供数据或 I/O 替身。

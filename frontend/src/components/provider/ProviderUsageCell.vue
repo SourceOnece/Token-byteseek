@@ -424,8 +424,8 @@
           wide-label
           color="indigo"
         />
-        <div class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-          <span class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
+        <div class="flex flex-wrap items-center justify-end gap-1.5 text-xs text-gray-500 dark:text-gray-400 lg:justify-start">
+          <span class="whitespace-nowrap rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
             {{ qoderQuotaCreditsLabel }}
           </span>
           <span
@@ -436,7 +436,7 @@
           </span>
           <span
             v-if="usageInfo.qoder_quota.snapshot_from_provider"
-            class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
+            class="whitespace-nowrap rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
           >
             cached
           </span>
@@ -528,29 +528,7 @@
 
       <!-- Usage data or unlimited flow -->
       <div class="space-y-1">
-        <div
-          v-if="showGeminiTodayStats && todayStats"
-          class="mb-0.5 flex items-center"
-        >
-          <div class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-            <span class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
-              {{ formatKeyRequests }} req
-            </span>
-            <span class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
-              {{ formatKeyTokens }}
-            </span>
-            <span class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800" :title="t('usage.providerBilled')">
-              A {{ formatKeyCost }}
-            </span>
-            <span
-              v-if="todayStats.user_cost != null"
-              class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
-              :title="t('usage.userBilled')"
-            >
-              U {{ formatKeyUserCost }}
-            </span>
-          </div>
-        </div>
+        <ProviderUsageStatsChips v-if="showGeminiTodayStats && todayStats" :stats="todayStats" scope="today" />
         <div
           v-else-if="showGeminiTodayStats && todayStatsLoading"
           class="mb-0.5 flex items-center justify-end gap-1 lg:justify-start"
@@ -612,18 +590,7 @@
         :show-query-button="false"
         :request="requestUpstreamUsage"
       />
-      <div v-if="showGeminiTodayStats && todayStats" class="mb-0.5 flex items-center">
-        <div class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-          <span class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">{{ formatKeyRequests }} req</span>
-          <span class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">{{ formatKeyTokens }}</span>
-          <span class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800" :title="t('usage.providerBilled')">A {{ formatKeyCost }}</span>
-          <span
-            v-if="todayStats.user_cost != null"
-            class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
-            :title="t('usage.userBilled')"
-          >U {{ formatKeyUserCost }}</span>
-        </div>
-      </div>
+      <ProviderUsageStatsChips v-if="showGeminiTodayStats && todayStats" :stats="todayStats" scope="today" />
       <div v-else-if="showGeminiTodayStats && todayStatsLoading" class="mb-0.5 flex items-center justify-end gap-1 lg:justify-start">
         <div class="h-3 w-10 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
         <div class="h-3 w-8 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
@@ -659,30 +626,8 @@
         :provider="provider"
         @updated="handleOllamaCloudUsageUpdated"
       />
-      <!-- Today stats row (requests, tokens, cost, user_cost) -->
-      <div
-        v-if="todayStats"
-        class="mb-0.5 flex items-center"
-      >
-        <div class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-          <span class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
-            {{ formatKeyRequests }} req
-          </span>
-          <span class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
-            {{ formatKeyTokens }}
-          </span>
-          <span class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800" :title="t('usage.providerBilled')">
-            A {{ formatKeyCost }}
-          </span>
-          <span
-            v-if="todayStats.user_cost != null"
-            class="rounded-compact bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800"
-            :title="t('usage.userBilled')"
-          >
-            U {{ formatKeyUserCost }}
-          </span>
-        </div>
-      </div>
+      <!-- 今日统计：请求数、Token、提供商成本和用户扣费。 -->
+      <ProviderUsageStatsChips v-if="todayStats" :stats="todayStats" scope="today" />
       <!-- Loading skeleton for today stats -->
       <div
         v-else-if="todayStatsLoading"
@@ -737,7 +682,6 @@
 import { ref, computed, onMounted, onBeforeUnmount, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
-import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { COPY_FEEDBACK_MS } from '@/constants/ui'
 import type {
   Provider,
@@ -759,6 +703,7 @@ import OpenAIQuotaResetCell from './OpenAIQuotaResetCell.vue'
 import GrokQuotaProbeCell from './GrokQuotaProbeCell.vue'
 import OllamaCloudUsageCell from './OllamaCloudUsageCell.vue'
 import ProviderUpstreamUsageCell from './ProviderUpstreamUsageCell.vue'
+import ProviderUsageStatsChips from './ProviderUsageStatsChips.vue'
 import ProviderUpstreamUsageQueryButton from './ProviderUpstreamUsageQueryButton.vue'
 
 // 模块级缓存供所有 ProviderUsageCell 实例共享
@@ -800,7 +745,6 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const { formatBalanceAmount, formatUsdAmount } = useBalanceDisplay()
 const canUseMatchMedia =
   typeof window !== 'undefined' && typeof window.matchMedia === 'function'
 const getDesktopViewportMatches = () =>
@@ -1699,30 +1643,6 @@ const quotaTotalBar = computed((): QuotaBarInfo | null => {
 const handleOllamaCloudUsageUpdated = (state: NonNullable<Provider['ollama_cloud_usage']>) => {
   emit('provider-updated', { ...props.provider, ollama_cloud_usage: state })
 }
-
-// ===== Key provider today stats formatters =====
-
-const formatKeyRequests = computed(() => {
-  if (!props.todayStats) return ''
-  return formatCompactNumber(props.todayStats.requests, { allowBillions: false })
-})
-
-const formatKeyTokens = computed(() => {
-  if (!props.todayStats) return ''
-  return formatCompactNumber(props.todayStats.tokens)
-})
-
-const formatKeyCost = computed(() => {
-  if (!props.todayStats) return formatUsdAmount(0, { fractionDigits: 2 })
-  return formatUsdAmount(props.todayStats.cost, { fractionDigits: 2 })
-})
-
-const formatKeyUserCost = computed(() => {
-  if (!props.todayStats || props.todayStats.user_cost == null) {
-    return formatBalanceAmount(0, { fractionDigits: 2 })
-  }
-  return formatBalanceAmount(props.todayStats.user_cost, { fractionDigits: 2 })
-})
 
 onMounted(() => {
   if (canUseMatchMedia) {

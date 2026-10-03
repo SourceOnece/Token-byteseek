@@ -886,7 +886,6 @@ affiliates: {
       providersAvailable: '可用:',
       providersRateLimited: '限流:',
       providersTotal: '总量:',
-      providersUnit: '个提供商',
       form: {
         name: '名称',
         description: '描述',

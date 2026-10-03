@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
@@ -17,6 +19,7 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 	imageBillingModel, imageSizeTier, imageInputSize := input.ImageBillingModel, input.ImageSizeTier, input.ImageInputSize
 	requestedReasoningEffort := input.RequestedReasoningEffort
 	p.BeginObservation()
+	var modelObserver protocol.ResponseModelObserver
 	if lease == nil {
 		return nil, errors.New("upstream websocket lease is nil")
 	}
@@ -82,6 +85,7 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 
 		eventType, eventResponseID, _ := p.Envelope(upstreamMessage)
 		p.ObserveModel(upstreamMessage, eventType)
+		modelObserver.ObserveOpenAI(upstreamMessage, eventType)
 		if responseID == "" && eventResponseID != "" {
 			responseID = eventResponseID
 		}
@@ -312,6 +316,7 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 				UpstreamModel:               mappedModel,
 				ResponseModel:               p.ResponseModel(),
 				UpstreamResponseServiceTier: p.ResponseTier(),
+				UpstreamResponseModel:       modelObserver.Model(),
 				ServiceTier:                 p.ResolvedTier(payload),
 				ReasoningEffort:             p.Reasoning(payload, mappedModel, originalModel),
 				RequestedReasoningEffort:    requestedReasoningEffort,

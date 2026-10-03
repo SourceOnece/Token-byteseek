@@ -87,13 +87,13 @@ func TestExecuteBedrockWireAndRelease(t *testing.T) {
 				require.Equal(t, "Bearer fixture-key", r.Header.Get("Authorization"))
 				w.Header().Set("x-amzn-requestid", "bedrock-fixture")
 				if stream {
-					for _, event := range []string{`{"type":"message_start","message":{"usage":{"input_tokens":0}}}`, `{"type":"content_block_delta","delta":{"type":"text_delta","text":"visible"}}`, `{"type":"message_delta","amazon-bedrock-invocationMetrics":{"inputTokenCount":0,"outputTokenCount":2}}`, `{"type":"message_stop"}`} {
+					for _, event := range []string{`{"type":"message_start","message":{"model":"claude-runtime","usage":{"input_tokens":0}}}`, `{"type":"content_block_delta","delta":{"type":"text_delta","text":"visible"}}`, `{"type":"message_delta","amazon-bedrock-invocationMetrics":{"inputTokenCount":0,"outputTokenCount":2}}`, `{"type":"message_stop"}`} {
 						payload := []byte(`{"bytes":"` + base64.StdEncoding.EncodeToString([]byte(event)) + `"}`)
 						_, _ = w.Write(executionFrame("chunk", payload))
 						_ = http.NewResponseController(w).Flush()
 					}
 				} else {
-					_, _ = io.WriteString(w, `{"type":"message","content":[{"type":"text","text":"visible"}],"usage":{"input_tokens":0,"output_tokens":0},"future":true}`)
+					_, _ = io.WriteString(w, `{"type":"message","model":"claude-runtime","content":[{"type":"text","text":"visible"}],"usage":{"input_tokens":0,"output_tokens":0},"future":true}`)
 				}
 			}))
 			defer server.Close()
@@ -114,6 +114,7 @@ func TestExecuteBedrockWireAndRelease(t *testing.T) {
 			require.True(t, result.Served)
 			require.NotNil(t, result.FirstSemanticOutput)
 			require.Equal(t, "bedrock-fixture", result.RequestID)
+			require.Equal(t, "claude-runtime", result.UpstreamResponseModel)
 			require.EqualValues(t, 1, closed.Load())
 			require.EqualValues(t, 1, released.Load())
 			require.Contains(t, sink.body.String(), "visible")

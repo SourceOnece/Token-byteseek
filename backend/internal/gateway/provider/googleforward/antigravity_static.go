@@ -75,12 +75,13 @@ func (s *Antigravity) ForwardUpstream(ctx context.Context, output Output, provid
 	}
 	logging.LegacyPrintf("service.antigravity_gateway", "%s status=success duration_ms=%d", prefix, result.Duration.Milliseconds())
 	return &forwardcore.MessagesResult{
-		Model:            model,
-		UpstreamHeaders:  result.UpstreamHeaders,
-		Stream:           stream,
-		Duration:         result.Duration,
-		FirstTokenMs:     result.FirstTokenMs,
-		ClientDisconnect: result.ClientDisconnect,
+		Model:                 model,
+		UpstreamHeaders:       result.UpstreamHeaders,
+		UpstreamResponseModel: result.UpstreamResponseModel,
+		Stream:                stream,
+		Duration:              result.Duration,
+		FirstTokenMs:          result.FirstTokenMs,
+		ClientDisconnect:      result.ClientDisconnect,
 		Usage: upstream.TokenUsage{
 			InputTokens:              result.Usage.InputTokens,
 			OutputTokens:             result.Usage.OutputTokens,

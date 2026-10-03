@@ -271,16 +271,17 @@ func (s *Antigravity) forwardAntigravityCompat(
 		return nil, err
 	}
 	return &protocolforward.MessagesResult{
-		RequestID:        result.RequestID,
-		UpstreamHeaders:  result.UpstreamHeaders,
-		Usage:            result.Usage,
-		Model:            request.originalModel,
-		UpstreamModel:    call.billingModel,
-		Stream:           request.clientStream,
-		Duration:         result.Duration,
-		FirstTokenMs:     result.FirstTokenMs,
-		ReasoningEffort:  request.reasoningEffort,
-		ClientDisconnect: result.ClientDisconnect,
+		RequestID:             result.RequestID,
+		UpstreamHeaders:       result.UpstreamHeaders,
+		UpstreamResponseModel: result.UpstreamResponseModel,
+		Usage:                 result.Usage,
+		Model:                 request.originalModel,
+		UpstreamModel:         call.billingModel,
+		Stream:                request.clientStream,
+		Duration:              result.Duration,
+		FirstTokenMs:          result.FirstTokenMs,
+		ReasoningEffort:       request.reasoningEffort,
+		ClientDisconnect:      result.ClientDisconnect,
 	}, nil
 }
 

@@ -125,11 +125,14 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 		output.Header("x-request-id", result.RequestID)
 	}
 	response := target.Response
+	var modelObserver protocol.ResponseModelObserver
+	defer func() { result.UpstreamResponseModel = modelObserver.Model() }()
 	priorRaw, priorState := response.ObserveRaw, response.ObserveState
 	response.ObserveRaw = func(payload []byte) {
 		if priorRaw != nil {
 			priorRaw(payload)
 		}
+		modelObserver.ObserveGemini(payload)
 		observed := geminiwire.ObservePayload(payload)
 		result.HasUsage = result.HasUsage || observed.HasUsage
 		result.Served = result.Served || observed.Semantic

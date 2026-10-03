@@ -26,6 +26,10 @@ type UsageLog struct {
 	UpstreamModel *string
 	// ResponseModel 仅用于管理员诊断，不改变计费模型，也不返回普通用户。
 	ResponseModel *string
+	// UpstreamResponseModel 保存原始响应声明，不作为计费依据。
+	UpstreamResponseModel *string
+	// UpstreamModelMismatch 为空表示上游未声明模型。
+	UpstreamModelMismatch *bool
 	// PricingConfigID 共享价格配置 ID
 	PricingConfigID *int64
 	// ModelMappingChain 模型映射链，如 "a→b→c"

@@ -43,6 +43,7 @@ export default {
       dataImport: '导入',
       moreActions: '更多操作',
       dataActions: '数据操作',
+      bulkEditFiltered: '批量编辑筛选结果',
       toolActions: '工具',
       viewColumns: '列显示',
       selectedCount: '已选 {count}',
@@ -663,6 +664,22 @@ export default {
           unavailableDesc: '服务不可用 - 暂停 30 分钟'
         }
       },
+      usageStats: {
+        requests: '请求',
+        tokens: 'Token',
+        cost: '成本',
+        userCost: '扣费',
+        period: {
+          today: '今日',
+          window: '当前窗口内'
+        },
+        hints: {
+          requests: '{period}经此提供商转发的请求数',
+          tokens: '{period}经此提供商消耗的 Token 总数',
+          cost: '{period}提供商成本（美元），按提供商价格乘以提供商倍率计算',
+          userCost: '{period}向用户扣除的站内余额，已计入分组倍率'
+        }
+      },
       usageWindow: {
         statsTitle: '5小时窗口用量统计',
         statsTitleDaily: '每日用量统计',
@@ -745,20 +762,21 @@ export default {
         selected: '已选择 {count} 个提供商',
         selectedAll: '已选择全部 {count} 个提供商',
         selectCurrentPage: '本页全选',
-        selectAllResults: '全选所有结果（{count}）',
+        selectAllResults: '全选全部 {count} 个结果',
         selectingAll: '正在选择全部结果...',
         selectAllFailed: '获取全部提供商失败，原有选择未改变',
         clear: '清除选择',
-        edit: '批量编辑选中提供商',
-        delete: '批量删除',
+        edit: '编辑',
+        more: '更多',
+        delete: '删除',
         confirmDelete: '确认删除选中的 {count} 个提供商吗？此操作不可恢复。',
         deleteSuccess: '已成功删除 {count} 个提供商',
-        enableScheduling: '批量启用调度',
-        disableScheduling: '批量停止调度',
-        resetStatus: '批量重置状态',
-        refreshToken: '批量刷新令牌',
-        queryUsage: '批量查询用量',
-        queryUpstreamUsage: '批量查询上游用量',
+        enableScheduling: '启用调度',
+        disableScheduling: '停止调度',
+        resetStatus: '重置状态',
+        refreshToken: '刷新令牌',
+        queryUsage: '查询用量',
+        queryUpstreamUsage: '查询上游用量',
         resetStatusSuccess: '已成功重置 {count} 个提供商状态',
         refreshTokenSuccess: '已成功刷新 {count} 个提供商令牌',
         queryUsageSuccess: '已成功查询 {count} 个提供商用量',
@@ -1050,7 +1068,7 @@ export default {
       poolModeRetryStatusCodesHint: '仅在池模式下生效。以英文逗号分隔的 HTTP 状态码（100-599），命中时触发同提供商重试。留空使用默认值（{default}）。',
       customErrorCodes: '自定义错误码',
       customErrorCodesHint: '仅对选中的错误码停止调度',
-      customErrorCodesWarning: '仅选中的错误码会停止调度，其他错误将返回 500。',
+      customErrorCodesWarning: '仅筛选账号错误处理，不决定重试或换号。未选中的错误仍可能重试，返回状态按网关与透传规则处理；留空不筛选。',
       customErrorCodes429Warning:
         '429 已有内置的限流处理机制。添加到自定义错误码后，将直接停止调度而非临时限流。确定要添加吗？',
       customErrorCodes529Warning:
@@ -1818,7 +1836,6 @@ empty: '未配置请求头覆写'
           }
         },
         title: '测试 {name}',
-        subtitle: '用已保存的凭据发送一次真实请求，查看回复和耗时',
         settings: '测试配置',
         results: '测试结果',
         type: '测试类型',
@@ -1831,11 +1848,6 @@ empty: '未配置请求头覆写'
         protocolNone: '未启用上游协议',
         protocolFixed: '该提供商只有这一个测试端点。',
         protocolCompact: 'Compact 测试固定使用 Responses 端点。',
-        statusReady: '等待测试',
-        statusRunning: '测试中',
-        statusSuccess: '测试成功',
-        statusFailed: '测试失败',
-        timingHint: '耗时从浏览器发出请求开始计算，包含 TokenRouter 处理和上游响应时间。首字延迟指收到第一段回复文字或第一张图片的时间。',
         metricModel: '实际模型',
         metricFirstToken: '首字延迟',
         metricTotal: '总耗时',

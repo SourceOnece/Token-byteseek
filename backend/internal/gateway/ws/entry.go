@@ -462,6 +462,13 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 				if !userAcquired {
 					return p.CloseError(1013, "too many concurrent requests, please retry later", nil)
 				}
+				// 每轮放行前复核当前身份与资金，失败时释放本轮用户槽。
+				if err := p.AuthorizeTurn(ctx); err != nil {
+					if userReleaseFunc != nil {
+						userReleaseFunc()
+					}
+					return p.CloseError(1008, "API key or billing eligibility changed; reconnect required", err)
+				}
 				providerReleaseFunc, providerAcquired, err := p.AcquireProvider(ctx, provider.ID, providerMaxConcurrency)
 				if err != nil {
 					if userReleaseFunc != nil {

@@ -97,6 +97,9 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 			if priorObserve != nil {
 				priorObserve(observation)
 			}
+			if result.UpstreamResponseModel == "" {
+				result.UpstreamResponseModel = observation.Model
+			}
 			result.HasUsage = result.HasUsage || observation.HasUsage
 			result.Served = result.Served || observation.Semantic
 			if observation.Semantic && result.FirstSemanticOutput == nil {
@@ -132,6 +135,7 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 		result.Usage = *usage
 	}
 	observation := anthropic.ObserveMessage(string(body))
+	result.UpstreamResponseModel = observation.Model
 	result.HasUsage = observation.HasUsage
 	result.Served = observation.Semantic
 	if result.Served {

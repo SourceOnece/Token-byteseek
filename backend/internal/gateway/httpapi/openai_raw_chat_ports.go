@@ -82,6 +82,7 @@ func (p *openAIRawChatAdapter) RawTarget() (string, error) {
 func (p *openAIRawChatAdapter) UserAgent() string     { return p.provider.View().GetOpenAIUserAgent() }
 func (p *openAIRawChatAdapter) GrokUserAgent() string { return grok.DefaultGrokUpstreamUserAgent() }
 func (p *openAIRawChatAdapter) SendRaw(ctx context.Context, url string, b []byte, stream bool, key, ua, identity string) (*http.Response, error) {
+	resetResponseModel(p.c)
 	return p.s.Requests.SendChat(ctx, p.c, p.provider, url, b, stream, key, ua, identity, p.tls...)
 }
 

@@ -29,13 +29,15 @@ type ClientPayload struct {
 
 // ForwardResult 保存一次 WS turn 的可观测结果和恢复输入。
 type ForwardResult struct {
-	VideoCount           int
-	VideoResolution      string
-	VideoDurationSeconds int
-	WebSearchCalls       int
-	SearchCount          int
-	AudioUsage           *protocol.AudioUsage
-	UpstreamWarning      *forwardcore.UpstreamWarning
+	// UpstreamResponseModel 保存当前 turn 的原始上游模型声明。
+	UpstreamResponseModel string
+	VideoCount            int
+	VideoResolution       string
+	VideoDurationSeconds  int
+	WebSearchCalls        int
+	SearchCount           int
+	AudioUsage            *protocol.AudioUsage
+	UpstreamWarning       *forwardcore.UpstreamWarning
 
 	RequestID                     string
 	ResponseID                    string

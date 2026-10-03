@@ -189,19 +189,20 @@ func Forward(ctx context.Context, p Ports, o Options, in Input) (*forwardcore.Op
 	imageOutputSizes := nativeResult.ImageOutputSizes
 	reasoningEffort := p.Effort(patchedBody, originalModel)
 	result := &forwardcore.OpenAIResult{
-		RequestID:       nativeResult.RequestID,
-		UpstreamHeaders: nativeResult.UpstreamHeaders,
-		ResponseID:      responseID,
-		Usage:           *usage,
-		Model:           originalModel,
-		BillingModel:    billingModel,
-		UpstreamModel:   upstreamModel,
-		ReasoningEffort: reasoningEffort,
-		Stream:          reqStream,
-		OpenAIWSMode:    false,
-		ResponseHeaders: nativeResult.UpstreamHeaders.Clone(),
-		Duration:        time.Since(startTime),
-		FirstTokenMs:    firstTokenMs,
+		RequestID:             nativeResult.RequestID,
+		UpstreamResponseModel: nativeResult.UpstreamResponseModel,
+		UpstreamHeaders:       nativeResult.UpstreamHeaders,
+		ResponseID:            responseID,
+		Usage:                 *usage,
+		Model:                 originalModel,
+		BillingModel:          billingModel,
+		UpstreamModel:         upstreamModel,
+		ReasoningEffort:       reasoningEffort,
+		Stream:                reqStream,
+		OpenAIWSMode:          false,
+		ResponseHeaders:       nativeResult.UpstreamHeaders.Clone(),
+		Duration:              time.Since(startTime),
+		FirstTokenMs:          firstTokenMs,
 	}
 	// 从共享 Responses 处理器传递搜索与图片计数；否则流式或 JSON 统计虽会运行，
 	// 但 search_price_per_1k 与图片费用不会生效。

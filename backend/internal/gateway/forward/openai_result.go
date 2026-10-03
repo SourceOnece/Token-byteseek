@@ -11,6 +11,8 @@ import (
 
 // OpenAIResult 保存 OpenAI 兼容执行的观测结果，恢复报文仍由本次执行私有持有。
 type OpenAIResult struct {
+	// UpstreamResponseModel 是协议转换前的上游模型声明；空值表示未声明。
+	UpstreamResponseModel string
 	// NativeUsage 保留非 OpenAI 执行器的互斥输入桶，避免桥接后重复扣减缓存。
 	NativeUsage *protocolcore.TokenUsage
 	RequestID   string

@@ -105,6 +105,16 @@
                           {{ t('admin.providers.dataActions') }}
                         </div>
                       </div>
+                      <button
+                        class="dropdown-item-sm gap-3 rounded-control"
+                        data-test="bulk-edit-filtered"
+                        @click="openBulkEditFilteredFromMenu"
+                      >
+                        <span class="provider-tools-menu-icon bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">
+                          <Icon name="edit" size="sm" />
+                        </span>
+                        <span class="flex-1 text-left">{{ t('admin.providers.bulkEditFiltered') }}</span>
+                      </button>
                       <button class="dropdown-item-sm gap-3 rounded-control" @click="openSyncFromCrs">
                         <span class="provider-tools-menu-icon bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
                           <Icon name="sync" size="sm" />
@@ -203,9 +213,8 @@
             {{ t('admin.providers.listPendingSyncAction') }}
           </button>
         </div>
-      </template>
-      <template #table>
         <ProviderBulkActionsBar
+          class="mt-2"
           :selected-ids="selIds"
           :usage-loading="bulkUsageLoading"
           :upstream-usage-loading="upstreamUsageBulkLoading"
@@ -220,12 +229,13 @@
           @quality-test="showQualityTest = true"
           @ticket-collect="ticketHistoryOnly = false; showTicketCollect = true"
           @edit-selected="openBulkEditSelected"
-          @edit-filtered="openBulkEditFiltered"
           @clear="clearSelection"
           @select-page="selectPage"
           @select-all-results="handleSelectAllResults"
           @toggle-schedulable="handleBulkToggleSchedulable"
         />
+      </template>
+      <template #table>
         <div ref="providerTableRef" class="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DataTable
           column-order-storage-key="admin-providers-column-order"
@@ -1988,6 +1998,12 @@ const handleManualRefresh = async () => {
 
 const closeProviderToolsDropdown = () => {
   showProviderToolsDropdown.value = false
+}
+
+// 按当前筛选条件批量编辑全部结果，入口在工具菜单里，不依赖勾选。
+const openBulkEditFilteredFromMenu = () => {
+  closeProviderToolsDropdown()
+  void openBulkEditFiltered()
 }
 
 const openSyncFromCrs = () => {

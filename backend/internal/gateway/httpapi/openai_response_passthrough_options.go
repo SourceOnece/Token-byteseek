@@ -92,6 +92,9 @@ func (p *OpenAIResponseOutput) PassthroughOptions(ctx context.Context, c *gin.Co
 		return nil
 	}
 	return upstreamopenai.PassthroughOptions{
+		ObserveModel: func(body []byte, event string) {
+			UpstreamResponseModelObserverFromContext(c).ObserveOpenAIModel(body, event)
+		},
 		StreamOptions: stream,
 		NonStream:     nonstream,
 		Headers: func(dst, src http.Header) {

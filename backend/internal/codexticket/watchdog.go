@@ -8,12 +8,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
 	"github.com/tidwall/gjson"
 )
@@ -105,10 +106,13 @@ func (r *codexTicketReceipt) observeHeader(header http.Header) {
 		r.s.queueTicketScheduling(r, true)
 	}
 }
+
 func (r *codexTicketReceipt) observeJSON(raw []byte, eventName string, model string) {
 	if r == nil || model != r.model || len(raw) > 1024*1024 || !gjson.ValidBytes(raw) {
 		return
 	}
+	// 新网关接受的非标准终态也进入原守护条件，失败/缺失状态不会被补成成功。
+	raw, eventName = normalizeTicketCompletion(raw, eventName)
 	root := gjson.ParseBytes(raw)
 	typ := root.Get("type").String()
 	completed := typ == "response.completed" || (typ == "" && eventName == "response.completed")
@@ -177,6 +181,7 @@ func (b *ticketWatchdogBody) Read(p []byte) (int, error) {
 	}
 	return n, err
 }
+
 func (b *ticketWatchdogBody) Close() error {
 	err := b.ReadCloser.Close()
 	b.mu.Lock()
@@ -184,6 +189,7 @@ func (b *ticketWatchdogBody) Close() error {
 	b.finish()
 	return err
 }
+
 func (b *ticketWatchdogBody) finish() {
 	if b.finished {
 		return
@@ -199,6 +205,7 @@ func (b *ticketWatchdogBody) finish() {
 		b.flush()
 	}
 }
+
 func (b *ticketWatchdogBody) observe(p []byte) {
 	if b.mode == 0 {
 		v := bytes.TrimSpace(p)
@@ -245,6 +252,7 @@ func (b *ticketWatchdogBody) observe(p []byte) {
 		p = p[i+1:]
 	}
 }
+
 func (b *ticketWatchdogBody) parseLine(line []byte) {
 	line = bytes.TrimSuffix(line, []byte{'\r'})
 	if len(line) == 0 {
@@ -268,6 +276,7 @@ func (b *ticketWatchdogBody) parseLine(line []byte) {
 		}
 	}
 }
+
 func (b *ticketWatchdogBody) flush() {
 	if !b.overflow {
 		b.receipt.observeJSON(b.event, b.name, b.receipt.model)

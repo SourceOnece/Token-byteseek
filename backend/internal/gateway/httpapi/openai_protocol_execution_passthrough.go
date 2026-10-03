@@ -33,7 +33,9 @@ func (s *OpenAITextExecutor) Passthrough(ctx context.Context, c *gin.Context, pr
 	input := openaiexecution.PassthroughInput{Body: body, CanonicalImageIntentBody: canonicalImageIntentBody, Model: reqModel, ImageIntentInvalidated: attemptImageIntentInvalidated, ReasoningEffort: reasoningEffort, Stream: reqStream, StartedAt: startTime}
 	p := &openAIPassthroughExecutionAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider, tls: tlsRouterMatch}}
 	result, err := openaiexecution.RunPassthrough(ctx, input, p)
-	return openaiexecution.ToForwardResult(result), err
+	out := openaiexecution.ToForwardResult(result)
+	captureResponseModel(c, out)
+	return out, err
 }
 
 func logOpenAIPassthroughInstructionsRejected(

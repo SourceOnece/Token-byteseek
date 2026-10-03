@@ -4,21 +4,27 @@ package anthropic
 import (
 	"strings"
 
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+
 	"github.com/tidwall/gjson"
 )
 
 // Observation 区分显式零用量、语义内容和终态；不推算缺失字段。
-type Observation struct{ HasUsage, Semantic, Terminal bool }
+type Observation struct {
+	HasUsage, Semantic, Terminal bool
+	Model                        string
+}
 
 func ObserveMessage(data string) Observation {
 	value := gjson.Parse(data)
-	observed := Observation{HasUsage: hasUsageFields(value.Get("usage")), Terminal: true}
+	observed := Observation{HasUsage: hasUsageFields(value.Get("usage")), Terminal: true, Model: protocol.NormalizeResponseModel(protocol.ResponseModelString([]byte(data), "model"))}
 	value.Get("content").ForEach(func(_, block gjson.Result) bool {
 		observed.Semantic = observed.Semantic || semanticBlock(block)
 		return true
 	})
 	return observed
 }
+
 func ObserveEvent(data string) Observation {
 	if strings.TrimSpace(data) == "[DONE]" {
 		return Observation{Terminal: true}
@@ -29,6 +35,9 @@ func ObserveEvent(data string) Observation {
 	case "message_start":
 		observed = ObserveMessage(value.Get("message").Raw)
 		observed.Terminal = false
+		if !gjson.Valid(data) {
+			observed.Model = ""
+		}
 	case "message_delta":
 		observed.HasUsage = hasUsageFields(value.Get("usage"))
 	case "content_block_start":
@@ -45,6 +54,7 @@ func ObserveEvent(data string) Observation {
 	}
 	return observed
 }
+
 func hasUsageFields(value gjson.Result) bool {
 	for _, field := range []string{"input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "cached_tokens", "cache_creation.ephemeral_5m_input_tokens", "cache_creation.ephemeral_1h_input_tokens"} {
 		v := value.Get(field)
@@ -54,6 +64,7 @@ func hasUsageFields(value gjson.Result) bool {
 	}
 	return false
 }
+
 func semanticBlock(value gjson.Result) bool {
 	switch value.Get("type").String() {
 	case "text":

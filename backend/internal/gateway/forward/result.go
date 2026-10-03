@@ -9,6 +9,8 @@ import (
 
 // Result 表达本次转发观测，不持有旧实体、响应连接或具体平台。
 type Result struct {
+	// UpstreamResponseModel 是协议转换前的上游模型声明；空值表示未声明。
+	UpstreamResponseModel                      string
 	RequestID                                  string
 	UpstreamHeaders                            map[string][]string
 	Usage                                      upstream.TokenUsage

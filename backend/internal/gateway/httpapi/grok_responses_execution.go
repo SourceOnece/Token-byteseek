@@ -24,7 +24,9 @@ func (s *GrokExecutor) ForwardResponses(
 	originalModel string,
 	reqStream bool,
 	startTime time.Time,
-) (*forwardcore.OpenAIResult, error) {
+) (out *forwardcore.OpenAIResult, failure error) {
+	BeginUpstreamResponseModelObservation(c)
+	defer func() { captureResponseModel(c, out) }()
 	adapter := &grokForwardAdapter{s: s, c: c, provider: provider}
 	result, err := grokforward.Forward(ctx, adapter, adapter.options(), adapter.input(body, originalModel, reqStream, startTime))
 	return result, err

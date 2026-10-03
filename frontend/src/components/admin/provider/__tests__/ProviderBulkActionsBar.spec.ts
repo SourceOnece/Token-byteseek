@@ -13,10 +13,23 @@ vi.mock('vue-i18n', async () => {
 })
 
 describe('ProviderBulkActionsBar', () => {
-  it('allows selecting all results before any row is selected', async () => {
+  it('renders nothing before any row is selected', () => {
     const wrapper = mount(ProviderBulkActionsBar, {
       props: {
         selectedIds: [],
+        totalResults: 45,
+        selectingAll: false,
+        allResultsSelected: false
+      }
+    })
+
+    expect(wrapper.find('button').exists()).toBe(false)
+  })
+
+  it('allows selecting all results once some rows are selected', async () => {
+    const wrapper = mount(ProviderBulkActionsBar, {
+      props: {
+        selectedIds: [1, 2],
         totalResults: 45,
         selectingAll: false,
         allResultsSelected: false
@@ -34,6 +47,7 @@ describe('ProviderBulkActionsBar', () => {
 
   it('emits refresh-token for selected providers', async () => {
     const wrapper = mount(ProviderBulkActionsBar, {
+      attachTo: document.body,
       props: {
         selectedIds: [44],
         totalResults: 45,
@@ -42,9 +56,18 @@ describe('ProviderBulkActionsBar', () => {
       }
     })
 
-    await wrapper.findAll('button').find((button) => button.text() === 'admin.providers.bulkActions.refreshToken')?.trigger('click')
+    // 刷新令牌收在「更多」菜单里，需要先展开菜单；菜单挂载到 body。
+    await wrapper.findAll('button').find((button) => button.text() === 'admin.providers.bulkActions.more')!.trigger('click')
+    const item = Array.from(document.body.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find(
+      (button) => button.textContent?.trim() === 'admin.providers.bulkActions.refreshToken'
+    )
+    expect(item).toBeDefined()
+    item!.click()
+    await wrapper.vm.$nextTick()
 
     expect(wrapper.emitted('refresh-token')).toHaveLength(1)
+    expect(document.body.querySelector('[role="menu"]')).toBeNull()
     expect(wrapper.text()).not.toContain('admin.providers.bulkActions.probeUpstreamBilling')
+    wrapper.unmount()
   })
 })

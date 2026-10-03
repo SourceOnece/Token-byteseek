@@ -80,6 +80,10 @@ export interface CreativeCanvasBridge {
   importToCanvas(blob: Blob, runId: string, outputIndex: number): void | Promise<void>
 }
 
+// 画布上当前操作缺少的输入：局部重绘未选图、图生图未选参考图、局部重绘尚未涂抹。
+// 画布计算这个值，输入框状态行按它显示引导文案。
+export type CreativeCanvasGuide = 'inpaintPick' | 'editPick' | 'maskPaint'
+
 // group + model 合成选项 key
 export function creativeOptionKey(option: Pick<CreativeModelOption, 'group_id' | 'model'>): string {
   return `${option.group_id}::${option.model}`

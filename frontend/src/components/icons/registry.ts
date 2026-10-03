@@ -14,6 +14,7 @@ import BookOpenIcon from './artwork/book-open'
 import BoxIcon from './artwork/box'
 import BracesIcon from './artwork/braces'
 import BrainIcon from './artwork/brain'
+import BrushIcon from './artwork/brush'
 import CalculatorIcon from './artwork/calculator'
 import CalendarIcon from './artwork/calendar'
 import ChartColumnIncreasingIcon from './artwork/chart-column-increasing'
@@ -41,6 +42,7 @@ import CreditCardIcon from './artwork/credit-card'
 import DatabaseIcon from './artwork/database'
 import DownloadIcon from './artwork/download'
 import EllipsisIcon from './artwork/ellipsis'
+import EraserIcon from './artwork/eraser'
 import ExternalLinkIcon from './artwork/external-link'
 import EyeIcon from './artwork/eye'
 import EyeOffIcon from './artwork/eye-off'
@@ -92,6 +94,7 @@ import SettingsIcon from './artwork/settings'
 import ShieldIcon from './artwork/shield'
 import ShieldCheckIcon from './artwork/shield-check'
 import ShieldXIcon from './artwork/shield-x'
+import SlidersHorizontalIcon from './artwork/sliders-horizontal'
 import SparklesIcon from './artwork/sparkles'
 import SquareIcon from './artwork/square'
 import SquareDashedIcon from './artwork/square-dashed'
@@ -238,6 +241,9 @@ export const icons = {
   circle: CircleIcon,
   square: SquareIcon,
   selection: SquareDashedIcon,
+  brush: BrushIcon,
+  eraser: EraserIcon,
+  sliders: SlidersHorizontalIcon,
   modalityVideo: VideoIcon,
   modalityPdf: FileTextIcon,
   history: HistoryIcon,

@@ -10,6 +10,7 @@ import (
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -41,7 +42,9 @@ type Bindings struct {
 	Prompt       gatewayhttp.MessagesPrompt
 	Keys         interface {
 		GetByKey(context.Context, string) (*apikey.APIKey, error)
+		Reauthenticate(context.Context, *apikey.APIKey, apikey.AuthenticationInput) (*apikey.APIKey, error)
 	}
+	Subscriptions   admission.SubscriptionReader
 	CheckFunding    func(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error
 	Blocks          *session.CyberBlocks
 	PlanRoute       func(context.Context, *apikey.APIKey, string) routing.RoutePlan
@@ -250,6 +253,24 @@ func (p *openAIWSEntryAdapter) LoadSubscription() {
 
 func (p *openAIWSEntryAdapter) Eligibility(ctx context.Context) error {
 	return p.bindings.CheckFunding(ctx, p.key, p.subscription, "", false)
+}
+
+// AuthorizeTurn 使用当前身份和订阅检查下一轮，已放行轮次仍使用原有完成快照。
+func (p *openAIWSEntryAdapter) AuthorizeTurn(ctx context.Context) error {
+	if p.bindings.Keys == nil || p.bindings.CheckFunding == nil {
+		return apikey.ErrAuthenticationStopped
+	}
+	key, err := p.bindings.Keys.Reauthenticate(ctx, p.key, apikey.AuthenticationInput{
+		ClientIP: p.call.ClientIP, CheckMemberLimits: true,
+	})
+	if err != nil {
+		return err
+	}
+	funding, err := admission.ResolveFundingFromKey(ctx, key, p.bindings.Subscriptions, true)
+	if err != nil {
+		return err
+	}
+	return p.bindings.CheckFunding(ctx, key, funding.Subscription, "", false)
 }
 
 func (p *openAIWSEntryAdapter) SessionHash(body []byte, seed string) string {

@@ -387,6 +387,7 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 			}
 			requestSpeed := gjson.GetBytes(lastWireBody, "speed").String()
 			if partial := PartialUsage(resp, streamResult, originalModel, mappedModel, startTime, requestSpeed, p.IsFailover(err)); partial != nil {
+				partial.UpstreamResponseModel = attempt.UpstreamResponseModel
 				return partial, err
 			}
 			return nil, err
@@ -407,6 +408,7 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 		Model:                       originalModel,
 		UpstreamModel:               mappedModel,
 		UpstreamResponseServiceTier: p.ServiceTier(),
+		UpstreamResponseModel:       attempt.UpstreamResponseModel,
 		Stream:                      reqStream,
 		Duration:                    time.Since(startTime),
 		FirstTokenMs:                firstTokenMs,

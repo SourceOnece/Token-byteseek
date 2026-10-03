@@ -34,10 +34,7 @@ type wsStreamAdapter struct {
 }
 
 func (p *wsStreamAdapter) BeginObservation() {
-	p.observer = UpstreamResponseModelObserverFromContext(p.request)
-	if p.observer == nil {
-		p.observer = BeginUpstreamResponseModelObservation(p.request)
-	}
+	p.observer = BeginUpstreamResponseModelObservation(p.request)
 }
 
 func (p *wsStreamAdapter) ObserveModel(body []byte, event string) {

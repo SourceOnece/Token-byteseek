@@ -40,7 +40,9 @@ func (s *OpenAITextExecutor) RawChat(
 ) (*forwardcore.OpenAIResult, error) {
 	adapter := &openAIRawChatAdapter{openAIRawFallbackAdapter: &openAIRawFallbackAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider, tls: tlsRouterMatch}, kind: openaiexecution.NativeChat}}
 	result, err := openaiexecution.RunRawChat(ctx, body, defaultMappedModel, adapter)
-	return openaiexecution.ToForwardResult(result), err
+	out := openaiexecution.ToForwardResult(result)
+	captureResponseModel(c, out)
+	return out, err
 }
 
 // MessagesViaRawChat 将 `/v1/messages` 客户端请求桥接到
@@ -63,7 +65,9 @@ func (s *OpenAITextExecutor) MessagesViaRawChat(
 ) (*forwardcore.OpenAIResult, error) {
 	adapter := &openAIRawFallbackAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider, tls: tlsRouterMatch}, kind: openaiexecution.NativeMessages}
 	result, err := openaiexecution.MessagesViaRawChat(ctx, body, defaultMappedModel, adapter)
-	return openaiexecution.ToForwardResult(result), err
+	out := openaiexecution.ToForwardResult(result)
+	captureResponseModel(c, out)
+	return out, err
 }
 
 // ResponsesViaRawChat 将 `/v1/responses` 入站请求桥接到
@@ -77,5 +81,7 @@ func (s *OpenAITextExecutor) ResponsesViaRawChat(
 ) (*forwardcore.OpenAIResult, error) {
 	adapter := &openAIRawFallbackAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider, tls: tlsRouterMatch}, kind: openaiexecution.NativeResponses}
 	result, err := openaiexecution.ResponsesViaRawChat(ctx, body, adapter)
-	return openaiexecution.ToForwardResult(result), err
+	out := openaiexecution.ToForwardResult(result)
+	captureResponseModel(c, out)
+	return out, err
 }

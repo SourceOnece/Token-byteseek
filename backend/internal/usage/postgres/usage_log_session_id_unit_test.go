@@ -33,7 +33,7 @@ func newSessionIDUsageLog(sessionID *string) *usage.UsageLog {
 // TestPrepareUsageLogInsert_SessionIDArgWiring 固定 session_id 在参数切片和类型表
 // 中的位置，确保所有 INSERT 列表保持同步；新增字段均追加在末尾。
 func TestPrepareUsageLogInsert_SessionIDArgWiring(t *testing.T) {
-	require.Len(t, usageLogInsertArgTypes, 67, "arg-type table must include upstream request ID and compaction flag")
+	require.Len(t, usageLogInsertArgTypes, 69, "arg-type table must include upstream request ID and compaction flag")
 
 	sessionID := "sess-persisted-123"
 	prepared := prepareUsageLogInsert(newSessionIDUsageLog(&sessionID))
@@ -42,19 +42,19 @@ func TestPrepareUsageLogInsert_SessionIDArgWiring(t *testing.T) {
 		"prepared args must match the arg-type table length")
 
 	// session_id 位于 created_at 之前，新增字段按顺序追加在末尾。
-	sessionArg := prepared.args[len(prepared.args)-6]
+	sessionArg := prepared.args[len(prepared.args)-8]
 	ns, ok := sessionArg.(sql.NullString)
 	require.True(t, ok, "session_id arg should be a sql.NullString, got %T", sessionArg)
 	require.True(t, ns.Valid)
 	require.Equal(t, sessionID, ns.String)
 
-	require.Equal(t, "text", usageLogInsertArgTypes[len(usageLogInsertArgTypes)-6],
+	require.Equal(t, "text", usageLogInsertArgTypes[len(usageLogInsertArgTypes)-8],
 		"session_id arg type must be text")
-	require.Equal(t, "timestamptz", usageLogInsertArgTypes[len(usageLogInsertArgTypes)-5],
+	require.Equal(t, "timestamptz", usageLogInsertArgTypes[len(usageLogInsertArgTypes)-7],
 		"created_at arg type must remain timestamptz")
-	require.Equal(t, "text", usageLogInsertArgTypes[len(usageLogInsertArgTypes)-4],
+	require.Equal(t, "text", usageLogInsertArgTypes[len(usageLogInsertArgTypes)-6],
 		"requested reasoning effort arg type must be text")
-	require.Equal(t, "boolean", usageLogInsertArgTypes[len(usageLogInsertArgTypes)-3],
+	require.Equal(t, "boolean", usageLogInsertArgTypes[len(usageLogInsertArgTypes)-5],
 		"native compaction arg type must be boolean")
 }
 
@@ -62,14 +62,14 @@ func TestPrepareUsageLogInsert_SessionIDArgWiring(t *testing.T) {
 // SQL NULL，而不是空字符串。
 func TestPrepareUsageLogInsert_SessionIDNullWhenAbsent(t *testing.T) {
 	prepared := prepareUsageLogInsert(newSessionIDUsageLog(nil))
-	sessionArg := prepared.args[len(prepared.args)-6]
+	sessionArg := prepared.args[len(prepared.args)-8]
 	ns, ok := sessionArg.(sql.NullString)
 	require.True(t, ok, "session_id arg should be a sql.NullString, got %T", sessionArg)
 	require.False(t, ns.Valid, "absent session id must be NULL, not empty string")
 
 	empty := ""
 	preparedEmpty := prepareUsageLogInsert(newSessionIDUsageLog(&empty))
-	nsEmpty := testassert.MustType[sql.NullString](preparedEmpty.args[len(preparedEmpty.args)-6])
+	nsEmpty := testassert.MustType[sql.NullString](preparedEmpty.args[len(preparedEmpty.args)-8])
 	require.False(t, nsEmpty.Valid, "empty session id must also be NULL")
 }
 
@@ -108,7 +108,7 @@ func TestPrepareUsageLogInsert_RequestedReasoningEffortArgWiring(t *testing.T) {
 		UserID: 1, APIKeyID: 2, ProviderID: 3, RequestID: "req-effort", Model: "gpt-5",
 		RequestedReasoningEffort: &requested,
 	})
-	value, ok := prepared.args[len(prepared.args)-4].(sql.NullString)
+	value, ok := prepared.args[len(prepared.args)-6].(sql.NullString)
 	require.True(t, ok)
 	require.True(t, value.Valid)
 	require.Equal(t, requested, value.String)

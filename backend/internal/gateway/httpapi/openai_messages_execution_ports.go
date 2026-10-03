@@ -314,6 +314,7 @@ func (p *openAIMessagesExecutionAdapter) PrepareTransport() {
 }
 
 func (p *openAIMessagesExecutionAdapter) Send(r *http.Request) (*http.Response, error) {
+	resetResponseModel(p.c)
 	return p.s.Requests.SendWithTLS(r, p.proxyURL, p.provider.Record.ID, p.provider.Record.Concurrency, p.s.Requests.TLSProfile(p.provider, p.tls...))
 }
 

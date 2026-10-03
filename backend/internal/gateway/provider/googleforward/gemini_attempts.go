@@ -256,7 +256,8 @@ func (s *Gemini) Forward(ctx context.Context, output Output, provider *gatewaypr
 	return &forwardcore.MessagesResult{
 		RequestID: requestID,
 
-		UpstreamHeaders: result.UpstreamHeaders,
+		UpstreamHeaders:       result.UpstreamHeaders,
+		UpstreamResponseModel: result.UpstreamResponseModel,
 
 		Usage: *usage,
 
@@ -500,7 +501,8 @@ func (s *Gemini) ForwardNative(ctx context.Context, output Output, provider *gat
 	return &forwardcore.MessagesResult{
 		RequestID: requestID,
 
-		UpstreamHeaders: result.UpstreamHeaders,
+		UpstreamHeaders:       result.UpstreamHeaders,
+		UpstreamResponseModel: result.UpstreamResponseModel,
 
 		Usage: *usage,
 

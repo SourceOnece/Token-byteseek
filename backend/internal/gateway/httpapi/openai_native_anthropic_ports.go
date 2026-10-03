@@ -91,6 +91,7 @@ func (p *openAINativeAnthropicAdapter) BuildNative(ctx context.Context, body []b
 }
 
 func (p *openAINativeAnthropicAdapter) SendNative(r *http.Request) (*http.Response, error) {
+	resetResponseModel(p.c)
 	return p.s.Requests.Transport.Do(r, p.proxyURL, p.provider.Record.ID, p.provider.Record.Concurrency)
 }
 

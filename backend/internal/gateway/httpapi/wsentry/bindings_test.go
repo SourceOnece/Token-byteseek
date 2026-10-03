@@ -19,7 +19,12 @@ func (r *entryKeyReader) GetByKey(context.Context, string) (*apikey.APIKey, erro
 	return nil, nil
 }
 
-// 投影不提前刷新策略；模型和 effort 映射不能因本次连接处理污染原认证快照。
+func (r *entryKeyReader) Reauthenticate(context.Context, *apikey.APIKey, apikey.AuthenticationInput) (*apikey.APIKey, error) {
+	r.calls++
+	return nil, apikey.ErrAPIKeyNotFound
+}
+
+// TestEntryAccessKeepsProjectionIndependentAndLazy 验证投影不提前刷新策略；模型和 effort 映射不能因本次连接处理污染原认证快照。
 func TestEntryAccessKeepsProjectionIndependentAndLazy(t *testing.T) {
 	reader := &entryKeyReader{}
 	key := &apikey.APIKey{ID: 9, UserID: 7, Key: "fixture-key", ModelMapping: map[string]string{"alias": "original"}, Group: &routing.Group{ReasoningEffortMappings: []routing.ReasoningEffortMapping{{}}}}

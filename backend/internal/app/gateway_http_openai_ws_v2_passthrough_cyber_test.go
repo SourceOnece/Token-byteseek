@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,7 +20,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/apikey/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
 
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -43,6 +46,29 @@ type openAIWSPassthroughHandlerHarness struct {
 	moderationRepo *contentModerationHandlerTestRepo
 	gatewayCache   session.GatewayCache
 	apiKey         *apikey.APIKey
+	keys           *wsTurnKeys
+}
+
+// wsTurnKeys 独立保存当前认证记录，测试中的删除不会修改连接已持有的快照。
+type wsTurnKeys struct {
+	apikey.APIKeyRepository
+	mu  sync.Mutex
+	key *apikey.APIKey
+}
+
+func (r *wsTurnKeys) GetByKeyForAuth(context.Context, string) (*apikey.APIKey, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.key == nil {
+		return nil, apikey.ErrAPIKeyNotFound
+	}
+	return apikey.CopyAPIKey(r.key), nil
+}
+
+func (r *wsTurnKeys) remove() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.key = nil
 }
 
 func (r *contentModerationHandlerTestRepo) cyberWarningSnapshot() []moderation.ContentModerationCyberWarning {
@@ -112,21 +138,25 @@ func newOpenAIWSPassthroughHandlerHarness(t *testing.T, upstreamURL string) *ope
 		AcquireUserSlotFn:     func(context.Context, int64, int, string) (bool, error) { return true, nil },
 		AcquireProviderSlotFn: func(context.Context, int64, int, string) (bool, error) { return true, nil },
 	}
-	h := newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{
-		Source: gatewaySvc, Credentials: gatewaySvcCredentialPort,
-		Funding:     newFundingAdmissionFixture(billingCacheSvc, cfg),
-		Keys:        &apikey.APIKeyService{},
-		Moderator:   moderationSvc,
-		Concurrency: gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{Logf: logging.LegacyPrintf, Event: logging.Event}), gatewayhttp.SSEPingFormatNone, time.Second), Availability: newExecutionAvailabilityForTest(providerRepo, nil, cfg), Choices: gatewaySvcChoices,
-	})
-
 	apiKey := &apikey.APIKey{
 		ID:      1851,
+		UserID:  1751,
+		Status:  "active",
 		Name:    "ws-cyber-key",
 		Key:     "sk-handler-cyber-test",
 		GroupID: &groupID,
 		User:    &identity.User{ID: 1751, Status: billing.StatusActive},
 	}
+	keys := &wsTurnKeys{key: apikey.CopyAPIKey(apiKey)}
+	keyService := testkit.NewService(keys, nil, fallbackGroupRepository{group: &routing.Group{ID: groupID, Status: "active"}}, nil, nil, nil, nil)
+	h := newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{
+		Source: gatewaySvc, Credentials: gatewaySvcCredentialPort,
+		Funding:     newFundingAdmissionFixture(billingCacheSvc, cfg),
+		Keys:        keyService,
+		Moderator:   moderationSvc,
+		Concurrency: gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{Logf: logging.LegacyPrintf, Event: logging.Event}), gatewayhttp.SSEPingFormatNone, time.Second), Availability: newExecutionAvailabilityForTest(providerRepo, nil, cfg), Choices: gatewaySvcChoices,
+	})
+
 	handlerDone := make(chan struct{})
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -153,6 +183,7 @@ func newOpenAIWSPassthroughHandlerHarness(t *testing.T, upstreamURL string) *ope
 		moderationRepo: moderationRepo,
 		gatewayCache:   gatewayCache,
 		apiKey:         apiKey,
+		keys:           keys,
 	}
 }
 
@@ -344,5 +375,54 @@ func TestOpenAIResponsesWebSocketV2PassthroughNonCyberTurnAllowsFollowup(t *test
 		require.JSONEq(t, secondPayload, string(second))
 	default:
 		t.Fatal("non-cyber follow-up did not reach upstream")
+	}
+}
+
+// TestOpenAIResponsesWebSocketDeletedKeyRejectsFollowup 验证删除后新一轮不会到达上游。
+func TestOpenAIResponsesWebSocketDeletedKeyRejectsFollowup(t *testing.T) {
+	reached := make(chan bool, 1)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := coderws.Accept(w, r, nil)
+		if err != nil {
+			reached <- false
+			return
+		}
+		defer func() { _ = conn.CloseNow() }()
+		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		defer cancel()
+		if _, _, err = conn.Read(ctx); err != nil {
+			reached <- false
+			return
+		}
+		if err = conn.Write(ctx, coderws.MessageText, []byte(`{"type":"response.completed","response":{"id":"resp_before_delete","model":"gpt-5.4","usage":{"input_tokens":2,"output_tokens":1}}}`)); err != nil {
+			reached <- false
+			return
+		}
+		_, _, err = conn.Read(ctx)
+		reached <- err == nil
+	}))
+	defer upstream.Close()
+	harness := newOpenAIWSPassthroughHandlerHarness(t, upstream.URL)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	payload := []byte(`{"type":"response.create","model":"gpt-5.4","input":"test"}`)
+	require.NoError(t, harness.clientConn.Write(ctx, coderws.MessageText, payload))
+	_, event, err := harness.clientConn.Read(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "resp_before_delete", gjson.GetBytes(event, "response.id").String())
+	harness.keys.remove()
+	require.NoError(t, harness.clientConn.Write(ctx, coderws.MessageText, payload))
+	_, _, err = harness.clientConn.Read(ctx)
+	require.Equal(t, coderws.StatusPolicyViolation, coderws.CloseStatus(err))
+	select {
+	case forwarded := <-reached:
+		require.False(t, forwarded, "删除后的第二轮不能到达上游")
+	case <-ctx.Done():
+		t.Fatal("上游连接未结束")
+	}
+	select {
+	case <-harness.handlerDone:
+	case <-ctx.Done():
+		t.Fatal("删除后的连接未结束")
 	}
 }

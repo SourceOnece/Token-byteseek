@@ -19,6 +19,7 @@ type RelayResult struct {
 	RequestModel string
 	// ResponseServiceTier 是终止响应声明的上游实际服务档位。
 	ResponseServiceTier     string
+	UpstreamResponseModel   string
 	Usage                   wire.ForwardUsage
 	RequestID               string
 	TerminalEventType       string
@@ -30,14 +31,15 @@ type RelayResult struct {
 }
 
 type RelayTurnResult struct {
-	RequestModel        string
-	ResponseServiceTier string
-	Usage               wire.ForwardUsage
-	RequestID           string
-	TerminalEventType   string
-	StartedAt           time.Time
-	Duration            time.Duration
-	FirstTokenMs        *int
+	RequestModel          string
+	ResponseServiceTier   string
+	UpstreamResponseModel string
+	Usage                 wire.ForwardUsage
+	RequestID             string
+	TerminalEventType     string
+	StartedAt             time.Time
+	Duration              time.Duration
+	FirstTokenMs          *int
 }
 
 type RelayExit struct {

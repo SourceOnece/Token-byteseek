@@ -111,6 +111,9 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 		if priorObserve != nil {
 			priorObserve(observation)
 		}
+		if result.UpstreamResponseModel == "" {
+			result.UpstreamResponseModel = observation.Model
+		}
 		result.HasUsage = result.HasUsage || observation.HasUsage
 		result.Served = result.Served || observation.Semantic
 		if observation.Semantic && result.FirstSemanticOutput == nil {

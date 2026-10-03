@@ -392,7 +392,8 @@ onBeforeUnmount(() => {
 }
 
 .header-status-user-button {
-  @apply flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-primary-200/70 transition-shadow hover:ring-primary-300 dark:ring-dark-600 dark:hover:ring-dark-400;
+  /* 头像边线使用中性灰，悬停时与通用控件保持一致。 */
+  @apply flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-gray-200 transition-shadow hover:ring-black/20 dark:ring-dark-600 dark:hover:ring-dark-500;
 }
 
 /* 菜单较长时不超出视口，超出部分在面板内滚动。 */

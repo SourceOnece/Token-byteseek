@@ -164,6 +164,7 @@ vi.mock('fabric', () => {
   return {
     Canvas: MockCanvas,
     FabricImage: MockImage,
+    InteractiveFabricObject: { ownDefaults: {} },
     PencilBrush: MockBrush,
     Point: MockPoint,
     Rect: MockObject,

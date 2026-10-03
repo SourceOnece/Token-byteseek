@@ -756,3 +756,24 @@ func TestObserveUpstreamMessage_ResponseServiceTierOnlyFromTerminalEvents(t *tes
 	)
 	require.Equal(t, "", second.responseServiceTier)
 }
+
+// TestRelayResponseModelsAreIsolated 验证交错 turn 不共享模型，终态可修正首次声明。
+func TestRelayResponseModelsAreIsolated(t *testing.T) {
+	state := &relayState{requestModel: "sent"}
+	start := time.Now()
+	observe := func(body string) observedUpstreamEvent {
+		return observeUpstreamMessage(state, []byte(body), start, time.Now, nil, nil)
+	}
+	observe(`{"type":"response.created","response":{"id":"a","model":"early-a"}}`)
+	observe(`{"type":"response.created","response":{"id":"b","model":"model-b"}}`)
+	a := observe(`{"type":"response.completed","response":{"id":"a","model":"final-a"}}`)
+	b := observe(`{"type":"response.completed","response":{"id":"b"}}`)
+	require.Equal(t, "final-a", a.responseModel)
+	require.Equal(t, "model-b", b.responseModel)
+	var turn RelayTurnResult
+	emitTurnComplete(func(value RelayTurnResult) { turn = value }, state, a)
+	require.Equal(t, "final-a", turn.UpstreamResponseModel)
+	observe(`{"type":"response.created","response":{"id":"c"}}`)
+	c := observe(`{"type":"response.completed","response":{"id":"c"}}`)
+	require.Empty(t, c.responseModel)
+}

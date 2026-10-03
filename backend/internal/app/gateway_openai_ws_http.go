@@ -8,6 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
@@ -29,9 +30,10 @@ func provideResponsesWSHTTP(
 	cfg *config.Config,
 	activity *gatewayRequestActivity,
 	choices *selection.Compatible, planner *gatewayprovider.RoutePlanner,
+	subscriptions *billing.SubscriptionService,
 ) *gatewayhttp.ResponsesWSHandler {
 	options := responsesWSOptions(cfg)
-	b := responsesWSBindings(source, credentials, funding, keys, common, prompt, blocks, choices, planner)
+	b := responsesWSBindings(source, credentials, funding, keys, common, prompt, blocks, choices, planner, subscriptions)
 	result := wsentry.New(options, b)
 	result.BindRequestActivity(activity.Enter)
 	return result
@@ -54,11 +56,12 @@ func responsesWSOptions(cfg *config.Config) gatewayhttp.ResponsesWSOptions {
 }
 
 // responsesWSBindings 仅接入已有共享状态及每轮单步端口。
-func responsesWSBindings(source *gatewayhttp.OpenAIWebSocketExecutor, credentials *gatewayhttp.RequestCredentialExecutor, funding *admission.FundingAdmission, keys *apikey.APIKeyService, common openaiattempt.Bindings, prompt *promptpolicy.Service, blocks *session.CyberBlocks, choices *selection.Compatible, planner *gatewayprovider.RoutePlanner) wsentry.Bindings {
+func responsesWSBindings(source *gatewayhttp.OpenAIWebSocketExecutor, credentials *gatewayhttp.RequestCredentialExecutor, funding *admission.FundingAdmission, keys *apikey.APIKeyService, common openaiattempt.Bindings, prompt *promptpolicy.Service, blocks *session.CyberBlocks, choices *selection.Compatible, planner *gatewayprovider.RoutePlanner, subscriptions admission.SubscriptionReader) wsentry.Bindings {
 	b := wsentry.Bindings{
-		Common: common,
-		Prompt: prompt,
-		Blocks: blocks,
+		Common:        common,
+		Subscriptions: subscriptions,
+		Prompt:        prompt,
+		Blocks:        blocks,
 		Dependencies: gatewayhttp.OpenAIDependencies{
 			Handler:     true,
 			Gateway:     source != nil,

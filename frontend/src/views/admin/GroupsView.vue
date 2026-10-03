@@ -164,10 +164,6 @@
                   class="ml-1 font-medium text-emerald-600 dark:text-emerald-400"
                   >{{ row.active_provider_count || 0 }}</span
                 >
-                <span
-                  class="ml-1 inline-flex items-center rounded-compact bg-gray-100 px-1.5 py-0.5 font-medium text-gray-800 dark:bg-dark-600 dark:text-gray-300"
-                  >{{ t("admin.groups.providersUnit") }}</span
-                >
               </div>
               <div v-if="row.rate_limited_provider_count">
                 <span class="text-gray-500 dark:text-gray-400">{{
@@ -177,10 +173,6 @@
                   class="ml-1 font-medium text-amber-600 dark:text-amber-400"
                   >{{ row.rate_limited_provider_count }}</span
                 >
-                <span
-                  class="ml-1 inline-flex items-center rounded-compact bg-gray-100 px-1.5 py-0.5 font-medium text-gray-800 dark:bg-dark-600 dark:text-gray-300"
-                  >{{ t("admin.groups.providersUnit") }}</span
-                >
               </div>
               <div>
                 <span class="text-gray-500 dark:text-gray-400">{{
@@ -189,10 +181,6 @@
                 <span
                   class="ml-1 font-medium text-gray-700 dark:text-gray-300"
                   >{{ row.provider_count || 0 }}</span
-                >
-                <span
-                  class="ml-1 inline-flex items-center rounded-compact bg-gray-100 px-1.5 py-0.5 font-medium text-gray-800 dark:bg-dark-600 dark:text-gray-300"
-                  >{{ t("admin.groups.providersUnit") }}</span
                 >
               </div>
             </div>

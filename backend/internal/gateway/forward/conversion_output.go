@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
@@ -17,6 +18,8 @@ import (
 // ResponsesBuffered 保留当前转换链的事件推进、用量与退出顺序。
 func ResponsesBuffered(in Response, out Output, originalModel, mappedModel string, reasoningEffort *string, startTime time.Time, clientToolMapping bridge.ResponsesClientToolMapping) (*Result, error) {
 	requestID := in.RequestID
+	// 每次转换独立采集原始模型声明，避免客户端别名覆盖上游事实。
+	var modelObserver protocol.ResponseModelObserver
 
 	scanner := in.Lines
 
@@ -38,6 +41,7 @@ func ResponsesBuffered(in Response, out Output, originalModel, mappedModel strin
 			continue
 		}
 
+		modelObserver.ObserveAnthropic([]byte(payload))
 		var event protocolanthropic.AnthropicStreamEvent
 		if err := json.Unmarshal([]byte(payload), &event); err != nil {
 			out.Observe("warn", "forward_as_responses buffered: failed to parse event", err, requestID, eventType)
@@ -118,20 +122,23 @@ func ResponsesBuffered(in Response, out Output, originalModel, mappedModel strin
 	}
 
 	return &Result{
-		RequestID:       requestID,
-		UpstreamHeaders: in.Headers,
-		Usage:           usage,
-		Model:           originalModel,
-		UpstreamModel:   mappedModel,
-		ReasoningEffort: reasoningEffort,
-		Stream:          false,
-		Duration:        time.Since(startTime),
+		RequestID:             requestID,
+		UpstreamHeaders:       in.Headers,
+		Usage:                 usage,
+		Model:                 originalModel,
+		UpstreamModel:         mappedModel,
+		UpstreamResponseModel: modelObserver.Model(),
+		ReasoningEffort:       reasoningEffort,
+		Stream:                false,
+		Duration:              time.Since(startTime),
 	}, nil
 }
 
 // ResponsesStreaming 保留当前转换链的事件推进、用量与退出顺序。
 func ResponsesStreaming(in Response, out Output, originalModel, mappedModel string, reasoningEffort *string, startTime time.Time, clientToolMapping bridge.ResponsesClientToolMapping) (*Result, error) {
 	requestID := in.RequestID
+	// 每次转换独立采集原始模型声明，避免客户端别名覆盖上游事实。
+	var modelObserver protocol.ResponseModelObserver
 
 	out.CopyHeaders(in.Headers)
 	out.BeginStream()
@@ -147,15 +154,16 @@ func ResponsesStreaming(in Response, out Output, originalModel, mappedModel stri
 
 	resultWithUsage := func() *Result {
 		return &Result{
-			RequestID:       requestID,
-			UpstreamHeaders: in.Headers,
-			Usage:           usage,
-			Model:           originalModel,
-			UpstreamModel:   mappedModel,
-			ReasoningEffort: reasoningEffort,
-			Stream:          true,
-			Duration:        time.Since(startTime),
-			FirstTokenMs:    firstTokenMs,
+			RequestID:             requestID,
+			UpstreamHeaders:       in.Headers,
+			Usage:                 usage,
+			Model:                 originalModel,
+			UpstreamModel:         mappedModel,
+			UpstreamResponseModel: modelObserver.Model(),
+			ReasoningEffort:       reasoningEffort,
+			Stream:                true,
+			Duration:              time.Since(startTime),
+			FirstTokenMs:          firstTokenMs,
 		}
 	}
 
@@ -235,6 +243,7 @@ func ResponsesStreaming(in Response, out Output, originalModel, mappedModel stri
 			continue
 		}
 
+		modelObserver.ObserveAnthropic([]byte(payload))
 		var event protocolanthropic.AnthropicStreamEvent
 		if err := json.Unmarshal([]byte(payload), &event); err != nil {
 			out.Observe("warn", "forward_as_responses stream: failed to parse event", err, requestID, eventType)
@@ -258,6 +267,8 @@ func ResponsesStreaming(in Response, out Output, originalModel, mappedModel stri
 // ChatBuffered 保留当前转换链的事件推进、用量与退出顺序。
 func ChatBuffered(in Response, out Output, originalModel, mappedModel string, reasoningEffort *string, startTime time.Time) (*Result, error) {
 	requestID := in.RequestID
+	// 每次转换独立采集原始模型声明，避免客户端别名覆盖上游事实。
+	var modelObserver protocol.ResponseModelObserver
 
 	scanner := in.Lines
 
@@ -279,6 +290,7 @@ func ChatBuffered(in Response, out Output, originalModel, mappedModel string, re
 			continue
 		}
 
+		modelObserver.ObserveAnthropic([]byte(payload))
 		var event protocolanthropic.AnthropicStreamEvent
 		if err := json.Unmarshal([]byte(payload), &event); err != nil {
 			continue
@@ -353,20 +365,23 @@ func ChatBuffered(in Response, out Output, originalModel, mappedModel string, re
 	}
 
 	return &Result{
-		RequestID:       requestID,
-		UpstreamHeaders: in.Headers,
-		Usage:           usage,
-		Model:           originalModel,
-		UpstreamModel:   mappedModel,
-		ReasoningEffort: reasoningEffort,
-		Stream:          false,
-		Duration:        time.Since(startTime),
+		RequestID:             requestID,
+		UpstreamHeaders:       in.Headers,
+		Usage:                 usage,
+		Model:                 originalModel,
+		UpstreamModel:         mappedModel,
+		UpstreamResponseModel: modelObserver.Model(),
+		ReasoningEffort:       reasoningEffort,
+		Stream:                false,
+		Duration:              time.Since(startTime),
 	}, nil
 }
 
 // ChatStreaming 保留当前转换链的事件推进、用量与退出顺序。
 func ChatStreaming(in Response, out Output, originalModel, mappedModel string, reasoningEffort *string, startTime time.Time, includeUsage bool) (*Result, error) {
 	requestID := in.RequestID
+	// 每次转换独立采集原始模型声明，避免客户端别名覆盖上游事实。
+	var modelObserver protocol.ResponseModelObserver
 
 	out.CopyHeaders(in.Headers)
 	out.BeginStream()
@@ -385,15 +400,16 @@ func ChatStreaming(in Response, out Output, originalModel, mappedModel string, r
 
 	resultWithUsage := func() *Result {
 		return &Result{
-			RequestID:       requestID,
-			UpstreamHeaders: in.Headers,
-			Usage:           usage,
-			Model:           originalModel,
-			UpstreamModel:   mappedModel,
-			ReasoningEffort: reasoningEffort,
-			Stream:          true,
-			Duration:        time.Since(startTime),
-			FirstTokenMs:    firstTokenMs,
+			RequestID:             requestID,
+			UpstreamHeaders:       in.Headers,
+			Usage:                 usage,
+			Model:                 originalModel,
+			UpstreamModel:         mappedModel,
+			UpstreamResponseModel: modelObserver.Model(),
+			ReasoningEffort:       reasoningEffort,
+			Stream:                true,
+			Duration:              time.Since(startTime),
+			FirstTokenMs:          firstTokenMs,
 		}
 	}
 
@@ -452,6 +468,7 @@ func ChatStreaming(in Response, out Output, originalModel, mappedModel string, r
 			continue
 		}
 
+		modelObserver.ObserveAnthropic([]byte(payload))
 		var event protocolanthropic.AnthropicStreamEvent
 		if err := json.Unmarshal([]byte(payload), &event); err != nil {
 			continue
@@ -485,6 +502,7 @@ func ChatStreaming(in Response, out Output, originalModel, mappedModel string, r
 
 	return resultWithUsage(), nil
 }
+
 func AppendRawJSON(existing json.RawMessage, fragment string) json.RawMessage {
 	var existingObject map[string]json.RawMessage
 	isEmptyObject := json.Unmarshal(existing, &existingObject) == nil && existingObject != nil && len(existingObject) == 0

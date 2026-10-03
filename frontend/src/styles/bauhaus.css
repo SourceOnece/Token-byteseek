@@ -79,6 +79,16 @@ html[data-visual-theme='bauhaus'] .provider-choice-card { border: 2px solid var(
 html[data-visual-theme='bauhaus'] .provider-choice-card:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--bh-shadow-ink); }
 html[data-visual-theme='bauhaus'] .provider-choice-card:disabled { box-shadow: none; }
 
+/* 创作台新浮层共用包豪斯表面和硬阴影，默认皮肤仍用上游的半透明配方。 */
+html[data-visual-theme='bauhaus'] .canvas-island { background: var(--bh-surface); border: 2px solid var(--bh-ink); border-radius: 0; box-shadow: var(--bh-shadow) !important; backdrop-filter: none; }
+html[data-visual-theme='bauhaus'] .provider-bulk-bar { background: var(--bh-surface); border: 2px solid var(--bh-ink); box-shadow: var(--bh-shadow-sm); }
+html[data-visual-theme='bauhaus'] :is(.canvas-tool-btn, .composer-chip, .param-chip) { border-radius: 0; }
+html[data-visual-theme='bauhaus'] :is(.canvas-tool-btn-active, .composer-chip-active, .param-chip-active) { background: var(--bh-yellow); color: #141414; }
+html[data-visual-theme='bauhaus'] .composer-shell :is(.composer-chip-active, .param-chip-active, .composer-option-active),
+html[data-visual-theme='bauhaus'] .composer-shell :is(.composer-chip-active, .param-chip-active, .composer-option-active):is(:hover, :focus-visible) { background: var(--bh-yellow); color: #141414; border-color: var(--bh-ink); }
+html[data-visual-theme='bauhaus'] .composer-shell .chip-popover { background: var(--bh-surface); border: 2px solid var(--bh-ink); border-radius: 0; box-shadow: var(--bh-shadow-sm); }
+html[data-visual-theme='bauhaus'] .canvas-tool-btn:active:not(:disabled) { transform: translate(2px, 2px); }
+
 html[data-visual-theme='bauhaus'] .site-header { background: var(--bh-surface); border-bottom: 3px solid var(--bh-ink); }
 html[data-visual-theme='bauhaus'] .site-header::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; background: linear-gradient(90deg, #e1251b 0 33.33%, #ffcc00 33.33% 66.66%, #1450a3 66.66%); pointer-events: none; }
 html[data-visual-theme='bauhaus'] :is(.sidebar, .app-sidebar) { border-right: 2px solid var(--bh-ink); background: var(--bh-surface); }
@@ -88,6 +98,9 @@ html[data-visual-theme='bauhaus'] ::-webkit-scrollbar-thumb { background-color: 
 html[data-visual-theme='bauhaus'] { scrollbar-color: #c7c7c7 transparent; }
 html.dark[data-visual-theme='bauhaus'] .rank-podium { box-shadow: var(--bh-shadow) !important; }
 html[data-visual-theme='bauhaus'] .page-title { font-weight: 900; }
+/* 模型不一致沿包豪斯异常红；默认主题保留上游橙色。 */
+html[data-visual-theme='bauhaus'] .response-model-observation { color: var(--bh-red); }
+html.dark[data-visual-theme='bauhaus'] .response-model-observation { color: #f87171; }
 html[data-visual-theme='bauhaus'] .page-title::before { content: ''; display: inline-block; width: .5rem; height: 1em; margin-right: .5rem; background: #e1251b; vertical-align: -.1em; }
 html[data-visual-theme='bauhaus'] :is(.table-header, .table th) { background: var(--bh-yellow); color: #141414; border-bottom: 2px solid var(--bh-ink); }
 html[data-visual-theme='bauhaus'] .table-header th { color: #141414; font-weight: 800; }

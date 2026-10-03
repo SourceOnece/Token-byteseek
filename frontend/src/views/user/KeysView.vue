@@ -1189,22 +1189,13 @@
             left: dropdownPosition.left + 'px'
           }"
         >
-          <!-- Search box -->
+          <!-- 分组搜索与页头共用输入框组件，背景和焦点样式随全局主题更新。 -->
           <div class="border-b border-gray-100 p-2 dark:border-dark-700">
-            <div class="relative">
-              <Icon
-                name="search"
-                size="sm"
-                class="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                v-model="groupSearchQuery"
-                type="text"
-                class="w-full rounded-control border border-primary-900/10 bg-gray-50 py-1.5 pl-8 pr-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary-900/10 focus:ring-2 focus:ring-black/10 dark:border-dark-600 dark:bg-dark-700 dark:text-white dark:placeholder-gray-500 dark:focus:border-primary-600 dark:focus:ring-primary-600"
-                :placeholder="t('keys.searchGroup')"
-                @click.stop
-              />
-            </div>
+            <SearchInput
+              v-model="groupSearchQuery"
+              :placeholder="t('keys.searchGroup')"
+              @click.stop
+            />
           </div>
           <!-- Group list -->
           <div class="max-h-80 overflow-y-auto p-1.5">

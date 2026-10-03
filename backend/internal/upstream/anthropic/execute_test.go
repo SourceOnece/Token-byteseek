@@ -75,7 +75,7 @@ func executeInput(target *Target, stream bool) upstream.AttemptInput {
 func TestExecuteNonStreamObservedZero(t *testing.T) {
 	for _, pass := range []bool{false, true} {
 		t.Run(fmt.Sprint(pass), func(t *testing.T) {
-			payload := `{"id":"msg","type":"message","model":"claude-test","content":[{"type":"text","text":"ok"}],"usage":{"input_tokens":0,"output_tokens":0},"future":{"keep":true}}`
+			payload := `{"id":"msg","type":"message","model":"claude-runtime","content":[{"type":"text","text":"ok"}],"usage":{"input_tokens":0,"output_tokens":0},"future":{"keep":true}}`
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("x-request-id", "local-request")
 				_, _ = io.WriteString(w, payload)
@@ -90,6 +90,7 @@ func TestExecuteNonStreamObservedZero(t *testing.T) {
 			require.NotNil(t, result.FirstSemanticOutput)
 			require.Nil(t, result.FirstTokenMs)
 			require.Equal(t, "local-request", result.RequestID)
+			require.Equal(t, "claude-runtime", result.UpstreamResponseModel)
 			require.Equal(t, payload, sink.body.String())
 			require.EqualValues(t, 1, closed.Load())
 			require.True(t, sink.events[0].Semantic)
@@ -103,7 +104,7 @@ func TestExecuteStreamingProgressAndPartialFailure(t *testing.T) {
 			t.Run(fmt.Sprintf("pass=%v/partial=%v", pass, partial), func(t *testing.T) {
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					w.Header().Set("Content-Type", "text/event-stream")
-					_, _ = io.WriteString(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":0}}}\n\n")
+					_, _ = io.WriteString(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-runtime\",\"usage\":{\"input_tokens\":0}}}\n\n")
 					_ = http.NewResponseController(w).Flush()
 					_, _ = io.WriteString(w, "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"visible\"}}\n\n")
 					if partial {
@@ -143,6 +144,7 @@ func TestExecuteStreamingProgressAndPartialFailure(t *testing.T) {
 				} else if !partial {
 					require.NoError(t, err)
 				}
+				require.Equal(t, "claude-runtime", result.UpstreamResponseModel)
 				// passthrough 对终态 error 保持原返回行为，不能借新接口改变旧策略。
 				require.True(t, result.HasUsage)
 				require.True(t, result.Served)

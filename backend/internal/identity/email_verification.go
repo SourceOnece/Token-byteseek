@@ -13,16 +13,21 @@ type EmailCache interface {
 	GetVerificationCode(ctx context.Context, email string) (*VerificationCodeData, error)
 	SetVerificationCode(ctx context.Context, email string, data *VerificationCodeData, ttl time.Duration) error
 	DeleteVerificationCode(ctx context.Context, email string) error
+	// 校验前原子预占尝试次数，不能使用读取后写回替代。
+	IncrVerificationCodeAttempts(ctx context.Context, email string) (int, error)
 
 	// Notify email verification code methods
 	GetNotifyVerifyCode(ctx context.Context, email string) (*VerificationCodeData, error)
 	SetNotifyVerifyCode(ctx context.Context, email string, data *VerificationCodeData, ttl time.Duration) error
 	DeleteNotifyVerifyCode(ctx context.Context, email string) error
+	IncrNotifyVerifyCodeAttempts(ctx context.Context, email string) (int, error)
 
 	// Password reset token methods
 	GetPasswordResetToken(ctx context.Context, email string) (*PasswordResetTokenData, error)
 	SetPasswordResetToken(ctx context.Context, email string, data *PasswordResetTokenData, ttl time.Duration) error
 	DeletePasswordResetToken(ctx context.Context, email string) error
+	// 原子比较摘要并消费，保证并发重置只有一个成功。
+	ConsumePasswordResetToken(ctx context.Context, email, tokenHash string) (bool, error)
 
 	// Password reset email cooldown methods
 	// Returns true if in cooldown period (email was sent recently)
@@ -44,6 +49,7 @@ type VerificationCodeData struct {
 
 // PasswordResetTokenData represents password reset token data
 type PasswordResetTokenData struct {
+	// Token 保存 SHA-256 摘要，不能用于重发旧链接。
 	Token     string
 	CreatedAt time.Time
 }

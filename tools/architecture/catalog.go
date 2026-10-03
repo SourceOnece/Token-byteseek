@@ -90,7 +90,7 @@ github.com/stretchr/testify/suite`},
 
 var moduleDependencies = map[string]dependencySet{
 	"internal/codexticket": {Production: `ent/... internal/codexticket/... internal/egress internal/gateway/clientmeta internal/gateway/forward
-internal/provider internal/provider/postgres internal/scheduler internal/settings internal/server/httpx internal/upstream internal/upstream/openai
+internal/provider internal/provider/postgres internal/scheduler internal/settings internal/server/httpx internal/upstream internal/upstream/openai internal/protocol/openai
 internal/infra/httpclient/... internal/infra/telemetry/... internal/pkg/`, Tests: `internal/testutil/assertion`},
 	"internal/modelcatalog": {Production: `internal/modelcatalog internal/modelcatalog/provider internal/billing/pricing
 internal/egress internal/infra/httpclient/... internal/infra/telemetry/...`, Tests: `internal/billing internal/billing/provider

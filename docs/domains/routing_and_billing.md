@@ -167,6 +167,8 @@ Grok 媒体、搜索和 Voice 使用独立计价维度。视频按输出秒计�
 <a id="usage_settlement"></a>
 ## 用量结算
 
+0.2.3-bh.001 跟进 TokenFlux：API Key 软删除不能免除已经通过鉴权、实际发生的在途消费，完成结算仍更新对应 Key/用户/订阅等事实。新请求拒绝已删除 Key；WebSocket 后续轮次重新鉴权，不能凭旧连接无限继续请求。此处不引入 sub2api 的另一套普通请求资金预占机制。
+
 `gateway/completion.Recorder` 负责供应商用量归一化、模型与请求 ID 选择和 Usage Log 构造；资金预检、查价、分配和提交后资金处理由 billing 承担。`Eligibility.Check` 只处理资金准入，`gateway/admission.FundingAdmission` 固定其与 scheduler RPM 的执行顺序：资金通过后才累计 RPM；Qoder 等待后仅复查资金。
 
 用户日/周/月平台额度已移除，不再授予、预检、结算累加或后台刷新。余额、订阅、团队、Key 限额和提供商上游额度继续各自生效。

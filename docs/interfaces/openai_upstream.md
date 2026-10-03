@@ -64,6 +64,12 @@ OpenAI 兼容请求的显式粘性会话头按 `session-id`、`session_id`、`co
 
 ## 协议与传输
 
+0.2.3-bh.001 将 Responses 生命周期事件统一规范化：带明确 Response 身份的裸对象可补事件外壳，旧 response.done 根据实际 status 转为标准终态；未知/缺失状态不猜成功，重复成功终态不重复下发，但仍读取用量与模型观测。HTTP 与 WS 共用纯规则。票据候选、复验和守护只对旁观副本使用同一规范化，保留原合格长度、模型和完整性要求，不改变业务输出字节。
+
+标准 Responses HTTP 成功终态后继续读取最多一秒的尾部数据，以接收紧随其后的补充用量；正常 EOF 立即结束。进入此阶段后不再向客户端发心跳，也不按普通空闲超时惩罚已完成的账号。超过一秒仍不关闭的上游 Body 会关闭，避免复用长连接让账号槽位长时间占用；不承诺收取该窗口之后才补报的用量。失败/缺少终态不使用成功收尾规则。
+
+WebSocket 每轮请求重新验证 API Key 和访问资格；删除/禁用等变化在后续轮次生效。已经发生的消费仍走完成结算，不能把重鉴权当作撤销既有费用。
+
 兼容文本的 Messages、Chat、Raw Chat、原生 Anthropic 与 passthrough 已由 `gateway/httpapi.OpenAITextExecutor` 接入；请求构造、Header、TLS 与客户端策略使用同一 `OpenAIRequests`。Responses、WS 和 Live分别由原生执行器负责，app 固定绑定共享请求、输出、凭据与连接资源；平台执行、重试边界及完成资格保持原约定。
 
 Responses、Chat、Messages 的入站 HTTP 与单次尝试运行时由 app 直接装配；`gateway/httpapi/openaiattempt` 复用同一选择、反馈、完成及槽位能力。重试循环仍由 `gateway/text` 唯一拥有，跨模式切换从原始报文派生 reasoning 清理结果，不污染后续请求。WS 入站、每轮提供商目标与完成 hooks 由原生 wsentry 绑定，Forward/WS 结果投影归 gateway/provider；保留终态、恢复报文、响应 turn-state 和每轮计费时刻。

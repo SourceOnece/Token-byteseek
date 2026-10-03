@@ -42,7 +42,9 @@ func (s *OpenAITextExecutor) Chat(
 func (s *OpenAITextExecutor) ChatWithCacheIsolation(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, body []byte, promptCacheKey, defaultMappedModel string, compatPromptCacheTenantIsolated bool, tlsRouterMatch ...egress.TLSFingerprintRouterMatchResult) (*forwardcore.OpenAIResult, error) {
 	p := &openAIChatExecutionAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider, tls: tlsRouterMatch}}
 	result, err := openaiexecution.RunChat(ctx, body, promptCacheKey, defaultMappedModel, compatPromptCacheTenantIsolated, p)
-	return openaiexecution.ToForwardResult(result), err
+	out := openaiexecution.ToForwardResult(result)
+	captureResponseModel(c, out)
+	return out, err
 }
 
 func normalizeResponsesRequestServiceTier(req *protocolopenai.ResponsesRequest) {

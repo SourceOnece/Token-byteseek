@@ -1480,6 +1480,7 @@ func userExistsForBilling(ctx context.Context, tx *sql.Tx, userID int64) (bool, 
 }
 
 func incrementUsageBillingAPIKeyQuota(ctx context.Context, tx *sql.Tx, apiKeyID int64, amount float64) (bool, error) {
+	// 已放行请求必须累计到原 Key；软删除只撤销后续准入，不撤销已产生的费用。
 	// 配额列与余额列共享 8 位金额刻度，派生金额也必须在 SQL 前量化。
 	amount = billing.QuantizeUsageBillingAmount(amount)
 	var exhausted bool
@@ -1487,7 +1488,7 @@ func incrementUsageBillingAPIKeyQuota(ctx context.Context, tx *sql.Tx, apiKeyID 
 		UPDATE api_keys
 		SET quota_used = quota_used + $1,
 			status = CASE
-				WHEN quota > 0
+				WHEN deleted_at IS NULL AND quota > 0
 					AND status = $3
 					AND quota_used < quota
 					AND quota_used + $1 >= quota
@@ -1495,7 +1496,7 @@ func incrementUsageBillingAPIKeyQuota(ctx context.Context, tx *sql.Tx, apiKeyID 
 				ELSE status
 			END,
 			updated_at = NOW()
-		WHERE id = $2 AND deleted_at IS NULL
+		WHERE id = $2
 		RETURNING quota > 0 AND quota_used >= quota AND quota_used - $1 < quota
 	`, amount, apiKeyID, "active", "quota_exhausted").Scan(&exhausted)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -1507,6 +1508,7 @@ func incrementUsageBillingAPIKeyQuota(ctx context.Context, tx *sql.Tx, apiKeyID 
 	return exhausted, nil
 }
 
+// incrementUsageBillingAPIKeyRateLimit 保留软删除 Key 的在途用量，避免整笔资金事务回滚。
 func incrementUsageBillingAPIKeyRateLimit(ctx context.Context, tx *sql.Tx, apiKeyID int64, cost float64) error {
 	cost = billing.QuantizeUsageBillingAmount(cost)
 	res, err := tx.ExecContext(ctx, `
@@ -1518,7 +1520,7 @@ func incrementUsageBillingAPIKeyRateLimit(ctx context.Context, tx *sql.Tx, apiKe
 			window_1d_start = CASE WHEN window_1d_start IS NULL OR window_1d_start + INTERVAL '24 hours' <= NOW() THEN date_trunc('day', NOW()) ELSE window_1d_start END,
 			window_7d_start = CASE WHEN window_7d_start IS NULL OR window_7d_start + INTERVAL '7 days' <= NOW() THEN date_trunc('day', NOW()) ELSE window_7d_start END,
 			updated_at = NOW()
-		WHERE id = $2 AND deleted_at IS NULL
+		WHERE id = $2
 	`, cost, apiKeyID)
 	if err != nil {
 		return err

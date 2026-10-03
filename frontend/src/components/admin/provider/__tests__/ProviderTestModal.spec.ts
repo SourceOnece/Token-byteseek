@@ -77,7 +77,6 @@ function mountModal(provider: Record<string, unknown> = {
       stubs: {
         BaseDialog: { template: '<div><slot name="header-actions" /><slot /></div>' },
         Select: { props: ['disabled'], template: '<div class="select-stub" :data-disabled="disabled ? \'true\' : \'false\'"></div>' },
-        HelpTooltip: true,
         PlatformIcon: true,
         TextArea: {
           props: ['modelValue'],
@@ -348,7 +347,7 @@ describe('ProviderTestModal', () => {
     expect(JSON.parse((global.fetch as any).mock.calls[0][1].body)).not.toHaveProperty('protocol')
   })
 
-  it('展示回复、实际模型、状态和过程日志', async () => {
+  it('展示回复、实际模型和过程日志', async () => {
     getAvailableModels.mockResolvedValue([{ id: 'gpt-5.4', display_name: 'GPT-5.4' }])
     global.fetch = vi.fn().mockResolvedValue(
       createStreamResponse([
@@ -365,7 +364,7 @@ describe('ProviderTestModal', () => {
     await wrapper.find('[data-testid="provider-test-start"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('[data-testid="provider-test-status"]').text()).toContain('admin.providers.testDialog.statusSuccess')
+    expect((wrapper.vm as any).singleRun.status).toBe('success')
     expect(wrapper.find('[data-testid="provider-test-output"]').text()).toContain('hello')
     expect(wrapper.text()).toContain('gpt-5.4-mapped')
     expect((wrapper.vm as any).singleRun.firstTokenMs).not.toBeNull()

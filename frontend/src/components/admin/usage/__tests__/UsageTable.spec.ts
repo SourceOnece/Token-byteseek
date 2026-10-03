@@ -462,6 +462,37 @@ describe('admin UsageTable tooltip', () => {
     }
   })
 
+  // 上游声明只在后端确认不同后显示，未知数据不补成请求模型。
+  it.each([
+    { mismatch: true, response: 'runtime-model-' + 'v'.repeat(160), visible: true },
+    { mismatch: false, response: 'sent-model', visible: false },
+    { mismatch: null, response: null, visible: false },
+    { mismatch: undefined, response: undefined, visible: false },
+    { mismatch: true, response: '', visible: false },
+  ])('renders the response model only on a known mismatch: $mismatch/$visible', ({ mismatch, response, visible }) => {
+    const wrapper = mount(UsageTable, {
+      props: {
+        data: [{ ...baseImageRow, model: 'public-model', upstream_model: 'sent-model',
+          model_mapping_chain: 'public-model→sent-model',
+          upstream_response_model: response, upstream_model_mismatch: mismatch }],
+        loading: false,
+        columns: [],
+      },
+      global: { stubs: { DataTable: DataTableStub, EmptyState: true, Icon: true, Teleport: true } },
+    })
+    const model = wrapper.find('[data-testid="upstream-response-model"]')
+    expect(model.exists()).toBe(visible)
+    expect(wrapper.text()).toContain('public-model')
+    expect(wrapper.text()).toContain('sent-model')
+    if (visible) {
+      expect(model.text()).toContain('↳')
+      expect(model.text()).toContain(response)
+      expect(model.attributes('title')).toContain(`sent-model → ${response}`)
+      expect(model.classes()).toEqual(expect.arrayContaining(['text-xs', 'break-all', 'text-orange-600', 'dark:text-orange-400']))
+    }
+    wrapper.unmount()
+  })
+
   it('shows requested and upstream models separately for admin rows', () => {
     const row = {
       request_id: 'req-admin-model-1',

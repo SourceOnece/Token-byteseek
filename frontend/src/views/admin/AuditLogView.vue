@@ -1,26 +1,26 @@
 <template>
   <AppLayout>
     <TablePageLayout>
-      <!-- 筛选条件 -->
+      <!-- 关键字搜索与筛选条件 -->
       <template #filters>
-        <div class="flex items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex min-w-0 w-full items-center gap-2 sm:w-auto">
+            <div class="input-icon-wrap min-w-0 flex-1 sm:w-64 sm:flex-none">
+              <Icon
+                name="search"
+                size="md"
+                class="input-icon text-gray-400"
+              />
+              <input
+                v-model.trim="filters.q"
+                type="text"
+                class="input input-has-icon"
+                :aria-label="t('admin.audit.filters.q')"
+                :placeholder="t('admin.audit.filters.qPlaceholder')"
+                @keyup.enter="search"
+              />
+            </div>
             <FilterDropdown :active-count="activeFilterCount" :columns="3" keep-mounted @reset="resetAuditFilters">
-              <FilterField :label="t('admin.audit.filters.q')" :value-text="filters.q" @clear="clearAuditFilter('q')" full>
-                <div class="input-icon-wrap">
-                  <Icon
-                    name="search"
-                    size="md"
-                    class="input-icon text-gray-400"
-                  />
-                  <input
-                    v-model.trim="filters.q"
-                    type="text"
-                    class="input input-has-icon"
-                    :placeholder="t('admin.audit.filters.qPlaceholder')"
-                    @keyup.enter="search"
-                  />
-                </div>
-              </FilterField>
               <FilterField :label="t('admin.audit.filters.actorEmail')" :value-text="filters.actor_email" @clear="clearAuditFilter('actor_email')">
                 <input v-model.trim="filters.actor_email" type="text" class="input" @keyup.enter="search" />
               </FilterField>
@@ -47,16 +47,17 @@
                 />
               </FilterField>
             </FilterDropdown>
+          </div>
 
-            <div class="flex flex-wrap items-center justify-end gap-2">
-              <button type="button" class="btn btn-primary whitespace-nowrap px-3 sm:px-4" :disabled="loading" @click="search">
-                {{ t('common.search') }}
-              </button>
-              <button type="button" class="btn btn-danger whitespace-nowrap px-3 sm:px-4" @click="openClearDialog">
-                <Icon name="trash" size="sm" class="mr-1.5" />
-                {{ t('admin.audit.clearAll') }}
-              </button>
-            </div>
+          <div class="ml-auto flex flex-wrap items-center justify-end gap-2">
+            <button type="button" class="btn btn-primary whitespace-nowrap px-3 sm:px-4" :disabled="loading" @click="search">
+              {{ t('common.search') }}
+            </button>
+            <button type="button" class="btn btn-danger whitespace-nowrap px-3 sm:px-4" @click="openClearDialog">
+              <Icon name="trash" size="sm" class="mr-1.5" />
+              {{ t('admin.audit.clearAll') }}
+            </button>
+          </div>
         </div>
       </template>
 
@@ -360,7 +361,9 @@ const filters = reactive({
   auth_method: '',
   success: ''
 })
-const activeFilterCount = computed(() => Object.values(filters).filter((value) => String(value).trim() !== '').length + (timeRange.value ? 1 : 0))
+// 关键字独立展示，筛选角标只统计面板内的条件。
+const activeFilterCount = computed(() => Object.entries(filters)
+  .filter(([key, value]) => key !== 'q' && value.trim() !== '').length + (timeRange.value ? 1 : 0))
 
 // 时间范围：预设窗口（同 /admin/ops 时间下拉）+ 自定义起止（datetime-local，支持时分）
 const timeRange = ref('')
@@ -435,14 +438,16 @@ function handleCustomTimeRangeConfirm() {
 }
 
 // 移除单个文本条件后立即重新查询。
-function clearAuditFilter(key: 'q' | 'actor_email' | 'action' | 'client_ip') {
+function clearAuditFilter(key: 'actor_email' | 'action' | 'client_ip') {
   filters[key] = ''
   search()
 }
 
-// 清空全部筛选条件和时间范围后重新查询。
+// 重置面板内的条件和时间范围，保留工具栏中的关键字。
 function resetAuditFilters() {
-  for (const key of Object.keys(filters) as Array<keyof typeof filters>) filters[key] = ''
+  for (const key of Object.keys(filters) as Array<keyof typeof filters>) {
+    if (key !== 'q') filters[key] = ''
+  }
   timeRange.value = ''
   customStartTime.value = ''
   customEndTime.value = ''

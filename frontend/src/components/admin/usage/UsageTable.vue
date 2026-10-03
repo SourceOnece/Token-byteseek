@@ -76,7 +76,7 @@
               <span aria-hidden="true">↳ </span>{{ t('admin.usage.routeModel') }}：{{ step }}
             </div>
             <div v-if="usageResponseMismatch(row)" class="space-y-1 text-xs font-semibold text-bh-red dark:text-red-400" data-testid="usage-response-model">
-              <div class="break-all"><span aria-hidden="true">↳ </span>{{ t('admin.usage.responseModel') }}：{{ row.response_model }}</div>
+              <div class="response-model-observation break-all text-xs text-orange-600 dark:text-orange-400" data-testid="upstream-response-model" :title="`${t('usage.upstreamResponseModel')}: ${row.upstream_model || row.model} → ${usageResponseModel(row)}`"><span aria-hidden="true">↳ </span>{{ t('admin.usage.responseModel') }}：{{ usageResponseModel(row) }}</div>
               <span class="inline-flex items-center gap-1" data-testid="usage-model-mismatch"><span aria-hidden="true">▲</span>{{ t('admin.usage.modelMismatch') }}</span>
             </div>
           </div>
@@ -763,11 +763,16 @@ function usageRoutingSteps(row: AdminUsageLog): string[] {
   if (upstream && upstream !== previous) steps.push(upstream)
   return steps
 }
+// 新观测链优先，历史记录继续读取 ByteSeek 原字段；相同模型不重复展示。
+function usageResponseModel(row: AdminUsageLog): string {
+  return row.upstream_response_model?.trim() || row.response_model?.trim() || ''
+}
 function usageResponseMismatch(row: AdminUsageLog): boolean {
-  const response = row.response_model?.trim()
+  const response = usageResponseModel(row)
+  if (row.upstream_response_model && row.upstream_model_mismatch != null) return row.upstream_model_mismatch
   const steps = usageRoutingSteps(row)
   const outbound = row.upstream_model?.trim() || steps[steps.length - 1] || (row.model || '').trim()
-  return !!response && response !== outbound
+  return !!response && response.toLowerCase() !== outbound.toLowerCase()
 }
 const { balanceUnitSymbol, usdUnitSymbol, formatBalanceAmount, formatUsdAmount } = useBalanceDisplay()
 const { copyToClipboard } = useClipboard()

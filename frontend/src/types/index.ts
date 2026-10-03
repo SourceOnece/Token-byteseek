@@ -1937,6 +1937,8 @@ export interface AdminUsageLog extends UsageLog {
   response_model?: string | null
   detailed_timing?: UsageLogTiming | null
   upstream_model?: string | null
+  upstream_response_model?: string | null
+  upstream_model_mismatch?: boolean | null
   model_mapping_chain?: string | null
   upstream_request_id?: string | null
 

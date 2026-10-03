@@ -11,6 +11,8 @@ import (
 	"time"
 	"unicode"
 
+	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+
 	"github.com/tidwall/gjson"
 )
 
@@ -119,6 +121,8 @@ func incompleteTicketRead(err error) ticketCompletion {
 }
 
 func inspectTicketCompletion(raw []byte, event, expected string, jsonBody bool) ticketCompletion {
+	// 与网关统一兼容明确成功的 done/裸终态；只改旁观副本，不放宽缺状态的判定。
+	raw, event = normalizeTicketCompletion(raw, event)
 	if !gjson.ValidBytes(raw) {
 		return ticketCompletion{Reason: "incomplete_response"}
 	}
@@ -152,6 +156,12 @@ func inspectTicketCompletion(raw []byte, event, expected string, jsonBody bool) 
 		result.Reason = "model_mismatch"
 	}
 	return result
+}
+
+func normalizeTicketCompletion(raw []byte, event string) ([]byte, string) {
+	var normalizer protocolopenai.ResponseLifecycleNormalizer
+	data, normalizedEvent, _ := normalizer.Normalize(raw, event)
+	return data, normalizedEvent
 }
 
 // 复验复用账号现有业务代理，不从采集代理偷偷回退；无代理边界按新模式的显式要求处理。

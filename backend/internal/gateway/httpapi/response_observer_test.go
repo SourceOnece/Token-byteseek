@@ -71,3 +71,14 @@ func TestResolvedOpenAIUpstreamServiceTier(t *testing.T) {
 		require.Equal(t, "priority", *got)
 	})
 }
+
+// TestResponseModelRetryClearsPreviousObservation 验证失败尝试不会污染缺失模型的下一响应。
+func TestResponseModelRetryClearsPreviousObservation(t *testing.T) {
+	c, _ := gin.CreateTestContext(nil)
+	o := BeginUpstreamResponseModelObservation(c)
+	o.ObserveOpenAI([]byte(`{"response":{"model":"failed-runtime"}}`), "response.failed")
+	resetResponseModel(c)
+	require.Empty(t, UpstreamResponseModelObserverFromContext(c).Model())
+	o.ObserveOpenAI([]byte(`{"response":{"model":"final-runtime"}}`), "response.completed")
+	require.Equal(t, "final-runtime", UpstreamResponseModelObserverFromContext(c).Model())
+}

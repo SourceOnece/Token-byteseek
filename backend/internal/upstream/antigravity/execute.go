@@ -103,6 +103,8 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 		}
 	}
 	options := target.Response
+	var modelObserver protocol.ResponseModelObserver
+	defer func() { result.UpstreamResponseModel = modelObserver.Model() }()
 	priorRaw := options.ObserveRaw
 	// 仅保存本次已出现的 usage 字段；部分更新不能抹掉之前的观测。
 	observedUsage := make(map[string]json.RawMessage)
@@ -117,12 +119,14 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 		body, _ := (&ResponseAdapter{}).UnwrapV1InternalResponse([]byte(data))
 		var hasUsage, served bool
 		if target.Mode == ModeStaticClaudeResponse {
+			modelObserver.ObserveAnthropic(body)
 			observed := anthropicwire.ObserveEvent(string(body))
 			hasUsage, served = observed.HasUsage, observed.Semantic
 			if hasUsage {
 				(&ResponseAdapter{}).ExtractSSEUsage("data: "+string(body), &result.Usage)
 			}
 		} else {
+			modelObserver.ObserveGemini(body)
 			observed := geminiwire.ObservePayload(body)
 			hasUsage, served = observed.HasUsage, observed.Semantic
 			if hasUsage {
@@ -190,6 +194,7 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 			if readErr != nil {
 				return result, fmt.Errorf("read upstream response: %w", readErr)
 			}
+			modelObserver.ObserveAnthropic(body)
 			observed := anthropicwire.ObserveMessage(string(body))
 			result.HasUsage, result.Served = observed.HasUsage, observed.Semantic
 			if observed.Semantic {

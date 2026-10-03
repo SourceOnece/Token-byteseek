@@ -878,3 +878,26 @@ func TestUserHandlerStartIdentityBindingReturnsAuthorizeURL(t *testing.T) {
 func (s *userHandlerRefreshTokenCacheStub) ConsumeRefreshToken(context.Context, string) (bool, error) {
 	return false, nil
 }
+
+// 测试替身按已有挑战数据计数；真实并发原子性由 Redis 合同测试覆盖。
+func (s *userHandlerEmailCacheStub) IncrVerificationCodeAttempts(ctx context.Context, email string) (int, error) {
+	data, err := s.GetVerificationCode(ctx, email)
+	if err != nil || data == nil {
+		return 0, identitycore.ErrInvalidVerifyCode
+	}
+	data.Attempts++
+	return data.Attempts, nil
+}
+
+func (s *userHandlerEmailCacheStub) IncrNotifyVerifyCodeAttempts(ctx context.Context, email string) (int, error) {
+	data, err := s.GetNotifyVerifyCode(ctx, email)
+	if err != nil || data == nil {
+		return 0, identitycore.ErrInvalidVerifyCode
+	}
+	data.Attempts++
+	return data.Attempts, nil
+}
+
+func (s *userHandlerEmailCacheStub) ConsumePasswordResetToken(context.Context, string, string) (bool, error) {
+	return false, nil
+}

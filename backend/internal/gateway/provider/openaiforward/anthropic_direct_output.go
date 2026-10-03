@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
@@ -35,14 +36,20 @@ type NativeAnthropicOptions struct {
 	HandleTimeout                     func(context.Context, string)
 }
 
-func NativeAnthropicBuffered(ctx context.Context, resp *http.Response, c *upstream.OutputContext, o NativeAnthropicOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time) (*Result, error) {
+func NativeAnthropicBuffered(ctx context.Context, resp *http.Response, c *upstream.OutputContext, o NativeAnthropicOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time) (out *Result, failure error) {
+	var modelObserver protocol.ResponseModelObserver
+	defer func() {
+		if out != nil {
+			out.UpstreamResponseModel = modelObserver.Model()
+		}
+	}()
 	o.UpdateWindow(ctx, resp.Header)
 
 	body, err := o.ReadBody(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	// fork 当前未启用上游 response-model 观测器；保留原始响应与计费语义。
+	modelObserver.ObserveAnthropic(body)
 
 	var raw json.RawMessage
 	if err := json.Unmarshal(body, &raw); err != nil {
@@ -79,7 +86,13 @@ func NativeAnthropicBuffered(ctx context.Context, resp *http.Response, c *upstre
 	}, nil
 }
 
-func NativeAnthropicStreaming(ctx context.Context, resp *http.Response, c *upstream.OutputContext, o NativeAnthropicOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time) (*Result, error) {
+func NativeAnthropicStreaming(ctx context.Context, resp *http.Response, c *upstream.OutputContext, o NativeAnthropicOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time) (out *Result, failure error) {
+	var modelObserver protocol.ResponseModelObserver
+	defer func() {
+		if out != nil {
+			out.UpstreamResponseModel = modelObserver.Model()
+		}
+	}()
 	o.UpdateWindow(ctx, resp.Header)
 
 	o.CopyHeaders(c.Writer.Header(), resp.Header)
@@ -218,6 +231,7 @@ func NativeAnthropicStreaming(ctx context.Context, resp *http.Response, c *upstr
 
 			line := ev.line
 			if data, ok := o.ExtractData(line); ok {
+				modelObserver.ObserveAnthropic([]byte(data))
 				trimmed := strings.TrimSpace(data)
 				if o.IsTerminal("", trimmed) {
 					sawTerminalEvent = true

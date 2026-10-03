@@ -857,3 +857,26 @@ func TestCanBypassRegistrationDisabledForOAuth(t *testing.T) {
 func (s *refreshTokenCacheStub) ConsumeRefreshToken(context.Context, string) (bool, error) {
 	return false, nil
 }
+
+// 测试替身按已有挑战数据计数；真实并发原子性由 Redis 合同测试覆盖。
+func (s *emailCacheStub) IncrVerificationCodeAttempts(ctx context.Context, email string) (int, error) {
+	data, err := s.GetVerificationCode(ctx, email)
+	if err != nil || data == nil {
+		return 0, identity.ErrInvalidVerifyCode
+	}
+	data.Attempts++
+	return data.Attempts, nil
+}
+
+func (s *emailCacheStub) IncrNotifyVerifyCodeAttempts(ctx context.Context, email string) (int, error) {
+	data, err := s.GetNotifyVerifyCode(ctx, email)
+	if err != nil || data == nil {
+		return 0, identity.ErrInvalidVerifyCode
+	}
+	data.Attempts++
+	return data.Attempts, nil
+}
+
+func (s *emailCacheStub) ConsumePasswordResetToken(context.Context, string, string) (bool, error) {
+	return false, nil
+}

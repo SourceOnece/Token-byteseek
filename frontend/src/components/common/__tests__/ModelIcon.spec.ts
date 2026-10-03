@@ -33,6 +33,7 @@ describe('ModelIcon', () => {
 
 describe('ProviderIcon', () => {
   it.each([
+    ['OpenAI', 'OpenAI'],
     ['xAI', 'xAI'],
     ['Moonshot', 'Kimi'],
   ])('%s 徽标继承主题文字色', (_provider, brand) => {

@@ -22,6 +22,15 @@ const { list, getStats, getSnapshotV2, getById, getModelStats, listErrorLogs, ro
   }
 })
 
+const exportMocks = vi.hoisted(() => ({
+  list: vi.fn(), headers: vi.fn(() => ({})), rows: vi.fn(), save: vi.fn(),
+}))
+vi.mock('xlsx', () => ({
+  utils: { aoa_to_sheet: exportMocks.headers, sheet_add_aoa: exportMocks.rows, book_new: vi.fn(() => ({})), book_append_sheet: vi.fn() },
+  write: vi.fn(() => new ArrayBuffer(0)),
+}))
+vi.mock('file-saver', () => ({ saveAs: exportMocks.save }))
+
 const messages: Record<string, string> = {
   'admin.dashboard.timeRange': 'Time Range',
   'admin.dashboard.day': 'Day',
@@ -62,7 +71,7 @@ vi.mock('@/api/admin', () => ({
 
 vi.mock('@/api/admin/usage', () => ({
   adminUsageAPI: {
-    list: vi.fn(),
+    list: exportMocks.list,
   },
 }))
 
@@ -185,6 +194,30 @@ describe('admin UsageView 路由筛选', () => {
   afterEach(() => {
     Object.keys(routeQuery).forEach((key) => delete routeQuery[key])
     vi.useRealTimers()
+  })
+
+  it('导出上游响应模型并区分相同、不同和未知', async () => {
+    exportMocks.list.mockResolvedValue({ total: 3, pages: 1, items: [
+      { model: 'sent', upstream_response_model: 'runtime', upstream_model_mismatch: true },
+      { model: 'sent', upstream_response_model: 'sent', upstream_model_mismatch: false },
+      { model: 'historical' },
+    ] })
+    exportMocks.headers.mockClear()
+    exportMocks.rows.mockClear()
+    const wrapper = mountRouteFilteredUsageView()
+    await flushPromises()
+    wrapper.findComponent(UsageFiltersStub).vm.$emit('export')
+    await flushPromises()
+    const headers = exportMocks.headers.mock.calls[0]?.[0]?.[0] as string[]
+    const rows = exportMocks.rows.mock.calls[0]?.[1] as unknown[][]
+    const model = headers.indexOf('Upstream response model')
+    const mismatch = headers.indexOf('Upstream model mismatch')
+    expect(model).toBeGreaterThan(-1)
+    expect(rows.map(row => [row[model], row[mismatch]])).toEqual([
+      ['runtime', 'Yes'], ['sent', 'No'], ['', ''],
+    ])
+    expect(rows.every(row => row.length === headers.length)).toBe(true)
+    wrapper.unmount()
   })
 
   it('应用 user_id 请求筛选时回显路由用户', async () => {

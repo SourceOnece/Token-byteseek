@@ -190,7 +190,7 @@
 
                 <div class="flex items-start gap-3">
                   <span class="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-surface border border-gray-200 bg-white shadow-sm dark:border-dark-700 dark:bg-dark-950">
-                    <ModelIcon :model="groupBrandIconModel(group)" size="28px" />
+                    <ProviderIcon :brand="groupBrandSource(group)" size="28px" />
                   </span>
                   <div class="min-w-0">
                     <h2 class="text-lg font-semibold text-gray-950 dark:text-white">{{ group.name }}</h2>
@@ -294,7 +294,6 @@ import GroupAvailabilityBar from '@/components/marketplace/GroupAvailabilityBar.
 import ModelCapabilityTags from '@/components/marketplace/ModelCapabilityTags.vue'
 import ModelAttributesSummary from '@/components/common/ModelAttributesSummary.vue'
 import ModelPricingPanel from '@/components/marketplace/ModelPricingPanel.vue'
-import ModelIcon from '@/components/common/ModelIcon.vue'
 import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import SearchInput from '@/components/common/SearchInput.vue'
@@ -305,7 +304,7 @@ import ModelIdLabel from '@/components/common/ModelIdLabel.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { initTheme, useTheme } from '@/composables/useTheme'
 import { getMarketplaceModels } from '@/api/marketplace'
-import { providerBrandDisplayName, providerBrandFilterKey, resolveProviderBrand, resolveProviderBrandKey } from '@/utils/providerBrand'
+import { providerBrandDisplayName, providerBrandFilterKey, resolveProviderBrand } from '@/utils/providerBrand'
 import { formatCompactTokenRange } from '@/utils/formatters'
 import { sanitizeUrl } from '@/utils/url'
 import type { MarketplaceGroup, MarketplaceModelPricing, MarketplacePricingInterval } from '@/types'
@@ -544,37 +543,6 @@ function brandKey(label: string): string {
 function brandBadgeClass(group: MarketplaceGroup): string {
   const base = 'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset'
   return `${base} ${resolveProviderBrand(groupBrandSource(group)).badgeClass}`
-}
-
-function groupBrandIconModel(group: MarketplaceGroup): string {
-  const brandKey = resolveProviderBrandKey(groupBrandSource(group))
-
-  // 大图标使用模型图标体系，避免 ProviderIcon 的品牌色和模型卡片图标不一致。
-  switch (brandKey) {
-    case 'anthropic':
-      return 'claude'
-    case 'openai':
-      return 'gpt'
-    case 'google':
-      return 'gemini'
-    case 'alibaba':
-      return 'qwen'
-    // xAI 是品牌名，需转换为 ModelIcon 能识别的 Grok 模型标识。
-    case 'xai':
-      return 'grok'
-    case 'baidu':
-      return 'ernie'
-    case 'iflytek':
-      return 'spark'
-    case 'tencent':
-      return 'hunyuan'
-    case 'zeroone':
-      return 'yi'
-    case 'xiaomi':
-      return 'mimo'
-    default:
-      return groupBrandSource(group)
-  }
 }
 
 function tokenPricingRowsFromValues(pricing: MarketplaceModelPricing | MarketplacePricingInterval): PricingRow[] {

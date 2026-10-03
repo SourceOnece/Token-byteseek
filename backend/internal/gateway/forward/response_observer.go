@@ -4,18 +4,12 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
-
-	"github.com/tidwall/gjson"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 )
 
-const upstreamResponseModelMaxLength = 200
-
-// ResponseObserver 记录单次转发或 WS turn 的模型与实际档位。终态优先；
-// 冲突标记供 response_model 计费回退使用，不改变出站请求档位。
+// ResponseObserver 分别保存模型声明与实际服务档位，不改变出站请求和计费模型。
 type ResponseObserver struct {
-	first    string
-	terminal string
-	conflict bool
+	model protocol.ResponseModelObserver
 
 	firstTier         string
 	firstTierConflict bool
@@ -23,33 +17,9 @@ type ResponseObserver struct {
 }
 
 func (o *ResponseObserver) Observe(model string, terminal bool) {
-	model = normalizeObservedUpstreamResponseModel(model)
-	if model == "" {
-		return
+	if o != nil {
+		o.model.Observe(model, terminal)
 	}
-	current := o.Model()
-	if current != "" && !strings.EqualFold(current, model) {
-		o.conflict = true
-	}
-	if terminal {
-		o.terminal = model
-		return
-	}
-	if o.first == "" {
-		o.first = model
-	}
-}
-
-func normalizeObservedUpstreamResponseModel(model string) string {
-	model = strings.TrimSpace(model)
-	if model == "" {
-		return ""
-	}
-	runes := []rune(model)
-	if len(runes) > upstreamResponseModelMaxLength {
-		model = string(runes[:upstreamResponseModelMaxLength])
-	}
-	return model
 }
 
 func (o *ResponseObserver) ObserveOpenAI(payload []byte, eventType string) {
@@ -60,7 +30,7 @@ func (o *ResponseObserver) ObserveOpenAI(payload []byte, eventType string) {
 	if model == "" {
 		return
 	}
-	o.Observe(model, terminal)
+	o.model.ObserveOpenAI(payload, eventType)
 	// Responses 的非终止事件通常只是回显请求档位，只有终止事件和无类型的
 	// Chat Completions/非流式 JSON 才能作为实际处理档位的证据。
 	if !terminal && strings.TrimSpace(eventType) != "" {
@@ -137,37 +107,27 @@ func (o *ResponseObserver) Model() string {
 	if o == nil {
 		return ""
 	}
-	if o.terminal != "" {
-		return o.terminal
-	}
-	return o.first
+	return o.model.Model()
 }
 
 func firstValidTrimmedGJSONModel(payload []byte, paths ...string) string {
-	if len(payload) == 0 {
-		return ""
-	}
-	for _, path := range paths {
-		value := gjson.GetBytes(payload, path)
-		if !value.Exists() || value.Type != gjson.String {
-			continue
-		}
-		if model := strings.TrimSpace(value.String()); model != "" {
-			// 仅在发现候选声明后验证整帧，跳过常见的无模型增量帧。
-			if !gjson.ValidBytes(payload) {
-				return ""
-			}
-			return model
-		}
-	}
-	return ""
+	return protocol.ResponseModelString(payload, paths...)
 }
 
-func isUpstreamResponseModelTerminalEvent(eventType string) bool {
-	switch strings.TrimSpace(eventType) {
-	case "response.completed", "response.done", "response.failed", "response.incomplete", "response.cancelled", "response.canceled":
-		return true
-	default:
-		return false
+func isUpstreamResponseModelTerminalEvent(event string) bool {
+	return protocol.IsResponseModelTerminalEvent(event)
+}
+
+// ResetModel 在再次发送上游请求前清空模型声明，保留既有服务档位处理。
+func (o *ResponseObserver) ResetModel() {
+	if o != nil {
+		o.model = protocol.ResponseModelObserver{}
+	}
+}
+
+// ObserveOpenAIModel 仅补充模型声明，供原本不采集服务档位的透传路径使用。
+func (o *ResponseObserver) ObserveOpenAIModel(payload []byte, event string) {
+	if o != nil {
+		o.model.ObserveOpenAI(payload, event)
 	}
 }

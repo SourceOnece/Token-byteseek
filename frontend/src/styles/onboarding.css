@@ -29,6 +29,13 @@
 /* 2. Popover Container */
 /* 宽度 440px 与内边距均落在 4px 网格上;!important 用于覆盖 driver.js 的内联默认样式,属合法例外。 */
 .driver-popover.theme-tour-popover {
+  /* 中英文引导 HTML 共用这些颜色，提示框随弹窗主题切换。 */
+  --tour-success-bg: theme('colors.green.50');
+  --tour-info-bg: theme('colors.blue.50');
+  --tour-warning-bg: theme('colors.amber.100');
+  --tour-danger-bg: theme('colors.red.100');
+  --tour-action-color: theme('colors.primary.700');
+  --tour-muted-color: theme('colors.gray.500');
   position: fixed !important;
   z-index: 100000000 !important; /* check-ui-allow: driver.js 第三方覆盖,层级受外部约束 */
   box-sizing: border-box !important;
@@ -49,9 +56,15 @@
 }
 
 .dark .driver-popover.theme-tour-popover {
-  background-color: #121215 !important;
-  border-color: #29292E !important;
-  color: #F0F0F1 !important;
+  --tour-success-bg: theme('colors.emerald.500 / 12%');
+  --tour-info-bg: theme('colors.blue.500 / 12%');
+  --tour-warning-bg: theme('colors.amber.500 / 12%');
+  --tour-danger-bg: theme('colors.red.500 / 12%');
+  --tour-action-color: theme('colors.primary.500');
+  --tour-muted-color: theme('colors.dark.300');
+  background-color: #0F0F10 !important;
+  border-color: theme('borderColor.dark.600') !important;
+  color: #DEE0E2 !important;
 }
 
 /* 3. Header Area */
@@ -109,6 +122,10 @@
   background-color: transparent !important;
 }
 .dark .theme-tour-popover .driver-popover-description { color: #F0F0F1 !important; }
+
+.theme-tour-popover .driver-popover-description-hint {
+  color: var(--tour-muted-color);
+}
 
 /* 5. 底部保留页码和操作按钮，键盘提示不再注入。 */
 .theme-tour-popover .driver-popover-footer {

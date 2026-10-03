@@ -493,7 +493,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	openAITextHandler := provideOpenAITextHTTP(openAIResponsesExecutor, fundingAdmission, apiKeyService, openAIHTTPResources, cyberHandler, errorPassthroughService, contentModerationService, promptpolicyService, cfg, openaiattemptRuntime, appGatewayRequestActivity, routePlanner, gatewayCache, appMessageHTTPBindings, subscriptionService)
 	openAITokensHandler := provideOpenAITokensHTTP(openAIAuxiliary, fundingAdmission, apiKeyService, concurrencyService, errorPassthroughService, cfg, appGatewayRequestActivity, promptpolicyService, appGatewayModelAvailability, compatible, routePlanner)
 	requestCredentialExecutor := provideRequestCredentialExecutor(requestCredentials)
-	responsesWSHandler := provideResponsesWSHTTP(openAIWebSocketExecutor, requestCredentialExecutor, fundingAdmission, apiKeyService, bindings, promptpolicyService, cyberBlocks, cfg, appGatewayRequestActivity, compatible, routePlanner)
+	responsesWSHandler := provideResponsesWSHTTP(openAIWebSocketExecutor, requestCredentialExecutor, fundingAdmission, apiKeyService, bindings, promptpolicyService, cyberBlocks, cfg, appGatewayRequestActivity, compatible, routePlanner, subscriptionService)
 	modelsHandler := provideModelsHTTP(requestableCatalogue, googleforwardGemini, appGatewayRequestActivity, gemini)
 	messagesHandler := provideMessagesHTTP(appMessageHTTPBindings, textattemptRuntime, appGatewayRequestActivity)
 	videoTasks := provideGrokVideoTasks(gatewayCache, cfg)

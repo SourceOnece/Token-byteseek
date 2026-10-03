@@ -49,13 +49,14 @@
           <tbody>
             <template v-for="group in displayGroupStats" :key="group.group_id">
               <tr data-icon-trigger
-                class="border-t border-gray-100 transition-colors dark:border-dark-600"
+                class="group/breakdown border-t border-gray-100 transition-colors dark:border-dark-600"
                 :class="enableBreakdown && group.group_id > 0 ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700/40' : ''"
                 @click="enableBreakdown && group.group_id > 0 && toggleBreakdown('group', group.group_id)"
               >
+                <!-- 有明细的分组在悬停整行时着色，未分组项使用普通文字色。 -->
                 <td
-                  class="max-w-[100px] truncate py-1.5 font-medium"
-                  :class="enableBreakdown && group.group_id > 0 ? 'text-primary-600 hover:text-primary-800 dark:text-primary-500 dark:hover:text-primary-500' : 'text-gray-900 dark:text-white'"
+                  class="max-w-[100px] truncate py-1.5 font-medium text-gray-900 dark:text-white"
+                  :class="enableBreakdown && group.group_id > 0 ? 'group-hover/breakdown:text-primary-600 dark:group-hover/breakdown:text-primary-500' : ''"
                   :title="group.group_name || String(group.group_id)"
                 >
                   <span class="inline-flex items-center gap-1">

@@ -91,7 +91,9 @@ describe('36px control sizing', () => {
     const adminOrdersSource = readSource('../../../views/admin/orders/AdminOrdersView.vue')
     const adminPaymentPlansSource = readSource('../../../views/admin/orders/AdminPaymentPlansView.vue')
 
-    expect(providerBulkActionsSource).toContain('class="btn btn-primary btn-sm h-[30px]"')
+    // 批量栏已统一紧凑按钮，不再单独把按筛选批改固定成 30px。
+    expect(providerBulkActionsSource).toContain('class="btn btn-secondary btn-sm"')
+    expect(providerBulkActionsSource).not.toContain('h-[30px]')
     expect(userUsageSource).toContain('<div class="card p-4">')
     expect(adminUsageSource).toContain('<div class="card p-4">')
     expect(riskControlSource).toContain('class="grid grid-cols-1 items-start gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]"')

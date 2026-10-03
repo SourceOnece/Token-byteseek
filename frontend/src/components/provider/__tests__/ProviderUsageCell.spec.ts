@@ -941,7 +941,7 @@ describe('ProviderUsageCell', () => {
   expect(wrapper.text()).toContain('7d|100|106540000')
   })
 
-	  it('Key 提供商会展示 today stats 徽章并带 A/U 提示', async () => {
+	  it('Key 提供商会展示带标签和说明的今日统计', async () => {
 	    const wrapper = mount(ProviderUsageCell, {
 	      props: {
 	        provider: makeProvider({
@@ -967,16 +967,14 @@ describe('ProviderUsageCell', () => {
 
 	    await flushPromises()
 
-	    expect(wrapper.text()).toContain('1.0M req')
-	    expect(wrapper.text()).toContain('1.0B')
-	    expect(wrapper.text()).toContain('A $12.35')
-	    expect(wrapper.text()).toContain('U $6.79')
+	    expect(wrapper.get('[data-stat="requests"]').text()).toBe('admin.providers.usageStats.requests 1.0M')
+	    expect(wrapper.get('[data-stat="tokens"]').text()).toBe('admin.providers.usageStats.tokens 1.0B')
+	    expect(wrapper.get('[data-stat="cost"]').text()).toBe('admin.providers.usageStats.cost $12.35')
+	    expect(wrapper.get('[data-stat="userCost"]').text()).toBe('admin.providers.usageStats.userCost $6.79')
+	    expect(wrapper.get('[data-stat="cost"]').attributes('title')).toBe('admin.providers.usageStats.hints.cost')
+	    expect(wrapper.get('[data-stat="userCost"]').attributes('title')).toBe('admin.providers.usageStats.hints.userCost')
 
-	    const badges = wrapper.findAll('span[title]')
-	    expect(badges.some(node => node.attributes('title') === 'usage.providerBilled')).toBe(true)
-	    expect(badges.some(node => node.attributes('title') === 'usage.userBilled')).toBe(true)
-
-	    const statsBadge = wrapper.findAll('span').find(node => node.text().includes('req'))
+	    const statsBadge = wrapper.find('[data-stat="requests"]')
 	    const queryButton = wrapper.find('button')
 	    expect(statsBadge).toBeDefined()
 	    expect(queryButton.exists()).toBe(true)
@@ -1017,10 +1015,10 @@ describe('ProviderUsageCell', () => {
 
 	    const cell = wrapper.get('[data-testid="provider-upstream-usage"]').element.closest('div')
 	    const descendants = Array.from(wrapper.element.querySelectorAll('*'))
-	    const statsBadge = wrapper.findAll('span').find(node => node.text().includes('req'))
+	    const statsBadge = wrapper.find('[data-stat="requests"]')
 	    const queryButton = wrapper.find('button')
 	    expect(wrapper.text()).toContain('admin.providers.upstreamUsage.errors.UPSTREAM_USAGE_TIMEOUT')
-	    expect(statsBadge).toBeDefined()
+	    expect(statsBadge.exists()).toBe(true)
 	    expect(queryButton.exists()).toBe(true)
 	    expect(cell).not.toBeNull()
 	    expect(descendants.indexOf(queryButton.element)).toBeGreaterThan(descendants.indexOf(statsBadge!.element))
@@ -1060,7 +1058,7 @@ describe('ProviderUsageCell', () => {
 
     await flushPromises()
     expect(getUsage).toHaveBeenCalledWith(3861)
-    expect(wrapper.text()).not.toContain('4 req')
+    expect(wrapper.find('[data-stat="requests"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('admin.providers.usageWindow.grokRequests|')
   })
 
@@ -1555,10 +1553,10 @@ describe('ProviderUsageCell', () => {
 
 		await flushPromises()
 
-		expect(wrapper.text()).toContain('0 req')
-		expect(wrapper.text()).toContain('0')
-		expect(wrapper.text()).toContain('A $0.00')
-		expect(wrapper.text()).toContain('U $0.00')
+		expect(wrapper.get('[data-stat="requests"]').text()).toContain(' 0')
+		expect(wrapper.get('[data-stat="tokens"]').text()).toContain(' 0')
+		expect(wrapper.get('[data-stat="cost"]').text()).toContain('$0.00')
+		expect(wrapper.get('[data-stat="userCost"]').text()).toContain('$0.00')
   })
 
   it('Anthropic OAuth 会渲染 7d F (Fable) 进度条，且 7d S 逻辑保留', async () => {

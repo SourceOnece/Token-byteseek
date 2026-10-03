@@ -55,7 +55,7 @@ func TestExecuteProtocolOutputsAndRelease(t *testing.T) {
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					w.Header().Set("Content-Type", "text/event-stream")
 					w.Header().Set("x-request-id", "fixture-request")
-					_, _ = io.WriteString(w, "data: {\"response\":{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"hello\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":3,\"candidatesTokenCount\":1,\"totalTokenCount\":4}}}\n\n")
+					_, _ = io.WriteString(w, "data: {\"response\":{\"modelVersion\":\"gemini-runtime\",\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"hello\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":3,\"candidatesTokenCount\":1,\"totalTokenCount\":4}}}\n\n")
 				}))
 				defer server.Close()
 				var closes, releases atomic.Int32
@@ -75,6 +75,7 @@ func TestExecuteProtocolOutputsAndRelease(t *testing.T) {
 				require.NoError(t, err)
 				require.Contains(t, sink.body.String(), "hello")
 				require.Equal(t, "fixture-request", result.RequestID)
+				require.Equal(t, "gemini-runtime", result.UpstreamResponseModel)
 				require.Equal(t, 3, result.Usage.InputTokens)
 				require.Equal(t, 1, result.Usage.OutputTokens)
 				require.True(t, result.HasUsage)

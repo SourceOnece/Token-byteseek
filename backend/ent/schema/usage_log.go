@@ -59,6 +59,9 @@ func (UsageLog) Fields() []ent.Field {
 			MaxLen(100).
 			Optional().
 			Nillable(),
+		// 上游响应模型用于管理员审计；历史与缺失观测保持为空。
+		field.String("upstream_response_model").MaxLen(200).Optional().Nillable(),
+		field.Bool("upstream_model_mismatch").Optional().Nillable(),
 		field.Int64("pricing_config_id").Optional().Nillable().Comment("共享价格配置 ID"),
 		// 响应模型只供管理员诊断，独立于路由模型与计费依据。
 		field.String("response_model").MaxLen(200).Optional().Nillable(),

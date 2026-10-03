@@ -651,6 +651,31 @@ func (s *UsageLogRepoSuite) TestListByUser() {
 	s.Require().Equal(int64(2), page.Total)
 }
 
+// TestResponseModelRoundTrip 验证响应模型观测可以与未知历史数据共存。
+func (s *UsageLogRepoSuite) TestResponseModelRoundTrip() {
+	user := mustCreateUser(s.T(), s.client, &identity.User{Email: "response-model@test.local"})
+	key := mustCreateApiKey(s.T(), s.client, &apikey.APIKey{UserID: user.ID, Key: "response-model-key", Name: "model"})
+	provider := mustCreateProvider(s.T(), s.client, &providercore.Record{Name: "response-model"})
+	for i, known := range []bool{false, true, true} {
+		log := &usage.UsageLog{UserID: user.ID, APIKeyID: key.ID, ProviderID: provider.ID, RequestID: fmt.Sprintf("response-model-%d", i), Model: "sent", CreatedAt: time.Now()}
+		if known {
+			model := "runtime-version"
+			mismatch := i == 2
+			if !mismatch {
+				model = "sent"
+			}
+			log.UpstreamResponseModel = &model
+			log.UpstreamModelMismatch = &mismatch
+		}
+		_, err := s.repo.Create(s.ctx, log)
+		s.Require().NoError(err)
+		loaded, err := s.repo.GetByID(s.ctx, log.ID)
+		s.Require().NoError(err)
+		s.Equal(log.UpstreamResponseModel, loaded.UpstreamResponseModel)
+		s.Equal(log.UpstreamModelMismatch, loaded.UpstreamModelMismatch)
+	}
+}
+
 // --- ListByAPIKey ---
 
 func (s *UsageLogRepoSuite) TestListByAPIKey() {

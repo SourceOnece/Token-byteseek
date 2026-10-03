@@ -205,18 +205,19 @@ func (a *grokForwardAdapter) ReadStream(ctx context.Context, resp *http.Response
 		return upstream.ResponsesObservation{}, err
 	}
 	return upstream.ResponsesObservation{
-		Usage:               v.Usage,
-		HasUsage:            v.HasUsage,
-		Served:              v.Served,
-		HTTPCommitted:       v.HttpCommitted,
-		RetryCommitted:      v.RetryCommitted,
-		ClientDisconnected:  v.ClientDisconnected,
-		FirstSemanticOutput: v.FirstSemanticOutput,
-		FirstTokenMs:        v.FirstTokenMs,
-		ResponseID:          v.ResponseID,
-		SearchCount:         v.SearchCount,
-		ImageCount:          v.ImageCount,
-		ImageOutputSizes:    v.ImageOutputSizes,
+		UpstreamResponseModel: UpstreamResponseModelObserverFromContext(a.c).Model(),
+		Usage:                 v.Usage,
+		HasUsage:              v.HasUsage,
+		Served:                v.Served,
+		HTTPCommitted:         v.HttpCommitted,
+		RetryCommitted:        v.RetryCommitted,
+		ClientDisconnected:    v.ClientDisconnected,
+		FirstSemanticOutput:   v.FirstSemanticOutput,
+		FirstTokenMs:          v.FirstTokenMs,
+		ResponseID:            v.ResponseID,
+		SearchCount:           v.SearchCount,
+		ImageCount:            v.ImageCount,
+		ImageOutputSizes:      v.ImageOutputSizes,
 	}, err
 }
 
@@ -226,15 +227,16 @@ func (a *grokForwardAdapter) ReadNonStream(ctx context.Context, resp *http.Respo
 		return upstream.ResponsesObservation{}, err
 	}
 	return upstream.ResponsesObservation{
-		Usage:            v.Usage,
-		HasUsage:         v.Usage != nil,
-		Served:           v.Served,
-		HTTPCommitted:    a.c.Writer.Written(),
-		RetryCommitted:   IsResponseCommitted(a.c),
-		ResponseID:       v.ResponseID,
-		SearchCount:      v.SearchCount,
-		ImageCount:       v.ImageCount,
-		ImageOutputSizes: v.ImageOutputSizes,
+		UpstreamResponseModel: UpstreamResponseModelObserverFromContext(a.c).Model(),
+		Usage:                 v.Usage,
+		HasUsage:              v.Usage != nil,
+		Served:                v.Served,
+		HTTPCommitted:         a.c.Writer.Written(),
+		RetryCommitted:        IsResponseCommitted(a.c),
+		ResponseID:            v.ResponseID,
+		SearchCount:           v.SearchCount,
+		ImageCount:            v.ImageCount,
+		ImageOutputSizes:      v.ImageOutputSizes,
 	}, nil
 }
 

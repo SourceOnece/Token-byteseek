@@ -43,6 +43,7 @@ export default {
       dataImport: 'Import',
       moreActions: 'More Actions',
       dataActions: 'Data',
+      bulkEditFiltered: 'Bulk edit filtered results',
       toolActions: 'Tools',
       viewColumns: 'Columns',
       selectedCount: '{count} selected',
@@ -669,12 +670,13 @@ export default {
         selected: '{count} provider(s) selected',
         selectedAll: 'All {count} provider(s) selected',
         selectCurrentPage: 'Select this page',
-        selectAllResults: 'Select all results ({count})',
+        selectAllResults: 'Select all {count} results',
         selectingAll: 'Selecting all results...',
         selectAllFailed: 'Failed to load all providers. The previous selection was kept.',
         clear: 'Clear selection',
-        edit: 'Bulk Edit Selected Providers',
-        delete: 'Bulk Delete',
+        edit: 'Edit',
+        more: 'More',
+        delete: 'Delete',
         confirmDelete: 'Delete the selected {count} provider(s)? This action cannot be undone.',
         deleteSuccess: 'Deleted {count} provider(s)',
         enableScheduling: 'Enable Scheduling',
@@ -992,7 +994,7 @@ export default {
       customErrorCodes: 'Custom Error Codes',
       customErrorCodesHint: 'Only stop scheduling for selected error codes',
       customErrorCodesWarning:
-        'Only selected error codes will stop scheduling. Other errors will return 500.',
+        'Filters provider error handling, not retries or failover. Unselected errors may still retry; response status follows gateway and passthrough rules. An empty list applies no filter.',
       customErrorCodes429Warning:
         '429 already has built-in rate limit handling. Adding it to custom error codes will disable the provider instead of temporary rate limiting. Are you sure?',
       customErrorCodes529Warning:
@@ -1774,7 +1776,6 @@ empty: 'No header overrides configured'
           }
         },
         title: 'Test {name}',
-        subtitle: 'Send one real request with the saved credentials and check the reply and latency',
         settings: 'Test settings',
         results: 'Test results',
         type: 'Test type',
@@ -1787,11 +1788,6 @@ empty: 'No header overrides configured'
         protocolNone: 'No upstream protocol enabled',
         protocolFixed: 'This provider has only one test endpoint.',
         protocolCompact: 'Compact tests always use the Responses endpoint.',
-        statusReady: 'Ready',
-        statusRunning: 'Testing',
-        statusSuccess: 'Passed',
-        statusFailed: 'Failed',
-        timingHint: 'Timing starts when the browser sends the request and includes TokenRouter processing and the upstream response. First token is the time until the first reply text or image arrives.',
         metricModel: 'Upstream model',
         metricFirstToken: 'First token',
         metricTotal: 'Total time',
@@ -1863,6 +1859,22 @@ empty: 'No header overrides configured'
         todayCost: 'Today Cost',
         usageTrend: '30-Day Cost & Request Trend',
         noData: 'No usage data available for this provider'
+      },
+      usageStats: {
+        requests: 'Reqs',
+        tokens: 'Tokens',
+        cost: 'Cost',
+        userCost: 'Billed',
+        period: {
+          today: 'today',
+          window: 'in the current window'
+        },
+        hints: {
+          requests: 'Requests routed through this provider {period}',
+          tokens: 'Tokens consumed through this provider {period}',
+          cost: 'Provider cost in USD {period}, using provider pricing times the provider rate multiplier',
+          userCost: 'Site balance charged to users {period}, including group rate multipliers'
+        }
       },
       usageWindow: {
         statsTitle: '5-Hour Window Usage Statistics',

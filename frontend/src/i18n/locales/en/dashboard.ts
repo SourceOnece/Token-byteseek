@@ -486,6 +486,8 @@ moreMappings: '+{count}'
     model: 'Model',
     requestedModel: 'Requested',
     upstreamModel: 'Upstream',
+    upstreamResponseModel: 'Upstream response model',
+    upstreamModelMismatch: 'Response model differs',
     reasoningEffort: 'Reasoning Effort',
     requestedReasoningEffort: 'Requested Reasoning Effort',
     endpoint: 'Endpoint',

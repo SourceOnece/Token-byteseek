@@ -22,6 +22,8 @@ import (
 
 // PassthroughOptions 沿用共享观察契约，独立保留透传的 HTTP 和 keepalive 规则。
 type PassthroughOptions struct {
+	// ObserveModel 在响应模型恢复前只观察原始模型，不改变服务档位。
+	ObserveModel func([]byte, string)
 	StreamOptions
 	NonStream                    NonStreamOptions
 	Headers                      func(http.Header, http.Header)
@@ -175,12 +177,19 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 		}
 	}
 
+	var lifecycleNormalizer wire.ResponseLifecycleNormalizer
+	pendingLifecycleHeader := ""
 	for documentScanner.Scan() {
 		line := documentScanner.Text()
 		if eventType, ok := wire.ExtractSSEEventLine(line); ok {
 			pendingSSEEventType = eventType
 			eventType = strings.TrimSpace(eventType)
 			suppressCurrentEvent = codexFailureTerminal && (eventType == "error" || (sawBareError && !sawResponseFailed && eventType != "response.failed"))
+			if wire.IsResponseLifecycleEvent(eventType) {
+				// 生命周期事件头与 data 一起下发，避免留下已过滤终态的孤立 event 行。
+				pendingLifecycleHeader = line
+				continue
+			}
 		}
 		lineStartsClientOutput := false
 		forceFlushFailedEvent := false
@@ -189,6 +198,17 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 			dataBytes := []byte(data)
 			trimmedData := strings.TrimSpace(data)
 			rawEventType := wire.EffectiveOpenAISSEEventType(dataBytes, pendingSSEEventType)
+			if options.ObserveModel != nil {
+				options.ObserveModel(dataBytes, rawEventType)
+			}
+			normalizedData, normalizedType, duplicateTerminal := lifecycleNormalizer.Normalize(dataBytes, rawEventType)
+			if !bytes.Equal(normalizedData, dataBytes) {
+				dataBytes = normalizedData
+				data = string(dataBytes)
+				trimmedData = strings.TrimSpace(data)
+				line = "data: " + data
+			}
+			rawEventType = normalizedType
 			if needModelReplace && strings.Contains(data, mappedModel) {
 				line = wire.ReplaceModelInSSELine(line, mappedModel, originalModel)
 				if replacedData, replaced := wire.ExtractSSEDataLine(line); replaced {
@@ -219,9 +239,8 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 				}
 			}
 			eventType := wire.EffectiveOpenAISSEEventType(dataBytes, rawEventType)
-			if codexFailureTerminal && sawBareError && !sawResponseFailed && eventType != "response.failed" {
-				suppressCurrentEvent = true
-			}
+			// 按规范化后的类型重新裁决，清除旧 done 事件头留下的抑制标记。
+			suppressCurrentEvent = codexFailureTerminal && (eventType == "error" || (sawBareError && !sawResponseFailed && eventType != "response.failed"))
 			if !capacityFailoverSuppressedLogged && options.NativeOpenAI &&
 				(eventType == "error" || eventType == "response.failed") &&
 				options.ClientOutputStarted(clientOutputStarted) &&
@@ -364,8 +383,18 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 				firstTokenMs = &ms
 			}
 			wire.ParseSSEUsageBytesWithType(dataBytes, eventType, usage)
+			if pendingLifecycleHeader != "" {
+				header := pendingLifecycleHeader
+				if eventType != strings.TrimSpace(pendingSSEEventType) {
+					header = "event: " + eventType
+				}
+				line = header + "\n" + line
+				pendingLifecycleHeader = ""
+			}
+			suppressCurrentEvent = suppressCurrentEvent || duplicateTerminal
 		}
 		if line == "" {
+			pendingLifecycleHeader = ""
 			pendingSSEEventType = ""
 			if suppressCurrentEvent {
 				suppressCurrentEvent = false

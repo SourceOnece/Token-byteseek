@@ -103,13 +103,14 @@
           <tbody>
             <template v-for="model in displayModelStats" :key="model.model">
               <tr data-icon-trigger
-                class="border-t border-gray-100 transition-colors dark:border-dark-600"
+                class="group/breakdown border-t border-gray-100 transition-colors dark:border-dark-600"
                 :class="enableBreakdown ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700/40' : ''"
                 @click="enableBreakdown && toggleBreakdown('model', model.model)"
               >
+                <!-- 模型名称随可展开行的悬停着色，箭头继承文字颜色。 -->
                 <td
-                  class="max-w-[100px] truncate py-1.5 font-medium"
-                  :class="enableBreakdown ? 'text-primary-600 hover:text-primary-800 dark:text-primary-500 dark:hover:text-primary-500' : 'text-gray-900 dark:text-white'"
+                  class="max-w-[100px] truncate py-1.5 font-medium text-gray-900 dark:text-white"
+                  :class="enableBreakdown ? 'group-hover/breakdown:text-primary-600 dark:group-hover/breakdown:text-primary-500' : ''"
                   :title="model.model"
                 >
                   <span class="inline-flex items-center gap-1">

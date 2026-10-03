@@ -99,6 +99,7 @@ func TestNativeAnthropicPassthroughRecordsOutputConfigEffort(t *testing.T) {
 		adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicTestProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
+	require.Equal(t, "k3", result.UpstreamResponseModel)
 	require.NotNil(t, result.ReasoningEffort)
 	require.Equal(t, "low", *result.ReasoningEffort)
 }
@@ -115,6 +116,7 @@ func TestNativeAnthropicPassthroughThinkingEnabledFallback(t *testing.T) {
 		adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicTestProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
+	require.Equal(t, "k3", result.UpstreamResponseModel)
 	require.NotNil(t, result.ReasoningEffort)
 	require.Equal(t, "high", *result.ReasoningEffort)
 }
@@ -130,6 +132,7 @@ func TestNativeAnthropicPassthroughStreamRecordsEffort(t *testing.T) {
 		adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicTestProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
+	require.Equal(t, "k3", result.UpstreamResponseModel)
 	require.NotNil(t, result.ReasoningEffort)
 	require.Equal(t, "max", *result.ReasoningEffort)
 }
@@ -145,6 +148,7 @@ func TestNativeAnthropicPassthroughNoEffortStaysNil(t *testing.T) {
 		adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicTestProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
+	require.Equal(t, "k3", result.UpstreamResponseModel)
 	require.Nil(t, result.ReasoningEffort)
 }
 

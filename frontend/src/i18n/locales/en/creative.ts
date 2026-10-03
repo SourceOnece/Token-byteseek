@@ -27,6 +27,26 @@ export default {
       operation: 'Operation',
       selectModel: 'Select a model',
       selectModelFirst: 'Select a model first.',
+      autoRatio: 'Auto ratio',
+    },
+    empty: {
+      title: 'Start with a description',
+      description: 'Type a prompt below to generate an image, or upload one to edit or inpaint it.',
+      upload: 'Upload image',
+      examples: {
+        poster: {
+          label: 'Retro travel poster',
+          prompt: 'A 1970s retro travel poster of a seaside town at sunset, warm orange tones, grainy paper texture, large sans-serif title',
+        },
+        product: {
+          label: 'Product shot',
+          prompt: 'Studio product shot of a frosted glass perfume bottle on a light gray background, soft side lighting, subtle reflections, simple composition',
+        },
+        illustration: {
+          label: 'Flat illustration',
+          prompt: 'An orange cat reading a book by the window, flat illustration style, muted colors, indoor plants, afternoon sunlight',
+        },
+      },
     },
     operations: {
       generate: 'Generate',
@@ -83,7 +103,7 @@ export default {
       // 图生图未选择参考图时的引导（点击单选，或直接拖拽框选多张）
       editPickHint: 'Tap an image as reference, or drag a box to select multiple images',
       // 涂抹开始前的引导：紫色笔迹即重绘区域
-      maskPaintHint: 'Paint the purple area to redraw; it becomes the mask on export',
+      maskPaintHint: 'Paint over the area to redraw. The purple strokes are sent as the mask.',
     },
     result: {
       actualCost: 'Actual cost: {cost}',

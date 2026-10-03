@@ -1,6 +1,6 @@
 import { useProtocolCatalogFixture } from '@/__tests__/helpers/protocolCatalog'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 
 import ProvidersView from '../ProvidersView.vue'
 
@@ -97,13 +97,24 @@ const DataTableStub = {
 
 const ProviderBulkActionsBarStub = {
   props: ['selectedIds', 'usageLoading'],
-  emits: ['edit-filtered', 'query-usage'],
+  emits: ['query-usage'],
   template: `
     <div>
-      <button data-test="edit-filtered" @click="$emit('edit-filtered')">edit filtered</button>
       <button data-test="query-usage" :disabled="usageLoading" @click="$emit('query-usage')">query usage</button>
     </div>
   `
+}
+
+// 「批量编辑筛选结果」位于工具菜单中，菜单通过 Teleport 挂载到 body。
+// 前面用例未卸载的页面可能在 body 里留下菜单，取最后挂载的那一个。
+const openFilteredBulkEditFromMenu = async (wrapper: VueWrapper) => {
+  const toolsButton = wrapper.findAll('button').find((button) => button.attributes('title') === 'admin.providers.moreActions')
+  expect(toolsButton).toBeDefined()
+  await toolsButton!.trigger('click')
+  await flushPromises()
+  const menuItems = document.body.querySelectorAll<HTMLButtonElement>('[data-test="bulk-edit-filtered"]')
+  expect(menuItems.length).toBeGreaterThan(0)
+  menuItems[menuItems.length - 1].click()
 }
 
 const BulkEditProviderModalStub = {
@@ -193,7 +204,7 @@ describe('admin ProvidersView bulk edit scope', () => {
     })
 
     await flushPromises()
-    await wrapper.get('[data-test="edit-filtered"]').trigger('click')
+    await openFilteredBulkEditFromMenu(wrapper)
     await flushPromises()
 
     expect(wrapper.get('[data-test="bulk-edit-modal"]').attributes('data-show')).toBe('true')
@@ -261,7 +272,7 @@ describe('admin ProvidersView bulk edit scope', () => {
         pages: 2
       })
 
-    await wrapper.get('[data-test="edit-filtered"]').trigger('click')
+    await openFilteredBulkEditFromMenu(wrapper)
     await flushPromises()
 
     expect(listProviders).toHaveBeenNthCalledWith(1, 1, 500, expect.objectContaining({ lite: '1' }))

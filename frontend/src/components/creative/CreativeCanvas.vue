@@ -11,9 +11,12 @@
     <!-- 拖放目标反馈不接收指针事件，避免覆盖 Fabric 画布交互。 -->
     <div v-if="dropTargetActive" class="pointer-events-none absolute inset-2 z-[2] rounded-surface border-2 border-dashed border-primary-500/70 bg-primary-500/5"><!-- check-ui-allow: 画布内局部堆叠 --></div>
 
-    <!-- 浮动工具栏（顶部居中，含移动端；窄屏限宽并换行，圆角保持与桌面端一致，避免与左上角设置、右上角历史按钮重叠）：上传 | 局部重绘画笔组 | 删除选中 / 清空 -->
+    <!-- 浮动工具栏（顶部居中，含移动端）：上传 | 下载 | 框选 | 局部重绘画笔组 | 删除选中。
+         胶囊形，高度与左上角设置、右上角历史两个按钮相同。窄屏限宽并换行，两侧各留出浮层的位置；
+         局部重绘的画笔组在窄屏会折成两行，两行的胶囊端头会切到按钮，这时改用 dialog 圆角。 -->
     <div
-      class="absolute left-1/2 top-3 z-10 flex max-sm:w-fit max-sm:max-w-[calc(100%-7.5rem)] max-sm:flex-wrap max-sm:justify-center -translate-x-1/2 items-center gap-1.5 rounded-full border border-primary-900/10 bg-white/90 px-2 py-1.5 shadow-md backdrop-blur dark:border-dark-600 dark:bg-dark-900/90"
+      class="canvas-toolbar canvas-island absolute left-1/2 top-3 z-10 flex max-sm:w-fit max-sm:max-w-[calc(100%-8rem)] max-sm:flex-wrap max-sm:justify-center -translate-x-1/2 items-center gap-1 rounded-full p-1"
+      :class="isInpaint && 'max-sm:rounded-dialog'"
     >
       <!-- 上传图片：裁剪确认后直接放上画布当前视角中心 -->
       <button type="button" class="canvas-tool-btn" :title="t('creative.panel.uploadSource')" @click="fileInputRef?.click()">
@@ -39,7 +42,7 @@
       </button>
 
       <!-- 框选参考图 / 画布对象工具：三种模式都可用，开启后空白拖拽画选框 -->
-      <span class="mx-0.5 h-5 w-px bg-primary-900/10 dark:bg-dark-600"></span>
+      <span class="canvas-tool-divider"></span>
       <button
         type="button"
         class="canvas-tool-btn"
@@ -53,7 +56,7 @@
       <!-- 画笔组：仅局部重绘模式可用（选中图片后自动进入涂抹，可用开关暂停去移动视角） -->
       <MotionTransition name="canvas-toolbar-extension">
         <div v-if="isInpaint" class="canvas-toolbar-extension">
-          <span class="mx-0.5 h-5 w-px flex-none bg-primary-900/10 dark:bg-dark-600"></span>
+          <span class="canvas-tool-divider flex-none"></span>
           <button
             type="button"
             class="canvas-tool-btn flex-none"
@@ -71,7 +74,7 @@
             :title="t('creative.canvas.clearMask')"
             @click="clearMask"
           >
-            <Icon name="trash" size="sm" />
+            <Icon name="eraser" size="sm" />
           </button>
           <!-- 撤销上一笔涂抹（同 Ctrl/Cmd+Z） -->
           <button
@@ -118,7 +121,7 @@
         </div>
       </MotionTransition>
 
-      <span class="mx-0.5 h-5 w-px bg-primary-900/10 dark:bg-dark-600"></span>
+      <span class="canvas-tool-divider"></span>
       <!-- 删除选中图片 -->
       <button
         type="button"
@@ -127,30 +130,8 @@
         :title="t('creative.canvas.removeSelected')"
         @click="removeSelected"
       >
-        <Icon name="x" size="sm" />
+        <Icon name="trash" size="sm" />
       </button>
-    </div>
-
-    <!-- 局部重绘未选中图片：引导点击选择目标图片（位于顶部工具栏下方；移动端工具栏可能换行，留白更大） -->
-    <div
-      v-if="isInpaint && !inpaintAnchor"
-      class="pointer-events-none absolute left-1/2 top-28 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/60 px-3 py-1 text-xs text-white dark:bg-white/15 lg:top-16"
-    >
-      {{ t('creative.canvas.inpaintPickHint') }}
-    </div>
-    <!-- 图生图未选择参考图：同款胶囊引导（点击单选，Shift+点击加选） -->
-    <div
-      v-else-if="isEdit && !editRefs.length"
-      class="pointer-events-none absolute left-1/2 top-28 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/60 px-3 py-1 text-xs text-white dark:bg-white/15 lg:top-16"
-    >
-      {{ t('creative.canvas.editPickHint') }}
-    </div>
-    <!-- 涂抹引导：首次落笔前提示紫色笔迹即重绘区域 -->
-    <div
-      v-else-if="painting && !hasMaskStrokes"
-      class="pointer-events-none absolute left-1/2 top-28 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/60 px-3 py-1 text-xs text-white dark:bg-white/15 lg:top-16"
-    >
-      {{ t('creative.canvas.maskPaintHint') }}
     </div>
 
     <!-- 裁剪弹窗队列：每张图片依次进入，确认/跳过后直接放上画布 -->
@@ -167,17 +148,30 @@ import MotionTransition from '@/components/common/MotionTransition.vue'
  * - 局部重绘：选中图片自动进入涂抹模式（紫色笔迹 = 重绘区域，导出时自动转白底 mask）；
  *   涂抹中可用中键 / 右键拖拽平移，工具栏开关可暂停涂抹去移动 / 换选图片
  * - 工具栏：上传、下载选中、框选、画笔组（仅局部重绘）、删除选中；清空画布收在左上角设置里
+ * - 选中框和控制点用品牌青圆点（模块加载时写入 fabric 的交互默认值）；操作引导由 guideKey 交给输入框状态行展示
  * - 拖放：外部 PNG/JPEG/WebP 直接保存并按落点上板，历史 output 通过本地 key 拖放并按落点上板
  * - 场景快照（含 data 自定义属性，图片 src 以 asset:// 占位）防抖存入 IndexedDB，刷新后恢复并重建输出注册表
  */
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { saveAs } from 'file-saver'
-import { Canvas, FabricImage, PencilBrush, Point, Rect, StaticCanvas, Text as FabricText, type FabricObject, type TMat2D } from 'fabric'
+import {
+  Canvas,
+  FabricImage,
+  InteractiveFabricObject,
+  PencilBrush,
+  Point,
+  Rect,
+  StaticCanvas,
+  Text as FabricText,
+  type FabricObject,
+  type TMat2D,
+} from 'fabric'
 import { SquarePencilBrush } from './SquarePencilBrush'
 import Icon from '@/components/icons/Icon.vue'
 import CropperModal from './CropperModal.vue'
 import type { CreativeOperation } from '@/api/creative'
+import type { CreativeCanvasGuide } from '@/composables/useCreativeStudio'
 import {
   LocalStoreQuotaError,
   loadAsset,
@@ -230,6 +224,20 @@ const PLACE_WRAP_X = 2200
 const PLACE_SCALE = 0.25
 // 图片 src 在场景快照中的占位协议，恢复时回 IndexedDB 取 blob
 const ASSET_PROTOCOL = 'asset://'
+// 选中框、控制点和框选区域的品牌青（primary-600），浅色和深色画布上都看得清
+const SELECTION_COLOR = '#12A7E8'
+const SELECTION_FILL = 'rgba(18, 167, 232, 0.08)'
+// 项目里只有创作台使用 fabric，直接改交互默认值；新建图片和快照恢复的图片都读取这组值。
+Object.assign(InteractiveFabricObject.ownDefaults, {
+  borderColor: SELECTION_COLOR,
+  borderScaleFactor: 1.5,
+  cornerColor: '#ffffff',
+  cornerStrokeColor: SELECTION_COLOR,
+  cornerStyle: 'circle',
+  cornerSize: 10,
+  transparentCorners: false,
+  padding: 0,
+})
 // mask 导出色；画布内使用不透明紫色笔迹，再通过统一图层透明度显示
 const MASK_COLOR = '#ffffff'
 const MASK_TINT = '#a855f7'
@@ -252,7 +260,6 @@ const RESOLUTION_TAG_OFFSET = 8
 const RESOLUTION_TAG_TEXT_STYLE = {
   fill: '#ffffff',
   fontSize: 11,
-  fontFamily: 'sans-serif',
   fontWeight: '500',
   originX: 'left' as const,
   originY: 'top' as const,
@@ -261,8 +268,8 @@ const RESOLUTION_TAG_TEXT_STYLE = {
 }
 const RESOLUTION_TAG_BACKGROUND_STYLE = {
   fill: 'rgba(8, 12, 20, 0.78)',
-  rx: 4,
-  ry: 4,
+  rx: 6,
+  ry: 6,
   originX: 'left' as const,
   originY: 'top' as const,
   selectable: false,
@@ -338,10 +345,12 @@ function refreshResolutionTag(image: FabricImage | null): void {
     removeResolutionTag()
     return
   }
-  const label = `${resolution.width}x${resolution.height}`
+  const label = `${resolution.width} × ${resolution.height}`
   if (!resolutionTag || resolutionTag.image !== image || resolutionTag.text.text !== label) {
     removeResolutionTag()
-    const text = new FabricText(label, RESOLUTION_TAG_TEXT_STYLE)
+    // 字体跟随页面正文，canvas 文字不会继承 CSS 字体
+    const fontFamily = getComputedStyle(document.body).fontFamily || 'sans-serif'
+    const text = new FabricText(label, { ...RESOLUTION_TAG_TEXT_STYLE, fontFamily })
     const textWidth = text.width ?? 0
     const textHeight = text.height ?? 0
     const background = new Rect({
@@ -436,6 +445,10 @@ const paintSuspended = ref(false)
 const editRefs = shallowRef<FabricObject[]>([])
 // 框选工具开关：三种模式均可开启，空白拖拽绘制选框
 const boxSelectMode = ref(false)
+// 画布上的图片数量；父级据此在空画布时显示引导
+const imageCount = ref(0)
+// 首次场景恢复结束后为 true，恢复期间画布暂时是空的，父级不应显示空画布引导
+const sceneReady = ref(false)
 // 锚点描边对象（运行时辅助，涂抹期间标示目标图片）
 let anchorOutline: Rect | null = null
 // 编辑参考图描边对象表：图片对象 → 描边矩形（运行时辅助）
@@ -502,6 +515,9 @@ onMounted(() => {
     backgroundColor: '',
     // 默认关闭组选；点击框选工具后由交互同步逻辑开启
     selection: false,
+    selectionColor: SELECTION_FILL,
+    selectionBorderColor: SELECTION_COLOR,
+    selectionLineWidth: 1,
     defaultCursor: 'grab',
   })
   const maskElement = maskCanvasElRef.value
@@ -730,6 +746,7 @@ function bindCanvasEvents(): void {
     scheduleSceneSave()
   })
   canvas.on('object:added', () => {
+    syncImageCount()
     scheduleSceneSave()
   })
   canvas.on('object:modified', () => {
@@ -764,6 +781,7 @@ function bindCanvasEvents(): void {
     if (!getMaskPaths().length) {
       hasMaskStrokes.value = false
     }
+    syncImageCount()
     scheduleSceneSave()
   })
   canvas.on('selection:created', (event) => {
@@ -1027,6 +1045,19 @@ function onKeyDown(event: KeyboardEvent): void {
 const isInpaint = computed(() => props.operation === 'inpaint')
 // 图生图模式（未选中源图时展示引导胶囊）
 const isEdit = computed(() => props.operation === 'edit')
+
+// 当前操作缺少的画布输入，由输入框状态行显示对应引导文案
+const guideKey = computed<CreativeCanvasGuide | null>(() => {
+  if (isInpaint.value && !inpaintAnchor.value) return 'inpaintPick'
+  if (isEdit.value && !editRefs.value.length) return 'editPick'
+  if (painting.value && !hasMaskStrokes.value) return 'maskPaint'
+  return null
+})
+
+// 重新统计画布上的图片对象（不含描边、分辨率标记等辅助对象）
+function syncImageCount(): void {
+  imageCount.value = canvas ? canvas.getObjects().filter((object) => objectData(object).kind === 'image').length : 0
+}
 
 // 选中图片时登记为涂抹锚点（换选自动切换）；仅局部重绘模式下登记
 function onImageSelected(image: FabricObject | null): void {
@@ -1752,6 +1783,8 @@ function resetCanvas(): void {
   runtimeBlobs.clear()
   selectedImage.value = null
   selectedObjectCount.value = 0
+  syncImageCount()
+  sceneReady.value = true
   canvas.requestRenderAll()
   scheduleSceneSave()
   // 清空是用户明确操作，立即写入空场景，避免旧快照在短暂防抖期间复活。
@@ -1885,6 +1918,8 @@ async function restoreScene(generation: number): Promise<void> {
       // 恢复过程本身触发的 Fabric 事件不属于用户变更。
       sceneDirty = false
     }
+    syncImageCount()
+    sceneReady.value = true
   }
 }
 
@@ -1920,43 +1955,42 @@ defineExpose({
   getMaskBlob,
   resetCanvas,
   clearMask,
+  // 打开系统文件选择框，空画布引导的上传按钮调用
+  openFilePicker: () => fileInputRef.value?.click(),
   // 是否已有 mask 笔迹
   hasMaskStrokes,
+  guideKey,
+  imageCount,
+  sceneReady,
 })
 </script>
 
 <style scoped>
-/* 深色圆点网格：浅色主题用暗点，dark 类下用亮点，画布背景透明透出 */
+/* 圆点网格：浅色主题用暗点，dark 类下用亮点，画布背景透明透出；点的透明度压低，不和图片抢视线 */
 .dot-grid {
   /* 禁止浏览器接管双指手势，交由画布实现缩放与平移。 */
   touch-action: none;
-  background-image: radial-gradient(circle, rgb(15 23 42 / 0.12) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgb(15 23 42 / 0.08) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
 /* 拖放期间给画布边缘提供稳定反馈，不改变图片与 Fabric 对象尺寸。 */
 .drop-target-active {
-  box-shadow: inset 0 0 0 2px rgb(124 58 237 / 0.45);
+  box-shadow: inset 0 0 0 2px rgb(0 210 255 / 0.45);
 }
 
 .dark .dot-grid {
-  background-image: radial-gradient(circle, rgb(255 255 255 / 0.14) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgb(255 255 255 / 0.1) 1px, transparent 1px);
+}
+
+/* 胶囊工具条里的按钮用圆形，悬停底色和外壳弧线同心 */
+.canvas-toolbar .canvas-tool-btn {
+  border-radius: 9999px;
 }
 
 /* mask 独立画布只展示，不拦截主画布的指针事件；整层透明度避免笔迹重叠变深 */
 .mask-overlay {
   @apply pointer-events-none absolute inset-0 z-[1]; /* check-ui-allow: 画布内局部堆叠 */
-}
-
-.canvas-tool-btn {
-  @apply inline-flex h-8 w-8 items-center justify-center rounded-control text-gray-600 transition-colors;
-  @apply hover:bg-gray-100 hover:text-gray-900;
-  @apply disabled:cursor-not-allowed disabled:opacity-40;
-  @apply dark:text-gray-300 dark:hover:bg-dark-700 dark:hover:text-gray-100;
-}
-
-.canvas-tool-btn-active {
-  @apply bg-primary-600/10 text-primary-700 dark:text-primary-300;
 }
 
 /* 桌面端让新增画笔组带动工具条平滑扩展；窄屏保留原有逐项换行，并淡入新增控件。 */
@@ -2008,8 +2042,8 @@ defineExpose({
   }
 }
 
-/* 画笔粗细滑块自定义配色：accent-color 对未填充轨道的着色在浅色模式下过深；
-   浅色模式用浅灰轨道 + 品牌青滑块，深色模式用暗色轨道（配色对齐项目 dark-700） */
+/* 画笔粗细滑块自定义配色：accent-color 对未填充轨道的着色在浅色模式下过深。
+   轨道 4px，浅色 gray-200、深色 dark-700；滑块 16px，用 primary-600。 */
 .brush-size {
   -webkit-appearance: none;
   appearance: none;
@@ -2017,9 +2051,9 @@ defineExpose({
 }
 
 .brush-size::-webkit-slider-runnable-track {
-  height: 6px;
+  height: 4px;
   border-radius: 9999px;
-  background: rgb(209 213 219);
+  background: rgb(229 231 235);
 }
 
 .dark .brush-size::-webkit-slider-runnable-track {
@@ -2029,18 +2063,18 @@ defineExpose({
 .brush-size::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  margin-top: -5px;
+  margin-top: -6px;
   height: 16px;
   width: 16px;
   border: none;
   border-radius: 9999px;
-  background: rgb(0 210 255);
+  background: rgb(18 167 232);
 }
 
 .brush-size::-moz-range-track {
-  height: 6px;
+  height: 4px;
   border-radius: 9999px;
-  background: rgb(209 213 219);
+  background: rgb(229 231 235);
 }
 
 .dark .brush-size::-moz-range-track {
@@ -2052,7 +2086,7 @@ defineExpose({
   width: 16px;
   border: none;
   border-radius: 9999px;
-  background: rgb(0 210 255);
+  background: rgb(18 167 232);
 }
 
 @media (prefers-reduced-motion: reduce) {

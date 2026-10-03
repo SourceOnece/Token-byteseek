@@ -2,18 +2,19 @@
   <BaseDialog
     :show="show"
     :title="t('admin.providers.testDialog.title', { name: provider?.name ?? '' })"
-    :subtitle="t('admin.providers.testDialog.subtitle')"
     width="wide"
     :body-scroll="false"
     flush
     @close="handleClose"
   >
     <template #header-icon>
+      <!-- 与模型广场一致使用模型品牌图标，单色品牌跟随文字色显示为黑/白 -->
       <span
         v-if="provider"
-        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-950"
+        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-gray-200 bg-gray-50 text-gray-900 dark:border-dark-600 dark:bg-dark-950 dark:text-white"
       >
-        <PlatformIcon :platform="provider.platform" size="lg" :class="platformIconClass(provider.platform)" />
+        <ProviderIcon v-if="hasProviderBrandIcon" :brand="provider.platform" size="22px" />
+        <PlatformIcon v-else :platform="provider.platform" size="lg" :class="platformIconClass(provider.platform)" />
       </span>
     </template>
 
@@ -116,10 +117,10 @@
         />
       </aside>
 
-      <!-- 右侧：单模型结果或批量模型列表 -->
+      <!-- 右侧：单模型结果或批量模型列表；窄屏随左栏整体滚动，按内容撑高，避免被压缩后卡片贴住底栏 -->
       <section
         :aria-label="t('admin.providers.testDialog.results')"
-        class="flex min-h-0 min-w-0 flex-1 flex-col px-4 py-5 sm:px-6"
+        class="flex min-w-0 flex-col px-4 py-5 sm:px-6 md:min-h-0 md:flex-1"
       >
         <ProviderTestResultView v-if="testScope === 'single'" :run="singleRun" />
         <ProviderTestBatchPanel v-else :batch="batch" />
@@ -188,6 +189,7 @@
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
 import Select from '@/components/common/Select.vue'
 import TextArea from '@/components/common/TextArea.vue'
@@ -195,6 +197,7 @@ import SettingsSegmented from '@/components/common/settings/SettingsSegmented.vu
 import { Icon } from '@/components/icons'
 import { adminAPI } from '@/api/admin'
 import { platformIconClass } from '@/utils/platformColors'
+import { resolveProviderBrand } from '@/utils/providerBrand'
 import type { Provider, ClaudeModel } from '@/types'
 import ProviderTestBatchPanel from './ProviderTestBatchPanel.vue'
 import ProviderTestResultView from './ProviderTestResultView.vue'
@@ -245,6 +248,9 @@ const selectedModelId = ref('')
 const loadingModels = ref(false)
 const testPrompt = ref('')
 let lastDefaultPrompt = ''
+
+// Antigravity、Qoder 等未配置品牌图形的平台使用 PlatformIcon。
+const hasProviderBrandIcon = computed(() => Boolean(resolveProviderBrand(props.provider?.platform).iconKey))
 
 const isOpenAIProvider = computed(() => props.provider?.platform === 'openai')
 const isCNProvider = computed(() => ['kimi', 'zhipu', 'deepseek'].includes(props.provider?.platform ?? ''))

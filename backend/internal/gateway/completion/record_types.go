@@ -14,6 +14,8 @@ import (
 // Result 仅保留完成处理需要的已观测结果，不携带响应体、HTTP Header 或平台执行器。
 type Result struct {
 	ResponseModel string
+	// UpstreamResponseModel 是协议转换前的上游模型声明；空值表示未声明。
+	UpstreamResponseModel string
 	// NativeUsage 表示结果沿用原生输入与缓存分桶，不使用 OpenAI 总输入口径。
 	NativeUsage                                                                  bool
 	RequestID, ResponseID, Model, BillingModel, UpstreamModel                    string

@@ -1,129 +1,140 @@
 <template>
-  <!-- 历史入口：画布区域右上角的手写 SVG 图标按钮 -->
-  <button
-    ref="historyButtonRef"
-    type="button"
-    class="absolute right-3 top-3 z-20 flex rounded-control border border-primary-900/10 bg-white/90 text-gray-600 shadow-md backdrop-blur transition-colors hover:text-gray-900 dark:border-dark-600 dark:bg-dark-900/90 dark:text-gray-300 dark:hover:text-gray-100 btn-icon"
-    :class="open && 'text-primary-700 dark:text-primary-300'"
-    :title="t('creative.history.toggle')"
-    :aria-expanded="open"
-    @click="open = !open"
-  >
-    <Icon name="history" />
-    <!-- 活动任务数量：保持在图标右上角，不展开历史也能感知后台进度。 -->
-    <span
-      v-if="props.activeRunCount > 0"
-      class="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-xs font-semibold leading-none text-white shadow-sm ring-2 ring-white dark:ring-dark-900"
+  <!-- 历史入口：画布右上角的浮层按钮，高度与顶部工具条一致 -->
+  <div class="canvas-island absolute right-3 top-3 z-20 rounded-surface p-1" :class="bumping && 'history-bump'" @animationend="onBumpEnd">
+    <button
+      ref="historyButtonRef"
+      type="button"
+      class="canvas-tool-btn relative"
+      :class="open && 'canvas-tool-btn-active'"
+      :title="t('creative.history.toggle')"
+      :aria-expanded="open"
+      @click="open = !open"
     >
-      {{ props.activeRunCount > 99 ? '99+' : props.activeRunCount }}
-    </span>
-  </button>
+      <Icon name="history" size="md" />
+      <!-- 活动任务数量：保持在图标右上角，不展开历史也能感知后台进度。 -->
+      <span
+        v-if="props.activeRunCount > 0"
+        class="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-600 px-1 text-xs font-semibold leading-none text-white ring-2 ring-white tabular-nums dark:ring-dark-900"
+      >
+        {{ props.activeRunCount > 99 ? '99+' : props.activeRunCount }}
+      </span>
+    </button>
+  </div>
 
   <!-- 悬浮历史列表：点击展开 / 收起，选择行后不自动收起 -->
   <MotionTransition name="pop-float">
     <div
       v-if="open"
-      class="history-pop-float absolute right-3 top-14 z-20 flex max-h-[70%] w-80 flex-col overflow-hidden rounded-surface border border-primary-900/10 bg-white/95 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-900/95"
+      class="canvas-island history-pop-float absolute right-3 top-16 z-20 flex max-h-[70%] w-80 flex-col overflow-hidden rounded-surface"
     >
-    <div class="flex items-center gap-2 border-b border-primary-900/10 px-3 py-2 dark:border-dark-600">
-      <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-dark-400">
-        {{ t('creative.history.title') }}
-      </h3>
-      <button
-        type="button"
-        class="ml-auto text-gray-400 transition-colors hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:text-gray-200"
-        :disabled="refreshing || studio.loadingHistory.value"
-        :aria-busy="refreshing || studio.loadingHistory.value"
-        :title="t('common.refresh')"
-        @click="refresh"
-      >
-        <Icon
-          name="refresh"
-          size="sm"
-          :class="(refreshing || studio.loadingHistory.value) && 'animate-spin'"
-        />
-      </button>
-      <button
-        type="button"
-        class="text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200"
-        :title="t('common.close')"
-        @click="open = false"
-      >
-        <Icon name="x" size="sm" />
-      </button>
-    </div>
-
-    <div class="min-h-0 flex-1 overflow-y-auto p-2">
-      <div v-if="studio.runHistory.value.length" class="space-y-1.5">
-        <div
-          v-for="run in studio.runHistory.value"
-          :key="run.id"
-          class="rounded-control border border-primary-900/10 transition-colors dark:border-dark-600"
-          :class="studio.currentRun.value?.id === run.id && 'border-primary-500 dark:border-primary-500'"
+      <div class="flex items-center gap-1 border-b border-primary-900/8 py-1.5 pl-3 pr-1.5 dark:border-dark-600">
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+          {{ t('creative.history.title') }}
+        </h3>
+        <button
+          type="button"
+          class="canvas-tool-btn ml-auto"
+          :disabled="refreshing || studio.loadingHistory.value"
+          :aria-busy="refreshing || studio.loadingHistory.value"
+          :title="t('common.refresh')"
+          @click="refresh"
         >
-          <!-- 行头：点击原地展开 / 收起 -->
-          <button type="button" class="w-full px-3 py-2 text-left" @click="toggleRun(run.id)">
-            <div class="flex items-center gap-2">
-              <span class="status-badge flex-shrink-0" :class="`status-${run.status}`">
-                {{ t(`creative.status.${run.status}`, run.status) }}
-              </span>
-              <span class="min-w-0 flex-1 truncate text-xs text-gray-600 dark:text-gray-300">{{ run.model }}</span>
-              <Icon
-                name="chevronDown"
-                size="sm"
-                class="flex-shrink-0 text-gray-400 transition-transform dark:text-dark-400"
-                :class="expandedRunId === run.id && 'rotate-180'"
-                :animate-on-hover="false"
-              />
-            </div>
-            <div class="mt-1 flex items-center gap-2 text-xs text-gray-400 dark:text-dark-400">
-              <span>{{ formatRunTime(run.created_at) }}</span>
-              <span
-                v-if="formatElapsed(run)"
-                class="inline-flex shrink-0 items-center gap-1 tabular-nums"
-                :aria-label="t('creative.history.elapsed', { time: formatElapsed(run) })"
-                :title="t('creative.history.elapsed', { time: formatElapsed(run) })"
-              >
-                <Icon name="clock" size="xs" aria-hidden="true" />
-                <span>{{ formatElapsed(run) }}</span>
-              </span>
-              <span v-if="run.actual_cost != null" class="ml-auto">{{ t('creative.result.actualCost', { cost: formatBalanceAmount(run.actual_cost, { fractionDigits: 3 }) }) }}</span>
-            </div>
-          </button>
+          <Icon
+            name="refresh"
+            size="sm"
+            :class="(refreshing || studio.loadingHistory.value) && 'animate-spin'"
+          />
+        </button>
+        <button
+          type="button"
+          class="canvas-tool-btn"
+          :title="t('common.close')"
+          @click="open = false"
+        >
+          <Icon name="x" size="sm" />
+        </button>
+      </div>
 
-          <!-- 进行中的任务只显示加载状态，终态任务才显示素材与操作按钮。 -->
-          <MotionTransition name="history-details">
-            <div v-if="expandedRunId === run.id" class="history-details-grid">
-              <div class="min-h-0 overflow-hidden">
-                <div class="space-y-2 border-t border-primary-900/10 px-3 pb-3 pt-2 dark:border-dark-600">
-                  <div v-if="isActive(run)" class="flex items-center gap-3 py-2 text-xs text-gray-500 dark:text-dark-300">
-                    <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-control border border-primary-900/10 bg-gray-50 dark:border-dark-600 dark:bg-dark-950">
-                      <Icon
-                        name="refresh"
-                        size="md"
-                        class="animate-spin text-primary-500"
-                        :animate-on-hover="false"
-                      />
+      <div class="min-h-0 flex-1 overflow-y-auto p-1.5">
+        <div v-if="studio.runHistory.value.length" class="space-y-0.5">
+          <div
+            v-for="run in studio.runHistory.value"
+            :key="run.id"
+            class="rounded-control transition-colors"
+            :class="studio.currentRun.value?.id === run.id || expandedRunId === run.id ? 'bg-primary-500/8' : 'hover:bg-gray-50 dark:hover:bg-dark-800'"
+          >
+            <!-- 行头：点击原地展开 / 收起 -->
+            <button type="button" class="w-full px-2.5 py-2 text-left" @click="toggleRun(run.id)">
+              <div class="flex items-center gap-2">
+                <span class="run-status flex-shrink-0" :class="`run-status-${statusTone(run)}`">
+                  <Icon
+                    v-if="isActive(run)"
+                    name="loader"
+                    size="xs"
+                    class="animate-spin"
+                    :animate-on-hover="false"
+                  />
+                  <span v-else class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
+                  {{ t(`creative.status.${run.status}`, run.status) }}
+                </span>
+                <span class="min-w-0 flex-1 truncate text-xs text-gray-500 dark:text-dark-300">{{ run.model }}</span>
+                <Icon
+                  name="chevronDown"
+                  size="sm"
+                  class="flex-shrink-0 text-gray-400 transition-transform dark:text-dark-400"
+                  :class="expandedRunId === run.id && 'rotate-180'"
+                  :animate-on-hover="false"
+                />
+              </div>
+              <div class="mt-1 flex items-center gap-2 text-xs tabular-nums text-gray-400 dark:text-dark-400">
+                <span :title="formatRunTime(run.created_at)">{{ formatRunRelative(run.created_at) }}</span>
+                <span
+                  v-if="formatElapsed(run)"
+                  class="inline-flex shrink-0 items-center gap-1"
+                  :aria-label="t('creative.history.elapsed', { time: formatElapsed(run) })"
+                  :title="t('creative.history.elapsed', { time: formatElapsed(run) })"
+                >
+                  <Icon name="clock" size="xs" aria-hidden="true" />
+                  <span>{{ formatElapsed(run) }}</span>
+                </span>
+                <span v-if="run.actual_cost != null" class="ml-auto">{{ t('creative.result.actualCost', { cost: formatBalanceAmount(run.actual_cost, { fractionDigits: 3 }) }) }}</span>
+              </div>
+            </button>
+
+            <!-- 进行中的任务只显示加载状态，终态任务才显示素材与操作按钮。 -->
+            <MotionTransition name="history-details">
+              <div v-if="expandedRunId === run.id" class="history-details-grid">
+                <div class="min-h-0 overflow-hidden">
+                  <div class="space-y-2 px-2.5 pb-2.5">
+                    <div v-if="isActive(run)" class="flex items-center gap-3 text-xs text-gray-500 dark:text-dark-300">
+                      <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-control bg-white dark:bg-dark-950">
+                        <Icon
+                          name="loader"
+                          size="md"
+                          class="animate-spin text-primary-500"
+                          :animate-on-hover="false"
+                        />
+                      </div>
+                      <div class="min-w-0">
+                        <span class="block">{{ t(`creative.status.${run.status}`, run.status) }}</span>
+                        <span
+                          v-if="formatElapsed(run)"
+                          data-testid="creative-run-elapsed"
+                          class="mt-1 inline-flex items-center gap-1 tabular-nums text-xs text-gray-400 dark:text-dark-400"
+                          :aria-label="t('creative.history.elapsed', { time: formatElapsed(run) })"
+                          :title="t('creative.history.elapsed', { time: formatElapsed(run) })"
+                        >
+                          <Icon name="clock" size="xs" aria-hidden="true" />
+                          <span>{{ formatElapsed(run) }}</span>
+                        </span>
+                      </div>
                     </div>
-                    <div class="min-w-0">
-                      <span class="block">{{ t(`creative.status.${run.status}`, run.status) }}</span>
-                      <span
-                        v-if="formatElapsed(run)"
-                        data-testid="creative-run-elapsed"
-                        class="mt-1 inline-flex items-center gap-1 tabular-nums text-xs text-gray-400 dark:text-dark-400"
-                        :aria-label="t('creative.history.elapsed', { time: formatElapsed(run) })"
-                        :title="t('creative.history.elapsed', { time: formatElapsed(run) })"
-                      >
-                        <Icon name="clock" size="xs" aria-hidden="true" />
-                        <span>{{ formatElapsed(run) }}</span>
-                      </span>
-                    </div>
-                  </div>
-                  <template v-else-if="run.outputs?.length">
-                    <!-- 输出纵向排列：图片优先撑满弹窗宽度，操作按钮统一放在图片下方 -->
-                    <div v-for="output in run.outputs" :key="output.output_index" class="flex flex-col gap-1.5">
+                    <template v-else-if="run.outputs?.length">
+                      <!-- 输出纵向排列，图片撑满弹窗宽度；导入画布和下载悬浮在图片右上角，触屏设备常显 -->
                       <div
-                        class="flex w-full items-center justify-center overflow-hidden rounded-control border border-primary-900/10 bg-gray-50 dark:border-dark-600 dark:bg-dark-950"
+                        v-for="output in run.outputs"
+                        :key="output.output_index"
+                        class="history-output group relative flex w-full items-center justify-center overflow-hidden rounded-control bg-white dark:bg-dark-950"
                       >
                         <img
                           v-if="assetFor(run.id, output.output_index)"
@@ -133,44 +144,43 @@
                           class="block h-auto w-full cursor-grab select-none active:cursor-grabbing"
                           @dragstart.stop="onOutputDragStart($event, run.id, output.output_index)"
                         />
-                        <div v-else class="flex h-24 w-full flex-col items-center justify-center gap-0.5 text-gray-300 dark:text-dark-600">
+                        <div v-else class="flex h-24 w-full flex-col items-center justify-center gap-1 text-gray-400 dark:text-dark-500">
                           <Icon name="modalityImage" size="sm" />
-                          <span class="scale-90 text-xs">{{ t('creative.result.missing') }}</span>
+                          <span class="text-xs">{{ t('creative.result.missing') }}</span>
+                        </div>
+                        <div v-if="assetFor(run.id, output.output_index)" class="history-output-actions">
+                          <button
+                            type="button"
+                            class="history-output-btn"
+                            :title="t('creative.history.importToCanvas')"
+                            :aria-label="t('creative.history.importToCanvas')"
+                            @click="importToCanvas(run.id, output.output_index)"
+                          >
+                            <Icon name="plus" size="sm" />
+                          </button>
+                          <button
+                            type="button"
+                            class="history-output-btn"
+                            :title="t('creative.history.download')"
+                            :aria-label="t('creative.history.download')"
+                            @click="downloadOutput(run.id, output.output_index, output.mime_type)"
+                          >
+                            <Icon name="download" size="sm" />
+                          </button>
                         </div>
                       </div>
-                      <div class="flex gap-1.5">
-                        <button
-                          type="button"
-                          class="flex flex-1 items-center justify-center gap-1 rounded-control border border-primary-900/10 px-2 py-1 text-xs text-gray-600 transition-colors hover:border-primary-500 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-dark-600 dark:text-gray-300 dark:hover:border-primary-500 dark:hover:text-primary-300"
-                          :disabled="!assetFor(run.id, output.output_index)"
-                          @click="importToCanvas(run.id, output.output_index)"
-                        >
-                          <Icon name="plus" size="sm" />
-                          {{ t('creative.history.importToCanvas') }}
-                        </button>
-                        <button
-                          type="button"
-                          class="flex flex-1 items-center justify-center gap-1 rounded-control border border-primary-900/10 px-2 py-1 text-xs text-gray-600 transition-colors hover:border-primary-500 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-dark-600 dark:text-gray-300 dark:hover:border-primary-500 dark:hover:text-primary-300"
-                          :disabled="!assetFor(run.id, output.output_index)"
-                          @click="downloadOutput(run.id, output.output_index, output.mime_type)"
-                        >
-                          <Icon name="download" size="sm" />
-                          {{ t('creative.history.download') }}
-                        </button>
-                      </div>
-                    </div>
-                  </template>
-                  <p v-else class="py-1 text-xs text-gray-400 dark:text-dark-400">{{ t('creative.history.noOutputs') }}</p>
+                    </template>
+                    <p v-else class="text-xs text-gray-400 dark:text-dark-400">{{ t('creative.history.noOutputs') }}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </MotionTransition>
+            </MotionTransition>
+          </div>
         </div>
+        <p v-else-if="!studio.loadingHistory.value" class="py-8 text-center text-xs text-gray-400 dark:text-dark-400">
+          {{ t('creative.history.empty') }}
+        </p>
       </div>
-      <p v-else-if="!studio.loadingHistory.value" class="py-6 text-center text-xs text-gray-400 dark:text-dark-400">
-        {{ t('creative.history.empty') }}
-      </p>
-    </div>
     </div>
   </MotionTransition>
 </template>
@@ -179,17 +189,19 @@
 import MotionTransition from '@/components/common/MotionTransition.vue'
 /**
  * 创作 run 历史（悬浮层）：
- * - 画布右上角图标按钮展开 / 收起；列表每行 = 状态徽章 + 模型名 + 时间（+ 实际费用）
- * - 点击行原地向下展开：终态任务显示本地保存的输出图片，图片按原始比例撑满弹窗宽度，
- *   图片支持拖到画布，且「导入到画布」和「下载」按钮统一放在图片下方并排展示；本地素材缺失时按钮禁用并展示缺失占位
- * - 进行中的任务只展示加载状态，不提供素材操作或取消入口
+ * - 画布右上角图标按钮展开 / 收起；列表每行 = 状态 + 模型名 + 相对时间（悬停显示完整时间）+ 耗时 + 实际费用
+ * - 状态按四种色调显示：进行中品牌青加转圈、成功绿色、失败和结果丢失红色、取消灰色
+ * - 点击行原地向下展开：终态任务显示本地保存的输出图片，图片按原始比例撑满弹窗宽度并可拖到画布；
+ *   「导入到画布」和「下载」悬浮在图片右上角，本地素材缺失时显示缺失占位
+ * - 进行中的任务只展示加载状态，界面上没有素材操作或取消入口
  */
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { saveAs } from 'file-saver'
 import Icon from '@/components/icons/Icon.vue'
 import { CREATIVE_RUN_TERMINAL_STATUSES, type CreativeRun } from '@/api/creative'
-import { formatDateTime } from '@/utils/format'
+import { formatDateTime, formatRelativeTime } from '@/utils/format'
+import { creativeTimestampToMs, formatCreativeRunElapsed } from '@/utils/creativeRunTime'
 import { outputAssetKey, type LocalAsset } from '@/utils/creativeLocalStore'
 import { CREATIVE_OUTPUT_DRAG_MIME, serializeCreativeOutputDrag } from '@/utils/creativeDrag'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
@@ -217,7 +229,22 @@ const expandedRunId = ref<string | null>(null)
 // 手动刷新状态独立维护，确保快速响应也能先渲染出旋转反馈
 const refreshing = ref(false)
 const historyButtonRef = ref<HTMLButtonElement | null>(null)
-defineExpose({ historyButtonRef })
+// 发送动画落到历史入口时播放一次弹跳，由 animationend 复位
+const bumping = ref(false)
+
+function bump(): void {
+  bumping.value = false
+  // 下一帧再加类名，连续触发时动画能重新开始
+  requestAnimationFrame(() => {
+    bumping.value = true
+  })
+}
+
+function onBumpEnd(event: AnimationEvent): void {
+  if (event.animationName === 'history-bump') bumping.value = false
+}
+
+defineExpose({ historyButtonRef, bump })
 // 只有存在活动任务时才运行时钟，终态任务直接使用服务端完成时间。
 const elapsedNow = ref(Date.now())
 let elapsedTimer: ReturnType<typeof setInterval> | null = null
@@ -306,32 +333,29 @@ function isActive(run: CreativeRun): boolean {
   return !CREATIVE_RUN_TERMINAL_STATUSES.includes(run.status)
 }
 
-// 后端时间戳兼容秒 / 毫秒。
-function timestampToMilliseconds(timestamp: number | null | undefined): number | null {
-  if (timestamp == null || !Number.isFinite(timestamp)) return null
-  return timestamp < 1e12 ? timestamp * 1000 : timestamp
+// 状态色调：结算、释放等中间阶段都归入进行中
+function statusTone(run: CreativeRun): 'active' | 'success' | 'danger' | 'muted' {
+  if (isActive(run)) return 'active'
+  if (run.status === 'succeeded') return 'success'
+  if (run.status === 'failed' || run.status === 'result_lost') return 'danger'
+  return 'muted'
 }
 
 function formatRunTime(timestamp: number | undefined): string {
-  const ms = timestampToMilliseconds(timestamp)
+  const ms = creativeTimestampToMs(timestamp)
   if (ms == null) return ''
   return formatDateTime(new Date(ms))
 }
 
+function formatRunRelative(timestamp: number | undefined): string {
+  const ms = creativeTimestampToMs(timestamp)
+  if (ms == null) return ''
+  return formatRelativeTime(new Date(ms))
+}
+
 // 活动任务实时计时，终态任务使用服务端完成时间固定显示最终耗时。
 function formatElapsed(run: CreativeRun): string {
-  const startedAt = timestampToMilliseconds(run.started_at ?? run.created_at)
-  if (startedAt == null) return ''
-  const endedAt = isActive(run)
-    ? elapsedNow.value
-    : timestampToMilliseconds(run.completed_at ?? run.cancelled_at)
-  if (endedAt == null) return ''
-  const totalSeconds = Math.max(0, Math.floor((endedAt - startedAt) / 1000))
-  const seconds = totalSeconds % 60
-  const minutes = Math.floor(totalSeconds / 60) % 60
-  const hours = Math.floor(totalSeconds / 3600)
-  const pad = (value: number): string => String(value).padStart(2, '0')
-  return hours > 0 ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`
+  return formatCreativeRunElapsed(run, elapsedNow.value)
 }
 
 async function refresh(): Promise<void> {
@@ -374,47 +398,67 @@ async function refresh(): Promise<void> {
   opacity: 0;
 }
 
-.status-badge {
-  @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
-  @apply bg-gray-100 text-gray-500 dark:bg-dark-700 dark:text-dark-300;
+.run-status {
+  @apply inline-flex items-center gap-1.5 text-xs font-medium;
 }
 
-.status-queued {
-  @apply bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400;
+.run-status-active {
+  @apply text-primary-700 dark:text-primary-500;
 }
 
-.status-running {
-  @apply bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400;
+.run-status-success {
+  @apply text-green-600 dark:text-green-400;
 }
 
-.status-provider_succeeded,
-.status-settlement_pending {
-  @apply bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400;
+.run-status-danger {
+  @apply text-red-600 dark:text-red-400;
 }
 
-.status-release_pending {
-  @apply bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400;
+.run-status-muted {
+  @apply text-gray-500 dark:text-dark-300;
 }
 
-.status-succeeded {
-  @apply bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400;
+/* 输出图片右上角的操作按钮：有悬停能力的设备悬停或聚焦时显示，触屏设备常显 */
+.history-output-actions {
+  @apply absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity duration-fast;
 }
 
-.status-failed,
-.status-result_lost {
-  @apply bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400;
+.history-output:hover .history-output-actions,
+.history-output:focus-within .history-output-actions {
+  @apply opacity-100;
 }
 
-.status-cancelled {
-  @apply bg-gray-100 text-gray-500 dark:bg-dark-700 dark:text-dark-300;
+@media (hover: none) {
+  .history-output-actions {
+    @apply opacity-100;
+  }
+}
+
+.history-output-btn {
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-control bg-gray-900/60 text-white backdrop-blur transition-colors hover:bg-gray-900/80;
+}
+
+/* 发送动画到达时历史入口轻弹一次 */
+.history-bump {
+  animation: history-bump var(--motion-fast) var(--motion-ease);
+}
+
+@keyframes history-bump {
+  50% {
+    transform: scale(1.12);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   /* 历史面板走全局 pop-float,reduced-motion 由全局配方收敛;
-     这里只留本地 history-details 的折叠动画。 */
+     这里只留本地 history-details 的折叠动画和入口弹跳。 */
   .history-details-enter-active,
   .history-details-leave-active {
     transition-duration: 1ms;
+  }
+
+  .history-bump {
+    animation-duration: 1ms;
   }
 }
 </style>

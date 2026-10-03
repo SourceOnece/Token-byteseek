@@ -84,6 +84,7 @@ func (p *openAIRawFallbackAdapter) Endpoint(v string) {
 }
 
 func (p *openAIRawFallbackAdapter) SendCC(ctx context.Context, url string, b []byte, stream bool, key string) (*http.Response, error) {
+	resetResponseModel(p.c)
 	return p.s.Requests.SendChat(ctx, p.c, p.provider, url, b, stream, key, p.provider.View().GetOpenAIUserAgent(), "", p.tls...)
 }
 

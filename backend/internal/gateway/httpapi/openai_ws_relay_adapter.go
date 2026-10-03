@@ -16,6 +16,7 @@ func (c wsPlatformFrames) ReadFrame(ctx context.Context) (coderws.MessageType, [
 	typ, body, err := c.FrameConn.ReadFrame(ctx)
 	return coderws.MessageType(typ), body, err
 }
+
 func (c wsPlatformFrames) WriteFrame(ctx context.Context, typ coderws.MessageType, body []byte) error {
 	return c.FrameConn.WriteFrame(ctx, int(typ), body)
 }
@@ -23,6 +24,7 @@ func (c wsPlatformFrames) WriteFrame(ctx context.Context, typ coderws.MessageTyp
 func relayUsage(u openaiwsv2.Usage) wire.ForwardUsage {
 	return wire.ForwardUsage{InputTokens: u.InputTokens, OutputTokens: u.OutputTokens, CacheCreationInputTokens: u.CacheCreationInputTokens, CacheReadInputTokens: u.CacheReadInputTokens, ImageOutputTokens: u.ImageOutputTokens}
 }
+
 func relayExitProjection(e openaiwsv2.RelayExit) gatewayws.RelayExit {
 	return gatewayws.RelayExit{Stage: e.Stage, Err: e.Err, Graceful: e.Graceful, WroteDownstream: e.WroteDownstream}
 }
@@ -38,7 +40,17 @@ func (p *wsPassthroughAdapter) RunRelay(input gatewayws.RelayInput) (gatewayws.R
 	}
 	if o.OnTurnComplete != nil {
 		opts.OnTurnComplete = func(t openaiwsv2.RelayTurnResult) {
-			o.OnTurnComplete(gatewayws.RelayTurnResult{RequestModel: t.RequestModel, ResponseServiceTier: t.ResponseServiceTier, Usage: relayUsage(t.Usage), RequestID: t.RequestID, TerminalEventType: t.TerminalEventType, StartedAt: t.StartedAt, Duration: t.Duration, FirstTokenMs: t.FirstTokenMs})
+			o.OnTurnComplete(gatewayws.RelayTurnResult{
+				RequestModel:          t.RequestModel,
+				ResponseServiceTier:   t.ResponseServiceTier,
+				UpstreamResponseModel: t.UpstreamResponseModel,
+				Usage:                 relayUsage(t.Usage),
+				RequestID:             t.RequestID,
+				TerminalEventType:     t.TerminalEventType,
+				StartedAt:             t.StartedAt,
+				Duration:              t.Duration,
+				FirstTokenMs:          t.FirstTokenMs,
+			})
 		}
 	}
 	if o.BeforeWriteClient != nil {
@@ -67,7 +79,19 @@ func (p *wsPassthroughAdapter) RunRelay(input gatewayws.RelayInput) (gatewayws.R
 		}
 	}
 	result, exit := openaiwsv2.RunEntry(openaiwsv2.EntryInput{Ctx: input.Ctx, ClientConn: wsPlatformFrames{input.ClientConn}, UpstreamConn: wsPlatformFrames{input.UpstreamConn}, FirstClientMessage: input.FirstClientMessage, Options: opts})
-	out := gatewayws.RelayResult{RequestModel: result.RequestModel, ResponseServiceTier: result.ResponseServiceTier, Usage: relayUsage(result.Usage), RequestID: result.RequestID, TerminalEventType: result.TerminalEventType, FirstTokenMs: result.FirstTokenMs, Duration: result.Duration, ClientToUpstreamFrames: result.ClientToUpstreamFrames, UpstreamToClientFrames: result.UpstreamToClientFrames, DroppedDownstreamFrames: result.DroppedDownstreamFrames}
+	out := gatewayws.RelayResult{
+		RequestModel:            result.RequestModel,
+		ResponseServiceTier:     result.ResponseServiceTier,
+		UpstreamResponseModel:   result.UpstreamResponseModel,
+		Usage:                   relayUsage(result.Usage),
+		RequestID:               result.RequestID,
+		TerminalEventType:       result.TerminalEventType,
+		FirstTokenMs:            result.FirstTokenMs,
+		Duration:                result.Duration,
+		ClientToUpstreamFrames:  result.ClientToUpstreamFrames,
+		UpstreamToClientFrames:  result.UpstreamToClientFrames,
+		DroppedDownstreamFrames: result.DroppedDownstreamFrames,
+	}
 	if exit == nil {
 		return out, nil
 	}

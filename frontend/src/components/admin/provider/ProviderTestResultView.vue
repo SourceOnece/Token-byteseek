@@ -1,21 +1,7 @@
 <template>
   <div class="flex min-h-0 flex-1 flex-col gap-4">
-    <div class="flex shrink-0 items-center justify-between gap-2">
-      <div class="flex min-w-0 flex-1 items-center gap-2">
-        <slot name="leading"></slot>
-      </div>
-      <div class="flex shrink-0 items-center gap-2">
-        <HelpTooltip :content="t('admin.providers.testDialog.timingHint')" width-class="w-64" />
-        <span
-          role="status"
-          aria-live="polite"
-          data-testid="provider-test-status"
-          :class="['inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium', statusToneClass]"
-        >
-          <span :class="['h-1.5 w-1.5 rounded-full bg-current', { 'animate-pulse': running }]"></span>
-          {{ statusLabel }}
-        </span>
-      </div>
+    <div v-if="$slots.leading" class="flex min-w-0 shrink-0 items-center gap-2">
+      <slot name="leading"></slot>
     </div>
 
     <div class="grid shrink-0 grid-cols-3 divide-x divide-gray-200 rounded-surface border border-gray-200 dark:divide-dark-600 dark:border-dark-600">
@@ -160,7 +146,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import SettingsNotice from '@/components/common/settings/SettingsNotice.vue'
 import { Icon } from '@/components/icons'
@@ -191,32 +176,6 @@ const viewOptions = computed(() => [
   { value: 'reply' as const, label: t('admin.providers.testDialog.viewReply') },
   { value: 'log' as const, label: t('admin.providers.testDialog.viewLog') }
 ])
-
-const statusLabel = computed(() => {
-  switch (props.run.status) {
-    case 'connecting':
-      return t('admin.providers.testDialog.statusRunning')
-    case 'success':
-      return t('admin.providers.testDialog.statusSuccess')
-    case 'error':
-      return t('admin.providers.testDialog.statusFailed')
-    default:
-      return t('admin.providers.testDialog.statusReady')
-  }
-})
-
-const statusToneClass = computed(() => {
-  switch (props.run.status) {
-    case 'connecting':
-      return 'bg-primary-500/10 text-primary-600 dark:text-primary-400'
-    case 'success':
-      return 'bg-green-500/10 text-green-600 dark:text-green-400'
-    case 'error':
-      return 'bg-red-500/10 text-red-600 dark:text-red-400'
-    default:
-      return 'bg-gray-100 text-gray-600 dark:bg-dark-800 dark:text-dark-300'
-  }
-})
 
 const formatSeconds = (value: number | null) => (value == null ? '—' : `${(value / 1000).toFixed(2)} s`)
 

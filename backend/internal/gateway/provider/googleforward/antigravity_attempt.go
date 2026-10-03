@@ -178,7 +178,7 @@ func (a *geminiExecutionAdapter) ErrorMessage(body []byte) string {
 }
 
 func (a *geminiExecutionAdapter) Sanitize(message string) string {
-	return logredact.SanitizeUpstreamQueries(message)
+	return sanitizeAntigravityErrorText(message)
 }
 
 func (a *geminiExecutionAdapter) Detail(body []byte) string { return a.s.getUpstreamErrorDetail(body) }
@@ -212,8 +212,9 @@ func (a *geminiExecutionAdapter) TruncateBytes(body []byte, n int) string {
 	return logredact.TruncateLine(body, n)
 }
 
-func (a *geminiExecutionAdapter) ErrorBody(status int, contentType string, body []byte) {
-	a.c.GeminiErrorBody(status, contentType, body)
+func (a *geminiExecutionAdapter) ErrorBody(status int, _ string, body []byte) {
+	// 原始错误仍在管理诊断中，用户只收到不含项目身份的 Gemini 错误。
+	a.c.GeminiErrorBody(status, "application/json", buildAntigravityClientErrorBody(status, body))
 }
 
 func (a *geminiExecutionAdapter) Execute(ctx context.Context, in forwardcore.GeminiExecution, h forwardcore.GeminiHooks) (upstream.AttemptResult, error) {

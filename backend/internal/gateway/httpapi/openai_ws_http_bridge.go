@@ -425,11 +425,8 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 	originalModel string,
 	args ...any,
 ) (*forwardcore.OpenAIResult, error) {
-	responseModelObserver := UpstreamResponseModelObserverFromContext(c)
-	if responseModelObserver == nil {
-		responseModelObserver = BeginUpstreamResponseModelObservation(c)
-	}
-	// 审计必须每回合独立，不能从复用的计费观察对象借用前一回合模型。
+	responseModelObserver := BeginUpstreamResponseModelObservation(c)
+	// 票据复验审计与每轮计量保持独立，不继承前一回合声明。
 	responseAudit := &forwardcore.ResponseObserver{}
 	var routingModel, imageBillingModel, imageSizeTier, imageInputSize, grokCacheIdentity string
 	var turn int
@@ -720,6 +717,7 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 			UpstreamModel:               mappedModel,
 			UpstreamResponseServiceTier: responseModelObserver.ServiceTier(),
 			ResponseModel:               responseModelObserver.Model(),
+			UpstreamResponseModel:       responseModelObserver.Model(),
 			ServiceTier:                 ResolvedOpenAIUpstreamServiceTierFromObserver(responseModelObserver, requeststate.ExtractOpenAIServiceTierFromBody(body)),
 			ReasoningEffort:             gatewayprovider.ApplyThinkingEnabledFallback(requeststate.ExtractOpenAIReasoningEffortFromBody(body), body, mappedModel),
 			RequestedReasoningEffort:    requeststate.CanonicalRequestedReasoningEffort(body),
