@@ -8,14 +8,26 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	creativeprovider "github.com/TokenFlux/TokenRouter/internal/creative/provider"
+	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 )
+
+// 创作台装配使用网关已有的认证与客户端策略实例。
+func TestCreativeTargetsBindOAuthDependencies(t *testing.T) {
+	requests := &gatewayhttp.OpenAIRequests{Credentials: &provider.OpenAIExecutionCredentials{}, Identity: &gatewayprovider.ExecutionAgentIdentity{}, ClientPolicy: &provideradapter.OpenAIProbePolicy{}}
+	targets := provideCreativeTargets(&config.Config{}, &gatewayhttp.OpenAIAuxiliary{Requests: requests}, nil, &gatewayRequestActivity{})
+	require.Same(t, requests, targets.Requests)
+	require.Same(t, requests.Identity, targets.Identity)
+	require.Same(t, requests.Credentials, targets.Credentials)
+	require.Same(t, requests.ClientPolicy, targets.ClientPolicy)
+}
 
 // creativeExecutionGroupProbe 只提供原生分组读取，验证装配不提前取得提供商或启动尝试。
 type creativeExecutionGroupProbe struct{ reads int }

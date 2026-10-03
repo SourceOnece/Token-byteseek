@@ -12,6 +12,9 @@ import (
 )
 
 type OpenAIOptions struct {
+	OAuth bool
+	// BuildOAuth 在任务执行时构造 Codex 认证与隔离会话。
+	BuildOAuth   func(context.Context, creative.CreativeRun, []byte, string, string) (*http.Request, error)
 	Token        func(context.Context) (string, error)
 	URL          func(string) (string, error)
 	Prepare      func(*http.Request) *http.Request

@@ -19,6 +19,10 @@ import (
 // creativeDownloadRequests 使用实际 URL 格式校验，其他端口不参与图片下载。
 type creativeDownloadRequests struct{}
 
+func (creativeDownloadRequests) MatchTLSInput(func() string, *ExecutionProvider) egress.TLSFingerprintRouterMatchResult {
+	return egress.TLSFingerprintRouterMatchResult{}
+}
+
 func (creativeDownloadRequests) ValidateBaseURL(raw string) (string, error) {
 	return egress.ValidateURLFormat(raw, false)
 }

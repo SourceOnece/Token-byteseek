@@ -12,6 +12,8 @@ func provideCreativeTargets(cfg *config.Config, auxiliary *gatewayhttp.OpenAIAux
 	requests := auxiliary.Requests
 	return &gatewayadapter.CreativeTargets{
 		Requests:     requests,
+		Providers:    requests.Providers,
+		ClientPolicy: requests.ClientPolicy,
 		Credentials:  requests.Credentials,
 		Identity:     requests.Identity,
 		Transport:    requests.Transport,

@@ -203,9 +203,14 @@ app 固定唯一生产实例，提供商目录复用 creative/provider 对原生
 
 审核模式、规则优先级与失败语义的通用约定见[内容审核与风险处置](content_moderation.md)。
 
+<a id="creative_provider_execution"></a>
 ## 提供商说明
 
-OpenAI OAuth 任务已接通 Codex：Image 1.5、Image 2、Image 2.5 走原生图片生成/编辑 JSON，Image 1 沿用 Responses 工具；原生端点 404/405 仅回退一次。API Key 任务保持下文的 `/v1/images/*` 协议。两类路径都保留账号 TLS 模板、代理和原 worker 的执行超时，成功输出仍单张且不新增网关计费；hold/capture/release、无素材留存与浏览器结果边界不变。
+OpenAI 创作任务按账号类型选择上游。OAuth 使用 Codex：Image 1.5、Image 2、Image 2.5 发送图片生成/编辑 JSON，Image 1 使用 Responses 图片工具。原生端点返回 404/405 时，同一账号尝试一次 Responses 工具。API Key 使用下文的 `/v1/images/*` 协议和提供商 Base URL。
+
+OAuth 认证从当前账号或影子账号的母账号取得，任务会话绑定用户、托管 Key、run ID 和账号命名空间。账号 TLS 模板/路由、代理、客户端配置和指纹模式参与请求构造。任务仍按创作台执行超时运行，每次交付一张图片，费用由 worker 的 hold/capture/release 处理。HTTP 已成功但结果读取/解码失败时结束任务并释放预占，重新生成需要用户重新提交。
+
+0.2.3-bh.003 修复了此处的文档与代码差异：先前文字已描述 OAuth 支持，但生产创作执行器仍统一调用标准 API 图片地址。本版将共享 Codex 图片转换器接入创作台，并增加生产目标装配的回归测试。
 
 参数能力依据各提供商官方文档维护：[OpenAI Image Generation](https://developers.openai.com/api/docs/guides/image-generation)、[Gemini Generate Content API](https://ai.google.dev/api/generate-content?hl=en)、[Gemini 图片生成](https://ai.google.dev/gemini-api/docs/generate-content/image-generation?hl=en) 和 [xAI Image Generation](https://docs.x.ai/developers/model-capabilities/images/generation)。
 

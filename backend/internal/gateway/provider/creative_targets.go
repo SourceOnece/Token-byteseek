@@ -12,6 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -30,7 +31,10 @@ type CreativeTargets struct {
 		ImagesURL(*ExecutionProvider, string) (string, error)
 		ValidateBaseURL(string) (string, error)
 		TLSProfile(*ExecutionProvider, ...egress.TLSFingerprintRouterMatchResult) *tlsfingerprint.Profile
+		MatchTLSInput(func() string, *ExecutionProvider) egress.TLSFingerprintRouterMatchResult
 	}
+	Providers    ExecutionProviderReader
+	ClientPolicy *provideradapter.OpenAIProbePolicy
 	Credentials  *providercore.OpenAIExecutionCredentials
 	Identity     *ExecutionAgentIdentity
 	Transport    httpclient.UpstreamTransport
@@ -42,8 +46,15 @@ type CreativeTargets struct {
 // ForProvider 不读取凭据或启动请求，各端口继续在实际执行时求值。
 func (gateway *CreativeTargets) ForProvider(provider *ExecutionProvider) *creativeprovider.Target {
 	target := &creativeprovider.Target{}
-	if gateway == nil {
+	if gateway == nil || provider == nil {
 		return target
+	}
+	oauth := provider.View().IsOpenAIOAuthLike()
+	var routerMatch []egress.TLSFingerprintRouterMatchResult
+	var oauthMatch egress.TLSFingerprintRouterMatchResult
+	if oauth && gateway.Requests != nil {
+		oauthMatch = gateway.Requests.MatchTLSInput(openai.CodexCanonicalUserAgent, provider)
+		routerMatch = append(routerMatch, oauthMatch)
 	}
 	token := func(ctx context.Context) (string, error) {
 		value, _, err := gateway.Credentials.Resolve(ctx, ExecutionRecord(provider))
@@ -59,6 +70,10 @@ func (gateway *CreativeTargets) ForProvider(provider *ExecutionProvider) *creati
 		},
 	}
 	target.OpenAI = &creativeprovider.OpenAIOptions{
+		OAuth: oauth,
+		BuildOAuth: func(ctx context.Context, run creative.CreativeRun, body []byte, token, targetURL string) (*http.Request, error) {
+			return gateway.creativeOAuthRequest(ctx, provider, run, body, token, targetURL, oauthMatch)
+		},
 		FetchImage: imageDownload.FetchBase64,
 		Token:      token,
 		URL: func(endpoint string) (string, error) {
@@ -76,7 +91,7 @@ func (gateway *CreativeTargets) ForProvider(provider *ExecutionProvider) *creati
 		},
 		ApplyHeaders: BindExecutionHeaders(provider),
 		Do: func(req *http.Request) (*http.Response, error) {
-			return gateway.Transport.DoWithTLS(req, creativeTargetProxyURL(provider), provider.Record.ID, provider.Record.Concurrency, gateway.Requests.TLSProfile(provider))
+			return gateway.Transport.DoWithTLS(req, creativeTargetProxyURL(provider), provider.Record.ID, provider.Record.Concurrency, gateway.Requests.TLSProfile(provider, routerMatch...))
 		},
 	}
 	target.Grok = &creativeprovider.GrokOptions{

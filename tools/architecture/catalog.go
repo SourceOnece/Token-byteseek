@@ -149,7 +149,7 @@ internal/server/httpx internal/infra/telemetry/... internal/pkg/`, Tests: `inter
 internal/creative/... internal/identity/httpapi/authctx internal/infra/postgres/... internal/pkg/
 internal/protocol internal/protocol/gemini internal/routing internal/routing/capability internal/routing/modelmap
 internal/scheduler internal/server/httpx internal/settings internal/upstream
-internal/upstream/gemini internal/upstream/grok internal/usage`, Tests: `internal/apikey internal/billing/provider internal/billing/testkit internal/config
+internal/upstream/gemini internal/upstream/grok internal/upstream/openai internal/usage`, Tests: `internal/apikey internal/billing/provider internal/billing/testkit internal/config
 internal/gateway/completion internal/gateway/media internal/gateway/provider/modelidentity
 internal/identity internal/infra/telemetry/... internal/moderation internal/routing/capability
 internal/testutil/assertion`},

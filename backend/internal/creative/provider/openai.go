@@ -17,10 +17,14 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// ExecuteOpenAI 按操作调用 Images 生成或编辑接口，并读取 Base64 或 URL 图片结果。
+// ExecuteOpenAI 按账号类型调用标准图片接口或 Codex 图片接口。
+// @project-doc docs/domains/creative_studio.md#creative_provider_execution
 func (e *Target) ExecuteOpenAI(ctx context.Context, run creative.CreativeRun, payload creative.CreativeRunPayload, upstreamModel string) ([]creative.CreativeOutput, error) {
 	if e.OpenAI == nil {
 		return nil, errors.New("creative openai gateway is not configured")
+	}
+	if e.OpenAI.OAuth {
+		return e.executeOpenAIOAuth(ctx, run, payload, upstreamModel)
 	}
 	endpoint := upstream.OpenAIImagesGenerationsEndpoint
 	if run.Operation != creative.CreativeOperationGenerate {

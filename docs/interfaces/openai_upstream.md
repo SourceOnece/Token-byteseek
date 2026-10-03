@@ -107,6 +107,8 @@ OpenAI API Key 提供商可通过 `extra.images_url_to_b64_json=true` 启用图�
 
 ### 创作台 Images 契约
 
+0.2.3-bh.003 将共享图片转换器接入创作台的 OAuth 执行分支。账号认证、任务会话与代理/TLS 在本次执行时确定，文生图、编辑与局部重绘共用同一 worker 资金流程。API Key 继续使用管理员配置的标准图片地址。任务 HTTP 接口和现有配置项保持。
+
 OAuth 的 Image 1.5、Image 2、Image 2.5 Flare/Sunburst（含 2026-09-08 快照）统一使用 Codex `/images/generations` 或 `/images/edits` JSON 原生协议；只有 404/405 时回退到 Responses 图片工具。`gpt-image-1` 仍保留 Responses 工具路径以兼容旧客户端。Responses 驱动默认 `gpt-5.6-luna`，可由 `SUB2API_IMAGES_MAIN_MODEL` 覆盖。API Key 保留原有 `/v1/images/*` 上游协议。
 
 WS 执行域使用 API Key、原始线程或显式会话以及请求类型共同隔离；主 turn、prewarm、compaction 同道，memory/子代理独立，避免互相抢占。驻留读循环处理上游 ping/关闭，池容量变化唤醒排队者重新选连接；TLS profile 与 beta 握手兼容键继续硬隔离。已成功过的 passthrough 会话后续轮次遇到前输出故障时通知重连，不重放第一轮。
