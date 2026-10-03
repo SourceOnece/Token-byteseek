@@ -1,6 +1,6 @@
 # 版本留档规则
 
-本次 [v0.2.3-bh.001](versions/v0_2_3_bh_001.md) 同步 TokenFlux 0.2.3，保留两种主题及定制，并核对 sub2api 必要增量；实施中。
+本次 [v0.2.3-bh.001](versions/v0_2_3_bh_001.md) 同步 TokenFlux 0.2.3，保留两种主题及定制，补 sub2api 0.2.13 必要安全增量；完整验证、源码推送及 GHCR 三标签同 digest 发布完成，未部署。
 
 本次 [v0.2.1-bh.001](versions/v0_2_1_bh_001.md) 承接 bh.007，跟进 TokenFlux 0.2.1 提供商表单/连接测试与图片修复，保留定制，sub2api 按必要增量；验证、源码推送与 GHCR 三标签同 digest 发布完成，未部署。
 
